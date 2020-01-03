@@ -26,6 +26,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use std::iter;
 
 use crate::borrow_check::nll::ToRegionVid;
+use rustc_data_structures::fx::FxHashSet;
 
 #[derive(Debug)]
 pub struct UniversalRegions<'tcx> {
@@ -73,6 +74,37 @@ pub struct UniversalRegions<'tcx> {
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     pub yield_ty: Option<Ty<'tcx>>,
+
+    /// Extra information about region relationships, used
+    /// only when printing diagnostics.
+    ///
+    /// When processing closures/generators, we may generate multiple
+    /// region variables that all correspond to the same early-bound region.
+    /// We don't want to record these in `UniversalRegionRelations`,
+    /// as this would interfere with the propagation of closure
+    /// region constraints back to the parent function.
+    ///
+    /// Instead, we record this additional information here.
+    /// We map each region variable to a set of all other
+    /// region variables that correspond to the same early-bound region.
+    ///
+    /// For example, if we generate the following variables:
+    ///
+    /// 'a -> (_#0r, _#1r)
+    /// 'b -> (_#2r, _#3r)
+    ///
+    /// Then the map will look like this:
+    /// _#0r -> _#1r
+    /// _#1r -> _#0r
+    /// _#2r -> _#3r
+    /// _#3r -> _#2r
+    ///
+    /// When we compute upper bounds during diagnostic generation,
+    /// we accumulate a set of 'duplicate' from all non-duplicate
+    /// regions we've seen so far. Before we compute an upper bound,
+    /// we check if the region appears in our duplicates set - if so,
+    /// we skip it.
+    pub diagnostic_dup_regions: FxHashMap<RegionVid, FxHashSet<RegionVid>>,
 }
 
 /// The "defining type" for this MIR. The key feature of the "defining
@@ -234,9 +266,14 @@ impl<'tcx> UniversalRegions<'tcx> {
         assert_eq!(
             region_mapping.len(),
             expected_num_vars,
-            "index vec had unexpected number of variables"
+            "index vec had unexpected number of variables: {:?}",
+            region_mapping
         );
 
+        debug!(
+            "closure_mapping: closure_substs={:?} closure_base_def_id={:?} region_mapping={:?}",
+            closure_substs, closure_base_def_id, region_mapping
+        );
         region_mapping
     }
 
@@ -378,8 +415,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // add will be external.
         let first_extern_index = self.infcx.num_region_vars();
 
-        let defining_ty = self.defining_ty();
-        debug!("build: defining_ty={:?}", defining_ty);
+        let (defining_ty, dup_regions) = self.defining_ty();
+        debug!("build: defining_ty={:?} dup_regions={:?}", defining_ty, dup_regions);
 
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
@@ -396,7 +433,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             self.infcx.replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices)
         }
 
+        debug!("build: after closure: indices={:?}", indices);
+
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
+
+        debug!("build: compute_inputs_and_output: indices={:?}", indices);
 
         // "Liberate" the late-bound regions. These correspond to
         // "local" free regions.
@@ -462,13 +503,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             defining_ty,
             unnormalized_output_ty,
             unnormalized_input_tys,
-            yield_ty: yield_ty,
+            yield_ty,
+            diagnostic_dup_regions: dup_regions,
         }
     }
 
     /// Returns the "defining type" of the current MIR;
     /// see `DefiningTy` for details.
-    fn defining_ty(&self) -> DefiningTy<'tcx> {
+    fn defining_ty(&self) -> (DefiningTy<'tcx>, FxHashMap<RegionVid, FxHashSet<RegionVid>>) {
         let tcx = self.infcx.tcx;
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
 
@@ -483,10 +525,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
-                let defining_ty =
+                let (defining_ty, dup_regions) =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
-                match defining_ty.kind {
+                let def_ty = match defining_ty.kind {
                     ty::Closure(def_id, substs) => DefiningTy::Closure(def_id, substs),
                     ty::Generator(def_id, substs, movability) => {
                         DefiningTy::Generator(def_id, substs, movability)
@@ -498,15 +540,16 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         self.mir_def_id,
                         defining_ty
                     ),
-                }
+                };
+                (def_ty, dup_regions)
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
                 assert_eq!(closure_base_def_id, self.mir_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
-                let substs =
+                let (substs, dup_regions) =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
-                DefiningTy::Const(self.mir_def_id, substs)
+                (DefiningTy::Const(self.mir_def_id, substs), dup_regions)
             }
         }
     }
@@ -609,7 +652,7 @@ trait InferCtxtExt<'tcx> {
         &self,
         origin: NLLRegionVariableOrigin,
         value: &T,
-    ) -> T
+    ) -> (T, FxHashMap<RegionVid, FxHashSet<RegionVid>>)
     where
         T: TypeFoldable<'tcx>;
 
@@ -635,11 +678,35 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         origin: NLLRegionVariableOrigin,
         value: &T,
-    ) -> T
+    ) -> (T, FxHashMap<RegionVid, FxHashSet<RegionVid>>)
     where
         T: TypeFoldable<'tcx>,
     {
-        self.tcx.fold_regions(value, &mut false, |_region, _depth| self.next_nll_region_var(origin))
+        let mut dup_regions_map: FxHashMap<ty::Region<'tcx>, Vec<RegionVid>> = Default::default();
+        let folded = self.tcx.fold_regions(value, &mut false, |region, _depth| {
+            let new_region = self.next_nll_region_var(origin);
+            let new_vid = match new_region {
+                ty::ReVar(vid) => vid,
+                _ => unreachable!(),
+            };
+            dup_regions_map.entry(region).or_insert_with(|| Vec::new()).push(*new_vid);
+            new_region
+        });
+        let mut dup_regions: FxHashMap<RegionVid, FxHashSet<RegionVid>> = Default::default();
+        for region_set in dup_regions_map.into_iter().map(|(_, v)| v) {
+            for first in &region_set {
+                for second in &region_set {
+                    if first != second {
+                        dup_regions.entry(*first).or_default().insert(*second);
+                    }
+                }
+            }
+        }
+        debug!(
+            "replace_free_regions_with_nll_infer_vars({:?}): dup_regions={:?} folded={:?}",
+            value, dup_regions, folded
+        );
+        (folded, dup_regions)
     }
 
     fn replace_bound_regions_with_nll_infer_vars<T>(

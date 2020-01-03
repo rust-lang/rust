@@ -1230,6 +1230,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
         if !universal_outlives {
+            debug!("eval_outlives: universal_outlives=false, returning false");
             return false;
         }
 
@@ -1237,11 +1238,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // sure they exist in the sup region.
 
         if self.universal_regions.is_universal_region(sup_region) {
+            debug!("eval_outlives: sup_region={:?} is universal, returning true", sup_region);
             // Micro-opt: universal regions contain all points.
             return true;
         }
 
-        self.scc_values.contains_points(sup_region_scc, sub_region_scc)
+        let res = self.scc_values.contains_points(sup_region_scc, sub_region_scc);
+        debug!(
+            "eval_outlives: scc_values.contains_points(sup_region_scc={:?}, sub_region_scc={:?}) = {:?}",
+            sup_region_scc, sub_region_scc, res
+        );
+        res
     }
 
     /// Once regions have been propagated, this method is used to see

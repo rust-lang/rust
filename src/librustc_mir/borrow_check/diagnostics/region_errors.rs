@@ -23,6 +23,7 @@ use crate::borrow_check::{
 };
 
 use super::{OutlivesSuggestionBuilder, RegionErrorNamingCtx, RegionName, RegionNameSource};
+use rustc_data_structures::fx::FxHashSet;
 
 impl ConstraintDescription for ConstraintCategory {
     fn description(&self) -> &'static str {
@@ -146,13 +147,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if self.universal_regions.is_universal_region(r) {
             Some(r)
         } else {
+            debug!("to_error_region_vid(r={:?}={})", r, self.region_value_str(r));
+
+            // A modified version of `universal_upper_bound`, adapted for
+            // diagnostic purposes.
+            let mut lub = self.universal_regions.fr_fn_body;
             let r_scc = self.constraint_sccs.scc(r);
-            let upper_bound = self.universal_upper_bound(r);
-            if self.scc_values.contains(r_scc, upper_bound) {
-                self.to_error_region_vid(upper_bound)
-            } else {
-                None
+
+            // The set of all 'duplicate' regions that we've seen so far.
+            // See the `diagnostic_dup_regions` field docs for more details
+            let mut duplicates: FxHashSet<RegionVid> = Default::default();
+            for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+                let duplicate_region = duplicates.contains(&ur);
+                debug!("to_error_region_vid: ur={:?}, duplicate_region={}", ur, duplicate_region);
+                if !duplicate_region {
+                    // Since we're computing an upper bound using
+                    // this region, we do *not* want to compute
+                    // upper bounds using any duplicates of it.
+                    // We extend our set of duplicates with all of the duplicates
+                    // correspodnign to this region (if it has any duplicates),
+                    self.universal_regions
+                        .diagnostic_dup_regions
+                        .get(&ur)
+                        .map(|v| duplicates.extend(v));
+                    lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
+                }
             }
+
+            if self.scc_values.contains(r_scc, lub) { self.to_error_region_vid(lub) } else { None }
         }
     }
 

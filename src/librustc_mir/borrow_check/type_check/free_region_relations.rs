@@ -96,12 +96,15 @@ impl UniversalRegionRelations<'tcx> {
     /// (See `TransitiveRelation::postdom_upper_bound` for details on
     /// the postdominating upper bound in general.)
     crate fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
+        debug!("postdom_upper_bound(fr1={:?}, fr2={:?})", fr1, fr2);
         assert!(self.universal_regions.is_universal_region(fr1));
         assert!(self.universal_regions.is_universal_region(fr2));
-        *self
+        let res = *self
             .inverse_outlives
             .postdom_upper_bound(&fr1, &fr2)
-            .unwrap_or(&self.universal_regions.fr_static)
+            .unwrap_or(&self.universal_regions.fr_static);
+        debug!("postdom_upper_bound(fr1={:?}, fr2={:?}) = {:?}", fr1, fr2, res);
+        res
     }
 
     /// Finds an "upper bound" for `fr` that is not local. In other
