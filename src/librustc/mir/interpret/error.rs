@@ -438,139 +438,165 @@ pub enum UnsupportedOpInfo<'tcx> {
 impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
+        #[rustfmt::skip] // rustfmt and long matches do not go well together
         match self {
-            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
-                f,
-                "{} failed: pointer must be in-bounds at offset {}, \
-                           but is outside bounds of allocation {} which has size {}",
-                msg,
-                ptr.offset.bytes(),
-                ptr.alloc_id,
-                allocation_size.bytes()
-            ),
-            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
-            NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
-            FunctionAbiMismatch(caller_abi, callee_abi) => write!(
-                f,
-                "tried to call a function with ABI {:?} using caller ABI {:?}",
-                callee_abi, caller_abi
-            ),
-            FunctionArgMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with argument of type {:?} \
-                           passing data of type {:?}",
-                callee_ty, caller_ty
-            ),
-            TransmuteSizeDiff(from_ty, to_ty) => write!(
-                f,
-                "tried to transmute from {:?} to {:?}, but their sizes differed",
-                from_ty, to_ty
-            ),
-            FunctionRetMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with return type {:?} \
-                           passing return place of type {:?}",
-                callee_ty, caller_ty
-            ),
-            FunctionArgCountMismatch => {
-                write!(f, "tried to call a function with incorrect number of arguments")
-            }
-            ReallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new)
-            }
-            DeallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new)
-            }
-            InvalidChar(c) => {
-                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c)
-            }
-            AlignmentCheckFailed { required, has } => write!(
-                f,
-                "tried to access memory with alignment {}, but alignment {} is required",
-                has.bytes(),
-                required.bytes()
-            ),
-            TypeNotPrimitive(ty) => write!(f, "expected primitive type, got {}", ty),
-            PathNotFound(ref path) => write!(f, "cannot find path {:?}", path),
-            IncorrectAllocationInformation(size, size2, align, align2) => write!(
-                f,
-                "incorrect alloc info: expected size {} and align {}, \
-                           got size {} and align {}",
-                size.bytes(),
-                align.bytes(),
-                size2.bytes(),
-                align2.bytes()
-            ),
-            InvalidMemoryAccess => write!(f, "tried to access memory through an invalid pointer"),
-            DanglingPointerDeref => write!(f, "dangling pointer was dereferenced"),
-            DoubleFree => write!(f, "tried to deallocate dangling pointer"),
-            InvalidFunctionPointer => {
-                write!(f, "tried to use a function pointer after offsetting it")
-            }
-            InvalidBool => write!(f, "invalid boolean value read"),
-            InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
-            ReadPointerAsBytes => write!(
-                f,
-                "a raw memory access tried to access part of a pointer value as raw \
-                    bytes"
-            ),
-            ReadBytesAsPointer => {
-                write!(f, "a memory access tried to interpret some bytes as a pointer")
-            }
-            ReadForeignStatic => write!(f, "tried to read from foreign (extern) static"),
-            InvalidPointerMath => write!(
-                f,
-                "attempted to do invalid arithmetic on pointers that would leak base \
-                    addresses, e.g., comparing pointers into different allocations"
-            ),
-            DeadLocal => write!(f, "tried to access a dead local variable"),
-            DerefFunctionPointer => write!(f, "tried to dereference a function pointer"),
-            ExecuteMemory => write!(f, "tried to treat a memory pointer as a function pointer"),
-            OutOfTls => write!(f, "reached the maximum number of representable TLS keys"),
-            TlsOutOfBounds => write!(f, "accessed an invalid (unallocated) TLS key"),
-            CalledClosureAsFunction => {
-                write!(f, "tried to call a closure through a function pointer")
-            }
-            VtableForArgumentlessMethod => {
-                write!(f, "tried to call a vtable function without arguments")
-            }
-            ModifiedConstantMemory => write!(f, "tried to modify constant memory"),
-            ModifiedStatic => write!(
-                f,
-                "tried to modify a static's initial value from another static's \
-                    initializer"
-            ),
-            ReallocateNonBasePtr => write!(
-                f,
-                "tried to reallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            DeallocateNonBasePtr => write!(
-                f,
-                "tried to deallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            HeapAllocZeroBytes => write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            ReadFromReturnPointer => write!(f, "tried to read from the return pointer"),
-            UnimplementedTraitSelection => {
-                write!(f, "there were unresolved type arguments during trait selection")
-            }
-            InvalidBoolOp(_) => write!(f, "invalid boolean operation"),
-            UnterminatedCString(_) => write!(
-                f,
-                "attempted to get length of a null-terminated string, but no null \
-                    found before end of allocation"
-            ),
-            ReadUndefBytes(_) => write!(f, "attempted to read undefined bytes"),
-            HeapAllocNonPowerOfTwoAlignment(_) => write!(
-                f,
-                "tried to re-, de-, or allocate heap memory with alignment that is \
-                    not a power of two"
-            ),
-            Unsupported(ref msg) => write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) => {
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
-            }
+            PointerOutOfBounds { ptr, msg, allocation_size } =>
+                write!(
+                    f,
+                    "{} failed: pointer must be in-bounds at offset {}, \
+                            but is outside bounds of allocation {} which has size {}",
+                    msg,
+                    ptr.offset.bytes(),
+                    ptr.alloc_id,
+                    allocation_size.bytes()
+                ),
+            ValidationFailure(ref err) =>
+                write!(f, "type validation failed: {}", err),
+            NoMirFor(ref func) =>
+                write!(f, "no MIR for `{}`", func),
+            FunctionAbiMismatch(caller_abi, callee_abi) =>
+                write!(
+                    f,
+                    "tried to call a function with ABI {:?} using caller ABI {:?}",
+                    callee_abi, caller_abi
+                ),
+            FunctionArgMismatch(caller_ty, callee_ty) =>
+                write!(
+                    f,
+                    "tried to call a function with argument of type {:?} \
+                            passing data of type {:?}",
+                    callee_ty, caller_ty
+                ),
+            TransmuteSizeDiff(from_ty, to_ty) =>
+                write!(
+                    f,
+                    "tried to transmute from {:?} to {:?}, but their sizes differed",
+                    from_ty, to_ty
+                ),
+            FunctionRetMismatch(caller_ty, callee_ty) =>
+                write!(
+                    f,
+                    "tried to call a function with return type {:?} \
+                            passing return place of type {:?}",
+                    callee_ty, caller_ty
+                ),
+            FunctionArgCountMismatch =>
+                write!(f, "tried to call a function with incorrect number of arguments"),
+            ReallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new),
+            DeallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new),
+            InvalidChar(c) =>
+                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
+            AlignmentCheckFailed { required, has } =>
+                write!(
+                    f,
+                    "tried to access memory with alignment {}, but alignment {} is required",
+                    has.bytes(),
+                    required.bytes()
+                ),
+            TypeNotPrimitive(ty) =>
+                write!(f, "expected primitive type, got {}", ty),
+            PathNotFound(ref path) =>
+                write!(f, "cannot find path {:?}", path),
+            IncorrectAllocationInformation(size, size2, align, align2) =>
+                write!(
+                    f,
+                    "incorrect alloc info: expected size {} and align {}, \
+                            got size {} and align {}",
+                    size.bytes(),
+                    align.bytes(),
+                    size2.bytes(),
+                    align2.bytes()
+                ),
+            InvalidMemoryAccess =>
+                write!(f, "tried to access memory through an invalid pointer"),
+            DanglingPointerDeref =>
+                write!(f, "dangling pointer was dereferenced"),
+            DoubleFree =>
+                write!(f, "tried to deallocate dangling pointer"),
+            InvalidFunctionPointer =>
+                write!(f, "tried to use a function pointer after offsetting it"),
+            InvalidBool =>
+                write!(f, "invalid boolean value read"),
+            InvalidNullPointerUsage =>
+                write!(f, "invalid use of NULL pointer"),
+            ReadPointerAsBytes =>
+                write!(
+                    f,
+                    "a raw memory access tried to access part of a pointer value as raw \
+                        bytes"
+                ),
+            ReadBytesAsPointer =>
+                write!(f, "a memory access tried to interpret some bytes as a pointer"),
+            ReadForeignStatic =>
+                write!(f, "tried to read from foreign (extern) static"),
+            InvalidPointerMath =>
+                write!(
+                    f,
+                    "attempted to do invalid arithmetic on pointers that would leak base \
+                        addresses, e.g., comparing pointers into different allocations"
+                ),
+            DeadLocal =>
+                write!(f, "tried to access a dead local variable"),
+            DerefFunctionPointer =>
+                write!(f, "tried to dereference a function pointer"),
+            ExecuteMemory =>
+                write!(f, "tried to treat a memory pointer as a function pointer"),
+            OutOfTls =>
+                write!(f, "reached the maximum number of representable TLS keys"),
+            TlsOutOfBounds =>
+                write!(f, "accessed an invalid (unallocated) TLS key"),
+            CalledClosureAsFunction =>
+                write!(f, "tried to call a closure through a function pointer"),
+            VtableForArgumentlessMethod =>
+                write!(f, "tried to call a vtable function without arguments"),
+            ModifiedConstantMemory =>
+                write!(f, "tried to modify constant memory"),
+            ModifiedStatic =>
+                write!(
+                    f,
+                    "tried to modify a static's initial value from another static's \
+                        initializer"
+                ),
+            ReallocateNonBasePtr =>
+                write!(
+                    f,
+                    "tried to reallocate with a pointer not to the beginning of an \
+                        existing object"
+                ),
+            DeallocateNonBasePtr =>
+                write!(
+                    f,
+                    "tried to deallocate with a pointer not to the beginning of an \
+                        existing object"
+                ),
+            HeapAllocZeroBytes =>
+                write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
+            ReadFromReturnPointer =>
+                write!(f, "tried to read from the return pointer"),
+            UnimplementedTraitSelection =>
+                write!(f, "there were unresolved type arguments during trait selection"),
+            InvalidBoolOp(_) =>
+                write!(f, "invalid boolean operation"),
+            UnterminatedCString(_) =>
+                write!(
+                    f,
+                    "attempted to get length of a null-terminated string, but no null \
+                        found before end of allocation"
+                ),
+            ReadUndefBytes(_) =>
+                write!(f, "attempted to read undefined bytes"),
+            HeapAllocNonPowerOfTwoAlignment(_) =>
+                write!(
+                    f,
+                    "tried to re-, de-, or allocate heap memory with alignment that is \
+                        not a power of two"
+                ),
+            Unsupported(ref msg) =>
+                write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) =>
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg),
         }
     }
 }
