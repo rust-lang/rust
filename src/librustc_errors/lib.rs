@@ -746,7 +746,8 @@ impl HandlerInner {
             !this.emitted_diagnostics.insert(diagnostic_hash)
         };
 
-        // Only emit the diagnostic if we haven't already emitted an equivalent one.
+        // Only emit the diagnostic if we've been asked to deduplicate and
+        // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
