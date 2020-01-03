@@ -1275,6 +1275,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["add"] | ["offset"] | ["sub"] | ["wrapping_offset"] | ["wrapping_add"] | ["wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
+            ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
             _ => {},
         }
 
@@ -3256,6 +3257,29 @@ fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[
         if layout.is_zst();
         then {
             span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
+        }
+    }
+}
+
+fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let ty = cx.tables.expr_ty(&args[0]);
+
+    if !match_type(cx, ty, &paths::FILE_TYPE) {
+        return;
+    }
+
+    if_chain! {
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let hir::ExprKind::Unary(op, _) = parent.kind;
+        if op == hir::UnNot;
+        then {
+            let lint_msg = "`!FileType::is_file()` does not deny all readable file types";
+            let help_msg = "use `FileType::is_dir()` instead";
+            span_help_and_lint(cx, FILETYPE_IS_FILE, expr.span, lint_msg, help_msg);
+        } else {
+            let lint_msg = "`FileType::is_file()` does not cover all readable file types";
+            let help_msg = "use `!FileType::is_dir()` instead";
+            span_help_and_lint(cx, FILETYPE_IS_FILE, expr.span, lint_msg, help_msg);
         }
     }
 }
