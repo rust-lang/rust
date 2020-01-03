@@ -137,8 +137,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         let must_error = match self.error {
             InterpError::MachineStop(_) => bug!("CTFE does not stop"),
-            err_inval!(Layout(LayoutError::Unknown(_)))
-            | err_inval!(TooGeneric) => {
+            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
                 return Err(ErrorHandled::TooGeneric);
             }
             err_inval!(TypeckError) => return Err(ErrorHandled::Reported),

@@ -436,15 +436,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => {
-                self.operand_field(base, field.index() as u64)?
-            }
-            Downcast(_, variant) => {
-                self.operand_downcast(base, variant)?
-            }
-            Deref => {
-                self.deref_operand(base)?.into()
-            }
+            Field(field, _) => self.operand_field(base, field.index() as u64)?,
+            Downcast(_, variant) => self.operand_downcast(base, variant)?,
+            Deref => self.deref_operand(base)?.into(),
             ConstantIndex { .. } | Index(_) if base.layout.is_zst() => {
                 OpTy {
                     op: Operand::Immediate(Scalar::zst().into()),
@@ -581,9 +575,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // Early-return cases.
         let val_val = match val.val {
-            ty::ConstKind::Param(_) => {
-                throw_inval!(TooGeneric)
-            }
+            ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
@@ -601,9 +593,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::ConstKind::Placeholder(..) => {
                 bug!("eval_const_to_op: Unexpected ConstKind {:?}", val)
             }
-            ty::ConstKind::Value(val_val) => {
-                val_val
-            }
+            ty::ConstKind::Value(val_val) => val_val,
         };
         // Other cases need layout.
         let layout = from_known_layout(layout, || self.layout_of(val.ty))?;

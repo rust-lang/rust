@@ -114,8 +114,7 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
-            Deref =>
-            {
+            Deref => {
                 // This does not match Rust syntax, but it is more readable for long paths -- and
                 // some of the other items here also are not Rust syntax.  Actually we can't
                 // even use the usual syntax because we are just showing the projections,
@@ -206,8 +205,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in*a variant.
                 match layout.variants {
-                    layout::Variants::Single { index } =>
-                    {
+                    layout::Variants::Single { index } => {
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
