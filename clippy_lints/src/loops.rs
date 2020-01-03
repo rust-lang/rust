@@ -12,8 +12,7 @@ use rustc_session::declare_tool_lint;
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{is_type_diagnostic_item, qpath_res, sext, sugg};
-use rustc::ty::subst::Subst;
+use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -1344,20 +1343,9 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
                     lint_iter_method(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let def_id = cx.tables.type_dependent_def_id(arg.hir_id).unwrap();
-                let substs = cx.tables.node_substs(arg.hir_id);
-                let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
-
-                let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
-                assert_eq!(fn_arg_tys.skip_binder().len(), 1);
-                if fn_arg_tys.skip_binder()[0].is_region_ptr() {
-                    match cx.tables.expr_ty(&args[0]).kind {
-                        // If the length is greater than 32 no traits are implemented for array and
-                        // therefore we cannot use `&`.
-                        ty::Array(_, size) if size.eval_usize(cx.tcx, cx.param_env) > 32 => {},
-                        _ => lint_iter_method(cx, args, arg, method_name),
-                    };
-                } else {
+                let receiver_ty = cx.tables.expr_ty(&args[0]);
+                let receiver_ty_adjusted = cx.tables.expr_ty_adjusted(&args[0]);
+                if same_tys(cx, receiver_ty, receiver_ty_adjusted) {
                     let mut applicability = Applicability::MachineApplicable;
                     let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
                     span_lint_and_sugg(
@@ -1370,6 +1358,17 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
                         object.to_string(),
                         applicability,
                     );
+                } else {
+                    let ref_receiver_ty = cx.tcx.mk_ref(
+                        cx.tcx.lifetimes.re_erased,
+                        ty::TypeAndMut {
+                            ty: receiver_ty,
+                            mutbl: Mutability::Not,
+                        },
+                    );
+                    if same_tys(cx, receiver_ty_adjusted, ref_receiver_ty) {
+                        lint_iter_method(cx, args, arg, method_name)
+                    }
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(

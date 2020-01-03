@@ -299,3 +299,40 @@ mod issue_2496 {
         unimplemented!()
     }
 }
+
+// explicit_into_iter_loop bad suggestions
+#[warn(clippy::explicit_into_iter_loop, clippy::explicit_iter_loop)]
+mod issue_4958 {
+    fn takes_iterator<T>(iterator: &T)
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a String>,
+    {
+        for i in iterator.into_iter() {
+            println!("{}", i);
+        }
+    }
+
+    struct T;
+    impl IntoIterator for &T {
+        type Item = ();
+        type IntoIter = std::vec::IntoIter<Self::Item>;
+        fn into_iter(self) -> Self::IntoIter {
+            vec![].into_iter()
+        }
+    }
+
+    fn more_tests() {
+        let t = T;
+        let r = &t;
+        let rr = &&t;
+
+        // This case is handled by `explicit_iter_loop`. No idea why.
+        for _ in t.into_iter() {}
+
+        for _ in r.into_iter() {}
+
+        // No suggestion for this.
+        // We'd have to suggest `for _ in *rr {}` which is less clear.
+        for _ in rr.into_iter() {}
+    }
+}
