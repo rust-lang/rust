@@ -614,6 +614,11 @@ impl io::Read for UnixStream {
     }
 
     #[inline]
+    fn can_read_vectored(&self) -> bool {
+        io::Read::can_read_vectored(&&*self)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -627,6 +632,11 @@ impl<'a> io::Read for &'a UnixStream {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
+    }
+
+    #[inline]
+    fn can_read_vectored(&self) -> bool {
+        self.0.can_read_vectored()
     }
 
     #[inline]
@@ -645,6 +655,11 @@ impl io::Write for UnixStream {
         io::Write::write_vectored(&mut &*self, bufs)
     }
 
+    #[inline]
+    fn can_write_vectored(&self) -> bool {
+        io::Write::can_write_vectored(&&*self)
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         io::Write::flush(&mut &*self)
     }
@@ -658,6 +673,11 @@ impl<'a> io::Write for &'a UnixStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn can_write_vectored(&self) -> bool {
+        self.0.can_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

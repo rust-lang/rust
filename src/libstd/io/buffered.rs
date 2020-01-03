@@ -292,6 +292,10 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
+    fn can_read_vectored(&self) -> bool {
+        self.inner.can_read_vectored()
+    }
+
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
@@ -678,6 +682,10 @@ impl<W: Write> Write for BufWriter<W> {
         } else {
             self.buf.write_vectored(bufs)
         }
+    }
+
+    fn can_write_vectored(&self) -> bool {
+        self.get_ref().can_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

@@ -48,11 +48,19 @@ impl TcpStream {
         unsupported()
     }
 
+    pub fn can_read_vectored(&self) -> bool {
+        unsupported()
+    }
+
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
         unsupported()
     }
 
     pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
+        unsupported()
+    }
+
+    pub fn can_write_vectored(&self) -> bool {
         unsupported()
     }
 

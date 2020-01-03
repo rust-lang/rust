@@ -577,6 +577,11 @@ impl Read for TcpStream {
     }
 
     #[inline]
+    fn can_read_vectored(&self) -> bool {
+        self.0.can_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -589,6 +594,11 @@ impl Write for TcpStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn can_write_vectored(&self) -> bool {
+        self.0.can_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -606,6 +616,11 @@ impl Read for &TcpStream {
     }
 
     #[inline]
+    fn can_read_vectored(&self) -> bool {
+        self.0.can_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -618,6 +633,11 @@ impl Write for &TcpStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn can_write_vectored(&self) -> bool {
+        self.0.can_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

@@ -245,6 +245,10 @@ impl Write for ChildStdin {
         self.inner.write_vectored(bufs)
     }
 
+    fn can_write_vectored(&self) -> bool {
+        self.inner.can_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -301,6 +305,11 @@ impl Read for ChildStdout {
     }
 
     #[inline]
+    fn can_read_vectored(&self) -> bool {
+        self.inner.can_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -354,6 +363,11 @@ impl Read for ChildStderr {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    #[inline]
+    fn can_read_vectored(&self) -> bool {
+        self.inner.can_read_vectored()
     }
 
     #[inline]
