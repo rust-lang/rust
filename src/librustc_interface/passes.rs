@@ -837,9 +837,16 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         );
     });
 
-    sess.time("MIR_borrow_checking", || {
-        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
-    });
+    parallel!(
+        {
+            tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+        },
+        {
+            sess.time("MIR_borrow_checking", || {
+                tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
+            });
+        }
+    );
 
     sess.time("dumping_chalk_like_clauses", || {
         rustc_traits::lowering::dump_program_clauses(tcx);
@@ -865,28 +872,20 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
-
-                parallel!(
-                    {
-                        tcx.ensure().check_private_in_public(LOCAL_CRATE);
-                    },
-                    {
-                        sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
-                    },
-                    {
-                        sess.time("unused_lib_feature_checking", || {
-                            rustc_passes::stability::check_unused_or_stable_features(tcx)
-                        });
-                    },
-                    {
-                        sess.time("lint_checking", || {
-                            rustc_lint::check_crate(tcx, || {
-                                rustc_lint::BuiltinCombinedLateLintPass::new()
-                            });
-                        });
-                    }
-                );
+                tcx.ensure().check_private_in_public(LOCAL_CRATE);
+            },
+            {
+                sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
+            },
+            {
+                sess.time("unused_lib_feature_checking", || {
+                    rustc_passes::stability::check_unused_or_stable_features(tcx)
+                });
+            },
+            {
+                sess.time("lint_checking", || {
+                    rustc_lint::check_crate(tcx, || rustc_lint::BuiltinCombinedLateLintPass::new());
+                });
             },
             {
                 sess.time("privacy_checking_modules", || {
