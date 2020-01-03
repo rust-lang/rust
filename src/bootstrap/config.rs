@@ -203,6 +203,7 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
+    rustfmt: Option<String>, /* allow bootstrap.py to use rustfmt key */
     docs: Option<bool>,
     compiler_docs: Option<bool>,
     submodules: Option<bool>,
