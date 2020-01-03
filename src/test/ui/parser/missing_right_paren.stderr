@@ -1,11 +1,11 @@
-error: this file contains an un-closed delimiter
+error: this file contains an unclosed delimiter
   --> $DIR/missing_right_paren.rs:3:11
    |
 LL | fn main((ؼ
    |        -- ^
    |        ||
-   |        |un-closed delimiter
-   |        un-closed delimiter
+   |        |unclosed delimiter
+   |        unclosed delimiter
 
 error: expected one of `:` or `|`, found `)`
   --> $DIR/missing_right_paren.rs:3:11

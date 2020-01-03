@@ -4,6 +4,6 @@ fn main() {
     foo(bar(;
     //~^ ERROR cannot find function `bar` in this scope
 }
-//~^ ERROR: incorrect close delimiter: `}`
+//~^ ERROR: mismatched closing delimiter: `}`
 
 fn foo(_: usize) {}
