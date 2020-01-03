@@ -102,7 +102,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
-use rustc_data_structures::sync::par_for_each;
+use rustc_data_structures::sync::{join, par_for_each};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -345,13 +345,18 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
     })?;
 
-    tcx.sess.time("item_types_checking", || {
-        par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-        });
+    tcx.sess.time("item_types_and_item_bodies_checking", || {
+        join(
+            || {
+                tcx.sess.time("item_types_checking", || {
+                    par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
+                        tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+                    });
+                })
+            },
+            || tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE)),
+        )
     });
-
-    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
