@@ -8,7 +8,7 @@ use std::{
 
 use ra_arena::{impl_arena_id, Arena, RawId};
 
-use crate::Result;
+use crate::WorkspaceError;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -47,16 +47,11 @@ impl Sysroot {
         self.crates.iter().map(|(id, _data)| id)
     }
 
-    pub fn discover(cargo_toml: &Path) -> Result<Sysroot> {
+    pub fn discover(cargo_toml: &Path) -> Result<Sysroot, WorkspaceError> {
         let src = try_find_src_path(cargo_toml)?;
 
         if !src.exists() {
-            Err(format!(
-                "can't load standard library from sysroot\n\
-                 {:?}\n\
-                 try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-                src,
-            ))?;
+            return Err(WorkspaceError::NoStdLib(src));
         }
 
         let mut sysroot = Sysroot { crates: Arena::default() };
@@ -90,7 +85,7 @@ impl Sysroot {
     }
 }
 
-fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
+fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf, WorkspaceError> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         return Ok(path.into());
     }
@@ -98,11 +93,13 @@ fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
     let rustc_output = Command::new("rustc")
         .current_dir(cargo_toml.parent().unwrap())
         .args(&["--print", "sysroot"])
-        .output()?;
+        .output()
+        .map_err(|err| WorkspaceError::RustcError(err))?;
     if !rustc_output.status.success() {
-        Err("failed to locate sysroot")?;
+        Err(WorkspaceError::SysrootNotFound)?;
     }
-    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let stdout = String::from_utf8(rustc_output.stdout)
+        .map_err(|err| WorkspaceError::RustcOutputError(err))?;
     let sysroot_path = Path::new(stdout.trim());
     Ok(sysroot_path.join("lib/rustlib/src/rust/src"))
 }

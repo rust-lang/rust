@@ -5,7 +5,7 @@ mod json_project;
 mod sysroot;
 
 use std::{
-    error::Error,
+    fmt,
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
@@ -13,7 +13,7 @@ use std::{
 };
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
+use ra_db::{CrateGraph, CrateId, Edition, Env, FileId, ParseEditionError};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -23,8 +23,57 @@ pub use crate::{
     sysroot::Sysroot,
 };
 
-// FIXME use proper error enum
-pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
+#[derive(Debug)]
+pub enum WorkspaceError {
+    CargoMetadataFailed(cargo_metadata::Error),
+    CargoTomlNotFound(PathBuf),
+    NoStdLib(PathBuf),
+    OpenWorkspaceError(std::io::Error),
+    ParseEditionError(ParseEditionError),
+    ReadWorkspaceError(serde_json::Error),
+    RustcCfgError,
+    RustcError(std::io::Error),
+    RustcOutputError(std::string::FromUtf8Error),
+    SysrootNotFound,
+}
+
+impl fmt::Display for WorkspaceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OpenWorkspaceError(err) | Self::RustcError(err) => write!(f, "{}", err),
+            Self::ParseEditionError(err) => write!(f, "{}", err),
+            Self::ReadWorkspaceError(err) => write!(f, "{}", err),
+            Self::RustcOutputError(err) => write!(f, "{}", err),
+            Self::CargoMetadataFailed(err) => write!(f, "cargo metadata failed: {}", err),
+            Self::RustcCfgError => write!(f, "failed to get rustc cfgs"),
+            Self::SysrootNotFound => write!(f, "failed to locate sysroot"),
+            Self::CargoTomlNotFound(path) => {
+                write!(f, "can't find Cargo.toml at {}", path.display())
+            }
+            Self::NoStdLib(sysroot) => write!(
+                f,
+                "can't load standard library from sysroot\n\
+                 {:?}\n\
+                 try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
+                sysroot,
+            ),
+        }
+    }
+}
+
+impl std::error::Error for WorkspaceError {}
+
+impl From<ParseEditionError> for WorkspaceError {
+    fn from(err: ParseEditionError) -> Self {
+        Self::ParseEditionError(err.into())
+    }
+}
+
+impl From<cargo_metadata::Error> for WorkspaceError {
+    fn from(err: cargo_metadata::Error) -> Self {
+        Self::CargoMetadataFailed(err.into())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -60,7 +109,10 @@ impl PackageRoot {
 }
 
 impl ProjectWorkspace {
-    pub fn discover(path: &Path, cargo_features: &CargoFeatures) -> Result<ProjectWorkspace> {
+    pub fn discover(
+        path: &Path,
+        cargo_features: &CargoFeatures,
+    ) -> Result<ProjectWorkspace, WorkspaceError> {
         ProjectWorkspace::discover_with_sysroot(path, true, cargo_features)
     }
 
@@ -68,12 +120,16 @@ impl ProjectWorkspace {
         path: &Path,
         with_sysroot: bool,
         cargo_features: &CargoFeatures,
-    ) -> Result<ProjectWorkspace> {
+    ) -> Result<ProjectWorkspace, WorkspaceError> {
         match find_rust_project_json(path) {
             Some(json_path) => {
-                let file = File::open(json_path)?;
+                let file =
+                    File::open(json_path).map_err(|err| WorkspaceError::OpenWorkspaceError(err))?;
                 let reader = BufReader::new(file);
-                Ok(ProjectWorkspace::Json { project: from_reader(reader)? })
+                Ok(ProjectWorkspace::Json {
+                    project: from_reader(reader)
+                        .map_err(|err| WorkspaceError::ReadWorkspaceError(err))?,
+                })
             }
             None => {
                 let cargo_toml = find_cargo_toml(path)?;
@@ -350,7 +406,7 @@ fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
+fn find_cargo_toml(path: &Path) -> Result<PathBuf, WorkspaceError> {
     if path.ends_with("Cargo.toml") {
         return Ok(path.to_path_buf());
     }
@@ -362,7 +418,7 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         }
         curr = path.parent();
     }
-    Err(format!("can't find Cargo.toml at {}", path.display()))?
+    Err(WorkspaceError::CargoTomlNotFound(path.to_path_buf()))
 }
 
 pub fn get_rustc_cfg_options() -> CfgOptions {
@@ -376,13 +432,16 @@ pub fn get_rustc_cfg_options() -> CfgOptions {
         }
     }
 
-    match (|| -> Result<_> {
+    match (|| -> Result<_, WorkspaceError> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
+        let output = Command::new("rustc")
+            .args(&["--print", "cfg", "-O"])
+            .output()
+            .map_err(|err| WorkspaceError::RustcError(err))?;
         if !output.status.success() {
-            Err("failed to get rustc cfgs")?;
+            Err(WorkspaceError::RustcCfgError)?;
         }
-        Ok(String::from_utf8(output.stdout)?)
+        Ok(String::from_utf8(output.stdout).map_err(|err| WorkspaceError::RustcOutputError(err))?)
     })() {
         Ok(rustc_cfgs) => {
             for line in rustc_cfgs.lines() {
