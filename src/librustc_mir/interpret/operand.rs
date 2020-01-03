@@ -543,7 +543,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::ConstKind::Placeholder(..) => {
                 bug!("eval_const_to_op: Unexpected ConstKind {:?}", val)
             }
-            ty::ConstKind::Value(val_val) => val_val,
+            ty::ConstKind::Value(val_val) => {
+                val_val
+            }
         };
         // Other cases need layout.
         let layout = from_known_layout(layout, || self.layout_of(val.ty))?;
@@ -684,16 +686,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
                                 .expect("oveflow computing absolute variant idx");
-                            assert!(
-                                (variant_index as usize)
-                                    < rval
-                                        .layout
-                                        .ty
-                                        .ty_adt_def()
-                                        .expect("tagged layout for non adt")
-                                        .variants
-                                        .len()
-                            );
+                            let variants_len = rval
+                                .layout
+                                .ty
+                                .ty_adt_def()
+                                .expect("tagged layout for non adt")
+                                .variants
+                                .len();
+                            assert!((variant_index as usize) < variants_len);
                             (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
                             (u128::from(dataful_variant.as_u32()), dataful_variant)
