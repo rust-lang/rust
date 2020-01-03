@@ -13,7 +13,6 @@ use rustc::ty::util::CopyImplementationError;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, ItemKind};
 
@@ -51,35 +50,25 @@ impl<'tcx> Checker<'tcx> {
 }
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
-    if let ty::Adt(..) = tcx.type_of(impl_did).kind {
-        /* do nothing */
-    } else {
-        // Destructors only work on nominal types.
-        if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_did) {
-            if let Some(Node::Item(item)) = tcx.hir().find(impl_hir_id) {
-                let span = match item.kind {
-                    ItemKind::Impl(.., ref ty, _) => ty.span,
-                    _ => item.span,
-                };
-                struct_span_err!(
-                    tcx.sess,
-                    span,
-                    E0120,
-                    "the Drop trait may only be implemented on \
-                                  structures"
-                )
-                .span_label(span, "implementing Drop requires a struct")
-                .emit();
-            } else {
-                bug!("didn't find impl in ast map");
-            }
-        } else {
-            bug!(
-                "found external impl of Drop trait on \
-                  something other than a struct"
-            );
-        }
+    // Destructors only work on nominal types.
+    if let ty::Adt(..) | ty::Error = tcx.type_of(impl_did).kind {
+        return;
     }
+
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).expect("foreign Drop impl on non-ADT");
+    let sp = match tcx.hir().expect_item(impl_hir_id).kind {
+        ItemKind::Impl(.., ty, _) => ty.span,
+        _ => bug!("expected Drop impl item"),
+    };
+
+    struct_span_err!(
+        tcx.sess,
+        sp,
+        E0120,
+        "the `Drop` trait may only be implemented for structs, enums, and unions",
+    )
+    .span_label(sp, "must be a struct, enum, or union")
+    .emit();
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
