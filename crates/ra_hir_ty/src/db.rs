@@ -7,6 +7,7 @@ use hir_def::{
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{salsa, CrateId};
+use ra_prof::profile;
 
 use crate::{
     method_resolution::CrateImplBlocks,
@@ -18,8 +19,11 @@ use crate::{
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase {
-    #[salsa::invoke(crate::infer_query)]
+    #[salsa::transparent]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
+
+    #[salsa::invoke(crate::do_infer_query)]
+    fn do_infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
@@ -102,6 +106,11 @@ pub trait HirDatabase: DefDatabase {
         krate: CrateId,
         goal: crate::Canonical<crate::InEnvironment<crate::Obligation>>,
     ) -> Option<crate::traits::Solution>;
+}
+
+fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
+    let _p = profile("infer");
+    db.do_infer(def)
 }
 
 #[test]

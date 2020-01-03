@@ -12,10 +12,10 @@ pub use hir_expand::db::{
     ParseMacroQuery,
 };
 pub use hir_ty::db::{
-    AssociatedTyDataQuery, CallableItemSignatureQuery, FieldTypesQuery, GenericDefaultsQuery,
-    GenericPredicatesQuery, HirDatabase, HirDatabaseStorage, ImplDatumQuery, ImplsForTraitQuery,
-    ImplsInCrateQuery, InferQuery, StructDatumQuery, TraitDatumQuery, TraitSolveQuery, TyQuery,
-    ValueTyQuery,
+    AssociatedTyDataQuery, CallableItemSignatureQuery, DoInferQuery, FieldTypesQuery,
+    GenericDefaultsQuery, GenericPredicatesQuery, HirDatabase, HirDatabaseStorage, ImplDatumQuery,
+    ImplsForTraitQuery, ImplsInCrateQuery, StructDatumQuery, TraitDatumQuery, TraitSolveQuery,
+    TyQuery, ValueTyQuery,
 };
 
 #[test]
