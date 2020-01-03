@@ -365,3 +365,20 @@ fn issue_2669() {
     "###
     )
 }
+
+#[test]
+fn issue_2705() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait {}
+fn test() {
+    <Trait<u32>>::foo()
+}
+"#),
+        @r###"
+    [26; 53) '{     ...oo() }': ()
+    [32; 49) '<Trait...>::foo': {unknown}
+    [32; 51) '<Trait...:foo()': ()
+    "###
+    );
+}
