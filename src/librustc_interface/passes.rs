@@ -842,20 +842,23 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             sess.time("MIR_borrow_checking", || {
                 tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
             });
+        },
+        {
+            sess.time("dumping_chalk_like_clauses", || {
+                rustc_traits::lowering::dump_program_clauses(tcx);
+            });
+        },
+        {
+            sess.time("MIR_effect_checking", || {
+                for def_id in tcx.body_owners() {
+                    mir::transform::check_unsafety::check_unsafety(tcx, def_id)
+                }
+            });
+        },
+        {
+            sess.time("layout_testing", || layout_test::test_layout(tcx));
         }
     );
-
-    sess.time("dumping_chalk_like_clauses", || {
-        rustc_traits::lowering::dump_program_clauses(tcx);
-    });
-
-    sess.time("MIR_effect_checking", || {
-        for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id)
-        }
-    });
-
-    sess.time("layout_testing", || layout_test::test_layout(tcx));
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
