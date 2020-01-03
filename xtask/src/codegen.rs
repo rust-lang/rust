@@ -24,7 +24,6 @@ pub use self::{
     gen_syntax::generate_syntax,
 };
 
-pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
 const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
