@@ -643,7 +643,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         value: Const<'tcx>,
         source_info: SourceInfo,
     ) {
-        trace!("attepting to replace {:?} with {:?}", rval, value);
+        trace!("attempting to replace {:?} with {:?}", rval, value);
         if let Err(e) = self.ecx.validate_operand(
             value,
             vec![],
@@ -654,8 +654,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return;
         }
 
-        // FIXME> figure out what tho do when try_read_immediate fails
+        // FIXME: figure out what tho do when try_read_immediate fails
         let imm = self.use_ecx(source_info, |this| this.ecx.try_read_immediate(value));
+        debug!("Read value {:?} as immediate {:?}", value, imm);
 
         if let Some(Ok(imm)) = imm {
             match *imm {
@@ -670,7 +671,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     ScalarMaybeUndef::Scalar(one),
                     ScalarMaybeUndef::Scalar(two),
                 ) => {
-                    // Found a value represented as a pair. For now only do cont-prop if type of
+                    // Found a value represented as a pair. For now only do const-prop if type of
                     // Rvalue is also a pair with two scalars. The more general case is more
                     // complicated to implement so we'll do it later.
                     let ty = &value.layout.ty.kind;
