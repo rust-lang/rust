@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 342] = [
+pub const ALL_LINTS: [Lint; 343] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1096,6 +1096,13 @@ pub const ALL_LINTS: [Lint; 342] = [
         name: "mem_replace_option_with_none",
         group: "style",
         desc: "replacing an `Option` with `None` instead of `take()`",
+        deprecation: None,
+        module: "mem_replace",
+    },
+    Lint {
+        name: "mem_replace_with_default",
+        group: "style",
+        desc: "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`",
         deprecation: None,
         module: "mem_replace",
     },
