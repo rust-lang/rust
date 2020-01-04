@@ -64,7 +64,7 @@ mod prelude {
     pub use std::convert::{TryFrom, TryInto};
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::source_map::{Pos, Span, DUMMY_SP};
+    pub use syntax::source_map::{Pos, Span};
 
     pub use rustc::bug;
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};

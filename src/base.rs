@@ -501,7 +501,7 @@ fn trans_stmt<'tcx>(
                     assert!(lval
                         .layout()
                         .ty
-                        .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
+                        .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size.into());
                     lval.write_cvalue(fx, val);

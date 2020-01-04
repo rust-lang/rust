@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use syntax::source_map::DUMMY_SP;
+
 use rustc::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
 };
