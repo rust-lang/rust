@@ -179,12 +179,13 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
                 if (newtrace.size()-1-j == i) break;
 
                 // out of bounds
-                if (i-j < 0) {
+                if (i-1-j < 0) {
                     failedcycle = true;
                     break;
                 }
 
-                if (newtrace[i-j] != newtrace[newtrace.size()-1-j]) {
+                if (newtrace[i-1-j] != newtrace[newtrace.size()-1-j]) {
+                    //llvm::errs() << "i: " << i << "j: " << j << " size:" << newtrace.size() << " nt[i-j]" << *newtrace[i-j] << " nt[s-1-j]" << *newtrace[newtrace.size()-1-j] << "\n";
                     failedcycle = true;
                     break;
                 }
@@ -198,6 +199,7 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
         }
     }
     newtrace.push_back(call);
+    //assert(newtrace.size() < 12);
 }
 
 
@@ -558,6 +560,9 @@ void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const st
 
 bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*, bool>(trace, v, shouldConsiderUnknownUse);
+    //llvm::errs() << "trackingInt" << *v << " [";
+    //for(auto a : trace) llvm::errs() << a << "," ;
+    //llvm::errs() << "]\n";
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
             intUse = true;

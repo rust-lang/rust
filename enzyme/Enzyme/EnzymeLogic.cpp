@@ -1743,7 +1743,7 @@ void handleGradientCallInst(const std::map<Argument*, DataType> typeInfo, BasicB
 
   llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
   if (gutils->isConstantInstruction(op)) {
-    if (subretused && !op->doesNotAccessMemory()) {
+    if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       IRBuilder<> BuilderZ(op);
       auto inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
       inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));

@@ -416,7 +416,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* val1 = nullptr;
 
 
-      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+      if (false && isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
         dumpSet(this->originalInstructions);
