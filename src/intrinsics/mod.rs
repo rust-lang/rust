@@ -424,8 +424,10 @@ pub fn codegen_intrinsic_call<'tcx>(
             let byte_amount = fx.bcx.ins().imul(count, elem_size);
 
             if intrinsic.ends_with("_nonoverlapping") {
+                // FIXME emit_small_memcpy
                 fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
             } else {
+                // FIXME emit_small_memmove
                 fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
             }
         };
