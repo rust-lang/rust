@@ -56,17 +56,7 @@ enum FlipAction {
 impl From<BinOp> for FlipAction {
     fn from(op_kind: BinOp) -> Self {
         match op_kind {
-            BinOp::Assignment => FlipAction::DontFlip,
-            BinOp::AddAssign => FlipAction::DontFlip,
-            BinOp::DivAssign => FlipAction::DontFlip,
-            BinOp::MulAssign => FlipAction::DontFlip,
-            BinOp::RemAssign => FlipAction::DontFlip,
-            BinOp::ShrAssign => FlipAction::DontFlip,
-            BinOp::ShlAssign => FlipAction::DontFlip,
-            BinOp::SubAssign => FlipAction::DontFlip,
-            BinOp::BitOrAssign => FlipAction::DontFlip,
-            BinOp::BitAndAssign => FlipAction::DontFlip,
-            BinOp::BitXorAssign => FlipAction::DontFlip,
+            kind if kind.is_assignment() => FlipAction::DontFlip,
             BinOp::GreaterTest => FlipAction::FlipAndReplaceOp("<"),
             BinOp::GreaterEqualTest => FlipAction::FlipAndReplaceOp("<="),
             BinOp::LesserTest => FlipAction::FlipAndReplaceOp(">"),
