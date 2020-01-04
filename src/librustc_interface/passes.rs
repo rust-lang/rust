@@ -797,6 +797,14 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 });
             },
             {
+                // Prefetch in case lints are emitted.
+                tcx.lint_levels(LOCAL_CRATE);
+            },
+            {
+                // Prefetch in case something needs printing.
+                tcx.visible_parent_map(LOCAL_CRATE);
+            },
+            {
                 tcx.stability_index(LOCAL_CRATE);
 
                 let _timer = tcx.sess.timer("check_unstable_api_usage");
