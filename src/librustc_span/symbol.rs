@@ -1049,6 +1049,7 @@ pub mod kw {
 }
 
 // This module has a very short name because it's used a lot.
+#[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;
