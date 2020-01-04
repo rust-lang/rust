@@ -9,4 +9,4 @@ trait T { //~ ERROR expected one of
 pub(crate) struct Bar<T>();
 
 fn main() {}
-//~ ERROR this file contains an un-closed delimiter
+//~ ERROR this file contains an unclosed delimiter

@@ -4,14 +4,14 @@ error: unexpected token: `;`
 LL |     let x = y.;
    |               ^
 
-error: incorrect close delimiter: `)`
+error: mismatched closing delimiter: `)`
   --> $DIR/parser-recovery-2.rs:8:5
    |
 LL |     fn bar() {
-   |              - un-closed delimiter
+   |              - unclosed delimiter
 LL |         let x = foo();
 LL |     )
-   |     ^ incorrect close delimiter
+   |     ^ mismatched closing delimiter
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/parser-recovery-2.rs:7:17

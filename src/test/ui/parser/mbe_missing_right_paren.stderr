@@ -1,10 +1,10 @@
-error: this file contains an un-closed delimiter
+error: this file contains an unclosed delimiter
   --> $DIR/mbe_missing_right_paren.rs:3:19
    |
 LL | macro_rules! abc(ؼ
    |                 - ^
    |                 |
-   |                 un-closed delimiter
+   |                 unclosed delimiter
 
 error: macros that expand to items must be delimited with braces or followed by a semicolon
   --> $DIR/mbe_missing_right_paren.rs:3:17

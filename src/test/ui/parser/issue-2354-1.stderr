@@ -1,8 +1,8 @@
-error: unexpected close delimiter: `}`
+error: unexpected closing delimiter: `}`
   --> $DIR/issue-2354-1.rs:1:24
    |
 LL | static foo: isize = 2; }
-   |                        ^ unexpected close delimiter
+   |                        ^ unexpected closing delimiter
 
 error: aborting due to previous error
 
