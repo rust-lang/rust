@@ -144,6 +144,7 @@ impl BinOp {
         }
     }
 }
+
 impl ast::BinExpr {
     pub fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
         self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {

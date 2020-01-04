@@ -19,8 +19,8 @@ use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextUnit,
-    TokenAtOffset,
+    algo::find_node_at_offset, ast, match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode,
+    TextUnit, TokenAtOffset,
 };
 
 use crate::{
@@ -46,12 +46,19 @@ pub struct ReferenceSearchResult {
 pub struct Reference {
     pub file_range: FileRange,
     pub kind: ReferenceKind,
+    pub access: Option<ReferenceAccess>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReferenceKind {
     StructLiteral,
     Other,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReferenceAccess {
+    Read,
+    Write,
 }
 
 impl ReferenceSearchResult {
@@ -72,7 +79,7 @@ impl ReferenceSearchResult {
 }
 
 // allow turning ReferenceSearchResult into an iterator
-// over FileRanges
+// over References
 impl IntoIterator for ReferenceSearchResult {
     type Item = Reference;
     type IntoIter = std::vec::IntoIter<Reference>;
@@ -85,6 +92,7 @@ impl IntoIterator for ReferenceSearchResult {
                 range: self.declaration.range(),
             },
             kind: self.declaration_kind,
+            access: None,
         });
         v.append(&mut self.references);
         v.into_iter()
@@ -201,7 +209,13 @@ fn process_definition(
                         } else {
                             ReferenceKind::Other
                         };
-                        refs.push(Reference { file_range: FileRange { file_id, range }, kind });
+                        let access = access_mode(d.kind, &name_ref);
+
+                        refs.push(Reference {
+                            file_range: FileRange { file_id, range },
+                            kind,
+                            access,
+                        });
                     }
                 }
             }
@@ -210,11 +224,46 @@ fn process_definition(
     refs
 }
 
+fn access_mode(kind: NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+    match kind {
+        NameKind::Local(_) | NameKind::Field(_) => {
+            //LetExpr or BinExpr
+            name_ref.syntax().ancestors().find_map(|node| {
+                match_ast! {
+                    match (node) {
+                        ast::BinExpr(expr) => {
+                            match expr.op_kind() {
+                                Some(kind) if kind.is_assignment() => {
+                                    if let Some(lhs) = expr.lhs() {
+                                        if lhs.syntax().text_range() == name_ref.syntax().text_range() {
+                                            return Some(ReferenceAccess::Write);
+                                        }
+                                    }
+
+                                    if let Some(rhs) = expr.rhs() {
+                                        if rhs.syntax().text_range().is_subrange(&name_ref.syntax().text_range()) {
+                                            return Some(ReferenceAccess::Read);
+                                        }
+                                    }
+                                },
+                                _ => { return Some(ReferenceAccess::Read) },
+                            }
+                            None
+                        },
+                        _ => {None}
+                    }
+                }
+            })
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
-        Reference, ReferenceKind, ReferenceSearchResult, SearchScope,
+        Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
     };
 
     #[test]
@@ -513,6 +562,20 @@ mod tests {
             ReferenceKind::Other,
             &["FileId(1) [96; 98) Other", "FileId(1) [114; 116) Other"],
         );
+    }
+
+    #[test]
+    fn test_basic_highlight_read() {
+        let code = r#"
+        fn foo() {
+            let i<|> = 0;
+            i = i + 1;
+        }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 3);
+        assert_eq!(refs.references[0].access, Some(ReferenceAccess::Write));
+        assert_eq!(refs.references[1].access, Some(ReferenceAccess::Read));
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
