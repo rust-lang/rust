@@ -137,13 +137,10 @@ pub struct ObligationForest<O: ForestObligation> {
     /// significant, and space considerations are not important.
     nodes: Vec<Node<O>>,
 
-    /// A cache of predicates that have been successfully completed.
-    done_cache: FxHashSet<O::Predicate>,
-
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
     /// comments in `process_obligation` for details.
-    active_cache: FxHashMap<O::Predicate, usize>,
+    active_cache: FxHashMap<O::Predicate, Option<usize>>,
 
     /// A vector reused in compress(), to avoid allocating new vectors.
     node_rewrites: RefCell<Vec<usize>>,
@@ -283,7 +280,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
-            done_cache: Default::default(),
             active_cache: Default::default(),
             node_rewrites: RefCell::new(vec![]),
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
@@ -305,13 +301,13 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     // Returns Err(()) if we already know this obligation failed.
     fn register_obligation_at(&mut self, obligation: O, parent: Option<usize>) -> Result<(), ()> {
-        if self.done_cache.contains(obligation.as_predicate()) {
-            return Ok(());
-        }
-
         match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
-                let node = &mut self.nodes[*o.get()];
+                let index = match o.get() {
+                    Some(index) => *index,
+                    None => return Ok(()), // Done!
+                };
+                let node = &mut self.nodes[index];
                 if let Some(parent_index) = parent {
                     // If the node is already in `active_cache`, it has already
                     // had its chance to be marked with a parent. So if it's
@@ -340,7 +336,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     Err(())
                 } else {
                     let new_index = self.nodes.len();
-                    v.insert(new_index);
+                    v.insert(Some(new_index));
                     self.nodes.push(Node::new(parent, obligation, obligation_tree_id));
                     Ok(())
                 }
@@ -576,7 +572,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 Some(rpos) => {
                     // Cycle detected.
                     processor.process_backedge(
-                        stack[rpos..].iter().map(GetObligation(&self.nodes)),
+                        stack[rpos..].iter().map(|i| &self.nodes[*i].obligation),
                         PhantomData,
                     );
                 }
@@ -590,6 +586,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let orig_nodes_len = self.nodes.len();
+        let remove_node_marker = orig_nodes_len + 1;
         let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
         debug_assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
@@ -613,17 +610,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 NodeState::Done => {
-                    // This lookup can fail because the contents of
-                    // `self.active_cache` are not guaranteed to match those of
-                    // `self.nodes`. See the comment in `process_obligation`
-                    // for more details.
-                    if let Some((predicate, _)) =
-                        self.active_cache.remove_entry(node.obligation.as_predicate())
-                    {
-                        self.done_cache.insert(predicate);
-                    } else {
-                        self.done_cache.insert(node.obligation.as_predicate().clone());
-                    }
                     if do_completed == DoCompleted::Yes {
                         // Extract the success stories.
                         removed_done_obligations.push(node.obligation.clone());
@@ -637,7 +623,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     // check against.
                     self.active_cache.remove(node.obligation.as_predicate());
                     self.insert_into_error_cache(index);
-                    node_rewrites[index] = orig_nodes_len;
+                    node_rewrites[index] = remove_node_marker;
                     dead_nodes += 1;
                 }
                 NodeState::Success => unreachable!(),
@@ -658,6 +644,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
         let orig_nodes_len = node_rewrites.len();
+        let remove_node_marker = orig_nodes_len + 1;
 
         for node in &mut self.nodes {
             let mut i = 0;
@@ -678,31 +665,21 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         // This updating of `self.active_cache` is necessary because the
         // removal of nodes within `compress` can fail. See above.
-        self.active_cache.retain(|_predicate, index| {
-            let new_index = node_rewrites[*index];
-            if new_index >= orig_nodes_len {
-                false
+        self.active_cache.retain(|_predicate, opt_index| {
+            if let Some(index) = opt_index {
+                let new_index = node_rewrites[*index];
+                if new_index == orig_nodes_len {
+                    *opt_index = None;
+                    true
+                } else if new_index == remove_node_marker {
+                    false
+                } else {
+                    *index = new_index;
+                    true
+                }
             } else {
-                *index = new_index;
                 true
             }
         });
-    }
-}
-
-// I need a Clone closure.
-#[derive(Clone)]
-struct GetObligation<'a, O>(&'a [Node<O>]);
-
-impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
-    type Output = &'a O;
-    extern "rust-call" fn call_once(self, args: (&'b usize,)) -> &'a O {
-        &self.0[*args.0].obligation
-    }
-}
-
-impl<'a, 'b, O> FnMut<(&'b usize,)> for GetObligation<'a, O> {
-    extern "rust-call" fn call_mut(&mut self, args: (&'b usize,)) -> &'a O {
-        &self.0[*args.0].obligation
     }
 }
