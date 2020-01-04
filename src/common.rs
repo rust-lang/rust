@@ -269,7 +269,7 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
 
     pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants_cx: &'clif mut crate::constant::ConstantCx,
-    pub caches: &'clif mut Caches<'tcx>,
+    pub vtables: &'clif mut HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
     pub source_info_set: indexmap::IndexSet<SourceInfo>,
 }

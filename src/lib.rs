@@ -114,7 +114,7 @@ mod prelude {
     pub use crate::trap::*;
     pub use crate::unimpl::unimpl;
     pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};
-    pub use crate::{Caches, CodegenCx};
+    pub use crate::CodegenCx;
 
     pub struct PrintOnPanic<F: Fn() -> String>(pub F);
     impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
@@ -126,25 +126,12 @@ mod prelude {
     }
 }
 
-pub struct Caches<'tcx> {
-    pub context: Context,
-    pub vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
-}
-
-impl Default for Caches<'_> {
-    fn default() -> Self {
-        Caches {
-            context: Context::new(),
-            vtables: HashMap::new(),
-        }
-    }
-}
-
 pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
     module: &'clif mut Module<B>,
     constants_cx: ConstantCx,
-    caches: Caches<'tcx>,
+    cached_context: Context,
+    vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
     debug_context: Option<&'clif mut DebugContext<'tcx>>,
 }
 
@@ -158,7 +145,8 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
             tcx,
             module,
             constants_cx: ConstantCx::default(),
-            caches: Caches::default(),
+            cached_context: Context::new(),
+            vtables: HashMap::new(),
             debug_context,
         }
     }

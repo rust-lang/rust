@@ -21,10 +21,13 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         .map(|debug_context| FunctionDebugContext::new(debug_context, instance, func_id, &name));
 
     // Make FunctionBuilder
-    let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
-    func.collect_debug_info();
+    let context = &mut cx.cached_context;
+    context.clear();
+    context.func.name = ExternalName::user(0, func_id.as_u32());
+    context.func.signature = sig;
+    context.func.collect_debug_info();
     let mut func_ctx = FunctionBuilderContext::new();
-    let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
+    let mut bcx = FunctionBuilder::new(&mut context.func, &mut func_ctx);
 
     // Predefine ebb's
     let start_ebb = bcx.create_ebb();
@@ -48,7 +51,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
         clif_comments,
         constants_cx: &mut cx.constants_cx,
-        caches: &mut cx.caches,
+        vtables: &mut cx.vtables,
         source_info_set: indexmap::IndexSet::new(),
     };
 
@@ -69,13 +72,10 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let local_map = fx.local_map;
 
     #[cfg(debug_assertions)]
-    crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &func, &clif_comments, None);
+    crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &context.func, &clif_comments, None);
 
     // Verify function
-    verify_func(tcx, &clif_comments, &func);
-
-    let context = &mut cx.caches.context;
-    context.func = func;
+    verify_func(tcx, &clif_comments, &context.func);
 
     // Perform rust specific optimizations
     crate::optimize::optimize_function(cx.tcx, instance, context, &mut clif_comments);

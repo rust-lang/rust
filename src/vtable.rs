@@ -63,11 +63,11 @@ pub fn get_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.caches.vtables.get(&(ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.vtables.get(&(ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, ty, trait_ref);
-        fx.caches.vtables.insert((ty, trait_ref), data_id);
+        fx.vtables.insert((ty, trait_ref), data_id);
         data_id
     };
 
