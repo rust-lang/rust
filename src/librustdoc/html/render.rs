@@ -4063,11 +4063,25 @@ fn get_methods(
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || should_render_item(item, deref_mut) {
-                    Some(format!(
-                        "<a href=\"#{}\">{}</a>",
-                        get_next_url(used_links, format!("method.{}", name)),
-                        name
-                    ))
+                    let mut emojis = String::new();
+                    if let clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func) = item.inner {
+                        if func.header.unsafety == hir::Unsafety::Unsafe {
+                            emojis += "⚠";
+                        }
+                    }
+                    if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
+                        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+                        emojis += if is_rustc_private { "⚙️" } else { "🔬" };
+                    };
+                    if item.deprecation().is_some() {
+                        emojis += "⚰️";
+                    }
+                    if !emojis.is_empty() {
+                        emojis.insert_str(0, "<sup>");
+                        emojis.push_str("</sup>");
+                    }
+                    let url = get_next_url(used_links, format!("method.{}", name));
+                    Some(format!("<a href=\"#{}\">{}{}</a>", url, name, emojis))
                 } else {
                     None
                 }
