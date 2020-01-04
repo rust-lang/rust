@@ -1,0 +1,61 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-67185-2.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67185-2.rs:15:1
+   |
+LL | / trait Foo
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_^ expected `3usize`, found `4usize`
+   |
+   = note: expected type `3usize`
+              found type `4usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67185-2.rs:24:6
+   |
+LL | impl Foo for FooImpl {}
+   |      ^^^ expected `3usize`, found `4usize`
+   |
+   = note: expected type `3usize`
+              found type `4usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67185-2.rs:24:6
+   |
+LL | impl Foo for FooImpl {}
+   |      ^^^ expected `2usize`, found `3usize`
+   |
+   = note: expected type `2usize`
+              found type `3usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67185-2.rs:28:1
+   |
+LL | fn f(_: impl Foo) {}
+   | ^^^^^^^^^^^^^^^^^^^^ expected `2usize`, found `3usize`
+   |
+   = note: expected type `2usize`
+              found type `3usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-67185-2.rs:28:1
+   |
+LL | fn f(_: impl Foo) {}
+   | ^^^^^^^^^^^^^^^^^^^^ expected `3usize`, found `4usize`
+   |
+   = note: expected type `3usize`
+              found type `4usize`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
