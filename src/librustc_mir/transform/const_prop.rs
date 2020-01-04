@@ -12,10 +12,10 @@ use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::{
-    read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, CastKind, ClearCrossCrate,
-    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase,
-    ReadOnlyBodyAndCache, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
+    Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, ReadOnlyBodyAndCache, Rvalue,
+    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
+    UnOp, RETURN_PLACE,
 };
 use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
@@ -29,9 +29,9 @@ use syntax::ast::Mutability;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, intern_const_alloc_recursive, truncate, AllocId, Allocation, Frame, ImmTy, Immediate,
-    InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
-    Pointer, ScalarMaybeUndef, StackPopCleanup,
+    self, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
+    LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
+    ScalarMaybeUndef, StackPopCleanup,
 };
 use crate::rustc::ty::subst::Subst;
 use crate::transform::{MirPass, MirSource};
@@ -539,57 +539,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn check_cast(
-        &mut self,
-        op: &Operand<'tcx>,
-        ty: Ty<'tcx>,
-        source_info: SourceInfo,
-        place_layout: TyLayout<'tcx>,
-    ) -> Option<()> {
-        if !ty.is_integral() || !op.ty(&self.local_decls, self.tcx).is_integral() {
-            return Some(());
-        }
-
-        let value = self.use_ecx(source_info, |this| {
-            this.ecx.read_immediate(this.ecx.eval_operand(op, None)?)
-        })?;
-
-        // Do not try to read bits for ZSTs. This can occur when casting an enum with one variant
-        // to an integer. Such enums are represented as ZSTs but still have a discriminant value
-        // which can be casted.
-        if value.layout.is_zst() {
-            return Some(());
-        }
-
-        let value_size = value.layout.size;
-        let value_bits = value.to_scalar().and_then(|r| r.to_bits(value_size));
-        if let Ok(value_bits) = value_bits {
-            let truncated = truncate(value_bits, place_layout.size);
-            if truncated != value_bits {
-                let scope = source_info.scope;
-                let lint_root = match &self.source_scopes[scope].local_data {
-                    ClearCrossCrate::Set(data) => data.lint_root,
-                    ClearCrossCrate::Clear => return None,
-                };
-                self.tcx.lint_hir(
-                    ::rustc::lint::builtin::CONST_ERR,
-                    lint_root,
-                    source_info.span,
-                    &format!(
-                        "truncating cast: the value {} requires {} bits but the target type is \
-                                          only {} bits",
-                        value_bits,
-                        value_size.bits(),
-                        place_layout.size.bits()
-                    ),
-                );
-                return None;
-            }
-        }
-
-        Some(())
-    }
-
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
@@ -649,11 +598,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         return None;
                     }
                 }
-            }
-
-            Rvalue::Cast(CastKind::Misc, op, ty) => {
-                trace!("checking Cast(Misc, {:?}, {:?})", op, ty);
-                self.check_cast(op, ty, source_info, place_layout)?;
             }
 
             _ => {}
