@@ -54,7 +54,8 @@ where
     let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
     let name_vec: Vec<&Symbol> = iter_names.collect();
 
-    let (case_insensitive_match, levenshtein_match) = name_vec.iter()
+    let (case_insensitive_match, levenshtein_match) = name_vec
+        .iter()
         .filter_map(|&name| {
             let dist = lev_distance(lookup, &name.as_str());
             if dist <= max_dist { Some((name, dist)) } else { None }
@@ -74,7 +75,6 @@ where
                 },
             )
         });
-    
     // Priority of matches:
     // 1. Exact case insensitive match
     // 2. Levenshtein distance match
