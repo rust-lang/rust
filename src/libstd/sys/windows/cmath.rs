@@ -2,7 +2,6 @@
 
 use libc::{c_double, c_float};
 
-#[link_name = "m"]
 extern "C" {
     pub fn acos(n: c_double) -> c_double;
     pub fn asin(n: c_double) -> c_double;

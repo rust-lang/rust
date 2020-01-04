@@ -47,7 +47,6 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
 
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
-                drop_impl_did,
                 dtor_predicates,
                 adt_def.did,
                 self_to_impl_substs,
@@ -95,16 +94,23 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             }
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
+                let self_descr = tcx
+                    .def_kind(self_type_did)
+                    .map(|kind| kind.descr(self_type_did))
+                    .unwrap_or("type");
                 struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
                     E0366,
-                    "Implementations of Drop cannot be specialized"
+                    "`Drop` impls cannot be specialized"
                 )
                 .span_note(
                     item_span,
-                    "Use same sequence of generic type and region \
-                     parameters that is on the struct/enum definition",
+                    &format!(
+                        "use the same sequence of generic type, lifetime and const parameters \
+                        as the {} definition",
+                        self_descr,
+                    ),
                 )
                 .emit();
                 return Err(ErrorReported);
@@ -143,7 +149,6 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    drop_impl_did: DefId,
     dtor_predicates: ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
     self_to_impl_substs: SubstsRef<'tcx>,
@@ -187,8 +192,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
     let self_type_hir_id = tcx.hir().as_local_hir_id(self_type_did).unwrap();
 
-    let drop_impl_span = tcx.def_span(drop_impl_did);
-
     // We can assume the predicates attached to struct/enum definition
     // hold.
     let generic_assumptions = tcx.predicates_of(self_type_did);
@@ -205,7 +208,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for (predicate, _) in dtor_predicates.predicates {
+    for (predicate, predicate_sp) in dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of
@@ -241,18 +244,17 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
         if !assumptions_in_impl_context.iter().any(predicate_matches_closure) {
             let item_span = tcx.hir().span(self_type_hir_id);
+            let self_descr =
+                tcx.def_kind(self_type_did).map(|kind| kind.descr(self_type_did)).unwrap_or("type");
             struct_span_err!(
                 tcx.sess,
-                drop_impl_span,
+                *predicate_sp,
                 E0367,
-                "The requirement `{}` is added only by the Drop impl.",
-                predicate
+                "`Drop` impl requires `{}` but the {} it is implemented for does not",
+                predicate,
+                self_descr,
             )
-            .span_note(
-                item_span,
-                "The same requirement must be part of \
-                 the struct/enum definition",
-            )
+            .span_note(item_span, "the implementor must specify the same requirement")
             .emit();
             result = Err(ErrorReported);
         }

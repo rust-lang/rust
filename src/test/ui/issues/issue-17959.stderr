@@ -1,16 +1,10 @@
-error[E0367]: The requirement `T: std::marker::Sized` is added only by the Drop impl.
-  --> $DIR/issue-17959.rs:11:1
+error[E0367]: `Drop` impl requires `T: std::marker::Sized` but the struct it is implemented for does not
+  --> $DIR/issue-17959.rs:11:6
    |
-LL | / impl<T> Drop for G<T> {
-LL | |
-LL | |     fn drop(&mut self) {
-LL | |         if !self._ptr.is_null() {
-LL | |         }
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<T> Drop for G<T> {
+   |      ^
    |
-note: The same requirement must be part of the struct/enum definition
+note: the implementor must specify the same requirement
   --> $DIR/issue-17959.rs:7:1
    |
 LL | / struct G<T: ?Sized> {

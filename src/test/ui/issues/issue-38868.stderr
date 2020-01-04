@@ -1,4 +1,4 @@
-error[E0366]: Implementations of Drop cannot be specialized
+error[E0366]: `Drop` impls cannot be specialized
   --> $DIR/issue-38868.rs:5:1
    |
 LL | / impl Drop for List<i32> {
@@ -8,7 +8,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-note: Use same sequence of generic type and region parameters that is on the struct/enum definition
+note: use the same sequence of generic type, lifetime and const parameters as the struct definition
   --> $DIR/issue-38868.rs:1:1
    |
 LL | / pub struct List<T> {
