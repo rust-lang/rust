@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 343] = [
+pub const ALL_LINTS: [Lint; 344] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -872,6 +872,13 @@ pub const ALL_LINTS: [Lint; 343] = [
         name: "iter_nth",
         group: "perf",
         desc: "using `.iter().nth()` on a standard library type with O(1) element access",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
+        name: "iter_nth_zero",
+        group: "style",
+        desc: "replace `iter.nth(0)` with `iter.next()`",
         deprecation: None,
         module: "methods",
     },

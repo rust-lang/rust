@@ -20,6 +20,7 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use syntax::ast;
 
+use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
@@ -757,6 +758,33 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `iter.nth(0)`.
+    ///
+    /// **Why is this bad?** `iter.nth(0)` is unnecessary, and `iter.next()`
+    /// is more readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// // Bad
+    /// # let mut s = HashSet::new();
+    /// # s.insert(1);
+    /// let x = s.iter().nth(0);
+    ///
+    /// // Good
+    /// # let mut s = HashSet::new();
+    /// # s.insert(1);
+    /// let x = s.iter().next();
+    /// ```
+    pub ITER_NTH_ZERO,
+    style,
+    "replace `iter.nth(0)` with `iter.next()`"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for use of `.iter().nth()` (and the related
     /// `.iter_mut().nth()`) on standard library types with O(1) element access.
     ///
@@ -1136,6 +1164,7 @@ declare_lint_pass!(Methods => [
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NTH,
+    ITER_NTH_ZERO,
     ITER_SKIP_NEXT,
     GET_UNWRAP,
     STRING_EXTEND_CHARS,
@@ -1191,8 +1220,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
                 lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
             },
-            ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
-            ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
+            ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
+            ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
+            ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
@@ -1983,7 +2013,6 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, fold_ar
 
 fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        use crate::consts::{constant, Constant};
         if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
             span_lint(
                 cx,
@@ -1998,9 +2027,10 @@ fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args
 fn lint_iter_nth<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &hir::Expr<'_>,
-    iter_args: &'tcx [hir::Expr<'_>],
+    nth_and_iter_args: &[&'tcx [hir::Expr<'tcx>]],
     is_mut: bool,
 ) {
+    let iter_args = nth_and_iter_args[1];
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
@@ -2009,6 +2039,8 @@ fn lint_iter_nth<'a, 'tcx>(
     } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
         "VecDeque"
     } else {
+        let nth_args = nth_and_iter_args[0];
+        lint_iter_nth_zero(cx, expr, &nth_args);
         return; // caller is not a type that we want to lint
     };
 
@@ -2021,6 +2053,25 @@ fn lint_iter_nth<'a, 'tcx>(
             mut_str, caller_type
         ),
     );
+}
+
+fn lint_iter_nth_zero<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, nth_args: &'tcx [hir::Expr<'_>]) {
+    if_chain! {
+        if match_trait_method(cx, expr, &paths::ITERATOR);
+        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &nth_args[1]);
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                cx,
+                ITER_NTH_ZERO,
+                expr.span,
+                "called `.nth(0)` on a `std::iter::Iterator`",
+                "try calling",
+                format!("{}.next()", snippet_with_applicability(cx, nth_args[0].span, "..", &mut applicability)),
+                applicability,
+            );
+        }
+    }
 }
 
 fn lint_get_unwrap<'a, 'tcx>(
