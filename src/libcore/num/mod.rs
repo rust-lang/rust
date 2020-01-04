@@ -1997,27 +1997,15 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow_internal_unstable(const_if_match)]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn abs(self) -> Self {
-                // Note that the #[inline] above means that the overflow
-                // semantics of the subtraction depend on the crate we're being
-                // inlined into.
-
-                // sign is -1 (all ones) for negative numbers, 0 otherwise.
-                let sign = self >> ($BITS - 1);
-                // For positive self, sign == 0 so the expression is simply
-                // (self ^ 0) - 0 == self == abs(self).
-                //
-                // For negative self, self ^ sign == self ^ all_ones.
-                // But all_ones ^ self == all_ones - self == -1 - self.
-                // So for negative numbers, (self ^ sign) - sign is
-                // (-1 - self) - -1 == -self == abs(self).
-                //
-                // The subtraction overflows when self is min_value(), because
-                // (-1 - min_value()) - -1 is max_value() - -1 which overflows.
-                // This is exactly when we want self.abs() to overflow.
-                (self ^ sign) - sign
+                if self.is_negative() {
+                    -self
+                } else {
+                    self
+                }
             }
         }
 
