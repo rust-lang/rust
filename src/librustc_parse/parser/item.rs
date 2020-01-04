@@ -5,7 +5,7 @@ use crate::maybe_whole;
 
 use rustc_error_codes::*;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult, StashKey};
-use rustc_span::source_map::{self, respan, Span};
+use rustc_span::source_map::{self, respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::BytePos;
 use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
@@ -561,8 +561,9 @@ impl<'a> Parser<'a> {
         };
 
         let constness = if self.eat_keyword(kw::Const) {
-            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_span);
-            Some(Constness::Const)
+            let span = self.prev_span;
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            Some(respan(span, Constness::Const))
         } else {
             None
         };
@@ -627,6 +628,7 @@ impl<'a> Parser<'a> {
                         err_path(ty_first.span)
                     }
                 };
+                let constness = constness.map(|c| c.node);
                 let trait_ref = TraitRef { path, constness, ref_id: ty_first.id };
 
                 ItemKind::Impl(
@@ -640,6 +642,13 @@ impl<'a> Parser<'a> {
                 )
             }
             None => {
+                // Reject `impl const Type {}` here
+                if let Some(Spanned { node: Constness::Const, span }) = constness {
+                    self.struct_span_err(span, "`const` cannot modify an inherent impl")
+                        .help("only a trait impl can be `const`")
+                        .emit();
+                }
+
                 // impl Type
                 ItemKind::Impl(
                     unsafety,
