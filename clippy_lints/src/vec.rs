@@ -7,7 +7,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would

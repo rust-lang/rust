@@ -8,7 +8,7 @@ use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `mem::replace()` on an `Option` with

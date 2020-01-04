@@ -12,9 +12,9 @@ use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use syntax::ast::{self, MetaItem, MetaItemKind};
 use syntax::attr;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Warns if there is missing doc for any documentable item

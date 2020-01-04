@@ -3,9 +3,9 @@ use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol;
 use std::f64::consts as f64;
 use syntax::ast::{FloatTy, LitFloatType, LitKind};
-use syntax::symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for floating point literals that approximate

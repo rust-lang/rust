@@ -7,8 +7,8 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{ExpnKind, Span};
 use syntax::ast::LitKind;
-use syntax::source_map::{ExpnKind, Span};
 
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;

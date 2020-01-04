@@ -13,10 +13,10 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 use std::collections::Bound;
 use syntax::ast::LitKind;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`

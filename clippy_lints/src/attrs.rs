@@ -15,10 +15,10 @@ use rustc::lint::{
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use semver::Version;
 use syntax::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
-use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 declare_clippy_lint! {

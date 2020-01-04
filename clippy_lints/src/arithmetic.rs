@@ -4,7 +4,7 @@ use rustc::hir;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for plain integer arithmetic.

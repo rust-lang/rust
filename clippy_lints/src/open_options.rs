@@ -3,8 +3,8 @@ use rustc::declare_lint_pass;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{Span, Spanned};
 use syntax::ast::LitKind;
-use syntax::source_map::{Span, Spanned};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for duplicate open options as well as combinations

@@ -2,7 +2,8 @@ use crate::utils::span_lint;
 use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
-use syntax::{ast::*, source_map::DUMMY_SP};
+use rustc_span::source_map::DUMMY_SP;
+use syntax::ast::*;
 
 use if_chain::if_chain;
 

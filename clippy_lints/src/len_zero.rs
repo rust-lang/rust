@@ -7,8 +7,8 @@ use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{Span, Spanned};
 use syntax::ast::{LitKind, Name};
-use syntax::source_map::{Span, Spanned};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for getting the length of something via `.len()`

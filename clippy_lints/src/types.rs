@@ -15,12 +15,12 @@ use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::source_map::Span;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
-use syntax::source_map::Span;
-use syntax::symbol::{sym, Symbol};
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;

@@ -2,11 +2,11 @@ use crate::utils::{span_lint, span_lint_and_then};
 use rustc::impl_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
+use rustc_span::symbol::SymbolStr;
 use std::cmp::Ordering;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::source_map::Span;
-use syntax::symbol::SymbolStr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 
 declare_clippy_lint! {

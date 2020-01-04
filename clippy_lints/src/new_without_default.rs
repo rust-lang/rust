@@ -10,7 +10,7 @@ use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for types with a `fn new() -> Self` method and no

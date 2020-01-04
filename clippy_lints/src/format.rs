@@ -9,8 +9,8 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use syntax::ast::LitKind;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the use of `format!("string literal with no

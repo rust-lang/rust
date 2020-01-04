@@ -9,8 +9,8 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use syntax::ast::Ident;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests

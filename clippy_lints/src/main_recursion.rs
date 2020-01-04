@@ -2,8 +2,8 @@ use rustc::hir::{Crate, Expr, ExprKind, QPath};
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::sym;
 use syntax::ast::AttrKind;
-use syntax::symbol::sym;
 
 use crate::utils::{is_entrypoint_fn, snippet, span_help_and_lint};
 use if_chain::if_chain;

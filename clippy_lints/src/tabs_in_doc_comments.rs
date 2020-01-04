@@ -3,9 +3,9 @@ use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 use syntax::ast;
-use syntax::source_map::{BytePos, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks doc comments for usage of tab characters.
