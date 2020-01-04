@@ -39,7 +39,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use crate::hir;
-use crate::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::sym;

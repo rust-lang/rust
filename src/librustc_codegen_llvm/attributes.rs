@@ -3,7 +3,7 @@
 use std::ffi::CString;
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::session::config::{OptLevel, Sanitizer};
 use rustc::session::Session;
 use rustc::ty::layout::HasTyCtxt;

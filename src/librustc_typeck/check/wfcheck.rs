@@ -1,13 +1,14 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use crate::hir::def_id::DefId;
+use rustc::hir::def_id::DefId;
+use rustc::hir::ItemKind;
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_span::symbol::sym;
@@ -252,6 +253,15 @@ fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> 
     }
 }
 
+fn item_adt_kind(kind: &ItemKind<'_>) -> Option<AdtKind> {
+    match kind {
+        ItemKind::Struct(..) => Some(AdtKind::Struct),
+        ItemKind::Union(..) => Some(AdtKind::Union),
+        ItemKind::Enum(..) => Some(AdtKind::Enum),
+        _ => None,
+    }
+}
+
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
 fn check_type_defn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
@@ -297,7 +307,7 @@ fn check_type_defn<'tcx, F>(
                         field.span,
                         fcx.body_id,
                         traits::FieldSized {
-                            adt_kind: match item.kind.adt_kind() {
+                            adt_kind: match item_adt_kind(&item.kind) {
                                 Some(i) => i,
                                 None => bug!(),
                             },

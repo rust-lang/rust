@@ -33,7 +33,8 @@
 
 use crate::ty::fold::TypeFolder;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
-use crate::util::nodemap::FxHashMap;
+
+use rustc_data_structures::fx::FxHashMap;
 
 use std::collections::hash_map::Entry;
 

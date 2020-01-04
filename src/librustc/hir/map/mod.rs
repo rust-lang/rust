@@ -4,20 +4,21 @@ pub use self::definitions::{
 };
 
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
-use crate::hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use crate::hir::def::{DefKind, Res};
+use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir::print::Nested;
-use crate::hir::DefKind;
 use crate::hir::*;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use crate::util::common::time;
-use crate::util::nodemap::FxHashMap;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::kw;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
@@ -1203,7 +1204,7 @@ impl Named for ImplItem<'_> {
 }
 
 pub fn map_crate<'hir>(
-    sess: &crate::session::Session,
+    sess: &rustc_session::Session,
     cstore: &CrateStoreDyn,
     forest: &'hir Forest<'hir>,
     definitions: Definitions,
@@ -1261,45 +1262,6 @@ impl<'hir> print::PpAnn for Map<'hir> {
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
-        }
-    }
-}
-
-impl<'a> print::State<'a> {
-    pub fn print_node(&mut self, node: Node<'_>) {
-        match node {
-            Node::Param(a) => self.print_param(&a),
-            Node::Item(a) => self.print_item(&a),
-            Node::ForeignItem(a) => self.print_foreign_item(&a),
-            Node::TraitItem(a) => self.print_trait_item(a),
-            Node::ImplItem(a) => self.print_impl_item(a),
-            Node::Variant(a) => self.print_variant(&a),
-            Node::AnonConst(a) => self.print_anon_const(&a),
-            Node::Expr(a) => self.print_expr(&a),
-            Node::Stmt(a) => self.print_stmt(&a),
-            Node::PathSegment(a) => self.print_path_segment(&a),
-            Node::Ty(a) => self.print_type(&a),
-            Node::TraitRef(a) => self.print_trait_ref(&a),
-            Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
-            Node::Arm(a) => self.print_arm(&a),
-            Node::Block(a) => {
-                // Containing cbox, will be closed by print-block at `}`.
-                self.cbox(print::INDENT_UNIT);
-                // Head-ibox, will be closed by print-block after `{`.
-                self.ibox(0);
-                self.print_block(&a)
-            }
-            Node::Lifetime(a) => self.print_lifetime(&a),
-            Node::Visibility(a) => self.print_visibility(&a),
-            Node::GenericParam(_) => bug!("cannot print Node::GenericParam"),
-            Node::Field(_) => bug!("cannot print StructField"),
-            // These cases do not carry enough information in the
-            // `hir_map` to reconstruct their full structure for pretty
-            // printing.
-            Node::Ctor(..) => bug!("cannot print isolated Ctor"),
-            Node::Local(a) => self.print_local_decl(&a),
-            Node::MacroDef(_) => bug!("cannot print MacroDef"),
-            Node::Crate => bug!("cannot print Crate"),
         }
     }
 }

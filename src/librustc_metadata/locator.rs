@@ -219,8 +219,7 @@ use rustc::middle::cstore::{CrateSource, MetadataLoader};
 use rustc::session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc::session::search_paths::PathKind;
 use rustc::session::{config, CrateDisambiguator, Session};
-use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 

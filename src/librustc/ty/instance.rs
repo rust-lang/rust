@@ -1,6 +1,6 @@
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::hir::CodegenFnAttrFlags;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
 use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};

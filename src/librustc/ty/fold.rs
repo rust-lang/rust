@@ -34,7 +34,7 @@
 use crate::hir::def_id::DefId;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 
-use crate::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use std::collections::BTreeMap;
 use std::fmt;
 

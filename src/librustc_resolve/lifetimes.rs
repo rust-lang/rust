@@ -5,16 +5,19 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc::hir::map::Map;
-use rustc::hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
-use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
-
 use errors::{pluralize, Applicability, DiagnosticBuilder};
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
+use rustc::hir::{self, GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
+use rustc::hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc::lint;
+use rustc::middle::resolve_lifetime::*;
 use rustc::session::Session;
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
+use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
+use rustc::{bug, span_bug};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -22,15 +25,10 @@ use std::cell::Cell;
 use std::mem::{replace, take};
 use syntax::ast;
 use syntax::attr;
-
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::{self, GenericParamKind, LifetimeParamKind};
-
-use log::debug;
-use rustc::{bug, span_bug};
 use syntax::{help, span_err, struct_span_err, walk_list};
 
-use rustc::middle::resolve_lifetime::*;
+use log::debug;
+
 use rustc_error_codes::*;
 
 // This counts the no of times a lifetime is used

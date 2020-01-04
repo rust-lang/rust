@@ -1,4 +1,3 @@
-use super::intravisit::Visitor;
 use super::{ImplItem, Item, TraitItem};
 
 /// The "item-like visitor" defines only the top-level methods
@@ -50,63 +49,9 @@ pub trait ItemLikeVisitor<'hir> {
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>);
 }
 
-pub struct DeepVisitor<'v, V> {
-    visitor: &'v mut V,
-}
-
-impl<'v, 'hir, V> DeepVisitor<'v, V>
-where
-    V: Visitor<'hir> + 'v,
-{
-    pub fn new(base: &'v mut V) -> Self {
-        DeepVisitor { visitor: base }
-    }
-}
-
-impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
-where
-    V: Visitor<'hir>,
-{
-    fn visit_item(&mut self, item: &'hir Item<'hir>) {
-        self.visitor.visit_item(item);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
-        self.visitor.visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
-        self.visitor.visit_impl_item(impl_item);
-    }
-}
-
 /// A parallel variant of `ItemLikeVisitor`.
 pub trait ParItemLikeVisitor<'hir> {
     fn visit_item(&self, item: &'hir Item<'hir>);
     fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>);
     fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>);
-}
-
-pub trait IntoVisitor<'hir> {
-    type Visitor: Visitor<'hir>;
-    fn into_visitor(&self) -> Self::Visitor;
-}
-
-pub struct ParDeepVisitor<V>(pub V);
-
-impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
-where
-    V: IntoVisitor<'hir>,
-{
-    fn visit_item(&self, item: &'hir Item<'hir>) {
-        self.0.into_visitor().visit_item(item);
-    }
-
-    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>) {
-        self.0.into_visitor().visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
-        self.0.into_visitor().visit_impl_item(impl_item);
-    }
 }

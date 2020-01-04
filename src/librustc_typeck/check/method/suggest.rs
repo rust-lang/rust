@@ -4,7 +4,6 @@
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
-use crate::util::nodemap::FxHashSet;
 use errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -14,6 +13,7 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{source_map, FileName, Span};
 use syntax::ast;
 use syntax::util::lev_distance;

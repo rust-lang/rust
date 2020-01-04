@@ -9,13 +9,12 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
+use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::FxHashMap;
-
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 

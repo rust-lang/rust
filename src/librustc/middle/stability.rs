@@ -10,8 +10,9 @@ use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::{self, in_derive_expansion, Lint};
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
+
 use errors::DiagnosticBuilder;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::GateIssue;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};

@@ -27,6 +27,7 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -39,8 +40,8 @@ use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc::util::common::{print_time_passes_entry, set_time_depth, time, time_depth};
-use rustc::util::nodemap::FxHashMap;
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_span::Span;
@@ -811,7 +812,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
 
         let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
         for id in &*defids {
-            let hir::CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
+            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {
                 attr::OptimizeAttr::None => continue,
                 attr::OptimizeAttr::Size => continue,

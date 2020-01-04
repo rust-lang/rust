@@ -13,8 +13,8 @@ use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType,
 };
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 
 use crate::abi::FnAbi;
@@ -24,9 +24,9 @@ use crate::value::Value;
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty};
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
 

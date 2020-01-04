@@ -105,7 +105,6 @@ pub mod util {
     pub mod bug;
     pub mod captures;
     pub mod common;
-    pub mod nodemap;
 }
 
 // Allows macros to refer to this crate as `::rustc`

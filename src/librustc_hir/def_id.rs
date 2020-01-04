@@ -1,4 +1,4 @@
-use crate::ty::{self, TyCtxt};
+use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use std::fmt;
 use std::u32;
@@ -40,7 +40,7 @@ impl Idx for CrateNum {
     fn index(self) -> usize {
         match self {
             CrateNum::Index(idx) => Idx::index(idx),
-            _ => bug!("Tried to get crate index of {:?}", self),
+            _ => panic!("Tried to get crate index of {:?}", self),
         }
     }
 }
@@ -61,14 +61,14 @@ impl CrateNum {
     pub fn as_usize(self) -> usize {
         match self {
             CrateNum::Index(id) => id.as_usize(),
-            _ => bug!("tried to get index of non-standard crate {:?}", self),
+            _ => panic!("tried to get index of non-standard crate {:?}", self),
         }
     }
 
     pub fn as_u32(self) -> u32 {
         match self {
             CrateNum::Index(id) => id.as_u32(),
-            _ => bug!("tried to get index of non-standard crate {:?}", self),
+            _ => panic!("tried to get index of non-standard crate {:?}", self),
         }
     }
 
@@ -113,21 +113,6 @@ pub struct DefId {
     pub index: DefIndex,
 }
 
-impl fmt::Debug for DefId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DefId({}:{}", self.krate, self.index.index())?;
-
-        ty::tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                write!(f, " ~ {}", tcx.def_path_debug_str(*self))?;
-            }
-            Ok(())
-        })?;
-
-        write!(f, ")")
-    }
-}
-
 impl DefId {
     /// Makes a local `DefId` from the given `DefIndex`.
     #[inline]
@@ -145,17 +130,28 @@ impl DefId {
         LocalDefId::from_def_id(self)
     }
 
-    pub fn describe_as_module(&self, tcx: TyCtxt<'_>) -> String {
-        if self.is_local() && self.index == CRATE_DEF_INDEX {
-            format!("top-level module")
-        } else {
-            format!("module `{}`", tcx.def_path_str(*self))
-        }
+    pub fn is_top_level_module(self) -> bool {
+        self.is_local() && self.index == CRATE_DEF_INDEX
     }
 }
 
 impl rustc_serialize::UseSpecializedEncodable for DefId {}
 impl rustc_serialize::UseSpecializedDecodable for DefId {}
+
+pub fn default_def_id_debug(def_id: DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_struct("DefId").field("krate", &def_id.krate).field("index", &def_id.index).finish()
+}
+
+pub static DEF_ID_DEBUG: AtomicRef<fn(DefId, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+
+impl fmt::Debug for DefId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (*DEF_ID_DEBUG)(*self, f)
+    }
+}
+
+rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
 
 /// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that

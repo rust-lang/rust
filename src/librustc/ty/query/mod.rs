@@ -1,9 +1,11 @@
 use crate::dep_graph::{self, DepNode};
-use crate::hir::def::{DefKind, Export};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex};
-use crate::hir::{self, CodegenFnAttrs, ItemLocalId, TraitCandidate};
+use crate::hir::def::DefKind;
+use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
+use crate::hir::exports::Export;
+use crate::hir::{self, HirIdSet, ItemLocalId, TraitCandidate};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
 use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
@@ -36,7 +38,6 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::util::NeedsDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, HirIdSet};
 use rustc_data_structures::profiling::ProfileCategory::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;

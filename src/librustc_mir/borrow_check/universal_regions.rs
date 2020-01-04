@@ -20,7 +20,7 @@ use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::{Idx, IndexVec};
 use std::iter;

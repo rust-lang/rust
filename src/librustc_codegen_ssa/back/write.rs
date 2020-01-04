@@ -19,7 +19,7 @@ use rustc::session::config::{
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::{print_time_passes_entry, set_time_depth, time_depth};
-use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;

@@ -1,6 +1,6 @@
-use crate::util::nodemap::FxHashMap;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, OutlivesPredicate, TyCtxt};
+use rustc_data_structures::fx::FxHashMap;
 
 use super::utils::*;
 

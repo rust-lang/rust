@@ -9,10 +9,9 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
-use crate::util::nodemap::HirIdMap;
 use arena::TypedArena;
-use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::{self, HirIdMap};
 use rustc::ty::{self, TyCtxt};
 use std::fmt;
 

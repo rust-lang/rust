@@ -11,8 +11,8 @@ use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};
-use crate::util::nodemap::FxHashMap;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;

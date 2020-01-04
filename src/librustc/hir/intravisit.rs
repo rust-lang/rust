@@ -31,13 +31,66 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use super::itemlikevisit::DeepVisitor;
-
+use crate::hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use crate::hir::map::Map;
 use crate::hir::*;
 
 use rustc_span::Span;
-use syntax::ast::{Attribute, Ident, Name};
+use syntax::ast::{Attribute, Ident, Label, Name};
+
+pub struct DeepVisitor<'v, V> {
+    visitor: &'v mut V,
+}
+
+impl<'v, 'hir, V> DeepVisitor<'v, V>
+where
+    V: Visitor<'hir> + 'v,
+{
+    pub fn new(base: &'v mut V) -> Self {
+        DeepVisitor { visitor: base }
+    }
+}
+
+impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
+where
+    V: Visitor<'hir>,
+{
+    fn visit_item(&mut self, item: &'hir Item<'hir>) {
+        self.visitor.visit_item(item);
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
+        self.visitor.visit_trait_item(trait_item);
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
+        self.visitor.visit_impl_item(impl_item);
+    }
+}
+
+pub trait IntoVisitor<'hir> {
+    type Visitor: Visitor<'hir>;
+    fn into_visitor(&self) -> Self::Visitor;
+}
+
+pub struct ParDeepVisitor<V>(pub V);
+
+impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
+where
+    V: IntoVisitor<'hir>,
+{
+    fn visit_item(&self, item: &'hir Item<'hir>) {
+        self.0.into_visitor().visit_item(item);
+    }
+
+    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>) {
+        self.0.into_visitor().visit_trait_item(trait_item);
+    }
+
+    fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
+        self.0.into_visitor().visit_impl_item(impl_item);
+    }
+}
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {

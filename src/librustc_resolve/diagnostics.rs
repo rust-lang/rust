@@ -8,7 +8,7 @@ use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;

@@ -18,8 +18,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::Idx;
 
 use rustc::session::config::{self, CrateType};
-use rustc::util::nodemap::FxHashMap;
-
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};

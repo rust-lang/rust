@@ -2,9 +2,10 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
+use crate::hir::def_id::DefIdSet;
 use crate::hir::HirId;
-use crate::util::nodemap::{DefIdSet, FxHashMap};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_macros::HashStable;
 use std::fmt;
 use std::hash::Hash;

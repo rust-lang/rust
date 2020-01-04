@@ -6,8 +6,9 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
-use crate::hir::def::{CtorKind, CtorOf, DefKind, ExportMap, Res};
-use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir::def::{CtorKind, CtorOf, DefKind, Res};
+use crate::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir::exports::ExportMap;
 use crate::hir::Node;
 use crate::hir::{map as hir_map, GlobMap, TraitMap};
 use crate::ich::Fingerprint;
@@ -28,10 +29,11 @@ use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
-use crate::util::nodemap::{DefIdMap, FxHashMap, NodeMap, NodeSet};
 use arena::SyncDroplessArena;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
+use rustc_session::node_id::{NodeMap, NodeSet};
 
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_serialize::{self, Encodable, Encoder};

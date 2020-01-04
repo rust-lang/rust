@@ -11,7 +11,7 @@ use std::fmt;
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};

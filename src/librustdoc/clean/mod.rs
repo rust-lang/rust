@@ -19,7 +19,7 @@ use rustc::middle::stability;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};

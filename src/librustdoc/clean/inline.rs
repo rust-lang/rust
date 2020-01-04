@@ -11,7 +11,7 @@ use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, Mutability};
 use rustc::ty;
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_metadata::creader::LoadedMacro;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};

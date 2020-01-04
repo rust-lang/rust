@@ -1,11 +1,11 @@
 use super::OverlapError;
 
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, DefIdMap};
 use crate::ich::{self, StableHashingContext};
 use crate::traits;
 use crate::ty::fast_reject::{self, SimplifiedType};
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use crate::util::nodemap::{DefIdMap, FxHashMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use syntax::ast::Ident;
 

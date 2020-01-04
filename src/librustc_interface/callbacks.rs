@@ -40,9 +40,23 @@ fn track_diagnostic(diagnostic: &Diagnostic) {
     })
 }
 
+/// This is a callback from librustc_hir as it cannot access the implicit state
+/// in librustc otherwise.
+fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "DefId({}:{}", def_id.krate, def_id.index.index())?;
+    tls::with_opt(|opt_tcx| {
+        if let Some(tcx) = opt_tcx {
+            write!(f, " ~ {}", tcx.def_path_debug_str(def_id))?;
+        }
+        Ok(())
+    })?;
+    write!(f, ")")
+}
+
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
     rustc_span::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as fn(&_)));
 }

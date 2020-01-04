@@ -1,20 +1,16 @@
-use self::Namespace::*;
-
+use crate::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
-use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use crate::ty;
-use crate::util::nodemap::DefIdMap;
 
-use rustc_macros::HashStable;
+use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::Span;
 use syntax::ast;
 use syntax::ast::NodeId;
 
 use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum CtorOf {
     /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
     Struct,
@@ -22,7 +18,8 @@ pub enum CtorOf {
     Variant,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
     Fn,
@@ -32,7 +29,8 @@ pub enum CtorKind {
     Fictive,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
     Builtin,
@@ -44,7 +42,8 @@ pub enum NonMacroAttrKind {
     Registered,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum DefKind {
     // Type namespace
     Mod,
@@ -98,7 +97,7 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) => {
-                bug!("impossible struct constructor")
+                panic!("impossible struct constructor")
             }
             DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
@@ -159,7 +158,8 @@ impl DefKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
@@ -239,9 +239,9 @@ pub enum Namespace {
 impl Namespace {
     pub fn descr(self) -> &'static str {
         match self {
-            TypeNS => "type",
-            ValueNS => "value",
-            MacroNS => "macro",
+            Self::TypeNS => "type",
+            Self::ValueNS => "value",
+            Self::MacroNS => "macro",
         }
     }
 }
@@ -265,9 +265,9 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
 
     fn index(&self, ns: Namespace) -> &T {
         match ns {
-            ValueNS => &self.value_ns,
-            TypeNS => &self.type_ns,
-            MacroNS => &self.macro_ns,
+            Namespace::ValueNS => &self.value_ns,
+            Namespace::TypeNS => &self.type_ns,
+            Namespace::MacroNS => &self.macro_ns,
         }
     }
 }
@@ -275,9 +275,9 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
 impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
     fn index_mut(&mut self, ns: Namespace) -> &mut T {
         match ns {
-            ValueNS => &mut self.value_ns,
-            TypeNS => &mut self.type_ns,
-            MacroNS => &mut self.macro_ns,
+            Namespace::ValueNS => &mut self.value_ns,
+            Namespace::TypeNS => &mut self.type_ns,
+            Namespace::MacroNS => &mut self.macro_ns,
         }
     }
 }
@@ -293,29 +293,6 @@ impl<T> PerNS<Option<T>> {
         use std::iter::once;
 
         once(self.type_ns).chain(once(self.value_ns)).chain(once(self.macro_ns)).filter_map(|it| it)
-    }
-}
-
-/// This is the replacement export map. It maps a module to all of the exports
-/// within.
-pub type ExportMap<Id> = DefIdMap<Vec<Export<Id>>>;
-
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Export<Id> {
-    /// The name of the target.
-    pub ident: ast::Ident,
-    /// The resolution of the target.
-    pub res: Res<Id>,
-    /// The span of the target.
-    pub span: Span,
-    /// The visibility of the export.
-    /// We include non-`pub` exports for hygienic macros that get used from extern crates.
-    pub vis: ty::Visibility,
-}
-
-impl<Id> Export<Id> {
-    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Export<R> {
-        Export { ident: self.ident, res: self.res.map_id(map), span: self.span, vis: self.vis }
     }
 }
 
@@ -369,7 +346,8 @@ impl<Id> Res<Id> {
     where
         Id: Debug,
     {
-        self.opt_def_id().unwrap_or_else(|| bug!("attempted .def_id() on invalid res: {:?}", self))
+        self.opt_def_id()
+            .unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {:?}", self))
     }
 
     /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.

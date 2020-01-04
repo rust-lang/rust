@@ -41,10 +41,10 @@ macro_rules! arena_types {
                 rustc::hir::def_id::DefId,
                 rustc::ty::subst::SubstsRef<$tcx>
             )>,
-            [few, decode] mir_keys: rustc::util::nodemap::DefIdSet,
+            [few, decode] mir_keys: rustc::hir::def_id::DefIdSet,
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
             [] region_scope_tree: rustc::middle::region::ScopeTree,
-            [] item_local_set: rustc::util::nodemap::ItemLocalSet,
+            [] item_local_set: rustc::hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
             [] dropck_outlives:
@@ -87,7 +87,7 @@ macro_rules! arena_types {
                 >,
             [few] crate_inherent_impls: rustc::ty::CrateInherentImpls,
             [few] upstream_monomorphizations:
-                rustc::util::nodemap::DefIdMap<
+                rustc::hir::def_id::DefIdMap<
                     rustc_data_structures::fx::FxHashMap<
                         rustc::ty::subst::SubstsRef<'tcx>,
                         rustc::hir::def_id::CrateNum
@@ -113,10 +113,10 @@ macro_rules! arena_types {
             >,
             [few] get_lib_features: rustc::middle::lib_features::LibFeatures,
             [few] defined_lib_features: rustc::middle::lang_items::LanguageItems,
-            [few] visible_parent_map: rustc::util::nodemap::DefIdMap<rustc::hir::def_id::DefId>,
+            [few] visible_parent_map: rustc::hir::def_id::DefIdMap<rustc::hir::def_id::DefId>,
             [few] foreign_module: rustc::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc::middle::cstore::ForeignModule>,
-            [few] reachable_non_generics: rustc::util::nodemap::DefIdMap<
+            [few] reachable_non_generics: rustc::hir::def_id::DefIdMap<
                 rustc::middle::exported_symbols::SymbolExportLevel
             >,
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,

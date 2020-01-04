@@ -43,24 +43,22 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
+    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
-        debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
-        debug_assert!(!self.is_doc_comment());
+        debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
+        debug_assert!(!attr.is_doc_comment());
 
-        let ast::Attribute { kind, id: _, style, span } = self;
+        let ast::Attribute { kind, id: _, style, span } = attr;
         if let ast::AttrKind::Normal(item) = kind {
-            item.hash_stable(hcx, hasher);
-            style.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
+            item.hash_stable(self, hasher);
+            style.hash_stable(self, hasher);
+            span.hash_stable(self, hasher);
         } else {
             unreachable!();
         }
     }
 }
-
-impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

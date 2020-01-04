@@ -7,7 +7,7 @@ use rustc::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers<'_>) {

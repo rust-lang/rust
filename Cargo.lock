@@ -3091,6 +3091,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_hir",
  "rustc_index",
  "rustc_macros",
  "rustc_session",
@@ -3368,6 +3369,7 @@ dependencies = [
  "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
@@ -3563,6 +3565,22 @@ name = "rustc_fs_util"
 version = "0.0.0"
 
 [[package]]
+name = "rustc_hir"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "serialize",
+ "smallvec 1.0.0",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
@@ -3602,6 +3620,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
+ "rustc_hir",
  "rustc_incremental",
  "rustc_lint",
  "rustc_metadata",
@@ -3808,6 +3827,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_metadata",
+ "rustc_session",
  "rustc_span",
  "smallvec 1.0.0",
  "syntax",

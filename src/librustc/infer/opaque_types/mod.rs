@@ -1,5 +1,5 @@
 use crate::hir;
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, DefIdMap};
 use crate::hir::Node;
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
@@ -8,7 +8,6 @@ use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
-use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;

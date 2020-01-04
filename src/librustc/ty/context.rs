@@ -3,11 +3,13 @@
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor, DepNode};
-use crate::hir::def::{DefKind, Export, Res};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use crate::hir::def::{DefKind, Res};
+use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
+use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
-use crate::hir::{self, HirId, ItemKind, ItemLocalId, Node, TraitCandidate};
+use crate::hir::{self, HirId, Node, TraitCandidate};
+use crate::hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::infer::outlives::free_region_map::FreeRegionMap;
@@ -46,11 +48,10 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hasher::{
@@ -59,6 +60,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;

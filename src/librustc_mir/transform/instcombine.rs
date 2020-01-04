@@ -7,7 +7,7 @@ use rustc::mir::{
     ProjectionElem, Rvalue,
 };
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use std::mem;
 

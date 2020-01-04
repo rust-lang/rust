@@ -2,7 +2,7 @@ use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{TyCtxt, Visibility};
-use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::symbol::sym;
 
 use crate::clean::{AttributesExt, NestedAttributesExt};

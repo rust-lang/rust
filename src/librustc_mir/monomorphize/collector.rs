@@ -176,9 +176,10 @@
 
 use crate::monomorphize;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir;
+use rustc::hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::{self, CodegenFnAttrFlags};
+use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
@@ -191,8 +192,7 @@ use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::time;
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_index::bit_set::GrowableBitSet;
 
