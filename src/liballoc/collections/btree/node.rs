@@ -152,30 +152,34 @@ impl<K, V> InternalNode<K, V> {
     }
 }
 
-/// An owned pointer to a node. This basically is either `Box<LeafNode<K, V>>` or
-/// `Box<InternalNode<K, V>>`. However, it contains no information as to which of the two types
-/// of nodes is actually behind the box, and, partially due to this lack of information, has no
-/// destructor.
+/// A managed, non-null pointer to a node. This is either an owned pointer to
+/// `LeafNode<K, V>`, an owned pointer to `InternalNode<K, V>`, or a (not owned)
+/// pointer to `NodeHeader<(), ()` (more specifically, the pointer to EMPTY_ROOT_NODE).
+/// All of these types have a `NodeHeader<K, V>` prefix, meaning that they have at
+/// least the same size as `NodeHeader<K, V>` and store the same kinds of data at the same
+/// offsets; and they have a pointer alignment at least as large as `NodeHeader<K, V>`'s.
+/// So that's the pointee type we store, and `as_header()` is unconditionally safe.
+/// However, `BoxedNode` contains no information as to which of the three types
+/// of nodes it actually contains, and, partially due to this lack of information,
+/// has no destructor.
 struct BoxedNode<K, V> {
-    ptr: Unique<LeafNode<K, V>>,
+    ptr: Unique<NodeHeader<K, V>>,
 }
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node) }
+        BoxedNode { ptr: Box::into_unique(node).cast() }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        unsafe {
-            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node) as *mut LeafNode<K, V>) }
-        }
+        BoxedNode { ptr: Box::into_unique(node).cast() }
     }
 
-    unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
+    unsafe fn from_ptr(ptr: NonNull<NodeHeader<K, V>>) -> Self {
         BoxedNode { ptr: Unique::from(ptr) }
     }
 
-    fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
+    fn as_ptr(&self) -> NonNull<NodeHeader<K, V>> {
         NonNull::from(self.ptr)
     }
 }
@@ -197,11 +201,7 @@ impl<K, V> Root<K, V> {
 
     pub fn shared_empty_root() -> Self {
         Root {
-            node: unsafe {
-                BoxedNode::from_ptr(NonNull::new_unchecked(
-                    &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V> as *mut _,
-                ))
-            },
+            node: unsafe { BoxedNode::from_ptr(NonNull::from(&EMPTY_ROOT_NODE).cast()) },
             height: 0,
         }
     }
@@ -310,7 +310,7 @@ impl<K, V> Root<K, V> {
 ///   Turning this into a `NodeHeader` reference is always safe.
 pub struct NodeRef<BorrowType, K, V, Type> {
     height: usize,
-    node: NonNull<LeafNode<K, V>>,
+    node: NonNull<NodeHeader<K, V>>,
     // `root` is null unless the borrow type is `Mut`
     root: *const Root<K, V>,
     _marker: PhantomData<(BorrowType, Type)>,
@@ -372,11 +372,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// See `NodeRef` on why the node may not be a shared root.
     unsafe fn as_leaf(&self) -> &LeafNode<K, V> {
         debug_assert!(!self.is_shared_root());
-        self.node.as_ref()
+        &*(self.node.as_ptr() as *const LeafNode<K, V>)
     }
 
     fn as_header(&self) -> &NodeHeader<K, V> {
-        unsafe { &*(self.node.as_ptr() as *const NodeHeader<K, V>) }
+        unsafe { self.node.as_ref() }
     }
 
     /// Returns whether the node is the shared, empty root.
@@ -505,7 +505,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// This also implies you can invoke this member on the shared root, but the resulting pointer
     /// might not be properly aligned and definitely would not allow accessing keys and values.
     fn as_leaf_mut(&mut self) -> *mut LeafNode<K, V> {
-        self.node.as_ptr()
+        self.node.as_ptr() as *mut LeafNode<K, V>
     }
 
     /// The caller must ensure that the node is not the shared root.

@@ -24,7 +24,7 @@
 // gdb-check:$3 = BTreeMap<(), ()>(len: 0)
 
 // gdb-command: print nasty_btree_map
-// gdb-check:$4 = BTreeMap<i32, pretty_std_collections::MyLeafNode>(len: 1) = {[1] = pretty_std_collections::MyLeafNode (11)}
+// gdb-check:$4 = BTreeMap<i32, pretty_std_collections::MyNodeHeader>(len: 1) = {[1] = pretty_std_collections::MyNodeHeader (11)}
 
 // gdb-command: print vec_deque
 // gdb-check:$5 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
@@ -37,7 +37,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
-struct MyLeafNode(i32); // helps to ensure we don't blindly replace substring "LeafNode"
+struct MyNodeHeader(i32); // helps to ensure we don't blindly replace substring "NodeHeader"
 
 fn main() {
     // BTreeSet
@@ -52,8 +52,8 @@ fn main() {
         btree_map.insert(i, i);
     }
     let empty_btree_map: BTreeMap<(), ()> = BTreeMap::new();
-    let mut nasty_btree_map: BTreeMap<i32, MyLeafNode> = BTreeMap::new();
-    nasty_btree_map.insert(1, MyLeafNode(11));
+    let mut nasty_btree_map: BTreeMap<i32, MyNodeHeader> = BTreeMap::new();
+    nasty_btree_map.insert(1, MyNodeHeader(11));
 
     // VecDeque
     let mut vec_deque = VecDeque::new();
