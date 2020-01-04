@@ -65,7 +65,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err`
     /// values. Normally, you want to implement more sophisticated error handling,
-    /// and propagate errors upwards with `try!`.
+    /// and propagate errors upwards with `?` operator.
     ///
     /// Even if you want to panic on errors, not all `Error`s implement good
     /// messages on display. Therefore, it may be beneficial to look at the places
@@ -127,7 +127,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** `result.expect()` will let the thread panic on `Err`
     /// values. Normally, you want to implement more sophisticated error handling,
-    /// and propagate errors upwards with `try!`.
+    /// and propagate errors upwards with `?` operator.
     ///
     /// **Known problems:** None.
     ///

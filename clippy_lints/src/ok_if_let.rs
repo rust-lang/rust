@@ -15,18 +15,18 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
-    /// for result in iter {
-    ///     if let Some(bench) = try!(result).parse().ok() {
-    ///         vec.push(bench)
+    /// for i in iter {
+    ///     if let Some(value) = i.parse().ok() {
+    ///         vec.push(value)
     ///     }
     /// }
     /// ```
     /// Could be written:
     ///
     /// ```ignore
-    /// for result in iter {
-    ///     if let Ok(bench) = try!(result).parse() {
-    ///         vec.push(bench)
+    /// for i in iter {
+    ///     if let Ok(value) = i.parse() {
+    ///         vec.push(value)
     ///     }
     /// }
     /// ```
