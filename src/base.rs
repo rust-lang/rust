@@ -66,7 +66,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
-    let clif_comments = fx.clif_comments;
+    let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
 
@@ -76,9 +76,13 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    // Define function
     let context = &mut cx.caches.context;
     context.func = func;
+
+    // Perform rust specific optimizations
+    crate::optimize::optimize_function(cx.tcx, instance, context, &mut clif_comments);
+
+    // Define function
     cx.module.define_function(func_id, context).unwrap();
 
     // Write optimized function to file for debugging
@@ -108,7 +112,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     context.clear();
 }
 
-fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+pub fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     let flags = settings::Flags::new(settings::builder());
     match ::cranelift_codegen::verify_function(&func, &flags) {
         Ok(_) => {}

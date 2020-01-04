@@ -12,6 +12,7 @@ extern crate rustc_fs_util;
 extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_mir;
+extern crate rustc_session;
 extern crate rustc_target;
 extern crate syntax;
 
@@ -47,6 +48,7 @@ mod linkage;
 mod main_shim;
 mod metadata;
 mod num;
+mod optimize;
 mod pointer;
 mod pretty_clif;
 mod target_features_whitelist;
