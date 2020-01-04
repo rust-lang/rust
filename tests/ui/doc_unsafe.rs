@@ -1,3 +1,8 @@
+// aux-build:doc_unsafe_macros.rs
+
+#[macro_use]
+extern crate doc_unsafe_macros;
+
 /// This is not sufficiently documented
 pub unsafe fn destroy_the_planet() {
     unimplemented!();
@@ -63,6 +68,26 @@ impl Struct {
     }
 }
 
+macro_rules! very_unsafe {
+    () => {
+        pub unsafe fn whee() {
+            unimplemented!()
+        }
+
+        /// # Safety
+        ///
+        /// Please keep the seat belt fastened
+        pub unsafe fn drive() {
+            whee()
+        }
+    };
+}
+
+very_unsafe!();
+
+// we don't lint code from external macros
+undocd_unsafe!();
+
 #[allow(clippy::let_unit_value)]
 fn main() {
     unsafe {
@@ -71,5 +96,6 @@ fn main() {
         let mut universe = ();
         apocalypse(&mut universe);
         private_mod::only_crate_wide_accessible();
+        drive();
     }
 }

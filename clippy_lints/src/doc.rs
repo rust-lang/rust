@@ -2,7 +2,7 @@ use crate::utils::{match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
 use rustc::hir;
 use rustc::impl_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::{BytePos, MultiSpan, Span};
@@ -153,7 +153,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, ..) => {
-                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+                if !in_external_macro(cx.tcx.sess, item.span) {
+                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+                }
             },
             hir::ItemKind::Impl(_, _, _, _, ref trait_ref, ..) => {
                 self.in_trait_impl = trait_ref.is_some();
@@ -171,13 +173,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Method(ref sig, ..) = item.kind {
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+            if !in_external_macro(cx.tcx.sess, item.span) {
+                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
+            }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
-        if self.in_trait_impl {
+        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
         if let hir::ImplItemKind::Method(ref sig, ..) = item.kind {
