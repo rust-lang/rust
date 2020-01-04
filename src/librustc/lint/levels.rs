@@ -155,7 +155,7 @@ pub struct LintLevelsBuilder<'a> {
 
 pub struct BuilderPush {
     prev: u32,
-    pub(super) changed: bool,
+    pub changed: bool,
 }
 
 impl<'a> LintLevelsBuilder<'a> {

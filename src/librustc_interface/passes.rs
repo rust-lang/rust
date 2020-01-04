@@ -231,7 +231,7 @@ fn configure_and_expand_inner<'a>(
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
-        lint::check_ast_crate(
+        rustc_lint::check_ast_crate(
             sess,
             lint_store,
             &krate,
@@ -458,7 +458,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(
+        rustc_lint::check_ast_crate(
             sess,
             lint_store,
             &krate,
@@ -691,7 +691,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
     rustc_metadata::provide(providers);
-    lint::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
     rustc_codegen_ssa::provide(providers);
@@ -885,7 +884,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     },
                     {
                         time(sess, "lint checking", || {
-                            lint::check_crate(tcx, || {
+                            rustc_lint::check_crate(tcx, || {
                                 rustc_lint::BuiltinCombinedLateLintPass::new()
                             });
                         });

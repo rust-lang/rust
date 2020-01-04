@@ -24,6 +24,9 @@ extern crate rustc_session;
 
 mod array_into_iter;
 pub mod builtin;
+mod early;
+mod late;
+mod levels;
 mod non_ascii_idents;
 mod nonstandard_style;
 mod redundant_semicolon;
@@ -57,13 +60,16 @@ use unused::*;
 
 /// Useful for other parts of the compiler.
 pub use builtin::SoftLints;
+pub use early::check_ast_crate;
+pub use late::check_crate;
 
 pub fn provide(providers: &mut Providers<'_>) {
+    levels::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    lint::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 macro_rules! pre_expansion_lint_passes {
