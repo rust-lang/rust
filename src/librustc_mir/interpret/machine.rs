@@ -139,6 +139,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// was used.
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,

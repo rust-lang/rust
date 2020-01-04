@@ -125,6 +125,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,

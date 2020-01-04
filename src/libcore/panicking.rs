@@ -36,8 +36,9 @@ use crate::panic::{Location, PanicInfo};
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
-pub fn panic(expr: &str, location: &Location<'_>) -> ! {
+pub fn panic(expr: &str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
@@ -48,7 +49,7 @@ pub fn panic(expr: &str, location: &Location<'_>) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), location)
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), Location::caller())
 }
 
 #[cold]

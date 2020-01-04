@@ -4,16 +4,16 @@
 
 #[inline(never)]
 #[track_caller]
-fn defeat_const_prop() -> &'static core::panic::Location<'static> {
+fn codegen_caller_loc() -> &'static core::panic::Location<'static> {
     core::panic::Location::caller()
 }
 
 macro_rules! caller_location_from_macro {
-    () => (defeat_const_prop());
+    () => (codegen_caller_loc());
 }
 
 fn main() {
-    let loc = defeat_const_prop();
+    let loc = codegen_caller_loc();
     assert_eq!(loc.file(), file!());
     assert_eq!(loc.line(), 16);
     assert_eq!(loc.column(), 15);
