@@ -5,7 +5,7 @@ use crate::passes::{look_for_tests, Pass};
 
 pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
     name: "check-private-items-doc-tests",
-    pass: check_private_items_doc_tests,
+    run: check_private_items_doc_tests,
     description: "check private items doc tests",
 };
 

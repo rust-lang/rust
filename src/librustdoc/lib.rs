@@ -173,6 +173,9 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("document-private-items", |o| {
             o.optflag("", "document-private-items", "document private items")
         }),
+        unstable("document-hidden-items", |o| {
+            o.optflag("", "document-hidden-items", "document items that have doc(hidden)")
+        }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
