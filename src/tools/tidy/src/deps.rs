@@ -171,6 +171,8 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("thread_local"),
     Crate("ucd-util"),
     Crate("unicode-normalization"),
+    Crate("unicode-script"),
+    Crate("unicode-security"),
     Crate("unicode-width"),
     Crate("unicode-xid"),
     Crate("unreachable"),

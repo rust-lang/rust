@@ -14,12 +14,12 @@ use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_parse::new_parser_from_source_str;
 use rustc_span::edition;
+use rustc_span::source_map::{FileLoader, FileName, SourceMap};
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
 use syntax::ast::{self, MetaItemKind};
 use syntax::sess::ParseSess;
-use syntax::source_map::{FileLoader, FileName, SourceMap};
 use syntax::token;
 
 pub type Result<T> = result::Result<T, ErrorReported>;

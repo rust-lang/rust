@@ -1,11 +1,11 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/missing-close-brace-in-impl-trait.rs:12:53
+error: this file contains an unclosed delimiter
+  --> $DIR/missing-close-brace-in-impl-trait.rs:12:52
    |
 LL | impl T for () {
-   |               - un-closed delimiter
+   |               - unclosed delimiter
 ...
 LL |
-   |                                                     ^
+   |                                                    ^
 
 error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found keyword `trait`
   --> $DIR/missing-close-brace-in-impl-trait.rs:5:1

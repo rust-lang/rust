@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use errors;
 use rustc_feature::UnstableFeatures;
-use syntax::edition::Edition;
-use syntax::source_map::DUMMY_SP;
+use rustc_span::edition::Edition;
+use rustc_span::source_map::DUMMY_SP;
 use testing;
 
 use crate::config::{Options, RenderOptions};

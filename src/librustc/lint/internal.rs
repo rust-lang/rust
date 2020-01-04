@@ -8,8 +8,8 @@ use crate::lint::{
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::{Ident, Item, ItemKind};
-use syntax::symbol::{sym, Symbol};
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,

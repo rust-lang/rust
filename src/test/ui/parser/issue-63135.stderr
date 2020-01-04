@@ -1,11 +1,11 @@
-error: this file contains an un-closed delimiter
+error: this file contains an unclosed delimiter
   --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
    |     - -        ^
    |     | |
-   |     | un-closed delimiter
-   |     un-closed delimiter
+   |     | unclosed delimiter
+   |     unclosed delimiter
 
 error: expected field pattern, found `...`
   --> $DIR/issue-63135.rs:3:8

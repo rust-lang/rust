@@ -4,13 +4,14 @@
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
+extern crate rustc_span;
 extern crate syntax;
 
-use rustc_driver::plugin::Registry;
 use rustc::hir::{self, intravisit, Node};
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
+use rustc_driver::plugin::Registry;
+use rustc_span::source_map;
 use syntax::print::pprust;
-use syntax::source_map;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

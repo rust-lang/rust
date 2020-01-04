@@ -47,6 +47,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::any::type_name;
 use std::borrow::Cow;
@@ -54,7 +55,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
-use syntax::symbol::Symbol;
 
 #[macro_use]
 mod plumbing;

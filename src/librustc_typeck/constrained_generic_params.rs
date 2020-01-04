@@ -1,7 +1,7 @@
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Parameter(pub u32);

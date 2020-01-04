@@ -14,9 +14,9 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use rustc_span::{FileName, Span};
+use rustc_span::{source_map, FileName, Span};
+use syntax::ast;
 use syntax::util::lev_distance;
-use syntax::{ast, source_map};
 
 use rustc_error_codes::*;
 

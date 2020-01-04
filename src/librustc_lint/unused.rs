@@ -10,13 +10,13 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
+use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::{pluralize, Applicability};
 use syntax::print::pprust;
-use syntax::symbol::Symbol;
-use syntax::symbol::{kw, sym};
 use syntax::util::parser;
 
 use log::debug;

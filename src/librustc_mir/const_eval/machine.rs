@@ -8,7 +8,7 @@ use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 use crate::interpret::{
     self, snapshot, AllocId, Allocation, AssertMessage, GlobalId, ImmTy, InterpCx, InterpResult,

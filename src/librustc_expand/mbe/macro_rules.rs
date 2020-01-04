@@ -11,14 +11,14 @@ use crate::mbe::transcribe::transcribe;
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::Directory;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
 use syntax::attr::{self, TransparencyError};
-use syntax::edition::Edition;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
 

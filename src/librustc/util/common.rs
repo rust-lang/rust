@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
 use crate::session::Session;
-use syntax::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 #[cfg(test)]
 mod tests;

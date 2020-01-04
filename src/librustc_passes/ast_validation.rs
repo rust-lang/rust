@@ -11,14 +11,14 @@ use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_parse::validate_attr;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::mem;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::print::pprust;
-use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 

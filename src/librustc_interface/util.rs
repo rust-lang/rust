@@ -15,6 +15,8 @@ use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
 use rustc_span::edition::Edition;
+use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
@@ -27,8 +29,6 @@ use std::{panic, thread};
 use syntax::ast::{AttrVec, BlockCheckMode};
 use syntax::mut_visit::{visit_clobber, MutVisitor, *};
 use syntax::ptr::P;
-use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
-use syntax::symbol::{sym, Symbol};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{self, ast, attr};
 

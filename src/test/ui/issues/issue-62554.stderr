@@ -1,15 +1,15 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/issue-62554.rs:5:53
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62554.rs:5:52
    |
 LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - un-closed delimiter
+   |               -                       -         -                  -                  - unclosed delimiter
    |               |                       |         |                  |
-   |               |                       |         |                  un-closed delimiter
-   |               |                       |         un-closed delimiter
-   |               un-closed delimiter     un-closed delimiter
+   |               |                       |         |                  unclosed delimiter
+   |               |                       |         unclosed delimiter
+   |               unclosed delimiter      unclosed delimiter
 LL |
 LL |
-   |                                                     ^
+   |                                                    ^
 
 error: expected `{`, found `macro_rules`
   --> $DIR/issue-62554.rs:3:23

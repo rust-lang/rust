@@ -172,7 +172,6 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    #[rustc_promotable]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_millis(millis: u64) -> Duration {
         Duration {
@@ -195,7 +194,6 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[inline]
-    #[rustc_promotable]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_micros(micros: u64) -> Duration {
         Duration {
@@ -218,7 +216,6 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
-    #[rustc_promotable]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
         Duration {

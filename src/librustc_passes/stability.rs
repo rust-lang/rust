@@ -12,11 +12,11 @@ use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::Attribute;
 use syntax::attr::{self, Stability};
 use syntax::feature_gate::feature_err;
-use syntax::symbol::{sym, Symbol};
 
 use std::cmp::Ordering;
 use std::mem::replace;

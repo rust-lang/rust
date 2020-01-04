@@ -5,12 +5,12 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::lint;
 use rustc::ty;
+use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::Applicability;
-use syntax::symbol::sym;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {

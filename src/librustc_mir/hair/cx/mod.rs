@@ -16,9 +16,9 @@ use rustc::ty::subst::Subst;
 use rustc::ty::subst::{GenericArg, InternalSubsts};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
+use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 use syntax::attr;
-use syntax::symbol::{sym, Symbol};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'tcx> {

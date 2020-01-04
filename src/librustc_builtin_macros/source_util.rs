@@ -1,11 +1,11 @@
 use rustc_expand::base::{self, *};
 use rustc_expand::panictry;
 use rustc_parse::{self, new_sub_parser_from_file, parser::Parser, DirectoryOwnership};
+use rustc_span::symbol::Symbol;
 use syntax::ast;
 use syntax::early_buffered_lints::INCOMPLETE_INCLUDE;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 

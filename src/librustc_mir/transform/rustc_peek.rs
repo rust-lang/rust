@@ -1,7 +1,7 @@
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::symbol::sym;
 
 use crate::transform::{MirPass, MirSource};
 use rustc::hir::def_id::DefId;

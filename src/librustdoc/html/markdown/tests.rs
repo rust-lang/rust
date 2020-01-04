@@ -1,7 +1,7 @@
 use super::plain_summary_line;
 use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use std::cell::RefCell;
-use syntax::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
 fn test_unique_id() {

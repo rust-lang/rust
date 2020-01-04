@@ -3642,6 +3642,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "syntax",
+ "unicode-security",
 ]
 
 [[package]]
@@ -4938,6 +4939,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b561e267b2326bb4cebfc0ef9e68355c7abe6c6f522aeac2f5bf95d56c59bdcf"
 dependencies = [
  "smallvec 1.0.0",
+]
+
+[[package]]
+name = "unicode-script"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b2c5c29e805da6817f5af6a627d65adb045cebf05cccd5a3493d6109454391c"
+
+[[package]]
+name = "unicode-security"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c49d35967fa037b881acc34ef717c38c4b5560eba10e3685271b3f530bb19634"
+dependencies = [
+ "unicode-script",
 ]
 
 [[package]]

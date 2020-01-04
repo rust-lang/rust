@@ -5,10 +5,10 @@ use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{Error, SharedContext, BASIC_KEYWORDS};
+use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use syntax::source_map::FileName;
 
 crate fn render(
     dst: &Path,

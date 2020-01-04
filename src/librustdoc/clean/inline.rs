@@ -3,9 +3,9 @@
 use std::iter::once;
 
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
-use syntax::symbol::sym;
 
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;

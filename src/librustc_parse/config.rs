@@ -11,12 +11,12 @@
 use crate::{parse_in, validate_attr};
 use rustc_errors::Applicability;
 use rustc_feature::Features;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::{self, AttrItem, Attribute, MetaItem};
 use syntax::attr;
 use syntax::attr::HasAttrs;
-use syntax::edition::Edition;
 use syntax::feature_gate::{feature_err, get_features};
 use syntax::mut_visit::*;
 use syntax::ptr::P;

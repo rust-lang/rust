@@ -37,10 +37,10 @@ use std::ffi::CString;
 
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_codegen_ssa::traits::*;
+use rustc_span::symbol::Symbol;
 use rustc_span::{self, BytePos, Pos, Span};
 use smallvec::SmallVec;
 use syntax::ast;
-use syntax::symbol::Symbol;
 
 mod create_scope_map;
 pub mod gdb;

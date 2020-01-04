@@ -30,9 +30,9 @@ use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_serialize::UseSpecializedDecodable;
+use rustc_span::source_map::Span;
 use smallvec::SmallVec;
 use std::ops::Index;
-use syntax::source_map::Span;
 
 mod canonicalizer;
 

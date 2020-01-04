@@ -4,7 +4,7 @@ use crate::infer::InferCtxt;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::ErrorReported;
 use errors::DiagnosticBuilder;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 mod different_lifetimes;
 mod find_anon_type;

@@ -10,7 +10,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 
-use syntax::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
 

@@ -5,7 +5,7 @@ use crate::fold::DocFolder;
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::FxHashSet;
-use syntax::symbol::sym;
+use rustc_span::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",

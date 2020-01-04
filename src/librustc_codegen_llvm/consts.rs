@@ -14,9 +14,9 @@ use rustc::mir::mono::MonoItem;
 use rustc::ty::{self, Instance, Ty};
 use rustc::{bug, span_bug};
 use rustc_codegen_ssa::traits::*;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::HasDataLayout;
-use syntax::symbol::{sym, Symbol};
 
 use rustc::ty::layout::{self, Align, LayoutOf, Size};
 

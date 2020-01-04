@@ -1,25 +1,24 @@
+use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use crate::attr;
+use crate::sess::ParseSess;
+use crate::visit::{self, FnKind, Visitor};
+
+use errors::{Applicability, DiagnosticBuilder, Handler};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_error_codes::*;
 use rustc_feature::{find_feature_issue, GateIssue};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Feature, Features, State as FeatureState, UnstableFeatures};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
-
-use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
-use crate::attr;
-use crate::edition::{Edition, ALL_EDITIONS};
-use crate::sess::ParseSess;
-use crate::source_map::Spanned;
-use crate::symbol::{sym, Symbol};
-use crate::visit::{self, FnKind, Visitor};
-
-use errors::{Applicability, DiagnosticBuilder, Handler};
-use log::debug;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_span::edition::{Edition, ALL_EDITIONS};
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
-use rustc_error_codes::*;
+use log::debug;
 
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{

@@ -6,10 +6,10 @@ use crate::infer::InferCtxt;
 use crate::ty::print::Print;
 use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use errors::{Applicability, DiagnosticBuilder};
+use rustc_span::source_map::DesugaringKind;
+use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::source_map::DesugaringKind;
-use syntax::symbol::kw;
 
 use rustc_error_codes::*;
 

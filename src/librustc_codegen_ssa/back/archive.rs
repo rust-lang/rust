@@ -1,5 +1,5 @@
 use rustc::session::Session;
-use syntax::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 use std::io;
 use std::path::{Path, PathBuf};

@@ -4,7 +4,7 @@ use rustc::traits::{
 };
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
-use syntax::source_map::DUMMY_SP;
+use rustc_span::source_map::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { evaluate_obligation, ..*p };

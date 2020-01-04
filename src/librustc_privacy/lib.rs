@@ -21,10 +21,10 @@ use rustc::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::hygiene::Transparency;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use syntax::ast::Ident;
 use syntax::attr;
-use syntax::symbol::{kw, sym};
 
 use std::marker::PhantomData;
 use std::{cmp, fmt, mem};

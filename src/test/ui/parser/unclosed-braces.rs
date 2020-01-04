@@ -11,7 +11,7 @@ fn foo() {
 }
 
 fn main() {
-//~^ NOTE un-closed delimiter
+//~^ NOTE unclosed delimiter
     {
         {
         //~^ NOTE this delimiter might not be properly closed...
@@ -19,4 +19,4 @@ fn main() {
     }
     //~^ NOTE ...as it matches this but it has different indentation
 }
-//~ ERROR this file contains an un-closed delimiter
+//~ ERROR this file contains an unclosed delimiter

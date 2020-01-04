@@ -78,11 +78,11 @@ impl<'a> TokenTreesReader<'a> {
         let sm = self.string_reader.sess.source_map();
         match self.token.kind {
             token::Eof => {
-                let msg = "this file contains an un-closed delimiter";
+                let msg = "this file contains an unclosed delimiter";
                 let mut err =
                     self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
                 for &(_, sp) in &self.open_braces {
-                    err.span_label(sp, "un-closed delimiter");
+                    err.span_label(sp, "unclosed delimiter");
                     self.unmatched_braces.push(UnmatchedBrace {
                         expected_delim: token::DelimToken::Brace,
                         found_delim: None,
@@ -155,7 +155,7 @@ impl<'a> TokenTreesReader<'a> {
                                 close_brace_span,
                             ));
                         }
-                        // Parse the close delimiter.
+                        // Parse the closing delimiter.
                         self.real_token();
                     }
                     // Incorrect delimiter.
@@ -218,7 +218,7 @@ impl<'a> TokenTreesReader<'a> {
                 // An unexpected closing delimiter (i.e., there is no
                 // matching opening delimiter).
                 let token_str = token_to_string(&self.token);
-                let msg = format!("unexpected close delimiter: `{}`", token_str);
+                let msg = format!("unexpected closing delimiter: `{}`", token_str);
                 let mut err =
                     self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
 
@@ -228,7 +228,7 @@ impl<'a> TokenTreesReader<'a> {
                         "this block is empty, you might have not meant to close it",
                     );
                 }
-                err.span_label(self.token.span, "unexpected close delimiter");
+                err.span_label(self.token.span, "unexpected closing delimiter");
                 Err(err)
             }
             _ => {

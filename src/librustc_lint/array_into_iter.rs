@@ -7,7 +7,8 @@ use rustc::{
         adjustment::{Adjust, Adjustment},
     },
 };
-use syntax::{errors::Applicability, symbol::sym};
+use rustc_span::symbol::sym;
+use syntax::errors::Applicability;
 
 declare_lint! {
     pub ARRAY_INTO_ITER,

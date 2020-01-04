@@ -10,6 +10,9 @@ use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use rustc_parse::DirectoryOwnership;
+use rustc_span::source_map::respan;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
 use syntax::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
 use syntax::attr::{self, is_builtin_attr, HasAttrs};
@@ -18,15 +21,12 @@ use syntax::mut_visit::*;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::source_map::respan;
-use syntax::symbol::{sym, Symbol};
 use syntax::token;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::visit::{self, Visitor};
 
 use errors::{Applicability, FatalError, PResult};
-use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::sync::Lrc;

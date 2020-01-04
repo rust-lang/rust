@@ -33,12 +33,12 @@ use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::mut_visit::MutVisitor;
-use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
 

@@ -6,8 +6,8 @@ use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
 
+use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Span};
-use syntax::symbol::kw;
 
 use super::OperandValue;
 use super::{FunctionCx, LocalRef};

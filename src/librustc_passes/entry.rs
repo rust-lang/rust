@@ -6,10 +6,10 @@ use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::attr;
 use syntax::entry::EntryPointType;
-use syntax::symbol::sym;
 
 use rustc_error_codes::*;
 

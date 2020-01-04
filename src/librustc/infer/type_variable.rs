@@ -1,7 +1,7 @@
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyVid};
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-use syntax::symbol::Symbol;
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;

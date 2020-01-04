@@ -3,8 +3,7 @@
 use rustc::mir;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, TyCtxt};
-
-use syntax::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InterpCx};
 
