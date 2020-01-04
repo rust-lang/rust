@@ -104,6 +104,32 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
             }
         };
 
+        simd_insert, (c base, o idx, v val) {
+            let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
+                idx_const
+            } else {
+                fx.tcx.sess.span_warn(
+                    fx.mir.span,
+                    "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
+                );
+                crate::trap::trap_unimplemented(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
+                return;
+            };
+
+            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
+            let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, base.layout());
+            if idx >= lane_count.into() {
+                fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
+            }
+
+            // FIXME implement this
+            fx.tcx.sess.span_warn(
+                fx.mir.span,
+                "`simd_insert` is not yet implemented. Calling this function will panic.",
+            );
+            crate::trap::trap_unimplemented(fx, "`simd_insert` is not yet implemented");
+        };
+
         simd_extract, (c v, o idx) {
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
@@ -112,7 +138,7 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
                     fx.mir.span,
                     "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
                 );
-                crate::trap::trap_panic(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
+                crate::trap::trap_unimplemented(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
                 return;
             };
 
