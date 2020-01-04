@@ -87,39 +87,11 @@ cfg_if! {
     } else if #[cfg(windows)] {
         use std::mem;
         use std::os::windows::prelude::*;
-        use std::os::windows::raw::HANDLE;
         use std::fs::{File, OpenOptions};
-        use std::os::raw::{c_ulong, c_int};
 
-        type DWORD = c_ulong;
-        type BOOL = c_int;
-        type ULONG_PTR = usize;
-
-        type LPOVERLAPPED = *mut OVERLAPPED;
-        const LOCKFILE_EXCLUSIVE_LOCK: DWORD = 0x0000_0002;
-        const LOCKFILE_FAIL_IMMEDIATELY: DWORD = 0x0000_0001;
-
-        const FILE_SHARE_DELETE: DWORD = 0x4;
-        const FILE_SHARE_READ: DWORD = 0x1;
-        const FILE_SHARE_WRITE: DWORD = 0x2;
-
-        #[repr(C)]
-        struct OVERLAPPED {
-            Internal: ULONG_PTR,
-            InternalHigh: ULONG_PTR,
-            Offset: DWORD,
-            OffsetHigh: DWORD,
-            hEvent: HANDLE,
-        }
-
-        extern "system" {
-            fn LockFileEx(hFile: HANDLE,
-                          dwFlags: DWORD,
-                          dwReserved: DWORD,
-                          nNumberOfBytesToLockLow: DWORD,
-                          nNumberOfBytesToLockHigh: DWORD,
-                          lpOverlapped: LPOVERLAPPED) -> BOOL;
-        }
+        use winapi::um::minwinbase::{OVERLAPPED, LOCKFILE_FAIL_IMMEDIATELY, LOCKFILE_EXCLUSIVE_LOCK};
+        use winapi::um::fileapi::LockFileEx;
+        use winapi::um::winnt::{FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE};
 
         #[derive(Debug)]
         pub struct Lock {
