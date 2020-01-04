@@ -2204,7 +2204,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// Pushes onto `out` the regions directly referenced from this type (but not
+    /// Returns the regions directly referenced from this type (but not
     /// types reachable from this type via `walk_tys`). This ignores late-bound
     /// regions binders.
     pub fn regions(&self) -> impl Iterator<Item = ty::Region<'tcx>> {

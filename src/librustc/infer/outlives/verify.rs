@@ -144,11 +144,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 .map(|r| VerifyBound::OutlivedBy(r)),
         );
 
-        // see the extensive comment in projection_must_outlive
-        let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
-        let recursive_bound = self.recursive_type_bound(ty);
-
-        VerifyBound::AnyBound(bounds).or(recursive_bound)
+        VerifyBound::AnyBound(bounds).or(|| {
+            // see the extensive comment in projection_must_outlive
+            let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
+            self.recursive_type_bound(ty)
+        })
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
