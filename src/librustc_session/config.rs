@@ -20,7 +20,7 @@ use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
 
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, FatalError, Handler};
+use rustc_errors::{ColorConfig, FatalError, Handler, HandlerFlags};
 
 use getopts;
 
@@ -596,6 +596,17 @@ impl Options {
 impl DebuggingOptions {
     pub fn ui_testing(&self) -> bool {
         self.ui_testing.unwrap_or(false)
+    }
+
+    pub fn diagnostic_handler_flags(&self, can_emit_warnings: bool) -> HandlerFlags {
+        HandlerFlags {
+            can_emit_warnings,
+            treat_err_as_bug: self.treat_err_as_bug,
+            dont_buffer_diagnostics: self.dont_buffer_diagnostics,
+            report_delayed_bugs: self.report_delayed_bugs,
+            external_macro_backtrace: self.external_macro_backtrace,
+            deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
+        }
     }
 }
 
