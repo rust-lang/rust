@@ -329,6 +329,8 @@ pub struct HandlerFlags {
     /// show macro backtraces even for non-local macros.
     /// (rustc: see `-Z external-macro-backtrace`)
     pub external_macro_backtrace: bool,
+    /// If true, identical diagnostics are reported only once.
+    pub deduplicate_diagnostics: bool,
 }
 
 impl Drop for HandlerInner {
@@ -736,16 +738,17 @@ impl HandlerInner {
             self.emitted_diagnostic_codes.insert(code.clone());
         }
 
-        let diagnostic_hash = {
+        let already_emitted = |this: &mut Self| {
             use std::hash::Hash;
             let mut hasher = StableHasher::new();
             diagnostic.hash(&mut hasher);
-            hasher.finish()
+            let diagnostic_hash = hasher.finish();
+            !this.emitted_diagnostics.insert(diagnostic_hash)
         };
 
-        // Only emit the diagnostic if we haven't already emitted an equivalent
-        // one:
-        if self.emitted_diagnostics.insert(diagnostic_hash) {
+        // Only emit the diagnostic if we've been asked to deduplicate and
+        // haven't already emitted an equivalent diagnostic.
+        if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;

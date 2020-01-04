@@ -6,7 +6,7 @@ use syntax::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
 use syntax::attr;
 use syntax::ptr::P;
 
-use rustc_span::{Pos, Span};
+use rustc_span::Span;
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<ast::Ident>) -> ast::Path {
@@ -350,16 +350,10 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
-        let loc = self.source_map().lookup_char_pos(span.lo());
-        let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name.to_string()));
-        let expr_line = self.expr_u32(span, loc.line as u32);
-        let expr_col = self.expr_u32(span, loc.col.to_usize() as u32 + 1);
-        let expr_loc_tuple = self.expr_tuple(span, vec![expr_file, expr_line, expr_col]);
-        let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
             [sym::std, sym::rt, sym::begin_panic].iter().map(|s| Ident::new(*s, span)).collect(),
-            vec![self.expr_str(span, msg), expr_loc_ptr],
+            vec![self.expr_str(span, msg)],
         )
     }
 

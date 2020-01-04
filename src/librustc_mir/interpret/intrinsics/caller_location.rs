@@ -9,8 +9,9 @@ use crate::interpret::{
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Walks up the callstack from the intrinsic's callsite, searching for the first frame which is
-    /// not `#[track_caller]`.
+    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
+    /// frame which is not `#[track_caller]`. If the first frame found lacks `#[track_caller]`, then
+    /// `None` is returned and the callsite of the function invocation itself should be used.
     crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
         let mut caller_span = None;
         for next_caller in self.stack.iter().rev() {
@@ -54,9 +55,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::PointerTag> {
+        let (file, line, column) = self.location_triple_for_span(span);
+        self.alloc_caller_location(file, line, column)
+    }
+
+    pub(super) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-        self.alloc_caller_location(
+        (
             Symbol::intern(&caller.file.name.to_string()),
             caller.line as u32,
             caller.col_display as u32 + 1,

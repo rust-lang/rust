@@ -8,7 +8,7 @@ LL | m!();
    | ----- in this macro invocation
 
 error: expected identifier, found reserved identifier `$crate`
-  --> $DIR/dollar-crate-is-keyword.rs:11:23
+  --> $DIR/dollar-crate-is-keyword.rs:10:23
    |
 LL |         use $crate as $crate;
    |                       ^^^^^^ expected identifier, found reserved identifier
@@ -16,27 +16,23 @@ LL |         use $crate as $crate;
 LL | m!();
    | ----- in this macro invocation
 
-warning: `$crate` may not be imported
+error: `$crate` may not be imported
   --> $DIR/dollar-crate-is-keyword.rs:9:9
    |
-LL |         use $crate; // OK
+LL |         use $crate;
    |         ^^^^^^^^^^^
 ...
 LL | m!();
    | ----- in this macro invocation
-   |
-   = note: `use $crate;` was erroneously allowed and will become a hard error in a future release
 
-warning: `$crate` may not be imported
-  --> $DIR/dollar-crate-is-keyword.rs:11:9
+error: `$crate` may not be imported
+  --> $DIR/dollar-crate-is-keyword.rs:10:9
    |
 LL |         use $crate as $crate;
    |         ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m!();
    | ----- in this macro invocation
-   |
-   = note: `use $crate;` was erroneously allowed and will become a hard error in a future release
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

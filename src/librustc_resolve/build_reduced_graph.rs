@@ -472,11 +472,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                         self.r
                             .session
-                            .struct_span_warn(item.span, "`$crate` may not be imported")
-                            .note(
-                                "`use $crate;` was erroneously allowed and \
-                                   will become a hard error in a future release",
-                            )
+                            .struct_span_err(item.span, "`$crate` may not be imported")
                             .emit();
                     }
                 }
