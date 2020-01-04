@@ -488,14 +488,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: ; Function Attrs: noinline
-; CHECK-NEXT: define <2 x double>* @preprocess_subcast(<2 x double>* %tmp.i) #7 {
-; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret <2 x double>* %tmp.i
-; CHECK-NEXT: }
-
-; CHECK: ; Function Attrs: noinline
-; CHECK-NEXT: define internal { {}, <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
+; CHECK: define internal { {}, <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, <2 x double>*, <2 x double>* } undef, <2 x double>* %tmp.i, 1
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, <2 x double>*, <2 x double>* } %.fca.1.insert, <2 x double>* %"tmp.i'", 2

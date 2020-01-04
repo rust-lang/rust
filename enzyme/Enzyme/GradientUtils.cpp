@@ -282,6 +282,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     }
 
     if(isConstantValue(val)) {
+        //NOTE, this is legal and the correct resolution, however, our activity analysis honeypot no longer exists
+        return lookupM(val, BuilderM);
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
         dumpSet(this->originalInstructions);
@@ -412,6 +414,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       IRBuilder <> bb(arg);
       Value* val0 = nullptr;
       Value* val1 = nullptr;
+
 
       if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
         llvm::errs() << *oldFunc << "\n";

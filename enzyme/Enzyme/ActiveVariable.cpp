@@ -36,6 +36,8 @@
 #include "ActiveVariable.h"
 #include "Utils.h"
 
+#include "TBAA.h"
+
 using namespace llvm;
 
 cl::opt<bool> printconst(
@@ -47,76 +49,48 @@ cl::opt<bool> nonmarkedglobals_inactive(
             cl::desc("Consider all nonmarked globals to be inactive"));
 
 bool isKnownIntegerTBAA(Instruction* inst) {
-  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
-	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return false;
-	Metadata* metadata = md->getOperand(1).get();
-	if (auto mda = dyn_cast<MDNode>(metadata)) {
-	  if (mda->getNumOperands() == 0) return false;
-	  Metadata* metadata2 = mda->getOperand(0).get();
-      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
-	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
-	    auto typeNameStringRef = typeName->getString();
-	    if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
-          if (printconst)
+    auto typeNameStringRef = getAccessNameTBAA(inst);
+    if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
+        if (printconst) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-          //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-		  return true; 
-	    } else {
-          if (printconst)
-            llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
-
         }
-	  }
-	}
-  }
-  return false;
+	    return true; 
+    } else {
+        //if (printconst)
+        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+    }
+    return false;
 }
 
 bool isKnownPointerTBAA(Instruction* inst) {
-  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
-	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return false;
-	Metadata* metadata = md->getOperand(1).get();
-	if (auto mda = dyn_cast<MDNode>(metadata)) {
-	  if (mda->getNumOperands() == 0) return false;
-	  Metadata* metadata2 = mda->getOperand(0).get();
-      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
-	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
-	    auto typeNameStringRef = typeName->getString();
-	    if (typeNameStringRef == "any pointer") {
-          if (printconst)
+    auto typeNameStringRef = getAccessNameTBAA(inst);
+    if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer") {// || typeNameStringRef == "omnipotent char") {
+        if (printconst) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-          //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-		  return true; 
-	    } else {
-          //if (printconst)
-          //  llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
         }
-	  }
-	}
-  }
-  return false;
+        return true; 
+    } else {
+        //if (printconst)
+        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+    }
+    return false;
 }
 
 Type* isKnownFloatTBAA(Instruction* inst) {
-  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
-	if (md->getNumOperands() != 3 && md->getNumOperands() != 4) return nullptr;
-	Metadata* metadata = md->getOperand(1).get();
-	if (auto mda = dyn_cast<MDNode>(metadata)) {
-	  if (mda->getNumOperands() == 0) return nullptr;
-	  Metadata* metadata2 = mda->getOperand(0).get();
-      if (!isa<MDString>(metadata2)) { metadata2 = mda->getOperand(mda->getNumOperands()-1).get(); }
-	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
-	    auto typeNameStringRef = typeName->getString();
-	    if (typeNameStringRef == "float") {
-            return Type::getFloatTy(inst->getContext());
-        }    
-        if (typeNameStringRef == "double") {
-          return Type::getDoubleTy(inst->getContext());
-	    }
-	  }
-	}
-  }
-  return nullptr;
+    auto typeNameStringRef = getAccessNameTBAA(inst);
+    if (typeNameStringRef == "float") {
+        if (printconst)
+            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
+        return Type::getFloatTy(inst->getContext());
+    } else if (typeNameStringRef == "double") {
+        if (printconst)
+            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
+        return Type::getDoubleTy(inst->getContext());
+    } else {
+        //if (printconst)
+        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
+    }
+    return nullptr;
 }
 
 cl::opt<bool> fast_tracking(
@@ -195,6 +169,7 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
 }
 
 // This function looks for recusion in the trace and removes the cycle
+// We should always prefer using the older version of this if possible (to ensure that type info is kept coming in)
 void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
     for(int i=newtrace.size()-1; i>=0; i--) {
         if (newtrace[i] == call) {
@@ -228,7 +203,7 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
 
 bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
-bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool onlyFirst, std::vector<int> indices = {}) {
+bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool* sawReturn, bool onlyFirst, std::vector<int> indices = {}) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*>(trace, v);
     if (seen.find(idx) != seen.end()) return false;
     seen.insert(idx);
@@ -258,11 +233,12 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                         break;
                 }
             } else if (trace.size() == 0) {
-                //llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
-                //for(auto &pair : typeInfo) {
-                //    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
-                //}
-                //assert(0 && "no arg for tracking");
+                llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+                for(auto &pair : typeInfo) {
+                    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+                }
+                if (typeInfo.size() != 0) //} && arg->getParent()->getName()) 
+                    assert(0 && "no arg for tracking");
             }
         }
     }
@@ -284,7 +260,7 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
             
     if (auto phi = dyn_cast<PHINode>(v)) {
         for(auto &a : phi->incoming_values()) {
-            if (trackPointer(typeInfo, trace, a.get(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+            if (trackPointer(typeInfo, trace, a.get(), intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, indices)) {
                 if (fast_tracking) return true;
             }
         }
@@ -295,7 +271,7 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
         //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
         if (!onlyFirst || indices.size() == 0) {
             if (ci->getSrcTy()->isPointerTy()) {
-                if (trackPointer(typeInfo, trace, ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                if (trackPointer(typeInfo, trace, ci->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, {})) {
                     if (fast_tracking) return true;
                 }
             } else {
@@ -310,10 +286,9 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                     if (use2 == ci) continue;
 
                     if (auto ci2 = dyn_cast<CastInst>(use2)) {
-                        if (trackPointer(typeInfo, trace, ci2, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, {})) {
+                        if (trackPointer(typeInfo, trace, ci2, intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, {})) {
                             if (fast_tracking) return true;
-                        }
-                        
+                        } 
                     }
                 }
             }
@@ -333,7 +308,28 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
             }
         }
         idnext.insert(idnext.end(), indices.begin(), indices.end());
-        if (trackPointer(typeInfo, trace, gep->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+        if (trackPointer(typeInfo, trace, gep->getOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, idnext)) {
+            if (fast_tracking) return true;
+        }
+    }
+    
+    if (auto call = dyn_cast<CallInst>(v)) {
+        if (isKnownIntegerTBAA(call)) {
+            intUse = true;  
+            if (fast_tracking) return true;
+        }
+
+        if (isKnownPointerTBAA(call)) {
+            pointerUse = true;
+            if (fast_tracking) return true;
+        }
+
+        if (Type* t = isKnownFloatTBAA(call)) {
+            if (floatingUse == nullptr) {
+                floatingUse = t;
+            } else {
+                assert(floatingUse == t);
+            }
             if (fast_tracking) return true;
         }
     }
@@ -346,13 +342,19 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                 //only propagate type information if it is safe to do so (e.g. we either look at any memory inside of [thus not onlyFirst], or we don't have any indexing inside of [thus indices.size() == 0])
                 if (!onlyFirst || indices.size() == 0) {
                     if (ci->getDestTy()->isPointerTy()) {
-                        if (trackPointer(typeInfo, trace, ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+                        if (trackPointer(typeInfo, trace, ci, intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, idnext)) {
                             if (fast_tracking) return true;
                         }
                     } else {
                     }
                 }
             }
+
+            if (isa<ReturnInst>(use)) {
+                if (sawReturn) *sawReturn = true;
+                continue;
+            }
+
             if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
                 //TODO consider implication of gep indices on onlyfirst/indices
 
@@ -382,7 +384,7 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                     idnext.push_back(indices[vcnt]);
                 }
 
-                if (trackPointer(typeInfo, trace, gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, idnext)) {
+                if (trackPointer(typeInfo, trace, gep, intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, idnext)) {
                     if (fast_tracking) return true;
                 }
             }
@@ -393,12 +395,52 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                     //If memcpy / memmove of pointer, we can propagate type information from src to dst and vice versa
                     if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
                         if (call->getArgOperand(0) == v) {
-                            if (trackPointer(typeInfo, trace, call->getArgOperand(1), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                            //! If TBAA lets us ascertain information, let's use it
+                            if (isKnownIntegerTBAA(call)) {
+                                intUse = true;  
+                                if (fast_tracking) return true;
+                            }
+
+                            if (isKnownPointerTBAA(call)) {
+                                pointerUse = true;
+                                if (fast_tracking) return true;
+                            }
+
+                            if (Type* t = isKnownFloatTBAA(call)) {
+                                if (floatingUse == nullptr) {
+                                    floatingUse = t;
+                                } else {
+                                    assert(floatingUse == t);
+                                }
+                                if (fast_tracking) return true;
+                            }
+
+                            if (trackPointer(typeInfo, trace, call->getArgOperand(1), intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, indices)) {
                                 if (fast_tracking) return true;
                             }
                         }
                         if (call->getArgOperand(1) == v) {
-                            if (trackPointer(typeInfo, trace, call->getArgOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                            //! If TBAA lets us ascertain information, let's use it
+                            if (isKnownIntegerTBAA(call)) {
+                                intUse = true;  
+                                if (fast_tracking) return true;
+                            }
+
+                            if (isKnownPointerTBAA(call)) {
+                                pointerUse = true;
+                                if (fast_tracking) return true;
+                            }
+
+                            if (Type* t = isKnownFloatTBAA(call)) {
+                                if (floatingUse == nullptr) {
+                                    floatingUse = t;
+                                } else {
+                                    assert(floatingUse == t);
+                                }
+                                if (fast_tracking) return true;
+                            }
+
+                            if (trackPointer(typeInfo, trace, call->getArgOperand(0), intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, indices)) {
                                 if (fast_tracking) return true;
                             }
                         }
@@ -407,25 +449,23 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                     //TODO we should handle calls interprocedurally, allowing better propagation of type information
                     if (!ci->empty()) {
                         auto a = ci->arg_begin();
-                        //bool shouldHandleReturn=false;
+                        bool subsawReturn=false;
                         std::vector<CallInst*> newtrace(trace);
                         addCallRemovingCycle(newtrace, call);
                         for(size_t i=0; i<call->getNumArgOperands(); i++) {
                             if (call->getArgOperand(i) == v) {
                                 //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                                if(trackPointer(typeInfo, newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst, indices)) {
+                                if(trackPointer(typeInfo, newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, &subsawReturn, onlyFirst, indices)) {
                                     if (fast_tracking) return true;
                                 }
                             }
                             a++;
                         }
-                        #if 0
-                        if (shouldHandleReturn) {
-                            if(trackInt(trace, call, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, sawReturn)) {
+                        if (subsawReturn) {
+                            if(trackPointer(typeInfo, trace, call, intseen, seen, typeseen, floatingUse, pointerUse, intUse, sawReturn, onlyFirst, indices)) {
                                 if (fast_tracking) return true;
                             }
                         }
-                        #endif
                     }
                 }
             }
@@ -492,6 +532,30 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
     return false;
 }
 
+void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const std::vector<CallInst*> newtrace, CallInst* call, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen) {
+        int argnum = 0;
+
+        for(auto &arg : call->getCalledFunction()->args()) {
+            DataType dt(IntType::Unknown);
+            Type* floatingUse = nullptr;
+            bool pointerUse = false;
+            bool intUse = false;
+            if (auto pt = dyn_cast<PointerType>(arg.getType())) {
+                if (pt->getElementType()->isIntOrIntVectorTy()) {
+                    trackPointer(typeInfo, newtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, /*sawreturn*/nullptr, /*onlyfirst*/false);
+                }
+            } else if (arg.getType()->isIntOrIntVectorTy()) {
+                bool unknownuse = false;
+                trackInt(typeInfo, newtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknown*/false, nullptr);
+            }
+            if (floatingUse && !pointerUse && !intUse) dt = DataType(floatingUse);
+            if (!floatingUse && pointerUse && !intUse) dt = DataType(IntType::Pointer);
+            if (!floatingUse && !pointerUse && intUse) dt = DataType(IntType::Integer);
+            typeInfo.insert(std::pair<Argument*, DataType>(&arg, dt));
+            argnum++;
+        }
+}
+
 bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = std::tuple<const std::vector<CallInst*>, Value*, bool>(trace, v, shouldConsiderUnknownUse);
     if (intseen.find(idx) != intseen.end()) {
@@ -526,10 +590,15 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                     break;
             }
         } else if (trace.size() == 0) {
-            //llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
-            //for(auto &pair : typeInfo) {
-            //    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
-            //}
+            llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+            bool sameNAme = false;
+            for(auto &pair : typeInfo) {
+                if (arg->getName() == pair.first->getName()) sameNAme = true;
+                llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+            }
+
+            if (typeInfo.size() != 0 && sameNAme) //} && arg->getParent()->getName()) 
+                assert(0 && "no arg for tracking");
             //assert(0 && "no arg for tracking");
         }
     }
@@ -688,7 +757,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                     for(size_t i=0; i<call->getNumArgOperands(); i++) {
                         if (call->getArgOperand(i) == v) {
                             //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                            if(trackInt(typeInfo, trace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
+                            if(trackInt(typeInfo, newtrace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
                                 if (fast_tracking) return true;
                             }
                         }
@@ -750,7 +819,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                 if (fast_tracking) return true;
             }
 
-            if (trackPointer(typeInfo, trace, si->getPointerOperand(), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
+            if (trackPointer(typeInfo, trace, si->getPointerOperand(), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, nullptr, true, {})) {
                 if (fast_tracking) return true;
             }
 
@@ -811,7 +880,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             floatingUse = t;
             if (fast_tracking) return true;
         }
-        if (trackPointer(typeInfo, trace, li->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, true, {})) {
+        if (trackPointer(typeInfo, trace, li->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, nullptr, true, {})) {
             if (fast_tracking) return true;
         }
     }
@@ -870,7 +939,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             }
         }
         
-        llvm::errs() << " considering binary operator " << *bi << " iu0: " << intUse0 << " iu1: " << intUse1 << "\n";
+        //llvm::errs() << " considering binary operator " << *bi << " iu0: " << intUse0 << " iu1: " << intUse1 << "\n";
         
         if (intUse0 && intUse1) {
             intUse = true;
@@ -934,13 +1003,15 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             bool allintUse = true;
             std::vector<CallInst*> newtrace(trace);
             addCallRemovingCycle(newtrace, ci);
+            std::map<Argument*, DataType> newTypeInfo(typeInfo);
+            appendArgumentInformation(newTypeInfo, newtrace, ci, intseen, ptrseen, typeseen);
 
             for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
                 if (auto ri = dyn_cast<ReturnInst>(&*I)) {
                     auto rv = ri->getReturnValue();
                     bool intUse0 = false;
                     bool fakeunknownuse0 = false;
-                    if ( trackInt(typeInfo, newtrace, rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+                    if ( trackInt(newTypeInfo, newtrace, rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
                         intseen.insert(intseen0.begin(), intseen0.end());
                         ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
                         typeseen.insert(typeseen0.begin(), typeseen0.end());
@@ -948,6 +1019,7 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                         if (fast_tracking) return true;
                     }
                     if (!intUse0) {
+                        //llvm::errs() << "could not intify " << *v << " as nonint return: " << *ri << "\n";
                         allintUse = false;
                     }
                 }
@@ -1083,7 +1155,7 @@ DataType isIntPointerASecretFloat(const std::map<Argument*, DataType> typeInfo, 
     std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen;
     std::vector<CallInst*> trace;
 
-    trackPointer(typeInfo, trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, onlyFirst);
+    trackPointer(typeInfo, trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, nullptr, onlyFirst);
 
     if (pointerUse && (floatingUse == nullptr) && !intUse) return IntType::Pointer; 
     if (!pointerUse && (floatingUse != nullptr) && !intUse) return floatingUse;
@@ -1156,7 +1228,7 @@ std::size_t operator()(const tuple<A, B, C, D>& k) const
 }
 */
 
-bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, int directions) {
+bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, const SmallPtrSetImpl<Value*> &retvals, AAResults &AA, int directions) {
     Function* F = CI->getCalledFunction();
     if (F == nullptr) return false;
     
@@ -1238,7 +1310,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
             continue;
         }
 
-        if (isconstantValueM(CI->getArgOperand(i), constants2, nonconstant2, constantvals2, retvals2, originalInstructions), directions) {
+        if (isconstantValueM(CI->getArgOperand(i), constants2, nonconstant2, constantvals2, retvals2, AA), directions) {
             newconstants.insert(a);
             arg_constants.insert(i);
         } else {
@@ -1251,7 +1323,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     
     //allow return index as valid entry as well
     if (CI != val) {
-        constret = isconstantValueM(CI, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions);
+        constret = isconstantValueM(CI, constants2, nonconstant2, constantvals2, retvals2, AA, directions);
         if (constret) arg_constants.insert(-1);
     } else {
         constret = false;
@@ -1277,9 +1349,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     //Note that the base case of true broke the up/down variant so have to be very conservative
     //  as a consequence we cannot detect const of recursive functions :'( [in that will be too conservative]
     //cache[tuple] = false;
-    
-    SmallPtrSet<Instruction*,4> newinsts;
-    
+        
     SmallPtrSet<Value*,4> newconstantvals;
 	newconstantvals.insert(constantvals2.begin(), constantvals2.end());
     
@@ -1287,7 +1357,6 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 	newretvals.insert(retvals2.begin(), retvals2.end());
 
     for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
-        newinsts.insert(&*I);
         if (auto ri = dyn_cast<ReturnInst>(&*I)) {
             if (!constret) {
                 newretvals.insert(ri->getReturnValue());
@@ -1303,7 +1372,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
         for(auto user : specialarg->users()) {
 			if (printconst)
 			llvm::errs() << " going to consider user " << *user << "\n";
-            if (!isconstantValueM(user, newconstants, newnonconstant, newconstantvals, newretvals, newinsts, 3)) {
+            if (!isconstantValueM(user, newconstants, newnonconstant, newconstantvals, newretvals, AA, 3)) {
                 if (printconst)
                     llvm::errs() << " < SUBFN nonconst " << F->getName() << "> arg: " << *val << " ci:" << *CI << "  from sf: " << *user << "\n";
 				metacache.erase(metatuple);
@@ -1322,9 +1391,33 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 }
 
 
+static bool isGuaranteedConstantValue(Value* val, const SmallPtrSetImpl<Value*> *constantvals) {
+    //This result of this instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is inactive
+    // Note that this is correct, but not aggressive as it should be (we should call isConstantValue(inst) here, but we need to be careful to not have an infinite recursion)
+    //  TODO: make this more aggressive
+    if (val->getType()->isIntOrIntVectorTy()) {
+        //TODO propagate interprocedural type info here instead of using empty map {}
+        //  This does not affect correctness, but can do better constant analysis if we have
+        if (isIntASecretFloat({}, val, /*default*/IntType::Pointer)==IntType::Integer) {
+            if (printconst)
+                llvm::errs() << " -> known integer " << *val << "\n";
+            return true;
+        }
+    // if we happen to have already deduced this instruction constant, we might as well use the information
+    } else if (constantvals && constantvals->find(val) != constantvals->end()) {
+        if (printconst)
+            llvm::errs() << " -> previous constant value " << *val << "\n";
+        return true;
+    // if we know the subtype contains no derivative information, we can assure that this is a constant value
+    } else if (val->getType()->isVoidTy() || val->getType()->isEmptyTy()) {
+        return true;
+    }
+    return false;
+}
+
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
-bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
+bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, AAResults &AA, uint8_t directions) {
     assert(inst);
 	constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;
@@ -1332,7 +1425,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 	assert(directions <= 3);
     if (isa<ReturnInst>(inst)) return true;
 
-	if(isa<UnreachableInst>(inst) || isa<BranchInst>(inst) || (constants.find(inst) != constants.end()) || (originalInstructions.find(inst) == originalInstructions.end()) ) {
+	if(isa<UnreachableInst>(inst) || isa<BranchInst>(inst) || (constants.find(inst) != constants.end())) {
     	return true;
     }
 
@@ -1340,22 +1433,17 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
         return false;
     }
 
-    //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    if (inst->getType()->isIntOrIntVectorTy()) {
-        //TODO propagate interprocedural type info here instead of using empty map {}
-        //  This does not affect correctness, but can do better constant analysis if we have
-        if (isIntASecretFloat({}, inst, /*default*/IntType::Pointer)==IntType::Integer) {
-            //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
-            if (!inst->mayReadOrWriteMemory()) {
-                if (printconst)
-                    llvm::errs() << " constant instruction from known integral " << *inst << "\n";
-                constants.insert(inst);
-                return true;
-            }
+    // If this instruction does not write memory to memory that outlives itself (therefore propagating derivative information), and the return value of this instruction is known to be inactive
+    // this instruction is inactive as it cannot propagate derivative information
+    if (isGuaranteedConstantValue(inst, directions == 3 ? &constantvals : nullptr)) {
+        if (!inst->mayWriteToMemory() || (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)) ) ) {
+            if (printconst)
+                llvm::errs() << " constant instruction from known constant non-writing instruction " << *inst << "\n";
+            constants.insert(inst);
+            return true;
         } else {
-            if (printconst) {
-                llvm::errs() << " could not deduce if constant instruction from integral " << *inst << " " << to_string(isIntASecretFloat({}, inst, IntType::Pointer)) << "\n";
-            }
+            if (printconst)
+                llvm::errs() << " may be active inst as could write to memory " << *inst << "\n";
         }
     }
 
@@ -1499,7 +1587,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		nonconstant2.insert(inst);
 		for (const auto &a:inst->users()) {
 		  if (isa<LoadInst>(a)) {
-		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, AA, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1515,14 +1603,14 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		for (const auto &a:inst->users()) {
 		  if(auto store = dyn_cast<StoreInst>(a)) {
 
-			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
+			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, constantvals2, retvals2, AA, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
 				  llvm::errs() << "memory(" << (int)directions << ")  erase 1: " << *inst << "\n";
 				return false;
 			}
-			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
+			if (inst == store->getValueOperand() && !isconstantValueM(store->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, AA, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1531,7 +1619,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			}
 		  } else if (isa<LoadInst>(a)) {
               /*
-		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, AA, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1541,7 +1629,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
               */
               continue;
           } else if (auto ci = dyn_cast<CallInst>(a)) {
-			if (!isconstantM(ci, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
+			if (!isconstantM(ci, constants2, nonconstant2, constantvals2, retvals2, AA, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1549,7 +1637,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				return false;
 			}
           } else {
-			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, directions & DOWN)) {
+			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, AA, directions & DOWN)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
@@ -1583,7 +1671,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
 
         if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
-            if (isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
+            if (isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, AA, UP)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
@@ -1599,7 +1687,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
              
             if (!seenuse) {
             for(auto& a: ci->arg_operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
+                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, AA, UP)) {
                     seenuse = true;
                     if (printconst)
                       llvm::errs() << "nonconstant(" << (int)directions << ")  up-call " << *inst << " op " << *a << "\n";
@@ -1644,7 +1732,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             retvals2.insert(retvals.begin(), retvals.end());
             constants2.insert(inst);
 
-            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
+            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, constantvals2, retvals2, AA, UP)) {
                 constants.insert(inst);
                 constants.insert(constants2.begin(), constants2.end());
                 constants.insert(constants_tmp.begin(), constants_tmp.end());
@@ -1675,7 +1763,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             bool seenuse = false;
 
             for(auto& a: inst->operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, UP)) {
+                if (!isconstantValueM(a, constants2, nonconstant2, constantvals2, retvals2, AA, UP)) {
                     //if (directions == 3)
                     //  nonconstant.insert(inst);
                     if (printconst)
@@ -1738,7 +1826,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
             }
 
 			if (auto call = dyn_cast<CallInst>(a)) {
-                if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
+                if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, constantvals2, retvals2, AA, DOWN)) {
                     if (printconst)
 			          llvm::errs() << "found constant(" << (int)directions << ")  callinst use:" << *inst << " user " << *a << "\n";
                     continue;
@@ -1750,7 +1838,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 }
 			}
 
-		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
+		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, AA, DOWN)) {
     			if (printconst)
 			      llvm::errs() << "nonconstant(" << (int)directions << ") inst (uses):" << *inst << " user " << *a << " " << &seenuse << "\n";
 				seenuse = true;
@@ -1786,7 +1874,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
-bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
+bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, AAResults &AA, uint8_t directions) {
     assert(val);
 	//constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;
@@ -1822,31 +1910,33 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
             return false;
         }
         llvm::errs() << *(cast<Argument>(val)->getParent()) << "\n";
-	llvm::errs() << *val << "\n";
+	    llvm::errs() << *val << "\n";
         assert(0 && "must've put arguments in constant/nonconstant");
     }
 
     if (auto gi = dyn_cast<GlobalVariable>(val)) {
         if (!hasMetadata(gi, "enzyme_shadow") && nonmarkedglobals_inactive) {
             constantvals.insert(val);
+            gi->setMetadata("enzyme_activity_value", MDNode::get(gi->getContext(), MDString::get(gi->getContext(), "const")));
             return true;
         }
         //TODO consider this more
-        if (gi->isConstant() && isconstantValueM(gi->getInitializer(), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+        if (gi->isConstant() && isconstantValueM(gi->getInitializer(), constants, nonconstant, constantvals, retvals, AA, directions)) {
             constantvals.insert(val);
+            gi->setMetadata("enzyme_activity_value", MDNode::get(gi->getContext(), MDString::get(gi->getContext(), "const")));
             return true;
         }
     }
 
     if (auto ce = dyn_cast<ConstantExpr>(val)) {
         if (ce->isCast()) {
-            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, AA, directions)) {
                 constantvals.insert(val);
                 return true;
             }
         }
         if (ce->isGEPWithNoNotionalOverIndexing()) {
-            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, constantvals, retvals, AA, directions)) {
                 constantvals.insert(val);
                 return true;
             }
@@ -1854,7 +1944,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     }
     
     if (auto inst = dyn_cast<Instruction>(val)) {
-        if (isconstantM(inst, constants, nonconstant, constantvals, retvals, originalInstructions, directions)) {
+        if (isconstantM(inst, constants, nonconstant, constantvals, retvals, AA, directions)) {
             constantvals.insert(val);
             return true;
         }
@@ -1869,7 +1959,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
         return true;
     }
    
-    if ( val->getType()->isFPOrFPVectorTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
+    if ((directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
+    //if (val->getType()->isFPOrFPVectorTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
 		auto &constants2 = constants;
 		auto &nonconstant2 = nonconstant;
 		auto &constantvals2 = constantvals;
@@ -1881,23 +1972,12 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 		bool seenuse = false;
 		
         for (const auto &a:val->users()) {
-			if (isa<Instruction>(a) && originalInstructions.find(cast<Instruction>(a)) == originalInstructions.end()) continue;
 
 		    if (printconst)
 			  llvm::errs() << "      considering use of " << *val << " - " << *a << "\n";
 
-			if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
-				assert(val != gep->getPointerOperand());
-                assert(val->getType()->isIntegerTy());
-                if (printconst) {
-			        llvm::errs() << "Value found constant gep use:" << *val << " user " << *gep << "\n";
-                }
-                constantvals.insert(val);
-				return true;
-			}
-
 			if (auto call = dyn_cast<CallInst>(a)) {
-                if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
+                if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, constantvals2, retvals2, AA, DOWN)) {
                     if (printconst) {
 			          llvm::errs() << "Value found constant callinst use:" << *val << " user " << *call << "\n";
                     }
@@ -1905,7 +1985,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                 }
 			}
             
-		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, originalInstructions, DOWN)) {
+		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, constantvals2, retvals2, AA, DOWN)) {
     			if (printconst)
 			      llvm::errs() << "Value nonconstant inst (uses):" << *val << " user " << *a << "\n";
 				seenuse = true;
@@ -1928,6 +2008,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 
     if (printconst)
 	   llvm::errs() << " Value nonconstant (couldn't disprove)[" << (int)directions << "]" << *val << "\n";
+
     retvals.insert(val);
     return false;
 }

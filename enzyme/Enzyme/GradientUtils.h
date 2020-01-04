@@ -793,14 +793,14 @@ public:
     return false;
   }
 
-  bool isConstantValueInternal(Value* val) {
-	cast<Value>(val);
-    return isconstantValueM(val, constants, nonconstant, constant_values, nonconstant_values, originalInstructions);
+  bool isConstantValueInternal(Value* val, AAResults &AA) {
+	  cast<Value>(val);
+    return isconstantValueM(val, constants, nonconstant, constant_values, nonconstant_values, AA);
   };
 
-  bool isConstantInstructionInternal(Instruction* val) {
-	cast<Instruction>(val);
-    return isconstantM(val, constants, nonconstant, constant_values, nonconstant_values, originalInstructions);
+  bool isConstantInstructionInternal(Instruction* val, AAResults &AA) {
+    cast<Instruction>(val);
+    return isconstantM(val, constants, nonconstant, constant_values, nonconstant_values, AA);
   }
 
   SmallPtrSet<Instruction*,4> replaceableCalls;
@@ -865,24 +865,26 @@ public:
       }
   }
 
-  void forceActiveDetection() {
-      for(auto a = newFunc->arg_begin(); a != newFunc->arg_end(); a++) {
+  void forceActiveDetection(AAResults &AA) {
+      for(auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); a++) {
         if (constants.find(a) == constants.end() && nonconstant.find(a) == nonconstant.end()) continue;
-        bool const_value = isConstantValueInternal(a);
-        a->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+
+        bool const_value = isConstantValueInternal(a, AA);
+        //a->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+        cast<Argument>(getNewFromOriginal(a))->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
       }
 
-      for(BasicBlock* BB: this->originalBlocks) {
-          for(Instruction &I : *BB) {
-              bool const_inst = isConstantInstructionInternal(&I);
+      for(BasicBlock& BB: *oldFunc) {
+          for(Instruction &I : BB) {
+              bool const_inst = isConstantInstructionInternal(&I, AA);
               
-              I.setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
+              getNewFromOriginal(&I)->setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
               //I.setMetadata(const_inst ? "enzyme_constinst" : "enzyme_activeinst", MDNode::get(I.getContext(), {}));
 
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_inst", const_inst ? "const" : "active"));
-              bool const_value = isConstantValueInternal(&I);
+              bool const_value = isConstantValueInternal(&I, AA);
               //I.setMetadata(const_value ? "enzyme_constvalue" : "enzyme_activevalue", MDNode::get(I.getContext(), {}));
-              I.setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
+              getNewFromOriginal(&I)->setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
           }
       }
@@ -925,9 +927,27 @@ public:
         if (res == "active") return false;
     }
 
-    if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
+    //! False so we can replace function with augmentation
+    if (isa<Function>(val)) {
+        return false;
+    }
+
+    if (auto gv = dyn_cast<GlobalVariable>(val)) {
+        if (hasMetadata(gv, "enzyme_shadow")) return false;
+        if (auto md = gv->getMetadata("enzyme_activity_value")) {
+            auto res = cast<MDString>(md->getOperand(0))->getString();
+            if (res == "const") return true;
+            if (res == "active") return false;
+        }
+        goto err;
+    }
+    if (isa<GlobalValue>(val)) goto err;
+
+    //TODO allow gv/inline asm
+    //if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
     if (isa<Constant>(val) || isa<UndefValue>(val) || isa<MetadataAsValue>(val)) return true;
     
+    err:;
     llvm::errs() << *oldFunc << "\n";
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << *val << "\n";

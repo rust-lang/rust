@@ -44,6 +44,8 @@
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 
+#include "llvm/Transforms/IPO/FunctionAttrs.h"
+
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
@@ -483,12 +485,22 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
         continue;
      }
      if (!I.getType()->isFPOrFPVectorTy()) {
-        ArgTypes.push_back(I.getType());
+       ArgTypes.push_back(I.getType());
      } else {
        RetTypes.push_back(I.getType());
      }
      argno++;
  }
+
+  for (BasicBlock &BB: *F) {
+    for(Instruction &I : BB) {
+        if (auto ri = dyn_cast<ReturnInst>(&I)) {
+            if (auto rv = ri->getReturnValue()) {
+                returnvals.insert(rv);
+            }
+        }
+    }
+  }
 
  if (diffeReturnArg && F->getReturnType()->isFPOrFPVectorTy()) {
     assert(!F->getReturnType()->isVoidTy());
@@ -536,11 +548,11 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
    bool isconstant = (constant_args.count(ii) > 0);
 
    if (isconstant) {
-      constants.insert(j);
+      constants.insert(i);
       if (printconst)
         llvm::errs() << "in new function " << NewF->getName() << " constant arg " << *j << "\n";
    } else {
-      nonconstant.insert(j);
+      nonconstant.insert(i);
       if (printconst)
         llvm::errs() << "in new function " << NewF->getName() << " nonconstant arg " << *j << "\n";
    }
@@ -603,12 +615,6 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
  }
  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
  assert(NewF->hasLocalLinkage());
-
- for(auto& r : Returns) {
-   if (auto a = r->getReturnValue()) {
-       returnvals.insert(a);
-   }
- }
 
  return NewF;
 }
