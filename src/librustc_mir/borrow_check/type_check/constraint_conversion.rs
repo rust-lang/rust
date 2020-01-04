@@ -5,6 +5,7 @@ use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
+use rustc::traits;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -108,6 +109,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     region_bound_pairs,
                     implicit_region_bound,
                     param_env,
+                    &mut traits::Elaborator::new(tcx),
                 )
                 .type_must_outlive(origin, t1, r2);
             }

@@ -1,11 +1,9 @@
-use std::cell::RefCell;
-
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Ty, TyCtxt};
-use crate::util::captures::{Captures, Captures2};
+use crate::util::captures::{Captures, Captures2, Captures3};
 use rustc_hir::def_id::DefId;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
@@ -14,28 +12,23 @@ use rustc_hir::def_id::DefId;
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct VerifyBoundCx<'cx, 'tcx> {
+pub struct VerifyBoundCx<'cx, 'tcx, 'e> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-    elaborator: traits::Elaborator<'tcx>,
+    elaborator: &'e mut traits::Elaborator<'tcx>,
 }
 
-impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
+impl<'cx, 'tcx, 'e> VerifyBoundCx<'cx, 'tcx, 'e> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
+        elaborator: &'e mut traits::Elaborator<'tcx>,
     ) -> Self {
-        Self {
-            tcx,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-            elaborator: traits::Elaborator::new(tcx),
-        }
+        Self { tcx, region_bound_pairs, implicit_region_bound, param_env, elaborator }
     }
 
     /// Returns a "verify bound" that encodes what we know about
@@ -108,7 +101,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub fn projection_declared_bounds_from_trait<'a>(
         &'a mut self,
         projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures2<'cx, 'tcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures3<'cx, 'tcx, 'e> {
         self.declared_projection_bounds_from_trait(projection_ty)
     }
 
@@ -162,11 +155,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .filter(|b| !b.must_hold())
             .collect::<Vec<_>>();
 
-        if bounds.len() == 1 {
-            bounds.pop().unwrap()
-        } else {
-            VerifyBound::AllBounds(bounds)
-        }
+        if bounds.len() == 1 { bounds.pop().unwrap() } else { VerifyBound::AllBounds(bounds) }
     }
 
     /// Searches the environment for where-clauses like `G: 'a` where
@@ -243,7 +232,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn declared_projection_bounds_from_trait<'a>(
         &'a mut self,
         projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures2<'cx, 'tcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures3<'cx, 'tcx, 'e> {
         debug!("projection_bounds(projection_ty={:?})", projection_ty);
         let tcx = self.tcx;
         self.region_bounds_declared_on_associated_item(projection_ty.item_def_id)
@@ -283,7 +272,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn region_bounds_declared_on_associated_item<'a>(
         &'a mut self,
         assoc_item_def_id: DefId,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures2<'cx, 'tcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'a + Captures3<'cx, 'tcx, 'e> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
