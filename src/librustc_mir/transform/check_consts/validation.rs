@@ -9,8 +9,8 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
 use rustc_error_codes::*;
 use rustc_index::bit_set::BitSet;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::symbol::sym;
 
 use std::borrow::Cow;
 use std::ops::Deref;

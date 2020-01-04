@@ -9,13 +9,13 @@ use rustc::mir::{
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
+use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
-use syntax::symbol::sym;
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};

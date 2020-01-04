@@ -14,10 +14,10 @@ use rustc::traits::Obligation;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, Ty};
+use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use std::cmp;
 use std::iter;
-use syntax::source_map::Span;
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug)]

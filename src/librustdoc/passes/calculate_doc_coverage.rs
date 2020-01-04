@@ -3,9 +3,9 @@ use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
 
+use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use syntax::attr;
-use syntax::symbol::sym;
 
 use std::collections::BTreeMap;
 use std::ops;

@@ -8,10 +8,10 @@ use rustc::middle::privacy::AccessLevel;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use syntax::ast;
-use syntax::source_map::Spanned;
-use syntax::symbol::sym;
 
 use std::mem;
 

@@ -15,10 +15,10 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::Encoder;
+use rustc_span::edition::Edition;
+use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
-use syntax::edition::Edition;
-use syntax::symbol::Symbol;
 use syntax::{ast, attr};
 
 use std::marker::PhantomData;

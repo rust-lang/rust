@@ -1,5 +1,5 @@
 use crate::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
-use crate::syntax::edition::Edition;
+use crate::rustc_span::edition::Edition;
 use errors;
 use rustc_feature::UnstableFeatures;
 use std::fs;

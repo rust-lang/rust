@@ -5,7 +5,7 @@ pub mod free_region;
 pub mod lang_items;
 pub mod lib_features {
     use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-    use syntax::symbol::Symbol;
+    use rustc_span::symbol::Symbol;
 
     #[derive(HashStable)]
     pub struct LibFeatures {

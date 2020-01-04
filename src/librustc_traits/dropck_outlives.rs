@@ -8,7 +8,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
-use syntax::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };

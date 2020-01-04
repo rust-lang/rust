@@ -3,8 +3,8 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferOk;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_span::source_map::Span;
 use std::iter::FromIterator;
-use syntax::source_map::Span;
 
 use rustc_error_codes::*;
 

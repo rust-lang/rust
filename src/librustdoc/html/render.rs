@@ -50,14 +50,14 @@ use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 use rustc_feature::UnstableFeatures;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::FileName;
+use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use syntax::ast;
-use syntax::edition::Edition;
 use syntax::print::pprust;
-use syntax::source_map::FileName;
-use syntax::symbol::{sym, Symbol};
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
 use crate::config::RenderOptions;

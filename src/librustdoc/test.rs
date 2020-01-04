@@ -5,6 +5,9 @@ use rustc::util::common::ErrorReported;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
 use rustc_interface::interface;
+use rustc_span::edition::Edition;
+use rustc_span::source_map::SourceMap;
+use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
 use std::env;
@@ -14,9 +17,6 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use syntax::ast;
-use syntax::edition::Edition;
-use syntax::source_map::SourceMap;
-use syntax::symbol::sym;
 use syntax::with_globals;
 use tempfile::Builder as TempFileBuilder;
 use testing;
@@ -402,10 +402,11 @@ pub fn make_test(
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use crate::syntax::{sess::ParseSess, source_map::FilePathMapping};
         use errors::emitter::EmitterWriter;
         use errors::Handler;
         use rustc_parse::maybe_new_parser_from_source_str;
+        use rustc_span::source_map::FilePathMapping;
+        use syntax::sess::ParseSess;
 
         let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;

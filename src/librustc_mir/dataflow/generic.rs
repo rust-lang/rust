@@ -28,7 +28,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use syntax::symbol::sym;
+use rustc_span::symbol::sym;
 
 use crate::dataflow::BottomValue;
 

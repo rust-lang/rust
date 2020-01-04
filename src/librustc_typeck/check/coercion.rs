@@ -66,11 +66,11 @@ use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_span;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
-use syntax::symbol::sym;
 
 use rustc_error_codes::*;
 

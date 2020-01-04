@@ -1,9 +1,9 @@
 use super::Parser;
 
 use rustc_errors::PResult;
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym};
 use syntax::ast::{self, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause};
-use syntax::source_map::DUMMY_SP;
 use syntax::token;
 
 impl<'a> Parser<'a> {

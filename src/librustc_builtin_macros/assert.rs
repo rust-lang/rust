@@ -2,11 +2,11 @@ use errors::{Applicability, DiagnosticBuilder};
 
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, *};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::{sym, Symbol};
 use syntax::token::{self, TokenKind};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 

@@ -2,8 +2,8 @@ pub use CommentStyle::*;
 
 use crate::ast;
 use crate::sess::ParseSess;
-use crate::source_map::SourceMap;
 
+use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos};
 
 use std::usize;

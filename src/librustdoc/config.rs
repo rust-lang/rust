@@ -15,8 +15,8 @@ use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateTy
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
-use syntax::edition::{Edition, DEFAULT_EDITION};
 
 use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;

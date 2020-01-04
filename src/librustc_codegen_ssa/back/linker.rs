@@ -15,8 +15,8 @@ use rustc::session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, O
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
-use syntax::symbol::Symbol;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.

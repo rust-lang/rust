@@ -11,8 +11,8 @@ use rustc::ty::layout::TyLayout;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
+use rustc_span::symbol::sym;
 use syntax::ast::Attribute;
-use syntax::symbol::sym;
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {

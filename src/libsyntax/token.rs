@@ -6,15 +6,14 @@ pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
-use crate::symbol::kw;
 use crate::tokenstream::TokenTree;
-
-use rustc_span::symbol::Symbol;
-use rustc_span::{self, Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
+use rustc_span::symbol::kw;
+use rustc_span::symbol::Symbol;
+use rustc_span::{self, Span, DUMMY_SP};
 use std::fmt;
 use std::mem;
 

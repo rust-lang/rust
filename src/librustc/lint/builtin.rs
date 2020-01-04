@@ -9,11 +9,11 @@ use crate::middle::stability;
 use crate::session::Session;
 use errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_session::declare_lint;
+use rustc_span::edition::Edition;
+use rustc_span::source_map::Span;
+use rustc_span::symbol::Symbol;
 use syntax::ast;
 use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
-use syntax::edition::Edition;
-use syntax::source_map::Span;
-use syntax::symbol::Symbol;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,

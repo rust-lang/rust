@@ -32,9 +32,9 @@ use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::source_map::Span;
+use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
-use syntax::source_map::Span;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_error_codes::*;

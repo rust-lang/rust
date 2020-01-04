@@ -3,9 +3,9 @@ use rustc::hir::def_id::DefIndex;
 use rustc::hir::map::definitions::*;
 use rustc_expand::expand::AstFragment;
 use rustc_span::hygiene::ExpnId;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use syntax::ast::*;
-use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
 use syntax::visit;
 

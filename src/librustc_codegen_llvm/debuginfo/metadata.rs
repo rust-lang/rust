@@ -42,10 +42,10 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
-use syntax::symbol::{Interner, Symbol};
 
 use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;

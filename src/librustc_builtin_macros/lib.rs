@@ -15,9 +15,9 @@ use crate::deriving::*;
 
 use rustc_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
+use rustc_span::edition::Edition;
+use rustc_span::symbol::sym;
 use syntax::ast::Ident;
-use syntax::edition::Edition;
-use syntax::symbol::sym;
 
 mod asm;
 mod assert;

@@ -37,15 +37,15 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
 
+use rustc_span::edition::Edition;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
 use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
-use syntax::edition::Edition;
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::{self, expr_to_string};
 use syntax::ptr::P;
-use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::FnKind;
 

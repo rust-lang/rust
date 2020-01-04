@@ -1,10 +1,10 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
+use rustc_span::symbol::kw;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
-use syntax::symbol::kw;
 use syntax::token::{self, Token};
 use syntax::tokenstream;
 

@@ -2,13 +2,13 @@ use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_pa
 
 use errors::PResult;
 use rustc_parse::new_parser_from_source_str;
+use rustc_span::source_map::FilePathMapping;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, Span};
 use syntax::ast::{self, Name, PatKind};
 use syntax::print::pprust::item_to_string;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::source_map::FilePathMapping;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, Token};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use syntax::visit;

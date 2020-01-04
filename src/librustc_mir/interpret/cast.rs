@@ -1,8 +1,8 @@
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_span::symbol::sym;
 use syntax::ast::FloatTy;
-use syntax::symbol::sym;
 
 use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::mir::CastKind;

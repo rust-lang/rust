@@ -1,17 +1,17 @@
 #![feature(rustc_private)]
 
-extern crate syntax;
 extern crate rustc;
 extern crate rustc_codegen_utils;
 #[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_target;
 extern crate rustc_driver;
+extern crate rustc_span;
 
 use std::any::Any;
 use std::sync::Arc;
 use std::path::Path;
-use syntax::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 use rustc::session::Session;
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;

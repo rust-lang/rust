@@ -11,8 +11,8 @@ use rustc::session::{filesearch, Session};
 use rustc::util::common::{time, time_ext};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
-use syntax::symbol::Symbol;
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;

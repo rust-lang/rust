@@ -4,8 +4,8 @@ pub use self::hcx::{
     hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
 };
 crate use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_span::symbol::{sym, Symbol};
 pub use rustc_span::CachingSourceMapView;
-use syntax::symbol::{sym, Symbol};
 
 mod hcx;
 

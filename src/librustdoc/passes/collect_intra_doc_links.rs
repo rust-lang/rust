@@ -11,10 +11,10 @@ use rustc::ty;
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
 use rustc_resolve::ParentScope;
+use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use syntax;
 use syntax::ast::{self, Ident};
-use syntax::symbol::Symbol;
 
 use std::ops::Range;
 
