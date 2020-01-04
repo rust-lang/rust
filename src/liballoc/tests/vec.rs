@@ -133,13 +133,13 @@ fn test_extend_ref() {
 
 #[test]
 fn test_remove_item() {
-    let mut v = vec![1,2,3];
+    let mut v = vec![1, 2, 3];
     v.remove_item(&1);
 
     assert_eq!(v.len(), 2);
-    assert_eq!(v, [2,3]);
+    assert_eq!(v, [2, 3]);
 
-    let mut w = vec![1,2,3];
+    let mut w = vec![1, 2, 3];
     w.remove_item(&4);
 
     assert_eq!(w.len(), 3);

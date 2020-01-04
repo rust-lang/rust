@@ -1690,8 +1690,7 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl <T> Vec<T> {
-
+impl<T> Vec<T> {
     /// Removes the first instance of `item` from the vector if the item exists.
     ///
     /// # Examples
@@ -1707,12 +1706,12 @@ impl <T> Vec<T> {
 
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
     pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
-    where T: PartialEq<V>
+    where
+        T: PartialEq<V>,
     {
         let pos = self.iter().position(|x| *x == *item)?;
         Some(self.remove(pos))
     }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
