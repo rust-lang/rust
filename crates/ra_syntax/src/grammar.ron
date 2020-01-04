@@ -1,6 +1,0 @@
-// Stores definitions which must be used in multiple places
-// See `cargo xtask codegen` (defined in xtasks/src/main.rs)
-Grammar(
-    ast: {
-    },
-)
