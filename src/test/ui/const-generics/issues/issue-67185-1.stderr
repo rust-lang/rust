@@ -6,3 +6,9 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
+warning: the feature `lazy_normalization_consts` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-67185-1.rs:5:12
+   |
+LL | #![feature(lazy_normalization_consts)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+

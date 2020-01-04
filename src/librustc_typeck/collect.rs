@@ -1156,14 +1156,22 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 
     let node = tcx.hir().get(hir_id);
     let parent_def_id = match node {
-        Node::AnonConst(_)
-        | Node::ImplItem(_)
+        Node::ImplItem(_)
         | Node::TraitItem(_)
         | Node::Variant(_)
         | Node::Ctor(..)
         | Node::Field(_) => {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id(parent_id).to_def_id())
+        }
+
+        Node::AnonConst(_) => {
+            if tcx.features().lazy_normalization_consts {
+                let parent_id = tcx.hir().get_parent_item(hir_id);
+                Some(tcx.hir().local_def_id(parent_id))
+            } else {
+                None
+            }
         }
 
         Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {

@@ -164,11 +164,15 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
-            (ty::ConstKind::Unevaluated(..), _) => {
+            (ty::ConstKind::Unevaluated(..), _)
+                if self.tcx.features().lazy_normalization_consts =>
+            {
                 relation.const_equate_obligation(a, b);
                 return Ok(b);
             }
-            (_, ty::ConstKind::Unevaluated(..)) => {
+            (_, ty::ConstKind::Unevaluated(..))
+                if self.tcx.features().lazy_normalization_consts =>
+            {
                 relation.const_equate_obligation(a, b);
                 return Ok(a);
             }
@@ -658,14 +662,16 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) => Ok(c),
+            ty::ConstKind::Unevaluated(..) if self.tcx().features().lazy_normalization_consts => {
+                Ok(c)
+            }
             _ => relate::super_relate_consts(self, c, c),
         }
     }
 }
 
 pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
-    /// Register am obligation that both constants must be equal to each other.
+    /// Register an obligation that both constants must be equal to each other.
     ///
     /// If they aren't equal then the relation doesn't hold.
     fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);

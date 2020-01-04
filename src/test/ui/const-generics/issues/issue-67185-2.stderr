@@ -6,56 +6,106 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67185-2.rs:15:1
+warning: the feature `lazy_normalization_consts` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-67185-2.rs:3:12
+   |
+LL | #![feature(lazy_normalization_consts)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:17:1
    |
 LL | / trait Foo
+LL | |
 LL | |     where
 LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
 LL | |         <u8 as Baz>::Quaks: Bar,
 LL | | {
 LL | | }
-   | |_^ expected `3usize`, found `4usize`
+   | |_^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = note: expected type `3usize`
-              found type `4usize`
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67185-2.rs:24:6
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:17:1
+   |
+LL | / trait Foo
+LL | |
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:27:6
    |
 LL | impl Foo for FooImpl {}
-   |      ^^^ expected `3usize`, found `4usize`
+   |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = note: expected type `3usize`
-              found type `4usize`
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67185-2.rs:24:6
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:27:6
    |
 LL | impl Foo for FooImpl {}
-   |      ^^^ expected `2usize`, found `3usize`
+   |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
-   = note: expected type `2usize`
-              found type `3usize`
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67185-2.rs:28:1
+error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:31:14
    |
-LL | fn f(_: impl Foo) {}
-   | ^^^^^^^^^^^^^^^^^^^^ expected `2usize`, found `3usize`
+LL | / trait Foo
+LL | |
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_- required by `Foo`
+...
+LL |   fn f(_: impl Foo) {}
+   |                ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
-   = note: expected type `2usize`
-              found type `3usize`
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67185-2.rs:28:1
+error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
+  --> $DIR/issue-67185-2.rs:31:14
    |
-LL | fn f(_: impl Foo) {}
-   | ^^^^^^^^^^^^^^^^^^^^ expected `3usize`, found `4usize`
+LL | / trait Foo
+LL | |
+LL | |     where
+LL | |         [<u8 as Baz>::Quaks; 2]: Bar,
+LL | |         <u8 as Baz>::Quaks: Bar,
+LL | | {
+LL | | }
+   | |_- required by `Foo`
+...
+LL |   fn f(_: impl Foo) {}
+   |                ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = note: expected type `3usize`
-              found type `4usize`
+   = help: the following implementations were found:
+             <[[u16; 3]; 3] as Bar>
+             <[u16; 4] as Bar>
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0277`.

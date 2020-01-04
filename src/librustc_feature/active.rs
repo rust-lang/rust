@@ -558,6 +558,9 @@ declare_features! (
 
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
+    
+    /// Lazily evaluate constants. Which allows constants to depend on type parameters.
+    (active, lazy_normalization_consts, "1.44.0", Some(60471), None),
 
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
@@ -581,4 +584,5 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::raw_dylib,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
+    sym::lazy_normalization_consts,
 ];

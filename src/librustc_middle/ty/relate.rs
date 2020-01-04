@@ -431,18 +431,20 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             let t = relation.relate(&a_t, &b_t)?;
             match relation.relate(&sz_a, &sz_b) {
                 Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                // FIXME(lazy_normalization_consts) Implement improved diagnostics for mismatched array
+                //  length?
+                Err(err) if relation.tcx().features().lazy_normalization_consts => Err(err),
                 Err(err) => {
-                    //                    // Check whether the lengths are both concrete/known values,
-                    //                    // but are unequal, for better diagnostics.
-                    //                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
-                    //                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
-                    //                    match (sz_a, sz_b) {
-                    //                        (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
-                    //                            expected_found(relation, &sz_a_val, &sz_b_val),
-                    //                        )),
-                    //                        _ => Err(err),
-                    //                    }
-                    Err(err)
+                    // Check whether the lengths are both concrete/known values,
+                    // but are unequal, for better diagnostics.
+                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
+                    match (sz_a, sz_b) {
+                        (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
+                            expected_found(relation, &sz_a_val, &sz_b_val),
+                        )),
+                        _ => Err(err),
+                    }
                 }
             }
         }
@@ -605,14 +607,14 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         }
 
         // FIXME(const_generics): this is wrong, as it is a projection
-        // (
-        //     ty::ConstKind::Unevaluated(a_def_id, a_substs, a_promoted),
-        //     ty::ConstKind::Unevaluated(b_def_id, b_substs, b_promoted),
-        // ) if a_def_id == b_def_id && a_promoted == b_promoted => {
-        //     let substs =
-        //         relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
-        //     Ok(ty::ConstKind::Unevaluated(a_def_id, &substs, a_promoted))
-        // }
+        (
+            ty::ConstKind::Unevaluated(a_def_id, a_substs, a_promoted),
+            ty::ConstKind::Unevaluated(b_def_id, b_substs, b_promoted),
+        ) if a_def_id == b_def_id && a_promoted == b_promoted => {
+            let substs =
+                relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
+            Ok(ty::ConstKind::Unevaluated(a_def_id, &substs, a_promoted))
+        }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
     };
     new_const_val.map(|val| tcx.mk_const(ty::Const { val, ty: a.ty }))

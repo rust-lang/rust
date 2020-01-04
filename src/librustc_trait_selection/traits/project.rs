@@ -386,6 +386,15 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             _ => ty,
         }
     }
+
+    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if self.selcx.tcx().features().lazy_normalization_consts {
+            constant
+        } else {
+            let constant = constant.super_fold_with(self);
+            constant.eval(self.selcx.tcx(), self.param_env)
+        }
+    }
 }
 
 /// The guts of `normalize`: normalize a specific projection like `<T
