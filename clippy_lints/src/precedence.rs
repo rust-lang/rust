@@ -3,8 +3,8 @@ use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Spanned;
 use syntax::ast::*;
-use syntax::source_map::Spanned;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for operations where precedence may be unclear

@@ -6,9 +6,9 @@ use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 use syntax::ast::{LitKind, StrStyle};
-use syntax::source_map::{BytePos, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation

@@ -5,10 +5,10 @@ use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{BytePos, MultiSpan, Span};
 use rustc_span::Pos;
 use std::ops::Range;
 use syntax::ast::{AttrKind, Attribute};
-use syntax::source_map::{BytePos, MultiSpan, Span};
 use url::Url;
 
 declare_clippy_lint! {

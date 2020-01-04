@@ -7,9 +7,9 @@ use rustc::hir::{BinOpKind, Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
 use syntax::ast::LitKind;
-use syntax::source_map::Spanned;
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for using `x.get(x.len() - 1)` instead of

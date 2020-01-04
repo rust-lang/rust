@@ -36,9 +36,9 @@
 use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 use syntax::ast;
-use syntax::source_map::{original_sp, DUMMY_SP};
 
 use crate::utils::{snippet, snippet_block, span_help_and_lint, trim_multiline};
 

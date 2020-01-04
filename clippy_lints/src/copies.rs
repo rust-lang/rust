@@ -6,9 +6,9 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::Symbol;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for consecutive `if`s with the same condition.

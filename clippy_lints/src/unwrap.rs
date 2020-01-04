@@ -6,7 +6,7 @@ use rustc_session::declare_tool_lint;
 use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.

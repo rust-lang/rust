@@ -16,12 +16,12 @@ use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_span::source_map::Span;
 use rustc_span::{BytePos, Symbol};
 use rustc_typeck::expr_use_visitor::*;
 use std::iter::{once, Iterator};
 use std::mem;
 use syntax::ast;
-use syntax::source_map::Span;
 
 use crate::utils::paths;
 use crate::utils::{

@@ -5,9 +5,9 @@ use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 use syntax::ast::Attribute;
-use syntax::source_map::Span;
 
 use crate::utils::{match_type, paths, snippet_opt, span_help_and_lint, LimitStack};
 

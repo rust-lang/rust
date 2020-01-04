@@ -16,9 +16,9 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray,
 use rustc::ty::{self, Predicate, Ty};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
+use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use syntax::ast;
-use syntax::source_map::Span;
-use syntax::symbol::{sym, Symbol, SymbolStr};
 
 use crate::utils::usage::mutated_variables;
 use crate::utils::{

@@ -12,10 +12,10 @@ use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;
 use syntax::ast;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
-use syntax::source_map::Span;
 use syntax::visit::FnKind;
 
 declare_clippy_lint! {

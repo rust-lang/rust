@@ -11,9 +11,9 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::Attribute;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions with too many parameters.

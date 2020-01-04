@@ -4,8 +4,8 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Spanned;
 use syntax::ast::RangeLimits;
-use syntax::source_map::Spanned;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{higher, SpanlessEq};

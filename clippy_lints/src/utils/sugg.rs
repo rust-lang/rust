@@ -6,13 +6,13 @@ use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors::Applicability;
+use rustc_span::source_map::{CharPos, Span};
 use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
 use syntax::ast;
 use syntax::print::pprust::token_kind_to_string;
-use syntax::source_map::{CharPos, Span};
 use syntax::token;
 use syntax::util::parser::AssocOp;
 

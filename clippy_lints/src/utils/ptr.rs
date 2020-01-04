@@ -2,9 +2,9 @@ use crate::utils::{get_pat_name, match_var, snippet};
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::LateContext;
+use rustc_span::source_map::Span;
 use std::borrow::Cow;
 use syntax::ast::Name;
-use syntax::source_map::Span;
 
 pub fn get_spans(
     cx: &LateContext<'_, '_>,

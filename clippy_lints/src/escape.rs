@@ -6,8 +6,8 @@ use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use rustc_typeck::expr_use_visitor::*;
-use syntax::source_map::Span;
 
 use crate::utils::span_lint;
 

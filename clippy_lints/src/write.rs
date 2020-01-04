@@ -8,9 +8,9 @@ use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
 use rustc_parse::parser;
 use rustc_session::declare_tool_lint;
+use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
 use syntax::ast::*;
-use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 

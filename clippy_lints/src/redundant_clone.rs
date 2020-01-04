@@ -20,8 +20,8 @@ use rustc_mir::dataflow::{
     do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
 };
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
-use syntax::source_map::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {

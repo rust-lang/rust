@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc_session::declare_tool_lint;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
 use crate::utils::{clip, snippet, span_lint, unsext};

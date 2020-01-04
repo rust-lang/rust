@@ -3,8 +3,8 @@ use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::lint::{self, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_session::declare_tool_lint;
+use rustc_span::source_map::Span;
 use syntax::ast;
-use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** it lints if an exported function, method, trait method with default impl,
