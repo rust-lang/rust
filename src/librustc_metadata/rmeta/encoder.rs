@@ -21,7 +21,7 @@ use rustc_index::vec::Idx;
 use rustc::session::config::{self, CrateType};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 
 use log::{debug, trace};
@@ -1705,6 +1705,22 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // generated regardless of trailing bytes that end up in it.
 
 pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+    join(
+        || encode_metadata_impl(tcx),
+        || {
+            // Prefetch some queries used by metadata encoding
+            tcx.dep_graph.with_ignore(|| {
+                par_for_each_in(tcx.mir_keys(LOCAL_CRATE), |&def_id| {
+                    tcx.optimized_mir(def_id);
+                    tcx.promoted_mir(def_id);
+                });
+            })
+        },
+    )
+    .0
+}
+
+fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
