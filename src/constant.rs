@@ -303,11 +303,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
 
         let mut data_ctx = DataContext::new();
 
-        let mut bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
-        // The machO backend of faerie doesn't align data objects correctly unless we do this.
-        while bytes.len() as u64 % 16 != 0 {
-            bytes.push(0xde);
-        }
+        let bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
         for &(offset, (_tag, reloc)) in alloc.relocations().iter() {
