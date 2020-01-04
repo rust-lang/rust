@@ -1,3 +1,14 @@
+//! This optimization replaces stack accesses with SSA variables and removes dead stores when possible.
+//!
+//! # Undefined behaviour
+//!
+//! This optimization is based on the assumption that stack slots which don't have their address
+//! leaked through `stack_addr` are only accessed using `stack_load` and `stack_store` in the
+//! function which has the stack slots. This optimization also assumes that stack slot accesses
+//! are never out of bounds. If these assumptions are not correct, then this optimization may remove
+//! `stack_store` instruction incorrectly, or incorrectly use a previously stored value as the value
+//! being loaded by a `stack_load`.
+
 use std::collections::{BTreeMap, HashSet};
 use std::ops::Not;
 
