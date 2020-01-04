@@ -1703,7 +1703,6 @@ impl<T> Vec<T> {
     ///
     /// assert_eq!(vec, vec![2, 3, 1]);
     /// ```
-
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
     pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
     where
