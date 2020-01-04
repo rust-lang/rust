@@ -3275,7 +3275,7 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
         then {
             let lint_msg = "`!FileType::is_file()` does not deny all readable file types";
             let help_msg = "use `FileType::is_dir()` instead";
-            span_help_and_lint(cx, FILETYPE_IS_FILE, expr.span, lint_msg, help_msg);
+            span_help_and_lint(cx, FILETYPE_IS_FILE, parent.span, lint_msg, help_msg);
         } else {
             let lint_msg = "`FileType::is_file()` does not cover all readable file types";
             let help_msg = "use `!FileType::is_dir()` instead";
