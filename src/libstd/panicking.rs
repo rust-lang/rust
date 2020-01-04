@@ -354,6 +354,9 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
+            // We do two allocations here, unfortunately. But (a) they're required with the current
+            // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
+            // begin_panic below).
             let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
@@ -362,11 +365,6 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
             self.fill()
         }
     }
-
-    // We do two allocations here, unfortunately. But (a) they're
-    // required with the current scheme, and (b) we don't handle
-    // panic + OOM properly anyway (see comment in begin_panic
-    // below).
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message().unwrap(); // The current implementation always returns Some
@@ -389,12 +387,6 @@ pub fn begin_panic<M: Any + Send>(msg: M, #[cfg(bootstrap)] _: &(&str, u32, u32)
         unsafe { intrinsics::abort() }
     }
 
-    // Note that this should be the only allocation performed in this code path.
-    // Currently this means that panic!() on OOM will invoke this code path,
-    // but then again we're not really ready for panic on OOM anyway. If
-    // we do start doing this, then we should propagate this allocation to
-    // be performed in the parent of this thread instead of the thread that's
-    // panicking.
     rust_panic_with_hook(&mut PanicPayload::new(msg), None, Location::caller());
 
     struct PanicPayload<A> {
@@ -409,6 +401,11 @@ pub fn begin_panic<M: Any + Send>(msg: M, #[cfg(bootstrap)] _: &(&str, u32, u32)
 
     unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
+            // Note that this should be the only allocation performed in this code path. Currently
+            // this means that panic!() on OOM will invoke this code path, but then again we're not
+            // really ready for panic on OOM anyway. If we do start doing this, then we should
+            // propagate this allocation to be performed in the parent of this thread instead of the
+            // thread that's panicking.
             let data = match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => process::abort(),
