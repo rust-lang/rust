@@ -8,7 +8,7 @@ LL | type SVec<T: Send + Send> = Vec<T>;
 help: the bound will not be checked when the type alias is used, and should be removed
    |
 LL | type SVec<T> = Vec<T>;
-   |     --    --
+   |           --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:10:21
@@ -30,7 +30,7 @@ LL | type VVec<'b, 'a: 'b + 'b> = (&'b u32, Vec<&'a i32>);
 help: the bound will not be checked when the type alias is used, and should be removed
    |
 LL | type VVec<'b, 'a> = (&'b u32, Vec<&'a i32>);
-   |            --  --
+   |                --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:14:18
@@ -41,7 +41,7 @@ LL | type WVec<'b, T: 'b + 'b> = (&'b u32, Vec<T>);
 help: the bound will not be checked when the type alias is used, and should be removed
    |
 LL | type WVec<'b, T> = (&'b u32, Vec<T>);
-   |           --  --
+   |               --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:16:25
