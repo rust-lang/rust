@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 log = "0.4"
+unicode-security = "0.0.2"
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
