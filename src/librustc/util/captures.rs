@@ -8,3 +8,9 @@
 pub trait Captures<'a> {}
 
 impl<'a, T: ?Sized> Captures<'a> for T {}
+
+// FIXME(eddyb) false positive, the lifetime parameter is "phantom" but needed.
+#[allow(unused_lifetimes)]
+pub trait Captures2<'a, 'b> {}
+
+impl<'a, 'b, T: ?Sized> Captures2<'a, 'b> for T {}
