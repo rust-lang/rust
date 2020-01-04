@@ -20,6 +20,7 @@ use crate::util::captures::Captures;
 use polonius_engine::Atom;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -27,7 +28,6 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{kw, Symbol};
 
 #[derive(
     Clone,

@@ -923,6 +923,6 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
             &mut ret,
             ptr::null_mut(),
         ))
-        .map(|_| ())
+        .map(drop)
     }
 }

@@ -119,13 +119,13 @@ use rustc::ty::{
 };
 use rustc_index::vec::Idx;
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::source_map::{original_sp, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::feature_err;
-use syntax::source_map::{original_sp, DUMMY_SP};
-use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
 
 use rustc_error_codes::*;

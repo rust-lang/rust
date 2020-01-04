@@ -25,9 +25,9 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::*;
+use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeSet;
 use syntax::ast;
-use syntax::symbol::{sym, Symbol};
 
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {

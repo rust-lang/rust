@@ -6,7 +6,7 @@ LL | fn elided(x: &i32) -> impl Copy { x }
    |              |
    |              let's call the lifetime of this reference `'1`
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a constraint
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                       ^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             lifetime `'a` defined here
    |
    = help: consider replacing `'a` with `'static`
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a constraint
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                ^^^^^^^^^^^^^^

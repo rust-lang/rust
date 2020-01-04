@@ -3,10 +3,10 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::{self, Expr, MetaItem};
 use syntax::ptr::P;
-use syntax::symbol::sym;
 
 pub fn expand_deriving_ord(
     cx: &mut ExtCtxt<'_>,

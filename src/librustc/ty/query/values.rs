@@ -1,7 +1,7 @@
 use crate::ty::util::NeedsDrop;
 use crate::ty::{self, AdtSizedConstraint, Ty, TyCtxt};
 
-use syntax::symbol::Symbol;
+use rustc_span::symbol::Symbol;
 
 pub(super) trait Value<'tcx>: Sized {
     fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Self;

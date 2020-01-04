@@ -78,10 +78,10 @@ use crate::mbe::{self, TokenTree};
 
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
 use rustc_parse::Directory;
+use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast::{Ident, Name};
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
 

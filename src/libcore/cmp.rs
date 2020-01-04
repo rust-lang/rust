@@ -495,7 +495,7 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// An order is a total order if it is (for all `a`, `b` and `c`):
 ///
-/// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
+/// - total and asymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
 /// ## Derivable
@@ -674,7 +674,7 @@ impl PartialOrd for Ordering {
 ///
 /// The comparison must satisfy, for all `a`, `b` and `c`:
 ///
-/// - antisymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
+/// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
 /// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
 /// Note that these requirements mean that the trait itself must be implemented symmetrically and

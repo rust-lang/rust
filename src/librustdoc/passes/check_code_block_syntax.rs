@@ -1,8 +1,8 @@
 use errors::Applicability;
 use rustc_parse::lexer::StringReader as Lexer;
+use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, InnerSpan};
 use syntax::sess::ParseSess;
-use syntax::source_map::FilePathMapping;
 use syntax::token;
 
 use crate::clean;

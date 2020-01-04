@@ -9,8 +9,8 @@ use rustc::bug;
 use rustc::session::config::DebugInfo;
 use rustc_codegen_ssa::traits::*;
 
+use rustc_span::symbol::sym;
 use syntax::attr;
-use syntax::symbol::sym;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.

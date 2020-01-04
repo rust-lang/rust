@@ -13,9 +13,9 @@ use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
 use rustc::util::nodemap::FxHashSet;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::kw;
 use rustc_span::Span;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
-use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_error_codes::*;
@@ -259,6 +259,24 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 }
                 return (err, candidates);
             }
+
+            // If the first argument in call is `self` suggest calling a method.
+            if let Some((call_span, args_span)) = self.call_has_self_arg(source) {
+                let mut args_snippet = String::new();
+                if let Some(args_span) = args_span {
+                    if let Ok(snippet) = self.r.session.source_map().span_to_snippet(args_span) {
+                        args_snippet = snippet;
+                    }
+                }
+
+                err.span_suggestion(
+                    call_span,
+                    &format!("try calling `{}` as a method", ident),
+                    format!("self.{}({})", path_str, args_snippet),
+                    Applicability::MachineApplicable,
+                );
+                return (err, candidates);
+            }
         }
 
         // Try Levenshtein algorithm.
@@ -296,6 +314,43 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             }
         }
         (err, candidates)
+    }
+
+    /// Check if the source is call expression and the first argument is `self`. If true,
+    /// return the span of whole call and the span for all arguments expect the first one (`self`).
+    fn call_has_self_arg(&self, source: PathSource<'_>) -> Option<(Span, Option<Span>)> {
+        let mut has_self_arg = None;
+        if let PathSource::Expr(parent) = source {
+            match &parent?.kind {
+                ExprKind::Call(_, args) if args.len() > 0 => {
+                    let mut expr_kind = &args[0].kind;
+                    loop {
+                        match expr_kind {
+                            ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
+                                if arg_name.segments[0].ident.name == kw::SelfLower {
+                                    let call_span = parent.unwrap().span;
+                                    let tail_args_span = if args.len() > 1 {
+                                        Some(Span::new(
+                                            args[1].span.lo(),
+                                            args.last().unwrap().span.hi(),
+                                            call_span.ctxt(),
+                                        ))
+                                    } else {
+                                        None
+                                    };
+                                    has_self_arg = Some((call_span, tail_args_span));
+                                }
+                                break;
+                            }
+                            ExprKind::AddrOf(_, _, expr) => expr_kind = &expr.kind,
+                            _ => break,
+                        }
+                    }
+                }
+                _ => (),
+            }
+        };
+        return has_self_arg;
     }
 
     fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {

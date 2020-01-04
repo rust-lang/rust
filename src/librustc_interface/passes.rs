@@ -8,8 +8,8 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
+use rustc::middle;
 use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
-use rustc::middle::{self, stability};
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
 use rustc::session::config::{PpMode, PpSourceMode};
 use rustc::session::search_paths::PathKind;
@@ -33,12 +33,12 @@ use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::mut_visit::MutVisitor;
-use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
 
@@ -687,7 +687,6 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
-    stability::provide(providers);
     rustc_passes::provide(providers);
     rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
@@ -881,7 +880,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     },
                     {
                         time(sess, "unused lib feature checking", || {
-                            stability::check_unused_or_stable_features(tcx)
+                            rustc_passes::stability::check_unused_or_stable_features(tcx)
                         });
                     },
                     {

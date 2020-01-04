@@ -5,6 +5,8 @@ use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
+use rustc_span::source_map::respan;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
@@ -14,8 +16,6 @@ use syntax::entry::{self, EntryPointType};
 use syntax::mut_visit::{ExpectOne, *};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::source_map::respan;
-use syntax::symbol::{sym, Symbol};
 
 use std::{iter, mem};
 

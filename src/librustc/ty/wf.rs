@@ -5,9 +5,9 @@ use crate::middle::lang_items;
 use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use std::iter::once;
-use syntax::symbol::{kw, Ident};
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include

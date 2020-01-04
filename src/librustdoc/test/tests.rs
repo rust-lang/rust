@@ -1,5 +1,5 @@
 use super::{make_test, TestOptions};
-use syntax::edition::DEFAULT_EDITION;
+use rustc_span::edition::DEFAULT_EDITION;
 
 #[test]
 fn make_test_basic() {

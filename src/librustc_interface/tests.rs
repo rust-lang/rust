@@ -12,13 +12,13 @@ use rustc::session::search_paths::SearchPath;
 use rustc::session::{build_session, Session};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::symbol::sym;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
 use syntax;
-use syntax::edition::{Edition, DEFAULT_EDITION};
-use syntax::symbol::sym;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 

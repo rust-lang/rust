@@ -4,6 +4,7 @@
 
 #![feature(repr_simd, platform_intrinsics, concat_idents, test)]
 #![allow(non_camel_case_types)]
+#![allow(const_err)] // the test macro casts i32s to i8 and u8 which causes lots of warnings
 
 extern crate test;
 

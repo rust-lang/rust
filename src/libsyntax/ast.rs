@@ -25,12 +25,8 @@ pub use UnsafeSource::*;
 pub use rustc_span::symbol::{Ident, Symbol as Name};
 
 use crate::ptr::P;
-use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::token::{self, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
-
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -38,6 +34,9 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
+use rustc_span::source_map::{dummy_spanned, respan, Spanned};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
 use std::iter;

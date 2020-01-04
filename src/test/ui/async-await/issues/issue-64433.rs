@@ -23,7 +23,7 @@ impl B {
 async fn can_error(some_string: &str) -> Result<(), String> {
     let a = A { inner: vec![some_string, "foo"] };
     let mut b = B {};
-    Ok(b.something_with_a(a).await.map(|_| ())?)
+    Ok(b.something_with_a(a).await.map(drop)?)
 }
 
 fn main() {

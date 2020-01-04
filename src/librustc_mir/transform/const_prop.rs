@@ -12,10 +12,10 @@ use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::{
-    read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, ReadOnlyBodyAndCache, Rvalue,
-    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
-    UnOp, RETURN_PLACE,
+    read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, CastKind, ClearCrossCrate,
+    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase,
+    ReadOnlyBodyAndCache, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
+    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
@@ -29,9 +29,9 @@ use syntax::ast::Mutability;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
-    LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
-    ScalarMaybeUndef, StackPopCleanup,
+    self, intern_const_alloc_recursive, truncate, AllocId, Allocation, Frame, ImmTy, Immediate,
+    InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
+    Pointer, ScalarMaybeUndef, StackPopCleanup,
 };
 use crate::rustc::ty::subst::Subst;
 use crate::transform::{MirPass, MirSource};
@@ -469,6 +469,127 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    fn check_unary_op(&mut self, arg: &Operand<'tcx>, source_info: SourceInfo) -> Option<()> {
+        self.use_ecx(source_info, |this| {
+            let ty = arg.ty(&this.local_decls, this.tcx);
+
+            if ty.is_integral() {
+                let arg = this.ecx.eval_operand(arg, None)?;
+                let prim = this.ecx.read_immediate(arg)?;
+                // Need to do overflow check here: For actual CTFE, MIR
+                // generation emits code that does this before calling the op.
+                if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                    throw_panic!(OverflowNeg)
+                }
+            }
+
+            Ok(())
+        })?;
+
+        Some(())
+    }
+
+    fn check_binary_op(
+        &mut self,
+        op: BinOp,
+        left: &Operand<'tcx>,
+        right: &Operand<'tcx>,
+        source_info: SourceInfo,
+        place_layout: TyLayout<'tcx>,
+        overflow_check: bool,
+    ) -> Option<()> {
+        let r = self.use_ecx(source_info, |this| {
+            this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
+        })?;
+        if op == BinOp::Shr || op == BinOp::Shl {
+            let left_bits = place_layout.size.bits();
+            let right_size = r.layout.size;
+            let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
+            if r_bits.map_or(false, |b| b >= left_bits as u128) {
+                let lint_root = self.lint_root(source_info)?;
+                let dir = if op == BinOp::Shr { "right" } else { "left" };
+                self.tcx.lint_hir(
+                    ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
+                    lint_root,
+                    source_info.span,
+                    &format!("attempt to shift {} with overflow", dir),
+                );
+                return None;
+            }
+        }
+
+        // If overflow checking is enabled (like in debug mode by default),
+        // then we'll already catch overflow when we evaluate the `Assert` statement
+        // in MIR. However, if overflow checking is disabled, then there won't be any
+        // `Assert` statement and so we have to do additional checking here.
+        if !overflow_check {
+            self.use_ecx(source_info, |this| {
+                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                let (_, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+
+                if overflow {
+                    let err = err_panic!(Overflow(op)).into();
+                    return Err(err);
+                }
+
+                Ok(())
+            })?;
+        }
+
+        Some(())
+    }
+
+    fn check_cast(
+        &mut self,
+        op: &Operand<'tcx>,
+        ty: Ty<'tcx>,
+        source_info: SourceInfo,
+        place_layout: TyLayout<'tcx>,
+    ) -> Option<()> {
+        if !ty.is_integral() || !op.ty(&self.local_decls, self.tcx).is_integral() {
+            return Some(());
+        }
+
+        let value = self.use_ecx(source_info, |this| {
+            this.ecx.read_immediate(this.ecx.eval_operand(op, None)?)
+        })?;
+
+        // Do not try to read bits for ZSTs. This can occur when casting an enum with one variant
+        // to an integer. Such enums are represented as ZSTs but still have a discriminant value
+        // which can be casted.
+        if value.layout.is_zst() {
+            return Some(());
+        }
+
+        let value_size = value.layout.size;
+        let value_bits = value.to_scalar().and_then(|r| r.to_bits(value_size));
+        if let Ok(value_bits) = value_bits {
+            let truncated = truncate(value_bits, place_layout.size);
+            if truncated != value_bits {
+                let scope = source_info.scope;
+                let lint_root = match &self.source_scopes[scope].local_data {
+                    ClearCrossCrate::Set(data) => data.lint_root,
+                    ClearCrossCrate::Clear => return None,
+                };
+                self.tcx.lint_hir(
+                    ::rustc::lint::builtin::CONST_ERR,
+                    lint_root,
+                    source_info.span,
+                    &format!(
+                        "truncating cast: the value {} requires {} bits but the target type is \
+                                          only {} bits",
+                        value_bits,
+                        value_size.bits(),
+                        place_layout.size.bits()
+                    ),
+                );
+                return None;
+            }
+        }
+
+        Some(())
+    }
+
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
@@ -476,8 +597,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
         place: &Place<'tcx>,
     ) -> Option<()> {
-        let span = source_info.span;
-
         // #66397: Don't try to eval into large places as that can cause an OOM
         if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
             return None;
@@ -498,66 +617,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // if an overflow would occur.
             Rvalue::UnaryOp(UnOp::Neg, arg) if !overflow_check => {
                 trace!("checking UnaryOp(op = Neg, arg = {:?})", arg);
-
-                self.use_ecx(source_info, |this| {
-                    let ty = arg.ty(&this.local_decls, this.tcx);
-
-                    if ty.is_integral() {
-                        let arg = this.ecx.eval_operand(arg, None)?;
-                        let prim = this.ecx.read_immediate(arg)?;
-                        // Need to do overflow check here: For actual CTFE, MIR
-                        // generation emits code that does this before calling the op.
-                        if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                            throw_panic!(OverflowNeg)
-                        }
-                    }
-
-                    Ok(())
-                })?;
+                self.check_unary_op(arg, source_info)?;
             }
 
             // Additional checking: check for overflows on integer binary operations and report
             // them to the user as lints.
             Rvalue::BinaryOp(op, left, right) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-
-                let r = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
-                })?;
-                if *op == BinOp::Shr || *op == BinOp::Shl {
-                    let left_bits = place_layout.size.bits();
-                    let right_size = r.layout.size;
-                    let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
-                    if r_bits.map_or(false, |b| b >= left_bits as u128) {
-                        let lint_root = self.lint_root(source_info)?;
-                        let dir = if *op == BinOp::Shr { "right" } else { "left" };
-                        self.tcx.lint_hir(
-                            ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            lint_root,
-                            span,
-                            &format!("attempt to shift {} with overflow", dir),
-                        );
-                        return None;
-                    }
-                }
-
-                // If overflow checking is enabled (like in debug mode by default),
-                // then we'll already catch overflow when we evaluate the `Assert` statement
-                // in MIR. However, if overflow checking is disabled, then there won't be any
-                // `Assert` statement and so we have to do additional checking here.
-                if !overflow_check {
-                    self.use_ecx(source_info, |this| {
-                        let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-                        let (_, overflow, _ty) = this.ecx.overflowing_binary_op(*op, l, r)?;
-
-                        if overflow {
-                            let err = err_panic!(Overflow(*op)).into();
-                            return Err(err);
-                        }
-
-                        Ok(())
-                    })?;
-                }
+                self.check_binary_op(*op, left, right, source_info, place_layout, overflow_check)?;
             }
 
             // Work around: avoid ICE in miri. FIXME(wesleywiser)
@@ -582,6 +649,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         return None;
                     }
                 }
+            }
+
+            Rvalue::Cast(CastKind::Misc, op, ty) => {
+                trace!("checking Cast(Misc, {:?}, {:?})", op, ty);
+                self.check_cast(op, ty, source_info, place_layout)?;
             }
 
             _ => {}

@@ -1,8 +1,8 @@
-error: this file contains an un-closed delimiter
+error: this file contains an unclosed delimiter
   --> $DIR/issue-62524.rs:4:3
    |
 LL | y![
-   |   - un-closed delimiter
+   |   - unclosed delimiter
 LL | Ϥ,
    |   ^
 

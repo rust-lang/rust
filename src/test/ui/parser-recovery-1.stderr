@@ -1,8 +1,8 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/parser-recovery-1.rs:15:55
+error: this file contains an unclosed delimiter
+  --> $DIR/parser-recovery-1.rs:15:54
    |
 LL | trait Foo {
-   |           - un-closed delimiter
+   |           - unclosed delimiter
 LL |     fn bar() {
    |              - this delimiter might not be properly closed...
 ...
@@ -10,7 +10,7 @@ LL | }
    | - ...as it matches this but it has different indentation
 ...
 LL | }
-   |                                                       ^
+   |                                                      ^
 
 error: unexpected token: `;`
   --> $DIR/parser-recovery-1.rs:12:15

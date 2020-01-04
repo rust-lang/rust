@@ -1,10 +1,10 @@
 use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
+use rustc_span::source_map::{dummy_spanned, DUMMY_SP};
 use syntax::ast;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::source_map::{dummy_spanned, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 

@@ -8,4 +8,4 @@ fn main() {
         y: 5 };
 }
 
-fn foo() { //~ ERROR this file contains an un-closed delimiter
+fn foo() { //~ ERROR this file contains an unclosed delimiter

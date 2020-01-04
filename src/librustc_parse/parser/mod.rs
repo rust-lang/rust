@@ -1354,16 +1354,16 @@ crate fn make_unclosed_delims_error(
     let mut err = sess.span_diagnostic.struct_span_err(
         unmatched.found_span,
         &format!(
-            "incorrect close delimiter: `{}`",
+            "mismatched closing delimiter: `{}`",
             pprust::token_kind_to_string(&token::CloseDelim(found_delim)),
         ),
     );
-    err.span_label(unmatched.found_span, "incorrect close delimiter");
+    err.span_label(unmatched.found_span, "mismatched closing delimiter");
     if let Some(sp) = unmatched.candidate_span {
-        err.span_label(sp, "close delimiter possibly meant for this");
+        err.span_label(sp, "closing delimiter possibly meant for this");
     }
     if let Some(sp) = unmatched.unclosed_span {
-        err.span_label(sp, "un-closed delimiter");
+        err.span_label(sp, "unclosed delimiter");
     }
     Some(err)
 }

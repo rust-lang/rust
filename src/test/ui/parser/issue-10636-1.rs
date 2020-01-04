@@ -1,8 +1,8 @@
 struct Obj {
-    //~^ NOTE: un-closed delimiter
+    //~^ NOTE: unclosed delimiter
     member: usize
 )
-//~^ ERROR incorrect close delimiter
-//~| NOTE incorrect close delimiter
+//~^ ERROR mismatched closing delimiter
+//~| NOTE mismatched closing delimiter
 
 fn main() {}

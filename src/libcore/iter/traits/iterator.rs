@@ -2104,6 +2104,43 @@ pub trait Iterator {
         self.try_fold((), check(f)).break_value()
     }
 
+    /// Applies function to the elements of iterator and returns
+    /// the first non-none result or the first error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_find)]
+    ///
+    /// let a = ["1", "2", "lol", "NaN", "5"];
+    ///
+    /// let is_my_num = |s: &str, search: i32| -> Result<bool, std::num::ParseIntError> {
+    ///     Ok(s.parse::<i32>()?  == search)
+    /// };
+    ///
+    /// let result = a.iter().try_find(|&&s| is_my_num(s, 2));
+    /// assert_eq!(result, Ok(Some(&"2")));
+    ///
+    /// let result = a.iter().try_find(|&&s| is_my_num(s, 5));
+    /// assert!(result.is_err());
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    fn try_find<F, E, R>(&mut self, mut f: F) -> Result<Option<Self::Item>, E>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> R,
+        R: Try<Ok = bool, Error = E>,
+    {
+        self.try_for_each(move |x| match f(&x).into_result() {
+            Ok(false) => LoopState::Continue(()),
+            Ok(true) => LoopState::Break(Ok(x)),
+            Err(x) => LoopState::Break(Err(x)),
+        })
+        .break_value()
+        .transpose()
+    }
+
     /// Searches for an element in an iterator, returning its index.
     ///
     /// `position()` takes a closure that returns `true` or `false`. It applies

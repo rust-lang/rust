@@ -1,8 +1,8 @@
-error: this file contains an un-closed delimiter
-  --> $DIR/unmatched-delimiter-at-end-of-file.rs:11:64
+error: this file contains an unclosed delimiter
+  --> $DIR/unmatched-delimiter-at-end-of-file.rs:11:63
    |
 LL | fn foo() {
-   |          - un-closed delimiter                                 ^
+   |          - unclosed delimiter                                 ^
 
 error: aborting due to previous error
 

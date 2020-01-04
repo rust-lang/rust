@@ -54,7 +54,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             err.span_suggestion(
                                 fn_return_span,
                                 &format!(
-                                    "you can add a constraint to the return type to make it last \
+                                    "you can add a bound to the return type to make it last \
                                  less than `'static` and match {}",
                                     lifetime,
                                 ),

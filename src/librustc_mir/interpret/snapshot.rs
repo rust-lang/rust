@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
+use rustc_span::source_map::Span;
 use syntax::ast::Mutability;
-use syntax::source_map::Span;
 
 use super::eval_context::{LocalState, StackPopCleanup};
 use super::{Frame, Immediate, LocalValue, MemPlace, Memory, Operand, Place, ScalarMaybeUndef};

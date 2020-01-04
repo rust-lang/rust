@@ -156,7 +156,7 @@ impl RawHandle {
     }
 
     pub fn cancel_io(&self) -> io::Result<()> {
-        unsafe { cvt(c::CancelIo(self.raw())).map(|_| ()) }
+        unsafe { cvt(c::CancelIo(self.raw())).map(drop) }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

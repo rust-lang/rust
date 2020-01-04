@@ -5,8 +5,8 @@ use std::fmt;
 use crate::infer::canonical::query_response;
 use crate::infer::canonical::QueryRegionConstraints;
 use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_span::source_map::DUMMY_SP;
 use std::rc::Rc;
-use syntax::source_map::DUMMY_SP;
 
 pub struct CustomTypeOp<F, G> {
     closure: F,

@@ -17,11 +17,11 @@ use rustc_resolve as resolve;
 
 use errors::emitter::{Emitter, EmitterWriter};
 use errors::json::JsonEmitter;
+use rustc_span::source_map;
+use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::attr;
-use syntax::source_map;
-use syntax::symbol::sym;
 
 use rustc_data_structures::sync::{self, Lrc};
 use std::cell::RefCell;

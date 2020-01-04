@@ -1,4 +1,6 @@
-use crate::symbol::Symbol;
+// FIXME(Centril): Move to rustc_span?
+
+use rustc_span::symbol::Symbol;
 use std::cmp;
 
 #[cfg(test)]

@@ -16,8 +16,8 @@ use rustc::util::nodemap::FxHashMap;
 
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
-use syntax::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
     // items from this crate

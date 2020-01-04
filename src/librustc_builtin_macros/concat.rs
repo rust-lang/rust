@@ -1,6 +1,6 @@
 use rustc_expand::base::{self, DummyResult};
+use rustc_span::symbol::Symbol;
 use syntax::ast;
-use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
 
 use std::string::String;

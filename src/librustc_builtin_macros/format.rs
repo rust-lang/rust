@@ -8,10 +8,10 @@ use errors::Applicability;
 use errors::DiagnosticBuilder;
 
 use rustc_expand::base::{self, *};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast;
 use syntax::ptr::P;
-use syntax::symbol::{sym, Symbol};
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 

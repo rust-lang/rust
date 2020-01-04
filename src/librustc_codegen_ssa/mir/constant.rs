@@ -5,7 +5,7 @@ use rustc::mir::interpret::ErrorHandled;
 use rustc::ty::layout::{self, HasTyCtxt};
 use rustc::ty::{self, Ty};
 use rustc_index::vec::Idx;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 use super::FunctionCx;
 

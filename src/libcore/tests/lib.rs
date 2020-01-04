@@ -11,6 +11,7 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
+#![feature(try_find)]
 #![feature(is_sorted)]
 #![feature(iter_once_with)]
 #![feature(pattern)]

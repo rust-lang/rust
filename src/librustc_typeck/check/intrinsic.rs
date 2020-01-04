@@ -6,8 +6,8 @@ use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::Symbol;
 
 use rustc::hir;
 

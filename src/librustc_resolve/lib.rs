@@ -39,14 +39,14 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
 use syntax::ast::{Crate, CRATE_NODE_ID};
 use syntax::ast::{ItemKind, Path};
 use syntax::attr;
 use syntax::print::pprust;
-use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{struct_span_err, unwrap_or};
 

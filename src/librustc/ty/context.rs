@@ -59,6 +59,8 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_span::source_map::MultiSpan;
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
@@ -75,8 +77,6 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
-use syntax::source_map::MultiSpan;
-use syntax::symbol::{kw, sym, Symbol};
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,
@@ -2765,10 +2765,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         Lrc::new(tcx.glob_map.get(&id).cloned().unwrap_or_default())
     };
 
-    providers.stability_index = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc(stability::Index::new(tcx))
-    };
     providers.lookup_stability = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
         let id = tcx.hir().definitions().def_index_to_hir_id(id.index);

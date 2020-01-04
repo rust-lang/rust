@@ -17,7 +17,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
-use syntax::source_map::{self, Span, DUMMY_SP};
+use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, Memory, OpTy, Operand, Place, PlaceTy,

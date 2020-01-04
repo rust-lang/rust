@@ -188,7 +188,13 @@ cfg_if::cfg_if! {
                 match eh_action {
                     EHAction::None |
                     EHAction::Cleanup(_) => return continue_unwind(exception_object, context),
-                    EHAction::Catch(_) => return uw::_URC_HANDLER_FOUND,
+                    EHAction::Catch(_) => {
+                        // EHABI requires the personality routine to update the
+                        // SP value in the barrier cache of the exception object.
+                        (*exception_object).private[5] =
+                            uw::_Unwind_GetGR(context, uw::UNWIND_SP_REG);
+                        return uw::_URC_HANDLER_FOUND;
+                    }
                     EHAction::Terminate => return uw::_URC_FAILURE,
                 }
             } else {

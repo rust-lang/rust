@@ -17,12 +17,12 @@ use rustc_expand::base::{self, Indeterminate, InvocationRes};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnId, ExpnKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, Ident, NodeId};
 use syntax::attr::{self, StabilityLevel};
-use syntax::edition::Edition;
 use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
 

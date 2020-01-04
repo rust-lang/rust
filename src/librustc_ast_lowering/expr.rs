@@ -517,7 +517,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Desugar `<expr>.await` into:
     /// ```rust
-    /// match ::std::future::IntoFuture::into_future(<expr>) {
+    /// match <expr> {
     ///     mut pinned => loop {
     ///         match ::std::future::poll_with_tls_context(unsafe {
     ///             <::std::pin::Pin>::new_unchecked(&mut pinned)
@@ -641,27 +641,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // mut pinned => loop { ... }
         let pinned_arm = self.arm(pinned_pat, loop_expr);
 
-        // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
-        let into_future_span = self.mark_span_with_reason(
-            DesugaringKind::Await,
-            await_span,
-            self.allow_into_future.clone(),
-        );
-        let expr = self.lower_expr_mut(expr);
-        let into_future_expr = self.expr_call_std_path(
-            into_future_span,
-            &[sym::future, sym::IntoFuture, sym::into_future],
-            arena_vec![self; expr],
-        );
-
-        // match <into_future_expr> {
+        // match <expr> {
         //     mut pinned => loop { .. }
         // }
-        hir::ExprKind::Match(
-            into_future_expr,
-            arena_vec![self; pinned_arm],
-            hir::MatchSource::AwaitDesugar,
-        )
+        let expr = self.lower_expr(expr);
+        hir::ExprKind::Match(expr, arena_vec![self; pinned_arm], hir::MatchSource::AwaitDesugar)
     }
 
     fn lower_expr_closure(

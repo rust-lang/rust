@@ -21,7 +21,7 @@ use ast::AttrId;
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::edition::Edition;
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[macro_export]
 macro_rules! unwrap_or {
@@ -51,19 +51,13 @@ impl Globals {
     }
 }
 
-pub fn with_globals<F, R>(edition: Edition, f: F) -> R
-where
-    F: FnOnce() -> R,
-{
+pub fn with_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
     let globals = Globals::new(edition);
     GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
 }
 
-pub fn with_default_globals<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    with_globals(edition::DEFAULT_EDITION, f)
+pub fn with_default_globals<R>(f: impl FnOnce() -> R) -> R {
+    with_globals(DEFAULT_EDITION, f)
 }
 
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
@@ -86,9 +80,8 @@ pub mod util {
 
 pub mod ast;
 pub mod attr;
-pub mod expand;
-pub use rustc_span::source_map;
 pub mod entry;
+pub mod expand;
 pub mod feature_gate {
     mod check;
     pub use check::{check_attribute, check_crate, feature_err, feature_err_issue, get_features};
@@ -97,8 +90,6 @@ pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;
 pub use rustc_session::parse as sess;
-pub use rustc_span::edition;
-pub use rustc_span::symbol;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;

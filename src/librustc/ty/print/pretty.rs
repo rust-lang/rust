@@ -11,10 +11,10 @@ use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr::{SignedInt, UnsignedInt};
-use syntax::symbol::{kw, Symbol};
 
 use std::cell::Cell;
 use std::collections::BTreeMap;

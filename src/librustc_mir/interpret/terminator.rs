@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::ty::Instance;
 use rustc::{mir, ty};
+use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
-use syntax::source_map::Span;
 
 use super::{
     FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, StackPopCleanup,

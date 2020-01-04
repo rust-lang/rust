@@ -23,11 +23,11 @@ use rustc::hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
 use std::vec::Vec;
 use syntax::ast::{self, Attribute, NestedMetaItem};
-use syntax::symbol::{sym, Symbol};
 
 const EXCEPT: Symbol = sym::except;
 const LABEL: Symbol = sym::label;

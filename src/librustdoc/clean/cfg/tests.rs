@@ -1,9 +1,9 @@
 use super::*;
 
+use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::symbol::Symbol;
 use syntax::with_default_globals;
 
 fn word_cfg(s: &str) -> Cfg {

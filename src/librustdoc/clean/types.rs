@@ -17,12 +17,12 @@ use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
-use syntax::source_map::DUMMY_SP;
 use syntax::util::comments::strip_doc_comment_decoration;
 
 use crate::clean::cfg::Cfg;

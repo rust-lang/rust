@@ -18,11 +18,11 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::TraitCandidate;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc::{bug, lint, span_bug};
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::symbol::{kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::{unwrap_or, walk_list};
@@ -345,7 +345,7 @@ struct DiagnosticMetadata {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// The current enclosing funciton (used for better errors).
+    /// The current enclosing function (used for better errors).
     current_function: Option<Span>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when

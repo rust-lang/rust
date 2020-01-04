@@ -10,11 +10,7 @@ use core::task::{Context, Poll};
 
 #[doc(inline)]
 #[stable(feature = "futures_api", since = "1.36.0")]
-pub use core::future::Future;
-
-#[doc(inline)]
-#[unstable(feature = "into_future", issue = "67644")]
-pub use core::future::IntoFuture;
+pub use core::future::*;
 
 /// Wrap a generator in a future.
 ///

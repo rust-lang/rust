@@ -1,14 +1,14 @@
 use crate::expand::{self, AstFragment, Invocation};
 
 use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
+use rustc_span::edition::Edition;
+use rustc_span::source_map::SourceMap;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use syntax::ast::{self, Attribute, Name, NodeId, PatKind};
 use syntax::attr::{self, Deprecation, HasAttrs, Stability};
-use syntax::edition::Edition;
 use syntax::mut_visit::{self, MutVisitor};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::source_map::SourceMap;
-use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
