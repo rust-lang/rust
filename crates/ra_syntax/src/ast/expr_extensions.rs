@@ -126,6 +126,24 @@ pub enum BinOp {
     BitXorAssign,
 }
 
+impl BinOp {
+    pub fn is_assignment(&self) -> bool {
+        match *self {
+            BinOp::Assignment
+            | BinOp::AddAssign
+            | BinOp::DivAssign
+            | BinOp::MulAssign
+            | BinOp::RemAssign
+            | BinOp::ShrAssign
+            | BinOp::ShlAssign
+            | BinOp::SubAssign
+            | BinOp::BitOrAssign
+            | BinOp::BitAndAssign
+            | BinOp::BitXorAssign => true,
+            _ => false,
+        }
+    }
+}
 impl ast::BinExpr {
     pub fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
         self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {
