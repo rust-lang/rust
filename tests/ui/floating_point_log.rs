@@ -20,6 +20,8 @@ fn check_log_base() {
 
 fn check_ln1p() {
     let x = 1f32;
+    let _ = (1f32 + 2.).ln();
+    let _ = (1f32 + 2.0).ln();
     let _ = (1.0 + x).ln();
     let _ = (1.0 + x * 2.0).ln();
     let _ = (1.0 + x.powi(2)).ln();
@@ -36,6 +38,8 @@ fn check_ln1p() {
     let _ = (1.0 + x - 2.0).ln();
 
     let x = 1f64;
+    let _ = (1f64 + 2.).ln();
+    let _ = (1f64 + 2.0).ln();
     let _ = (1.0 + x).ln();
     let _ = (1.0 + x * 2.0).ln();
     let _ = (1.0 + x.powi(2)).ln();

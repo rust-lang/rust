@@ -7,10 +7,13 @@ use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
+use sugg::Sugg;
+use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Looks for floating-point expressions that
@@ -80,7 +83,45 @@ fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr) -> Option<&
     None
 }
 
-fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
+// Adds type suffixes and parenthesis to method receivers if necessary
+fn prepare_receiver_sugg<'a>(cx: &LateContext<'_, '_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
+    let mut suggestion = Sugg::hir(cx, expr, "..");
+
+    if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
+        expr = &inner_expr;
+    }
+
+    if_chain! {
+        // if the expression is a float literal and it is unsuffixed then
+        // add a suffix so the suggestion is valid and unambiguous
+        if let ty::Float(float_ty) = cx.tables.expr_ty(expr).kind;
+        if let ExprKind::Lit(lit) = &expr.kind;
+        if let ast::LitKind::Float(sym, ast::LitFloatType::Unsuffixed) = lit.node;
+        then {
+            let op = format!(
+                "{}{}{}",
+                suggestion,
+                // Check for float literals without numbers following the decimal
+                // separator such as `2.` and adds a trailing zero
+                if sym.as_str().ends_with('.') {
+                    "0"
+                } else {
+                    ""
+                },
+                float_ty.name_str()
+            ).into();
+
+            suggestion = match suggestion {
+                Sugg::MaybeParen(_) => Sugg::MaybeParen(op),
+                _ => Sugg::NonParen(op)
+            };
+        }
+    }
+
+    suggestion.maybe_par()
+}
+
+fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     if let Some(method) = get_specialized_log_method(cx, &args[1]) {
         span_lint_and_sugg(
             cx,
@@ -88,7 +129,7 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", sugg::Sugg::hir(cx, &args[0], ".."), method),
+            format!("{}.{}()", Sugg::hir(cx, &args[0], ".."), method),
             Applicability::MachineApplicable,
         );
     }
@@ -113,7 +154,7 @@ fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
                 expr.span,
                 "ln(1 + x) can be computed more accurately",
                 "consider using",
-                format!("{}.ln_1p()", sugg::Sugg::hir(cx, recv, "..").maybe_par()),
+                format!("{}.ln_1p()", prepare_receiver_sugg(cx, recv)),
                 Applicability::MachineApplicable,
             );
         }
@@ -164,7 +205,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
             expr.span,
             "exponent for bases 2 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", sugg::Sugg::hir(cx, &args[1], "..").maybe_par(), method),
+            format!("{}.{}()", prepare_receiver_sugg(cx, &args[1]), method),
             Applicability::MachineApplicable,
         );
     }
@@ -187,7 +228,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
                 expr.span,
                 "exponentiation with integer powers can be computed more efficiently",
                 "consider using",
-                format!("{}.powi({})", sugg::Sugg::hir(cx, &args[0], ".."), exponent),
+                format!("{}.powi({})", Sugg::hir(cx, &args[0], ".."), exponent),
                 Applicability::MachineApplicable,
             );
 
@@ -202,7 +243,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr, args: &HirVec<Expr>) {
             expr.span,
             help,
             "consider using",
-            format!("{}.{}()", sugg::Sugg::hir(cx, &args[0], ".."), method),
+            format!("{}.{}()", Sugg::hir(cx, &args[0], ".."), method),
             Applicability::MachineApplicable,
         );
     }
@@ -218,6 +259,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
         if let Some((value, _)) = constant(cx, cx.tables, rhs);
         if F32(1.0) == value || F64(1.0) == value;
         if let ExprKind::MethodCall(ref path, _, ref method_args) = lhs.kind;
+        if cx.tables.expr_ty(&method_args[0]).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
             span_lint_and_sugg(
@@ -228,7 +270,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr) {
                 "consider using",
                 format!(
                     "{}.exp_m1()",
-                    sugg::Sugg::hir(cx, &method_args[0], "..")
+                    Sugg::hir(cx, &method_args[0], "..")
                 ),
                 Applicability::MachineApplicable,
             );
@@ -275,7 +317,9 @@ fn check_log_division(cx: &LateContext<'_, '_>, expr: &Expr) {
         if op.node == BinOpKind::Div;
         if cx.tables.expr_ty(lhs).is_floating_point();
         if let ExprKind::MethodCall(left_path, _, left_args) = &lhs.kind;
+        if cx.tables.expr_ty(&left_args[0]).is_floating_point();
         if let ExprKind::MethodCall(right_path, _, right_args) = &rhs.kind;
+        if cx.tables.expr_ty(&right_args[0]).is_floating_point();
         let left_method = left_path.ident.name.as_str();
         if left_method == right_path.ident.name.as_str();
         if log_methods.iter().any(|&method| left_method == method);
@@ -290,12 +334,12 @@ fn check_log_division(cx: &LateContext<'_, '_>, expr: &Expr) {
 
             // Reduce the expression further for bases 2, 10 and e
             let suggestion = if let Some(method) = get_specialized_log_method(cx, right_recv) {
-                format!("{}.{}()", sugg::Sugg::hir(cx, left_recv, ".."), method)
+                format!("{}.{}()", Sugg::hir(cx, left_recv, ".."), method)
             } else {
                 format!(
                     "{}.log({})",
-                    sugg::Sugg::hir(cx, left_recv, ".."),
-                    sugg::Sugg::hir(cx, right_recv, "..")
+                    Sugg::hir(cx, left_recv, ".."),
+                    Sugg::hir(cx, right_recv, "..")
                 )
             };
 
