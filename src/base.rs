@@ -1,4 +1,5 @@
 use rustc::ty::adjustment::PointerCast;
+use rustc_index::vec::IndexVec;
 
 use crate::prelude::*;
 
@@ -27,10 +28,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Predefine ebb's
     let start_ebb = bcx.create_ebb();
-    let mut ebb_map: HashMap<BasicBlock, Ebb> = HashMap::new();
-    for (bb, _bb_data) in mir.basic_blocks().iter_enumerated() {
-        ebb_map.insert(bb, bcx.create_ebb());
-    }
+    let ebb_map: IndexVec<BasicBlock, Ebb> = (0..mir.basic_blocks().len()).map(|_| bcx.create_ebb()).collect();
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();

@@ -398,7 +398,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
     fx.bcx
         .ins()
-        .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
+        .jump(*fx.ebb_map.get(START_BLOCK).unwrap(), &[]);
 }
 
 pub fn codegen_terminator_call<'tcx>(

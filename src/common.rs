@@ -1,5 +1,6 @@
 use rustc::ty::layout::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_index::vec::IndexVec;
 
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
@@ -263,7 +264,7 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub mir: &'tcx Body<'tcx>,
 
     pub bcx: FunctionBuilder<'clif>,
-    pub ebb_map: HashMap<BasicBlock, Ebb>,
+    pub ebb_map: IndexVec<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 
     pub clif_comments: crate::pretty_clif::CommentWriter,
@@ -341,7 +342,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
-        *self.ebb_map.get(&bb).unwrap()
+        *self.ebb_map.get(bb).unwrap()
     }
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
