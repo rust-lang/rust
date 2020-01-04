@@ -493,7 +493,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         BTreeMap { root: node::Root::shared_empty_root(), length: 0 }
     }
 
-    /// Clears the map, removing all values.
+    /// Clears the map, removing all elements.
     ///
     /// # Examples
     ///
@@ -2605,7 +2605,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
         // Handle underflow
         let mut cur_node = small_leaf.forget_type();
-        while cur_node.len() < node::CAPACITY / 2 {
+        while cur_node.len() < node::MIN_LEN {
             match handle_underfull_node(cur_node) {
                 AtRoot => break,
                 EmptyParent(_) => unreachable!(),
