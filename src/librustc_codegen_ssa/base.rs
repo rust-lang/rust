@@ -14,8 +14,8 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use crate::back::write::{
-    start_async_codegen, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
-    OngoingCodegen,
+    start_async_codegen, submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm,
+    submit_pre_lto_module_to_llvm, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
@@ -40,6 +40,7 @@ use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
@@ -606,20 +607,62 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         codegen_units
     };
 
-    let mut total_codegen_time = Duration::new(0, 0);
+    let total_codegen_time = Lock::new(Duration::new(0, 0));
 
-    for cgu in codegen_units.into_iter() {
+    let cgu_reuse: Vec<_> = tcx.sess.time("find cgu reuse", || {
+        codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect()
+    });
+
+    let mut cgus: FxHashMap<usize, _> = if cfg!(parallel_compiler) {
+        tcx.sess.time("compile first CGUs", || {
+            // Try to find one CGU to compile per thread.
+            let cgus: Vec<_> = cgu_reuse
+                .iter()
+                .enumerate()
+                .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                .take(tcx.sess.threads())
+                .collect();
+
+            // Compile the found CGUs in parallel.
+            par_iter(cgus)
+                .map(|(i, _)| {
+                    let start_time = Instant::now();
+                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                    let mut time = total_codegen_time.lock();
+                    *time += start_time.elapsed();
+                    (i, module)
+                })
+                .collect()
+        })
+    } else {
+        FxHashMap::default()
+    };
+
+    let mut total_codegen_time = total_codegen_time.into_inner();
+
+    for (i, cgu) in codegen_units.into_iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
+        let cgu_reuse = cgu_reuse[i];
         tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
         match cgu_reuse {
             CguReuse::No => {
-                let start_time = Instant::now();
-                backend.compile_codegen_unit(tcx, cgu.name(), &ongoing_codegen.coordinator_send);
-                total_codegen_time += start_time.elapsed();
+                let (module, cost) = if let Some(cgu) = cgus.remove(&i) {
+                    cgu
+                } else {
+                    let start_time = Instant::now();
+                    let module = backend.compile_codegen_unit(tcx, cgu.name());
+                    total_codegen_time += start_time.elapsed();
+                    module
+                };
+                submit_codegened_module_to_llvm(
+                    &backend,
+                    &ongoing_codegen.coordinator_send,
+                    module,
+                    cost,
+                );
                 false
             }
             CguReuse::PreLto => {
