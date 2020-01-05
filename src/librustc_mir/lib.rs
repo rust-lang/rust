@@ -36,12 +36,9 @@ extern crate log;
 extern crate rustc;
 
 mod borrow_check;
-mod build;
 pub mod const_eval;
 pub mod dataflow;
-mod hair;
 pub mod interpret;
-mod lints;
 pub mod monomorphize;
 mod shim;
 pub mod transform;
@@ -57,10 +54,13 @@ pub fn provide(providers: &mut Providers<'_>) {
     monomorphize::partitioning::provide(providers);
     providers.const_eval_validated = const_eval::const_eval_validated_provider;
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
-    providers.check_match = hair::pattern::check_match;
     providers.const_caller_location = const_eval::const_caller_location;
     providers.const_field = |tcx, param_env_and_value| {
         let (param_env, (value, field)) = param_env_and_value.into_parts();
         const_eval::const_field(tcx, param_env, None, field, value)
     };
+    providers.destructure_const = |tcx, param_env_and_value| {
+        let (param_env, value) = param_env_and_value.into_parts();
+        const_eval::destructure_const(tcx, param_env, value)
+    }
 }
