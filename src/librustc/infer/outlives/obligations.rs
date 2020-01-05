@@ -321,7 +321,7 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        param_ty: ty::ParamTy,
+        param_ty: ty::View<'tcx, ty::ParamTy>,
     ) {
         debug!(
             "param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",

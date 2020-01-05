@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 #[derive(Debug)]
 pub enum Component<'tcx> {
     Region(ty::Region<'tcx>),
-    Param(ty::ParamTy),
+    Param(ty::View<'tcx, ty::ParamTy>),
     UnresolvedInferenceVariable(ty::InferTy),
 
     // Projections like `T::Foo` are tricky because a constraint like
@@ -82,8 +82,8 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
-            ty::Param(p) => {
-                out.push(Component::Param(p));
+            ty::Param(_) => {
+                out.push(Component::Param(ty::View::new(ty).unwrap()));
             }
 
             // For projections, we prefer to generate an obligation like

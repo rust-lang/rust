@@ -184,7 +184,7 @@ pub struct Verify<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable)]
 pub enum GenericKind<'tcx> {
-    Param(ty::ParamTy),
+    Param(ty::View<'tcx, ty::ParamTy>),
     Projection(ty::ProjectionTy<'tcx>),
 }
 

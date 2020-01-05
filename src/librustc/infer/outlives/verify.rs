@@ -2,7 +2,7 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, View};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 
@@ -40,13 +40,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         match ty.kind {
-            ty::Param(p) => self.param_bound(p),
+            ty::Param(_) => self.param_bound(View::new(ty).unwrap()),
             ty::Projection(data) => self.projection_bound(data),
             _ => self.recursive_type_bound(ty),
         }
     }
 
-    fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    fn param_bound(&self, param_ty: View<'tcx, ty::ParamTy>) -> VerifyBound<'tcx> {
         debug!("param_bound(param_ty={:?})", param_ty);
 
         // Start with anything like `T: 'a` we can scrape from the
@@ -161,9 +161,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
-        generic: GenericKind<'tcx>,
+        generic: View<'tcx, ty::ParamTy>,
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        let generic_ty = generic.to_ty(self.tcx);
+        let generic_ty = generic.as_ty();
         self.declared_generic_bounds_from_env_with_compare_fn(|ty| ty == generic_ty)
     }
 

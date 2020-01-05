@@ -20,7 +20,7 @@ use std::mem;
 #[derive(Clone, Debug, TypeFoldable, Lift)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
-    RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
+    RegionSubParam(ty::Region<'tcx>, ty::View<'tcx, ty::ParamTy>),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 

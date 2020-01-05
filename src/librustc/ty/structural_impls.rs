@@ -13,6 +13,7 @@ use rustc_index::vec::{Idx, IndexVec};
 
 use smallvec::SmallVec;
 use std::fmt;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -386,6 +387,13 @@ impl<'tcx, I: Idx, T: Lift<'tcx>> Lift<'tcx> for IndexVec<I, T> {
     type Lifted = IndexVec<I, T::Lifted>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         self.iter().map(|e| tcx.lift(e)).collect()
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for PhantomData<T> {
+    type Lifted = PhantomData<T::Lifted>;
+    fn lift_to_tcx(&self, _tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(PhantomData)
     }
 }
 
@@ -1059,6 +1067,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
+        *self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
+    }
+}
+
+impl<'tcx, T> TypeFoldable<'tcx> for PhantomData<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
         *self
     }
