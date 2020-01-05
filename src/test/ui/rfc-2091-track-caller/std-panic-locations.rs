@@ -9,7 +9,7 @@ fn main() {
     // inspect the `PanicInfo` we receive to ensure the right file is the source
     std::panic::set_hook(Box::new(|info| {
         let actual = info.location().unwrap();
-        if actual.file() != file!(){
+        if actual.file() != file!() {
             eprintln!("expected a location in the test file, found {:?}", actual);
             panic!();
         }
