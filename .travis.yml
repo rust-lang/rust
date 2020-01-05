@@ -20,9 +20,9 @@ before_cache:
   - cargo cache --autoclean
 
 env:
- global:
-   - RUST_BACKTRACE=1
-   - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
+  global:
+    - RUST_BACKTRACE=1
+    - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
 
 before_install:
   - export CARGO_TARGET_DIR="$TRAVIS_BUILD_DIR/target"
@@ -104,8 +104,6 @@ matrix:
   allow_failures:
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
-    # FIXME: Remove this once rls gets rustup
-    - env: INTEGRATION=rust-lang/rls
 
 before_script:
   - |
