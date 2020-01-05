@@ -93,8 +93,6 @@ pub mod print {
     pub mod pprust;
 }
 
-pub mod early_buffered_lints;
-
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

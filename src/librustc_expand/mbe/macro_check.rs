@@ -106,14 +106,14 @@
 //! bound.
 use crate::mbe::{KleeneToken, TokenTree};
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym};
+use rustc_span::{symbol::Ident, MultiSpan, Span};
 use syntax::ast::NodeId;
-use syntax::early_buffered_lints::META_VARIABLE_MISUSE;
-use syntax::sess::ParseSess;
 use syntax::token::{DelimToken, Token, TokenKind};
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_span::{symbol::Ident, MultiSpan, Span};
 use smallvec::SmallVec;
 
 /// Stack represented as linked list.

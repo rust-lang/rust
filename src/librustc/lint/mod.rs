@@ -21,11 +21,11 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use crate::lint::builtin::HardwiredLints;
 use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
+use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
