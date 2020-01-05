@@ -130,7 +130,7 @@ fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx E
         if let Some(begin_panic_call) = &inner_block.expr;
         // function call
         if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
-        if args.len() == 2;
+        if args.len() == 1;
         // bind the second argument of the `assert!` macro if it exists
         if let panic_message = snippet_opt(cx, args[0].span);
         // second argument of begin_panic is irrelevant

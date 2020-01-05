@@ -4,10 +4,10 @@ use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::HirIdSet;
 use rustc::impl_lint_pass;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::util::nodemap::HirIdSet;
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
