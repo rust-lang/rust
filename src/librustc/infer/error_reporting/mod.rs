@@ -661,7 +661,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             },
             ObligationCauseCode::IfExpression(box IfExpressionCause { then, outer, semicolon }) => {
                 err.span_label(then, "expected because of this");
-                outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
+                outer.map(|sp| err.span_label(sp, "`if` and `else` have incompatible types"));
                 if let Some(sp) = semicolon {
                     err.span_suggestion_short(
                         sp,
@@ -1883,13 +1883,13 @@ impl<'tcx> ObligationCause<'tcx> {
                     hir::MatchSource::TryDesugar => {
                         "try expression alternatives have incompatible types"
                     }
-                    _ => "match arms have incompatible types",
+                    _ => "`match` arms have incompatible types",
                 })
             }
-            IfExpression { .. } => Error0308("if and else have incompatible types"),
-            IfExpressionWithNoElse => Error0317("if may be missing an else clause"),
-            MainFunctionType => Error0580("main function has wrong type"),
-            StartFunctionType => Error0308("start function has wrong type"),
+            IfExpression { .. } => Error0308("`if` and `else` have incompatible types"),
+            IfExpressionWithNoElse => Error0317("`if` may be missing an `else` clause"),
+            MainFunctionType => Error0580("`main` function has wrong type"),
+            StartFunctionType => Error0308("`#[start]` function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),
             MethodReceiver => Error0308("mismatched `self` parameter type"),
 
@@ -1917,12 +1917,12 @@ impl<'tcx> ObligationCause<'tcx> {
             ExprAssignable => "expression is assignable",
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
-                _ => "match arms have compatible types",
+                _ => "`match` arms have compatible types",
             },
-            IfExpression { .. } => "if and else have incompatible types",
-            IfExpressionWithNoElse => "if missing an else returns ()",
+            IfExpression { .. } => "`if` and `else` have incompatible types",
+            IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
             MainFunctionType => "`main` function has the correct type",
-            StartFunctionType => "`start` function has the correct type",
+            StartFunctionType => "`#[start]` function has the correct type",
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",

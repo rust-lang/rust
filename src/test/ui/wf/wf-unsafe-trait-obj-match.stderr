@@ -1,4 +1,4 @@
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/wf-unsafe-trait-obj-match.rs:23:17
    |
 LL | /     match opt() {

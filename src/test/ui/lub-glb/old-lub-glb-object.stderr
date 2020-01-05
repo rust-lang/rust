@@ -1,4 +1,4 @@
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/old-lub-glb-object.rs:12:14
    |
 LL |       let z = match 22 {

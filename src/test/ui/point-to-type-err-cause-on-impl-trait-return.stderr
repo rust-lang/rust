@@ -34,7 +34,7 @@ LL |     } else {
 LL |         1u32
    |         ^^^^ expected `i32`, found `u32`
 
-error[E0308]: if and else have incompatible types
+error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:31:9
    |
 LL | /     if false {
@@ -45,7 +45,7 @@ LL | |         1u32
    | |         ^^^^ expected `i32`, found `u32`
 LL | |
 LL | |     }
-   | |_____- if and else have incompatible types
+   | |_____- `if` and `else` have incompatible types
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:39:14

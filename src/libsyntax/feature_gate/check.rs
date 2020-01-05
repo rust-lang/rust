@@ -387,8 +387,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         start,
                         i.span,
-                        "a `#[start]` function is an experimental \
-                                       feature whose signature may change \
+                        "`#[start]` functions are experimental \
+                                       and their signature may change \
                                        over time"
                     );
                 }
