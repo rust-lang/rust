@@ -1135,7 +1135,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** When people testing a file type with `FileType::is_file`
     /// they are testing whether a path is something they can get bytes from. But
-    /// `is_file` doesn't cover special file types in unix-like systems. and not covering
+    /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
     /// symlink in windows. Using `!FileType::is_dir()` is a better way to that intention.
     ///
     /// **Example:**
@@ -1149,7 +1149,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// should be writing as:
+    /// should be written as:
     ///
     /// ```rust,ignore
     /// let metadata = std::fs::metadata("foo.txt")?;
@@ -1160,8 +1160,8 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub FILETYPE_IS_FILE,
-    style,
-    "`FileType::is_file` is not recommended to test for readable file type."
+    restriction,
+    "`FileType::is_file` is not recommended to test for readable file type"
 }
 
 declare_lint_pass!(Methods => [
