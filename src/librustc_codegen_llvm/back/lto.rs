@@ -584,6 +584,20 @@ pub(crate) fn run_pass_manager(
     //      tools/lto/LTOCodeGenerator.cpp
     debug!("running the pass manager");
     unsafe {
+        if write::should_use_new_llvm_pass_manager(config) {
+            let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
+            let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
+            // See comment below for why this is necessary.
+            let opt_level = if let config::OptLevel::No = opt_level {
+                config::OptLevel::Less
+            } else {
+                opt_level
+            };
+            write::optimize_with_new_llvm_pass_manager(module, config, opt_level, opt_stage);
+            debug!("lto done");
+            return;
+        }
+
         let pm = llvm::LLVMCreatePassManager();
         llvm::LLVMAddAnalysisPasses(module.module_llvm.tm, pm);
 
