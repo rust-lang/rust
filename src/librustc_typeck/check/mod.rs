@@ -100,6 +100,7 @@ use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::middle::region;
 use rustc::mir::interpret::ConstValue;
+use rustc::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -2222,7 +2223,7 @@ fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: DefId) -> bool {
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive(spans) => {
-            let mut err = tcx.recursive_type_with_infinite_size_error(item_def_id);
+            let mut err = recursive_type_with_infinite_size_error(tcx, item_def_id);
             for span in spans {
                 err.span_label(span, "recursive without indirection");
             }

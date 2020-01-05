@@ -916,7 +916,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        self.tcx.report_object_safety_error(span, trait_def_id, violations)
+                        report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                self.tcx.report_object_safety_error(span, did, violations)
+                report_object_safety_error(self.tcx, span, did, violations)
             }
 
             // already reported in the query
@@ -1945,64 +1945,62 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn recursive_type_with_infinite_size_error(
-        self,
-        type_def_id: DefId,
-    ) -> DiagnosticBuilder<'tcx> {
-        assert!(type_def_id.is_local());
-        let span = self.hir().span_if_local(type_def_id).unwrap();
-        let span = self.sess.source_map().def_span(span);
-        let mut err = struct_span_err!(
-            self.sess,
-            span,
-            E0072,
-            "recursive type `{}` has infinite size",
-            self.def_path_str(type_def_id)
-        );
-        err.span_label(span, "recursive type has infinite size");
-        err.help(&format!(
-            "insert indirection (e.g., a `Box`, `Rc`, or `&`) \
+pub fn recursive_type_with_infinite_size_error(
+    tcx: TyCtxt<'tcx>,
+    type_def_id: DefId,
+) -> DiagnosticBuilder<'tcx> {
+    assert!(type_def_id.is_local());
+    let span = tcx.hir().span_if_local(type_def_id).unwrap();
+    let span = tcx.sess.source_map().def_span(span);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        span,
+        E0072,
+        "recursive type `{}` has infinite size",
+        tcx.def_path_str(type_def_id)
+    );
+    err.span_label(span, "recursive type has infinite size");
+    err.help(&format!(
+        "insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
-            self.def_path_str(type_def_id)
-        ));
-        err
+        tcx.def_path_str(type_def_id)
+    ));
+    err
+}
+
+pub fn report_object_safety_error(
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    trait_def_id: DefId,
+    violations: Vec<ObjectSafetyViolation>,
+) -> DiagnosticBuilder<'tcx> {
+    let trait_str = tcx.def_path_str(trait_def_id);
+    let span = tcx.sess.source_map().def_span(span);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        span,
+        E0038,
+        "the trait `{}` cannot be made into an object",
+        trait_str
+    );
+    err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
+
+    let mut reported_violations = FxHashSet::default();
+    for violation in violations {
+        if reported_violations.insert(violation.clone()) {
+            match violation.span() {
+                Some(span) => err.span_label(span, violation.error_msg()),
+                None => err.note(&violation.error_msg()),
+            };
+        }
     }
 
-    pub fn report_object_safety_error(
-        self,
-        span: Span,
-        trait_def_id: DefId,
-        violations: Vec<ObjectSafetyViolation>,
-    ) -> DiagnosticBuilder<'tcx> {
-        let trait_str = self.def_path_str(trait_def_id);
-        let span = self.sess.source_map().def_span(span);
-        let mut err = struct_span_err!(
-            self.sess,
-            span,
-            E0038,
-            "the trait `{}` cannot be made into an object",
-            trait_str
-        );
-        err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
-
-        let mut reported_violations = FxHashSet::default();
-        for violation in violations {
-            if reported_violations.insert(violation.clone()) {
-                match violation.span() {
-                    Some(span) => err.span_label(span, violation.error_msg()),
-                    None => err.note(&violation.error_msg()),
-                };
-            }
-        }
-
-        if self.sess.trait_methods_not_found.borrow().contains(&span) {
-            // Avoid emitting error caused by non-existing method (#58734)
-            err.cancel();
-        }
-
-        err
+    if tcx.sess.trait_methods_not_found.borrow().contains(&span) {
+        // Avoid emitting error caused by non-existing method (#58734)
+        err.cancel();
     }
+
+    err
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
