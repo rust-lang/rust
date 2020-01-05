@@ -30,3 +30,10 @@ impl <T> VSet<T, {Order::Unsorted}> {
         Self { inner: Vec::new() }
     }
 }
+
+pub struct Escape<const S: &'static str>;
+
+// @has foo/struct.Escape.html '//h3[@id="impl"]/code' 'impl Escape<{ r#"<script>alert("Escape");</script>"# }>'
+impl Escape<{ r#"<script>alert("Escape");</script>"# }> {
+    pub fn f() {}
+}
