@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
             if let ExprKind::Block(ref block, _) = expr.kind;
             if let Some(ref ex) = block.expr;
             if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC);
-            if params.len() == 2;
+            if params.len() == 1;
             then {
                 if is_expn_of(expr.span, "unimplemented").is_some() {
                     let span = get_outer_span(expr);
