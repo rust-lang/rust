@@ -18,6 +18,7 @@ mod select;
 mod specialize;
 mod structural_impls;
 mod util;
+pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, SuppressRegionErrors};

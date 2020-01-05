@@ -417,7 +417,7 @@ fn check_impl<'tcx>(
                 let trait_ref = fcx.tcx.impl_trait_ref(item_def_id).unwrap();
                 let trait_ref =
                     fcx.normalize_associated_types_in(ast_trait_ref.path.span, &trait_ref);
-                let obligations = ty::wf::trait_obligations(
+                let obligations = traits::wf::trait_obligations(
                     fcx,
                     fcx.param_env,
                     fcx.body_id,
@@ -596,7 +596,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     let wf_obligations = predicates
         .predicates
         .iter()
-        .flat_map(|p| ty::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, span));
+        .flat_map(|p| traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, span));
 
     for obligation in wf_obligations.chain(default_obligations) {
         debug!("next obligation cause: {:?}", obligation.cause);

@@ -12,6 +12,7 @@ use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
+use super::wf;
 use super::DerivedObligationCause;
 use super::Selection;
 use super::SelectionResult;
@@ -738,7 +739,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Predicate::WellFormed(ty) => match ty::wf::obligations(
+            ty::Predicate::WellFormed(ty) => match wf::obligations(
                 self.infcx,
                 obligation.param_env,
                 obligation.cause.body_id,
@@ -1154,7 +1155,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// to have a *lower* recursion_depth than the obligation used to create it.
     /// Projection sub-obligations may be returned from the projection cache,
     /// which results in obligations with an 'old' `recursion_depth`.
-    /// Additionally, methods like `ty::wf::obligations` and
+    /// Additionally, methods like `wf::obligations` and
     /// `InferCtxt.subtype_predicate` produce subobligations without
     /// taking in a 'parent' depth, causing the generated subobligations
     /// to have a `recursion_depth` of `0`.

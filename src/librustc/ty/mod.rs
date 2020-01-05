@@ -119,7 +119,6 @@ pub mod subst;
 pub mod trait_def;
 pub mod util;
 pub mod walk;
-pub mod wf;
 
 mod context;
 mod diagnostics;

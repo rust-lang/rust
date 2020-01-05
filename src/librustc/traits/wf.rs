@@ -514,7 +514,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // of whatever returned this exact `impl Trait`.
 
                     // for named opaque `impl Trait` types we still need to check them
-                    if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
+                    if ty::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
                     }
