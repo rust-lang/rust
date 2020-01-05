@@ -3,7 +3,7 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::lint::{self, in_derive_expansion, Lint};
+use crate::lint::in_derive_expansion;
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
-use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::{self, BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;

@@ -16,12 +16,11 @@
 
 use self::TargetLint::*;
 
-use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
+use crate::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::lint::{EarlyLintPassObject, LateLintPassObject};
 use crate::middle::privacy::AccessLevels;
 use crate::middle::stability;
-use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
@@ -32,6 +31,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
+use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;

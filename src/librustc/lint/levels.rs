@@ -1,14 +1,14 @@
 use std::cmp;
 
 use crate::ich::StableHashingContext;
-use crate::lint::builtin;
 use crate::lint::context::{CheckLintNameResult, LintStore};
-use crate::lint::{self, Level, Lint, LintId, LintSource};
-use crate::session::Session;
+use crate::lint::{self, LintSource};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::HirId;
+use rustc_session::lint::{builtin, Level, Lint, LintId};
+use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
