@@ -3318,7 +3318,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
-    util::provide(providers);
     constness::provide(providers);
     *providers = ty::query::Providers {
         asyncness,

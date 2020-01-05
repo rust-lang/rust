@@ -7,10 +7,10 @@ use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
 
 use rustc::infer;
+use rustc::traits::drop::{can_type_implement_copy, CopyImplementationError};
 use rustc::traits::predicate_for_trait_def;
 use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
-use rustc::ty::util::CopyImplementationError;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 
@@ -92,7 +92,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    match param_env.can_type_implement_copy(tcx, self_type) {
+    match can_type_implement_copy(tcx, param_env, self_type) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_hir_id);
