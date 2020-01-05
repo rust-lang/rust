@@ -1,3 +1,4 @@
+use crate::infer::error_reporting::{note_and_explain_free_region, note_and_explain_region};
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
@@ -624,7 +625,8 @@ pub fn unexpected_hidden_region_diagnostic(
         //
         // (*) if not, the `tainted_by_errors` flag would be set to
         // true in any case, so we wouldn't be here at all.
-        tcx.note_and_explain_free_region(
+        note_and_explain_free_region(
+            tcx,
             &mut err,
             &format!("hidden type `{}` captures ", hidden_ty),
             hidden_region,
@@ -649,7 +651,8 @@ pub fn unexpected_hidden_region_diagnostic(
             // If the `region_scope_tree` is available, this is being
             // invoked from the "region inferencer error". We can at
             // least report a really cryptic error for now.
-            tcx.note_and_explain_region(
+            note_and_explain_region(
+                tcx,
                 region_scope_tree,
                 &mut err,
                 &format!("hidden type `{}` captures ", hidden_ty),
