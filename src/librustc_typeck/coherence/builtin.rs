@@ -7,6 +7,7 @@ use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
 
 use rustc::infer;
+use rustc::traits::predicate_for_trait_def;
 use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::util::CopyImplementationError;
@@ -284,7 +285,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
                         let mut fulfill_cx = TraitEngine::new(infcx.tcx);
 
                         for field in coerced_fields {
-                            let predicate = tcx.predicate_for_trait_def(
+                            let predicate = predicate_for_trait_def(
+                                tcx,
                                 param_env,
                                 cause.clone(),
                                 dispatch_from_dyn_trait,
@@ -543,7 +545,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);
-        let predicate = tcx.predicate_for_trait_def(
+        let predicate = predicate_for_trait_def(
+            tcx,
             param_env,
             cause,
             trait_def_id,

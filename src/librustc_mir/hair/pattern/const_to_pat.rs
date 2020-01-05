@@ -3,6 +3,7 @@ use crate::const_eval::const_variant_index;
 use rustc::infer::InferCtxt;
 use rustc::lint;
 use rustc::mir::Field;
+use rustc::traits::predicate_for_trait_def;
 use rustc::traits::{ObligationCause, PredicateObligation};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
@@ -129,7 +130,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // not *yet* implement `PartialEq`. So for now we leave this here.
                 let ty_is_partial_eq: bool = {
                     let partial_eq_trait_id = self.tcx().lang_items().eq_trait().unwrap();
-                    let obligation: PredicateObligation<'_> = self.tcx().predicate_for_trait_def(
+                    let obligation: PredicateObligation<'_> = predicate_for_trait_def(
+                        self.tcx(),
                         self.param_env,
                         ObligationCause::misc(self.span, self.id),
                         partial_eq_trait_id,

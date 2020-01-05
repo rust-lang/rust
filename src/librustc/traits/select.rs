@@ -11,6 +11,7 @@ use super::coherence::{self, Conflict};
 use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::util;
+use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::DerivedObligationCause;
 use super::Selection;
 use super::SelectionResult;
@@ -2651,7 +2652,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             recursion_depth,
                             &skol_ty,
                         );
-                    let skol_obligation = self.tcx().predicate_for_trait_def(
+                    let skol_obligation = predicate_for_trait_def(
+                        self.tcx(),
                         param_env,
                         cause.clone(),
                         trait_def_id,
@@ -2988,7 +2990,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // we pass over, we sum up the set of number of vtable
             // entries, so that we can compute the offset for the selected
             // trait.
-            vtable_base = nonmatching.map(|t| tcx.count_own_vtable_entries(t)).sum();
+            vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
         }
 
         VtableObjectData { upcast_trait_ref: upcast_trait_ref.unwrap(), vtable_base, nested }
@@ -3003,15 +3005,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder; it is reintroduced below.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
-        let trait_ref = self
-            .tcx()
-            .closure_trait_ref_and_return_type(
-                obligation.predicate.def_id(),
-                self_ty,
-                sig,
-                util::TupleArgumentsFlag::Yes,
-            )
-            .map_bound(|(trait_ref, _)| trait_ref);
+        let trait_ref = closure_trait_ref_and_return_type(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            self_ty,
+            sig,
+            util::TupleArgumentsFlag::Yes,
+        )
+        .map_bound(|(trait_ref, _)| trait_ref);
 
         let Normalized { value: trait_ref, obligations } = project::normalize_with_depth(
             self,
@@ -3381,7 +3382,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Construct the nested `Field<T>: Unsize<Field<U>>` predicate.
-                nested.push(tcx.predicate_for_trait_def(
+                nested.push(predicate_for_trait_def(
+                    tcx,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
@@ -3416,7 +3418,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Construct the nested `T: Unsize<U>` predicate.
-                nested.push(tcx.predicate_for_trait_def(
+                nested.push(predicate_for_trait_def(
+                    tcx,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
@@ -3627,14 +3630,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation). Still probably some
         // refactoring could make this nicer.
-        self.tcx()
-            .closure_trait_ref_and_return_type(
-                obligation.predicate.def_id(),
-                obligation.predicate.skip_binder().self_ty(), // (1)
-                closure_type,
-                util::TupleArgumentsFlag::No,
-            )
-            .map_bound(|(trait_ref, _)| trait_ref)
+        closure_trait_ref_and_return_type(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.skip_binder().self_ty(), // (1)
+            closure_type,
+            util::TupleArgumentsFlag::No,
+        )
+        .map_bound(|(trait_ref, _)| trait_ref)
     }
 
     fn generator_trait_ref_unnormalized(
@@ -3651,13 +3654,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // regions bound in the obligation). Still probably some
         // refactoring could make this nicer.
 
-        self.tcx()
-            .generator_trait_ref_and_outputs(
-                obligation.predicate.def_id(),
-                obligation.predicate.skip_binder().self_ty(), // (1)
-                gen_sig,
-            )
-            .map_bound(|(trait_ref, ..)| trait_ref)
+        super::util::generator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.skip_binder().self_ty(), // (1)
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref)
     }
 
     /// Returns the obligations that are implied by instantiating an
