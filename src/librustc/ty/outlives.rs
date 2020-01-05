@@ -48,32 +48,29 @@ pub enum Component<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn push_outlives_components(
-        &self,
-        ty0: Ty<'tcx>,
-        out: &mut SmallVec<[Component<'tcx>; 4]>,
-    ) {
-        self.compute_components(ty0, out);
+    pub fn push_outlives_components(self, ty0: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
+        compute_components(self, ty0, out);
         debug!("components({:?}) = {:?}", ty0, out);
     }
+}
 
-    fn compute_components(&self, ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-        // Descend through the types, looking for the various "base"
-        // components and collecting them into `out`. This is not written
-        // with `collect()` because of the need to sometimes skip subtrees
-        // in the `subtys` iterator (e.g., when encountering a
-        // projection).
-        match ty.kind {
+fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
+    // Descend through the types, looking for the various "base"
+    // components and collecting them into `out`. This is not written
+    // with `collect()` because of the need to sometimes skip subtrees
+    // in the `subtys` iterator (e.g., when encountering a
+    // projection).
+    match ty.kind {
             ty::Closure(def_id, ref substs) => {
-                for upvar_ty in substs.as_closure().upvar_tys(def_id, *self) {
-                    self.compute_components(upvar_ty, out);
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
+                    compute_components(tcx, upvar_ty, out);
                 }
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 // Same as the closure case
-                for upvar_ty in substs.as_generator().upvar_tys(def_id, *self) {
-                    self.compute_components(upvar_ty, out);
+                for upvar_ty in substs.as_generator().upvar_tys(def_id, tcx) {
+                    compute_components(tcx, upvar_ty, out);
                 }
 
                 // We ignore regions in the generator interior as we don't
@@ -110,7 +107,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // fallback case: hard code
                     // OutlivesProjectionComponents.  Continue walking
                     // through and constrain Pi.
-                    let subcomponents = self.capture_components(ty);
+                    let subcomponents = capture_components(tcx, ty);
                     out.push(Component::EscapingProjection(subcomponents));
                 }
             }
@@ -159,20 +156,19 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 push_region_constraints(ty, out);
                 for subty in ty.walk_shallow() {
-                    self.compute_components(subty, out);
+                    compute_components(tcx, subty, out);
                 }
             }
         }
-    }
+}
 
-    fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
-        let mut temp = smallvec![];
-        push_region_constraints(ty, &mut temp);
-        for subty in ty.walk_shallow() {
-            self.compute_components(subty, &mut temp);
-        }
-        temp.into_iter().collect()
+fn capture_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
+    let mut temp = smallvec![];
+    push_region_constraints(ty, &mut temp);
+    for subty in ty.walk_shallow() {
+        compute_components(tcx, subty, &mut temp);
     }
+    temp.into_iter().collect()
 }
 
 fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
