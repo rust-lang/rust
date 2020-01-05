@@ -104,8 +104,6 @@ matrix:
   allow_failures:
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
-    # FIXME: Remove this once rls gets rustup
-    - env: INTEGRATION=rust-lang/rls
 
 before_script:
   - |
