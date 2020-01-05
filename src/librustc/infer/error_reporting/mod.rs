@@ -107,9 +107,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         _ => "expression",
                     },
                     Some(Node::Stmt(_)) => "statement",
-                    Some(Node::Item(it)) => Self::item_scope_tag(&it),
-                    Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-                    Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
+                    Some(Node::Item(it)) => item_scope_tag(&it),
+                    Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
+                    Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -131,11 +131,11 @@ impl<'tcx> TyCtxt<'tcx> {
                         &new_string[..]
                     }
                 };
-                self.explain_span(scope_decorated_tag, span)
+                explain_span(self, scope_decorated_tag, span)
             }
 
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-                self.msg_span_from_free_region(region)
+                msg_span_from_free_region(self, region)
             }
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
@@ -157,7 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         };
 
-        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
+        emit_msg_span(err, prefix, description, span, suffix);
     }
 
     pub fn note_and_explain_free_region(
@@ -167,122 +167,122 @@ impl<'tcx> TyCtxt<'tcx> {
         region: ty::Region<'tcx>,
         suffix: &str,
     ) {
-        let (description, span) = self.msg_span_from_free_region(region);
+        let (description, span) = msg_span_from_free_region(self, region);
 
-        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
+        emit_msg_span(err, prefix, description, span, suffix);
     }
+}
 
-    fn msg_span_from_free_region(self, region: ty::Region<'tcx>) -> (String, Option<Span>) {
-        match *region {
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                self.msg_span_from_early_bound_and_free_regions(region)
+fn msg_span_from_free_region(
+    tcx: TyCtxt<'tcx>,
+    region: ty::Region<'tcx>,
+) -> (String, Option<Span>) {
+    match *region {
+        ty::ReEarlyBound(_) | ty::ReFree(_) => {
+            msg_span_from_early_bound_and_free_regions(tcx, region)
+        }
+        ty::ReStatic => ("the static lifetime".to_owned(), None),
+        ty::ReEmpty => ("an empty lifetime".to_owned(), None),
+        _ => bug!("{:?}", region),
+    }
+}
+
+fn msg_span_from_early_bound_and_free_regions(
+    tcx: TyCtxt<'tcx>,
+    region: ty::Region<'tcx>,
+) -> (String, Option<Span>) {
+    let cm = tcx.sess.source_map();
+
+    let scope = region.free_region_binding_scope(tcx);
+    let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
+    let tag = match tcx.hir().find(node) {
+        Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
+        Some(Node::Item(it)) => item_scope_tag(&it),
+        Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
+        Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
+        _ => unreachable!(),
+    };
+    let (prefix, span) = match *region {
+        ty::ReEarlyBound(ref br) => {
+            let mut sp = cm.def_span(tcx.hir().span(node));
+            if let Some(param) =
+                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+            {
+                sp = param.span;
             }
-            ty::ReStatic => ("the static lifetime".to_owned(), None),
-            ty::ReEmpty => ("an empty lifetime".to_owned(), None),
-            _ => bug!("{:?}", region),
+            (format!("the lifetime `{}` as defined on", br.name), sp)
         }
-    }
-
-    fn msg_span_from_early_bound_and_free_regions(
-        self,
-        region: ty::Region<'tcx>,
-    ) -> (String, Option<Span>) {
-        let cm = self.sess.source_map();
-
-        let scope = region.free_region_binding_scope(self);
-        let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
-        let tag = match self.hir().find(node) {
-            Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
-            Some(Node::Item(it)) => Self::item_scope_tag(&it),
-            Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-            Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
-            _ => unreachable!(),
-        };
-        let (prefix, span) = match *region {
-            ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) =
-                    self.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-                {
-                    sp = param.span;
-                }
-                (format!("the lifetime `{}` as defined on", br.name), sp)
+        ty::ReFree(ty::FreeRegion { bound_region: ty::BoundRegion::BrNamed(_, name), .. }) => {
+            let mut sp = cm.def_span(tcx.hir().span(node));
+            if let Some(param) =
+                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
+            {
+                sp = param.span;
             }
-            ty::ReFree(ty::FreeRegion {
-                bound_region: ty::BoundRegion::BrNamed(_, name), ..
-            }) => {
-                let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) =
-                    self.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
-                {
-                    sp = param.span;
-                }
-                (format!("the lifetime `{}` as defined on", name), sp)
+            (format!("the lifetime `{}` as defined on", name), sp)
+        }
+        ty::ReFree(ref fr) => match fr.bound_region {
+            ty::BrAnon(idx) => {
+                (format!("the anonymous lifetime #{} defined on", idx + 1), tcx.hir().span(node))
             }
-            ty::ReFree(ref fr) => match fr.bound_region {
-                ty::BrAnon(idx) => (
-                    format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir().span(node),
-                ),
-                _ => (
-                    format!("the lifetime `{}` as defined on", region),
-                    cm.def_span(self.hir().span(node)),
-                ),
-            },
-            _ => bug!(),
-        };
-        let (msg, opt_span) = self.explain_span(tag, span);
-        (format!("{} {}", prefix, msg), opt_span)
-    }
+            _ => (
+                format!("the lifetime `{}` as defined on", region),
+                cm.def_span(tcx.hir().span(node)),
+            ),
+        },
+        _ => bug!(),
+    };
+    let (msg, opt_span) = explain_span(tcx, tag, span);
+    (format!("{} {}", prefix, msg), opt_span)
+}
 
-    fn emit_msg_span(
-        err: &mut DiagnosticBuilder<'_>,
-        prefix: &str,
-        description: String,
-        span: Option<Span>,
-        suffix: &str,
-    ) {
-        let message = format!("{}{}{}", prefix, description, suffix);
+fn emit_msg_span(
+    err: &mut DiagnosticBuilder<'_>,
+    prefix: &str,
+    description: String,
+    span: Option<Span>,
+    suffix: &str,
+) {
+    let message = format!("{}{}{}", prefix, description, suffix);
 
-        if let Some(span) = span {
-            err.span_note(span, &message);
-        } else {
-            err.note(&message);
-        }
+    if let Some(span) = span {
+        err.span_note(span, &message);
+    } else {
+        err.note(&message);
     }
+}
 
-    fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
-        match item.kind {
-            hir::ItemKind::Impl(..) => "impl",
-            hir::ItemKind::Struct(..) => "struct",
-            hir::ItemKind::Union(..) => "union",
-            hir::ItemKind::Enum(..) => "enum",
-            hir::ItemKind::Trait(..) => "trait",
-            hir::ItemKind::Fn(..) => "function body",
-            _ => "item",
-        }
+fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
+    match item.kind {
+        hir::ItemKind::Impl(..) => "impl",
+        hir::ItemKind::Struct(..) => "struct",
+        hir::ItemKind::Union(..) => "union",
+        hir::ItemKind::Enum(..) => "enum",
+        hir::ItemKind::Trait(..) => "trait",
+        hir::ItemKind::Fn(..) => "function body",
+        _ => "item",
     }
+}
 
-    fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
-        match item.kind {
-            hir::TraitItemKind::Method(..) => "method body",
-            hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
-        }
+fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
+    match item.kind {
+        hir::TraitItemKind::Method(..) => "method body",
+        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
     }
+}
 
-    fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
-        match item.kind {
-            hir::ImplItemKind::Method(..) => "method body",
-            hir::ImplItemKind::Const(..)
-            | hir::ImplItemKind::OpaqueTy(..)
-            | hir::ImplItemKind::TyAlias(..) => "associated item",
-        }
+fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
+    match item.kind {
+        hir::ImplItemKind::Method(..) => "method body",
+        hir::ImplItemKind::Const(..)
+        | hir::ImplItemKind::OpaqueTy(..)
+        | hir::ImplItemKind::TyAlias(..) => "associated item",
     }
+}
 
-    fn explain_span(self, heading: &str, span: Span) -> (String, Option<Span>) {
-        let lo = self.sess.source_map().lookup_char_pos(span.lo());
-        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1), Some(span))
-    }
+fn explain_span(tcx: TyCtxt<'tcx>, heading: &str, span: Span) -> (String, Option<Span>) {
+    let lo = tcx.sess.source_map().lookup_char_pos(span.lo());
+    (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1), Some(span))
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
