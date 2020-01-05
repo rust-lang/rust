@@ -26,4 +26,12 @@ fn main() {
     let yep: Option<()> = Some(());
     assert_panicked(|| yep.unwrap_none());
     assert_panicked(|| yep.expect_none(""));
+
+    let oops: Result<(), ()> = Err(());
+    assert_panicked(|| oops.unwrap());
+    assert_panicked(|| oops.expect(""));
+
+    let fine: Result<(), ()> = Ok(());
+    assert_panicked(|| fine.unwrap_err());
+    assert_panicked(|| fine.expect_err(""));
 }
