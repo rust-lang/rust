@@ -1,9 +1,9 @@
-// compile-fail
+// build-fail
 
 // Cyclic assoc. const defaults don't error unless *used*
 trait Tr {
     const A: u8 = Self::B;
-    //~^ ERROR cycle detected when const-evaluating `Tr::A`
+    //~^ ERROR cycle detected when const-evaluating + checking `Tr::A`
 
     const B: u8 = Self::A;
 }
