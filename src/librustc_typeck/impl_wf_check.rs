@@ -98,7 +98,10 @@ fn enforce_impl_params_are_constrained(
         // (#36836)
         tcx.sess.delay_span_bug(
             tcx.def_span(impl_def_id),
-            "potentially unconstrained type parameters weren't evaluated",
+            &format!(
+                "potentially unconstrained type parameters weren't evaluated: {:?}",
+                impl_self_ty,
+            ),
         );
         return;
     }
