@@ -355,6 +355,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
+    opaque_type_values: &FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
@@ -370,7 +371,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.
 
-    if let Some(closure_region_requirements) = closure_region_requirements {
+    let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
@@ -388,13 +389,19 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         })
         .unwrap();
 
-        err.buffer(errors_buffer);
+        err
     } else {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
-        err.buffer(errors_buffer);
+        err
+    };
+
+    if !opaque_type_values.is_empty() {
+        err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
+
+    err.buffer(errors_buffer);
 }
 
 fn for_each_region_constraint(

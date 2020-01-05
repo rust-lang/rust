@@ -221,9 +221,17 @@ fn do_mir_borrowck<'a, 'tcx>(
     // write unit-tests, as well as helping with debugging.
     nll::dump_mir_results(infcx, MirSource::item(def_id), &body, &regioncx, &opt_closure_req);
 
-    // We also have a `#[rustc_nll]` annotation that causes us to dump
+    // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(infcx, &body, def_id, &regioncx, &opt_closure_req, &mut errors_buffer);
+    nll::dump_annotation(
+        infcx,
+        &body,
+        def_id,
+        &regioncx,
+        &opt_closure_req,
+        &opaque_type_values,
+        &mut errors_buffer,
+    );
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
     // so it doesn't overlap with the others below. This reduces peak memory
