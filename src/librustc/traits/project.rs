@@ -316,6 +316,9 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_projections() {
+            return ty;
+        }
         // We don't want to normalize associated types that occur inside of region
         // binders, because they may contain bound regions, and we can't cope with that.
         //
