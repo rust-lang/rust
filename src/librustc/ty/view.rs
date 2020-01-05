@@ -14,6 +14,9 @@ use rustc_hir::{self as hir, def_id::DefId};
 
 pub use self::ViewKind::*;
 
+/// `View<'tcx, T>` contains a value of `T` but stores the `Ty<'tcx>` ptr that contains the `T`
+/// This allows for cheap access to the `Ty<'tcx>` without needing to ask the type interner or
+/// losing the `T` type.
 #[derive(TypeFoldable, Lift)]
 pub struct View<'tcx, T> {
     ty: Ty<'tcx>,
