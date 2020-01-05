@@ -5,7 +5,10 @@ use std::path::Path;
 use std::process;
 use std::sync::Arc;
 use std::thread::ThreadId;
+use std::time::{Duration, Instant};
 use std::u32;
+
+use crate::cold_path;
 
 use measureme::StringId;
 
@@ -41,11 +44,15 @@ bitflags::bitflags! {
         const QUERY_CACHE_HITS   = 1 << 2;
         const QUERY_BLOCKED      = 1 << 3;
         const INCR_CACHE_LOADS   = 1 << 4;
+        const SPARSE_PASS   = 1 << 5;
+        const GENERIC_PASS   = 1 << 6;
 
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
-                        Self::INCR_CACHE_LOADS.bits;
+                        Self::INCR_CACHE_LOADS.bits |
+                        Self::SPARSE_PASS.bits |
+                        Self::GENERIC_PASS.bits;
 
         // empty() and none() aren't const-fns unfortunately
         const NONE = 0;
@@ -56,6 +63,8 @@ bitflags::bitflags! {
 const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("none", EventFilter::NONE),
     ("all", EventFilter::ALL),
+    ("sparse-pass", EventFilter::SPARSE_PASS),
+    ("generic-pass", EventFilter::GENERIC_PASS),
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),
@@ -79,42 +88,103 @@ pub struct SelfProfilerRef {
     // cost anything and allows for filtering with checking if the profiler is
     // actually enabled.
     event_filter_mask: EventFilter,
+
+    // Print sparse passes to stdout
+    verbose_sparse: bool,
+
+    // Print generic passes to stdout
+    verbose_generic: bool,
 }
 
 impl SelfProfilerRef {
-    pub fn new(profiler: Option<Arc<SelfProfiler>>) -> SelfProfilerRef {
+    pub fn new(
+        profiler: Option<Arc<SelfProfiler>>,
+        verbose_sparse: bool,
+        verbose_generic: bool,
+    ) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
-        let event_filter_mask =
+        let mut event_filter_mask =
             profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::NONE);
 
-        SelfProfilerRef { profiler, event_filter_mask }
+        if verbose_sparse {
+            event_filter_mask |= EventFilter::SPARSE_PASS;
+        }
+
+        if verbose_generic {
+            event_filter_mask |= EventFilter::GENERIC_PASS;
+        }
+
+        SelfProfilerRef { profiler, event_filter_mask, verbose_sparse, verbose_generic }
     }
 
-    // This shim makes sure that calls only get executed if the filter mask
-    // lets them pass. It also contains some trickery to make sure that
-    // code is optimized for non-profiling compilation sessions, i.e. anything
-    // past the filter check is never inlined so it doesn't clutter the fast
-    // path.
     #[inline(always)]
     fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
     where
         F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
     {
-        #[inline(never)]
-        fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
-        where
-            F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
-        {
-            let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
-        }
+        self.handle_event(
+            event_filter,
+            || f(self.profiler.as_ref().unwrap()),
+            || TimingGuard::none(),
+        )
+    }
 
+    // This shim makes sure that cold calls only get executed if the filter mask
+    // lets them pass. It also contains some trickery to make sure that
+    // code is optimized for non-profiling compilation sessions, i.e. anything
+    // past the filter check is never inlined so it doesn't clutter the fast
+    // path.
+    #[inline(always)]
+    fn handle_event<R>(
+        &self,
+        event_filter: EventFilter,
+        cold: impl FnOnce() -> R,
+        hot: impl FnOnce() -> R,
+    ) -> R {
         if unlikely!(self.event_filter_mask.contains(event_filter)) {
-            cold_call(self, f)
+            cold_path(|| cold())
         } else {
-            TimingGuard::none()
+            hot()
         }
+    }
+
+    /// Start profiling a sparse pass. Profiling continues until the
+    /// VerboseTimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn sparse_pass<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
+        self.handle_event(
+            EventFilter::SPARSE_PASS,
+            || {
+                VerboseTimingGuard::start(
+                    self.profiler
+                        .as_ref()
+                        .map(|profiler| (&**profiler, profiler.sparse_pass_event_kind)),
+                    event_id,
+                    self.verbose_sparse,
+                )
+            },
+            || VerboseTimingGuard::none(),
+        )
+    }
+
+    /// Start profiling a generic pass. Profiling continues until the
+    /// VerboseTimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn generic_pass<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
+        self.handle_event(
+            EventFilter::GENERIC_PASS,
+            || {
+                VerboseTimingGuard::start(
+                    self.profiler
+                        .as_ref()
+                        .map(|profiler| (&**profiler, profiler.generic_pass_event_kind)),
+                    event_id,
+                    self.verbose_generic,
+                )
+            },
+            || VerboseTimingGuard::none(),
+        )
     }
 
     /// Start profiling a generic activity. Profiling continues until the
@@ -197,6 +267,8 @@ pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
     query_event_kind: StringId,
+    sparse_pass_event_kind: StringId,
+    generic_pass_event_kind: StringId,
     generic_activity_event_kind: StringId,
     incremental_load_result_event_kind: StringId,
     query_blocked_event_kind: StringId,
@@ -217,6 +289,8 @@ impl SelfProfiler {
         let profiler = Profiler::new(&path)?;
 
         let query_event_kind = profiler.alloc_string("Query");
+        let sparse_pass_event_kind = profiler.alloc_string("SparsePass");
+        let generic_pass_event_kind = profiler.alloc_string("GenericPass");
         let generic_activity_event_kind = profiler.alloc_string("GenericActivity");
         let incremental_load_result_event_kind = profiler.alloc_string("IncrementalLoadResult");
         let query_blocked_event_kind = profiler.alloc_string("QueryBlocked");
@@ -259,6 +333,8 @@ impl SelfProfiler {
             profiler,
             event_filter_mask,
             query_event_kind,
+            sparse_pass_event_kind,
+            generic_pass_event_kind,
             generic_activity_event_kind,
             incremental_load_result_event_kind,
             query_blocked_event_kind,
@@ -299,5 +375,120 @@ impl<'a> TimingGuard<'a> {
     #[inline]
     pub fn none() -> TimingGuard<'a> {
         TimingGuard(None)
+    }
+}
+
+#[must_use]
+pub struct VerboseTimingGuard<'a> {
+    event_id: &'a str,
+    start: Option<Instant>,
+    _guard: TimingGuard<'a>,
+}
+
+impl<'a> VerboseTimingGuard<'a> {
+    pub fn start(
+        profiler: Option<(&'a SelfProfiler, StringId)>,
+        event_id: &'a str,
+        verbose: bool,
+    ) -> Self {
+        let _guard = profiler.map_or(TimingGuard::none(), |(profiler, event_kind)| {
+            let event = profiler.profiler.alloc_string(event_id);
+            TimingGuard::start(profiler, event_kind, event)
+        });
+        VerboseTimingGuard {
+            event_id,
+            _guard,
+            start: if verbose { Some(Instant::now()) } else { None },
+        }
+    }
+
+    #[inline(always)]
+    pub fn run<R>(self, f: impl FnOnce() -> R) -> R {
+        let _timer = self;
+        f()
+    }
+
+    fn none() -> Self {
+        VerboseTimingGuard { event_id: "", start: None, _guard: TimingGuard::none() }
+    }
+}
+
+impl Drop for VerboseTimingGuard<'_> {
+    fn drop(&mut self) {
+        self.start.map(|start| print_time_passes_entry(true, self.event_id, start.elapsed()));
+    }
+}
+
+pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
+    if !do_it {
+        return;
+    }
+
+    let mem_string = match get_resident() {
+        Some(n) => {
+            let mb = n as f64 / 1_000_000.0;
+            format!("; rss: {}MB", mb.round() as usize)
+        }
+        None => String::new(),
+    };
+    println!("time: {}{}\t{}", duration_to_secs_str(dur), mem_string, what);
+}
+
+// Hack up our own formatting for the duration to make it easier for scripts
+// to parse (always use the same number of decimal places and the same unit).
+pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
+    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
+    let secs = dur.as_secs() as f64 + dur.subsec_nanos() as f64 / NANOS_PER_SEC;
+
+    format!("{:.3}", secs)
+}
+
+// Memory reporting
+#[cfg(unix)]
+fn get_resident() -> Option<usize> {
+    let field = 1;
+    let contents = fs::read("/proc/self/statm").ok()?;
+    let contents = String::from_utf8(contents).ok()?;
+    let s = contents.split_whitespace().nth(field)?;
+    let npages = s.parse::<usize>().ok()?;
+    Some(npages * 4096)
+}
+
+#[cfg(windows)]
+fn get_resident() -> Option<usize> {
+    type BOOL = i32;
+    type DWORD = u32;
+    type HANDLE = *mut u8;
+    use libc::size_t;
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct PROCESS_MEMORY_COUNTERS {
+        cb: DWORD,
+        PageFaultCount: DWORD,
+        PeakWorkingSetSize: size_t,
+        WorkingSetSize: size_t,
+        QuotaPeakPagedPoolUsage: size_t,
+        QuotaPagedPoolUsage: size_t,
+        QuotaPeakNonPagedPoolUsage: size_t,
+        QuotaNonPagedPoolUsage: size_t,
+        PagefileUsage: size_t,
+        PeakPagefileUsage: size_t,
+    }
+    #[allow(non_camel_case_types)]
+    type PPROCESS_MEMORY_COUNTERS = *mut PROCESS_MEMORY_COUNTERS;
+    #[link(name = "psapi")]
+    extern "system" {
+        fn GetCurrentProcess() -> HANDLE;
+        fn GetProcessMemoryInfo(
+            Process: HANDLE,
+            ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
+            cb: DWORD,
+        ) -> BOOL;
+    }
+    let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { mem::zeroed() };
+    pmc.cb = mem::size_of_val(&pmc) as DWORD;
+    match unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut pmc, pmc.cb) } {
+        0 => None,
+        _ => Some(pmc.WorkingSetSize as usize),
     }
 }

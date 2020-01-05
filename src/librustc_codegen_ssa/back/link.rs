@@ -8,7 +8,6 @@ use rustc::session::search_paths::PathKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc::session::{filesearch, Session};
-use rustc::util::common::{time, time_ext};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_span::symbol::Symbol;
@@ -578,7 +577,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     let mut i = 0;
     loop {
         i += 1;
-        prog = time(sess, "running linker", || exec_linker(sess, &mut cmd, out_filename, tmpdir));
+        prog = sess.time("running linker", || exec_linker(sess, &mut cmd, out_filename, tmpdir));
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -1563,7 +1562,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        time_ext(sess.time_extended(), &format!("altering {}.rlib", name), || {
+        sess.prof.generic_pass(&format!("altering {}.rlib", name)).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 

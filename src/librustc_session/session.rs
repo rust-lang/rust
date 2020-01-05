@@ -9,7 +9,7 @@ use crate::config::{self, OutputType, PrintRequest, Sanitizer, SwitchWithOptPath
 use crate::filesearch;
 use crate::lint;
 use crate::search_paths::{PathKind, SearchPath};
-use crate::utils::duration_to_secs_str;
+use rustc_data_structures::profiling::duration_to_secs_str;
 use rustc_errors::ErrorReported;
 
 use rustc_data_structures::base_n;
@@ -397,9 +397,6 @@ impl Session {
     }
     pub fn time_passes(&self) -> bool {
         self.opts.debugging_opts.time_passes || self.opts.debugging_opts.time
-    }
-    pub fn time_extended(&self) -> bool {
-        self.opts.debugging_opts.time_passes
     }
     pub fn instrument_mcount(&self) -> bool {
         self.opts.debugging_opts.instrument_mcount
@@ -1030,6 +1027,12 @@ fn build_session_(
         CguReuseTracker::new_disabled()
     };
 
+    let prof = SelfProfilerRef::new(
+        self_profiler,
+        sopts.debugging_opts.time_passes || sopts.debugging_opts.time,
+        sopts.debugging_opts.time_passes,
+    );
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1049,7 +1052,7 @@ fn build_session_(
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
-        prof: SelfProfilerRef::new(self_profiler),
+        prof,
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),
             decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),

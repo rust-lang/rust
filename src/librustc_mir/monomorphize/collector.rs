@@ -191,7 +191,6 @@ use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
-use rustc::util::common::time;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_index::bit_set::GrowableBitSet;
@@ -284,7 +283,7 @@ pub fn collect_crate_mono_items(
 ) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-    let roots = time(tcx.sess, "collecting roots", || {
+    let roots = tcx.sess.time("collecting roots", || {
         let _prof_timer = tcx.prof.generic_activity("monomorphization_collector_root_collections");
         collect_roots(tcx, mode)
     });
@@ -295,12 +294,10 @@ pub fn collect_crate_mono_items(
     let mut inlining_map = MTLock::new(InliningMap::new());
 
     {
-        let _prof_timer = tcx.prof.generic_activity("monomorphization_collector_graph_walk");
-
         let visited: MTRef<'_, _> = &mut visited;
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
-        time(tcx.sess, "collecting mono items", || {
+        tcx.sess.time("collecting mono items", || {
             par_iter(roots).for_each(|root| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(tcx, root, visited, &mut recursion_depths, inlining_map);

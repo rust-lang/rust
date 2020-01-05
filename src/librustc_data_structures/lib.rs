@@ -33,6 +33,9 @@ extern crate libc;
 #[macro_use]
 extern crate cfg_if;
 
+#[cfg(windows)]
+extern crate libc;
+
 pub use rustc_serialize::hex::ToHex;
 
 #[inline(never)]

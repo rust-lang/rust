@@ -18,9 +18,9 @@ use rustc::session::config::{
 };
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc::util::common::{print_time_passes_entry, set_time_depth, time_depth};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
@@ -45,7 +45,6 @@ use std::str;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use std::time::Instant;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
@@ -81,7 +80,7 @@ pub struct ModuleConfig {
     pub verify_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
     pub no_builtins: bool,
-    pub time_passes: bool,
+    pub time_module: bool,
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
@@ -125,7 +124,7 @@ impl ModuleConfig {
             verify_llvm_ir: false,
             no_prepopulate_passes: false,
             no_builtins: false,
-            time_passes: false,
+            time_module: true,
             vectorize_loop: false,
             vectorize_slp: false,
             merge_functions: false,
@@ -137,7 +136,6 @@ impl ModuleConfig {
         self.verify_llvm_ir = sess.verify_llvm_ir();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
-        self.time_passes = sess.time_extended();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
@@ -212,7 +210,6 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
 pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub backend: B,
-    pub time_passes: bool,
     pub prof: SelfProfilerRef,
     pub lto: Lto,
     pub no_landing_pads: bool,
@@ -434,8 +431,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     // Exclude metadata and allocator modules from time_passes output, since
     // they throw off the "LLVM passes" measurement.
-    metadata_config.time_passes = false;
-    allocator_config.time_passes = false;
+    metadata_config.time_module = false;
+    allocator_config.time_module = false;
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -1026,7 +1023,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
-        time_passes: sess.time_extended(),
         prof: sess.prof.clone(),
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
@@ -1184,9 +1180,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
-        // We pretend to be within the top-level LLVM time-passes task here:
-        set_time_depth(1);
-
         let max_workers = ::num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
@@ -1224,7 +1217,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut main_thread_worker_state = MainThreadWorkerState::Idle;
         let mut running = 0;
 
-        let mut llvm_start_time = None;
+        let prof = &cgcx.prof;
+        let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;
 
         // Run the message loop while there's still anything that needs message
         // processing. Note that as soon as codegen is aborted we simply want to
@@ -1262,6 +1256,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             ..cgcx.clone()
                         };
                         maybe_start_llvm_timer(
+                            prof,
                             cgcx.config(item.module_kind()),
                             &mut llvm_start_time,
                         );
@@ -1313,6 +1308,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                 ..cgcx.clone()
                             };
                             maybe_start_llvm_timer(
+                                prof,
                                 cgcx.config(item.module_kind()),
                                 &mut llvm_start_time,
                             );
@@ -1345,7 +1341,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             while !codegen_aborted && work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
-                maybe_start_llvm_timer(cgcx.config(item.module_kind()), &mut llvm_start_time);
+                maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
 
                 let cgcx =
                     CodegenContext { worker: get_worker_id(&mut free_worker_ids), ..cgcx.clone() };
@@ -1483,13 +1479,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
         }
 
-        if let Some(llvm_start_time) = llvm_start_time {
-            let total_llvm_time = Instant::now().duration_since(llvm_start_time);
-            // This is the top-level timing for all of LLVM, set the time-depth
-            // to zero.
-            set_time_depth(1);
-            print_time_passes_entry(cgcx.time_passes, "LLVM passes", total_llvm_time);
-        }
+        // Drop to print timings
+        drop(llvm_start_time);
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
@@ -1514,13 +1505,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         items_in_queue > 0 && items_in_queue >= max_workers.saturating_sub(workers_running / 2)
     }
 
-    fn maybe_start_llvm_timer(config: &ModuleConfig, llvm_start_time: &mut Option<Instant>) {
-        // We keep track of the -Ztime-passes output manually,
-        // since the closure-based interface does not fit well here.
-        if config.time_passes {
-            if llvm_start_time.is_none() {
-                *llvm_start_time = Some(Instant::now());
-            }
+    fn maybe_start_llvm_timer<'a>(
+        prof: &'a SelfProfilerRef,
+        config: &ModuleConfig,
+        llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
+    ) {
+        if config.time_module && llvm_start_time.is_none() {
+            *llvm_start_time = Some(prof.generic_pass("LLVM passes"));
         }
     }
 }
@@ -1528,11 +1519,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
 
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
-    let depth = time_depth();
-
     thread::spawn(move || {
-        set_time_depth(depth);
-
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb<B: ExtraBackendMethods> {

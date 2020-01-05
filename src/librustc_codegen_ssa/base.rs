@@ -39,9 +39,9 @@ use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
-use rustc::util::common::{print_time_passes_entry, set_time_depth, time, time_depth};
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_span::Span;
@@ -565,9 +565,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
-        time(tcx.sess, "write allocator module", || {
-            backend.codegen_allocator(tcx, &mut modules, kind)
-        });
+        tcx.sess
+            .time("write allocator module", || backend.codegen_allocator(tcx, &mut modules, kind));
 
         Some(ModuleCodegen { name: llmod_id, module_llvm: modules, kind: ModuleKind::Allocator })
     } else {
@@ -583,7 +582,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
         let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
-        time(tcx.sess, "write compressed metadata", || {
+        tcx.sess.time("write compressed metadata", || {
             backend.write_compressed_metadata(
                 tcx,
                 &ongoing_codegen.metadata,
@@ -653,10 +652,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    let time_depth = time_depth();
-    set_time_depth(time_depth + 1);
     print_time_passes_entry(tcx.sess.time_passes(), "codegen to LLVM IR", total_codegen_time);
-    set_time_depth(time_depth);
 
     ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
@@ -716,9 +712,9 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 fn assert_and_save_dep_graph(tcx: TyCtxt<'_>) {
-    time(tcx.sess, "assert dep graph", || ::rustc_incremental::assert_dep_graph(tcx));
+    tcx.sess.time("assert dep graph", || ::rustc_incremental::assert_dep_graph(tcx));
 
-    time(tcx.sess, "serialize dep graph", || ::rustc_incremental::save_dep_graph(tcx));
+    tcx.sess.time("serialize dep graph", || ::rustc_incremental::save_dep_graph(tcx));
 }
 
 impl CrateInfo {

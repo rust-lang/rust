@@ -9,7 +9,6 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use crate::util::common::{time, time_ext};
 
 use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
@@ -200,7 +199,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Encode query results.
             let mut query_result_index = EncodedQueryResultIndex::new();
 
-            time(tcx.sess, "encode query results", || {
+            tcx.sess.time("encode query results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
@@ -1056,23 +1055,22 @@ where
     E: 'a + TyEncoder,
 {
     let desc = &format!("encode_query_results for {}", ::std::any::type_name::<Q>());
+    let _timer = tcx.sess.prof.generic_pass(desc);
 
-    time_ext(tcx.sess.time_extended(), desc, || {
-        let shards = Q::query_cache(tcx).lock_shards();
-        assert!(shards.iter().all(|shard| shard.active.is_empty()));
-        for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
-            if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
-                let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+    let shards = Q::query_cache(tcx).lock_shards();
+    assert!(shards.iter().all(|shard| shard.active.is_empty()));
+    for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
+        if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
+            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
-                // Record position of the cache entry.
-                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+            // Record position of the cache entry.
+            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-                // Encode the type check tables with the `SerializedDepNodeIndex`
-                // as tag.
-                encoder.encode_tagged(dep_node, &entry.value)?;
-            }
+            // Encode the type check tables with the `SerializedDepNodeIndex`
+            // as tag.
+            encoder.encode_tagged(dep_node, &entry.value)?;
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
