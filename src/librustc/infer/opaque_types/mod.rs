@@ -1,9 +1,9 @@
 use crate::infer::error_reporting::{note_and_explain_free_region, note_and_explain_region};
-use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use crate::ty::free_region_map::FreeRegionRelations;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use errors::DiagnosticBuilder;
