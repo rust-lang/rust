@@ -134,8 +134,10 @@ use crate::hint::spin_loop;
 /// This function is different from [`std::thread::yield_now`] which directly yields to the
 /// system's scheduler, whereas `spin_loop_hint` does not interact with the operating system.
 ///
-/// If actively spinning for a long time is required, e.g. because code polls a non-blocking API,
-/// calling [`std::thread::yield_now`] or [`std::thread::sleep`] may be the best option.
+/// A common use case for `spin_loop_hint` is implementing bounded optimistic spinning in a CAS
+/// loop in synchronization primitives. To avoid problems like priority inversion, it is strongly
+/// recommended that the spin loop is terminated after a finite amount of iterations and an
+/// appropriate blocking syscall is made.
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
