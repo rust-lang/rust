@@ -741,11 +741,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                 // context for the supertraits.
+                self.visit_vis(&item.vis);
+                self.visit_ident(item.ident);
                 self.visit_generics(generics);
                 self.with_bound_context(Some(BoundContext::TraitBounds), |this| {
                     walk_list!(this, visit_param_bound, bounds);
                 });
                 walk_list!(self, visit_trait_item, trait_items);
+                walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
             ItemKind::Mod(_) => {
