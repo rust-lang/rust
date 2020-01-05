@@ -4,6 +4,7 @@ extern crate rustc;
 extern crate rustc_codegen_utils;
 #[macro_use]
 extern crate rustc_data_structures;
+extern crate rustc_hir;
 extern crate rustc_target;
 extern crate rustc_driver;
 extern crate rustc_span;
@@ -65,7 +66,7 @@ impl CodegenBackend for TheBackend {
         _metadata: EncodedMetadata,
         _need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        use rustc::hir::def_id::LOCAL_CRATE;
+        use rustc_hir::def_id::LOCAL_CRATE;
 
         Box::new(tcx.crate_name(LOCAL_CRATE) as Symbol)
     }
