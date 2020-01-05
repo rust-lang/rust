@@ -492,7 +492,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         if is_method_call {
             let origin = match expr.kind {
                 hir::ExprKind::MethodCall(..) => infer::ParameterOrigin::MethodCall,
-                hir::ExprKind::Unary(op, _) if op == hir::UnDeref => {
+                hir::ExprKind::Unary(op, _) if op == hir::UnOp::UnDeref => {
                     infer::ParameterOrigin::OverloadedDeref
                 }
                 _ => infer::ParameterOrigin::OverloadedOperator,
@@ -577,7 +577,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::Unary(hir::UnDeref, ref base) => {
+            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
                 if is_method_call {
                     self.constrain_call(expr, Some(base), None::<hir::Expr<'_>>.iter());

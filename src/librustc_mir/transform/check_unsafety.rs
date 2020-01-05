@@ -482,7 +482,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         hir::intravisit::walk_block(self, block);
 
-        if let hir::UnsafeBlock(hir::UserProvided) = block.rules {
+        if let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules {
             self.unsafe_blocks.push((block.hir_id, self.used_unsafe.contains(&block.hir_id)));
         }
     }

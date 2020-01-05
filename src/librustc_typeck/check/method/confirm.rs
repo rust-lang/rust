@@ -425,7 +425,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             match exprs.last().unwrap().kind {
                 hir::ExprKind::Field(ref expr, _)
                 | hir::ExprKind::Index(ref expr, _)
-                | hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
+                | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,
             }
         }
@@ -471,7 +471,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         &[index_expr_ty],
                     );
                 }
-                hir::ExprKind::Unary(hir::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr, &[]);
                 }
                 _ => {}

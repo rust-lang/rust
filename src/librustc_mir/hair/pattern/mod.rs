@@ -814,7 +814,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
-            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 let ty = self.tables.expr_ty(expr);
                 let lit = match expr.kind {
                     hir::ExprKind::Lit(ref lit) => lit,

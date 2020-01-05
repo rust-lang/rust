@@ -548,8 +548,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
-            hir::Return(ref output) => astconv.ast_ty_to_ty(&output),
-            hir::DefaultReturn(_) => match body.generator_kind {
+            hir::FunctionRetTy::Return(ref output) => astconv.ast_ty_to_ty(&output),
+            hir::FunctionRetTy::DefaultReturn(_) => match body.generator_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
@@ -696,7 +696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.types.err
         });
 
-        if let hir::Return(ref output) = decl.output {
+        if let hir::FunctionRetTy::Return(ref output) = decl.output {
             astconv.ast_ty_to_ty(&output);
         }
 

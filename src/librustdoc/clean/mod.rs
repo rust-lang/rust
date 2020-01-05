@@ -1003,8 +1003,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
 impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
         match *self {
-            hir::Return(ref typ) => Return(typ.clean(cx)),
-            hir::DefaultReturn(..) => DefaultReturn,
+            Self::Return(ref typ) => Return(typ.clean(cx)),
+            Self::DefaultReturn(..) => DefaultReturn,
         }
     }
 }

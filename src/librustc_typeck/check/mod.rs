@@ -390,6 +390,7 @@ impl UnsafetyState {
     }
 
     pub fn recurse(&mut self, blk: &hir::Block<'_>) -> UnsafetyState {
+        use hir::BlockCheckMode;
         match self.unsafety {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
@@ -399,16 +400,16 @@ impl UnsafetyState {
 
             unsafety => {
                 let (unsafety, def, count) = match blk.rules {
-                    hir::PushUnsafeBlock(..) => {
+                    BlockCheckMode::PushUnsafeBlock(..) => {
                         (unsafety, blk.hir_id, self.unsafe_push_count.checked_add(1).unwrap())
                     }
-                    hir::PopUnsafeBlock(..) => {
+                    BlockCheckMode::PopUnsafeBlock(..) => {
                         (unsafety, blk.hir_id, self.unsafe_push_count.checked_sub(1).unwrap())
                     }
-                    hir::UnsafeBlock(..) => {
+                    BlockCheckMode::UnsafeBlock(..) => {
                         (hir::Unsafety::Unsafe, blk.hir_id, self.unsafe_push_count)
                     }
-                    hir::DefaultBlock => (unsafety, self.def, self.unsafe_push_count),
+                    BlockCheckMode::DefaultBlock => (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState { def, unsafety, unsafe_push_count: count, from_fn: false }
             }

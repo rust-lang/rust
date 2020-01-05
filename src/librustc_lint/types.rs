@@ -376,7 +376,7 @@ fn lint_literal<'a, 'tcx>(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.hir_id {
                     self.negated_expr_id = expr.hir_id;
@@ -969,7 +969,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
         }
 
-        if let hir::Return(ref ret_hir) = decl.output {
+        if let hir::FunctionRetTy::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false);

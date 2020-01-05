@@ -867,7 +867,7 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy<'v>) {
-    if let Return(ref output_ty) = *ret_ty {
+    if let FunctionRetTy::Return(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }

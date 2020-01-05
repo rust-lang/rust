@@ -207,9 +207,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
         match u {
-            UnOp::Deref => hir::UnDeref,
-            UnOp::Not => hir::UnNot,
-            UnOp::Neg => hir::UnNeg,
+            UnOp::Deref => hir::UnOp::UnDeref,
+            UnOp::Not => hir::UnOp::UnNot,
+            UnOp::Neg => hir::UnOp::UnNeg,
         }
     }
 
@@ -1374,7 +1374,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     stmts: &[],
                     expr: Some(expr),
                     hir_id,
-                    rules: hir::UnsafeBlock(hir::CompilerGenerated),
+                    rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
                     span,
                     targeted_by_break: false,
                 }),

@@ -846,8 +846,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         let output = match fd.output {
-            hir::DefaultReturn(_) => None,
-            hir::Return(ref ty) => Some(&**ty),
+            hir::FunctionRetTy::DefaultReturn(_) => None,
+            hir::FunctionRetTy::Return(ref ty) => Some(&**ty),
         };
         self.visit_fn_like_elision(&fd.inputs, output);
     }

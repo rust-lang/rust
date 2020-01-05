@@ -26,7 +26,7 @@ use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, Partial
 use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::exports::ExportMap;
 use rustc::hir::map::Definitions;
-use rustc::hir::{Bool, Char, Float, Int, PrimTy, Str, Uint};
+use rustc::hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc::hir::{GlobMap, TraitMap};
 use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};

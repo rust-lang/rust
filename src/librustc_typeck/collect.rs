@@ -2499,7 +2499,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
             check(&input, ty)
         }
-        if let hir::Return(ref ty) = decl.output {
+        if let hir::FunctionRetTy::Return(ref ty) = decl.output {
             check(&ty, *fty.output().skip_binder())
         }
     }

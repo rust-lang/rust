@@ -2144,12 +2144,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             match decl.output {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
-                    Some((def_id, _)) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))))
-                    }
-                    _ => hir::Return(self.lower_ty(ty, ImplTraitContext::disallowed())),
+                    Some((def_id, _)) if impl_trait_return_allow => hir::FunctionRetTy::Return(
+                        self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))),
+                    ),
+                    _ => hir::FunctionRetTy::Return(
+                        self.lower_ty(ty, ImplTraitContext::disallowed()),
+                    ),
                 },
-                FunctionRetTy::Default(span) => hir::DefaultReturn(span),
+                FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
             }
         };
 
@@ -2940,8 +2942,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
         match *b {
-            BlockCheckMode::Default => hir::DefaultBlock,
-            BlockCheckMode::Unsafe(u) => hir::UnsafeBlock(self.lower_unsafe_source(u)),
+            BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
+            BlockCheckMode::Unsafe(u) => {
+                hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
+            }
         }
     }
 
@@ -2956,8 +2960,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
         match u {
-            CompilerGenerated => hir::CompilerGenerated,
-            UserProvided => hir::UserProvided,
+            CompilerGenerated => hir::UnsafeSource::CompilerGenerated,
+            UserProvided => hir::UnsafeSource::UserProvided,
         }
     }
 
@@ -3004,7 +3008,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             stmts,
             expr,
             hir_id: self.next_id(),
-            rules: hir::DefaultBlock,
+            rules: hir::BlockCheckMode::DefaultBlock,
             span,
             targeted_by_break: false,
         };
