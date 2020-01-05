@@ -87,10 +87,6 @@ pub use self::context::{
 
 pub use self::instance::{Instance, InstanceDef};
 
-pub use self::structural_match::search_for_structural_match_violation;
-pub use self::structural_match::type_marked_structural;
-pub use self::structural_match::NonStructuralMatchTy;
-
 pub use self::trait_def::TraitDef;
 
 pub use self::query::queries;
@@ -124,7 +120,6 @@ mod context;
 mod diagnostics;
 mod instance;
 mod structural_impls;
-mod structural_match;
 mod sty;
 
 // Data types

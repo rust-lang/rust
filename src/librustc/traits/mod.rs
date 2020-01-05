@@ -17,6 +17,7 @@ pub mod query;
 mod select;
 mod specialize;
 mod structural_impls;
+mod structural_match;
 mod util;
 pub mod wf;
 
@@ -63,6 +64,9 @@ pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
+pub use self::structural_match::search_for_structural_match_violation;
+pub use self::structural_match::type_marked_structural;
+pub use self::structural_match::NonStructuralMatchTy;
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{

@@ -4,7 +4,7 @@ use rustc::infer::InferCtxt;
 use rustc::lint;
 use rustc::mir::Field;
 use rustc::traits::predicate_for_trait_def;
-use rustc::traits::{ObligationCause, PredicateObligation};
+use rustc::traits::{self, ObligationCause, PredicateObligation};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 
@@ -76,12 +76,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     fn search_for_structural_match_violation(
         &self,
         ty: Ty<'tcx>,
-    ) -> Option<ty::NonStructuralMatchTy<'tcx>> {
-        ty::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty)
+    ) -> Option<traits::NonStructuralMatchTy<'tcx>> {
+        traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty)
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
-        ty::type_marked_structural(self.id, self.span, &self.infcx, ty)
+        traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
     }
 
     fn to_pat(&mut self, cv: &'tcx ty::Const<'tcx>) -> Pat<'tcx> {
@@ -105,8 +105,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
             if let Some(non_sm_ty) = structural {
                 let adt_def = match non_sm_ty {
-                    ty::NonStructuralMatchTy::Adt(adt_def) => adt_def,
-                    ty::NonStructuralMatchTy::Param => {
+                    traits::NonStructuralMatchTy::Adt(adt_def) => adt_def,
+                    traits::NonStructuralMatchTy::Param => {
                         bug!("use of constant whose type is a parameter inside a pattern")
                     }
                 };
