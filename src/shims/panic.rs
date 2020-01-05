@@ -14,7 +14,7 @@
 use rustc::mir;
 use rustc::ty::{self, layout::LayoutOf};
 use rustc_target::spec::PanicStrategy;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 use crate::*;
 

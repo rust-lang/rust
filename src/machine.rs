@@ -14,7 +14,8 @@ use rustc::ty::{
     layout::{LayoutOf, Size},
     Ty, TyCtxt,
 };
-use syntax::{attr, source_map::Span, symbol::sym};
+use rustc_span::{source_map::Span, symbol::sym};
+use syntax::attr;
 
 use crate::*;
 

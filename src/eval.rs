@@ -47,7 +47,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     config: MiriConfig,
 ) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'tcx>>, MPlaceTy<'tcx, Tag>)> {
     let mut ecx = InterpCx::new(
-        tcx.at(syntax::source_map::DUMMY_SP),
+        tcx.at(rustc_span::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.communicate),
         MemoryExtra::new(
