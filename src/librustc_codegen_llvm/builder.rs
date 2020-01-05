@@ -990,11 +990,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.start", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.start.p0i8", ptr, size);
     }
 
     fn lifetime_end(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.end", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
     fn call(
