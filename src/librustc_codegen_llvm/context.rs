@@ -826,8 +826,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
-        ifn!("llvm.lifetime.start", fn(t_i64, i8p) -> void);
-        ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
