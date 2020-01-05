@@ -38,11 +38,12 @@ use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
     INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
 };
-use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::{LintArray, LintPass};
 
 use rustc_span::Span;
 use syntax::ast;

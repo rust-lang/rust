@@ -326,3 +326,41 @@ macro_rules! declare_tool_lint {
         };
     );
 }
+
+/// Declares a static `LintArray` and return it as an expression.
+#[macro_export]
+macro_rules! lint_array {
+    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
+    ($( $lint:expr ),*) => {{
+        vec![$($lint),*]
+    }}
+}
+
+pub type LintArray = Vec<&'static Lint>;
+
+pub trait LintPass {
+    fn name(&self) -> &'static str;
+}
+
+/// Implements `LintPass for $name` with the given list of `Lint` statics.
+#[macro_export]
+macro_rules! impl_lint_pass {
+    ($name:ident => [$($lint:expr),* $(,)?]) => {
+        impl $crate::lint::LintPass for $name {
+            fn name(&self) -> &'static str { stringify!($name) }
+        }
+        impl $name {
+            pub fn get_lints() -> $crate::lint::LintArray { $crate::lint_array!($($lint),*) }
+        }
+    };
+}
+
+/// Declares a type named `$name` which implements `LintPass`.
+/// To the right of `=>` a comma separated list of `Lint` statics is given.
+#[macro_export]
+macro_rules! declare_lint_pass {
+    ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
+        $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
+        $crate::impl_lint_pass!($name => [$($lint),*]);
+    };
+}

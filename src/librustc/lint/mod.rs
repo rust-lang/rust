@@ -21,6 +21,7 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
+use crate::lint::builtin::HardwiredLints;
 use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
@@ -33,48 +34,12 @@ use rustc_span::Span;
 use syntax::ast;
 
 pub use crate::lint::context::{
-    CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore,
+    add_elided_lifetime_in_path_suggestion, CheckLintNameResult, EarlyContext, LateContext,
+    LintContext, LintStore,
 };
 
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
-
-/// Declares a static `LintArray` and return it as an expression.
-#[macro_export]
-macro_rules! lint_array {
-    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
-    ($( $lint:expr ),*) => {{
-        vec![$($lint),*]
-    }}
-}
-
-pub type LintArray = Vec<&'static Lint>;
-
-pub trait LintPass {
-    fn name(&self) -> &'static str;
-}
-
-/// Implements `LintPass for $name` with the given list of `Lint` statics.
-#[macro_export]
-macro_rules! impl_lint_pass {
-    ($name:ident => [$($lint:expr),* $(,)?]) => {
-        impl LintPass for $name {
-            fn name(&self) -> &'static str { stringify!($name) }
-        }
-        impl $name {
-            pub fn get_lints() -> LintArray { $crate::lint_array!($($lint),*) }
-        }
-    };
-}
-
-/// Declares a type named `$name` which implements `LintPass`.
-/// To the right of `=>` a comma separated list of `Lint` statics is given.
-#[macro_export]
-macro_rules! declare_lint_pass {
-    ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
-        $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
-        $crate::impl_lint_pass!($name => [$($lint),*]);
-    };
-}
+pub use rustc_session::lint::{LintArray, LintPass};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -165,6 +130,8 @@ macro_rules! declare_late_lint_pass {
 }
 
 late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
+
+impl LateLintPass<'_, '_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
