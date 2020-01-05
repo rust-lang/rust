@@ -73,17 +73,13 @@ impl<'tcx> Instance<'tcx> {
     /// (e.g. when we are attempting to to do const-propagation).
     /// In this case, `Instace.ty_env` should be used to provide
     /// the `ParamEnv` for our generic context.
-    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphic_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
         // There shouldn't be any params - if there are, then
         // Instance.ty_env should have been used to provide the proper
         // ParamEnv
         if self.substs.has_param_types() {
-            bug!(
-                "Instance.ty called for type {:?} with params in substs: {:?}",
-                ty,
-                self.substs
-            );
+            bug!("Instance.ty called for type {:?} with params in substs: {:?}", ty, self.substs);
         }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
     }

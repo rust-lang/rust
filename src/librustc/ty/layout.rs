@@ -2301,7 +2301,7 @@ impl<'tcx> ty::Instance<'tcx> {
     // or should go through `FnAbi` instead, to avoid losing any
     // adjustments `FnAbi::of_instance` might be performing.
     fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.ty(tcx);
+        let ty = self.monomorphic_ty(tcx);
         match ty.kind {
             ty::FnDef(..) |
             // Shims currently have type FnPtr. Not sure this should remain.

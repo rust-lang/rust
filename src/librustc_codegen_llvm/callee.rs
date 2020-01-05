@@ -36,7 +36,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
     }
 
     let sym = tcx.symbol_name(instance).name.as_str();
-    debug!("get_fn({:?}: {:?}) => {}", instance, instance.ty(cx.tcx()), sym);
+    debug!("get_fn({:?}: {:?}) => {}", instance, instance.monomorphic_ty(cx.tcx()), sym);
 
     let fn_abi = FnAbi::of_instance(cx, instance, &[]);
 
