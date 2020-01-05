@@ -232,22 +232,26 @@ fn access_mode(kind: NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAcces
                 match_ast! {
                     match (node) {
                         ast::BinExpr(expr) => {
-                            match expr.op_kind() {
-                                Some(kind) if kind.is_assignment() => {
-                                    if let Some(lhs) = expr.lhs() {
-                                        if lhs.syntax().text_range() == name_ref.syntax().text_range() {
-                                            return Some(ReferenceAccess::Write);
-                                        }
+                            if expr.op_kind()?.is_assignment() {
+                                // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
+                                // FIXME: This is not terribly accurate.
+                                if let Some(lhs) = expr.lhs() {
+                                    if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
+                                        return Some(ReferenceAccess::Write);
+                                    } else if name_ref.syntax().text_range().is_subrange(&lhs.syntax().text_range()) {
+                                        return Some(ReferenceAccess::Read);
                                     }
+                                }
 
-                                    if let Some(rhs) = expr.rhs() {
-                                        if rhs.syntax().text_range().is_subrange(&name_ref.syntax().text_range()) {
-                                            return Some(ReferenceAccess::Read);
-                                        }
+                                // If the variable is on the RHS then it's a Read.
+                                if let Some(rhs) = expr.rhs() {
+                                    if name_ref.syntax().text_range().is_subrange(&rhs.syntax().text_range()) {
+                                        return Some(ReferenceAccess::Read);
                                     }
-                                },
-                                _ => { return Some(ReferenceAccess::Read) },
+                                }
                             }
+
+                            // Cannot determine access
                             None
                         },
                         _ => {None}
@@ -565,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    fn test_basic_highlight_read() {
+    fn test_basic_highlight_read_write() {
         let code = r#"
         fn foo() {
             let i<|> = 0;
@@ -576,6 +580,24 @@ mod tests {
         assert_eq!(refs.len(), 3);
         assert_eq!(refs.references[0].access, Some(ReferenceAccess::Write));
         assert_eq!(refs.references[1].access, Some(ReferenceAccess::Read));
+    }
+
+    #[test]
+    fn test_basic_highlight_field_read_write() {
+        let code = r#"
+        struct S {
+            f: u32,
+        }
+
+        fn foo() {
+            let mut s = S{f: 0};
+            s.f<|> = 0;
+        }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 3);
+        //assert_eq!(refs.references[0].access, Some(ReferenceAccess::Write));
+        assert_eq!(refs.references[1].access, Some(ReferenceAccess::Write));
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
