@@ -997,7 +997,11 @@ where
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(..) if self.tcx().sess.opts.debugging_opts.lazy_normalization=> Ok(a),
+            ty::ConstKind::Unevaluated(..)
+                if self.tcx().sess.opts.debugging_opts.lazy_normalization =>
+            {
+                Ok(a)
+            }
             _ => relate::super_relate_consts(self, a, a),
         }
     }

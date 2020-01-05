@@ -189,4 +189,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             _ => ty,
         }
     }
+
+    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        constant.eval(self.infcx.tcx, self.param_env)
+    }
 }
