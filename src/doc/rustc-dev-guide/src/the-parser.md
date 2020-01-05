@@ -53,11 +53,11 @@ Code for lexical analysis is split between two crates:
 [libsyntax]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/index.html
 [rustc_errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-[`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html
+[`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
 [ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
 [librustc_parse]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/index.html
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/index.html
-[sourcefile]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceFile.html
+[sourcefile]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.SourceFile.html
