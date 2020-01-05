@@ -13,7 +13,6 @@ pub mod dropck_outlives;
 pub mod evaluate_obligation;
 pub mod method_autoderef;
 pub mod normalize;
-pub mod normalize_erasing_regions;
 pub mod outlives_bounds;
 pub mod type_op;
 

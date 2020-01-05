@@ -109,6 +109,7 @@ pub mod flags;
 pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
+pub mod normalize_erasing_regions;
 pub mod outlives;
 pub mod print;
 pub mod query;
