@@ -1241,7 +1241,6 @@ Released 2018-09-13
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`path_buf_push_overwrite`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_buf_push_overwrite
-[`pats_with_wild_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#pats_with_wild_match_arm
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal
@@ -1362,6 +1361,7 @@ Released 2018-09-13
 [`while_let_on_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_let_on_iterator
 [`wildcard_dependencies`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_dependencies
 [`wildcard_enum_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
+[`wildcard_in_or_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_in_or_patterns
 [`write_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#writeln_empty_string

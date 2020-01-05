@@ -1569,13 +1569,6 @@ pub const ALL_LINTS: [Lint; 345] = [
         module: "path_buf_push_overwrite",
     },
     Lint {
-        name: "pats_with_wild_match_arm",
-        group: "complexity",
-        desc: "a wildcard pattern used with others patterns in same match arm",
-        deprecation: None,
-        module: "matches",
-    },
-    Lint {
         name: "possible_missing_comma",
         group: "correctness",
         desc: "possible missing comma in array",
@@ -2349,6 +2342,13 @@ pub const ALL_LINTS: [Lint; 345] = [
         name: "wildcard_enum_match_arm",
         group: "restriction",
         desc: "a wildcard enum match arm using `_`",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
+        name: "wildcard_in_or_patterns",
+        group: "complexity",
+        desc: "a wildcard pattern used with others patterns in same match arm",
         deprecation: None,
         module: "matches",
     },

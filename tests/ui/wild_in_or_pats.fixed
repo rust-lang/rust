@@ -1,13 +1,13 @@
 // run-rustfix
 
-#![warn(clippy::pats_with_wild_match_arm)]
+#![warn(clippy::wildcard_in_or_patterns)]
 
 fn main() {
     match "foo" {
         "a" => {
             dbg!("matched a");
         },
-        "bar" | _ => {
+        _ => {
             dbg!("matched (bar or) wild");
         },
     };
@@ -15,7 +15,7 @@ fn main() {
         "a" => {
             dbg!("matched a");
         },
-        "bar" | "bar2" | _ => {
+        _ => {
             dbg!("matched (bar or bar2 or) wild");
         },
     };
@@ -23,7 +23,7 @@ fn main() {
         "a" => {
             dbg!("matched a");
         },
-        _ | "bar" | _ => {
+        _ => {
             dbg!("matched (bar or) wild");
         },
     };
@@ -31,7 +31,7 @@ fn main() {
         "a" => {
             dbg!("matched a");
         },
-        _ | "bar" => {
+        _ => {
             dbg!("matched (bar or) wild");
         },
     };

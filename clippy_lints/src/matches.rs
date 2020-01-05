@@ -238,7 +238,7 @@ declare_clippy_lint! {
     ///     "bar" | _ => {},
     /// }
     /// ```
-    pub PATS_WITH_WILD_MATCH_ARM,
+    pub WILDCARD_IN_OR_PATTERNS,
     complexity,
     "a wildcard pattern used with others patterns in same match arm"
 }
@@ -252,7 +252,7 @@ declare_lint_pass!(Matches => [
     MATCH_WILD_ERR_ARM,
     MATCH_AS_REF,
     WILDCARD_ENUM_MATCH_ARM,
-    PATS_WITH_WILD_MATCH_ARM
+    WILDCARD_IN_OR_PATTERNS
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
@@ -267,7 +267,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
             check_wild_err_arm(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
-            check_pats_wild_match(cx, ex, arms);
+            check_wild_in_or_pats(cx, ex, arms);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms, expr);
@@ -686,7 +686,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
     }
 }
 
-fn check_pats_wild_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let mut is_non_exhaustive_enum = false;
     let ty = cx.tables.expr_ty(ex);
     if ty.is_enum() {
@@ -703,7 +703,7 @@ fn check_pats_wild_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             if fields.len() > 1 && fields.iter().any(is_wild) {
                 span_lint_and_then(
                     cx,
-                    PATS_WITH_WILD_MATCH_ARM,
+                    WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
                     "wildcard pattern covers any other pattern as it will match anyway.",
                     |db| {
