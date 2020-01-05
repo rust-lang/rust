@@ -74,11 +74,12 @@
 
 use crate::fx::{FxHashMap, FxHashSet};
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
+use std::mem;
 
 mod graphviz;
 
@@ -143,7 +144,7 @@ pub struct ObligationForest<O: ForestObligation> {
     active_cache: FxHashMap<O::Predicate, Option<usize>>,
 
     /// A vector reused in compress(), to avoid allocating new vectors.
-    node_rewrites: RefCell<Vec<usize>>,
+    node_rewrites: Vec<usize>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
@@ -281,7 +282,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
             active_cache: Default::default(),
-            node_rewrites: RefCell::new(vec![]),
+            node_rewrites: vec![],
             obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
         }
@@ -587,7 +588,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let orig_nodes_len = self.nodes.len();
         let remove_node_marker = orig_nodes_len + 1;
-        let mut node_rewrites: Vec<_> = self.node_rewrites.replace(vec![]);
+        let mut node_rewrites: Vec<_> = mem::take(&mut self.node_rewrites);
         debug_assert!(node_rewrites.is_empty());
         node_rewrites.extend(0..orig_nodes_len);
         let mut dead_nodes = 0;
@@ -636,8 +637,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             self.apply_rewrites(&node_rewrites);
         }
 
-        node_rewrites.truncate(0);
-        self.node_rewrites.replace(node_rewrites);
+        node_rewrites.clear();
+        self.node_rewrites = node_rewrites;
 
         if do_completed == DoCompleted::Yes { Some(removed_done_obligations) } else { None }
     }
