@@ -29,7 +29,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
-use rustc_passes::{self, ast_validation, hir_stats, layout_test};
+use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
@@ -344,7 +344,7 @@ fn configure_and_expand_inner<'a>(
     }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
-        ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
+        rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
     let crate_types = sess.crate_types.borrow();

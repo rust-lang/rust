@@ -6,10 +6,10 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
-use rustc::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
+use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
@@ -907,7 +907,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
 
-                Some(Constness::Const) => bug!("Parser should reject bare `const` on bounds"),
+                Some(Constness::Const) => panic!("Parser should reject bare `const` on bounds"),
                 None => {}
             }
         }
