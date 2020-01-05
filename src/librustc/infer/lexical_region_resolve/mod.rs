@@ -602,7 +602,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 continue;
             }
 
-            let verify_kind_ty = verify.kind.to_ty(self.tcx());
+            let verify_kind_ty = verify.kind.as_ty();
             if self.bound_is_met(&verify.bound, var_data, verify_kind_ty, sub) {
                 continue;
             }

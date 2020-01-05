@@ -815,7 +815,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            let generic_ty = type_test.generic_kind.to_ty(tcx);
+            let generic_ty = type_test.generic_kind.as_ty();
             if self.eval_verify_bound(
                 tcx,
                 body,
@@ -910,7 +910,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let TypeTest { generic_kind, lower_bound, locations, verify_bound: _ } = type_test;
 
-        let generic_ty = generic_kind.to_ty(tcx);
+        let generic_ty = generic_kind.as_ty();
         let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
             Some(s) => s,
             None => return false,

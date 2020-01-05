@@ -185,7 +185,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable)]
 pub enum GenericKind<'tcx> {
     Param(ty::View<'tcx, ty::ParamTy>),
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::View<'tcx, ty::ProjectionTy<'tcx>>),
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to
@@ -875,10 +875,10 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
 }
 
 impl<'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn as_ty(&self) -> Ty<'tcx> {
         match *self {
-            GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
+            GenericKind::Param(ref p) => p.as_ty(),
+            GenericKind::Projection(ref p) => p.as_ty(),
         }
     }
 }
@@ -904,13 +904,18 @@ impl<'tcx> VerifyBound<'tcx> {
         }
     }
 
-    pub fn or(self, vb: VerifyBound<'tcx>) -> VerifyBound<'tcx> {
-        if self.must_hold() || vb.cannot_hold() {
+    pub fn or(self, vb: impl FnOnce() -> VerifyBound<'tcx>) -> VerifyBound<'tcx> {
+        if self.must_hold() {
             self
-        } else if self.cannot_hold() || vb.must_hold() {
-            vb
         } else {
-            VerifyBound::AnyBound(vec![self, vb])
+            let vb = vb();
+            if vb.cannot_hold() {
+                self
+            } else if self.cannot_hold() || vb.must_hold() {
+                vb
+            } else {
+                VerifyBound::AnyBound(vec![self, vb])
+            }
         }
     }
 

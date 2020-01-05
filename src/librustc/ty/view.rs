@@ -2,13 +2,11 @@ use std::{fmt, marker::PhantomData};
 
 use syntax::ast;
 
-use crate::{
-    hir::{self, def_id::DefId},
-    ty::{
-        self, AdtDef, Binder, BoundTy, ExistentialPredicate, InferTy, List, ParamTy, PolyFnSig,
-        ProjectionTy, Region, SubstsRef, Ty, TypeAndMut,
-    },
+use crate::ty::{
+    self, AdtDef, Binder, BoundTy, ExistentialPredicate, InferTy, List, ParamTy, PolyFnSig,
+    ProjectionTy, Region, SubstsRef, Ty, TypeAndMut,
 };
+use rustc_hir::{self as hir, def_id::DefId};
 
 pub use self::ViewKind::*;
 
@@ -79,70 +77,51 @@ pub unsafe trait TyDeref<'tcx>: Sized {
     fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self>;
 }
 
-unsafe impl<'tcx> TyDeref<'tcx> for ty::ParamTy {
-    fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self> {
-        match &ty.kind {
-            ty::Param(p) => Some(p),
-            _ => None,
+macro_rules! impl_ty_deref {
+    ($ty: ty, $variant: ident) => {
+        unsafe impl<'tcx> TyDeref<'tcx> for $ty {
+            fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self> {
+                match &ty.kind {
+                    ty::$variant(p) => Some(p),
+                    _ => None,
+                }
+            }
         }
-    }
+    };
 }
 
+impl_ty_deref! { ty::ParamTy, Param }
+impl_ty_deref! { ty::ProjectionTy<'tcx>, Projection }
+
+/// Mirror of `TyKind`, but with `View` fields where there is need for it
 pub enum ViewKind<'tcx> {
     Bool,
-
     Char,
-
     Int(ast::IntTy),
-
     Uint(ast::UintTy),
-
     Float(ast::FloatTy),
-
     Adt(&'tcx AdtDef, SubstsRef<'tcx>),
-
     Foreign(DefId),
-
     Str,
-
     Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
-
     Slice(Ty<'tcx>),
-
     RawPtr(TypeAndMut<'tcx>),
-
     Ref(Region<'tcx>, Ty<'tcx>, hir::Mutability),
-
     FnDef(DefId, SubstsRef<'tcx>),
-
     FnPtr(PolyFnSig<'tcx>),
-
     Dynamic(Binder<&'tcx List<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
-
     Closure(DefId, SubstsRef<'tcx>),
-
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
-
     GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
-
     Never,
-
     Tuple(SubstsRef<'tcx>),
-
-    Projection(ProjectionTy<'tcx>),
-
+    Projection(View<'tcx, ProjectionTy<'tcx>>),
     UnnormalizedProjection(ProjectionTy<'tcx>),
-
     Opaque(DefId, SubstsRef<'tcx>),
-
     Param(View<'tcx, ParamTy>),
-
     Bound(ty::DebruijnIndex, BoundTy),
-
     Placeholder(ty::PlaceholderType),
-
     Infer(InferTy),
-
     Error,
 }
 
@@ -161,7 +140,7 @@ impl<'tcx> From<Ty<'tcx>> for ViewKind<'tcx> {
             ty::Generator(did, substs, movability) => Self::Generator(did, substs, movability),
             ty::GeneratorWitness(types) => Self::GeneratorWitness(types),
             ty::Closure(did, substs) => Self::Closure(did, substs),
-            ty::Projection(data) => Self::Projection(data),
+            ty::Projection(_) => Self::Projection(View::new(ty).unwrap()),
             ty::UnnormalizedProjection(data) => Self::UnnormalizedProjection(data),
             ty::Opaque(did, substs) => Self::Opaque(did, substs),
             ty::Bool => Self::Bool,

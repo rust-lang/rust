@@ -20,7 +20,7 @@ pub enum Component<'tcx> {
     // is not in a position to judge which is the best technique, so
     // we just product the projection as a component and leave it to
     // the consumer to decide (but see `EscapingProjection` below).
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::View<'tcx, ty::ProjectionTy<'tcx>>),
 
     // In the case where a projection has escaping regions -- meaning
     // regions bound within the type itself -- we always use
@@ -61,13 +61,13 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
     match ty.kind {
-            ty::Closure(def_id, ref substs) => {
+            ty::view::Closure(def_id, ref substs) => {
                 for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
                     compute_components(tcx, upvar_ty, out);
                 }
             }
 
-            ty::Generator(def_id, ref substs, _) => {
+            ty::view::Generator(def_id, ref substs, _) => {
                 // Same as the closure case
                 for upvar_ty in substs.as_generator().upvar_tys(def_id, tcx) {
                     compute_components(tcx, upvar_ty, out);
@@ -78,12 +78,12 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             }
 
             // All regions are bound inside a witness
-            ty::GeneratorWitness(..) => (),
+            ty::view::GeneratorWitness(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
-            ty::Param(_) => {
-                out.push(Component::Param(ty::View::new(ty).unwrap()));
+            ty::view::Param(p) => {
+                out.push(Component::Param(p));
             }
 
             // For projections, we prefer to generate an obligation like
@@ -94,7 +94,7 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             // trait-ref. Therefore, if we see any higher-ranke regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Projection(ref data) => {
+            ty::view::Projection(data) => {
                 if !data.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -102,7 +102,7 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                     // the rules OutlivesProjectionEnv,
                     // OutlivesProjectionTraitDef, and
                     // OutlivesProjectionComponents to regionck.
-                    out.push(Component::Projection(*data));
+                    out.push(Component::Projection(data));
                 } else {
                     // fallback case: hard code
                     // OutlivesProjectionComponents.  Continue walking
@@ -112,12 +112,12 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 }
             }
 
-            ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+            ty::view::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
             // We assume that inference variables are fully resolved.
             // So, if we encounter an inference variable, just record
             // the unresolved variable as a component.
-            ty::Infer(infer_ty) => {
+            ty::view::Infer(infer_ty) => {
                 out.push(Component::UnresolvedInferenceVariable(infer_ty));
             }
 
@@ -127,27 +127,27 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             // the type and then visits the types that are lexically
             // contained within. (The comments refer to relevant rules
             // from RFC1214.)
-            ty::Bool |            // OutlivesScalar
-            ty::Char |            // OutlivesScalar
-            ty::Int(..) |         // OutlivesScalar
-            ty::Uint(..) |        // OutlivesScalar
-            ty::Float(..) |       // OutlivesScalar
-            ty::Never |           // ...
-            ty::Adt(..) |         // OutlivesNominalType
-            ty::Opaque(..) |        // OutlivesNominalType (ish)
-            ty::Foreign(..) |     // OutlivesNominalType
-            ty::Str |             // OutlivesScalar (ish)
-            ty::Array(..) |       // ...
-            ty::Slice(..) |       // ...
-            ty::RawPtr(..) |      // ...
-            ty::Ref(..) |         // OutlivesReference
-            ty::Tuple(..) |       // ...
-            ty::FnDef(..) |       // OutlivesFunction (*)
-            ty::FnPtr(_) |        // OutlivesFunction (*)
-            ty::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
-            ty::Placeholder(..) |
-            ty::Bound(..) |
-            ty::Error => {
+            ty::view::Bool |            // OutlivesScalar
+            ty::view::Char |            // OutlivesScalar
+            ty::view::Int(..) |         // OutlivesScalar
+            ty::view::Uint(..) |        // OutlivesScalar
+            ty::view::Float(..) |       // OutlivesScalar
+            ty::view::Never |           // ...
+            ty::view::Adt(..) |         // OutlivesNominalType
+            ty::view::Opaque(..) |        // OutlivesNominalType (ish)
+            ty::view::Foreign(..) |     // OutlivesNominalType
+            ty::view::Str |             // OutlivesScalar (ish)
+            ty::view::Array(..) |       // ...
+            ty::view::Slice(..) |       // ...
+            ty::view::RawPtr(..) |      // ...
+            ty::view::Ref(..) |         // OutlivesReference
+            ty::view::Tuple(..) |       // ...
+            ty::view::FnDef(..) |       // OutlivesFunction (*)
+            ty::view::FnPtr(_) |        // OutlivesFunction (*)
+            ty::view::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::view::Placeholder(..) |
+            ty::view::Bound(..) |
+            ty::view::Error => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the
                 // "bound regions list".  In our representation, no such
