@@ -71,7 +71,7 @@ impl<'tcx> Instance<'tcx> {
     /// However, during constant evaluation, we may want
     /// to try to resolve a `Instance` using generic parameters
     /// (e.g. when we are attempting to to do const-propagation).
-    /// In this case, `Instace.ty_env` should be used to provide
+    /// In this case, `Instance.ty_env` should be used to provide
     /// the `ParamEnv` for our generic context.
     pub fn monomorphic_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
