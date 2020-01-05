@@ -4,6 +4,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 
+pub mod builtin;
+
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {

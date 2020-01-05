@@ -38,6 +38,7 @@ pub use crate::lint::context::{
     LintContext, LintStore,
 };
 
+pub use rustc_session::lint::builtin;
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
 
@@ -331,7 +332,6 @@ pub enum LintSource {
 
 pub type LevelSource = (Level, LintSource);
 
-pub mod builtin;
 mod context;
 pub mod internal;
 mod levels;

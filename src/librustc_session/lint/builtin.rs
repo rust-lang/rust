@@ -4,10 +4,31 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use rustc_session::lint::FutureIncompatibleInfo;
-use rustc_session::{declare_lint, declare_lint_pass};
+use crate::lint::FutureIncompatibleInfo;
+use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
+
+declare_lint! {
+    pub ILL_FORMED_ATTRIBUTE_INPUT,
+    Deny,
+    "ill-formed attribute inputs that were previously accepted and used in practice",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    pub META_VARIABLE_MISUSE,
+    Allow,
+    "possible meta-variable misuse at macro definition"
+}
+
+declare_lint! {
+    pub INCOMPLETE_INCLUDE,
+    Deny,
+    "trailing content in included file"
+}
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
