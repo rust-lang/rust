@@ -15,10 +15,10 @@
 #![crate_type="lib"]
 
 // MSAN-0-NOT: @__msan_track_origins
-// MSAN-1:     @__msan_track_origins = weak_odr local_unnamed_addr constant i32 1
-// MSAN-2:     @__msan_track_origins = weak_odr local_unnamed_addr constant i32 2
-// MSAN-1-LTO: @__msan_track_origins = weak_odr local_unnamed_addr constant i32 1
-// MSAN-2-LTO: @__msan_track_origins = weak_odr local_unnamed_addr constant i32 2
+// MSAN-1:     @__msan_track_origins = weak_odr {{.*}}constant i32 1
+// MSAN-2:     @__msan_track_origins = weak_odr {{.*}}constant i32 2
+// MSAN-1-LTO: @__msan_track_origins = weak_odr {{.*}}constant i32 1
+// MSAN-2-LTO: @__msan_track_origins = weak_odr {{.*}}constant i32 2
 //
 // MSAN-0-LABEL: define void @copy(
 // MSAN-1-LABEL: define void @copy(

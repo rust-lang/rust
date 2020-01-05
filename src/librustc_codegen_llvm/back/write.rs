@@ -111,6 +111,18 @@ pub fn to_llvm_opt_settings(
     }
 }
 
+fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel {
+    use config::OptLevel::*;
+    match cfg {
+        No => llvm::PassBuilderOptLevel::O0,
+        Less => llvm::PassBuilderOptLevel::O1,
+        Default => llvm::PassBuilderOptLevel::O2,
+        Aggressive => llvm::PassBuilderOptLevel::O3,
+        Size => llvm::PassBuilderOptLevel::Os,
+        SizeMin => llvm::PassBuilderOptLevel::Oz,
+    }
+}
+
 // If find_features is true this won't access `sess.crate_types` by assuming
 // that `is_pie_binary` is false. When we discover LLVM target features
 // `sess.crate_types` is uninitialized so we cannot access it.
@@ -303,6 +315,88 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     }
 }
 
+fn get_pgo_gen_path(config: &ModuleConfig) -> Option<CString> {
+    match config.pgo_gen {
+        SwitchWithOptPath::Enabled(ref opt_dir_path) => {
+            let path = if let Some(dir_path) = opt_dir_path {
+                dir_path.join("default_%m.profraw")
+            } else {
+                PathBuf::from("default_%m.profraw")
+            };
+
+            Some(CString::new(format!("{}", path.display())).unwrap())
+        }
+        SwitchWithOptPath::Disabled => None,
+    }
+}
+
+fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
+    config
+        .pgo_use
+        .as_ref()
+        .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
+}
+
+pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
+    // We only support the new pass manager starting with LLVM 9.
+    if llvm_util::get_major_version() < 9 {
+        return false;
+    }
+
+    // The new pass manager is disabled by default.
+    config.new_llvm_pass_manager.unwrap_or(false)
+}
+
+pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
+    module: &ModuleCodegen<ModuleLlvm>,
+    config: &ModuleConfig,
+    opt_level: config::OptLevel,
+    opt_stage: llvm::OptStage,
+) {
+    let unroll_loops =
+        opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
+    let pgo_gen_path = get_pgo_gen_path(config);
+    let pgo_use_path = get_pgo_use_path(config);
+    let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
+    let sanitizer_options = if !is_lto {
+        config.sanitizer.as_ref().map(|s| llvm::SanitizerOptions {
+            sanitize_memory: *s == Sanitizer::Memory,
+            sanitize_thread: *s == Sanitizer::Thread,
+            sanitize_address: *s == Sanitizer::Address,
+            sanitize_recover: config.sanitizer_recover.contains(s),
+            sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
+        })
+    } else {
+        None
+    };
+
+    // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
+    // We would have to add upstream support for this first, before we can support
+    // config.inline_threshold and our more aggressive default thresholds.
+    // FIXME: NewPM uses an different and more explicit way to textually represent
+    // pass pipelines. It would probably make sense to expose this, but it would
+    // require a different format than the current -C passes.
+    llvm::LLVMRustOptimizeWithNewPassManager(
+        module.module_llvm.llmod(),
+        &*module.module_llvm.tm,
+        to_pass_builder_opt_level(opt_level),
+        opt_stage,
+        config.no_prepopulate_passes,
+        config.verify_llvm_ir,
+        using_thin_buffers,
+        config.merge_functions,
+        unroll_loops,
+        config.vectorize_slp,
+        config.vectorize_loop,
+        config.no_builtins,
+        sanitizer_options.as_ref(),
+        pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+    );
+}
+
 // Unsafe due to LLVM calls.
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -327,6 +421,17 @@ pub(crate) unsafe fn optimize(
     }
 
     if let Some(opt_level) = config.opt_level {
+        if should_use_new_llvm_pass_manager(config) {
+            let opt_stage = match cgcx.lto {
+                Lto::Fat => llvm::OptStage::PreLinkFatLTO,
+                Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
+                _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
+                _ => llvm::OptStage::PreLinkNoLTO,
+            };
+            optimize_with_new_llvm_pass_manager(module, config, opt_level, opt_stage);
+            return Ok(());
+        }
+
         // Create the two optimizing pass managers. These mirror what clang
         // does, and are by populated by LLVM's default PassManagerBuilder.
         // Each manager has a different set of passes, but they also share
@@ -757,24 +862,8 @@ pub unsafe fn with_llvm_pmb(
     let opt_size =
         config.opt_size.map(|x| to_llvm_opt_settings(x).1).unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
-
-    let pgo_gen_path = match config.pgo_gen {
-        SwitchWithOptPath::Enabled(ref opt_dir_path) => {
-            let path = if let Some(dir_path) = opt_dir_path {
-                dir_path.join("default_%m.profraw")
-            } else {
-                PathBuf::from("default_%m.profraw")
-            };
-
-            Some(CString::new(format!("{}", path.display())).unwrap())
-        }
-        SwitchWithOptPath::Disabled => None,
-    };
-
-    let pgo_use_path = config
-        .pgo_use
-        .as_ref()
-        .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap());
+    let pgo_gen_path = get_pgo_gen_path(config);
+    let pgo_use_path = get_pgo_use_path(config);
 
     llvm::LLVMRustConfigurePassManagerBuilder(
         builder,

@@ -12,6 +12,11 @@
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Passes/PassBuilder.h"
+#if LLVM_VERSION_GE(9, 0)
+#include "llvm/Passes/StandardInstrumentations.h"
+#endif
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -32,9 +37,12 @@
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
 #endif
+#if LLVM_VERSION_GE(9, 0)
+#include "llvm/Transforms/Utils/CanonicalizeAliases.h"
+#endif
+#include "llvm/Transforms/Utils/NameAnonGlobals.h"
 
 using namespace llvm;
-using namespace llvm::legacy;
 
 typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
@@ -311,6 +319,34 @@ static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
     return CodeGenOpt::Aggressive;
   default:
     report_fatal_error("Bad CodeGenOptLevel.");
+  }
+}
+
+enum class LLVMRustPassBuilderOptLevel {
+  O0,
+  O1,
+  O2,
+  O3,
+  Os,
+  Oz,
+};
+
+static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
+  switch (Level) {
+  case LLVMRustPassBuilderOptLevel::O0:
+    return PassBuilder::O0;
+  case LLVMRustPassBuilderOptLevel::O1:
+    return PassBuilder::O1;
+  case LLVMRustPassBuilderOptLevel::O2:
+    return PassBuilder::O2;
+  case LLVMRustPassBuilderOptLevel::O3:
+    return PassBuilder::O3;
+  case LLVMRustPassBuilderOptLevel::Os:
+    return PassBuilder::Os;
+  case LLVMRustPassBuilderOptLevel::Oz:
+    return PassBuilder::Oz;
+  default:
+    report_fatal_error("Bad PassBuilderOptLevel.");
   }
 }
 
@@ -604,6 +640,212 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
   return LLVMRustResult::Success;
 }
 
+enum class LLVMRustOptStage {
+  PreLinkNoLTO,
+  PreLinkThinLTO,
+  PreLinkFatLTO,
+  ThinLTO,
+  FatLTO,
+};
+
+struct LLVMRustSanitizerOptions {
+  bool SanitizeMemory;
+  bool SanitizeThread;
+  bool SanitizeAddress;
+  bool SanitizeRecover;
+  int SanitizeMemoryTrackOrigins;
+};
+
+extern "C" void
+LLVMRustOptimizeWithNewPassManager(
+    LLVMModuleRef ModuleRef,
+    LLVMTargetMachineRef TMRef,
+    LLVMRustPassBuilderOptLevel OptLevelRust,
+    LLVMRustOptStage OptStage,
+    bool NoPrepopulatePasses, bool VerifyIR, bool UseThinLTOBuffers,
+    bool MergeFunctions, bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
+    bool DisableSimplifyLibCalls,
+    LLVMRustSanitizerOptions *SanitizerOptions,
+    const char *PGOGenPath, const char *PGOUsePath) {
+#if LLVM_VERSION_GE(9, 0)
+  Module *TheModule = unwrap(ModuleRef);
+  TargetMachine *TM = unwrap(TMRef);
+  PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
+
+  // FIXME: MergeFunctions is not supported by NewPM yet.
+  (void) MergeFunctions;
+
+  PipelineTuningOptions PTO;
+  PTO.LoopUnrolling = UnrollLoops;
+  PTO.LoopInterleaving = UnrollLoops;
+  PTO.LoopVectorization = LoopVectorize;
+  PTO.SLPVectorization = SLPVectorize;
+
+  PassInstrumentationCallbacks PIC;
+  StandardInstrumentations SI;
+  SI.registerCallbacks(PIC);
+
+  Optional<PGOOptions> PGOOpt;
+  if (PGOGenPath) {
+    assert(!PGOUsePath);
+    PGOOpt = PGOOptions(PGOGenPath, "", "", PGOOptions::IRInstr);
+  } else if (PGOUsePath) {
+    assert(!PGOGenPath);
+    PGOOpt = PGOOptions(PGOUsePath, "", "", PGOOptions::IRUse);
+  }
+
+  PassBuilder PB(TM, PTO, PGOOpt, &PIC);
+
+  // FIXME: We may want to expose this as an option.
+  bool DebugPassManager = false;
+  LoopAnalysisManager LAM(DebugPassManager);
+  FunctionAnalysisManager FAM(DebugPassManager);
+  CGSCCAnalysisManager CGAM(DebugPassManager);
+  ModuleAnalysisManager MAM(DebugPassManager);
+
+  FAM.registerPass([&] { return PB.buildDefaultAAPipeline(); });
+
+  Triple TargetTriple(TheModule->getTargetTriple());
+  std::unique_ptr<TargetLibraryInfoImpl> TLII(new TargetLibraryInfoImpl(TargetTriple));
+  if (DisableSimplifyLibCalls)
+    TLII->disableAllFunctions();
+  FAM.registerPass([&] { return TargetLibraryAnalysis(*TLII); });
+
+  PB.registerModuleAnalyses(MAM);
+  PB.registerCGSCCAnalyses(CGAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerLoopAnalyses(LAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+  // We manually collect pipeline callbacks so we can apply them at O0, where the
+  // PassBuilder does not create a pipeline.
+  std::vector<std::function<void(ModulePassManager &)>> PipelineStartEPCallbacks;
+  std::vector<std::function<void(FunctionPassManager &, PassBuilder::OptimizationLevel)>>
+      OptimizerLastEPCallbacks;
+
+  if (VerifyIR) {
+    PipelineStartEPCallbacks.push_back([VerifyIR](ModulePassManager &MPM) {
+        MPM.addPass(VerifierPass());
+    });
+  }
+
+  if (SanitizerOptions) {
+    if (SanitizerOptions->SanitizeMemory) {
+      MemorySanitizerOptions Options(
+          SanitizerOptions->SanitizeMemoryTrackOrigins,
+          SanitizerOptions->SanitizeRecover,
+          /*CompileKernel=*/false);
+#if LLVM_VERSION_GE(10, 0)
+      PipelineStartEPCallbacks.push_back([Options](ModulePassManager &MPM) {
+        MPM.addPass(MemorySanitizerPass(Options));
+      });
+#endif
+      OptimizerLastEPCallbacks.push_back(
+        [Options](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+          FPM.addPass(MemorySanitizerPass(Options));
+        }
+      );
+    }
+
+    if (SanitizerOptions->SanitizeThread) {
+#if LLVM_VERSION_GE(10, 0)
+      PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM) {
+        MPM.addPass(ThreadSanitizerPass());
+      });
+#endif
+      OptimizerLastEPCallbacks.push_back(
+        [](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+          FPM.addPass(ThreadSanitizerPass());
+        }
+      );
+    }
+
+    if (SanitizerOptions->SanitizeAddress) {
+      // FIXME: Rust does not expose the UseAfterScope option.
+      PipelineStartEPCallbacks.push_back([&](ModulePassManager &MPM) {
+        MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
+      });
+      OptimizerLastEPCallbacks.push_back(
+        [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+          FPM.addPass(AddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover));
+        }
+      );
+      PipelineStartEPCallbacks.push_back(
+        [SanitizerOptions](ModulePassManager &MPM) {
+          MPM.addPass(ModuleAddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover));
+        }
+      );
+    }
+  }
+
+  ModulePassManager MPM(DebugPassManager);
+  if (!NoPrepopulatePasses) {
+    if (OptLevel == PassBuilder::O0) {
+      for (const auto &C : PipelineStartEPCallbacks)
+        C(MPM);
+
+      if (!OptimizerLastEPCallbacks.empty()) {
+        FunctionPassManager FPM(DebugPassManager);
+        for (const auto &C : OptimizerLastEPCallbacks)
+          C(FPM, OptLevel);
+        MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+      }
+
+      MPM.addPass(AlwaysInlinerPass(/*InsertLifetimeIntrinsics=*/false));
+
+#if LLVM_VERSION_GE(10, 0)
+      if (PGOOpt) {
+        PB.addPGOInstrPassesForO0(
+            MPM, DebugPassManager, PGOOpt->Action == PGOOptions::IRInstr,
+            /*IsCS=*/false, PGOOpt->ProfileFile, PGOOpt->ProfileRemappingFile);
+      }
+#endif
+    } else {
+      for (const auto &C : PipelineStartEPCallbacks)
+        PB.registerPipelineStartEPCallback(C);
+      for (const auto &C : OptimizerLastEPCallbacks)
+        PB.registerOptimizerLastEPCallback(C);
+
+      switch (OptStage) {
+      case LLVMRustOptStage::PreLinkNoLTO:
+        MPM = PB.buildPerModuleDefaultPipeline(OptLevel, DebugPassManager);
+        break;
+      case LLVMRustOptStage::PreLinkThinLTO:
+        MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+        break;
+      case LLVMRustOptStage::PreLinkFatLTO:
+        MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+        break;
+      case LLVMRustOptStage::ThinLTO:
+        // FIXME: Does it make sense to pass the ModuleSummaryIndex?
+        // It only seems to be needed for C++ specific optimizations.
+        MPM = PB.buildThinLTODefaultPipeline(OptLevel, DebugPassManager, nullptr);
+        break;
+      case LLVMRustOptStage::FatLTO:
+        MPM = PB.buildLTODefaultPipeline(OptLevel, DebugPassManager, nullptr);
+        break;
+      }
+    }
+  }
+
+  if (UseThinLTOBuffers) {
+    MPM.addPass(CanonicalizeAliasesPass());
+    MPM.addPass(NameAnonGlobalPass());
+  }
+
+  // Upgrade all calls to old intrinsics first.
+  for (Module::iterator I = TheModule->begin(), E = TheModule->end(); I != E;)
+    UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
+
+  MPM.run(*TheModule, MAM);
+#else
+  // The new pass manager has been available for a long time,
+  // but we don't bother supporting it on old LLVM versions.
+  report_fatal_error("New pass manager only supported since LLVM 9");
+#endif
+}
 
 // Callback to demangle function name
 // Parameters:

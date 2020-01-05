@@ -88,6 +88,7 @@ pub struct ModuleConfig {
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
+    pub new_llvm_pass_manager: Option<bool>,
     // Instead of creating an object file by doing LLVM codegen, just
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
@@ -132,6 +133,7 @@ impl ModuleConfig {
             vectorize_slp: false,
             merge_functions: false,
             inline_threshold: None,
+            new_llvm_pass_manager: None,
         }
     }
 
@@ -140,6 +142,7 @@ impl ModuleConfig {
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode =
