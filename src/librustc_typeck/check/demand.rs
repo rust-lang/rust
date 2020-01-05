@@ -3,9 +3,10 @@ use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause};
 
 use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir::{self, is_range_literal, print, Node};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_hir as hir;
+use rustc_hir::{is_range_literal, print, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::util::parser::PREC_POSTFIX;

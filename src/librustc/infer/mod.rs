@@ -7,8 +7,6 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use crate::ty::IntVarValue;
 
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use crate::middle::free_region::RegionRelations;
@@ -27,6 +25,8 @@ use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use std::cell::{Cell, Ref, RefCell, RefMut};

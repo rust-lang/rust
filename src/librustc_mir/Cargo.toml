@@ -18,13 +18,14 @@ log = "0.4"
 log_settings = "0.1.1"
 polonius-engine = "0.11.0"
 rustc = { path = "../librustc" }
-rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_index = { path = "../librustc_index" }
 rustc_errors = { path = "../librustc_errors" }
+rustc_hir = { path = "../librustc_hir" }
+rustc_index = { path = "../librustc_index" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 rustc_apfloat = { path = "../librustc_apfloat" }

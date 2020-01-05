@@ -1,10 +1,8 @@
 use decoder::Metadata;
 use table::{Table, TableBuilder};
 
-use rustc::hir;
-use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::exports::Export;
+use rustc::hir::map;
 use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
@@ -14,6 +12,9 @@ use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::Encoder;
 use rustc_span::edition::Edition;
@@ -192,7 +193,7 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLibrary]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[rustc_span::SourceFile]>,
-    def_path_table: Lazy<hir::map::definitions::DefPathTable>,
+    def_path_table: Lazy<map::definitions::DefPathTable>,
     impls: Lazy<[TraitImpls]>,
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     interpret_alloc_index: Lazy<[u32]>,

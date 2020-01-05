@@ -1,6 +1,6 @@
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
-use rustc::hir::CRATE_HIR_ID;
+use rustc_hir::CRATE_HIR_ID;
 use smallvec::SmallVec;
 use std::mem;
 

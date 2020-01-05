@@ -2,8 +2,8 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::hir;
 use rustc::mir::*;
+use rustc_hir as hir;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

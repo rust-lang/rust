@@ -20,8 +20,6 @@ use crate::llvm_util;
 use crate::value::Value;
 
 use log::debug;
-use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::interpret::truncate;
@@ -41,6 +39,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};

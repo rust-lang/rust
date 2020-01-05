@@ -1,11 +1,11 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{AccessDepth, Deep, Shallow};
-use rustc::hir;
 use rustc::mir::{
     Body, BorrowKind, Place, PlaceBase, PlaceElem, PlaceRef, ProjectionElem, StaticKind,
 };
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
 use std::cmp::max;
 
 /// When checking if a place conflicts with another place, this enum is used to influence decisions

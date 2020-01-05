@@ -5,8 +5,6 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -30,6 +28,8 @@ use rustc::ty::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::{Span, DUMMY_SP};
 

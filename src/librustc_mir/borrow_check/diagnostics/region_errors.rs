@@ -1,6 +1,5 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::hir::def_id::DefId;
 use rustc::infer::{
     error_reporting::nice_region_error::NiceRegionError, region_constraints::GenericKind,
     InferCtxt, NLLRegionVariableOrigin,
@@ -8,6 +7,7 @@ use rustc::infer::{
 use rustc::mir::{Body, ConstraintCategory, Location};
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::kw;
 use rustc_span::Span;

@@ -1,12 +1,11 @@
 //! This module contains `HashStable` implementations for various HIR data
 //! types in no particular order.
 
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use crate::hir::map::DefPathHash;
 use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
-
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use std::mem;
 use syntax::attr;

@@ -1,8 +1,5 @@
 use crate::dep_graph::{self, DepNode};
-use crate::hir::def::DefKind;
-use crate::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
 use crate::hir::exports::Export;
-use crate::hir::{self, HirIdSet, ItemLocalId, TraitCandidate};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -38,13 +35,16 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::util::NeedsDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
-use rustc_data_structures::profiling::ProfileCategory::*;
-
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::profiling::ProfileCategory::*;
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
+use rustc_hir::{HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 

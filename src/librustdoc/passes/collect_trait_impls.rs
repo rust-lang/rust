@@ -3,8 +3,8 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {

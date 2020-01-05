@@ -1,14 +1,12 @@
-use crate::hir;
+use crate::ty::fold::{TypeFoldable, TypeVisitor};
+use crate::ty::{self, AdtDef, Ty, TyCtxt};
+
 use rustc::infer::InferCtxt;
 use rustc::traits::ObligationCause;
 use rustc::traits::{self, ConstPatternStructural, TraitEngine};
-
 use rustc_data_structures::fx::FxHashSet;
-
+use rustc_hir as hir;
 use rustc_span::Span;
-
-use crate::ty::fold::{TypeFoldable, TypeVisitor};
-use crate::ty::{self, AdtDef, Ty, TyCtxt};
 
 #[derive(Debug)]
 pub enum NonStructuralMatchTy<'tcx> {

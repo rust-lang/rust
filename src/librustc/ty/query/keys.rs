@@ -1,13 +1,12 @@
 //! Defines the set of legal keys that can be used in queries.
 
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
-
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 

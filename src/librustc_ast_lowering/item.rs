@@ -3,10 +3,10 @@ use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 
 use rustc::arena::Arena;
 use rustc::bug;
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym};

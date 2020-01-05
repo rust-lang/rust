@@ -1,6 +1,4 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
@@ -9,11 +7,12 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-
 use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,

@@ -5,11 +5,11 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use log::debug;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc::ty::{Instance, TypeFoldable};
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 
 pub use rustc::mir::mono::MonoItem;
 

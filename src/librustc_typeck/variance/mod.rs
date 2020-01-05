@@ -5,10 +5,10 @@
 
 use arena;
 use hir::Node;
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.

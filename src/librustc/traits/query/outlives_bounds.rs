@@ -1,9 +1,9 @@
-use crate::hir;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::query::NoSolution;
 use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use crate::ty::{self, Ty};
+use rustc_hir as hir;
 use rustc_span::source_map::Span;
 
 use crate::ich::StableHashingContext;

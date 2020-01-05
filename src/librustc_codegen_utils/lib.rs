@@ -15,9 +15,9 @@
 #[macro_use]
 extern crate rustc;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 
 pub mod codegen_backend;

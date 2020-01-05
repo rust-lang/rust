@@ -4,8 +4,6 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::middle::{lang_items, region};
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::{InferOk, InferResult};
@@ -14,6 +12,8 @@ use rustc::traits::Obligation;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, Ty};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use std::cmp;

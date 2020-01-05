@@ -1,10 +1,10 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc::bug;
-use rustc::hir;
-use rustc::hir::def::Res;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::*;

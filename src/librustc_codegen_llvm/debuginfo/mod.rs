@@ -13,9 +13,9 @@ use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType,
 };
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 
 use crate::abi::FnAbi;
 use crate::builder::Builder;

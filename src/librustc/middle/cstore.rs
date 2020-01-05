@@ -2,15 +2,15 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::definitions::{DefKey, DefPathTable};
 use crate::session::search_paths::PathKind;
 use crate::session::{CrateDisambiguator, Session};
 use crate::ty::{self, TyCtxt};
-use rustc_data_structures::svh::Svh;
 
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_macros::HashStable;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;

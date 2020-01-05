@@ -9,7 +9,6 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 use crate::namespace::Namespace;
 
-use rustc::hir;
 use rustc::infer::canonical::OriginalQueryValues;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -29,6 +28,7 @@ use rustc::ty::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 use std::cmp::max;
 use std::iter;

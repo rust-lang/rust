@@ -7,7 +7,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
-use rustc::hir;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
 use rustc::ty::{self, Ty};
 use rustc::{bug, span_bug};
@@ -17,6 +16,7 @@ use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::MemFlags;
+use rustc_hir as hir;
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
 

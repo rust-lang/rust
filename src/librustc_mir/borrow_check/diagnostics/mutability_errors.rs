@@ -1,8 +1,8 @@
-use rustc::hir;
-use rustc::hir::Node;
 use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyAndCache};
 use rustc::mir::{Mutability, Place, PlaceBase, PlaceRef, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc_index::vec::Idx;
 use rustc_span::symbol::kw;
 use rustc_span::Span;

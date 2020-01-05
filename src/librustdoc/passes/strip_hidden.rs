@@ -1,4 +1,4 @@
-use rustc::hir::def_id::DefIdSet;
+use rustc_hir::def_id::DefIdSet;
 use rustc_span::symbol::sym;
 use std::mem;
 

@@ -7,10 +7,10 @@
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 
-use rustc::hir;
 use rustc::ty;
 use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::hash::Hash;

@@ -1,9 +1,6 @@
 use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::Node;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
 use rustc::session::config;
@@ -13,6 +10,9 @@ use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use syntax::expand::allocator::ALLOCATOR_METHODS;
 

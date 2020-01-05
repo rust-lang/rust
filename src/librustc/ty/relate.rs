@@ -4,13 +4,13 @@
 //! types or regions but can be other things. Examples of type relations are
 //! subtyping, type equality, etc.
 
-use crate::hir as ast;
-use crate::hir::def_id::DefId;
 use crate::mir::interpret::{get_slice_bytes, ConstValue};
 use crate::traits;
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as ast;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 use std::iter;
 use std::rc::Rc;

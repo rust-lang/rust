@@ -5,8 +5,7 @@ use crate::util;
 use log::{info, log_enabled, warn};
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc::hir::map;
 use rustc::lint;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
@@ -26,6 +25,7 @@ use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerL
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
@@ -433,7 +433,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
     arena: &'tcx Arena<'tcx>,
-) -> Result<hir::map::Forest<'tcx>> {
+) -> Result<map::Forest<'tcx>> {
     // Lower AST to HIR.
     let hir_forest = sess.time("lowering AST -> HIR", || {
         let hir_crate = rustc_ast_lowering::lower_crate(
@@ -449,7 +449,7 @@ pub fn lower_to_hir<'res, 'tcx>(
             hir_stats::print_hir_stats(&hir_crate);
         }
 
-        hir::map::Forest::new(hir_crate, &dep_graph)
+        map::Forest::new(hir_crate, &dep_graph)
     });
 
     sess.time("early lint checks", || {
@@ -676,7 +676,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
-    hir::provide(providers);
+    rustc::hir::provide(providers);
     mir::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
@@ -714,7 +714,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<lint::LintStore>,
-    hir_forest: &'tcx hir::map::Forest<'tcx>,
+    hir_forest: &'tcx map::Forest<'tcx>,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
@@ -727,7 +727,7 @@ pub fn create_global_ctxt<'tcx>(
 
     // Construct the HIR map.
     let hir_map = sess.time("indexing HIR", || {
-        hir::map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
+        map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
     });
 
     let query_result_on_disk_cache =

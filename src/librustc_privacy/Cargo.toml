@@ -10,6 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 rustc = { path = "../librustc" }
+rustc_hir = { path = "../librustc_hir" }
 rustc_typeck = { path = "../librustc_typeck" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

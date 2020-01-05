@@ -4,8 +4,8 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc::hir;
 use rustc::ty::{Instance, TyCtxt};
+use rustc_hir as hir;
 use rustc_span::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;

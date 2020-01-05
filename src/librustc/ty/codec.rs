@@ -7,12 +7,12 @@
 // persisting to incr. comp. caches.
 
 use crate::arena::ArenaAllocatable;
-use crate::hir::def_id::{CrateNum, DefId};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{self, interpret::Allocation};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
 use std::hash::Hash;
@@ -353,7 +353,7 @@ macro_rules! implement_ty_decoder {
             use $crate::ty;
             use $crate::ty::codec::*;
             use $crate::ty::subst::SubstsRef;
-            use $crate::hir::def_id::{CrateNum};
+            use rustc_hir::def_id::{CrateNum};
 
             use rustc_span::Span;
 

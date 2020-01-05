@@ -3,14 +3,14 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
-use rustc::hir;
-use rustc::hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc::hir::def_id::LocalDefId;
 use rustc::mir::interpret::{ErrorHandled, Scalar};
 use rustc::mir::BorrowKind;
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, AdtKind, Ty};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::Idx;
 use rustc_span::Span;
 

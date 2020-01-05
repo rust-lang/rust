@@ -1,4 +1,4 @@
-use rustc::hir::def_id::DefIdSet;
+use rustc_hir::def_id::DefIdSet;
 
 use crate::clean;
 use crate::core::DocContext;

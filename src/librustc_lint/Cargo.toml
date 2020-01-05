@@ -12,6 +12,7 @@ path = "lib.rs"
 log = "0.4"
 unicode-security = "0.0.2"
 rustc = { path = "../librustc" }
+rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

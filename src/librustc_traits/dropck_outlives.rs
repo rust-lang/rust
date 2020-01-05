@@ -1,4 +1,3 @@
-use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
@@ -8,6 +7,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_span::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers<'_>) {

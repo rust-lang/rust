@@ -1,6 +1,6 @@
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_span::Span;

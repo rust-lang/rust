@@ -14,15 +14,15 @@
 //! the required condition is not met.
 
 use rustc::dep_graph::{label_strs, DepNode};
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::Node as HirNode;
-use rustc::hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::Node as HirNode;
+use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;

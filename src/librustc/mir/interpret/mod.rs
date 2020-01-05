@@ -115,7 +115,6 @@ pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
 pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
 
-use crate::hir::def_id::DefId;
 use crate::mir;
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
@@ -125,6 +124,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable, Encoder};
 use std::fmt;

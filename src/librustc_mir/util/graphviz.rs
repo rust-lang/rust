@@ -1,6 +1,6 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use std::fmt::Debug;
 use std::io::{self, Write};

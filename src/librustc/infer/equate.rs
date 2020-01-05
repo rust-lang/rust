@@ -1,12 +1,12 @@
 use super::combine::{CombineFields, RelationDir};
 use super::Subtype;
 
-use crate::hir::def_id::DefId;
-
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::SubstsRef;
 use crate::ty::TyVar;
 use crate::ty::{self, Ty, TyCtxt};
+
+use rustc_hir::def_id::DefId;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'combine, 'infcx, 'tcx> {

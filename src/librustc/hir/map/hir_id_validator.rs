@@ -1,10 +1,13 @@
-use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
-use crate::hir::itemlikevisit::ItemLikeVisitor;
-use crate::hir::{self, intravisit, HirId, ItemLocalId};
+use crate::hir::intravisit;
+use crate::hir::map::Map;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{HirId, ItemLocalId};
 
-pub fn check_crate(hir_map: &hir::map::Map<'_>) {
+pub fn check_crate(hir_map: &Map<'_>) {
     hir_map.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());
@@ -26,19 +29,19 @@ pub fn check_crate(hir_map: &hir::map::Map<'_>) {
 }
 
 struct HirIdValidator<'a, 'hir> {
-    hir_map: &'a hir::map::Map<'hir>,
+    hir_map: &'a Map<'hir>,
     owner_def_index: Option<DefIndex>,
     hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
 struct OuterVisitor<'a, 'hir> {
-    hir_map: &'a hir::map::Map<'hir>,
+    hir_map: &'a Map<'hir>,
     errors: &'a Lock<Vec<String>>,
 }
 
 impl<'a, 'hir> OuterVisitor<'a, 'hir> {
-    fn new_inner_visitor(&self, hir_map: &'a hir::map::Map<'hir>) -> HirIdValidator<'a, 'hir> {
+    fn new_inner_visitor(&self, hir_map: &'a Map<'hir>) -> HirIdValidator<'a, 'hir> {
         HirIdValidator {
             hir_map,
             owner_def_index: None,

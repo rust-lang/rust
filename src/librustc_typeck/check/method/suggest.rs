@@ -5,15 +5,17 @@ use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
 use errors::{pluralize, Applicability, DiagnosticBuilder};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
-use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::{ExprKind, Node, QPath};
 use rustc_span::{source_map, FileName, Span};
 use syntax::ast;
 use syntax::util::lev_distance;
@@ -1073,18 +1075,18 @@ impl UsePlacementFinder<'tcx> {
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false, tcx };
-        hir::intravisit::walk_crate(&mut finder, krate);
+        intravisit::walk_crate(&mut finder, krate);
         (finder.span, finder.found_use)
     }
 }
 
-impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
+impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     fn visit_mod(&mut self, module: &'tcx hir::Mod<'tcx>, _: Span, hir_id: hir::HirId) {
         if self.span.is_some() {
             return;
         }
         if hir_id != self.target_module {
-            hir::intravisit::walk_mod(self, module, hir_id);
+            intravisit::walk_mod(self, module, hir_id);
             return;
         }
         // Find a `use` statement.
@@ -1124,8 +1126,8 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
-        hir::intravisit::NestedVisitorMap::None
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::None
     }
 }
 

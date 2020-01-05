@@ -1,7 +1,7 @@
-use crate::hir::def::Res;
-use crate::hir::def_id::DefIdMap;
 use crate::ty;
 
+use rustc_hir::def::Res;
+use rustc_hir::def_id::DefIdMap;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use syntax::ast;

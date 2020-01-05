@@ -6,11 +6,11 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
-use crate::hir;
-use crate::hir::def_id::DefId;
-use crate::hir::Node;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::Node;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

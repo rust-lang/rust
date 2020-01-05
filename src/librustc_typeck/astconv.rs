@@ -3,11 +3,6 @@
 //! instance of `AstConv`.
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::hir::def::{CtorOf, DefKind, Res};
-use crate::hir::def_id::DefId;
-use crate::hir::intravisit::Visitor;
-use crate::hir::print;
-use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -15,6 +10,7 @@ use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticId};
+use rustc::hir::intravisit::Visitor;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
@@ -22,6 +18,11 @@ use rustc::ty::wf::object_region_bounds;
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::print;
+use rustc_hir::{ExprKind, GenericArg, GenericArgs};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;

@@ -1,10 +1,10 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc_error_codes::*;
 

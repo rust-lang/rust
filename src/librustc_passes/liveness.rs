@@ -96,24 +96,25 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc::hir::def::*;
-use rustc::hir::def_id::DefId;
+use errors::Applicability;
 use rustc::hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
-use rustc::hir::{self, Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-
-use errors::Applicability;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir as hir;
+use rustc_hir::def::*;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use syntax::ast;
+
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 use std::{fmt, u32};
-use syntax::ast;
 
 #[derive(Copy, Clone, PartialEq)]
 struct Variable(u32);
@@ -375,7 +376,7 @@ fn visit_fn<'tcx>(
 
     for param in body.params {
         let is_shorthand = match param.pat.kind {
-            rustc::hir::PatKind::Struct(..) => true,
+            rustc_hir::PatKind::Struct(..) => true,
             _ => false,
         };
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
@@ -409,7 +410,7 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &hir::Pat<'_>) {
     let mut pats = VecDeque::new();
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
-        use rustc::hir::PatKind::*;
+        use rustc_hir::PatKind::*;
         match &pat.kind {
             Binding(.., inner_pat) => {
                 pats.extend(inner_pat.iter());

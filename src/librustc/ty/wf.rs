@@ -1,10 +1,10 @@
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::middle::lang_items;
 use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use std::iter::once;

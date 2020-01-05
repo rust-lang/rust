@@ -84,11 +84,11 @@ should go to.
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{Expr, ExprRef, LintLevel};
-use rustc::hir;
-use rustc::hir::GeneratorKind;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::GeneratorKind;
 use rustc_span::{Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 use std::mem;

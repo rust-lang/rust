@@ -1,15 +1,15 @@
 use errors::Applicability;
-use rustc::hir;
-use rustc::hir::def::{
-    DefKind,
-    Namespace::{self, *},
-    PerNS, Res,
-};
-use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::ty;
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
+use rustc_hir as hir;
+use rustc_hir::def::{
+    DefKind,
+    Namespace::{self, *},
+    PerNS, Res,
+};
+use rustc_hir::def_id::DefId;
 use rustc_resolve::ParentScope;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;

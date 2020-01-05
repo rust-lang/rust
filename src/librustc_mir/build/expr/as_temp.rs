@@ -3,9 +3,9 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::hir;
 use rustc::middle::region;
 use rustc::mir::*;
+use rustc_hir as hir;
 use rustc_span::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::io::{self, Write};
 use std::{ops, str};
 
-use rustc::hir::def_id::DefId;
 use rustc::mir::{self, BasicBlock, Body, Location};
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 

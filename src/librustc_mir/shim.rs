@@ -1,10 +1,10 @@
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 use rustc_index::vec::{Idx, IndexVec};
 

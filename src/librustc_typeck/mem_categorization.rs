@@ -48,18 +48,16 @@
 //! result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
 //! tied to `x`. The type of `x'` will be a borrowed pointer.
 
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
-use rustc::hir::PatKind;
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
-
-use rustc_span::Span;
-
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::PatKind;
+use rustc_span::Span;
 
 #[derive(Clone, Debug)]
 pub enum PlaceBase {

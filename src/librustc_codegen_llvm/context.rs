@@ -5,7 +5,6 @@ use crate::llvm;
 use crate::llvm_util;
 use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
-use rustc::hir;
 
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
@@ -24,6 +23,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::Unsafety;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::abi::Abi;
@@ -415,7 +415,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
             tcx.types.never,
             false,
-            hir::Unsafety::Unsafe,
+            Unsafety::Unsafe,
             Abi::C,
         ));
 

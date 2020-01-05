@@ -4,9 +4,9 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast;
 
 use crate::transform::{MirPass, MirSource};
-use rustc::hir::def_id::DefId;
 use rustc::mir::{self, Body, BodyAndCache, Local, Location};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 
 use crate::dataflow::move_paths::{HasMoveData, MoveData};

@@ -3,11 +3,11 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
 use errors::{self, Applicability};
-use rustc::hir;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast::Ident;
 

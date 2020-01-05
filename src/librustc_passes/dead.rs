@@ -3,17 +3,16 @@
 // from live codes are live, and everything else is dead.
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::Node;
-use rustc::hir::{self, PatKind, TyKind};
-
-use rustc::hir::def::{CtorOf, DefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::privacy;
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{Node, PatKind, TyKind};
 
 use rustc_span;
 use rustc_span::symbol::sym;

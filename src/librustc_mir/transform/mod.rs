@@ -1,11 +1,11 @@
 use crate::{build, shim};
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::borrow::Cow;

@@ -6,7 +6,6 @@ use self::UndoLog::*;
 use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
-use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ReLateBound, ReVar};
@@ -14,6 +13,7 @@ use crate::ty::{Region, RegionVid};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 

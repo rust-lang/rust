@@ -1,6 +1,3 @@
-use crate::hir;
-use crate::hir::def::{DefKind, Namespace};
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
@@ -8,6 +5,9 @@ use crate::mir::interpret::{sign_extend, truncate, ConstValue, Scalar};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;

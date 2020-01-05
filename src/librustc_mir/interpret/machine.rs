@@ -5,9 +5,9 @@
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 use super::{

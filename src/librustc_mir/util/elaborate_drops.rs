@@ -1,5 +1,4 @@
 use crate::util::patch::MirPatch;
-use rustc::hir;
 use rustc::middle::lang_items;
 use rustc::mir::*;
 use rustc::traits::Reveal;
@@ -7,6 +6,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use std::fmt;
 

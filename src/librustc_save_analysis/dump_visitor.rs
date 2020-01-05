@@ -13,12 +13,12 @@
 //! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
-use rustc::hir::def::{DefKind as HirDefKind, Res};
-use rustc::hir::def_id::DefId;
 use rustc::session::config::Input;
 use rustc::span_bug;
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::{DefKind as HirDefKind, Res};
+use rustc_hir::def_id::DefId;
 
 use std::env;
 use std::path::Path;

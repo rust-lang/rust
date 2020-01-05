@@ -13,8 +13,6 @@
 //! just returns them for other code to use.
 
 use either::Either;
-use rustc::hir::def_id::DefId;
-use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
@@ -22,6 +20,9 @@ use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
 use std::iter;
 

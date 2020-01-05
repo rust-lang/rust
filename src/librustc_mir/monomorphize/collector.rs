@@ -176,9 +176,6 @@
 
 use crate::monomorphize;
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::mir::interpret::{AllocId, ConstValue};
@@ -193,6 +190,9 @@ use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_index::bit_set::GrowableBitSet;
 
 use std::iter;

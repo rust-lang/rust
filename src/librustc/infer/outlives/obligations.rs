@@ -59,7 +59,6 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use crate::hir;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
@@ -68,6 +67,7 @@ use crate::ty::outlives::Component;
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved

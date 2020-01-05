@@ -4,9 +4,6 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
-use crate::hir::def::{CtorKind, Namespace};
-use crate::hir::def_id::DefId;
-use crate::hir::{self, GeneratorKind};
 use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -17,6 +14,10 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, Namespace};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self, GeneratorKind};
 
 use polonius_engine::Atom;
 use rustc_data_structures::fx::FxHashSet;

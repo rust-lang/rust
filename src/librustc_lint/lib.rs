@@ -33,8 +33,6 @@ mod redundant_semicolon;
 mod types;
 mod unused;
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
@@ -43,6 +41,8 @@ use rustc::lint::builtin::{
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 use rustc_span::Span;
 use syntax::ast;

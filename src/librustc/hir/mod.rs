@@ -8,8 +8,6 @@ pub mod intravisit;
 pub mod map;
 pub mod upvars;
 
-pub use rustc_hir::*;
-
 use crate::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {

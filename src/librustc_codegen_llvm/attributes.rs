@@ -2,7 +2,6 @@
 
 use std::ffi::CString;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::session::config::{OptLevel, Sanitizer};
 use rustc::session::Session;
@@ -13,6 +12,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::PanicStrategy;
 

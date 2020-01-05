@@ -49,9 +49,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
-use crate::hir;
-use crate::hir::def_id::DefId;
-use crate::hir::Node;
+use crate::hir::map;
 use crate::infer::opaque_types;
 use crate::infer::{self, SuppressRegionErrors};
 use crate::middle::region;
@@ -64,6 +62,9 @@ use crate::ty::{
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::Node;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_error_codes::*;
@@ -455,7 +456,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         terr: &TypeError<'tcx>,
     ) {
         use hir::def_id::CrateNum;
-        use hir::map::DisambiguatedDefPathData;
+        use map::DisambiguatedDefPathData;
         use ty::print::Printer;
         use ty::subst::GenericArg;
 
@@ -851,7 +852,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sig2: &ty::PolyFnSig<'tcx>,
     ) -> (DiagnosticStyledString, DiagnosticStyledString) {
         let get_lifetimes = |sig| {
-            use crate::hir::def::Namespace;
+            use rustc_hir::def::Namespace;
             let mut s = String::new();
             let (_, (sig, reg)) = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS)
                 .name_all_regions(sig)

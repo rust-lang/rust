@@ -1,6 +1,6 @@
 //! Inlining pass for MIR functions
 
-use rustc::hir::def_id::DefId;
+use rustc_hir::def_id::DefId;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};

@@ -1,14 +1,14 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use rustc::hir::def_id::DefId;
-use rustc::hir::ItemKind;
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
+use rustc_hir::ItemKind;
 
 use errors::DiagnosticBuilder;
 use rustc_span::symbol::sym;
@@ -16,8 +16,8 @@ use rustc_span::Span;
 use syntax::ast;
 use syntax::feature_gate;
 
-use rustc::hir;
-use rustc::hir::itemlikevisit::ParItemLikeVisitor;
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 
 use rustc_error_codes::*;
 

@@ -14,8 +14,8 @@
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc::hir::def_id::DefId;
 use rustc::ty;
+use rustc_hir::def_id::DefId;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;

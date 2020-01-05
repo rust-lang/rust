@@ -1,7 +1,7 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir::def_id::DefId;
 use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;

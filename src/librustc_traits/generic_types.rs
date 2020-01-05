@@ -1,9 +1,9 @@
 //! Utilities for creating generic types with bound vars in place of parameter values.
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi;
 
 crate fn bound(tcx: TyCtxt<'tcx>, index: u32) -> Ty<'tcx> {

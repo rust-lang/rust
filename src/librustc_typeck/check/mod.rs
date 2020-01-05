@@ -91,11 +91,7 @@ use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
 use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
-use rustc::hir::def::{CtorOf, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::{self, ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
@@ -118,6 +114,11 @@ use rustc::ty::{
     ToPredicate, Ty, TyCtxt, UserType,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};

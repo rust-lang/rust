@@ -3,14 +3,14 @@
 use crate::hir::def_id::DefId;
 use lint::{LateContext, LintArray, LintContext};
 use lint::{LateLintPass, LintPass};
-use rustc::hir;
-use rustc::hir::{is_range_literal, ExprKind, Node};
 use rustc::lint;
 use rustc::mir::interpret::{sign_extend, truncate};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;

@@ -1,8 +1,5 @@
 mod environment;
 
-use rustc::hir;
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::traits::{
@@ -12,6 +9,9 @@ use rustc::traits::{
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, List, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use syntax::ast;
 

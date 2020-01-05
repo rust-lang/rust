@@ -15,10 +15,10 @@
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::hair::{self, *};
-use rustc::hir::RangeEnd;
 use rustc::mir::interpret::truncate;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
+use rustc_hir::RangeEnd;
 use syntax::attr::{SignedInt, UnsignedInt};
 
 use std::mem;

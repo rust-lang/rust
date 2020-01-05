@@ -1,11 +1,11 @@
 // Type substitutions.
 
-use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};

@@ -36,12 +36,12 @@
 use graphviz as dot;
 use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode};
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;

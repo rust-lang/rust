@@ -1,10 +1,10 @@
 use crate::generic_types;
 use crate::lowering::Lower;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::traits::{Clause, GoalKind, ProgramClause, ProgramClauseCategory};
 use rustc::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 /// Returns a predicate of the form
 /// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`

@@ -1,9 +1,9 @@
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
-use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::layout::Size;
 use rustc::ty::{Instance, Ty};
+use rustc_hir::def_id::CrateNum;
 use rustc_span::{SourceFile, Span};
 use rustc_target::abi::call::FnAbi;
 use syntax::ast::Name;

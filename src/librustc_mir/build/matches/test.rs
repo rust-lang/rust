@@ -9,12 +9,12 @@ use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::hair::pattern::compare_const_vals;
 use crate::hair::*;
-use rustc::hir::RangeEnd;
 use rustc::mir::*;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, adjustment::PointerCast, Ty};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::RangeEnd;
 use rustc_index::bit_set::BitSet;
 use rustc_span::symbol::sym;
 
@@ -657,7 +657,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let no_overlap = (|| {
-                    use rustc::hir::RangeEnd::*;
+                    use rustc_hir::RangeEnd::*;
                     use std::cmp::Ordering::*;
 
                     let tcx = self.hir.tcx();

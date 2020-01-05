@@ -35,13 +35,13 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::def_id::LocalDefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::UpvarRegion;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 use syntax::ast;
 

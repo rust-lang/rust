@@ -4,17 +4,17 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 
 use super::{PatCtxt, PatKind, PatternError};
 
-use rustc::hir::def::*;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::HirId;
-use rustc::hir::{self, Pat};
 use rustc::lint;
 use rustc::session::Session;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_error_codes::*;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def::*;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, Pat};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::Mutability;

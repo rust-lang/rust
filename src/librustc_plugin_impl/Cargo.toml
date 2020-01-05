@@ -12,6 +12,7 @@ doctest = false
 
 [dependencies]
 rustc = { path = "../librustc" }
+rustc_hir = { path = "../librustc_hir" }
 rustc_metadata = { path = "../librustc_metadata" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

@@ -96,8 +96,6 @@ use std::cmp;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
@@ -106,6 +104,8 @@ use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
 
 use crate::monomorphize::collector::InliningMap;

@@ -7,8 +7,8 @@ use rustc::ty::{self, Instance};
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
-use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
+use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 

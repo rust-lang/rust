@@ -1,5 +1,3 @@
-use crate::hir;
-use crate::hir::def_id::{DefId, DefIndex};
 use crate::hir::map::definitions::Definitions;
 use crate::hir::map::DefPathHash;
 use crate::ich::{self, CachingSourceMapView};
@@ -7,17 +5,18 @@ use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
-use std::cmp::Ord;
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
 use syntax::ast;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
+use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);

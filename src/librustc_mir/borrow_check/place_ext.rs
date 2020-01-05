@@ -1,8 +1,8 @@
 use crate::borrow_check::borrow_set::LocalsStateAtExit;
-use rustc::hir;
 use rustc::mir::ProjectionElem;
 use rustc::mir::{Body, Mutability, Place, PlaceBase};
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
 
 /// Extension methods for the `Place` type.
 crate trait PlaceExt<'tcx> {

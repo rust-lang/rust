@@ -1,10 +1,10 @@
-use crate::hir::def_id::DefId;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::util::captures::Captures;
+use rustc_hir::def_id::DefId;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as

@@ -4,8 +4,6 @@
 
 use crate::check::FnCtxt;
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, DefIdSet, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::InferCtxt;
@@ -13,6 +11,8 @@ use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 

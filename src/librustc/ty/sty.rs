@@ -5,8 +5,6 @@
 use self::InferTy::*;
 use self::TyKind::*;
 
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
 use crate::middle::region;
 use crate::mir::interpret::ConstValue;
@@ -16,6 +14,8 @@ use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, Substs
 use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use crate::util::captures::Captures;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 use polonius_engine::Atom;
 use rustc_index::vec::Idx;

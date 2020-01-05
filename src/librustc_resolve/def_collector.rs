@@ -1,7 +1,7 @@
 use log::debug;
-use rustc::hir::def_id::DefIndex;
 use rustc::hir::map::definitions::*;
 use rustc_expand::expand::AstFragment;
+use rustc_hir::def_id::DefIndex;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;

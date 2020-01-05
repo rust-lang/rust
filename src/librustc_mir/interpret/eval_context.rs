@@ -2,8 +2,6 @@ use std::cell::Cell;
 use std::fmt::Write;
 use std::mem;
 
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::DefId;
 use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::mir::interpret::{
@@ -15,6 +13,8 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_span::source_map::{self, Span, DUMMY_SP};

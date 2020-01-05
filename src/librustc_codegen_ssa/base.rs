@@ -25,8 +25,6 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::{self, LinkagePreference};
@@ -42,6 +40,8 @@ use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_span::Span;
