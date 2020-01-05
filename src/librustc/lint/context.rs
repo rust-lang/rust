@@ -495,7 +495,7 @@ pub trait LintContext: Sized {
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let mut db = self.lookup(lint, span, msg);
-        diagnostic.run(self.sess(), &mut db);
+        super::builtin::run_builtin_lint_diagnostics(diagnostic, self.sess(), &mut db);
         db.emit();
     }
 

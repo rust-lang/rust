@@ -514,8 +514,10 @@ declare_lint_pass! {
     ]
 }
 
-// this could be a closure, but then implementing derive traits
-// becomes hacky (and it gets allocated)
+impl LateLintPass<'_, '_> for HardwiredLints {}
+
+// This could be a closure, but then implementing derive trait
+// becomes hacky (and it gets allocated).
 #[derive(PartialEq)]
 pub enum BuiltinLintDiagnostics {
     Normal,
@@ -572,86 +574,80 @@ pub fn add_elided_lifetime_in_path_suggestion(
     );
 }
 
-impl BuiltinLintDiagnostics {
-    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder<'_>) {
-        match self {
-            BuiltinLintDiagnostics::Normal => (),
-            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) if is_global => {
-                        (format!("dyn ({})", s), Applicability::MachineApplicable)
-                    }
-                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `dyn`", sugg, app);
-            }
-            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) => {
-                        // FIXME(Manishearth) ideally the emitting code
-                        // can tell us whether or not this is global
-                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
+pub fn run_builtin_lint_diagnostics(
+    this: BuiltinLintDiagnostics,
+    sess: &Session,
+    db: &mut DiagnosticBuilder<'_>,
+) {
+    match this {
+        BuiltinLintDiagnostics::Normal => (),
+        BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+            let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                Ok(s) if is_global => (format!("dyn ({})", s), Applicability::MachineApplicable),
+                Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
+            };
+            db.span_suggestion(span, "use `dyn`", sugg, app);
+        }
+        BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+            let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                Ok(ref s) => {
+                    // FIXME(Manishearth) ideally the emitting code
+                    // can tell us whether or not this is global
+                    let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
 
-                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
-                    }
-                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `crate`", sugg, app);
-            }
-            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
-                db.span_label(
-                    span,
-                    "names from parent modules are not \
-                                     accessible without an explicit import",
-                );
-            }
-            BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-                db.span_note(span_def, "the macro is defined here");
-            }
-            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                    (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                }
+                Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
+            };
+            db.span_suggestion(span, "use `crate`", sugg, app);
+        }
+        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+            db.span_label(
+                span,
+                "names from parent modules are not accessible without an explicit import",
+            );
+        }
+        BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+            db.span_note(span_def, "the macro is defined here");
+        }
+        BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+            n,
+            path_span,
+            incl_angl_brckt,
+            insertion_span,
+            anon_lts,
+        ) => {
+            add_elided_lifetime_in_path_suggestion(
+                sess,
+                db,
                 n,
                 path_span,
                 incl_angl_brckt,
                 insertion_span,
                 anon_lts,
-            ) => {
-                add_elided_lifetime_in_path_suggestion(
-                    sess,
-                    db,
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                    anon_lts,
+            );
+        }
+        BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+            db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+        }
+        BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+            if !replaces.is_empty() {
+                db.tool_only_multipart_suggestion(
+                    &message,
+                    replaces,
+                    Applicability::MachineApplicable,
                 );
             }
-            BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+        }
+        BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+            for (span, is_imported) in spans {
+                let introduced = if is_imported { "imported" } else { "defined" };
+                db.span_label(span, format!("the item `{}` is already {} here", ident, introduced));
             }
-            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
-                if !replaces.is_empty() {
-                    db.tool_only_multipart_suggestion(
-                        &message,
-                        replaces,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
-                for (span, is_imported) in spans {
-                    let introduced = if is_imported { "imported" } else { "defined" };
-                    db.span_label(
-                        span,
-                        format!("the item `{}` is already {} here", ident, introduced),
-                    );
-                }
-            }
-            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
-                stability::deprecation_suggestion(db, suggestion, span)
-            }
+        }
+        BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+            stability::deprecation_suggestion(db, suggestion, span)
         }
     }
 }
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HardwiredLints {}
