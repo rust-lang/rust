@@ -435,23 +435,18 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 ///
 /// Assuming the defaults are used, check that all predicates (bounds on the
 /// assoc type and where clauses on the trait) hold.
-fn check_associated_type_defaults(
-    fcx: &FnCtxt<'_, '_>,
-    trait_def_id: DefId,
-) {
+fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
     let tcx = fcx.tcx;
     let substs = InternalSubsts::identity_for_item(tcx, trait_def_id);
 
     // For all assoc. types with defaults, build a map from
     // `<Self as Trait<...>>::Assoc` to the default type.
-    let map = tcx.associated_items(trait_def_id)
+    let map = tcx
+        .associated_items(trait_def_id)
         .filter_map(|item| {
             if item.kind == ty::AssocKind::Type && item.defaultness.has_value() {
                 // `<Self as Trait<...>>::Assoc`
-                let proj = ty::ProjectionTy {
-                    substs,
-                    item_def_id: item.def_id,
-                };
+                let proj = ty::ProjectionTy { substs, item_def_id: item.def_id };
                 let default_ty = tcx.type_of(item.def_id);
                 debug!("assoc. type default mapping: {} -> {}", proj, default_ty);
                 Some((proj, default_ty))
