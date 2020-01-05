@@ -1416,6 +1416,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow(unused_attributes)]
             #[allow_internal_unstable(const_if_match)]
             #[inline]
             pub const fn wrapping_abs(self) -> Self {
@@ -1709,6 +1710,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow(unused_attributes)]
             #[allow_internal_unstable(const_if_match)]
             pub const fn overflowing_neg(self) -> (Self, bool) {
                 if self == Self::min_value() {
@@ -1997,6 +1999,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[allow(unused_attributes)]
             #[allow_internal_unstable(const_if_match)]
             #[inline]
             #[rustc_inherit_overflow_checks]
