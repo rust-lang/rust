@@ -516,7 +516,7 @@ declare_lint_pass! {
 
 // this could be a closure, but then implementing derive traits
 // becomes hacky (and it gets allocated)
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq)]
 pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),

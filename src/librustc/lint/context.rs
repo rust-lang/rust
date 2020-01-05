@@ -66,7 +66,7 @@ pub struct LintStore {
 
 /// Lints that are buffered up early on in the `Session` before the
 /// `LintLevels` is calculated
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     pub lint_id: LintId,
     pub ast_id: ast::NodeId,
