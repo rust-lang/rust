@@ -202,17 +202,7 @@ fn run_test(
     opts: &TestOptions,
     edition: Edition,
 ) -> Result<(), TestFailure> {
-    let (test, line_offset) = match panic::catch_unwind(|| {
-        make_test(test, Some(cratename), as_test_harness, opts, edition)
-    }) {
-        Ok((test, line_offset)) => (test, line_offset),
-        Err(cause) if cause.is::<errors::FatalErrorMarker>() => {
-            // If the parser used by `make_test` panicked due to a fatal error, pass the test code
-            // through unchanged. The error will be reported during compilation.
-            (test.to_owned(), 0)
-        }
-        Err(cause) => panic::resume_unwind(cause),
-    };
+    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts, edition);
 
     // FIXME(#44940): if doctests ever support path remapping, then this filename
     // needs to be the result of `SourceMap::span_to_unmapped_path`.
@@ -362,11 +352,6 @@ fn run_test(
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins.
-///
-/// # Panics
-///
-/// This function uses the compiler's parser internally. The parser will panic if it encounters a
-/// fatal error while parsing the test.
 pub fn make_test(
     s: &str,
     cratename: Option<&str>,
@@ -401,83 +386,94 @@ pub fn make_test(
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
-    let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use errors::emitter::EmitterWriter;
-        use errors::Handler;
-        use rustc_parse::maybe_new_parser_from_source_str;
-        use rustc_span::source_map::FilePathMapping;
-        use syntax::sess::ParseSess;
+    let result = rustc_driver::catch_fatal_errors(|| {
+        with_globals(edition, || {
+            use errors::emitter::EmitterWriter;
+            use errors::Handler;
+            use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_span::source_map::FilePathMapping;
+            use syntax::sess::ParseSess;
 
-        let filename = FileName::anon_source_code(s);
-        let source = crates + &everything_else;
+            let filename = FileName::anon_source_code(s);
+            let source = crates + &everything_else;
 
-        // Any errors in parsing should also appear when the doctest is compiled for real, so just
-        // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
-        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
-        // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-        let handler = Handler::with_emitter(false, None, box emitter);
-        let sess = ParseSess::with_span_handler(handler, cm);
+            // Any errors in parsing should also appear when the doctest is compiled for real, so just
+            // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let emitter =
+                EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+            // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
+            let handler = Handler::with_emitter(false, None, box emitter);
+            let sess = ParseSess::with_span_handler(handler, cm);
 
-        let mut found_main = false;
-        let mut found_extern_crate = cratename.is_none();
-        let mut found_macro = false;
+            let mut found_main = false;
+            let mut found_extern_crate = cratename.is_none();
+            let mut found_macro = false;
 
-        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
-            Ok(p) => p,
-            Err(errs) => {
-                for mut err in errs {
-                    err.cancel();
+            let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
+                Ok(p) => p,
+                Err(errs) => {
+                    for mut err in errs {
+                        err.cancel();
+                    }
+
+                    return (found_main, found_extern_crate, found_macro);
                 }
+            };
 
-                return (found_main, found_extern_crate, found_macro);
-            }
-        };
-
-        loop {
-            match parser.parse_item() {
-                Ok(Some(item)) => {
-                    if !found_main {
-                        if let ast::ItemKind::Fn(..) = item.kind {
-                            if item.ident.name == sym::main {
-                                found_main = true;
+            loop {
+                match parser.parse_item() {
+                    Ok(Some(item)) => {
+                        if !found_main {
+                            if let ast::ItemKind::Fn(..) = item.kind {
+                                if item.ident.name == sym::main {
+                                    found_main = true;
+                                }
                             }
                         }
-                    }
 
-                    if !found_extern_crate {
-                        if let ast::ItemKind::ExternCrate(original) = item.kind {
-                            // This code will never be reached if `cratename` is none because
-                            // `found_extern_crate` is initialized to `true` if it is none.
-                            let cratename = cratename.unwrap();
+                        if !found_extern_crate {
+                            if let ast::ItemKind::ExternCrate(original) = item.kind {
+                                // This code will never be reached if `cratename` is none because
+                                // `found_extern_crate` is initialized to `true` if it is none.
+                                let cratename = cratename.unwrap();
 
-                            match original {
-                                Some(name) => found_extern_crate = name.as_str() == cratename,
-                                None => found_extern_crate = item.ident.as_str() == cratename,
+                                match original {
+                                    Some(name) => found_extern_crate = name.as_str() == cratename,
+                                    None => found_extern_crate = item.ident.as_str() == cratename,
+                                }
                             }
                         }
-                    }
 
-                    if !found_macro {
-                        if let ast::ItemKind::Mac(..) = item.kind {
-                            found_macro = true;
+                        if !found_macro {
+                            if let ast::ItemKind::Mac(..) = item.kind {
+                                found_macro = true;
+                            }
+                        }
+
+                        if found_main && found_extern_crate {
+                            break;
                         }
                     }
-
-                    if found_main && found_extern_crate {
+                    Ok(None) => break,
+                    Err(mut e) => {
+                        e.cancel();
                         break;
                     }
                 }
-                Ok(None) => break,
-                Err(mut e) => {
-                    e.cancel();
-                    break;
-                }
             }
-        }
 
-        (found_main, found_extern_crate, found_macro)
+            (found_main, found_extern_crate, found_macro)
+        })
     });
+    let (already_has_main, already_has_extern_crate, found_macro) = match result {
+        Ok(result) => result,
+        Err(ErrorReported) => {
+            // If the parser panicked due to a fatal error, pass the test code through unchanged.
+            // The error will be reported during compilation.
+            return (s.to_owned(), 0);
+        }
+    };
 
     // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
     // see it. In that case, run the old text-based scan to see if they at least have a main

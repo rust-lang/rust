@@ -1,4 +1,4 @@
-error[E0308]: if and else have incompatible types
+error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-let-arm-types.rs:7:9
    |
 LL | /     if let Some(b) = None {
@@ -10,7 +10,7 @@ LL | |     } else {
 LL | |         1
    | |         ^ expected `()`, found integer
 LL | |     };
-   | |_____- if and else have incompatible types
+   | |_____- `if` and `else` have incompatible types
 
 error: aborting due to previous error
 

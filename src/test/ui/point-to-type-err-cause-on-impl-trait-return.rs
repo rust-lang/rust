@@ -29,7 +29,7 @@ fn qux() -> impl std::fmt::Display {
         0i32
     } else {
         1u32
-        //~^ ERROR if and else have incompatible types
+        //~^ ERROR `if` and `else` have incompatible types
     }
 }
 

@@ -1,4 +1,4 @@
-error[E0658]: a `#[start]` function is an experimental feature whose signature may change over time
+error[E0658]: `#[start]` functions are experimental and their signature may change over time
   --> $DIR/feature-gate-start.rs:2:1
    |
 LL | fn foo(_: isize, _: *const *const u8) -> isize { 0 }

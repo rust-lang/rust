@@ -9,7 +9,7 @@ LL |     x = |c| c + 1;
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/issue-24036.rs:10:14
    |
 LL |       let x = match 1usize {

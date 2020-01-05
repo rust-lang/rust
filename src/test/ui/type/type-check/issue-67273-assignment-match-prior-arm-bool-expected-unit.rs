@@ -20,7 +20,7 @@ fn main() {
         // However, in #67273, we would delay the unification of this arm with the above
         // because we used the hitherto accumulated coercion as opposed to the "initial" type.
         2 => i = 1,
-        //~^ ERROR match arms have incompatible types
+        //~^ ERROR `match` arms have incompatible types
 
         _ => (),
     }

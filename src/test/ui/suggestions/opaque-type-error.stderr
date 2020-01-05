@@ -1,4 +1,4 @@
-error[E0308]: if and else have incompatible types
+error[E0308]: `if` and `else` have incompatible types
   --> $DIR/opaque-type-error.rs:20:9
    |
 LL | /     if true {
@@ -8,7 +8,7 @@ LL | |     } else {
 LL | |         thing_two()
    | |         ^^^^^^^^^^^ expected opaque type, found a different opaque type
 LL | |     }.await
-   | |_____- if and else have incompatible types
+   | |_____- `if` and `else` have incompatible types
    |
    = note:     expected type `impl std::future::Future` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
            found opaque type `impl std::future::Future` (opaque type at <$DIR/opaque-type-error.rs:12:19>)

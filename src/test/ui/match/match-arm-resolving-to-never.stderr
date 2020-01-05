@@ -1,4 +1,4 @@
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/match-arm-resolving-to-never.rs:17:17
    |
 LL | /     match E::F {

@@ -376,7 +376,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 {
-        if self < 0.0 { NAN } else { unsafe { intrinsics::sqrtf32(self) } }
+        unsafe { intrinsics::sqrtf32(self) }
     }
 
     /// Returns `e^(self)`, (the exponential function).

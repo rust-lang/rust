@@ -1,4 +1,4 @@
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/issue-50577.rs:7:16
    |
 LL |         Drop = assert_eq!(1, 1)
