@@ -74,18 +74,6 @@ pub enum GateStrength {
 
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
-///
-/// Example usage:
-///
-/// ```ignore
-/// feature_err(
-///     parse_sess,
-///     sym::stmt_expr_attributes,
-///     attr.span,
-///     "attributes on expressions are unstable",
-/// )
-/// .emit();
-/// ```
 pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
