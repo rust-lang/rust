@@ -1316,6 +1316,14 @@ extern "C" {
         Size: &'a Value,
         IsVolatile: bool,
     ) -> &'a Value;
+    pub fn LLVMRustBuildMemSet(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Val: &'a Value,
+        Size: &'a Value,
+        IsVolatile: bool,
+    ) -> &'a Value;
     pub fn LLVMBuildSelect(
         B: &Builder<'a>,
         If: &'a Value,
