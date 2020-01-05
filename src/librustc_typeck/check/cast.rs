@@ -38,6 +38,7 @@ use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::traits;
 use rustc::traits::error_reporting::report_object_safety_error;
+use rustc::traits::object_safety_violations;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
@@ -519,7 +520,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn report_object_unsafe_cast(&self, fcx: &FnCtxt<'a, 'tcx>, did: DefId) {
-        let violations = fcx.tcx.object_safety_violations(did);
+        let violations = object_safety_violations(fcx.tcx, did);
         let mut err = report_object_safety_error(fcx.tcx, self.cast_span, did, violations);
         err.note(&format!("required by cast to type '{}'", fcx.ty_to_string(self.cast_ty)));
         err.emit();

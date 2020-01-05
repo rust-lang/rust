@@ -13,6 +13,7 @@ use errors::{Applicability, DiagnosticId};
 use rustc::hir::intravisit::Visitor;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
+use rustc::traits::astconv_object_safety_violations;
 use rustc::traits::error_reporting::report_object_safety_error;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
@@ -1453,7 +1454,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // to avoid ICEs.
         for item in &regular_traits {
             let object_safety_violations =
-                tcx.astconv_object_safety_violations(item.trait_ref().def_id());
+                astconv_object_safety_violations(tcx, item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
                 report_object_safety_error(
                     tcx,

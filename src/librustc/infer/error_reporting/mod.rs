@@ -54,6 +54,7 @@ use crate::infer::opaque_types;
 use crate::infer::{self, SuppressRegionErrors};
 use crate::middle::region;
 use crate::traits::error_reporting::report_object_safety_error;
+use crate::traits::object_safety_violations;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -1487,7 +1488,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0038(did) => {
-                let violations = self.tcx.object_safety_violations(did);
+                let violations = object_safety_violations(self.tcx, did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
             FailureCode::Error0317(failure_str) => {

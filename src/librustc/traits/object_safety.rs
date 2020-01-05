@@ -108,54 +108,52 @@ pub enum MethodViolationCode {
     UndispatchableReceiver,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    /// Returns the object safety violations that affect
-    /// astconv -- currently, `Self` in supertraits. This is needed
-    /// because `object_safety_violations` can't be used during
-    /// type collection.
-    pub fn astconv_object_safety_violations(
-        self,
-        trait_def_id: DefId,
-    ) -> Vec<ObjectSafetyViolation> {
-        debug_assert!(self.generics_of(trait_def_id).has_self);
-        let violations = traits::supertrait_def_ids(self, trait_def_id)
-            .filter(|&def_id| predicates_reference_self(self, def_id, true))
-            .map(|_| ObjectSafetyViolation::SupertraitSelf)
-            .collect();
+/// Returns the object safety violations that affect
+/// astconv -- currently, `Self` in supertraits. This is needed
+/// because `object_safety_violations` can't be used during
+/// type collection.
+pub fn astconv_object_safety_violations(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> Vec<ObjectSafetyViolation> {
+    debug_assert!(tcx.generics_of(trait_def_id).has_self);
+    let violations = traits::supertrait_def_ids(tcx, trait_def_id)
+        .filter(|&def_id| predicates_reference_self(tcx, def_id, true))
+        .map(|_| ObjectSafetyViolation::SupertraitSelf)
+        .collect();
 
-        debug!(
-            "astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
-            trait_def_id, violations
-        );
+    debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);
 
-        violations
+    violations
+}
+
+pub fn object_safety_violations(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> Vec<ObjectSafetyViolation> {
+    debug_assert!(tcx.generics_of(trait_def_id).has_self);
+    debug!("object_safety_violations: {:?}", trait_def_id);
+
+    traits::supertrait_def_ids(tcx, trait_def_id)
+        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id))
+        .collect()
+}
+
+/// We say a method is *vtable safe* if it can be invoked on a trait
+/// object. Note that object-safe traits can have some
+/// non-vtable-safe methods, so long as they require `Self: Sized` or
+/// otherwise ensure that they cannot be used when `Self = Trait`.
+pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
+    debug_assert!(tcx.generics_of(trait_def_id).has_self);
+    debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
+    // Any method that has a `Self: Sized` bound cannot be called.
+    if generics_require_sized_self(tcx, method.def_id) {
+        return false;
     }
 
-    pub fn object_safety_violations(self, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
-        debug_assert!(self.generics_of(trait_def_id).has_self);
-        debug!("object_safety_violations: {:?}", trait_def_id);
-
-        traits::supertrait_def_ids(self, trait_def_id)
-            .flat_map(|def_id| object_safety_violations_for_trait(self, def_id))
-            .collect()
-    }
-
-    /// We say a method is *vtable safe* if it can be invoked on a trait
-    /// object. Note that object-safe traits can have some
-    /// non-vtable-safe methods, so long as they require `Self: Sized` or
-    /// otherwise ensure that they cannot be used when `Self = Trait`.
-    pub fn is_vtable_safe_method(self, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
-        debug_assert!(self.generics_of(trait_def_id).has_self);
-        debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
-        // Any method that has a `Self: Sized` bound cannot be called.
-        if generics_require_sized_self(self, method.def_id) {
-            return false;
-        }
-
-        match virtual_call_violation_for_method(self, trait_def_id, method) {
-            None | Some(MethodViolationCode::WhereClauseReferencesSelf) => true,
-            Some(_) => false,
-        }
+    match virtual_call_violation_for_method(tcx, trait_def_id, method) {
+        None | Some(MethodViolationCode::WhereClauseReferencesSelf) => true,
+        Some(_) => false,
     }
 }
 
@@ -724,5 +722,5 @@ fn contains_illegal_self_type_reference<'tcx>(
 }
 
 pub(super) fn is_object_safe_provider(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
-    tcx.object_safety_violations(trait_def_id).is_empty()
+    object_safety_violations(tcx, trait_def_id).is_empty()
 }

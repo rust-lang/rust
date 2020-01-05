@@ -11,6 +11,7 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
 use crate::mir::interpret::ErrorHandled;
 use crate::session::DiagnosticMessageId;
+use crate::traits::object_safety_violations;
 use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFolder;
@@ -915,7 +916,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
-                        let violations = self.tcx.object_safety_violations(trait_def_id);
+                        let violations = object_safety_violations(self.tcx, trait_def_id);
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
@@ -1079,7 +1080,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             TraitNotObjectSafe(did) => {
-                let violations = self.tcx.object_safety_violations(did);
+                let violations = object_safety_violations(self.tcx, did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
 

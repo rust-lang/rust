@@ -47,6 +47,9 @@ pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls}
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
+pub use self::object_safety::astconv_object_safety_violations;
+pub use self::object_safety::is_vtable_safe_method;
+pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
@@ -1062,7 +1065,7 @@ fn vtable_methods<'tcx>(
             let def_id = trait_method.def_id;
 
             // Some methods cannot be called on an object; skip those.
-            if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
+            if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
                 debug!("vtable_methods: not vtable safe");
                 return None;
             }
