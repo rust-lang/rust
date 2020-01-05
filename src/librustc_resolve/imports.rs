@@ -12,9 +12,9 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
 use rustc::hir::exports::Export;
-use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
-use rustc::session::DiagnosticMessageId;
+use rustc_session::DiagnosticMessageId;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc::ty;
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;

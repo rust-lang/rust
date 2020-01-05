@@ -16,15 +16,15 @@
 
 use rustc::lint::{EarlyContext, LintStore};
 use rustc::lint::{EarlyLintPass, EarlyLintPassObject};
-use rustc::lint::{LintBuffer, LintContext, LintPass};
-use rustc::session::Session;
-
+use rustc::lint::{LintContext, LintPass};
+use rustc_session::lint::LintBuffer;
+use rustc_session::Session;
 use rustc_span::Span;
-use std::slice;
 use syntax::ast;
 use syntax::visit as ast_visit;
 
 use log::debug;
+use std::slice;
 
 macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);

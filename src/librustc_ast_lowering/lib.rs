@@ -37,7 +37,6 @@ use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::lint::builtin;
 use rustc::{bug, span_bug};
 use rustc_data_structures::captures::Captures;
@@ -52,6 +51,7 @@ use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::nightly_options;
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::node_id::NodeMap;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
@@ -198,7 +198,7 @@ pub trait Resolver {
         ns: Namespace,
     ) -> (ast::Path, Res<NodeId>);
 
-    fn lint_buffer(&mut self) -> &mut lint::LintBuffer;
+    fn lint_buffer(&mut self) -> &mut LintBuffer;
 
     fn next_node_id(&mut self) -> NodeId;
 }
@@ -2617,7 +2617,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 id,
                 span,
                 "trait objects without an explicit `dyn` are deprecated",
-                builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+                BuiltinLintDiagnostics::BareTraitObject(span, is_global),
             )
         }
     }

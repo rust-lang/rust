@@ -1,8 +1,8 @@
 pub use self::Level::*;
-use crate::node_id::NodeId;
+use crate::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::edition::Edition;
-use rustc_span::{sym, MultiSpan, Symbol};
+use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -174,7 +174,25 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     }
 }
 
-/// Stores buffered lint info which can later be passed to `librustc`.
+// This could be a closure, but then implementing derive trait
+// becomes hacky (and it gets allocated).
+#[derive(PartialEq)]
+pub enum BuiltinLintDiagnostics {
+    Normal,
+    BareTraitObject(Span, /* is_global */ bool),
+    AbsPathWithModule(Span),
+    ProcMacroDeriveResolutionFallback(Span),
+    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
+    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
+    UnknownCrateTypes(Span, String, String),
+    UnusedImports(String, Vec<(Span, String)>),
+    RedundantImport(Vec<(Span, bool)>, Ident),
+    DeprecatedMacro(Option<Symbol>, Span),
+}
+
+/// Lints that are buffered up early on in the `Session` before the
+/// `LintLevels` is calculated. These are later passed to `librustc`.
+#[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
     pub span: MultiSpan,
@@ -183,10 +201,65 @@ pub struct BufferedEarlyLint {
     pub msg: String,
 
     /// The `NodeId` of the AST node that generated the lint.
-    pub id: NodeId,
+    pub node_id: NodeId,
 
     /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
-    pub lint_id: &'static Lint,
+    pub lint_id: LintId,
+
+    /// Customization of the `DiagnosticBuilder<'_>` for the lint.
+    pub diagnostic: BuiltinLintDiagnostics,
+}
+
+#[derive(Default)]
+pub struct LintBuffer {
+    pub map: NodeMap<Vec<BufferedEarlyLint>>,
+}
+
+impl LintBuffer {
+    pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
+        let arr = self.map.entry(early_lint.node_id).or_default();
+        if !arr.contains(&early_lint) {
+            arr.push(early_lint);
+        }
+    }
+
+    pub fn add_lint(
+        &mut self,
+        lint: &'static Lint,
+        node_id: NodeId,
+        span: MultiSpan,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        let lint_id = LintId::of(lint);
+        let msg = msg.to_string();
+        self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, msg, diagnostic });
+    }
+
+    pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
+        self.map.remove(&id).unwrap_or_default()
+    }
+
+    pub fn buffer_lint(
+        &mut self,
+        lint: &'static Lint,
+        id: NodeId,
+        sp: impl Into<MultiSpan>,
+        msg: &str,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+    }
+
+    pub fn buffer_lint_with_diagnostic(
+        &mut self,
+        lint: &'static Lint,
+        id: NodeId,
+        sp: impl Into<MultiSpan>,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, diagnostic)
+    }
 }
 
 /// Declares a static item of type `&'static Lint`.

@@ -9,10 +9,9 @@ use crate::middle::stability;
 use crate::session::Session;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_session::declare_lint;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
-use syntax::ast;
 use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
 
 declare_lint! {
@@ -515,22 +514,6 @@ declare_lint_pass! {
 }
 
 impl LateLintPass<'_, '_> for HardwiredLints {}
-
-// This could be a closure, but then implementing derive trait
-// becomes hacky (and it gets allocated).
-#[derive(PartialEq)]
-pub enum BuiltinLintDiagnostics {
-    Normal,
-    BareTraitObject(Span, /* is_global */ bool),
-    AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback(Span),
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
-    UnknownCrateTypes(Span, String, String),
-    UnusedImports(String, Vec<(Span, String)>),
-    RedundantImport(Vec<(Span, bool)>, ast::Ident),
-    DeprecatedMacro(Option<Symbol>, Span),
-}
 
 pub fn add_elided_lifetime_in_path_suggestion(
     sess: &Session,

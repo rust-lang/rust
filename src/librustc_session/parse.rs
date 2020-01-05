@@ -1,7 +1,7 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
-use crate::lint::BufferedEarlyLint;
+use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
 use crate::node_id::NodeId;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -210,17 +210,18 @@ impl ParseSess {
 
     pub fn buffer_lint(
         &self,
-        lint_id: &'static crate::lint::Lint,
+        lint: &'static Lint,
         span: impl Into<MultiSpan>,
-        id: NodeId,
+        node_id: NodeId,
         msg: &str,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
-                id,
+                node_id,
                 msg: msg.into(),
-                lint_id,
+                lint_id: LintId::of(lint),
+                diagnostic: BuiltinLintDiagnostics::Normal,
             });
         });
     }

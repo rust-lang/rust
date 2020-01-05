@@ -37,7 +37,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::mut_visit::MutVisitor;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
@@ -411,8 +410,8 @@ fn configure_and_expand_inner<'a>(
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint { id, span, msg, lint_id } in buffered_lints.drain(..) {
-            resolver.lint_buffer().buffer_lint(lint_id, id, span, &msg);
+        for early_lint in buffered_lints.drain(..) {
+            resolver.lint_buffer().add_early_lint(early_lint);
         }
     });
 

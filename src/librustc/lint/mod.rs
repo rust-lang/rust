@@ -21,12 +21,10 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
-use rustc_session::node_id::NodeMap;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
@@ -35,10 +33,10 @@ use rustc_span::Span;
 use syntax::ast;
 
 pub use crate::lint::context::{
-    BufferedEarlyLint, CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore,
+    CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore,
 };
 
-pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};
+pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
 
 /// Declares a static `LintArray` and return it as an expression.
 #[macro_export]
@@ -372,59 +370,6 @@ pub mod internal;
 mod levels;
 
 pub use self::levels::{LintLevelMap, LintLevelSets, LintLevelsBuilder};
-
-#[derive(Default)]
-pub struct LintBuffer {
-    pub map: NodeMap<Vec<BufferedEarlyLint>>,
-}
-
-impl LintBuffer {
-    pub fn add_lint(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: MultiSpan,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        let early_lint = BufferedEarlyLint {
-            lint_id: LintId::of(lint),
-            ast_id: id,
-            span: sp,
-            msg: msg.to_string(),
-            diagnostic,
-        };
-        let arr = self.map.entry(id).or_default();
-        if !arr.contains(&early_lint) {
-            arr.push(early_lint);
-        }
-    }
-
-    pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or_default()
-    }
-
-    pub fn buffer_lint<S: Into<MultiSpan>>(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-    ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        self.add_lint(lint, id, sp.into(), msg, diagnostic)
-    }
-}
 
 pub fn struct_lint_level<'a>(
     sess: &'a Session,

@@ -17,10 +17,8 @@
 use self::TargetLint::*;
 
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::lint::{EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use crate::middle::privacy::AccessLevels;
 use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
@@ -31,6 +29,8 @@ use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -62,17 +62,6 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
-}
-
-/// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated
-#[derive(PartialEq)]
-pub struct BufferedEarlyLint {
-    pub lint_id: LintId,
-    pub ast_id: ast::NodeId,
-    pub span: MultiSpan,
-    pub msg: String,
-    pub diagnostic: BuiltinLintDiagnostics,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.

@@ -3630,6 +3630,7 @@ dependencies = [
  "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_resolve",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_traits",
