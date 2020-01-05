@@ -16,7 +16,7 @@ fn test_func2(n: i32) -> i32 {
     let x = match n { //~ NOTE `match` arms have incompatible types
         12 => 'b', //~ NOTE this is found to be of type `char`
         _ => 42,
-        //~^ ERROR match arms have incompatible types
+        //~^ ERROR `match` arms have incompatible types
         //~| NOTE expected `char`, found integer
     };
     x
@@ -32,7 +32,7 @@ fn test_func3(n: i32) -> i32 {
         6 => 'b',
         //~^ NOTE this and all prior arms are found to be of type `char`
         _ => 42,
-        //~^ ERROR match arms have incompatible types
+        //~^ ERROR `match` arms have incompatible types
         //~| NOTE expected `char`, found integer
     };
     x
@@ -44,7 +44,7 @@ fn test_func4() {
             x //~ NOTE this is found to be of type `u32`
         },
         None => {}
-        //~^ ERROR match arms have incompatible types
+        //~^ ERROR `match` arms have incompatible types
         //~| NOTE expected `u32`, found `()`
     };
 }

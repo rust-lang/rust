@@ -298,7 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // LL ||         10u32
             //    ||         ^^^^^ expected `i32`, found `u32`
             // LL ||     };
-            //    ||_____- if and else have incompatible types
+            //    ||_____- `if` and `else` have incompatible types
             // ```
             Some(span)
         } else {
@@ -340,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // by not pointing at the entire expression:
                 // ```
                 // 2 |       let x = if true {
-                //   |               ------- if and else have incompatible types
+                //   |               ------- `if` and `else` have incompatible types
                 // 3 |           3
                 //   |           - expected because of this
                 // 4 |       } else {

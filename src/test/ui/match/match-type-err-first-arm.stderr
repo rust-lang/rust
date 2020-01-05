@@ -7,7 +7,7 @@ LL |     match n {
 LL |         12 => 'b',
    |               ^^^ expected `i32`, found `char`
 
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/match-type-err-first-arm.rs:18:14
    |
 LL |       let x = match n {
@@ -21,7 +21,7 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
 
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/match-type-err-first-arm.rs:34:14
    |
 LL |       let x = match n {
@@ -40,7 +40,7 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
 
-error[E0308]: match arms have incompatible types
+error[E0308]: `match` arms have incompatible types
   --> $DIR/match-type-err-first-arm.rs:46:17
    |
 LL | /     match Some(0u32) {

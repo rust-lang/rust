@@ -9,7 +9,7 @@ fn foo(
 ) {
     let z = match 22 {
         0 => x,
-        _ => y, //~ ERROR match arms have incompatible types
+        _ => y, //~ ERROR `match` arms have incompatible types
     };
 }
 

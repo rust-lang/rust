@@ -1,4 +1,4 @@
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:2:5
    |
 LL |   fn foo(bar: usize) -> usize {
@@ -11,7 +11,7 @@ LL | |     }
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:9:20
    |
 LL |       let x: usize = if bar % 5 == 0 {
@@ -25,7 +25,7 @@ LL | |     };
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:17:5
    |
 LL |   fn foo3(bar: usize) -> usize {
@@ -38,7 +38,7 @@ LL | |     }
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:24:5
    |
 LL |   fn foo_let(bar: usize) -> usize {
@@ -51,7 +51,7 @@ LL | |     }
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:31:20
    |
 LL |       let x: usize = if let 0 = 1 {
@@ -65,7 +65,7 @@ LL | |     };
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
-error[E0317]: if may be missing an else clause
+error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:39:5
    |
 LL |   fn foo3_let(bar: usize) -> usize {

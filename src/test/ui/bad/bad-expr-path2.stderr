@@ -16,7 +16,7 @@ error[E0423]: expected value, found module `m1::arguments`
 LL |     log(debug, m1::arguments);
    |                ^^^^^^^^^^^^^ not a value
 
-error[E0580]: main function has wrong type
+error[E0580]: `main` function has wrong type
   --> $DIR/bad-expr-path2.rs:5:1
    |
 LL | fn main(arguments: Vec<String>) {

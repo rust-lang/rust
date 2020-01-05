@@ -17,7 +17,7 @@ async fn thing() -> Result<(), ()> {
     if true {
         thing_one()
     } else {
-        thing_two() //~ ERROR if and else have incompatible types
+        thing_two() //~ ERROR `if` and `else` have incompatible types
     }.await
 }
 

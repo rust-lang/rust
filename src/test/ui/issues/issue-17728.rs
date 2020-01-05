@@ -108,7 +108,7 @@ fn str_to_direction(to_parse: &str) -> RoomDirection {
         "down" => RoomDirection::Down,
         _ => None
     }
-        //~^^ ERROR match arms have incompatible types
+        //~^^ ERROR `match` arms have incompatible types
 }
 
 fn main() {
