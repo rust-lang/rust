@@ -1238,6 +1238,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                          revealed_ty={:?}",
                         output_ty, opaque_type_map, revealed_ty
                     );
+                    // Make sure that the inferred types are well-formed. I'm
+                    // not entirely sure this is needed (the HIR type check
+                    // didn't do this) but it seems sensible to prevent opaque
+                    // types hiding ill-formed types.
+                    obligations.obligations.push(traits::Obligation::new(
+                        ObligationCause::dummy(),
+                        param_env,
+                        ty::Predicate::WellFormed(revealed_ty),
+                    ));
                     obligations.add(
                         infcx
                             .at(&ObligationCause::dummy(), param_env)
