@@ -1,4 +1,4 @@
-error[E0580]: main function has wrong type
+error[E0580]: `main` function has wrong type
   --> $DIR/bad-main.rs:1:1
    |
 LL | fn main(x: isize) { }

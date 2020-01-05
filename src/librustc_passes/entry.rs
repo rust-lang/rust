@@ -134,7 +134,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 ctxt.start_fn = Some((item.hir_id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
-                    .span_label(ctxt.start_fn.unwrap().1, "previous `start` function here")
+                    .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
             }
