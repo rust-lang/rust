@@ -75,10 +75,6 @@ pub mod ast;
 pub mod attr;
 pub mod entry;
 pub mod expand;
-pub mod feature_gate {
-    mod check;
-    pub use check::{check_attribute, check_crate};
-}
 pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;

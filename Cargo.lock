@@ -3378,9 +3378,11 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
+ "log",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_parse",
  "rustc_session",
  "rustc_span",
@@ -3553,6 +3555,7 @@ name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast_passes",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",

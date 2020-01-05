@@ -399,7 +399,7 @@ fn configure_and_expand_inner<'a>(
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        syntax::feature_gate::check_crate(
+        rustc_ast_passes::feature_gate::check_crate(
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),

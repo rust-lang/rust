@@ -5,3 +5,4 @@
 #![feature(slice_patterns)]
 
 pub mod ast_validation;
+pub mod feature_gate;
