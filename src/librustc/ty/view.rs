@@ -1,4 +1,8 @@
-use std::{fmt, marker::PhantomData};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+};
 
 use syntax::ast;
 
@@ -10,14 +14,37 @@ use rustc_hir::{self as hir, def_id::DefId};
 
 pub use self::ViewKind::*;
 
-// TODO Forward eq/hash?
-#[derive(Eq, PartialEq, Hash, TypeFoldable, Lift)]
+#[derive(TypeFoldable, Lift)]
 pub struct View<'tcx, T> {
     ty: Ty<'tcx>,
     _marker: PhantomData<T>,
 }
 
+impl<'tcx, T> PartialEq for View<'tcx, T>
+where
+    T: PartialEq + TyDeref<'tcx>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
+impl<'tcx, T> Eq for View<'tcx, T> where T: Eq + TyDeref<'tcx> {}
+
+impl<'tcx, T> Hash for View<'tcx, T>
+where
+    T: Hash + TyDeref<'tcx>,
+{
+    fn hash<H>(&self, hasher: &mut H)
+    where
+        H: Hasher,
+    {
+        (**self).hash(hasher)
+    }
+}
+
 impl<T> Copy for View<'_, T> {}
+
 impl<T> Clone for View<'_, T> {
     fn clone(&self) -> Self {
         View { ty: self.ty, _marker: PhantomData }
@@ -35,7 +62,7 @@ where
 
 impl<'tcx, T> fmt::Display for View<'tcx, T>
 where
-    T: fmt::Display + TyDeref<'tcx> + 'tcx,
+    T: fmt::Display + TyDeref<'tcx>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
@@ -43,7 +70,7 @@ where
 }
 impl<'tcx, T> std::ops::Deref for View<'tcx, T>
 where
-    T: TyDeref<'tcx> + 'tcx,
+    T: TyDeref<'tcx>,
 {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -57,7 +84,7 @@ where
 
 impl<'tcx, T> View<'tcx, T>
 where
-    T: TyDeref<'tcx> + 'tcx,
+    T: TyDeref<'tcx>,
 {
     pub fn new(ty: Ty<'tcx>) -> Option<Self> {
         T::ty_deref(ty)?;
@@ -73,7 +100,7 @@ impl<'tcx, T> View<'tcx, T> {
 
 /// SAFETY If `Some` is returned for `ty` then `Some` must always be returned for any subsequent
 /// call with the same `Ty` value
-pub unsafe trait TyDeref<'tcx>: Sized {
+pub unsafe trait TyDeref<'tcx>: Sized + 'tcx {
     fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self>;
 }
 
