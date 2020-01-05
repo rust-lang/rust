@@ -207,25 +207,23 @@ fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>>
 }
 
 // FIXME: This should be a general utility (not even just for assists)
-fn substitute_type_params<N: AstNode>(
+fn substitute_type_params<N: AstNode + Clone>(
     db: &impl HirDatabase,
     node: hir::InFile<N>,
     substs: &HashMap<hir::TypeParam, ast::TypeRef>,
 ) -> N {
     let type_param_replacements = node
-        .value
-        .syntax()
-        .descendants()
-        .filter_map(ast::TypeRef::cast)
+        .clone()
+        .descendants::<ast::TypeRef>()
         .filter_map(|n| {
-            let path = match &n {
+            let path = match &n.value {
                 ast::TypeRef::PathType(path_type) => path_type.path()?,
                 _ => return None,
             };
-            let analyzer = hir::SourceAnalyzer::new(db, node.with_value(n.syntax()), None);
+            let analyzer = hir::SourceAnalyzer::new(db, n.syntax(), None);
             let resolution = analyzer.resolve_path(db, &path)?;
             match resolution {
-                hir::PathResolution::TypeParam(tp) => Some((n, substs.get(&tp)?.clone())),
+                hir::PathResolution::TypeParam(tp) => Some((n.value, substs.get(&tp)?.clone())),
                 _ => None,
             }
         })

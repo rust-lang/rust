@@ -322,3 +322,13 @@ impl InFile<SyntaxNode> {
         })
     }
 }
+
+impl<N: AstNode> InFile<N> {
+    pub fn descendants<T: AstNode>(self) -> impl Iterator<Item = InFile<T>> {
+        self.value.syntax().descendants().filter_map(T::cast).map(move |n| self.with_value(n))
+    }
+
+    pub fn syntax(&self) -> InFile<&SyntaxNode> {
+        self.with_value(self.value.syntax())
+    }
+}
