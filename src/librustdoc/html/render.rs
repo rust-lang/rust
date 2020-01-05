@@ -4070,7 +4070,7 @@ fn get_methods(
                         }
                     }
                     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
-                        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+                        let is_rustc_private = stab.feature.as_deref() == Some("rustc_private");
                         emojis += if is_rustc_private { "⚙️" } else { "🔬" };
                     };
                     if item.deprecation().is_some() {
