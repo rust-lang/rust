@@ -13,95 +13,8 @@ use std::path::Path;
 cfg_if! {
     if #[cfg(unix)] {
         use std::ffi::{CString, OsStr};
+        use std::mem;
         use std::os::unix::prelude::*;
-
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_pid: libc::pid_t,
-
-                // not actually here, but brings in line with freebsd
-                pub l_sysid: libc::c_int,
-            }
-        }
-
-        #[cfg(target_os = "freebsd")]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_pid: libc::pid_t,
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-                pub l_sysid: libc::c_int,
-            }
-        }
-
-        #[cfg(any(target_os = "dragonfly",
-                  target_os = "netbsd",
-                  target_os = "openbsd"))]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_pid: libc::pid_t,
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-
-                // not actually here, but brings in line with freebsd
-                pub l_sysid: libc::c_int,
-            }
-        }
-
-        #[cfg(target_os = "haiku")]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_pid: libc::pid_t,
-
-                // not actually here, but brings in line with freebsd
-                pub l_sysid: libc::c_int,
-            }
-        }
-
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_pid: libc::pid_t,
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-
-                // not actually here, but brings in line with freebsd
-                pub l_sysid: libc::c_int,
-            }
-        }
-
-        #[cfg(target_os = "solaris")]
-        mod os {
-            #[repr(C)]
-            pub struct flock {
-                pub l_type: libc::c_short,
-                pub l_whence: libc::c_short,
-                pub l_start: libc::off_t,
-                pub l_len: libc::off_t,
-                pub l_sysid: libc::c_int,
-                pub l_pid: libc::pid_t,
-            }
-        }
 
         #[derive(Debug)]
         pub struct Lock {
@@ -132,19 +45,17 @@ cfg_if! {
                 }
 
                 let lock_type = if exclusive {
-                    libc::F_WRLCK as libc::c_short
+                    libc::F_WRLCK
                 } else {
-                    libc::F_RDLCK as libc::c_short
+                    libc::F_RDLCK
                 };
 
-                let flock = os::flock {
-                    l_start: 0,
-                    l_len: 0,
-                    l_pid: 0,
-                    l_whence: libc::SEEK_SET as libc::c_short,
-                    l_type: lock_type,
-                    l_sysid: 0,
-                };
+                let mut flock: libc::flock = unsafe { mem::zeroed() };
+                flock.l_type = lock_type as libc::c_short;
+                flock.l_whence = libc::SEEK_SET as libc::c_short;
+                flock.l_start = 0;
+                flock.l_len = 0;
+
                 let cmd = if wait { libc::F_SETLKW } else { libc::F_SETLK };
                 let ret = unsafe {
                     libc::fcntl(fd, cmd, &flock)
@@ -161,14 +72,12 @@ cfg_if! {
 
         impl Drop for Lock {
             fn drop(&mut self) {
-                let flock = os::flock {
-                    l_start: 0,
-                    l_len: 0,
-                    l_pid: 0,
-                    l_whence: libc::SEEK_SET as libc::c_short,
-                    l_type: libc::F_UNLCK as libc::c_short,
-                    l_sysid: 0,
-                };
+                let mut flock: libc::flock = unsafe { mem::zeroed() };
+                flock.l_type = libc::F_UNLCK as libc::c_short;
+                flock.l_whence = libc::SEEK_SET as libc::c_short;
+                flock.l_start = 0;
+                flock.l_len = 0;
+
                 unsafe {
                     libc::fcntl(self.fd, libc::F_SETLK, &flock);
                     libc::close(self.fd);
