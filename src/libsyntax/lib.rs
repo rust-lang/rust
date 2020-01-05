@@ -77,7 +77,6 @@ pub mod entry;
 pub mod expand;
 pub mod mut_visit;
 pub mod ptr;
-pub mod show_span;
 pub use rustc_session::parse as sess;
 pub mod token;
 pub mod tokenstream;

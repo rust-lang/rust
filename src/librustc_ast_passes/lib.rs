@@ -6,3 +6,4 @@
 
 pub mod ast_validation;
 pub mod feature_gate;
+pub mod show_span;

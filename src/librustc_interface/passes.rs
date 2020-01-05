@@ -70,7 +70,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
-        syntax::show_span::run(sess.diagnostic(), s, &krate);
+        rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
     }
 
     if sess.opts.debugging_opts.hir_stats {
