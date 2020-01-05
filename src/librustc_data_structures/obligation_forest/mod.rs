@@ -128,23 +128,24 @@ struct ObligationTreeId(usize);
 type ObligationTreeIdGenerator =
     ::std::iter::Map<::std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
 
+/// `usize` indices are used here and throughout this module, rather than
+/// `rustc_index::newtype_index!` indices, because this code is hot enough
+/// that the `u32`-to-`usize` conversions that would be required are
+/// significant, and space considerations are not important.
+type NodeIndex = usize;
+
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to `process_obligations`,
     /// this list only contains nodes in the `Pending` or `Waiting` state.
-    ///
-    /// `usize` indices are used here and throughout this module, rather than
-    /// `rustc_index::newtype_index!` indices, because this code is hot enough
-    /// that the `u32`-to-`usize` conversions that would be required are
-    /// significant, and space considerations are not important.
     nodes: Vec<Node<O>>,
 
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
     /// comments in `process_obligation` for details.
-    active_cache: FxHashMap<O::Predicate, Option<usize>>,
+    active_cache: FxHashMap<O::Predicate, Option<NodeIndex>>,
 
     /// A vector reused in compress(), to avoid allocating new vectors.
-    node_rewrites: Vec<usize>,
+    node_rewrites: Vec<NodeIndex>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
@@ -165,12 +166,12 @@ struct Node<O> {
 
     /// Obligations that depend on this obligation for their completion. They
     /// must all be in a non-pending state.
-    dependents: Vec<usize>,
+    dependents: Vec<NodeIndex>,
 
     /// If true, dependents[0] points to a "parent" node, which requires
     /// special treatment upon error but is otherwise treated the same.
     /// (It would be more idiomatic to store the parent node in a separate
-    /// `Option<usize>` field, but that slows down the common case of
+    /// `Option<NodeIndex>` field, but that slows down the common case of
     /// iterating over the parent and other descendants together.)
     has_parent: bool,
 
@@ -179,7 +180,11 @@ struct Node<O> {
 }
 
 impl<O> Node<O> {
-    fn new(parent: Option<usize>, obligation: O, obligation_tree_id: ObligationTreeId) -> Node<O> {
+    fn new(
+        parent: Option<NodeIndex>,
+        obligation: O,
+        obligation_tree_id: ObligationTreeId,
+    ) -> Node<O> {
         Node {
             obligation,
             state: Cell::new(NodeState::Pending),
@@ -301,7 +306,11 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     // Returns Err(()) if we already know this obligation failed.
-    fn register_obligation_at(&mut self, obligation: O, parent: Option<usize>) -> Result<(), ()> {
+    fn register_obligation_at(
+        &mut self,
+        obligation: O,
+        parent: Option<NodeIndex>,
+    ) -> Result<(), ()> {
         match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
                 let index = match o.get() {
@@ -372,7 +381,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             .collect()
     }
 
-    fn insert_into_error_cache(&mut self, index: usize) {
+    fn insert_into_error_cache(&mut self, index: NodeIndex) {
         let node = &self.nodes[index];
         self.error_cache
             .entry(node.obligation_tree_id)
@@ -462,8 +471,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Returns a vector of obligations for `p` and all of its
     /// ancestors, putting them into the error state in the process.
-    fn error_at(&self, mut index: usize) -> Vec<O> {
-        let mut error_stack: Vec<usize> = vec![];
+    fn error_at(&self, mut index: NodeIndex) -> Vec<O> {
+        let mut error_stack: Vec<NodeIndex> = vec![];
         let mut trace = vec![];
 
         loop {
@@ -555,8 +564,12 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug_assert!(stack.is_empty());
     }
 
-    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
-    where
+    fn find_cycles_from_node<P>(
+        &self,
+        stack: &mut Vec<NodeIndex>,
+        processor: &mut P,
+        index: NodeIndex,
+    ) where
         P: ObligationProcessor<Obligation = O>,
     {
         let node = &self.nodes[index];
@@ -643,7 +656,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         if do_completed == DoCompleted::Yes { Some(removed_done_obligations) } else { None }
     }
 
-    fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
+    fn apply_rewrites(&mut self, node_rewrites: &[NodeIndex]) {
         let orig_nodes_len = node_rewrites.len();
         let remove_node_marker = orig_nodes_len + 1;
 
