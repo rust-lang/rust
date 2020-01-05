@@ -1036,26 +1036,26 @@ impl<F> FmtPrinter<'a, 'tcx, F> {
     }
 }
 
-impl TyCtxt<'t> {
-    // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
-    // (but also some things just print a `DefId` generally so maybe we need this?)
-    fn guess_def_namespace(self, def_id: DefId) -> Namespace {
-        match self.def_key(def_id).disambiguated_data.data {
-            DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
-                Namespace::TypeNS
-            }
-
-            DefPathData::ValueNs(..)
-            | DefPathData::AnonConst
-            | DefPathData::ClosureExpr
-            | DefPathData::Ctor => Namespace::ValueNS,
-
-            DefPathData::MacroNs(..) => Namespace::MacroNS,
-
-            _ => Namespace::TypeNS,
+// HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
+// (but also some things just print a `DefId` generally so maybe we need this?)
+fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
+            Namespace::TypeNS
         }
-    }
 
+        DefPathData::ValueNs(..)
+        | DefPathData::AnonConst
+        | DefPathData::ClosureExpr
+        | DefPathData::Ctor => Namespace::ValueNS,
+
+        DefPathData::MacroNs(..) => Namespace::MacroNS,
+
+        _ => Namespace::TypeNS,
+    }
+}
+
+impl TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
     pub fn def_path_str(self, def_id: DefId) -> String {
@@ -1063,7 +1063,7 @@ impl TyCtxt<'t> {
     }
 
     pub fn def_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
-        let ns = self.guess_def_namespace(def_id);
+        let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
         let _ = FmtPrinter::new(self, &mut s, ns).print_def_path(def_id, substs);
