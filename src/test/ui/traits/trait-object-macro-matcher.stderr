@@ -14,4 +14,5 @@ LL |     m!(dyn Copy + Send + 'static);
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0038`.
+Some errors have detailed explanations: E0038, E0224.
+For more information about an error, try `rustc --explain E0038`.
