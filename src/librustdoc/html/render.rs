@@ -2152,7 +2152,7 @@ fn stability_tags(item: &clean::Item) -> String {
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|s| s.level == stability::Unstable) {
-        if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
+        if stab.feature.as_deref() == Some("rustc_private") {
             tags += &tag_html("internal", "Internal");
         } else {
             tags += &tag_html("unstable", "Experimental");
@@ -2205,7 +2205,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
-        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+        let is_rustc_private = stab.feature.as_deref() == Some("rustc_private");
 
         let mut message = if is_rustc_private {
             "<span class='emoji'>⚙️</span> This is an internal compiler API."
@@ -2214,7 +2214,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
         }
         .to_owned();
 
-        if let Some(feature) = stab.feature.as_ref() {
+        if let Some(feature) = stab.feature.as_deref() {
             let mut feature = format!("<code>{}</code>", Escape(&feature));
             if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
                 feature.push_str(&format!(
