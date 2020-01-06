@@ -1,1 +1,1 @@
-type A = B<'static, i32, Item=u64>;
+type A = B<'static, i32, 1, { 2 }, Item=u64>;

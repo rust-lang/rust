@@ -3114,6 +3114,9 @@ impl TypeArgList {
     pub fn assoc_type_args(&self) -> AstChildren<AssocTypeArg> {
         AstChildren::new(&self.syntax)
     }
+    pub fn const_arg(&self) -> AstChildren<ConstArg> {
+        AstChildren::new(&self.syntax)
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArg {
@@ -3195,6 +3198,36 @@ impl AstNode for LifetimeArg {
     }
 }
 impl LifetimeArg {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for ConstArg {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CONST_ARG => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ConstArg {
+    pub fn literal(&self) -> Option<Literal> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn block_expr(&self) -> Option<BlockExpr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
