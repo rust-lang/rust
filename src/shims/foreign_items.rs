@@ -5,8 +5,8 @@ use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc_apfloat::Float;
+use rustc_span::symbol::sym;
 use syntax::attr;
-use syntax::symbol::sym;
 
 use crate::*;
 
@@ -961,7 +961,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // lpBuffer : ptr to buffer that receives contents of the env_var as a null-terminated string.
                 // Return `# of chars` stored in the buffer pointed to by lpBuffer, excluding null-terminator.
                 // Return 0 upon failure.
-                
+
                 // This is not the env var you are looking for.
                 this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
                 this.write_null(dest)?;

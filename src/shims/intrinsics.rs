@@ -5,7 +5,7 @@ use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, Size};
 use rustc_apfloat::Float;
-use syntax::source_map::Span;
+use rustc_span::source_map::Span;
 
 use crate::*;
 

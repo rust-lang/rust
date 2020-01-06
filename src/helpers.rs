@@ -8,7 +8,7 @@ use rustc::ty::{
     layout::{self, LayoutOf, Size, TyLayout},
     List, TyCtxt,
 };
-use syntax::source_map::DUMMY_SP;
+use rustc_span::source_map::DUMMY_SP;
 
 use rand::RngCore;
 
