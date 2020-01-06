@@ -1,4 +1,5 @@
 pub mod canonical;
+pub mod unify_key;
 
 use crate::ty::Region;
 use crate::ty::Ty;
