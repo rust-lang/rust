@@ -389,7 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // function and `resolve_path` is returning the latter.
             let statx_ty = this
                 .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])?
-                .ty(*this.tcx);
+                .monomorphic_ty(*this.tcx);
             let statxbuf_ty = this.tcx.mk_mut_ptr(statx_ty);
             let statxbuf_layout = this.layout_of(statxbuf_ty)?;
             let statxbuf_imm = ImmTy::from_scalar(statxbuf_scalar, statxbuf_layout);

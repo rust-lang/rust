@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::{iter, mem};
 
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
@@ -331,7 +331,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get the `TyLayout` of a `libc` type
     fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
         let this = self.eval_context_mut();
-        let ty = this.resolve_path(&["libc", name])?.ty(*this.tcx);
+        let ty = this.resolve_path(&["libc", name])?.monomorphic_ty(*this.tcx);
         this.layout_of(ty)
     }
 

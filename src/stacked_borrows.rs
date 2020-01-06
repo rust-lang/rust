@@ -7,7 +7,7 @@ use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
-use rustc::hir::Mutability;
+use rustc_hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
 

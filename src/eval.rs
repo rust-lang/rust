@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use rustc::hir::def_id::DefId;
+use rustc_hir::def_id::DefId;
 use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::{self, TyCtxt};
 
