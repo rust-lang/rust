@@ -1,11 +1,11 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::infer::{
-    error_reporting::nice_region_error::NiceRegionError, opaque_types, NLLRegionVariableOrigin,
-};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_infer::infer::{
+    error_reporting::nice_region_error::NiceRegionError, opaque_types, NLLRegionVariableOrigin,
+};
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 

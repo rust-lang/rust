@@ -5,7 +5,6 @@
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
 
-use rustc::infer::InferCtxt;
 use rustc::middle::region;
 use rustc::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc::ty::layout::VariantIdx;
@@ -16,6 +15,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
+use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 use syntax::attr;
