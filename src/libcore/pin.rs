@@ -672,6 +672,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
     where
+        U: ?Sized,
         F: FnOnce(&T) -> &U,
     {
         let pointer = &*self.pointer;
@@ -763,6 +764,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where
+        U: ?Sized,
         F: FnOnce(&mut T) -> &mut U,
     {
         let pointer = Pin::get_unchecked_mut(self);
