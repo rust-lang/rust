@@ -75,8 +75,22 @@ macro_rules! define_rust_probestack {
     };
 }
 
-// Same as above, but for Mach-O.
-#[cfg(any(target_vendor = "apple", target_os = "uefi"))]
+#[cfg(target_os = "uefi")]
+macro_rules! define_rust_probestack {
+    ($body: expr) => {
+        concat!(
+            "
+            .globl __rust_probestack
+        __rust_probestack:
+            ",
+            $body
+        )
+    };
+}
+
+// Same as above, but for Mach-O. Note that the triple underscore
+// is deliberate
+#[cfg(target_vendor = "apple")]
 macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
