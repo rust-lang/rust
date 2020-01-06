@@ -255,7 +255,7 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
 $EndFeature, "
 ```"),
-            #[stable(feature = "assoc_int_consts", since = "1.41.0")]
+            #[stable(feature = "assoc_int_consts", since = "1.42.0")]
             pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
         }
 
@@ -270,14 +270,14 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
 $EndFeature, "
 ```"),
-            #[stable(feature = "assoc_int_consts", since = "1.41.0")]
+            #[stable(feature = "assoc_int_consts", since = "1.42.0")]
             pub const MAX: Self = !Self::MIN;
         }
 
         doc_comment! {
             "Returns the smallest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MIN")]
+            #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MIN")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
@@ -289,7 +289,7 @@ $EndFeature, "
         doc_comment! {
             "Returns the largest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MAX")]
+            #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MAX")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
@@ -2362,7 +2362,7 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
-            #[stable(feature = "assoc_int_consts", since = "1.41.0")]
+            #[stable(feature = "assoc_int_consts", since = "1.42.0")]
             pub const MIN: Self = 0;
         }
 
@@ -2377,14 +2377,14 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
 $EndFeature, "
 ```"),
-            #[stable(feature = "assoc_int_consts", since = "1.41.0")]
+            #[stable(feature = "assoc_int_consts", since = "1.42.0")]
             pub const MAX: Self = !0;
         }
 
         doc_comment! {
             "Returns the smallest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MIN")]
+            #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MIN")]
             #[rustc_promotable]
             #[inline(always)]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
@@ -2394,7 +2394,7 @@ $EndFeature, "
         doc_comment! {
             "Returns the largest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_deprecated(since = "1.41.0", reason = "replaced by associated constant MAX")]
+            #[rustc_deprecated(since = "1.42.0", reason = "replaced by associated constant MAX")]
             #[rustc_promotable]
             #[inline(always)]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
