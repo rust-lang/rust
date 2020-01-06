@@ -318,7 +318,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "deprecated_cfg_attr",
         group: "complexity",
-        desc: "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`",
+        desc: "usage of `cfg_attr(rustfmt)` instead of tool attributes",
         deprecation: None,
         module: "attrs",
     },

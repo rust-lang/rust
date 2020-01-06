@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
                 cx.tcx.sess.span_err(span, &err);
             }
         } else {
-            span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const_fn`");
+            span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a `const fn`");
         }
     }
 }
