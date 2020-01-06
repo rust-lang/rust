@@ -63,7 +63,6 @@ pub struct TcpStream(net_imp::TcpStream);
 /// # Examples
 ///
 /// ```no_run
-/// # use std::io;
 /// use std::net::{TcpListener, TcpStream};
 ///
 /// fn handle_client(stream: TcpStream) {
