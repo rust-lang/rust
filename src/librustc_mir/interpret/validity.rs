@@ -114,13 +114,11 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
-            Deref => {
-                // This does not match Rust syntax, but it is more readable for long paths -- and
-                // some of the other items here also are not Rust syntax.  Actually we can't
-                // even use the usual syntax because we are just showing the projections,
-                // not the root.
-                write!(out, ".<deref>")
-            }
+            // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
+            // some of the other items here also are not Rust syntax.  Actually we can't
+            // even use the usual syntax because we are just showing the projections,
+            // not the root.
+            Deref => write!(out, ".<deref>"),
             Tag => write!(out, ".<enum-tag>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
