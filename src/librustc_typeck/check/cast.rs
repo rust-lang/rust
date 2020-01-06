@@ -34,7 +34,6 @@ use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::traits;
@@ -43,6 +42,7 @@ use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast;
 

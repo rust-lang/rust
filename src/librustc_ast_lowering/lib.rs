@@ -36,15 +36,11 @@
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc::hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::intravisit;
 use rustc::hir::map::{DefKey, DefPathData, Definitions};
-use rustc::hir::{self, ConstArg, GenericArg, ParamName};
 use rustc::lint;
 use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use rustc::middle::cstore::CrateStore;
-use rustc::session::config::nightly_options;
-use rustc::session::Session;
 use rustc::util::captures::Captures;
 use rustc::util::common::FN_OUTPUT_NAME;
 use rustc::{bug, span_bug};
@@ -52,8 +48,14 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_error_codes::*;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::IndexVec;
+use rustc_session::config::nightly_options;
 use rustc_session::node_id::NodeMap;
+use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -1482,11 +1484,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             output_lifetime_params: Vec<hir::GenericParam<'hir>>,
         }
 
-        impl<'r, 'a, 'v, 'hir> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
-            fn nested_visit_map<'this>(
-                &'this mut self,
-            ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
-                hir::intravisit::NestedVisitorMap::None
+        impl<'r, 'a, 'v, 'hir> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
+            fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
+                intravisit::NestedVisitorMap::None
             }
 
             fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs<'v>) {
@@ -1494,10 +1494,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if parameters.parenthesized {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
-                    hir::intravisit::walk_generic_args(self, span, parameters);
+                    intravisit::walk_generic_args(self, span, parameters);
                     self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
-                    hir::intravisit::walk_generic_args(self, span, parameters);
+                    intravisit::walk_generic_args(self, span, parameters);
                 }
             }
 
@@ -1510,12 +1510,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Record the "stack height" of `for<'a>` lifetime bindings
                     // to be able to later fully undo their introduction.
                     let old_len = self.currently_bound_lifetimes.len();
-                    hir::intravisit::walk_ty(self, t);
+                    intravisit::walk_ty(self, t);
                     self.currently_bound_lifetimes.truncate(old_len);
 
                     self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
-                    hir::intravisit::walk_ty(self, t)
+                    intravisit::walk_ty(self, t)
                 }
             }
 
@@ -1527,7 +1527,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Record the "stack height" of `for<'a>` lifetime bindings
                 // to be able to later fully undo their introduction.
                 let old_len = self.currently_bound_lifetimes.len();
-                hir::intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
+                intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
                 self.currently_bound_lifetimes.truncate(old_len);
             }
 
@@ -1540,7 +1540,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.currently_bound_lifetimes.push(lt_name);
                 }
 
-                hir::intravisit::walk_generic_param(self, param);
+                intravisit::walk_generic_param(self, param);
             }
 
             fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
@@ -1621,7 +1621,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         for bound in bounds {
-            hir::intravisit::walk_param_bound(&mut lifetime_collector, &bound);
+            intravisit::walk_param_bound(&mut lifetime_collector, &bound);
         }
 
         let ImplTraitLifetimeCollector { output_lifetimes, output_lifetime_params, .. } =
@@ -2144,12 +2144,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             match decl.output {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
-                    Some((def_id, _)) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))))
-                    }
-                    _ => hir::Return(self.lower_ty(ty, ImplTraitContext::disallowed())),
+                    Some((def_id, _)) if impl_trait_return_allow => hir::FunctionRetTy::Return(
+                        self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(def_id))),
+                    ),
+                    _ => hir::FunctionRetTy::Return(
+                        self.lower_ty(ty, ImplTraitContext::disallowed()),
+                    ),
                 },
-                FunctionRetTy::Default(span) => hir::DefaultReturn(span),
+                FunctionRetTy::Default(span) => hir::FunctionRetTy::DefaultReturn(span),
             }
         };
 
@@ -2940,8 +2942,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
         match *b {
-            BlockCheckMode::Default => hir::DefaultBlock,
-            BlockCheckMode::Unsafe(u) => hir::UnsafeBlock(self.lower_unsafe_source(u)),
+            BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
+            BlockCheckMode::Unsafe(u) => {
+                hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
+            }
         }
     }
 
@@ -2956,8 +2960,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
         match u {
-            CompilerGenerated => hir::CompilerGenerated,
-            UserProvided => hir::UserProvided,
+            CompilerGenerated => hir::UnsafeSource::CompilerGenerated,
+            UserProvided => hir::UnsafeSource::UserProvided,
         }
     }
 
@@ -3004,7 +3008,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             stmts,
             expr,
             hir_id: self.next_id(),
-            rules: hir::DefaultBlock,
+            rules: hir::BlockCheckMode::DefaultBlock,
             span,
             targeted_by_break: false,
         };

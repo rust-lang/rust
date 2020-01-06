@@ -9,9 +9,6 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::hir;
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime as rl;
@@ -20,6 +17,9 @@ use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
@@ -1003,8 +1003,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
 impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
         match *self {
-            hir::Return(ref typ) => Return(typ.clean(cx)),
-            hir::DefaultReturn(..) => DefaultReturn,
+            Self::Return(ref typ) => Return(typ.clean(cx)),
+            Self::DefaultReturn(..) => DefaultReturn,
         }
     }
 }
@@ -1313,7 +1313,7 @@ impl Clean<Item> for ty::AssocItem {
 
 impl Clean<Type> for hir::Ty<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
-        use rustc::hir::*;
+        use rustc_hir::*;
 
         match self.kind {
             TyKind::Never => Never,
@@ -1808,7 +1808,7 @@ impl Clean<Item> for doctree::Union<'_> {
     }
 }
 
-impl Clean<VariantStruct> for ::rustc::hir::VariantData<'_> {
+impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),

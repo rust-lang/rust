@@ -1,10 +1,10 @@
-use crate::hir::def::Namespace;
-use crate::hir::def_id::DefId;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
 use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::spec::abi::Abi;
 

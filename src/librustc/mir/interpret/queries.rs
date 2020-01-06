@@ -1,9 +1,9 @@
 use super::{ConstEvalResult, ErrorHandled, GlobalId};
 
-use crate::hir::def_id::DefId;
 use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 impl<'tcx> TyCtxt<'tcx> {

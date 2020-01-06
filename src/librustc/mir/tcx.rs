@@ -3,12 +3,12 @@
  * building is complete.
  */
 
-use crate::hir;
 use crate::mir::*;
 use crate::ty::layout::VariantIdx;
 use crate::ty::subst::Subst;
 use crate::ty::util::IntTypeExt;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
 
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {

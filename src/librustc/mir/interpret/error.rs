@@ -1,6 +1,5 @@
 use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
-use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::layout::{Align, LayoutError, Size};
@@ -10,6 +9,7 @@ use crate::ty::{self, layout, Ty};
 use backtrace::Backtrace;
 use errors::DiagnosticBuilder;
 use hir::GeneratorKind;
+use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Pos, Span};

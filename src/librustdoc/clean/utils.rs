@@ -9,13 +9,13 @@ use crate::clean::{
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, DefIdTree, Ty};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
@@ -412,7 +412,7 @@ impl ToSource for rustc_span::Span {
 }
 
 pub fn name_from_pat(p: &hir::Pat) -> String {
-    use rustc::hir::*;
+    use rustc_hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
     match p.kind {
@@ -567,12 +567,12 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
 
     let is_generic = match path.res {
         Res::PrimTy(p) => match p {
-            hir::Str => return Primitive(PrimitiveType::Str),
-            hir::Bool => return Primitive(PrimitiveType::Bool),
-            hir::Char => return Primitive(PrimitiveType::Char),
-            hir::Int(int_ty) => return Primitive(int_ty.into()),
-            hir::Uint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::Float(float_ty) => return Primitive(float_ty.into()),
+            hir::PrimTy::Str => return Primitive(PrimitiveType::Str),
+            hir::PrimTy::Bool => return Primitive(PrimitiveType::Bool),
+            hir::PrimTy::Char => return Primitive(PrimitiveType::Char),
+            hir::PrimTy::Int(int_ty) => return Primitive(int_ty.into()),
+            hir::PrimTy::Uint(uint_ty) => return Primitive(uint_ty.into()),
+            hir::PrimTy::Float(float_ty) => return Primitive(float_ty.into()),
         },
         Res::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(kw::SelfUpper.to_string());

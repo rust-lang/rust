@@ -14,7 +14,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
 
-use rustc::hir;
+use rustc_hir as hir;
 
 use rustc_error_codes::*;
 

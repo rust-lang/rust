@@ -4,8 +4,6 @@
 
 use crate::check::FnCtxt;
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, DefIdSet, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::InferCtxt;
@@ -13,6 +11,8 @@ use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -133,8 +133,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnNeg, ref inner)
-            | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref inner)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_vars_if_possible(&inner_ty);
 

@@ -3,10 +3,10 @@
 //! or explicit bounds. In that case, we track the bounds using the `TransitiveRelation` type,
 //! and use that to decide when one free region outlives another, and so forth.
 
-use crate::hir::def_id::DefId;
 use crate::infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
 use crate::middle::region;
 use crate::ty::{self, Region, TyCtxt};
+use rustc_hir::def_id::DefId;
 
 /// Combines a `region::ScopeTree` (which governs relationships between
 /// scopes) and a `FreeRegionMap` (which governs relationships between

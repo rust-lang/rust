@@ -8,16 +8,16 @@ mod dumper;
 mod span_utils;
 mod sig;
 
-use rustc::hir;
-use rustc::hir::def::{CtorOf, DefKind as HirDefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::Node;
 use rustc::middle::cstore::ExternCrate;
 use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::Node;
 
 use std::cell::Cell;
 use std::default::Default;

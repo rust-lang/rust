@@ -5,10 +5,10 @@
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_span;
 extern crate syntax;
 
-use rustc::hir;
 use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass};
 use rustc_driver::plugin::Registry;
 use rustc_span::symbol::Symbol;
@@ -25,7 +25,7 @@ macro_rules! fake_lint_pass {
         }
 
         impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $struct {
-            fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
+            fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
                 $(
                     if !attr::contains_name(&krate.attrs, $attr) {
                         cx.span_lint(CRATE_NOT_OKAY, krate.span,

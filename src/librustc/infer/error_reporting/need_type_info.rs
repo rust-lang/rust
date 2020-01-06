@@ -1,11 +1,13 @@
-use crate::hir::def::{DefKind, Namespace};
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::hir::{self, Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
+use crate::hir::map::Map;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use crate::ty::print::Print;
 use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use errors::{Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::{Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -16,7 +18,7 @@ use rustc_error_codes::*;
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
-    hir_map: &'a hir::map::Map<'tcx>,
+    hir_map: &'a Map<'tcx>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_ty: Option<Ty<'tcx>>,
@@ -25,11 +27,7 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
-    fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
-        target_ty: Ty<'tcx>,
-        hir_map: &'a hir::map::Map<'tcx>,
-    ) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: &'a Map<'tcx>) -> Self {
         Self {
             infcx,
             target_ty,

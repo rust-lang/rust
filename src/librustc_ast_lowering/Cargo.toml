@@ -12,6 +12,7 @@ doctest = false
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc = { path = "../librustc" }
+rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }

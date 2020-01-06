@@ -1,11 +1,11 @@
 //! Name resolution for lifetimes: type declarations.
 
-use crate::hir::def_id::{DefId, LocalDefId};
-use crate::hir::{GenericParam, ItemLocalId};
-use crate::hir::{GenericParamKind, LifetimeParamKind};
 use crate::ty;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{GenericParam, ItemLocalId};
+use rustc_hir::{GenericParamKind, LifetimeParamKind};
 use rustc_macros::HashStable;
 
 /// The origin of a named lifetime definition.

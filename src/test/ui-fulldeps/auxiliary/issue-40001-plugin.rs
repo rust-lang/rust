@@ -4,10 +4,13 @@
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_span;
 extern crate syntax;
 
-use rustc::hir::{self, intravisit, Node};
+use rustc::hir::intravisit;
+use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc_driver::plugin::Registry;
 use rustc_span::source_map;

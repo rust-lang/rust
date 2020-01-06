@@ -1,5 +1,3 @@
-use crate::hir::def::Namespace;
-use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
@@ -10,6 +8,8 @@ use crate::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, TyCtxt};
 use errors::DiagnosticBuilder;
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::DefId;
 
 use std::fmt::{self, Write};
 

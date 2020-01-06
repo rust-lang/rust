@@ -4,9 +4,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::hir::def::DefKind;
-use rustc::hir::def_id::DefId;
-use rustc::hir::HirId;
 use rustc::mir::interpret::{InterpResult, PanicInfo, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
@@ -23,6 +20,9 @@ use rustc::ty::layout::{
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::Mutability;

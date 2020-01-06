@@ -4,7 +4,6 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::infer::{CombinedSnapshot, InferOk};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::IntercrateMode;
@@ -12,6 +11,7 @@ use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionCont
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 

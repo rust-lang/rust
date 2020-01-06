@@ -12,12 +12,12 @@ use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResul
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use log::debug;
-use rustc::hir::def::Namespace::{self, *};
-use rustc::hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc::hir::TraitCandidate;
 use rustc::{bug, lint, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::TraitCandidate;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};

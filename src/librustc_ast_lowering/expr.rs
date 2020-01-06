@@ -1,10 +1,10 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc::bug;
-use rustc::hir;
-use rustc::hir::def::Res;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::*;
@@ -207,9 +207,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
         match u {
-            UnOp::Deref => hir::UnDeref,
-            UnOp::Not => hir::UnNot,
-            UnOp::Neg => hir::UnNeg,
+            UnOp::Deref => hir::UnOp::UnDeref,
+            UnOp::Not => hir::UnOp::UnNot,
+            UnOp::Neg => hir::UnOp::UnNeg,
         }
     }
 
@@ -1374,7 +1374,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     stmts: &[],
                     expr: Some(expr),
                     hir_id,
-                    rules: hir::UnsafeBlock(hir::CompilerGenerated),
+                    rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
                     span,
                     targeted_by_break: false,
                 }),

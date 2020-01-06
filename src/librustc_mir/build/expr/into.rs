@@ -3,10 +3,10 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
 use rustc_span::symbol::sym;
 
 use rustc_target::spec::abi::Abi;

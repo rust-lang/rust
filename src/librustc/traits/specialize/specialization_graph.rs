@@ -1,12 +1,12 @@
 use super::OverlapError;
 
-use crate::hir::def_id::{DefId, DefIdMap};
 use crate::ich::{self, StableHashingContext};
 use crate::traits;
 use crate::ty::fast_reject::{self, SimplifiedType};
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{DefId, DefIdMap};
 use syntax::ast::Ident;
 
 /// A per-trait graph of impls in specialization order. At the moment, this

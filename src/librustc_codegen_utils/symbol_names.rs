@@ -87,13 +87,13 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::hir::Node;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, TyCtxt};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::Node;
 
 use rustc_span::symbol::Symbol;
 

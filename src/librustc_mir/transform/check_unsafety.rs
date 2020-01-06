@@ -1,15 +1,14 @@
-use rustc_data_structures::fx::FxHashSet;
-
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::Node;
+use rustc::hir::intravisit;
 use rustc::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::Node;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
@@ -474,15 +473,15 @@ struct UnusedUnsafeVisitor<'a> {
     unsafe_blocks: &'a mut Vec<(hir::HirId, bool)>,
 }
 
-impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
-    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
-        hir::intravisit::NestedVisitorMap::None
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::None
     }
 
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
-        hir::intravisit::walk_block(self, block);
+        intravisit::walk_block(self, block);
 
-        if let hir::UnsafeBlock(hir::UserProvided) = block.rules {
+        if let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules {
             self.unsafe_blocks.push((block.hir_id, self.used_unsafe.contains(&block.hir_id)));
         }
     }
@@ -508,7 +507,7 @@ fn check_unused_unsafe(
     debug!("check_unused_unsafe({:?}, body={:?}, used_unsafe={:?})", def_id, body, used_unsafe);
 
     let mut visitor = UnusedUnsafeVisitor { used_unsafe, unsafe_blocks };
-    hir::intravisit::Visitor::visit_body(&mut visitor, body);
+    intravisit::Visitor::visit_body(&mut visitor, body);
 }
 
 fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult {

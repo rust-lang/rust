@@ -1,6 +1,6 @@
 use crate::hair::*;
 
-use rustc::hir;
+use rustc_hir as hir;
 
 pub trait ToRef {
     type Output;

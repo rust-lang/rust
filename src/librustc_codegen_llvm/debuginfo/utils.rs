@@ -3,8 +3,8 @@
 use super::namespace::item_namespace;
 use super::CrateDebugContext;
 
-use rustc::hir::def_id::DefId;
 use rustc::ty::DefIdTree;
+use rustc_hir::def_id::DefId;
 
 use crate::common::CodegenCx;
 use crate::llvm;

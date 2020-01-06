@@ -1,5 +1,4 @@
 use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
-use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
@@ -12,6 +11,7 @@ use crate::ty::query::queries;
 use crate::ty::query::QueryDescription;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 
 use rustc_span::symbol::Symbol;
 use std::borrow::Cow;

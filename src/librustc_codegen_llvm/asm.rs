@@ -4,10 +4,10 @@ use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc::hir;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir as hir;
 use rustc_span::Span;
 
 use libc::{c_char, c_uint};

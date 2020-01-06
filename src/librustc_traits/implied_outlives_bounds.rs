@@ -1,7 +1,6 @@
 //! Provider for the `implied_outlives_bounds` query.
 //! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
 
-use rustc::hir;
 use rustc::infer::canonical::{self, Canonical};
 use rustc::infer::InferCtxt;
 use rustc::traits::query::outlives_bounds::OutlivesBound;
@@ -12,6 +11,7 @@ use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
 use rustc_span::source_map::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 

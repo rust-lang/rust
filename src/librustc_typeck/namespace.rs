@@ -1,5 +1,5 @@
-use rustc::hir;
 use rustc::ty;
+use rustc_hir as hir;
 
 // Whether an item exists in the type or value namespace.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

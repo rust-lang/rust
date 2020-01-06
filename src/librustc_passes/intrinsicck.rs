@@ -1,11 +1,11 @@
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 
-use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi::RustIntrinsic;

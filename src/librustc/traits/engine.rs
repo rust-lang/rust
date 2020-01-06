@@ -1,7 +1,7 @@
-use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
 use crate::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_hir::def_id::DefId;
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};

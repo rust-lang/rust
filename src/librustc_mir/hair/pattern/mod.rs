@@ -9,9 +9,6 @@ pub(crate) use self::check_match::check_match;
 use crate::hair::constant::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
-use rustc::hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::hir::{self, RangeEnd};
 use rustc::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
 use rustc::mir::UserTypeProjection;
 use rustc::mir::{BorrowKind, Field, Mutability};
@@ -19,13 +16,16 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{GenericArg, SubstsRef};
 use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
-
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::pat_util::EnumerateAndAdjustIterator;
+use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-
 use rustc_span::{Span, DUMMY_SP};
+use syntax::ast;
+
 use std::cmp::Ordering;
 use std::fmt;
-use syntax::ast;
 
 use rustc_error_codes::*;
 
@@ -814,7 +814,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
-            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 let ty = self.tables.expr_ty(expr);
                 let lit = match expr.kind {
                     hir::ExprKind::Lit(ref lit) => lit,

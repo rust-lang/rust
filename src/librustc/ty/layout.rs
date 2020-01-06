@@ -12,11 +12,11 @@ use std::iter;
 use std::mem;
 use std::ops::Bound;
 
-use crate::hir;
 use crate::ich::StableHashingContext;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 

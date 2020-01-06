@@ -1,9 +1,9 @@
-use rustc::hir::def_id::DefId;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory,
 };
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 
 struct ClauseVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -151,7 +151,7 @@ crate fn program_clauses_for_env<'tcx>(
 
 crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     use super::{IntoFromEnvGoal, Lower};
-    use rustc::hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
+    use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
 
     debug!("environment(def_id = {:?})", def_id);
 

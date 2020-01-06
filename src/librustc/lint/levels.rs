@@ -1,6 +1,5 @@
 use std::cmp;
 
-use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;
 use crate::lint::context::{CheckLintNameResult, LintStore};
@@ -9,6 +8,7 @@ use crate::session::Session;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::HirId;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;

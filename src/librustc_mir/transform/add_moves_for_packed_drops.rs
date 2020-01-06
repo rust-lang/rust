@@ -1,6 +1,6 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util;

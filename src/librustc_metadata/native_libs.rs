@@ -1,9 +1,9 @@
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;

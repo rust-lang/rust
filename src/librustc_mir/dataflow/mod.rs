@@ -6,11 +6,11 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 
-use rustc::hir::def_id::DefId;
 use rustc::mir::traversal;
 use rustc::mir::{self, BasicBlock, BasicBlockData, Body, Location, Statement, Terminator};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_hir::def_id::DefId;
 
 use std::borrow::Borrow;
 use std::fmt;

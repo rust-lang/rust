@@ -25,17 +25,17 @@ use std::fmt::Write;
 
 use lint::{EarlyContext, EarlyLintPass, LateLintPass, LintPass};
 use lint::{LateContext, LintArray, LintContext};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::DefId;
-use rustc::hir::{HirIdSet, Node};
 use rustc::lint;
 use rustc::lint::FutureIncompatibleInfo;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
-
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{GenericParamKind, PatKind};
+use rustc_hir::{HirIdSet, Node};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -47,8 +47,6 @@ use syntax::print::pprust::{self, expr_to_string};
 use syntax::ptr::P;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::FnKind;
-
-use rustc::hir::{self, GenericParamKind, PatKind};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 

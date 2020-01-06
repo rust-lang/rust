@@ -7,10 +7,10 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc_span::Span;
 use syntax::ast;

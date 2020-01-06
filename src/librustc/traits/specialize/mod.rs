@@ -11,7 +11,6 @@
 
 pub mod specialization_graph;
 
-use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, InferOk};
 use crate::lint;
 use crate::traits::select::IntercrateAmbiguityCause;
@@ -19,6 +18,7 @@ use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCau
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
 
 use super::util::impl_trait_ref_and_oblig;

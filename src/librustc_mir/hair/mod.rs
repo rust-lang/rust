@@ -5,8 +5,6 @@
 //! structures.
 
 use self::cx::Cx;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
@@ -14,6 +12,8 @@ use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
 mod constant;

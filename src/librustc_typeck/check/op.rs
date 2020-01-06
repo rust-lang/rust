@@ -3,11 +3,11 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
 use errors::{self, Applicability};
-use rustc::hir;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast::Ident;
 
@@ -689,16 +689,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     match actual.kind {
-                        Uint(_) if op == hir::UnNeg => {
+                        Uint(_) if op == hir::UnOp::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         }
                         Str | Never | Char | Tuple(_) | Array(_, _) => {}
                         Ref(_, ref lty, _) if lty.kind == Str => {}
                         _ => {
                             let missing_trait = match op {
-                                hir::UnNeg => "std::ops::Neg",
-                                hir::UnNot => "std::ops::Not",
-                                hir::UnDeref => "std::ops::UnDerf",
+                                hir::UnOp::UnNeg => "std::ops::Neg",
+                                hir::UnOp::UnNot => "std::ops::Not",
+                                hir::UnOp::UnDeref => "std::ops::UnDerf",
                             };
                             err.note(&format!(
                                 "an implementation of `{}` might \
@@ -771,9 +771,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span_bug!(span, "&& and || are not overloadable")
                 }
             }
-        } else if let Op::Unary(hir::UnNot, _) = op {
+        } else if let Op::Unary(hir::UnOp::UnNot, _) = op {
             ("not", lang.not_trait())
-        } else if let Op::Unary(hir::UnNeg, _) = op {
+        } else if let Op::Unary(hir::UnOp::UnNeg, _) = op {
             ("neg", lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)

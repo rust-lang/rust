@@ -2,7 +2,6 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
@@ -12,6 +11,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 

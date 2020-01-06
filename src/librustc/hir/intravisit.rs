@@ -31,10 +31,10 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use crate::hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use crate::hir::map::Map;
-use crate::hir::*;
 
+use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use rustc_hir::*;
 use rustc_span::Span;
 use syntax::ast::{Attribute, Ident, Label, Name};
 
@@ -867,7 +867,7 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy<'v>) {
-    if let Return(ref output_ty) = *ret_ty {
+    if let FunctionRetTy::Return(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }

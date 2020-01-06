@@ -1,8 +1,9 @@
 // Type Names for Debug Info.
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do

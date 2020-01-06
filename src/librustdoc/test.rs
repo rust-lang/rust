@@ -1,9 +1,10 @@
-use rustc::hir;
 use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
+use rustc_hir as hir;
 use rustc_interface::interface;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -135,7 +136,7 @@ pub fn run(options: Options) -> i32 {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
+fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
     use syntax::print::pprust;
 
     let mut opts =
@@ -852,7 +853,7 @@ impl Tester for Collector {
 struct HirCollector<'a, 'hir> {
     sess: &'a session::Session,
     collector: &'a mut Collector,
-    map: &'a hir::map::Map<'hir>,
+    map: &'a Map<'hir>,
     codes: ErrorCodes,
 }
 

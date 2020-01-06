@@ -1,13 +1,13 @@
 use super::*;
 use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::hir::map::HirEntryMap;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
@@ -268,7 +268,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node),
                 };
 
-                let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
+                let forgot_str = if hir_id == hir::DUMMY_HIR_ID {
                     format!("\nMaybe you forgot to lower the node id {:?}?", node_id)
                 } else {
                     String::new()

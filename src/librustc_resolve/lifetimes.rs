@@ -6,18 +6,19 @@
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use errors::{pluralize, Applicability, DiagnosticBuilder};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
-use rustc::hir::{self, GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
-use rustc::hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
+use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -846,8 +847,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         let output = match fd.output {
-            hir::DefaultReturn(_) => None,
-            hir::Return(ref ty) => Some(&**ty),
+            hir::FunctionRetTy::DefaultReturn(_) => None,
+            hir::FunctionRetTy::Return(ref ty) => Some(&**ty),
         };
         self.visit_fn_like_elision(&fd.inputs, output);
     }

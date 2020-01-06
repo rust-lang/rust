@@ -1,8 +1,8 @@
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::hir::map::blocks::FnLikeNode;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;

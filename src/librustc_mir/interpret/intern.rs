@@ -4,10 +4,10 @@
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
 use super::validity::RefTracking;
-use rustc::hir;
 use rustc::mir::interpret::{ErrorHandled, InterpResult};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
 
 use syntax::ast::Mutability;
 

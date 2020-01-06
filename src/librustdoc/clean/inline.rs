@@ -2,17 +2,17 @@
 
 use std::iter::once;
 
+use rustc::ty;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::Mutability;
+use rustc_metadata::creader::LoadedMacro;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
-
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::DefId;
-use rustc::hir::{self, Mutability};
-use rustc::ty;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_metadata::creader::LoadedMacro;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;

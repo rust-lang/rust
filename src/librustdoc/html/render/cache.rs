@@ -1,8 +1,8 @@
 use crate::clean::{self, AttributesExt, GetDefId};
 use crate::fold::DocFolder;
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::middle::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
 use std::collections::BTreeMap;

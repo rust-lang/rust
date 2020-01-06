@@ -1,8 +1,8 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc::hir::def_id::DefId;
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use syntax::feature_gate::feature_err;

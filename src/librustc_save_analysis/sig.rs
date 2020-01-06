@@ -29,7 +29,7 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc::hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Res};
 use syntax::ast::{self, Extern, NodeId};
 use syntax::print::pprust;
 

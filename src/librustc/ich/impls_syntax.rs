@@ -3,12 +3,11 @@
 
 use crate::ich::StableHashingContext;
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::SourceFile;
 use syntax::ast;
 
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}

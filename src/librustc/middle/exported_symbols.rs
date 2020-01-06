@@ -1,8 +1,8 @@
-use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::ich::StableHashingContext;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use std::cmp;
 use std::mem;
 

@@ -6,12 +6,12 @@ use crate::{PathResult, PathSource, Segment};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::Namespace::{self, *};
-use rustc::hir::def::{self, CtorKind, DefKind};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{self, CtorKind, DefKind};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::PrimTy;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;

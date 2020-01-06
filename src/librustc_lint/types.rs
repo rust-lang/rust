@@ -3,14 +3,14 @@
 use crate::hir::def_id::DefId;
 use lint::{LateContext, LintArray, LintContext};
 use lint::{LateLintPass, LintPass};
-use rustc::hir;
-use rustc::hir::{is_range_literal, ExprKind, Node};
 use rustc::lint;
 use rustc::mir::interpret::{sign_extend, truncate};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -376,7 +376,7 @@ fn lint_literal<'a, 'tcx>(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.hir_id {
                     self.negated_expr_id = expr.hir_id;
@@ -969,7 +969,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
         }
 
-        if let hir::Return(ref ret_hir) = decl.output {
+        if let hir::FunctionRetTy::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false);

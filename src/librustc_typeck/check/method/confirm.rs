@@ -4,7 +4,6 @@ use crate::astconv::AstConv;
 use crate::check::{callee, FnCtxt, Needs, PlaceOp};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
-use rustc::hir;
 use rustc::infer::{self, InferOk};
 use rustc::traits;
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
@@ -12,6 +11,7 @@ use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Ty};
+use rustc_hir as hir;
 use rustc_span::Span;
 
 use std::ops::Deref;
@@ -425,7 +425,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             match exprs.last().unwrap().kind {
                 hir::ExprKind::Field(ref expr, _)
                 | hir::ExprKind::Index(ref expr, _)
-                | hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
+                | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,
             }
         }
@@ -471,7 +471,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         &[index_expr_ty],
                     );
                 }
-                hir::ExprKind::Unary(hir::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr, &[]);
                 }
                 _ => {}

@@ -2,17 +2,16 @@
 //! traits for various types in the Rust compiler. Most are written by
 //! hand, though we've recently added some macros and proc-macros to help with the tedium.
 
-use crate::hir::def::Namespace;
-use crate::hir::def_id::CRATE_DEF_INDEX;
 use crate::mir::interpret;
 use crate::mir::ProjectionKind;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
-
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
-use smallvec::SmallVec;
 
+use smallvec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -275,12 +274,12 @@ CloneTypeFoldableAndLiftImpls! {
     ::syntax::ast::FloatTy,
     ::syntax::ast::NodeId,
     ::rustc_span::symbol::Symbol,
-    crate::hir::def::Res,
-    crate::hir::def_id::DefId,
-    crate::hir::InlineAsmInner,
-    crate::hir::MatchSource,
-    crate::hir::Mutability,
-    crate::hir::Unsafety,
+    ::rustc_hir::def::Res,
+    ::rustc_hir::def_id::DefId,
+    ::rustc_hir::InlineAsmInner,
+    ::rustc_hir::MatchSource,
+    ::rustc_hir::Mutability,
+    ::rustc_hir::Unsafety,
     ::rustc_target::spec::abi::Abi,
     crate::mir::Local,
     crate::mir::Promoted,

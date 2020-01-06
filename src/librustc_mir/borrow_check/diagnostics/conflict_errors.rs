@@ -1,6 +1,3 @@
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceBase,
@@ -10,6 +7,9 @@ use rustc::traits::error_reporting::suggest_constraining_type_param;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
@@ -1839,7 +1839,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let ty::Ref(argument_region, _, _) = argument.kind {
                         if argument_region == return_region {
                             // Need to use the `rustc::ty` types to compare against the
-                            // `return_region`. Then use the `rustc::hir` type to get only
+                            // `return_region`. Then use the `rustc_hir` type to get only
                             // the lifetime span.
                             if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get

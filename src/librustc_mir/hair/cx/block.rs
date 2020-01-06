@@ -2,9 +2,9 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::{self, *};
 
-use rustc::hir;
 use rustc::middle::region;
 use rustc::ty;
+use rustc_hir as hir;
 
 use rustc_index::vec::Idx;
 

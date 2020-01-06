@@ -19,8 +19,6 @@ mod specialize;
 mod structural_impls;
 mod util;
 
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, SuppressRegionErrors};
 use crate::middle::region;
@@ -31,6 +29,8 @@ use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, AdtKind, GenericParamDefKind, List, ToPredicate, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
 use chalk_engine;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;

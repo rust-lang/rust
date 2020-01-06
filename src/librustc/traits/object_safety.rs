@@ -10,12 +10,12 @@
 
 use super::elaborate_predicates;
 
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;

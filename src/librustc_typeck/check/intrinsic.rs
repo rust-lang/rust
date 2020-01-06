@@ -9,7 +9,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use rustc::hir;
+use rustc_hir as hir;
 
 use rustc_error_codes::*;
 

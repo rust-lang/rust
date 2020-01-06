@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc::hir::{self, def_id::DefId, HirId, Node};
 use rustc::infer::{opaque_types, InferCtxt};
 use rustc::lint::builtin::MUTABLE_BORROW_RESERVATION_CONFLICT;
 use rustc::lint::builtin::UNUSED_MUT;
@@ -13,14 +12,15 @@ use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKi
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_hir as hir;
+use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use smallvec::SmallVec;
 
+use smallvec::SmallVec;
 use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;

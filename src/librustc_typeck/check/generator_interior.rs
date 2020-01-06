@@ -4,13 +4,14 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::{self, Expr, ExprKind, Pat, PatKind};
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {

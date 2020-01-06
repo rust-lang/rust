@@ -6,15 +6,14 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::Node;
-use rustc::hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc::middle::region::*;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_span::source_map;
 use rustc_span::Span;
@@ -651,7 +650,7 @@ fn resolve_local<'tcx>(
 
             match expr.kind {
                 hir::ExprKind::AddrOf(_, _, ref subexpr)
-                | hir::ExprKind::Unary(hir::UnDeref, ref subexpr)
+                | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref subexpr)
                 | hir::ExprKind::Field(ref subexpr, _)
                 | hir::ExprKind::Index(ref subexpr, _) => {
                     expr = &subexpr;

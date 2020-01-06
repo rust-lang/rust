@@ -5,11 +5,11 @@ use crate::interpret::{
     InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar, ScalarMaybeUndef,
     StackPopCleanup,
 };
-use rustc::hir::def::DefKind;
 use rustc::mir;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::traits::Reveal;
 use rustc::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
+use rustc_hir::def::DefKind;
 use rustc_span::source_map::Span;
 use std::convert::TryInto;
 

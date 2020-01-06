@@ -1,11 +1,11 @@
 use crate::const_eval::const_variant_index;
 
-use rustc::hir;
 use rustc::infer::InferCtxt;
 use rustc::lint;
 use rustc::mir::Field;
 use rustc::traits::{ObligationCause, PredicateObligation};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
 
 use rustc_index::vec::Idx;
 

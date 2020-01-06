@@ -16,18 +16,13 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-pub use rustc::hir::def::{Namespace, PerNS};
+pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
 use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir::def::Namespace::*;
-use rustc::hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::exports::ExportMap;
 use rustc::hir::map::Definitions;
-use rustc::hir::{Bool, Char, Float, Int, PrimTy, Str, Uint};
-use rustc::hir::{GlobMap, TraitMap};
 use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
@@ -38,6 +33,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::SyntaxExtension;
+use rustc_hir::def::Namespace::*;
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
+use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_session::node_id::{NodeMap, NodeSet};
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};

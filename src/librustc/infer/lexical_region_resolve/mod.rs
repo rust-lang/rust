@@ -1,6 +1,5 @@
 //! Lexical region resolution.
 
-use crate::hir::def_id::DefId;
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
 use crate::infer::region_constraints::MemberConstraint;
@@ -19,6 +18,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::Span;

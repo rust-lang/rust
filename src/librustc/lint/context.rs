@@ -16,8 +16,6 @@
 
 use self::TargetLint::*;
 
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId};
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
@@ -30,6 +28,8 @@ use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_span::{symbol::Symbol, MultiSpan, Span};
 use std::slice;
 use syntax::ast;

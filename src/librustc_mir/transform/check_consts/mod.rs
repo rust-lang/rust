@@ -4,9 +4,10 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 
 use std::fmt;
 

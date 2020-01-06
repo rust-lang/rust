@@ -25,7 +25,6 @@ pub extern crate rustc_plugin_impl as plugin;
 
 //use rustc_resolve as resolve;
 use errors::{registry::Registry, PResult};
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::lint;
 use rustc::lint::Lint;
 use rustc::middle::cstore::MetadataLoader;
@@ -39,6 +38,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::get_builtin_codegen_backend;
 use rustc_interface::{interface, Queries};
 use rustc_metadata::locator;

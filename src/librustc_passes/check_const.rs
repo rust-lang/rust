@@ -7,14 +7,14 @@
 //! errors. We still look for those primitives in the MIR const-checker to ensure nothing slips
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::session::config::nightly_options;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
 use syntax::feature_gate::feature_err;
@@ -206,12 +206,12 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
         let kind = Some(ConstKind::AnonConst);
-        self.recurse_into(kind, |this| hir::intravisit::walk_anon_const(this, anon));
+        self.recurse_into(kind, |this| intravisit::walk_anon_const(this, anon));
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let kind = ConstKind::for_body(body, self.tcx.hir());
-        self.recurse_into(kind, |this| hir::intravisit::walk_body(this, body));
+        self.recurse_into(kind, |this| intravisit::walk_body(this, body));
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
@@ -220,7 +220,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
                 self.const_check_violated(NonConstExpr::OrPattern, p.span);
             }
         }
-        hir::intravisit::walk_pat(self, p)
+        intravisit::walk_pat(self, p)
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
@@ -250,6 +250,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             _ => {}
         }
 
-        hir::intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e);
     }
 }

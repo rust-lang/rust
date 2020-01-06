@@ -93,8 +93,6 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::{self, Node};
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
@@ -106,6 +104,9 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::Node;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 

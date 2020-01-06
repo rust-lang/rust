@@ -12,7 +12,6 @@ use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use log::debug;
 use rustc::bug;
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -22,6 +21,7 @@ use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
+use rustc_hir::def_id::LOCAL_CRATE;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;

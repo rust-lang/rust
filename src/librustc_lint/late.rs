@@ -14,16 +14,15 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use rustc::hir;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::intravisit as hir_visit;
 use rustc::hir::intravisit::Visitor;
 use rustc::lint::LateContext;
 use rustc::lint::LintPass;
 use rustc::lint::{LateLintPass, LateLintPassObject};
 use rustc::ty::{self, TyCtxt};
-
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::Span;
 use std::slice;
 use syntax::ast;

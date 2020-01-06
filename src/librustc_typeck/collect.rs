@@ -20,6 +20,7 @@ use crate::constrained_generic_params as cgp;
 use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
@@ -31,21 +32,17 @@ use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::spec::abi;
-
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{GenericParamKind, Node, Unsafety};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use syntax::feature_gate;
-
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::GenericParamKind;
-use rustc::hir::Node;
-use rustc::hir::{self, Unsafety};
 
 use errors::{Applicability, StashKey};
 
@@ -114,7 +111,7 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
         if let hir::TyKind::Infer = t.kind {
             self.0.push(t.span);
         }
-        hir::intravisit::walk_ty(self, t)
+        intravisit::walk_ty(self, t)
     }
 }
 
@@ -353,7 +350,7 @@ fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id): (DefId, DefId),
 ) -> ty::GenericPredicates<'_> {
-    use rustc::hir::*;
+    use rustc_hir::*;
 
     // In the AST, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
@@ -712,7 +709,7 @@ fn convert_variant(
 }
 
 fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
-    use rustc::hir::*;
+    use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = match tcx.hir().get(hir_id) {
@@ -992,7 +989,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 }
 
 fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
-    use rustc::hir::*;
+    use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
@@ -1260,7 +1257,7 @@ fn infer_placeholder_type(
 }
 
 fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
-    use rustc::hir::*;
+    use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
@@ -1562,7 +1559,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 }
 
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
-    use rustc::hir::{ImplItem, Item, TraitItem};
+    use rustc_hir::{ImplItem, Item, TraitItem};
 
     debug!("find_opaque_ty_constraints({:?})", def_id);
 
@@ -1811,8 +1808,8 @@ pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir 
 }
 
 fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
-    use rustc::hir::Node::*;
-    use rustc::hir::*;
+    use rustc_hir::Node::*;
+    use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
@@ -2029,8 +2026,8 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
 fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    use rustc::hir::*;
     use rustc_data_structures::fx::FxHashSet;
+    use rustc_hir::*;
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
 
@@ -2499,7 +2496,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
             check(&input, ty)
         }
-        if let hir::Return(ref ty) = decl.output {
+        if let hir::FunctionRetTy::Return(ref ty) = decl.output {
             check(&ty, *fty.output().skip_binder())
         }
     }

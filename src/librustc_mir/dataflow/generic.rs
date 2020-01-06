@@ -22,10 +22,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{fs, io, ops};
 
-use rustc::hir::def_id::DefId;
 use rustc::mir::{self, traversal, BasicBlock, Location};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::work_queue::WorkQueue;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::symbol::sym;

@@ -8,13 +8,14 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc::hir::def::Res;
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::{self, Mutability};
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -701,7 +702,7 @@ impl GenericBound {
     }
 
     pub fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        use rustc::hir::TraitBoundModifier as TBM;
+        use rustc_hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
             if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;

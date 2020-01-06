@@ -4,11 +4,11 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::lib_features::LibFeatures;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};

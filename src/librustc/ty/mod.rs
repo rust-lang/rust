@@ -6,11 +6,9 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
-use crate::hir::def::{CtorKind, CtorOf, DefKind, Res};
-use crate::hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir::exports::ExportMap;
-use crate::hir::Node;
-use crate::hir::{map as hir_map, GlobMap, TraitMap};
+use crate::hir::map as hir_map;
+
 use crate::ich::Fingerprint;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
@@ -31,16 +29,23 @@ use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
 use arena::SyncDroplessArena;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_macros::HashStable;
-use rustc_session::node_id::{NodeMap, NodeSet};
-
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::{GlobMap, Node, TraitMap};
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
+use rustc_session::node_id::{NodeMap, NodeSet};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
+use smallvec;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -51,13 +56,6 @@ use std::slice;
 use std::{mem, ptr};
 use syntax::ast::{self, Ident, Name, NodeId};
 use syntax::attr;
-
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_index::vec::{Idx, IndexVec};
-use smallvec;
-
-use crate::hir;
 
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
@@ -3313,7 +3311,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 
     let node = tcx.hir().get(hir_id);
 
-    let fn_like = hir::map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
+    let fn_like = hir_map::blocks::FnLikeNode::from_node(node).unwrap_or_else(|| {
         bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
     });
 

@@ -76,15 +76,15 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
-use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, Ty};
-
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::{self, PatKind};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::PatKind;
 use rustc_span::Span;
 use std::mem;
 use std::ops::Deref;
@@ -492,7 +492,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         if is_method_call {
             let origin = match expr.kind {
                 hir::ExprKind::MethodCall(..) => infer::ParameterOrigin::MethodCall,
-                hir::ExprKind::Unary(op, _) if op == hir::UnDeref => {
+                hir::ExprKind::Unary(op, _) if op == hir::UnOp::UnDeref => {
                     infer::ParameterOrigin::OverloadedDeref
                 }
                 _ => infer::ParameterOrigin::OverloadedOperator,
@@ -577,7 +577,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::Unary(hir::UnDeref, ref base) => {
+            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
                 if is_method_call {
                     self.constrain_call(expr, Some(base), None::<hir::Expr<'_>>.iter());

@@ -49,13 +49,10 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::DefPathHash;
-use crate::hir::HirId;
+use crate::ich::{Fingerprint, StableHashingContext};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-
-use crate::ich::{Fingerprint, StableHashingContext};
 use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -64,7 +61,10 @@ use crate::traits::query::{
 };
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::HirId;
 use rustc_span::symbol::Symbol;
 use std::fmt;
 use std::hash::Hash;

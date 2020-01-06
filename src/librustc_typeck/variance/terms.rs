@@ -10,9 +10,10 @@
 // a variable.
 
 use arena::TypedArena;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::{self, HirIdMap};
 use rustc::ty::{self, TyCtxt};
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::HirIdMap;
 use std::fmt;
 
 use self::VarianceTerm::*;

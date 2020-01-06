@@ -6,11 +6,11 @@ use rustc_span::Span;
 
 use crate::base;
 use crate::traits::*;
-use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
+use rustc_hir::def_id::DefId;
 
 use crate::traits::BuilderMethods;
-use rustc::hir;
+use rustc_hir as hir;
 
 use rustc_error_codes::*;
 

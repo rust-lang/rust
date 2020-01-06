@@ -25,7 +25,6 @@ extern crate rustc;
 extern crate syntax;
 
 use rustc::dep_graph::WorkProduct;
-use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::{CrateSource, LibSource, NativeLibrary};
 use rustc::middle::dependency_format::Dependencies;
 use rustc::middle::lang_items::LangItem;
@@ -34,6 +33,7 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir::def_id::CrateNum;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
 

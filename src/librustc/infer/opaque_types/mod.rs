@@ -1,6 +1,3 @@
-use crate::hir;
-use crate::hir::def_id::{DefId, DefIdMap};
-use crate::hir::Node;
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
@@ -12,6 +9,9 @@ use errors::DiagnosticBuilder;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_hir::Node;
 use rustc_span::Span;
 
 use rustc_error_codes::*;

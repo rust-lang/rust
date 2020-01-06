@@ -1,9 +1,9 @@
 use crate::traits::*;
-use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
 use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::TyCtxt;
+use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
 
 use rustc_span::symbol::kw;

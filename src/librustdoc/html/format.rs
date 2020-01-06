@@ -9,9 +9,9 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
-use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};

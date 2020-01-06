@@ -1,12 +1,12 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
-use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::queries;
 use crate::ty::query::QueryCache;
 use crate::ty::query::{Query, QueryName};
 use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
+use rustc_hir::def_id::{CrateNum, DefId};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;

@@ -11,7 +11,6 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
@@ -26,6 +25,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };

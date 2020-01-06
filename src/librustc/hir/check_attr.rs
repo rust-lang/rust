@@ -4,15 +4,15 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::hir::DUMMY_HIR_ID;
-use crate::hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-
 use rustc_error_codes::*;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::DUMMY_HIR_ID;
+use rustc_hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::Attribute;

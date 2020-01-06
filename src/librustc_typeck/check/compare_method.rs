@@ -1,6 +1,5 @@
 use errors::{Applicability, DiagnosticId};
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
+use rustc::hir::intravisit;
 use rustc::infer::{self, InferOk};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -8,7 +7,9 @@ use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::ExplicitSelf;
 use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
-
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_span::Span;
 use syntax::errors::pluralize;
 
@@ -877,9 +878,9 @@ fn compare_synthetic_generics<'tcx>(
                             _ => unreachable!(),
                         };
                         struct Visitor(Option<Span>, hir::def_id::DefId);
-                        impl<'v> hir::intravisit::Visitor<'v> for Visitor {
+                        impl<'v> intravisit::Visitor<'v> for Visitor {
                             fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
-                                hir::intravisit::walk_ty(self, ty);
+                                intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
                                     ty.kind
                                 {
@@ -892,14 +893,14 @@ fn compare_synthetic_generics<'tcx>(
                             }
                             fn nested_visit_map<'this>(
                                 &'this mut self,
-                            ) -> hir::intravisit::NestedVisitorMap<'this, 'v>
+                            ) -> intravisit::NestedVisitorMap<'this, 'v>
                             {
-                                hir::intravisit::NestedVisitorMap::None
+                                intravisit::NestedVisitorMap::None
                             }
                         }
                         let mut visitor = Visitor(None, impl_def_id);
                         for ty in input_tys {
-                            hir::intravisit::Visitor::visit_ty(&mut visitor, ty);
+                            intravisit::Visitor::visit_ty(&mut visitor, ty);
                         }
                         let span = visitor.0?;
 

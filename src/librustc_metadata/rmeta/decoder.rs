@@ -4,9 +4,6 @@ use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc::dep_graph::{self, DepNodeIndex};
-use rustc::hir;
-use rustc::hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
@@ -25,6 +22,9 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 
 use std::io;

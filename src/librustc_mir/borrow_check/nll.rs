@@ -1,6 +1,5 @@
 //! The entry point of the NLL borrow checker.
 
-use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{
     BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
@@ -8,6 +7,7 @@ use rustc::mir::{
 };
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_errors::Diagnostic;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::sym;
 use std::env;

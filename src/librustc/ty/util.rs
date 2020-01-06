@@ -1,8 +1,5 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::hir;
-use crate::hir::def::DefKind;
-use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
 use crate::middle::lang_items;
@@ -14,6 +11,9 @@ use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use crate::util::common::ErrorReported;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

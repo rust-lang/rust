@@ -1,9 +1,9 @@
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::hir::intravisit;
 use rustc::lint::{LintLevelMap, LintLevelSets, LintLevelsBuilder, LintStore};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use syntax::ast;
 
 pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};

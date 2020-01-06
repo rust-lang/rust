@@ -3,11 +3,6 @@
 //! instance of `AstConv`.
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::hir::def::{CtorOf, DefKind, Res};
-use crate::hir::def_id::DefId;
-use crate::hir::intravisit::Visitor;
-use crate::hir::print;
-use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
@@ -15,6 +10,7 @@ use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticId};
+use rustc::hir::intravisit::Visitor;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
@@ -22,6 +18,11 @@ use rustc::ty::wf::object_region_bounds;
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::print;
+use rustc_hir::{ExprKind, GenericArg, GenericArgs};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -2554,12 +2555,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
                 match prim_ty {
-                    hir::Bool => tcx.types.bool,
-                    hir::Char => tcx.types.char,
-                    hir::Int(it) => tcx.mk_mach_int(it),
-                    hir::Uint(uit) => tcx.mk_mach_uint(uit),
-                    hir::Float(ft) => tcx.mk_mach_float(ft),
-                    hir::Str => tcx.mk_str(),
+                    hir::PrimTy::Bool => tcx.types.bool,
+                    hir::PrimTy::Char => tcx.types.char,
+                    hir::PrimTy::Int(it) => tcx.mk_mach_int(it),
+                    hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(uit),
+                    hir::PrimTy::Float(ft) => tcx.mk_mach_float(ft),
+                    hir::PrimTy::Str => tcx.mk_str(),
                 }
             }
             Res::Err => {
@@ -2773,11 +2774,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
-            hir::Return(ref output) => {
+            hir::FunctionRetTy::Return(ref output) => {
                 visitor.visit_ty(output);
                 self.ast_ty_to_ty(output)
             }
-            hir::DefaultReturn(..) => tcx.mk_unit(),
+            hir::FunctionRetTy::DefaultReturn(..) => tcx.mk_unit(),
         };
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);

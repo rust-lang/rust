@@ -8,7 +8,6 @@ use crate::{LlvmCodegenBackend, ModuleLlvm};
 use log::{debug, info};
 use rustc::bug;
 use rustc::dep_graph::WorkProduct;
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
@@ -18,6 +17,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{FatalError, Handler};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 
 use std::ffi::{CStr, CString};

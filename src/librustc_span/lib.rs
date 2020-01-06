@@ -1052,7 +1052,7 @@ impl Decodable for SourceFile {
                 name_was_remapped,
                 unmapped_path: None,
                 // `crate_of_origin` has to be set by the importer.
-                // This value matches up with `rustc::hir::def_id::INVALID_CRATE`.
+                // This value matches up with `rustc_hir::def_id::INVALID_CRATE`.
                 // That constant is not available here, unfortunately.
                 crate_of_origin: std::u32::MAX - 1,
                 start_pos,

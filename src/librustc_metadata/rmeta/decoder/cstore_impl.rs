@@ -4,8 +4,6 @@ use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::exports::Export;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
@@ -17,6 +15,8 @@ use rustc::ty::query::Providers;
 use rustc::ty::query::QueryConfig;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::svh::Svh;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_parse::parser::emit_unclosed_delims;
 use rustc_parse::source_file_to_stream;
 

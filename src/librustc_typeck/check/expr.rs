@@ -17,10 +17,6 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::util::common::ErrorReported;
 
 use errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
-use rustc::hir;
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::DefId;
-use rustc::hir::{ExprKind, QPath};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
@@ -31,6 +27,10 @@ use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{ExprKind, QPath};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -306,11 +306,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected_inner = match unop {
-            hir::UnNot | hir::UnNeg => expected,
-            hir::UnDeref => NoExpectation,
+            hir::UnOp::UnNot | hir::UnOp::UnNeg => expected,
+            hir::UnOp::UnDeref => NoExpectation,
         };
         let needs = match unop {
-            hir::UnDeref => needs,
+            hir::UnOp::UnDeref => needs,
             _ => Needs::None,
         };
         let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd, expected_inner, needs);
@@ -318,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !oprnd_t.references_error() {
             oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
             match unop {
-                hir::UnDeref => {
+                hir::UnOp::UnDeref => {
                     if let Some(mt) = oprnd_t.builtin_deref(true) {
                         oprnd_t = mt.ty;
                     } else if let Some(ok) = self.try_overloaded_deref(expr.span, oprnd_t, needs) {
@@ -362,14 +362,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         oprnd_t = tcx.types.err;
                     }
                 }
-                hir::UnNot => {
+                hir::UnOp::UnNot => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !(oprnd_t.is_integral() || oprnd_t.kind == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
-                hir::UnNeg => {
+                hir::UnOp::UnNeg => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !oprnd_t.is_numeric() {

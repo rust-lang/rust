@@ -1,10 +1,7 @@
 use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
-use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::hir::{AnonConst, GenericParamKind};
 use rustc::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
@@ -15,6 +12,9 @@ use rustc::ty::codec::{self as ty_codec, TyEncoder};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
 
 use rustc::session::config::{self, CrateType};
@@ -37,8 +37,8 @@ use syntax::expand::is_proc_macro_attr;
 
 use rustc::hir::intravisit;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::{self, PatKind};
+use rustc_hir as hir;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
@@ -951,7 +951,7 @@ impl EncodeContext<'tcx> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
             self.lazy(body.params.iter().map(|arg| match arg.pat.kind {
-                PatKind::Binding(_, _, ident, _) => ident.name,
+                hir::PatKind::Binding(_, _, ident, _) => ident.name,
                 _ => kw::Invalid,
             }))
         })

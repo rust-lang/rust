@@ -4,12 +4,11 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
-use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ich::Fingerprint;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_session::node_id::NodeMap;
 use rustc_session::CrateDisambiguator;
