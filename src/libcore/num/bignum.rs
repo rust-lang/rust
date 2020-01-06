@@ -455,8 +455,8 @@ macro_rules! define_bignum {
         }
 
         impl crate::clone::Clone for $name {
-            fn clone(&self) -> $name {
-                $name { size: self.size, base: self.base }
+            fn clone(&self) -> Self {
+                Self { size: self.size, base: self.base }
             }
         }
 

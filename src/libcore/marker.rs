@@ -505,15 +505,15 @@ macro_rules! impls {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized> Clone for $t<T> {
-            fn clone(&self) -> $t<T> {
-                $t
+            fn clone(&self) -> Self {
+                Self
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized> Default for $t<T> {
-            fn default() -> $t<T> {
-                $t
+            fn default() -> Self {
+                Self
             }
         }
 
