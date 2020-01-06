@@ -26,7 +26,7 @@ echo "Test host architecture"
 run_tests
 echo
 
-if [ -n "$FOREIGN_TARGET" ]; then
+if [ -n "${FOREIGN_TARGET+exists}" ]; then
   echo "Test foreign architecture ($FOREIGN_TARGET)"
   MIRI_TEST_TARGET="$FOREIGN_TARGET" run_tests
   echo
