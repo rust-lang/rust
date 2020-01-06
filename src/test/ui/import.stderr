@@ -19,11 +19,12 @@ error[E0603]: unresolved item import `foo` is private
 LL |     zed::foo();
    |          ^^^ this unresolved item import is private
    |
-note: the unresolved item import `foo` is defined here
+note: the used restricted re-export of `foo`
   --> $DIR/import.rs:10:9
    |
 LL |     use foo;
    |         ^^^
+   = note: the re-exported unresolved item `foo` is defined here
 
 error: aborting due to 3 previous errors
 

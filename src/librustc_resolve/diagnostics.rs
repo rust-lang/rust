@@ -24,6 +24,7 @@ use crate::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{ModuleData, ModuleKind};
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
@@ -419,8 +420,7 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0128,
-                    "type parameters with a default cannot use \
-                                                forward declared identifiers"
+                    "type parameters with a default cannot use forward declared identifiers"
                 );
                 err.span_label(
                     span,
@@ -952,8 +952,7 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
+    crate fn report_privacy_error(&self, PrivacyError { ident, binding, .. }: &PrivacyError<'_>) {
         let session = &self.session;
         let mk_struct_span_error = |is_constructor| {
             let mut descr = binding.res().descr().to_string();
@@ -966,13 +965,7 @@ impl<'a> Resolver<'a> {
 
             let mut err =
                 struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
-
             err.span_label(ident.span, &format!("this {} is private", descr));
-            err.span_note(
-                session.source_map().def_span(binding.span),
-                &format!("the {} `{}` is defined here", descr, ident),
-            );
-
             err
         };
 
@@ -996,6 +989,109 @@ impl<'a> Resolver<'a> {
         } else {
             mk_struct_span_error(false)
         };
+
+        // Display the chain of re-exports through to the original def for cases where the
+        // `use` is private but the def is public.
+        let mut imported = false;
+        let mut binding = *binding;
+        loop {
+            let binding_span = session.source_map().def_span(binding.span);
+            match binding.kind {
+                NameBindingKind::Res(res, _is_macro_export) => {
+                    match (res, imported, binding.vis) {
+                        (Res::Def(_, def_id), true, ty::Visibility::Public) => {
+                            // FIXME: we should verify that this def is actually
+                            // reachable from the user's crate, as the parent modules
+                            // of this ADT might be private.
+                            if def_id.is_local() {
+                                err.span_help(
+                                    binding_span,
+                                    &format!(
+                                        "consider importing {} `{}` directly",
+                                        res.descr(),
+                                        self.definitions
+                                            .def_path(def_id.index)
+                                            .to_string_no_crate(),
+                                    ),
+                                );
+                            } else {
+                                err.span_help(
+                                    binding_span,
+                                    &format!(
+                                        "consider importing {} `{}` directly",
+                                        res.descr(),
+                                        ident.name
+                                    ),
+                                );
+                            }
+                        }
+                        (Res::Def(_, def_id), true, _) if def_id.is_local() => {
+                            err.span_help(
+                                binding_span,
+                                &format!("consider making {} `{}` public", res.descr(), ident.name),
+                            );
+                        }
+                        _ => {
+                            err.span_note(
+                                binding_span,
+                                &format!(
+                                    "the {}{} `{}` is defined here",
+                                    if imported { "re-exported " } else { "" },
+                                    res.descr(),
+                                    ident.name
+                                ),
+                            );
+                        }
+                    }
+                    break;
+                }
+                NameBindingKind::Module(ModuleData {
+                    kind: ModuleKind::Def(DefKind::Mod, def_id, _),
+                    ..
+                }) if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE => {
+                    // Do not point at `extern crate foo;` twice.
+                    break;
+                }
+                NameBindingKind::Module(ModuleData {
+                    kind: ModuleKind::Def(kind, def_id, _),
+                    ..
+                }) => {
+                    err.span_note(
+                        binding_span,
+                        &format!(
+                            "the {}{} `{}` is defined here",
+                            if imported { "re-exported " } else { "" },
+                            kind.descr(*def_id),
+                            ident.name,
+                        ),
+                    );
+                    break;
+                }
+                NameBindingKind::Module(_) => break,
+                NameBindingKind::Import { binding: inner_binding, .. } => {
+                    err.span_note(
+                        binding_span,
+                        &format!(
+                            "{} {} re-export of `{}`{}",
+                            if imported { "...through this" } else { "the used" },
+                            if binding.vis == ty::Visibility::Public {
+                                "public"
+                            } else {
+                                "restricted"
+                            },
+                            ident.name,
+                            if let NameBindingKind::Import { .. } = inner_binding.kind {
+                                "..."
+                            } else {
+                                ""
+                            },
+                        ),
+                    );
+                    binding = inner_binding;
+                    imported = true;
+                }
+            }
+        }
 
         err.emit();
     }

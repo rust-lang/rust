@@ -10,11 +10,12 @@ error[E0603]: derive macro import `Empty` is private
 LL | use m::Empty;
    |        ^^^^^ this derive macro import is private
    |
-note: the derive macro import `Empty` is defined here
+note: the used restricted re-export of `Empty`
   --> $DIR/disappearing-resolution.rs:9:9
    |
 LL |     use test_macros::Empty;
    |         ^^^^^^^^^^^^^^^^^^
+   = help: consider importing derive macro `Empty` directly
 
 error: aborting due to 2 previous errors
 

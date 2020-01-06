@@ -202,7 +202,11 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            if component.disambiguator == 0 {
+                write!(s, "::{}", component.data.as_symbol()).unwrap();
+            } else {
+                write!(s, "::{}[{}]", component.data.as_symbol(), component.disambiguator).unwrap();
+            }
         }
 
         s

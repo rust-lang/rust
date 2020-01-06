@@ -21,7 +21,7 @@ LL |     let ts_explicit = structs::TupleStruct(640, 480);
 LL | pub struct TupleStruct(pub u16, pub u16);
    |                        ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `TupleStruct` is defined here
+note: the tuple struct `TupleStruct` is defined here
   --> $DIR/auxiliary/structs.rs:11:1
    |
 LL | pub struct TupleStruct(pub u16, pub u16);

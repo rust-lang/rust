@@ -7,7 +7,7 @@ LL |     pub struct A(());
 LL |     let a = a::A(());
    |                ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -22,7 +22,7 @@ LL |     pub struct B(isize);
 LL |     let b = a::B(2);
    |                ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -37,7 +37,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let c = a::C(2, 3);
    |                ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -52,7 +52,7 @@ LL |     pub struct A(());
 LL |     let a::A(()) = a;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -67,7 +67,7 @@ LL |     pub struct A(());
 LL |     let a::A(_) = a;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -82,7 +82,7 @@ LL |     pub struct A(());
 LL |     match a { a::A(()) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -97,7 +97,7 @@ LL |     pub struct A(());
 LL |     match a { a::A(_) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -112,7 +112,7 @@ LL |     pub struct B(isize);
 LL |     let a::B(_) = b;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -127,7 +127,7 @@ LL |     pub struct B(isize);
 LL |     let a::B(_b) = b;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -142,7 +142,7 @@ LL |     pub struct B(isize);
 LL |     match b { a::B(_) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -157,7 +157,7 @@ LL |     pub struct B(isize);
 LL |     match b { a::B(_b) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -172,7 +172,7 @@ LL |     pub struct B(isize);
 LL |     match b { a::B(1) => {} a::B(_) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -187,7 +187,7 @@ LL |     pub struct B(isize);
 LL |     match b { a::B(1) => {} a::B(_) => {} }
    |                                ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -202,7 +202,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let a::C(_, _) = c;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -217,7 +217,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let a::C(_a, _) = c;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -232,7 +232,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let a::C(_, _b) = c;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -247,7 +247,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let a::C(_a, _b) = c;
    |            ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -262,7 +262,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     match c { a::C(_, _) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -277,7 +277,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     match c { a::C(_a, _) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -292,7 +292,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     match c { a::C(_, _b) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -307,7 +307,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     match c { a::C(_a, _b) => {} }
    |                  ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -322,7 +322,7 @@ LL |     pub struct A(());
 LL |     let a2 = a::A;
    |                 ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/privacy5.rs:6:5
    |
 LL |     pub struct A(());
@@ -337,7 +337,7 @@ LL |     pub struct B(isize);
 LL |     let b2 = a::B;
    |                 ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/privacy5.rs:7:5
    |
 LL |     pub struct B(isize);
@@ -352,7 +352,7 @@ LL |     pub struct C(pub isize, isize);
 LL |     let c2 = a::C;
    |                 ^ this tuple struct constructor is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/privacy5.rs:8:5
    |
 LL |     pub struct C(pub isize, isize);
@@ -369,7 +369,7 @@ LL |     let a = other::A(());
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -386,7 +386,7 @@ LL |     let b = other::B(2);
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -403,7 +403,7 @@ LL |     let c = other::C(2, 3);
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -420,7 +420,7 @@ LL |     let other::A(()) = a;
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -437,7 +437,7 @@ LL |     let other::A(_) = a;
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -454,7 +454,7 @@ LL |     match a { other::A(()) => {} }
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -471,7 +471,7 @@ LL |     match a { other::A(_) => {} }
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -488,7 +488,7 @@ LL |     let other::B(_) = b;
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -505,7 +505,7 @@ LL |     let other::B(_b) = b;
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -522,7 +522,7 @@ LL |     match b { other::B(_) => {} }
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -539,7 +539,7 @@ LL |     match b { other::B(_b) => {} }
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -556,7 +556,7 @@ LL |     match b { other::B(1) => {}
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -573,7 +573,7 @@ LL |         other::B(_) => {} }
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -590,7 +590,7 @@ LL |     let other::C(_, _) = c;
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -607,7 +607,7 @@ LL |     let other::C(_a, _) = c;
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -624,7 +624,7 @@ LL |     let other::C(_, _b) = c;
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -641,7 +641,7 @@ LL |     let other::C(_a, _b) = c;
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -658,7 +658,7 @@ LL |     match c { other::C(_, _) => {} }
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -675,7 +675,7 @@ LL |     match c { other::C(_a, _) => {} }
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -692,7 +692,7 @@ LL |     match c { other::C(_, _b) => {} }
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -709,7 +709,7 @@ LL |     match c { other::C(_a, _b) => {} }
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
@@ -726,7 +726,7 @@ LL |     let a2 = other::A;
 LL | pub struct A(());
    |              -- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `A` is defined here
+note: the tuple struct `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
@@ -743,7 +743,7 @@ LL |     let b2 = other::B;
 LL | pub struct B(isize);
    |              ----- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `B` is defined here
+note: the tuple struct `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
@@ -760,7 +760,7 @@ LL |     let c2 = other::C;
 LL | pub struct C(pub isize, isize);
    |              ---------------- a constructor is private if any of the fields is private
    |
-note: the tuple struct constructor `C` is defined here
+note: the tuple struct `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
