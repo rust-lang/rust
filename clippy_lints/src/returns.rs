@@ -8,7 +8,7 @@ use rustc_span::BytePos;
 use syntax::ast;
 use syntax::visit::FnKind;
 
-use crate::utils::{match_path_ast, snippet_opt, span_lint_and_then};
+use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -205,6 +205,7 @@ impl Return {
             if !in_external_macro(cx.sess(), initexpr.span);
             if !in_external_macro(cx.sess(), retexpr.span);
             if !in_external_macro(cx.sess(), local.span);
+            if !in_macro(local.span);
             then {
                 span_lint_and_then(
                     cx,
