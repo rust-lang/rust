@@ -2,8 +2,8 @@ use crate::utils::{
     get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_help_and_lint, SpanlessEq,
 };
 use rustc::declare_lint_pass;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {

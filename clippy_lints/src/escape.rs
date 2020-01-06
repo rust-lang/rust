@@ -1,10 +1,10 @@
 use rustc::hir::intravisit as visit;
-use rustc::hir::HirIdSet;
-use rustc::hir::{self, *};
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
+use rustc_hir::HirIdSet;
+use rustc_hir::{self, *};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_typeck::expr_use_visitor::*;
@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 }
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
-fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
+fn is_argument(map: &rustc::hir::map::Map<'_>, id: HirId) -> bool {
     match map.find(id) {
         Some(Node::Binding(_)) => (),
         _ => return false,

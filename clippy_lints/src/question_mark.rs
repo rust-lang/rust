@@ -1,9 +1,9 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 use crate::utils::paths::*;

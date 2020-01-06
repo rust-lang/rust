@@ -1,9 +1,9 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::def::Res;
 use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc::hir::{AssocItemKind, HirId, ImplItemKind, ImplItemRef, Item, ItemKind, Path};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_hir::def::Res;
+use rustc_hir::{AssocItemKind, HirId, ImplItemKind, ImplItemRef, Item, ItemKind, Path};
 use rustc_session::declare_tool_lint;
 
 use crate::utils::span_help_and_lint;

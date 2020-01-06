@@ -1,9 +1,9 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
 use rustc::hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
-use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;

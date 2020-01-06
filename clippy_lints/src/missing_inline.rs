@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::lint::{self, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_hir as hir;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use syntax::ast;

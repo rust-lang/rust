@@ -1,8 +1,8 @@
 //! Clippy wrappers around rustc's diagnostic functions.
 
-use rustc::hir::HirId;
 use rustc::lint::{LateContext, Lint, LintContext};
 use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
+use rustc_hir::HirId;
 use rustc_span::source_map::{MultiSpan, Span};
 use std::env;
 use syntax::errors::DiagnosticBuilder;

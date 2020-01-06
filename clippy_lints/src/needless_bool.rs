@@ -5,9 +5,9 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_sugg};
 use rustc::declare_lint_pass;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Spanned;
 use syntax::ast::LitKind;

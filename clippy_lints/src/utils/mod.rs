@@ -25,12 +25,7 @@ use std::mem;
 
 use if_chain::if_chain;
 use matches::matches;
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::Node;
-use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::traits;
 use rustc::ty::{
@@ -40,6 +35,11 @@ use rustc::ty::{
     Binder, Ty, TyCtxt,
 };
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::Node;
+use rustc_hir::*;
 use rustc_span::hygiene::ExpnKind;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, Symbol};
@@ -179,8 +179,8 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
 
 /// Matches a `QPath` against a slice of segment string literals.
 ///
-/// There is also `match_path` if you are dealing with a `rustc::hir::Path` instead of a
-/// `rustc::hir::QPath`.
+/// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
+/// `rustc_hir::QPath`.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -202,8 +202,8 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 
 /// Matches a `Path` against a slice of segment string literals.
 ///
-/// There is also `match_qpath` if you are dealing with a `rustc::hir::QPath` instead of a
-/// `rustc::hir::Path`.
+/// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
+/// `rustc_hir::Path`.
 ///
 /// # Examples
 ///

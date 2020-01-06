@@ -2,9 +2,9 @@
 
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use syntax::ast::LitKind;
 

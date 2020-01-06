@@ -5,11 +5,11 @@
 use std::ptr;
 
 use rustc::declare_lint_pass;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
 use rustc::ty::{Ty, TypeFlags};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
@@ -222,7 +222,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                             needs_check_adjustment = false;
                             break;
                         },
-                        ExprKind::Unary(UnDeref, _) => {
+                        ExprKind::Unary(UnOp::UnDeref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

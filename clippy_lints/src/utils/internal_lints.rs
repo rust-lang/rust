@@ -3,14 +3,14 @@ use crate::utils::{
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;

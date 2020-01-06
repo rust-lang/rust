@@ -1,10 +1,10 @@
 use crate::utils::{differing_macro_contexts, paths, snippet_with_applicability, span_lint_and_then};
 use crate::utils::{is_copy, match_type};
 use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc::hir::{self, *};
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::{self, *};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
@@ -13,9 +13,9 @@ use super::OPTION_MAP_UNWRAP_OR;
 /// lint use of `map().unwrap_or()` for `Option`s
 pub(super) fn lint<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    expr: &hir::Expr<'_>,
-    map_args: &'tcx [hir::Expr<'_>],
-    unwrap_args: &'tcx [hir::Expr<'_>],
+    expr: &rustc_hir::Expr<'_>,
+    map_args: &'tcx [rustc_hir::Expr<'_>],
+    unwrap_args: &'tcx [rustc_hir::Expr<'_>],
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`

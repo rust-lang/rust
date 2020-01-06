@@ -1,11 +1,11 @@
 //! lint when there is a large size difference between variants on an enum
 
 use crate::utils::{snippet_opt, span_lint_and_then};
-use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::layout::LayoutOf;
 use rustc_errors::Applicability;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {

@@ -5,7 +5,7 @@ use rustc_session::declare_tool_lint;
 
 use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
-use rustc::hir::*;
+use rustc_hir::*;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -93,7 +93,7 @@ fn collect_unwrap_info<'a, 'tcx>(
             },
             _ => (),
         }
-    } else if let ExprKind::Unary(UnNot, expr) = &expr.kind {
+    } else if let ExprKind::Unary(UnOp::UnNot, expr) = &expr.kind {
         return collect_unwrap_info(cx, expr, !invert);
     } else {
         if_chain! {

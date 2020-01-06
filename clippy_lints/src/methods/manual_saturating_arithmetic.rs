@@ -1,8 +1,8 @@
 use crate::utils::{match_qpath, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::hir;
 use rustc::lint::LateContext;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_target::abi::LayoutOf;
 use syntax::ast;
 
@@ -146,7 +146,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>) -> Opti
     }
 
     if ty.is_signed() {
-        if let hir::ExprKind::Unary(hir::UnNeg, val) = &expr.kind {
+        if let hir::ExprKind::Unary(hir::UnOp::UnNeg, val) = &expr.kind {
             return check_lit(val, true);
         }
     }
@@ -161,7 +161,7 @@ enum Sign {
 }
 
 fn lit_sign(expr: &hir::Expr<'_>) -> Option<Sign> {
-    if let hir::ExprKind::Unary(hir::UnNeg, inner) = &expr.kind {
+    if let hir::ExprKind::Unary(hir::UnOp::UnNeg, inner) = &expr.kind {
         if let hir::ExprKind::Lit(..) = &inner.kind {
             return Some(Sign::Neg);
         }

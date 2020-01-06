@@ -4,9 +4,9 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 

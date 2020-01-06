@@ -1,8 +1,8 @@
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {

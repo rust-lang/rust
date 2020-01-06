@@ -1,11 +1,12 @@
 use crate::utils::{higher, qpath_res, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir;
-use rustc::hir::def::Res;
-use rustc::hir::BindingAnnotation;
+use rustc::hir::intravisit;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::BindingAnnotation;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
@@ -142,7 +143,7 @@ struct UsedVisitor<'a, 'tcx> {
     used: bool,
 }
 
-impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.kind;
@@ -153,10 +154,10 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
                 return;
             }
         }
-        hir::intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
-        hir::intravisit::NestedVisitorMap::None
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::None
     }
 }
 
@@ -181,7 +182,7 @@ fn check_assign<'a, 'tcx>(
             };
 
             for s in block.stmts.iter().take(block.stmts.len()-1) {
-                hir::intravisit::walk_stmt(&mut v, s);
+                intravisit::walk_stmt(&mut v, s);
 
                 if v.used {
                     return None;
@@ -197,6 +198,6 @@ fn check_assign<'a, 'tcx>(
 
 fn used_in_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> bool {
     let mut v = UsedVisitor { cx, id, used: false };
-    hir::intravisit::walk_expr(&mut v, expr);
+    intravisit::walk_expr(&mut v, expr);
     v.used
 }
