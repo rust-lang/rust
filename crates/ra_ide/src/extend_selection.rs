@@ -13,7 +13,6 @@ use crate::{db::RootDatabase, FileRange};
 use hir::{db::AstDatabase, InFile};
 use itertools::Itertools;
 
-// FIXME: restore macro support
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let src = db.parse(frange.file_id).tree();
     let root = InFile::new(frange.file_id.into(), src.syntax());
@@ -93,8 +92,7 @@ fn try_extend_selection(
         return Some(node.text_range());
     }
 
-    // Using shallowest node with same range allows us to traverse siblings.
-    let node = node.ancestors().take_while(|n| n.text_range() == node.text_range()).last().unwrap();
+    let node = shallowest_node(&node.into()).unwrap();
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
         if let Some(range) = extend_list_item(&node) {
@@ -129,7 +127,7 @@ fn extend_tokens_from_range(
         .fold1(|x, y| union_range(x, y))?;
 
     let src = db.parse_or_expand(expansion.file_id())?;
-    let parent = shallow_node(&find_covering_element(&src, range))?.parent()?;
+    let parent = shallowest_node(&find_covering_element(&src, range))?.parent()?;
 
     // compute parent mapped token range
     let range = macro_call
@@ -162,7 +160,8 @@ fn union_range(range: TextRange, r: TextRange) -> TextRange {
     TextRange::from_to(start, end)
 }
 
-fn shallow_node(node: &SyntaxElement) -> Option<SyntaxNode> {
+/// Find the shallowest node with same range, which allows us to traverse siblings.
+fn shallowest_node(node: &SyntaxElement) -> Option<SyntaxNode> {
     node.ancestors().take_while(|n| n.text_range() == node.text_range()).last()
 }
 
