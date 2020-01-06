@@ -1,6 +1,5 @@
 use rustc::hir::map::Map;
 use rustc::session::parse::feature_err;
-use rustc::traits;
 use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
@@ -12,6 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_infer::traits;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 

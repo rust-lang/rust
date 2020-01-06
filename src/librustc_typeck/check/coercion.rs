@@ -52,11 +52,7 @@
 
 use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::session::parse::feature_err;
-use rustc::traits::object_safety_violations;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -68,6 +64,10 @@ use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::traits::object_safety_violations;
+use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;

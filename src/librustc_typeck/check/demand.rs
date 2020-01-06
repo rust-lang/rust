@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
-use rustc::infer::InferOk;
-use rustc::traits::{self, ObligationCause};
+use rustc_infer::infer::InferOk;
+use rustc_infer::traits::{self, ObligationCause};
 
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};

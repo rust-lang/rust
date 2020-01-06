@@ -1,7 +1,4 @@
 use crate::check::FnCtxt;
-use rustc::infer;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::traits::Pattern;
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
@@ -10,6 +7,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
+use rustc_infer::infer;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::traits::Pattern;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 use syntax::ast;
