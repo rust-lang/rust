@@ -39,7 +39,6 @@ use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::lint::builtin;
-use rustc::middle::cstore::CrateStore;
 use rustc::{bug, span_bug};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -172,7 +171,9 @@ struct LoweringContext<'a, 'hir: 'a> {
 }
 
 pub trait Resolver {
-    fn cstore(&self) -> &dyn CrateStore;
+    fn def_key(&mut self, id: DefId) -> DefKey;
+
+    fn item_generics_cloned_untracked_liftimes(&self, def: DefId, sess: &Session) -> usize;
 
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
@@ -934,14 +935,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.is_in_loop_condition = was_in_loop_condition;
 
         ret
-    }
-
-    fn def_key(&mut self, id: DefId) -> DefKey {
-        if id.is_local() {
-            self.resolver.definitions().def_key(id.index)
-        } else {
-            self.resolver.cstore().def_key(id)
-        }
     }
 
     fn lower_attrs(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {

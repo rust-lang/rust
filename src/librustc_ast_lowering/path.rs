@@ -49,7 +49,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // which may need lifetime elision performed.
                     let parent_def_id = |this: &mut Self, def_id: DefId| DefId {
                         krate: def_id.krate,
-                        index: this.def_key(def_id).parent.expect("missing parent"),
+                        index: this.resolver.def_key(def_id).parent.expect("missing parent"),
                     };
                     let type_def_id = match partial_res.base_res() {
                         Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
@@ -93,11 +93,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             return n;
                         }
                         assert!(!def_id.is_local());
-                        let item_generics = self
+                        let n = self
                             .resolver
-                            .cstore()
-                            .item_generics_cloned_untracked(def_id, self.sess);
-                        let n = item_generics.own_counts().lifetimes;
+                            .item_generics_cloned_untracked_liftimes(def_id, self.sess);
                         self.type_def_lifetime_params.insert(def_id, n);
                         n
                     });
