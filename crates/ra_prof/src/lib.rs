@@ -197,7 +197,10 @@ impl Drop for Profiler {
                     if level == 0 {
                         let stdout = stderr();
                         let longer_than = stack.filter_data.longer_than;
-                        if duration >= longer_than {
+                        // Convert to millis for comparison to avoid problems with rounding
+                        // (otherwise we could print `0ms` despite user's `>0` filter when
+                        // `duration` is just a few nanos).
+                        if duration.as_millis() > longer_than.as_millis() {
                             print(0, &stack.messages, &mut stdout.lock(), longer_than, None);
                         }
                         stack.messages.clear();
@@ -226,7 +229,7 @@ fn print(
             continue;
         }
         accounted_for += duration;
-        if duration >= longer_than {
+        if duration.as_millis() > longer_than.as_millis() {
             writeln!(out, "{}{:5}ms - {}", indent, duration.as_millis(), msg)
                 .expect("printing profiling info to stdout");
 
@@ -251,8 +254,9 @@ fn print(
 
     if let Some(total) = total {
         if let Some(unaccounted) = total.checked_sub(accounted_for) {
-            if unaccounted >= longer_than && last > 0 {
-                writeln!(out, "{}{:5}ms - ???", indent, unaccounted.as_millis())
+            let unaccounted_millis = unaccounted.as_millis();
+            if unaccounted_millis > longer_than.as_millis() && unaccounted_millis > 0 && last > 0 {
+                writeln!(out, "{}{:5}ms - ???", indent, unaccounted_millis)
                     .expect("printing profiling info to stdout");
             }
         }
@@ -355,5 +359,22 @@ mod tests {
 
     fn profiling_function2() {
         let _p = profile("profile2");
+    }
+
+    #[test]
+    fn test_longer_than() {
+        let mut result = vec![];
+        let msgs = vec![
+            Message { level: 1, duration: Duration::from_nanos(3), message: "bar".to_owned() },
+            Message { level: 1, duration: Duration::from_nanos(2), message: "bar".to_owned() },
+            Message { level: 0, duration: Duration::from_millis(1), message: "foo".to_owned() },
+        ];
+        print(0, &msgs, &mut result, Duration::from_millis(0), Some(Duration::from_millis(1)));
+        // The calls to `bar` are so short that they'll be rounded to 0ms and should get collapsed
+        // when printing.
+        assert_eq!(
+            std::str::from_utf8(&result).unwrap(),
+            "    1ms - foo\n        0ms - bar (2 calls)\n"
+        );
     }
 }
