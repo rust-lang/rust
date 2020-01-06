@@ -395,9 +395,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.47"
+version = "1.0.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa87058dce70a3ff5621797f1506cb837edd02ac4c0ae642b4542dce802908b8"
+checksum = "e450b8da92aa6f274e7c6437692f9f2ce6d701fb73bacfcf87897b3f89a4c20e"
 dependencies = [
  "jobserver",
  "num_cpus",
