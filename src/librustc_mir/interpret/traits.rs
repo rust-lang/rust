@@ -140,7 +140,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
-        let fn_sig = drop_instance.ty(*self.tcx).fn_sig(*self.tcx);
+        let fn_sig = drop_instance.ty_env(*self.tcx, self.param_env).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
         let args = fn_sig.inputs();

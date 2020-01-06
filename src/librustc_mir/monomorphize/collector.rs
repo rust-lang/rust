@@ -358,7 +358,7 @@ fn collect_items_rec<'tcx>(
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(should_monomorphize_locally(tcx, &instance));
 
-            let ty = instance.ty(tcx);
+            let ty = instance.monomorphic_ty(tcx);
             visit_drop_use(tcx, ty, true, &mut neighbors);
 
             recursion_depth_reset = None;
@@ -1002,7 +1002,8 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                             def_id_to_string(self.tcx, def_id)
                         );
 
-                        let ty = Instance::new(def_id, InternalSubsts::empty()).ty(self.tcx);
+                        let ty =
+                            Instance::new(def_id, InternalSubsts::empty()).monomorphic_ty(self.tcx);
                         visit_drop_use(self.tcx, ty, true, self.output);
                     }
                 }
