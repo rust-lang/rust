@@ -201,7 +201,7 @@ impl RootDatabase {
                 libraries.push(library.root_id);
                 self.set_source_root_with_durability(
                     library.root_id,
-                    Default::default(),
+                    Arc::new(SourceRoot::new_library()),
                     Durability::HIGH,
                 );
                 self.set_library_symbols_with_durability(
