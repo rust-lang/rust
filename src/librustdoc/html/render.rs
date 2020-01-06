@@ -2280,7 +2280,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
     );
 
     if c.value.is_some() || c.is_literal {
-        write!(w, " = {expr};", expr = c.expr);
+        write!(w, " = {expr};", expr = Escape(&c.expr));
     } else {
         write!(w, ";");
     }
@@ -2293,7 +2293,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
             if value_lowercase != expr_lowercase
                 && value_lowercase.trim_end_matches("i32") != expr_lowercase
             {
-                write!(w, " // {value}", value = value);
+                write!(w, " // {value}", value = Escape(value));
             }
         }
     }
