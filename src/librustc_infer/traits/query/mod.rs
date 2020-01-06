@@ -12,4 +12,4 @@ pub mod normalize;
 pub mod outlives_bounds;
 pub mod type_op;
 
-pub use rustc::traits::types::query::*;
+pub use rustc::traits::query::*;

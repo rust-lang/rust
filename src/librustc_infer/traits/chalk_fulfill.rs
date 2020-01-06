@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonical, OriginalQueryValues};
+use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::query::NoSolution;
 use crate::traits::{
@@ -8,7 +8,7 @@ use crate::traits::{
 use crate::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 
-pub type CanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
+pub use rustc::traits::ChalkCanonicalGoal as CanonicalGoal;
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxHashSet<InEnvironment<'tcx, PredicateObligation<'tcx>>>,

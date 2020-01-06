@@ -3,7 +3,7 @@
 // seems likely that they should eventually be merged into more
 // general routines.
 
-use crate::infer::InferCtxt;
+use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::{
     FulfillmentContext, Obligation, ObligationCause, SelectionContext, TraitEngine, Vtable,
 };

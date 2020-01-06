@@ -29,12 +29,11 @@ use rustc::ty::{self, BoundVar, List};
 use rustc_index::vec::IndexVec;
 use rustc_span::source_map::Span;
 
-pub use rustc::infer::types::canonical::*;
+pub use rustc::infer::canonical::*;
+use substitute::CanonicalExt;
 
 mod canonicalizer;
-
 pub mod query_response;
-
 mod substitute;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {

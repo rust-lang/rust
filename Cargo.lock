@@ -3777,6 +3777,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_infer"
+version = "0.0.0"
+dependencies = [
+ "fmt_macros",
+ "graphviz",
+ "log",
+ "rustc",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_error_codes",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "smallvec 1.0.0",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
@@ -3838,6 +3860,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3907,6 +3930,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_lexer",
  "rustc_macros",
  "rustc_span",
@@ -3929,6 +3953,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_macros",
  "rustc_session",
  "rustc_span",
@@ -3969,6 +3994,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4019,6 +4045,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_hir",
+ "rustc_infer",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
@@ -4108,6 +4135,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_infer",
  "rustc_macros",
  "rustc_span",
  "rustc_target",
@@ -4123,6 +4151,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_infer",
  "rustc_span",
  "rustc_target",
 ]
@@ -4139,6 +4168,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_infer",
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
