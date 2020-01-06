@@ -44,6 +44,10 @@ $ cargo xtask install
 The automatic installation is expected to *just work* for common cases, if it
 doesn't, report bugs!
 
+**Note** [#1831](https://github.com/rust-analyzer/rust-analyzer/issues/1831): If you are using the popular 
+[Vim emulation plugin](https://github.com/VSCodeVim/Vim), you will likely
+need to turn off the `rust-analyzer.enableEnhancedTyping` setting.
+
 If you have an unusual setup (for example, `code` is not in the `PATH`), you
 should adapt these manual installation instructions:
 
