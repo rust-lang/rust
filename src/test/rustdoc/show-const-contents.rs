@@ -62,3 +62,6 @@ macro_rules! int_module {
 
 // @has show_const_contents/constant.MIN.html '= i16::min_value(); // -32_768i16'
 int_module!(i16);
+
+// @has show_const_contents/constant.ESCAPE.html //pre '= r#"<script>alert("ESCAPE");</script>"#;'
+pub const ESCAPE: &str = r#"<script>alert("ESCAPE");</script>"#;
