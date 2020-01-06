@@ -2005,6 +2005,44 @@ pub trait Iterator {
         self.try_fold(init, ok(f)).unwrap()
     }
 
+    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// iterator as the initial value, folding every subsequent element into it.
+    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// of the fold.
+    ///
+    /// # Example
+    ///
+    /// Find the maximum value:
+    ///
+    /// ```
+    /// fn find_max<I>(iter: I) -> Option<I::Item>
+    ///     where I: Iterator,
+    ///           I::Item: Ord,
+    /// {
+    ///     iter.fold_first(|a, b| {
+    ///         a.partial_cmp(b).map(move |cmp| match cmp {
+    ///             Ordering::Greater | Ordering::Equal => a,
+    ///             Ordering::Less => b,
+    ///         })
+    ///     })
+    /// }
+    /// let a = [10, 20, 5, -23, 0];
+    /// let b = [];
+    ///
+    /// assert_eq!(find_max(a.iter()), Some(20));
+    /// assert_eq!(find_max(b.iter()), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_fold_self", issue = "68125")]
+    fn fold_first<F>(mut self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        let first = self.next()?;
+        Some(self.fold(first, f))
+    }
+
     /// Tests if every element of the iterator matches a predicate.
     ///
     /// `all()` takes a closure that returns `true` or `false`. It applies
@@ -2497,7 +2535,7 @@ pub trait Iterator {
             move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2561,7 +2599,7 @@ pub trait Iterator {
             move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Reverses an iterator's direction.
@@ -3212,20 +3250,6 @@ pub trait Iterator {
     {
         self.map(f).is_sorted()
     }
-}
-
-/// Fold an iterator without having to provide an initial value.
-#[inline]
-fn fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
-where
-    I: Iterator,
-    F: FnMut(I::Item, I::Item) -> I::Item,
-{
-    // start with the first element as our selection. This avoids
-    // having to use `Option`s inside the loop, translating to a
-    // sizeable performance gain (6x in one case).
-    let first = it.next()?;
-    Some(it.fold(first, f))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
