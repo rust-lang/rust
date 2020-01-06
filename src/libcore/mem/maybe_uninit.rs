@@ -220,7 +220,7 @@ pub union MaybeUninit<T> {
     value: ManuallyDrop<T>,
 }
 
-/// `Clone` and `Copy` are implementing for `T: Copy` by copying the bytes. But remember that
+/// `Clone` and `Copy` are implemented for `T: Copy` by copying the bytes. But remember that
 /// uninitialized memory is special because the compiler knows that it doesn't have a fixed value.
 /// This example is *incorrect* because we fail to uphold the [initialization invariant][inv]:
 ///
