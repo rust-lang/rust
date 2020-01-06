@@ -11,18 +11,17 @@ use super::{
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{self, InferCtxt};
-use crate::mir::interpret::ErrorHandled;
-use crate::session::DiagnosticMessageId;
+use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use crate::traits::object_safety_violations;
-use crate::ty::error::ExpectedFound;
-use crate::ty::fast_reject;
-use crate::ty::fold::TypeFolder;
-use crate::ty::SubtypePredicate;
-use crate::ty::{
+use rustc::mir::interpret::ErrorHandled;
+use rustc::session::DiagnosticMessageId;
+use rustc::ty::error::ExpectedFound;
+use rustc::ty::fast_reject;
+use rustc::ty::fold::TypeFolder;
+use rustc::ty::SubtypePredicate;
+use rustc::ty::{
     self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
-
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

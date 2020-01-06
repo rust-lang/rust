@@ -49,17 +49,18 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
-use crate::hir::map;
 use crate::infer::opaque_types;
 use crate::infer::{self, SuppressRegionErrors};
-use crate::middle::region;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::object_safety_violations;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
-use crate::ty::error::TypeError;
-use crate::ty::{
+
+use rustc::hir::map;
+use rustc::middle::region;
+use rustc::ty::error::TypeError;
+use rustc::ty::{
     self,
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
@@ -2005,7 +2006,12 @@ enum FailureCode {
     Error0644(&'static str),
 }
 
-impl<'tcx> ObligationCause<'tcx> {
+trait ObligationCauseExt<'tcx> {
+    fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode;
+    fn as_requirement_str(&self) -> &'static str;
+}
+
+impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;

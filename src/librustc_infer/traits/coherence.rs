@@ -4,7 +4,7 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use crate::infer::{CombinedSnapshot, InferOk};
+use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};

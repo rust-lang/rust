@@ -66,8 +66,10 @@ use crate::traits::ObligationCause;
 use crate::ty::outlives::Component;
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use smallvec::smallvec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Registers that the given region obligation must be resolved

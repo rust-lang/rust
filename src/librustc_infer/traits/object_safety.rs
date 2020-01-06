@@ -10,6 +10,7 @@
 
 use super::elaborate_predicates;
 
+use crate::infer::TyCtxtInferExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};

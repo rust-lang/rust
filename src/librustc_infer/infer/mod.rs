@@ -7,19 +7,21 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use crate::ty::IntVarValue;
 
-use crate::infer::canonical::{Canonical, CanonicalVarValues};
-use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
-use crate::middle::free_region::RegionRelations;
-use crate::middle::lang_items;
-use crate::middle::region;
-use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
-use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::relate::RelateResult;
-use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
-use crate::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
-use crate::ty::{ConstVid, FloatVid, IntVid, TyVid};
+
+use rustc::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc::middle::free_region::RegionRelations;
+use rustc::middle::lang_items;
+use rustc::middle::region;
+use rustc::session::config::BorrowckMode;
+use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
+use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
+use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -40,7 +42,6 @@ use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use self::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 
 pub mod at;
 pub mod canonical;
@@ -61,8 +62,8 @@ pub mod region_constraints;
 pub mod resolve;
 mod sub;
 pub mod type_variable;
-mod types;
-pub mod unify_key;
+
+pub use rustc::infer::unify_key;
 
 #[must_use]
 #[derive(Debug)]
@@ -524,8 +525,12 @@ pub struct InferCtxtBuilder<'tcx> {
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
-impl TyCtxt<'tcx> {
-    pub fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
+pub trait TyCtxtInferExt<'tcx> {
+    fn infer_ctxt(self) -> InferCtxtBuilder<'tcx>;
+}
+
+impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
+    fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder { global_tcx: self, fresh_tables: None }
     }
 }

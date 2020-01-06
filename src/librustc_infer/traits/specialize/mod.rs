@@ -10,8 +10,9 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
 pub mod specialization_graph;
+use specialization_graph::GraphExt;
 
-use crate::infer::{InferCtxt, InferOk};
+use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};

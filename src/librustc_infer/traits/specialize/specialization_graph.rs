@@ -5,7 +5,7 @@ use rustc::ty::fast_reject::{self, SimplifiedType};
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_hir::def_id::DefId;
 
-pub use rustc::traits::types::specialization_graph::*;
+pub use rustc::traits::specialization_graph::*;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FutureCompatOverlapErrorKind {
@@ -31,7 +31,19 @@ enum Inserted {
     ShouldRecurseOn(DefId),
 }
 
-impl<'tcx> Children {
+trait ChildrenExt {
+    fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
+    fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
+
+    fn insert(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        impl_def_id: DefId,
+        simplified_self: Option<SimplifiedType>,
+    ) -> Result<Inserted, OverlapError>;
+}
+
+impl ChildrenExt for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -76,8 +88,8 @@ impl<'tcx> Children {
         debug!("insert(impl_def_id={:?}, simplified_self={:?})", impl_def_id, simplified_self,);
 
         let possible_siblings = match simplified_self {
-            Some(st) => PotentialSiblings::Filtered(self.filtered(st)),
-            None => PotentialSiblings::Unfiltered(self.iter()),
+            Some(st) => PotentialSiblings::Filtered(filtered_children(self, st)),
+            None => PotentialSiblings::Unfiltered(iter_children(self)),
         };
 
         for possible_sibling in possible_siblings {
@@ -199,16 +211,19 @@ impl<'tcx> Children {
         self.insert_blindly(tcx, impl_def_id);
         Ok(Inserted::BecameNewSibling(last_lint))
     }
+}
 
-    fn iter(&mut self) -> impl Iterator<Item = DefId> + '_ {
-        let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
-        self.blanket_impls.iter().chain(nonblanket).cloned()
-    }
+fn iter_children(children: &mut Children) -> impl Iterator<Item = DefId> + '_ {
+    let nonblanket = children.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
+    children.blanket_impls.iter().chain(nonblanket).cloned()
+}
 
-    fn filtered(&mut self, st: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
-        let nonblanket = self.nonblanket_impls.entry(st).or_default().iter();
-        self.blanket_impls.iter().chain(nonblanket).cloned()
-    }
+fn filtered_children(
+    children: &mut Children,
+    st: SimplifiedType,
+) -> impl Iterator<Item = DefId> + '_ {
+    let nonblanket = children.nonblanket_impls.entry(st).or_default().iter();
+    children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 
 // A custom iterator used by Children::insert
@@ -236,11 +251,25 @@ where
     }
 }
 
-impl<'tcx> Graph {
+pub trait GraphExt {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
-    pub fn insert(
+    fn insert(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        impl_def_id: DefId,
+    ) -> Result<Option<FutureCompatOverlapError>, OverlapError>;
+
+    /// Insert cached metadata mapping from a child impl back to its parent.
+    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId);
+}
+
+impl GraphExt for Graph {
+    /// Insert a local impl into the specialization graph. If an existing impl
+    /// conflicts with it (has overlap, but neither specializes the other),
+    /// information about the area of overlap is returned in the `Err`.
+    fn insert(
         &mut self,
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
@@ -337,7 +366,7 @@ impl<'tcx> Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    pub fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId) {
+    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!(
                 "When recording an impl from the crate store, information about its parent \

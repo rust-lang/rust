@@ -6,10 +6,10 @@ use self::UndoLog::*;
 use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
-use crate::ty::ReStatic;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::{ReLateBound, ReVar};
-use crate::ty::{Region, RegionVid};
+use rustc::ty::ReStatic;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{ReLateBound, ReVar};
+use rustc::ty::{Region, RegionVid};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
@@ -23,7 +23,7 @@ use std::{cmp, fmt, mem};
 
 mod leak_check;
 
-pub use rustc::infer::types::MemberConstraint;
+pub use rustc::infer::MemberConstraint;
 
 #[derive(Default)]
 pub struct RegionConstraintCollector<'tcx> {

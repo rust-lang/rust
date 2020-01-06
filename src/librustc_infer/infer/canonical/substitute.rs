@@ -11,15 +11,12 @@ use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, TyCtxt};
 
-impl<'tcx, V> Canonical<'tcx, V> {
+pub(super) trait CanonicalExt<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    pub fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
-        V: TypeFoldable<'tcx>,
-    {
-        self.substitute_projected(tcx, var_values, |value| value)
-    }
+        V: TypeFoldable<'tcx>;
 
     /// Allows one to apply a substitute to some subset of
     /// `self.value`. Invoke `projection_fn` with `self.value` to get
@@ -27,7 +24,25 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// variables bound in `self` (usually this extracts from subset
     /// of `self`). Apply the substitution `var_values` to this value
     /// V, replacing each of the canonical variables.
-    pub fn substitute_projected<T>(
+    fn substitute_projected<T>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        var_values: &CanonicalVarValues<'tcx>,
+        projection_fn: impl FnOnce(&V) -> &T,
+    ) -> T
+    where
+        T: TypeFoldable<'tcx>;
+}
+
+impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
+    fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    where
+        V: TypeFoldable<'tcx>,
+    {
+        self.substitute_projected(tcx, var_values, |value| value)
+    }
+
+    fn substitute_projected<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,

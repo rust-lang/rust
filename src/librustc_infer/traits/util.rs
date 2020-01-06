@@ -1,5 +1,6 @@
 use rustc_errors::DiagnosticBuilder;
 use rustc_span::Span;
+use smallvec::smallvec;
 use smallvec::SmallVec;
 
 use crate::ty::outlives::Component;

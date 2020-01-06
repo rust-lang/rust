@@ -19,12 +19,11 @@ mod select;
 mod specialize;
 mod structural_impls;
 mod structural_match;
-mod types;
 mod util;
 pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{InferCtxt, SuppressRegionErrors};
+use crate::infer::{InferCtxt, SuppressRegionErrors, TyCtxtInferExt};
 use crate::middle::region;
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::fold::TypeFoldable;
@@ -38,6 +37,9 @@ use rustc_span::{Span, DUMMY_SP};
 use std::fmt::Debug;
 
 pub use self::FulfillmentErrorCode::*;
+pub use self::ObligationCauseCode::*;
+pub use self::SelectionError::*;
+pub use self::Vtable::*;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
@@ -53,8 +55,9 @@ pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{
     normalize, normalize_projection_type, normalize_to, poly_project_and_unify_type,
 };
-pub use self::project::{Normalized, ProjectionCache, ProjectionCacheSnapshot};
-pub use self::select::{IntercrateAmbiguityCause, SelectionContext};
+pub use self::project::{Normalized, ProjectionCache, ProjectionCacheSnapshot, Reveal};
+pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
+pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
@@ -76,7 +79,7 @@ pub use self::chalk_fulfill::{
     CanonicalGoal as ChalkCanonicalGoal, FulfillmentContext as ChalkFulfillmentContext,
 };
 
-pub use self::types::*;
+pub use rustc::traits::*;
 
 /// Whether to skip the leak check, as part of a future compatibility warning step.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

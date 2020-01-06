@@ -6,6 +6,8 @@ use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 
+use smallvec::smallvec;
+
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
 /// described on the module comment. The final constraints are emitted

@@ -54,7 +54,7 @@ use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
 
-pub use rustc::traits::types::select::*;
+pub use rustc::traits::select::*;
 
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,

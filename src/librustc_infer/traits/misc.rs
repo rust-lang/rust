@@ -1,8 +1,9 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
+use crate::infer::TyCtxtInferExt;
 use crate::traits::{self, ObligationCause};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 
 #[derive(Clone)]

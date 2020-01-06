@@ -23,3 +23,4 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_index = { path = "../librustc_index" }
 rustc_session = { path = "../librustc_session" }
+rustc_infer = { path = "../librustc_infer" }
