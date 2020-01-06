@@ -1,21 +1,3 @@
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \__________pkt->size___________/          \_result->size_/ \__pkt->size__/
-  | ^
-
-error: unknown start of token: \
- --> <doctest>:1:43
-  |
-1 | \__________pkt->size___________/          \_result->size_/ \__pkt->size__/
-  |                                           ^
-
-error: unknown start of token: \
- --> <doctest>:1:60
-  |
-1 | \__________pkt->size___________/          \_result->size_/ \__pkt->size__/
-  |                                                            ^
-
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:3:5
    |
@@ -25,32 +7,13 @@ LL | | /// \__________pkt->size___________/          \_result->size_/ \__pkt->si
 LL | | /// ```
    | |_______^
    |
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |     ^^^^^^^
-
-error: unknown start of token: `
- --> <doctest>:3:30
-  |
-3 |    |     ^^^^^^ did you mean `baz::foobar`?
-  |                              ^
-  |
-help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
-  |
-3 |    |     ^^^^^^ did you mean 'baz::foobar`?
-  |                              ^
-
-error: unknown start of token: `
- --> <doctest>:3:42
-  |
-3 |    |     ^^^^^^ did you mean `baz::foobar`?
-  |                                          ^
-  |
-help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
-  |
-3 |    |     ^^^^^^ did you mean `baz::foobar'?
-  |                                          ^
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:9:5
@@ -63,16 +26,12 @@ LL | | ///    |     ^^^^^^ did you mean `baz::foobar`?
 LL | | /// ```
    | |_______^
    |
+   = note: error from rustc: unknown start of token: `
+   = note: error from rustc: unknown start of token: `
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |     ^^^^^^^
-
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \_
-  | ^
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:21:5
@@ -83,16 +42,11 @@ LL | | /// \_
 LL | | /// ```
    | |_______^
    |
+   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |     ^^^^^^^
-
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \_
-  | ^
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:35:5
@@ -102,12 +56,8 @@ LL |   /// ```rust
 LL | | /// \_
 LL | | /// ```
    | |_______^
-
-error: unknown start of token: \
- --> <doctest>:2:5
-  |
-2 |     \_
-  |     ^
+   |
+   = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:45:9
@@ -116,51 +66,18 @@ LL |   ///     code with bad syntax
    |  _________^
 LL | | ///     \_
    | |__________^
-
-error: unknown start of token: `
- --> <doctest>:1:1
-  |
-1 | ```
-  | ^
-  |
-help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
-  |
-1 | '``
-  | ^
-
-error: unknown start of token: `
- --> <doctest>:1:2
-  |
-1 | ```
-  |  ^
-  |
-help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
-  |
-1 | `'`
-  |  ^
-
-error: unknown start of token: `
- --> <doctest>:1:3
-  |
-1 | ```
-  |   ^
-  |
-help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
-  |
-1 | ``'
-  |   ^
+   |
+   = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:60:9
    |
 LL | ///     ```
    |         ^^^
-
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \_
-  | ^
+   |
+   = note: error from rustc: unknown start of token: `
+   = note: error from rustc: unknown start of token: `
+   = note: error from rustc: unknown start of token: `
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:64:5
@@ -170,12 +87,8 @@ LL |   /// ```edition2018
 LL | | /// \_
 LL | | /// ```
    | |_______^
-
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \_
-  | ^
+   |
+   = note: error from rustc: unknown start of token: \
 
 warning: doc comment contains an invalid Rust code block
   --> $DIR/invalid-syntax.rs:70:1
@@ -186,6 +99,7 @@ LL | | #[doc = "```"]
    | |______________^
    |
    = help: mark blocks that do not contain Rust code as text: ```text
+   = note: error from rustc: unknown start of token: \
 
 warning: Rust code block is empty
   --> $DIR/invalid-syntax.rs:76:5
@@ -210,15 +124,11 @@ help: mark blocks that do not contain Rust code as text
 LL | /// ```text
    |     ^^^^^^^
 
-error: unknown start of token: \
- --> <doctest>:1:1
-  |
-1 | \____/
-  | ^
-
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:92:9
    |
 LL | ///     \____/
    |         ^^^^^^
+   |
+   = note: error from rustc: unknown start of token: \
 
