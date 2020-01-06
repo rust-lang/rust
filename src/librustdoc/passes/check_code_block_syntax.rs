@@ -14,7 +14,7 @@ use crate::passes::Pass;
 
 pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     name: "check-code-block-syntax",
-    pass: check_code_block_syntax,
+    run: check_code_block_syntax,
     description: "validates syntax inside Rust code blocks",
 };
 
