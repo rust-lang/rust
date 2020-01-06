@@ -433,10 +433,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
 
-            fn with_hir_id_owner<F, T>(&mut self, owner: Option<NodeId>, f: F) -> T
-            where
-                F: FnOnce(&mut Self) -> T,
-            {
+            fn with_hir_id_owner<T>(
+                &mut self,
+                owner: Option<NodeId>,
+                f: impl FnOnce(&mut Self) -> T,
+            ) -> T {
                 let old = mem::replace(&mut self.hir_id_owner, owner);
                 let r = f(self);
                 self.hir_id_owner = old;
@@ -577,10 +578,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lowered
     }
 
-    fn lower_node_id_generic<F>(&mut self, ast_node_id: NodeId, alloc_hir_id: F) -> hir::HirId
-    where
-        F: FnOnce(&mut Self) -> hir::HirId,
-    {
+    fn lower_node_id_generic(
+        &mut self,
+        ast_node_id: NodeId,
+        alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
+    ) -> hir::HirId {
         if ast_node_id == DUMMY_NODE_ID {
             return hir::DUMMY_HIR_ID;
         }
@@ -604,10 +606,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn with_hir_id_owner<F, T>(&mut self, owner: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_hir_id_owner<T>(&mut self, owner: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let counter = self
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
@@ -736,15 +735,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
     /// parameter while `f` is running (and restored afterwards).
-    fn collect_in_band_defs<T, F>(
+    fn collect_in_band_defs<T>(
         &mut self,
         parent_id: DefId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: F,
-    ) -> (Vec<hir::GenericParam<'hir>>, T)
-    where
-        F: FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
-    {
+        f: impl FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
+    ) -> (Vec<hir::GenericParam<'hir>>, T) {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
         let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
@@ -847,10 +843,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
-    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_in_scope_lifetime_defs<T>(
+        &mut self,
+        params: &[GenericParam],
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => Some(ParamName::Plain(param.ident.modern())),
@@ -870,16 +867,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
     /// parameter while `f` is running (and restored afterwards).
-    fn add_in_band_defs<F, T>(
+    fn add_in_band_defs<T>(
         &mut self,
         generics: &Generics,
         parent_id: DefId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: F,
-    ) -> (hir::Generics<'hir>, T)
-    where
-        F: FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
-    {
+        f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
+    ) -> (hir::Generics<'hir>, T) {
         let (in_band_defs, (mut lowered_generics, res)) =
             self.with_in_scope_lifetime_defs(&generics.params, |this| {
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
@@ -917,10 +911,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (lowered_generics, res)
     }
 
-    fn with_dyn_type_scope<T, F>(&mut self, in_scope: bool, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_dyn_type = self.is_in_dyn_type;
         self.is_in_dyn_type = in_scope;
 
@@ -931,10 +922,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         result
     }
 
-    fn with_new_scopes<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_new_scopes<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
