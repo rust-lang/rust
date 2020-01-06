@@ -63,14 +63,13 @@ pub struct TcpStream(net_imp::TcpStream);
 /// # Examples
 ///
 /// ```no_run
-/// # use std::io;
 /// use std::net::{TcpListener, TcpStream};
 ///
 /// fn handle_client(stream: TcpStream) {
 ///     // ...
 /// }
 ///
-/// fn main() -> io::Result<()> {
+/// fn main() -> std::io::Result<()> {
 ///     let listener = TcpListener::bind("127.0.0.1:80")?;
 ///
 ///     // accept connections and process them serially
