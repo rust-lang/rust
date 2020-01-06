@@ -3,7 +3,6 @@ use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
 use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use rustc::span_bug;
-use rustc::util::common::FN_OUTPUT_NAME;
 use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -406,16 +405,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
             };
             let args = smallvec![GenericArg::Type(this.ty_tup(span, inputs))];
-            let binding = hir::TypeBinding {
-                hir_id: this.next_id(),
-                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                span: output_ty.span,
-                kind: hir::TypeBindingKind::Equality { ty: output_ty },
-            };
+            let binding = this.output_ty_binding(output_ty.span, output_ty);
             (
                 GenericArgsCtor { args, bindings: arena_vec![this; binding], parenthesized: true },
                 false,
             )
         })
+    }
+
+    /// An associated type binding `Output = $ty`.
+    crate fn output_ty_binding(
+        &mut self,
+        span: Span,
+        ty: &'hir hir::Ty<'hir>,
+    ) -> hir::TypeBinding<'hir> {
+        let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
+        let kind = hir::TypeBindingKind::Equality { ty };
+        hir::TypeBinding { hir_id: self.next_id(), span, ident, kind }
     }
 }

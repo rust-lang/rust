@@ -1875,6 +1875,9 @@ pub enum ImplItemKind<'hir> {
     OpaqueTy(GenericBounds<'hir>),
 }
 
+// The name of the associated type for `Fn` return types.
+pub const FN_OUTPUT_NAME: Symbol = sym::Output;
+
 /// Bind a type to an associated type (i.e., `A = Foo`).
 ///
 /// Bindings like `A: Debug` are represented as a special type `A =

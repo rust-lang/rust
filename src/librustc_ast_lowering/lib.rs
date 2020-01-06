@@ -41,7 +41,6 @@ use rustc::lint;
 use rustc::lint::builtin;
 use rustc::middle::cstore::CrateStore;
 use rustc::util::captures::Captures;
-use rustc::util::common::FN_OUTPUT_NAME;
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -1978,12 +1977,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // "<Output = T>"
         let future_params = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; hir::TypeBinding {
-                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                kind: hir::TypeBindingKind::Equality { ty: output_ty },
-                hir_id: self.next_id(),
-                span,
-            }],
+            bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
             parenthesized: false,
         });
 
