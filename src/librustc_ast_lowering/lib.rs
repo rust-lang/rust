@@ -40,8 +40,6 @@ use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::lint::builtin;
 use rustc::middle::cstore::CrateStore;
-use rustc::session::config::nightly_options;
-use rustc::session::Session;
 use rustc::{bug, span_bug};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
