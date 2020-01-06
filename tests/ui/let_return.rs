@@ -45,4 +45,26 @@ fn test_nowarn_5(x: i16) -> u16 {
     x
 }
 
+// False positive example
+trait Decode {
+    fn decode<D: std::io::Read>(d: D) -> Result<Self, ()>
+    where
+        Self: Sized;
+}
+
+macro_rules! tuple_encode {
+    ($($x:ident),*) => (
+        impl<$($x: Decode),*> Decode for ($($x),*) {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn decode<D: std::io::Read>(mut d: D) -> Result<Self, ()> {
+                // Shouldn't trigger lint
+                Ok(($({let $x = Decode::decode(&mut d)?; $x }),*))
+            }
+        }
+    );
+}
+
+tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
+
 fn main() {}
