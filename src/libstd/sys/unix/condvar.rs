@@ -13,7 +13,7 @@ const TIMESPEC_MAX: libc::timespec =
     libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
 fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
-    if value > <libc::time_t>::MAX as u64 { <libc::time_t>::MAX } else { value as libc::time_t }
+    crate::cmp::min(value, libc::time_t::MAX as u64) as _
 }
 
 impl Condvar {
