@@ -24,6 +24,7 @@ use syntax::walk_list;
 
 use rustc_error_codes::*;
 
+/// A syntactic context that disallows certain kinds of bounds (e.g., `?Trait` or `?const Trait`).
 #[derive(Clone, Copy)]
 enum BoundContext {
     ImplTrait,
@@ -50,10 +51,11 @@ struct AstValidator<'a> {
     /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<Span>,
 
-    /// Tracks the context in which a bound can appear.
+    /// Keeps track of the `BoundContext` as we recurse.
     ///
-    /// This is used to forbid `?const Trait` bounds in certain contexts.
-    bound_context_stack: Vec<Option<BoundContext>>,
+    /// This is used to forbid `?const Trait` bounds in, e.g.,
+    /// `impl Iterator<Item = Box<dyn ?const Trait>`.
+    bound_context: Option<BoundContext>,
 
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
@@ -80,21 +82,19 @@ impl<'a> AstValidator<'a> {
     }
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
-        self.bound_context_stack.push(outer.map(|_| BoundContext::ImplTrait));
         let old = mem::replace(&mut self.outer_impl_trait, outer);
-        f(self);
+        if outer.is_some() {
+            self.with_bound_context(BoundContext::ImplTrait, |this| f(this));
+        } else {
+            f(self)
+        }
         self.outer_impl_trait = old;
-        self.bound_context_stack.pop();
     }
 
-    fn with_bound_context(&mut self, ctx: Option<BoundContext>, f: impl FnOnce(&mut Self)) {
-        self.bound_context_stack.push(ctx);
+    fn with_bound_context(&mut self, ctx: BoundContext, f: impl FnOnce(&mut Self)) {
+        let old = self.bound_context.replace(ctx);
         f(self);
-        self.bound_context_stack.pop();
-    }
-
-    fn innermost_bound_context(&mut self) -> Option<BoundContext> {
-        self.bound_context_stack.iter().rev().find(|x| x.is_some()).copied().flatten()
+        self.bound_context = old;
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
@@ -119,9 +119,7 @@ impl<'a> AstValidator<'a> {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
             TyKind::TraitObject(..) => {
-                self.with_bound_context(Some(BoundContext::TraitObject), |this| {
-                    visit::walk_ty(this, t)
-                });
+                self.with_bound_context(BoundContext::TraitObject, |this| visit::walk_ty(this, t));
             }
             TyKind::Path(ref qself, ref path) => {
                 // We allow these:
@@ -231,8 +229,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    // FIXME(ecstaticmorse): Instead, use the `bound_context_stack` to check this in
-    // `visit_param_bound`.
+    // FIXME(ecstaticmorse): Instead, use `bound_context` to check this in `visit_param_bound`.
     fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
             if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
@@ -744,7 +741,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
-                self.with_bound_context(Some(BoundContext::TraitBounds), |this| {
+                self.with_bound_context(BoundContext::TraitBounds, |this| {
                     walk_list!(this, visit_param_bound, bounds);
                 });
                 walk_list!(self, visit_trait_item, trait_items);
@@ -903,7 +900,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .span_err(bound.span(), "`?const` and `?` are mutually exclusive");
                     }
 
-                    if let Some(ctx) = self.innermost_bound_context() {
+                    if let Some(ctx) = self.bound_context {
                         let msg = format!("`?const` is not permitted in {}", ctx.description());
                         self.err_handler().span_err(bound.span(), &msg);
                     }
@@ -1025,7 +1022,7 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut lint::LintBuffe
         session,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
-        bound_context_stack: Vec::new(),
+        bound_context: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
         lint_buffer: lints,
