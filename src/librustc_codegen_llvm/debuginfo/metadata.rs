@@ -2287,7 +2287,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
-    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx);
+    let variable_type = Instance::mono(cx.tcx, def_id).monomorphic_ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = SmallCStr::new(&tcx.item_name(def_id).as_str());
     let linkage_name = if no_mangle {

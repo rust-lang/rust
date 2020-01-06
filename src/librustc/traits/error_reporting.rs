@@ -12,6 +12,7 @@ use crate::hir::Node;
 use crate::infer::error_reporting::TypeAnnotationNeeded as ErrorCode;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
+use crate::mir::interpret::ErrorHandled;
 use crate::session::DiagnosticMessageId;
 use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
@@ -1086,6 +1087,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             // already reported in the query
             ConstEvalFailure(err) => {
+                if let ErrorHandled::TooGeneric = err {
+                    // Silence this error, as it can be produced during intermediate steps
+                    // when a constant is not yet able to be evaluated (but will be later).
+                    return;
+                }
                 self.tcx.sess.delay_span_bug(
                     span,
                     &format!("constant in type had an ignored error: {:?}", err),

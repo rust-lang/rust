@@ -62,9 +62,34 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    /// Returns the `Ty` corresponding to this `Instance`,
+    /// with generic substitutions applied and lifetimes erased.
+    ///
+    /// This method can only be called when the 'substs' for this Instance
+    /// are fully monomorphic (no `ty::Param`'s are present).
+    /// This is usually the case (e.g. during codegen).
+    /// However, during constant evaluation, we may want
+    /// to try to resolve a `Instance` using generic parameters
+    /// (e.g. when we are attempting to to do const-propagation).
+    /// In this case, `Instance.ty_env` should be used to provide
+    /// the `ParamEnv` for our generic context.
+    pub fn monomorphic_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
+        // There shouldn't be any params - if there are, then
+        // Instance.ty_env should have been used to provide the proper
+        // ParamEnv
+        if self.substs.has_param_types() {
+            bug!("Instance.ty called for type {:?} with params in substs: {:?}", ty, self.substs);
+        }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)
+    }
+
+    /// Like `Instance.ty`, but allows a `ParamEnv` to be specified for use during
+    /// normalization. This method is only really useful during constant evaluation,
+    /// where we are dealing with potentially generic types.
+    pub fn ty_env(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+        let ty = tcx.type_of(self.def.def_id());
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, &ty)
     }
 }
 
