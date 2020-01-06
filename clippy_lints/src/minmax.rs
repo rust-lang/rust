@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                             cx,
                             MIN_MAX,
                             expr.span,
-                            "this min/max combination leads to constant result",
+                            "this `min`/`max` combination leads to constant result",
                         );
                     },
                 }

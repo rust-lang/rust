@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     _ => (),
                 }
             } else {
-                panic!("IfExpr 'then' node is not an ExprKind::Block");
+                panic!("IfExpr `then` node is not an `ExprKind::Block`");
             }
         }
     }

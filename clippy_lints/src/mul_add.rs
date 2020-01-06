@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MulAddCheck {
                             cx,
                             MANUAL_MUL_ADD,
                             expr.span,
-                            "consider using mul_add() for better numerical precision",
+                            "consider using `mul_add()` for better numerical precision",
                             "try",
                             format!(
                                 "{}.mul_add({}, {})",
@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MulAddCheck {
                             cx,
                             MANUAL_MUL_ADD,
                             expr.span,
-                            "consider using mul_add() for better numerical precision",
+                            "consider using `mul_add()` for better numerical precision",
                             "try",
                             format!(
                                 "{}.mul_add({}, {})",

@@ -112,7 +112,7 @@ fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
         MAP_CLONE,
         root.trim_start(receiver).unwrap(),
         "You are needlessly cloning iterator elements",
-        "Remove the map call",
+        "Remove the `map` call",
         String::new(),
         Applicability::MachineApplicable,
     )

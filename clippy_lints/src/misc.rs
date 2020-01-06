@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// ```
     pub CMP_NAN,
     correctness,
-    "comparisons to NAN, which will always return false, probably not intended"
+    "comparisons to `NAN`, which will always return false, probably not intended"
 }
 
 declare_clippy_lint! {
@@ -194,7 +194,7 @@ declare_clippy_lint! {
     /// ```
     pub ZERO_PTR,
     style,
-    "using 0 as *{const, mut} T"
+    "using `0 as *{const, mut} T`"
 }
 
 declare_clippy_lint! {
@@ -370,9 +370,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         }
                     }
                     let (lint, msg) = if is_named_constant(cx, left) || is_named_constant(cx, right) {
-                        (FLOAT_CMP_CONST, "strict comparison of f32 or f64 constant")
+                        (FLOAT_CMP_CONST, "strict comparison of `f32` or `f64` constant")
                     } else {
-                        (FLOAT_CMP, "strict comparison of f32 or f64")
+                        (FLOAT_CMP, "strict comparison of `f32` or `f64`")
                     };
                     span_lint_and_then(cx, lint, expr.span, msg, |db| {
                         let lhs = Sugg::hir(cx, left, "..");
@@ -388,7 +388,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                             ),
                             Applicability::HasPlaceholders, // snippet
                         );
-                        db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                        db.span_note(expr.span, "`std::f32::EPSILON` and `std::f64::EPSILON` are available.");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
@@ -456,7 +456,7 @@ fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
                     cx,
                     CMP_NAN,
                     cmp_expr.span,
-                    "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
+                    "doomed comparison with `NAN`, use `std::{f32,f64}::is_nan()` instead",
                 );
             }
         }

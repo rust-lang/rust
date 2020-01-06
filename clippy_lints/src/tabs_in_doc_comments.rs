@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Will be converted to:
-     /// ```rust
+    /// ```rust
     /// ///
     /// /// Struct to hold two strings:
     /// ///     - first        one

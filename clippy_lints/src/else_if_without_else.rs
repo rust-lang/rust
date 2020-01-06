@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     pub ELSE_IF_WITHOUT_ELSE,
     restriction,
-    "if expression with an `else if`, but without a final `else` branch"
+    "`if` expression with an `else if`, but without a final `else` branch"
 }
 
 declare_lint_pass!(ElseIfWithoutElse => [ELSE_IF_WITHOUT_ELSE]);
@@ -60,7 +60,7 @@ impl EarlyLintPass for ElseIfWithoutElse {
                     cx,
                     ELSE_IF_WITHOUT_ELSE,
                     els.span,
-                    "if expression with an `else if`, but without a final `else`",
+                    "`if` expression with an `else if`, but without a final `else`",
                     "add an `else` block here",
                 );
             }

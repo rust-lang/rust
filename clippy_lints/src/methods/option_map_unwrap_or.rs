@@ -60,7 +60,7 @@ pub(super) fn lint<'a, 'tcx>(
             "map_or(a, f)"
         };
         let msg = &format!(
-            "called `map(f).unwrap_or({})` on an Option value. \
+            "called `map(f).unwrap_or({})` on an `Option` value. \
              This can be done more directly by calling `{}` instead",
             arg, suggest
         );

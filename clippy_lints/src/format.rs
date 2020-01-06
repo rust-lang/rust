@@ -46,9 +46,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
 
         // Operate on the only argument of `alloc::fmt::format`.
         if let Some(sugg) = on_new_v1(cx, expr) {
-            span_useless_format(cx, span, "consider using .to_string()", sugg);
+            span_useless_format(cx, span, "consider using `.to_string()`", sugg);
         } else if let Some(sugg) = on_new_v1_fmt(cx, expr) {
-            span_useless_format(cx, span, "consider using .to_string()", sugg);
+            span_useless_format(cx, span, "consider using `.to_string()`", sugg);
         }
     }
 }

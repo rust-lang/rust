@@ -123,7 +123,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                         cx,
                         NONSENSICAL_OPEN_OPTIONS,
                         span,
-                        "the method \"create\" is called more than once",
+                        "the method `create` is called more than once",
                     );
                 } else {
                     create = true
@@ -136,7 +136,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                         cx,
                         NONSENSICAL_OPEN_OPTIONS,
                         span,
-                        "the method \"append\" is called more than once",
+                        "the method `append` is called more than once",
                     );
                 } else {
                     append = true
@@ -149,7 +149,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                         cx,
                         NONSENSICAL_OPEN_OPTIONS,
                         span,
-                        "the method \"truncate\" is called more than once",
+                        "the method `truncate` is called more than once",
                     );
                 } else {
                     truncate = true
@@ -162,7 +162,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                         cx,
                         NONSENSICAL_OPEN_OPTIONS,
                         span,
-                        "the method \"read\" is called more than once",
+                        "the method `read` is called more than once",
                     );
                 } else {
                     read = true
@@ -175,7 +175,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
                         cx,
                         NONSENSICAL_OPEN_OPTIONS,
                         span,
-                        "the method \"write\" is called more than once",
+                        "the method `write` is called more than once",
                     );
                 } else {
                     write = true
@@ -190,7 +190,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
             cx,
             NONSENSICAL_OPEN_OPTIONS,
             span,
-            "file opened with \"truncate\" and \"read\"",
+            "file opened with `truncate` and `read`",
         );
     }
     if append && truncate && append_arg && truncate_arg {
@@ -198,7 +198,7 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
             cx,
             NONSENSICAL_OPEN_OPTIONS,
             span,
-            "file opened with \"append\" and \"truncate\"",
+            "file opened with `append` and `truncate`",
         );
     }
 }

@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// ```
     pub MUTABLE_KEY_TYPE,
     correctness,
-    "Check for mutable Map/Set key type"
+    "Check for mutable `Map`/`Set` key type"
 }
 
 declare_lint_pass!(MutableKeyType => [ MUTABLE_KEY_TYPE ]);

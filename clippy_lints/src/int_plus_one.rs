@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     pub INT_PLUS_ONE,
     complexity,
-    "instead of using x >= y + 1, use x > y"
+    "instead of using `x >= y + 1`, use `x > y`"
 }
 
 declare_lint_pass!(IntPlusOne => [INT_PLUS_ONE]);

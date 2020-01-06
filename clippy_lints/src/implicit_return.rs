@@ -51,7 +51,7 @@ fn lint(cx: &LateContext<'_, '_>, outer_span: Span, inner_span: Span, msg: &str)
     let outer_span = outer_span.source_callsite();
     let inner_span = inner_span.source_callsite();
 
-    span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing return statement", |db| {
+    span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing `return` statement", |db| {
         if let Some(snippet) = snippet_opt(cx, inner_span) {
             db.span_suggestion(
                 outer_span,
@@ -102,7 +102,7 @@ fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                     expr_match(cx, &arm.body);
                 }
             } else {
-                expr_match(cx, &arms.first().expect("if let doesn't have a single arm").body);
+                expr_match(cx, &arms.first().expect("`if let` doesn't have a single arm").body);
             }
         },
         // skip if it already has a return statement

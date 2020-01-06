@@ -449,7 +449,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
                         "Found an empty line after an outer attribute. \
-                         Perhaps you forgot to add a '!' to make it an inner attribute?",
+                         Perhaps you forgot to add a `!` to make it an inner attribute?",
                     );
                 }
             }
@@ -520,7 +520,7 @@ impl EarlyLintPass for DeprecatedCfgAttribute {
                     cx,
                     DEPRECATED_CFG_ATTR,
                     attr.span,
-                    "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
+                    "`cfg_attr` is deprecated for rustfmt and got replaced by `tool_attributes`",
                     "use",
                     "#[rustfmt::skip]".to_string(),
                     Applicability::MachineApplicable,

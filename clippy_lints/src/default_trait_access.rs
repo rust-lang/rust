@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     pub DEFAULT_TRAIT_ACCESS,
     pedantic,
-    "checks for literal calls to Default::default()"
+    "checks for literal calls to `Default::default()`"
 }
 
 declare_lint_pass!(DefaultTraitAccess => [DEFAULT_TRAIT_ACCESS]);
@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                                 cx,
                                 DEFAULT_TRAIT_ACCESS,
                                 expr.span,
-                                &format!("Calling {} is more clear than this expression", replacement),
+                                &format!("Calling `{}` is more clear than this expression", replacement),
                                 "try",
                                 replacement,
                                 Applicability::Unspecified, // First resolve the TODO above

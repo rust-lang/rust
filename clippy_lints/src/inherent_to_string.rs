@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// ```
     pub INHERENT_TO_STRING_SHADOW_DISPLAY,
     correctness,
-    "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait "
+    "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait"
 }
 
 declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_SHADOW_DISPLAY]);

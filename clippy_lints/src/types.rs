@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// ```
     pub LINKEDLIST,
     pedantic,
-    "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque"
+    "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a `VecDeque`"
 }
 
 declare_clippy_lint! {
@@ -316,7 +316,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
                         LINKEDLIST,
                         hir_ty.span,
                         "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                        "a VecDeque might work",
+                        "a `VecDeque` might work",
                     );
                     return; // don't recurse into the type
                 }
@@ -464,7 +464,7 @@ declare_clippy_lint! {
     /// ```
     pub LET_UNIT_VALUE,
     style,
-    "creating a let binding to a value of unit type, which usually can't be used afterwards"
+    "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
 declare_lint_pass!(LetUnitValue => [LET_UNIT_VALUE]);
@@ -998,7 +998,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, 
         CAST_LOSSLESS,
         expr.span,
         &format!(
-            "casting {} to {} may become silently lossy if you later change the type",
+            "casting `{}` to `{}` may become silently lossy if you later change the type",
             cast_from, cast_to
         ),
         "try",
@@ -1053,7 +1053,10 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr<'_>, op: &Expr<'_>, 
         cx,
         CAST_SIGN_LOSS,
         expr.span,
-        &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
+        &format!(
+            "casting `{}` to `{}` may lose the sign of the value",
+            cast_from, cast_to
+        ),
     );
 }
 
@@ -1098,7 +1101,7 @@ fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cast
             CAST_POSSIBLE_TRUNCATION,
             expr.span,
             &format!(
-                "casting {} to {} may truncate the value{}",
+                "casting `{}` to `{}` may truncate the value{}",
                 cast_from,
                 cast_to,
                 match suffix_truncation {
@@ -1115,7 +1118,7 @@ fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cast
             CAST_POSSIBLE_WRAP,
             expr.span,
             &format!(
-                "casting {} to {} may wrap around the value{}",
+                "casting `{}` to `{}` may wrap around the value{}",
                 cast_from,
                 cast_to,
                 match suffix_wrap {
@@ -1194,7 +1197,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                                 cx,
                                 UNNECESSARY_CAST,
                                 expr.span,
-                                &format!("casting integer literal to {} is unnecessary", cast_to),
+                                &format!("casting integer literal to `{}` is unnecessary", cast_to),
                                 "try",
                                 format!("{}_{}", n, cast_to),
                                 Applicability::MachineApplicable,
@@ -1256,14 +1259,17 @@ fn lint_numeric_casts<'tcx>(
                 cx,
                 CAST_POSSIBLE_TRUNCATION,
                 expr.span,
-                &format!("casting {} to {} may truncate the value", cast_from, cast_to),
+                &format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to),
             );
             if !cast_to.is_signed() {
                 span_lint(
                     cx,
                     CAST_SIGN_LOSS,
                     expr.span,
-                    &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
+                    &format!(
+                        "casting `{}` to `{}` may lose the sign of the value",
+                        cast_from, cast_to
+                    ),
                 );
             }
         },
@@ -1278,7 +1284,7 @@ fn lint_numeric_casts<'tcx>(
                     cx,
                     CAST_POSSIBLE_TRUNCATION,
                     expr.span,
-                    "casting f64 to f32 may truncate the value",
+                    "casting `f64` to `f32` may truncate the value",
                 );
             }
             if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.kind, &cast_to.kind) {
@@ -1550,7 +1556,7 @@ declare_clippy_lint! {
     /// ```
     pub CHAR_LIT_AS_U8,
     complexity,
-    "casting a character literal to u8 truncates"
+    "casting a character literal to `u8` truncates"
 }
 
 declare_lint_pass!(CharLitAsU8 => [CHAR_LIT_AS_U8]);
@@ -1742,7 +1748,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                         AlwaysFalse => "this comparison is always false".to_owned(),
                         AlwaysTrue => "this comparison is always true".to_owned(),
                         InequalityImpossible => format!(
-                            "the case where the two sides are not equal never occurs, consider using {} == {} \
+                            "the case where the two sides are not equal never occurs, consider using `{} == {}` \
                              instead",
                             snippet(cx, lhs.span, "lhs"),
                             snippet(cx, rhs.span, "rhs")
@@ -1750,7 +1756,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                     };
 
                     let help = format!(
-                        "because {} is the {} value for this type, {}",
+                        "because `{}` is the {} value for this type, {}",
                         snippet(cx, culprit.expr.span, "x"),
                         match culprit.which {
                             Minimum => "minimum",
@@ -1813,7 +1819,7 @@ impl FullInt {
 impl PartialEq for FullInt {
     #[must_use]
     fn eq(&self, other: &Self) -> bool {
-        self.partial_cmp(other).expect("partial_cmp only returns Some(_)") == Ordering::Equal
+        self.partial_cmp(other).expect("`partial_cmp` only returns `Some(_)`") == Ordering::Equal
     }
 }
 
@@ -1832,7 +1838,7 @@ impl Ord for FullInt {
     #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other)
-            .expect("partial_cmp for FullInt can never return None")
+            .expect("`partial_cmp` for FullInt can never return `None`")
     }
 }
 
@@ -2404,7 +2410,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
                     cx,
                     CAST_REF_TO_MUT,
                     expr.span,
-                    "casting &T to &mut T may cause undefined behaviour, consider instead using an UnsafeCell",
+                    "casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`",
                 );
             }
         }

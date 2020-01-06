@@ -61,7 +61,7 @@ impl EarlyLintPass for IfNotElse {
                             IF_NOT_ELSE,
                             item.span,
                             "Unnecessary boolean `not` operation",
-                            "remove the `!` and swap the blocks of the if/else",
+                            "remove the `!` and swap the blocks of the `if`/`else`",
                         );
                     },
                     ExprKind::Binary(ref kind, _, _) if kind.node == BinOpKind::Ne => {
@@ -70,7 +70,7 @@ impl EarlyLintPass for IfNotElse {
                             IF_NOT_ELSE,
                             item.span,
                             "Unnecessary `!=` operation",
-                            "change to `==` and swap the blocks of the if/else",
+                            "change to `==` and swap the blocks of the `if`/`else`",
                         );
                     },
                     _ => (),

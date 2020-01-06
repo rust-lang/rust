@@ -154,7 +154,7 @@ impl Return {
                     return;
                 }
 
-                span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+                span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
                     if let Some(snippet) = snippet_opt(cx, inner_span) {
                         db.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
                     }
@@ -162,7 +162,7 @@ impl Return {
             },
             None => match replacement {
                 RetReplacement::Empty => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
                         db.span_suggestion(
                             ret_span,
                             "remove `return`",
@@ -172,7 +172,7 @@ impl Return {
                     });
                 },
                 RetReplacement::Block => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
                         db.span_suggestion(
                             ret_span,
                             "replace `return` with an empty block",
@@ -211,9 +211,9 @@ impl Return {
                     cx,
                     LET_AND_RETURN,
                     retexpr.span,
-                    "returning the result of a let binding from a block",
+                    "returning the result of a `let` binding from a block",
                     |err| {
-                        err.span_label(local.span, "unnecessary let binding");
+                        err.span_label(local.span, "unnecessary `let` binding");
 
                         if let Some(snippet) = snippet_opt(cx, initexpr.span) {
                             err.multipart_suggestion(

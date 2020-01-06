@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     pub UNNECESSARY_UNWRAP,
     complexity,
-    "checks for calls of unwrap[_err]() that cannot fail"
+    "checks for calls of `unwrap[_err]()` that cannot fail"
 }
 
 declare_clippy_lint! {
@@ -58,7 +58,7 @@ declare_clippy_lint! {
     /// This code will always panic. The if condition should probably be inverted.
     pub PANICKING_UNWRAP,
     correctness,
-    "checks for calls of unwrap[_err]() that will always fail"
+    "checks for calls of `unwrap[_err]()` that will always fail"
 }
 
 /// Visitor that keeps track of which variables are unwrappable.
