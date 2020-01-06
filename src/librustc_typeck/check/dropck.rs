@@ -2,16 +2,15 @@ use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::util::common::ErrorReported;
-use rustc::infer::outlives::env::OutlivesEnvironment;
-use rustc::infer::{InferOk, SuppressRegionErrors};
 use rustc::middle::region;
-use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Predicate, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
-
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{InferOk, SuppressRegionErrors, TyCtxtInferExt};
+use rustc_infer::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc_span::Span;
 
 /// This function confirms that the `Drop` implementation identified by

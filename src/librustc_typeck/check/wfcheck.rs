@@ -1,10 +1,8 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
 use rustc::session::parse::feature_err;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -13,6 +11,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
+use rustc_infer::infer::opaque_types::may_define_opaque_type;
+use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
@@ -223,7 +223,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         _ => {}
     }
     if !trait_should_be_self.is_empty() {
-        if rustc::traits::object_safety_violations(tcx, trait_def_id).is_empty() {
+        if rustc_infer::traits::object_safety_violations(tcx, trait_def_id).is_empty() {
             return;
         }
         let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
