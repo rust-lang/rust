@@ -6,6 +6,7 @@
 // ignore-cloudabi no execve
 // ignore-emscripten no execve
 // ignore-sgx no execve
+// ignore-vxworks no execve
 // no-prefer-dynamic
 
 #![feature(rustc_private)]
