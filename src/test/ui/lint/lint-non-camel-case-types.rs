@@ -23,6 +23,7 @@ enum Foo5 {
 }
 
 trait foo6 { //~ ERROR trait `foo6` should have an upper camel case name
+    type foo7; //~ ERROR associated type `foo7` should have an upper camel case name
     fn dummy(&self) { }
 }
 
