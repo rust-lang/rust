@@ -165,6 +165,7 @@ pub mod arithmetic;
 pub mod as_conversions;
 pub mod assertions_on_constants;
 pub mod assign_ops;
+pub mod atomic_ordering;
 pub mod attrs;
 pub mod bit_mask;
 pub mod blacklisted_name;
@@ -466,6 +467,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
         &assign_ops::ASSIGN_OP_PATTERN,
         &assign_ops::MISREFACTORED_ASSIGN_OP,
+        &atomic_ordering::INVALID_ATOMIC_ORDERING,
         &attrs::DEPRECATED_CFG_ATTR,
         &attrs::DEPRECATED_SEMVER,
         &attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
@@ -984,6 +986,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
+    store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1089,6 +1092,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
         LintId::of(&assign_ops::MISREFACTORED_ASSIGN_OP),
+        LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
@@ -1509,6 +1513,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
 
     store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
         LintId::of(&approx_const::APPROX_CONSTANT),
+        LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::USELESS_ATTRIBUTE),
         LintId::of(&bit_mask::BAD_BIT_MASK),
