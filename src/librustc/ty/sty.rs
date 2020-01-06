@@ -13,11 +13,10 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
-use crate::util::captures::Captures;
+use polonius_engine::Atom;
+use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-
-use polonius_engine::Atom;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Symbol};

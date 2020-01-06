@@ -67,6 +67,7 @@ macro_rules! unlikely {
 pub mod base_n;
 pub mod binary_search_util;
 pub mod box_region;
+pub mod captures;
 pub mod const_cstr;
 pub mod flock;
 pub mod fx;
