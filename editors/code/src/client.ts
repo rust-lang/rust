@@ -1,5 +1,6 @@
 import { homedir } from 'os';
 import * as lc from 'vscode-languageclient';
+import { spawnSync } from 'child_process';
 
 import { window, workspace } from 'vscode';
 import { Config } from './config';
@@ -13,6 +14,9 @@ export function createClient(config: Config): lc.LanguageClient {
     }
 
     const command = expandPathResolving(config.raLspServerPath);
+    if (spawnSync(command, ["--version"]).status !== 0) {
+        window.showErrorMessage(`Unable to execute '${command} --version'`);
+    }
     const run: lc.Executable = {
         command,
         options: { cwd: folder },
