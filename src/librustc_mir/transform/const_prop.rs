@@ -74,6 +74,31 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
+        // Check if it's even possible to satisy the 'where' clauses
+        // for this item.
+        // This branch will never be taken for any normal function.
+        // However, it's possible to `#!feature(trivial_bounds)]` to write
+        // a function with impossible to satisfy clauses, e.g.:
+        // `fn foo() where String: Copy {}`
+        //
+        // We don't usually need to worry about this kind of case,
+        // since we would get a compilation error if the user tried
+        // to call it. However, since we can do const propagation
+        // even without any calls to the function, we need to make
+        // sure that it even makes sense to try to evaluate the body.
+        // If there are unsatisfiable where clauses, then all bets are
+        // off, and we just give up.
+        if !tcx.substitute_normalize_and_test_predicates((
+            source.def_id(),
+            InternalSubsts::identity_for_item(tcx, source.def_id()),
+        )) {
+            trace!(
+                "ConstProp skipped for item with unsatisfiable predicates: {:?}",
+                source.def_id()
+            );
+            return;
+        }
+
         trace!("ConstProp starting for {:?}", source.def_id());
 
         let dummy_body = &Body::new(
