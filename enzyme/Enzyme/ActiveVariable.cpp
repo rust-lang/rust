@@ -171,6 +171,9 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
 // This function looks for recusion in the trace and removes the cycle
 // We should always prefer using the older version of this if possible (to ensure that type info is kept coming in)
 void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
+    //llvm::errs() << "adding to cycle: [";
+    //for(auto c: newtrace) llvm::errs() << *c << ",";
+    //llvm::errs() << "] call " << *call << "\n";
     for(int i=newtrace.size()-1; i>=0; i--) {
         if (newtrace[i] == call) {
             bool failedcycle = false;
@@ -202,17 +205,27 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
     //assert(newtrace.size() < 12);
 }
 
+typedef std::tuple<const std::map<Argument*, DataType>, Value*,bool> IntSeenKey;
+typedef std::tuple<const std::map<Argument*, DataType>, Value*> PtrSeenKey;
 
-bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
+void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const std::map<Argument*, DataType> &oldTypeInfo, const std::vector<CallInst*> newtrace, CallInst* call, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen);
+
+bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
-bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool* sawReturn, bool onlyFirst, std::vector<int> indices = {}) {
-    auto idx = std::tuple<const std::vector<CallInst*>, Value*>(trace, v);
+bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& seen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool* sawReturn, bool onlyFirst, std::vector<int> indices = {}) {
+    auto idx = PtrSeenKey(typeInfo, v);
     if (seen.find(idx) != seen.end()) return false;
     seen.insert(idx);
 
     assert(v->getType()->isPointerTy());
     
     Type* et = cast<PointerType>(v->getType())->getElementType();
+
+    if (auto inst = dyn_cast<Instruction>(v)) {
+        for(auto &pair : typeInfo) {
+            assert(pair.first->getParent() == inst->getParent()->getParent());
+        }
+    }
 
     if (!onlyFirst) {
         if (auto arg = dyn_cast<Argument>(v)) {
@@ -234,7 +247,7 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                         if (fast_tracking) return true;
                         break;
                 }
-            } else if (trace.size() == 0) {
+            } else {
                 llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
                 for(auto &pair : typeInfo) {
                     llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
@@ -454,10 +467,14 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
                         bool subsawReturn=false;
                         std::vector<CallInst*> newtrace(trace);
                         addCallRemovingCycle(newtrace, call);
+                        
+                        std::map<Argument*, DataType> newTypeInfo;
+                        appendArgumentInformation(newTypeInfo, typeInfo, trace, call, intseen, seen, typeseen);
+
                         for(size_t i=0; i<call->getNumArgOperands(); i++) {
                             if (call->getArgOperand(i) == v) {
                                 //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                                if(trackPointer(typeInfo, newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, &subsawReturn, onlyFirst, indices)) {
+                                if(trackPointer(newTypeInfo, newtrace, a, intseen, seen, typeseen, floatingUse, pointerUse, intUse, &subsawReturn, onlyFirst, indices)) {
                                     if (fast_tracking) return true;
                                 }
                             }
@@ -534,7 +551,7 @@ bool trackPointer(const std::map<Argument*, DataType> typeInfo, const std::vecto
     return false;
 }
 
-void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const std::vector<CallInst*> newtrace, CallInst* call, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen) {
+void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const std::map<Argument*, DataType> &oldTypeInfo, const std::vector<CallInst*> oldtrace, CallInst* call, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen) {
         int argnum = 0;
 
         for(auto &arg : call->getCalledFunction()->args()) {
@@ -544,11 +561,11 @@ void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const st
             bool intUse = false;
             if (auto pt = dyn_cast<PointerType>(arg.getType())) {
                 if (pt->getElementType()->isIntOrIntVectorTy()) {
-                    trackPointer(typeInfo, newtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, /*sawreturn*/nullptr, /*onlyfirst*/false);
+                    trackPointer(oldTypeInfo, oldtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, /*sawreturn*/nullptr, /*onlyfirst*/false);
                 }
             } else if (arg.getType()->isIntOrIntVectorTy()) {
                 bool unknownuse = false;
-                trackInt(typeInfo, newtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknown*/false, nullptr);
+                trackInt(oldTypeInfo, oldtrace, call->getArgOperand(argnum), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownuse, /*shouldconsiderunknown*/false, nullptr);
             }
             if (floatingUse && !pointerUse && !intUse) dt = DataType(floatingUse);
             if (!floatingUse && pointerUse && !intUse) dt = DataType(IntType::Pointer);
@@ -558,14 +575,15 @@ void appendArgumentInformation(std::map<Argument*, DataType> &typeInfo, const st
         }
 }
 
-bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen, std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
-    auto idx = std::tuple<const std::vector<CallInst*>, Value*, bool>(trace, v, shouldConsiderUnknownUse);
+bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+    auto idx = IntSeenKey(typeInfo, v, shouldConsiderUnknownUse);
     //llvm::errs() << "trackingInt" << *v << " [";
     //for(auto a : trace) llvm::errs() << a << "," ;
     //llvm::errs() << "]\n";
     if (intseen.find(idx) != intseen.end()) {
         if (intseen[idx] == IntType::Integer) {
             intUse = true;
+            return true;
         }
         return false;
     }
@@ -574,6 +592,12 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
     assert(v);
     assert(v->getType());
     assert(v->getType()->isIntOrIntVectorTy());
+    
+    if (auto inst = dyn_cast<Instruction>(v)) {
+        for(auto &pair : typeInfo) {
+            assert(pair.first->getParent() == inst->getParent()->getParent());
+        }
+    }
         
     if (auto arg = dyn_cast<Argument>(v)) {
         auto fd = typeInfo.find(arg);
@@ -594,19 +618,22 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                     if (fast_tracking) return true;
                     break;
             }
-        } else if (trace.size() == 0) {
-            llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
-            bool sameNAme = false;
-            for(auto &pair : typeInfo) {
-                if (arg->getName() == pair.first->getName()) sameNAme = true;
-                llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
-            }
-
-            if (typeInfo.size() != 0 && sameNAme) //} && arg->getParent()->getName()) 
+        } else {
+            if (trace.size()) assert(typeInfo.size());
+            if (typeInfo.size() != 0) {
+                llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
+                for(auto &pair : typeInfo) {
+                    llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
+                }
                 assert(0 && "no arg for tracking");
-            //assert(0 && "no arg for tracking");
+            }
         }
     }
+
+    //llvm::errs() << "tracking int: " << *v << " \t " << &intseen << "\n";
+    //llvm::errs() << "   +[";
+    //for(auto x: trace) llvm::errs() << *x << ",";
+    //llvm::errs()<<"]\n";
 
     if (isa<UndefValue>(v)) {
         intUse = true;
@@ -759,10 +786,12 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
                     bool shouldHandleReturn=false;
                     std::vector<CallInst*> newtrace(trace);
                     addCallRemovingCycle(newtrace, call);
+                    std::map<Argument*, DataType> newTypeInfo;
+                    appendArgumentInformation(newTypeInfo, typeInfo, trace, call, intseen, ptrseen, typeseen);
                     for(size_t i=0; i<call->getNumArgOperands(); i++) {
                         if (call->getArgOperand(i) == v) {
                             //TODO consider allowing return to be ignored as an unknown use below, so long as we also then look at use of call value itself
-                            if(trackInt(typeInfo, newtrace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
+                            if(trackInt(newTypeInfo, newtrace, a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldUnknownReturn*/false, &shouldHandleReturn)) {
                                 if (fast_tracking) return true;
                             }
                         }
@@ -929,17 +958,14 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
     if (auto bi = dyn_cast<BinaryOperator>(v)) {
 
         bool intUse0 = false, intUse1 = false;
-        std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
-        SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool fakeunknownuse0 = false;
         
-        if (trackInt(typeInfo, trace, bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
+        if (trackInt(typeInfo, trace, bi->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
             if (fast_tracking) return true;
         }
 
         if (intUse0) {
-            if (trackInt(typeInfo, trace, bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0, true) && (floatingUse || pointerUse)) {
+            if (trackInt(typeInfo, trace, bi->getOperand(1), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse1, fakeunknownuse0, true) && (floatingUse || pointerUse)) {
                 if (fast_tracking) return true;
             }
         }
@@ -956,29 +982,18 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             }
             pointerUse |= pointer
                 */
-            intseen.insert(intseen0.begin(), intseen0.end());
-            
-            ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
-            
-            typeseen.insert(typeseen0.begin(), typeseen0.end());
             if (fast_tracking) return true;
         }
     }
     
     if (auto phi = dyn_cast<PHINode>(v)) {
-        std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
-        SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool allintUse = true;
         for (auto& val : phi->incoming_values() ) {
             if (!isa<Value>(&val)) continue;
 
             bool intUse0 = false;
             bool fakeunknownuse0 = false;
-            if ( trackInt(typeInfo, trace, cast<Value>(&val), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
-                intseen.insert(intseen0.begin(), intseen0.end());
-                ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
-                typeseen.insert(typeseen0.begin(), typeseen0.end());
+            if ( trackInt(typeInfo, trace, cast<Value>(&val), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
 
                 if (fast_tracking) return true;
             }
@@ -991,36 +1006,24 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             intUse = true;
             intseen[idx] = IntType::Integer;
             
-            intseen.insert(intseen0.begin(), intseen0.end());
-            
-            ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
-            
-            typeseen.insert(typeseen0.begin(), typeseen0.end());
             if (fast_tracking) return true;
         }
     }
     
     if (auto ci = dyn_cast<CallInst>(v)) {
         if (auto F = ci->getCalledFunction()) {
-            std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
-            std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen0(ptrseen.begin(), ptrseen.end());
-            SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
             bool allintUse = true;
             std::vector<CallInst*> newtrace(trace);
             addCallRemovingCycle(newtrace, ci);
-            std::map<Argument*, DataType> newTypeInfo(typeInfo);
-            appendArgumentInformation(newTypeInfo, newtrace, ci, intseen, ptrseen, typeseen);
+            std::map<Argument*, DataType> newTypeInfo;
+            appendArgumentInformation(newTypeInfo, typeInfo, trace, ci, intseen, ptrseen, typeseen);
 
             for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
                 if (auto ri = dyn_cast<ReturnInst>(&*I)) {
                     auto rv = ri->getReturnValue();
                     bool intUse0 = false;
                     bool fakeunknownuse0 = false;
-                    if ( trackInt(newTypeInfo, newtrace, rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
-                        intseen.insert(intseen0.begin(), intseen0.end());
-                        ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
-                        typeseen.insert(typeseen0.begin(), typeseen0.end());
-
+                    if ( trackInt(newTypeInfo, newtrace, rv, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
                         if (fast_tracking) return true;
                     }
                     if (!intUse0) {
@@ -1033,12 +1036,6 @@ bool trackInt(const std::map<Argument*, DataType> typeInfo, const std::vector<Ca
             if (allintUse) {
                 intUse = true;
                 intseen[idx] = IntType::Integer;
-                
-                intseen.insert(intseen0.begin(), intseen0.end());
-                
-                ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
-                
-                typeseen.insert(typeseen0.begin(), typeseen0.end());
                 if (fast_tracking) return true;
             }
         }
@@ -1089,8 +1086,8 @@ DataType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* 
         Type* floatingUse = nullptr;
         bool pointerUse = false;
         bool intUse = false;
-        std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen;
-        std::set<std::tuple<const std::vector<CallInst*>, Value*>> ptrseen;
+        std::map<IntSeenKey, IntType> intseen;
+        std::set<PtrSeenKey> ptrseen;
         
         SmallPtrSet<Type*, 4> typeseen;
 
@@ -1154,13 +1151,13 @@ DataType isIntPointerASecretFloat(const std::map<Argument*, DataType> typeInfo, 
     bool pointerUse = false;
     bool intUse = false;
 
-    std::map<std::tuple<const std::vector<CallInst*>, Value*,bool>, IntType> intseen;
     SmallPtrSet<Type*, 4> typeseen;
+        std::map<IntSeenKey, IntType> intseen;
+        std::set<PtrSeenKey> ptrseen;
 
-    std::set<std::tuple<const std::vector<CallInst*>, Value*>> seen;
     std::vector<CallInst*> trace;
 
-    trackPointer(typeInfo, trace, val, intseen, seen, typeseen, floatingUse, pointerUse, intUse, nullptr, onlyFirst);
+    trackPointer(typeInfo, trace, val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, nullptr, onlyFirst);
 
     if (pointerUse && (floatingUse == nullptr) && !intUse) return IntType::Pointer; 
     if (!pointerUse && (floatingUse != nullptr) && !intUse) return floatingUse;

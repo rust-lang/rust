@@ -1450,7 +1450,7 @@ void handleAugmentedCallInst(const std::map<Argument*, DataType> typeInfo, Basic
             }
         }
 
-      llvm::errs() << " augmp op: " << *op << " modifyPrimal: " << modifyPrimal << " subretused: " << subretused << " subdifferentialreturn: " << subdifferentialreturn << " opuses: " << op->getNumUses() << " ipcount: " << gutils->invertedPointers.count(op) << " constantval: " << gutils->isConstantValue(op) << "\n";
+      //llvm::errs() << " augmp op: " << *op << " modifyPrimal: " << modifyPrimal << " subretused: " << subretused << " subdifferentialreturn: " << subdifferentialreturn << " opuses: " << op->getNumUses() << " ipcount: " << gutils->invertedPointers.count(op) << " constantval: " << gutils->isConstantValue(op) << "\n";
 
       if (!modifyPrimal) {
         if (hasNonReturnUse && !op->doesNotAccessMemory()) {
@@ -1741,7 +1741,7 @@ void handleGradientCallInst(const std::map<Argument*, DataType> typeInfo, BasicB
     return;
   }
 
-  llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
+  //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
   if (gutils->isConstantInstruction(op)) {
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       IRBuilder<> BuilderZ(op);

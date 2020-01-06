@@ -239,13 +239,13 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
     //llvm::errs() <<  "end returnvals:\n";
     SmallPtrSet<Value*,4> constant_values;
     SmallPtrSet<Value*,4> nonconstant_values;
-    for(auto a : returnvals) {
-        if (differentialReturn) {
-            nonconstant_values.insert(a);
-        } else {
-            constant_values.insert(a);
+
+    if (differentialReturn) {
+        for(auto a : returnvals) {
+                nonconstant_values.insert(a);
         }
     }
+
     auto res = new GradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
     return res;
 }
@@ -260,12 +260,10 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, AAResu
   auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
     SmallPtrSet<Value*,4> constant_values;
     SmallPtrSet<Value*,4> nonconstant_values;
+    if (differentialReturn) {
     for(auto a : returnvals) {
-        if (differentialReturn) {
-            nonconstant_values.insert(a);
-        } else {
-            constant_values.insert(a);
-        }
+        nonconstant_values.insert(a);
+    }
     }
   auto res = new DiffeGradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
   return res;
