@@ -70,7 +70,7 @@ pub struct TcpStream(net_imp::TcpStream);
 ///     // ...
 /// }
 ///
-/// fn main() -> io::Result<()> {
+/// fn main() -> std::io::Result<()> {
 ///     let listener = TcpListener::bind("127.0.0.1:80")?;
 ///
 ///     // accept connections and process them serially
