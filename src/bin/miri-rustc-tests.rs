@@ -7,7 +7,7 @@ extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_interface;
 extern crate rustc_metadata;
-extern crate syntax;
+extern crate rustc_span;
 
 use std::io;
 use std::io::Write;
@@ -40,7 +40,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 impl<'tcx, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'tcx> {
                     fn visit_item(&mut self, i: &'hir hir::Item) {
                         if let hir::ItemKind::Fn(.., body_id) = i.kind {
-                            if i.attrs.iter().any(|attr| attr.check_name(syntax::symbol::sym::test))
+                            if i.attrs.iter().any(|attr| attr.check_name(rustc_span::symbol::sym::test))
                             {
                                 let config = MiriConfig {
                                     validate: true,
