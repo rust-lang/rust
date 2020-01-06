@@ -3,7 +3,7 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use syntax::source_map::FileName;
+use rustc_span::FileName;
 
 use cranelift_codegen::binemit::CodeOffset;
 

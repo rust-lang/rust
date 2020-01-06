@@ -207,7 +207,7 @@ fn run_aot(
 
     let metadata_module = if need_metadata_module {
         let _timer = tcx.prof.generic_activity("codegen crate metadata");
-        let (metadata_cgu_name, tmp_file) = rustc::util::common::time(tcx.sess, "write compressed metadata", || {
+        let (metadata_cgu_name, tmp_file) = tcx.sess.time("write compressed metadata", || {
             use rustc::mir::mono::CodegenUnitNameBuilder;
 
             let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);

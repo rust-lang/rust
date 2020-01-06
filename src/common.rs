@@ -358,7 +358,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         let const_loc = self.tcx.const_caller_location((
-            syntax::symbol::Symbol::intern(&caller.file.name.to_string()),
+            rustc_span::symbol::Symbol::intern(&caller.file.name.to_string()),
             caller.line as u32,
             caller.col_display as u32 + 1,
         ));

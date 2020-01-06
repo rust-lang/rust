@@ -1,4 +1,4 @@
-use syntax::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
 use rustc::session::Session;
 

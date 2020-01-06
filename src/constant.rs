@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use syntax::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use rustc::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
@@ -391,6 +391,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn find_mir_or_eval_fn(
         _: &mut InterpCx<'mir, 'tcx, Self>,
+        _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<(PlaceTy<'tcx>, BasicBlock)>,

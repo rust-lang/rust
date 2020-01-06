@@ -13,6 +13,7 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_session;
+extern crate rustc_span;
 extern crate rustc_target;
 extern crate syntax;
 
@@ -64,7 +65,7 @@ mod prelude {
     pub use std::convert::{TryFrom, TryInto};
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::source_map::{Pos, Span};
+    pub use rustc_span::{Pos, Span};
 
     pub use rustc::bug;
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -219,7 +220,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let _timer = sess.prof.generic_activity("link_crate");
 
-        rustc::util::common::time(sess, "linking", || {
+        sess.time("linking", || {
             let target_cpu = crate::target_triple(sess).to_string();
             link_binary::<crate::archive::ArArchiveBuilder<'_>>(
                 sess,
