@@ -18,7 +18,7 @@ error: using `clone` on a `Copy` type
 LL |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
-error: using '.clone()' on a ref-counted pointer
+error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:39:5
    |
 LL |     rc.clone();
@@ -26,25 +26,25 @@ LL |     rc.clone();
    |
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
-error: using '.clone()' on a ref-counted pointer
+error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:42:5
    |
 LL |     arc.clone();
    |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
-error: using '.clone()' on a ref-counted pointer
+error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:45:5
    |
 LL |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
-error: using '.clone()' on a ref-counted pointer
+error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:48:5
    |
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
-error: using '.clone()' on a ref-counted pointer
+error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:52:33
    |
 LL |     let _: Arc<dyn SomeTrait> = x.clone();

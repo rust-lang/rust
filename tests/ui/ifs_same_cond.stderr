@@ -1,4 +1,4 @@
-error: this `if` has the same condition as a previous if
+error: this `if` has the same condition as a previous `if`
   --> $DIR/ifs_same_cond.rs:9:15
    |
 LL |     } else if b {
@@ -11,7 +11,7 @@ note: same as this
 LL |     if b {
    |        ^
 
-error: this `if` has the same condition as a previous if
+error: this `if` has the same condition as a previous `if`
   --> $DIR/ifs_same_cond.rs:14:15
    |
 LL |     } else if a == 1 {
@@ -23,7 +23,7 @@ note: same as this
 LL |     if a == 1 {
    |        ^^^^^^
 
-error: this `if` has the same condition as a previous if
+error: this `if` has the same condition as a previous `if`
   --> $DIR/ifs_same_cond.rs:20:15
    |
 LL |     } else if 2 * a == 1 {

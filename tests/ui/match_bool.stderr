@@ -13,7 +13,7 @@ LL | /     match test {
 LL | |         true => 0,
 LL | |         false => 42,
 LL | |     };
-   | |_____^ help: consider using an if/else expression: `if test { 0 } else { 42 }`
+   | |_____^ help: consider using an `if`/`else` expression: `if test { 0 } else { 42 }`
    |
    = note: `-D clippy::match-bool` implied by `-D warnings`
 
@@ -24,7 +24,7 @@ LL | /     match option == 1 {
 LL | |         true => 1,
 LL | |         false => 0,
 LL | |     };
-   | |_____^ help: consider using an if/else expression: `if option == 1 { 1 } else { 0 }`
+   | |_____^ help: consider using an `if`/`else` expression: `if option == 1 { 1 } else { 0 }`
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:15:5
@@ -37,7 +37,7 @@ LL | |         },
 LL | |     };
    | |_____^
    |
-help: consider using an if/else expression
+help: consider using an `if`/`else` expression
    |
 LL |     if !test {
 LL |     println!("Noooo!");
@@ -55,7 +55,7 @@ LL | |         _ => (),
 LL | |     };
    | |_____^
    |
-help: consider using an if/else expression
+help: consider using an `if`/`else` expression
    |
 LL |     if !test {
 LL |     println!("Noooo!");
@@ -73,7 +73,7 @@ LL | |         _ => (),
 LL | |     };
    | |_____^
    |
-help: consider using an if/else expression
+help: consider using an `if`/`else` expression
    |
 LL |     if !(test && test) {
 LL |     println!("Noooo!");
@@ -100,7 +100,7 @@ LL | |         },
 LL | |     };
    | |_____^
    |
-help: consider using an if/else expression
+help: consider using an `if`/`else` expression
    |
 LL |     if test {
 LL |     println!("Yes!");

@@ -34,7 +34,7 @@ error: You are needlessly cloning iterator elements
   --> $DIR/map_clone.rs:25:29
    |
 LL |     let _ = std::env::args().map(|v| v.clone());
-   |                             ^^^^^^^^^^^^^^^^^^^ help: Remove the map call
+   |                             ^^^^^^^^^^^^^^^^^^^ help: Remove the `map` call
 
 error: aborting due to 6 previous errors
 

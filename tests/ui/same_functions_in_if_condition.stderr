@@ -1,4 +1,4 @@
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:29:15
    |
 LL |     } else if function() {
@@ -11,7 +11,7 @@ note: same as this
 LL |     if function() {
    |        ^^^^^^^^^^
 
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:34:15
    |
 LL |     } else if fn_arg(a) {
@@ -23,7 +23,7 @@ note: same as this
 LL |     if fn_arg(a) {
    |        ^^^^^^^^^
 
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:39:15
    |
 LL |     } else if obj.method() {
@@ -35,7 +35,7 @@ note: same as this
 LL |     if obj.method() {
    |        ^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:44:15
    |
 LL |     } else if obj.method_arg(a) {
@@ -47,7 +47,7 @@ note: same as this
 LL |     if obj.method_arg(a) {
    |        ^^^^^^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:51:15
    |
 LL |     } else if v.pop() == None {
@@ -59,7 +59,7 @@ note: same as this
 LL |     if v.pop() == None {
    |        ^^^^^^^^^^^^^^^
 
-error: this `if` has the same function call as a previous if
+error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:56:15
    |
 LL |     } else if v.len() == 42 {

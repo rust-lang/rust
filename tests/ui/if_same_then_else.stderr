@@ -230,7 +230,7 @@ LL | |         return Ok(&foo[0..]);
 LL | |     } else {
    | |_____^
 
-error: this `if` has the same condition as a previous if
+error: this `if` has the same condition as a previous `if`
   --> $DIR/if_same_then_else.rs:241:15
    |
 LL |     } else if true {

@@ -1,4 +1,4 @@
-error: casting &T to &mut T may cause undefined behaviour, consider instead using an UnsafeCell
+error: casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`
   --> $DIR/cast_ref_to_mut.rs:18:9
    |
 LL |         (*(a as *const _ as *mut String)).push_str(" world");
@@ -6,13 +6,13 @@ LL |         (*(a as *const _ as *mut String)).push_str(" world");
    |
    = note: `-D clippy::cast-ref-to-mut` implied by `-D warnings`
 
-error: casting &T to &mut T may cause undefined behaviour, consider instead using an UnsafeCell
+error: casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`
   --> $DIR/cast_ref_to_mut.rs:19:9
    |
 LL |         *(a as *const _ as *mut _) = String::from("Replaced");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: casting &T to &mut T may cause undefined behaviour, consider instead using an UnsafeCell
+error: casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`
   --> $DIR/cast_ref_to_mut.rs:20:9
    |
 LL |         *(a as *const _ as *mut String) += " world";

@@ -1,4 +1,4 @@
-error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:18:5
    |
 LL | /     let data = match wrapper {
@@ -8,7 +8,7 @@ LL | |     };
    |
    = note: `-D clippy::infallible-destructuring-match` implied by `-D warnings`
 
-error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:39:5
    |
 LL | /     let data = match wrapper {
@@ -16,7 +16,7 @@ LL | |         TupleStruct(i) => i,
 LL | |     };
    | |______^ help: try this: `let TupleStruct(data) = wrapper;`
 
-error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:60:5
    |
 LL | /     let data = match wrapper {
