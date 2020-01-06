@@ -51,19 +51,19 @@ macro_rules! arena_types {
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::dropck_outlives::DropckOutlivesResult<'tcx>
+                        rustc::traits::query::DropckOutlivesResult<'tcx>
                     >
                 >,
             [] normalize_projection_ty:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::normalize::NormalizationResult<'tcx>
+                        rustc::traits::query::NormalizationResult<'tcx>
                     >
                 >,
             [] implied_outlives_bounds:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
+                        Vec<rustc::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
             [] type_op_subtype:

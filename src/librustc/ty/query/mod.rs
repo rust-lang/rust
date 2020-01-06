@@ -19,14 +19,14 @@ use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use crate::session::CrateDisambiguator;
-use crate::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
-use crate::traits::query::method_autoderef::MethodAutoderefStepsResult;
-use crate::traits::query::normalize::NormalizationResult;
-use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
+use crate::traits::query::{
+    DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,
+    OutlivesBound,
 };
 use crate::traits::specialization_graph;
 use crate::traits::Clauses;

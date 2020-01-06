@@ -7,6 +7,7 @@ pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
 
+use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 use crate::ty::subst::SubstsRef;
@@ -21,6 +22,8 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
+
+pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
 
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;

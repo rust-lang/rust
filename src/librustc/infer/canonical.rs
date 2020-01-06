@@ -21,7 +21,7 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use crate::infer::region_constraints::MemberConstraint;
+use crate::infer::MemberConstraint;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 use rustc_index::vec::IndexVec;
