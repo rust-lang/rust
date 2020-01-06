@@ -39,8 +39,23 @@ fn main() {
     // Test that metadata of an absolute path is correct.
     test_metadata(bytes, &path).unwrap();
     // Test that metadata of a relative path is correct.
-    std::env::set_current_dir(tmp).unwrap();
+    std::env::set_current_dir(&tmp).unwrap();
     test_metadata(bytes, &filename).unwrap();
+
+    // Creating a symbolic link should succeed
+    let symlink_path = tmp.join("miri_test_fs_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    // Test that the symbolic link has the same contents as the file.
+    let mut symlink_file = File::open(&symlink_path).unwrap();
+    let mut contents = Vec::new();
+    symlink_file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+    // Test that metadata of a symbolic link is correct.
+    test_metadata(bytes, &symlink_path).unwrap();
+    // Test that the metadata of a symbolic link is correct when not following it.
+    assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
+    // Removing symbolic link should succeed.
+    remove_file(&symlink_path).unwrap();
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
