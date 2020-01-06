@@ -1,10 +1,10 @@
 use super::INEFFICIENT_TO_STRING;
 use crate::utils::{match_def_path, paths, snippet_with_applicability, span_lint_and_then, walk_ptrs_ty_depth};
 use if_chain::if_chain;
-use rustc::hir;
 use rustc::lint::LateContext;
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
 pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {

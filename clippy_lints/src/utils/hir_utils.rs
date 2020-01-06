@@ -1,10 +1,10 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
-use rustc::hir::*;
 use rustc::ich::StableHashingContextProvider;
 use rustc::lint::LateContext;
 use rustc::ty::TypeckTables;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::*;
 use std::hash::Hash;
 use syntax::ast::Name;
 

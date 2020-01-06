@@ -10,11 +10,11 @@ use std::iter;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Predicate, Ty};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol, SymbolStr};
@@ -3163,11 +3163,11 @@ impl OutType {
     fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy<'_>) -> bool {
         let is_unit = |ty: &hir::Ty<'_>| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(&[]));
         match (self, ty) {
-            (Self::Unit, &hir::DefaultReturn(_)) => true,
-            (Self::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
-            (Self::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
-            (Self::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::Return(ref ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
+            (Self::Unit, &hir::FunctionRetTy::DefaultReturn(_)) => true,
+            (Self::Unit, &hir::FunctionRetTy::Return(ref ty)) if is_unit(ty) => true,
+            (Self::Bool, &hir::FunctionRetTy::Return(ref ty)) if is_bool(ty) => true,
+            (Self::Any, &hir::FunctionRetTy::Return(ref ty)) if !is_unit(ty) => true,
+            (Self::Ref, &hir::FunctionRetTy::Return(ref ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
     }

@@ -1,8 +1,8 @@
 use crate::utils::{in_macro, snippet, span_help_and_lint, SpanlessHash};
-use rustc::hir::*;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 #[derive(Copy, Clone)]

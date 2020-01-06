@@ -3,9 +3,9 @@
 
 use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite};
 use matches::matches;
-use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_span::source_map::{CharPos, Span};
 use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;

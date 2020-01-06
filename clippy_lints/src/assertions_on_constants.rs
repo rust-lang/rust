@@ -3,8 +3,8 @@ use crate::utils::paths;
 use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use syntax::ast::LitKind;
 

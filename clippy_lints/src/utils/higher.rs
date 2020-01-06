@@ -6,7 +6,8 @@
 use crate::utils::{is_expn_of, match_def_path, match_qpath, paths};
 use if_chain::if_chain;
 use rustc::lint::LateContext;
-use rustc::{hir, ty};
+use rustc::ty;
+use rustc_hir as hir;
 use syntax::ast;
 
 /// Converts a hir binary operator to the corresponding `ast` type.

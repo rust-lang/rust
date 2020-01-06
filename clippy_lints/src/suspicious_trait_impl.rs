@@ -1,9 +1,9 @@
 use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_hir as hir;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {

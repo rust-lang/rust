@@ -1,8 +1,8 @@
 use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method, walk_ptrs_ty};
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{Adt, Dynamic, Opaque, Param, RawPtr, Ref, Ty, TypeAndMut};
+use rustc_hir as hir;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 

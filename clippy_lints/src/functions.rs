@@ -4,12 +4,14 @@ use crate::utils::{
     type_is_unsafe_function,
 };
 use matches::matches;
-use rustc::hir::{self, def::Res, def_id::DefId, intravisit};
+use rustc::hir::intravisit;
 use rustc::impl_lint_pass;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::{def::Res, def_id::DefId};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
@@ -199,16 +201,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         };
 
         let unsafety = match kind {
-            hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
-            hir::intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
-            hir::intravisit::FnKind::Closure(_) => return,
+            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
+            intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
+            intravisit::FnKind::Closure(_) => return,
         };
 
         // don't warn for implementations, it's not their fault
         if !is_impl {
             // don't lint extern functions decls, it's not their fault either
             match kind {
-                hir::intravisit::FnKind::Method(
+                intravisit::FnKind::Method(
                     _,
                     &hir::FnSig {
                         header: hir::FnHeader { abi: Abi::Rust, .. },
@@ -217,7 +219,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                     _,
                     _,
                 )
-                | hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
+                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
                     self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
                 },
                 _ => {},
@@ -397,7 +399,7 @@ impl<'a, 'tcx> Functions {
                     tables,
                 };
 
-                hir::intravisit::walk_expr(&mut v, expr);
+                intravisit::walk_expr(&mut v, expr);
             }
         }
     }
@@ -557,7 +559,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::Unary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
+            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
 

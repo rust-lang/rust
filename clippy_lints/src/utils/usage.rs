@@ -1,8 +1,8 @@
-use rustc::hir::def::Res;
-use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::Res;
+use rustc_hir::*;
 use rustc_typeck::expr_use_visitor::*;
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.

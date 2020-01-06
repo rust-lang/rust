@@ -2,9 +2,9 @@ use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {

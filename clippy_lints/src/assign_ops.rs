@@ -1,9 +1,9 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_session::declare_tool_lint;
 
 use crate::utils::{
@@ -232,7 +232,7 @@ fn lint_misrefactored_assign_op(
 
 #[must_use]
 fn is_commutative(op: hir::BinOpKind) -> bool {
-    use rustc::hir::BinOpKind::*;
+    use rustc_hir::BinOpKind::*;
     match op {
         Add | Mul | And | Or | BitXor | BitAnd | BitOr | Eq | Ne => true,
         Sub | Div | Rem | Shl | Shr | Lt | Le | Ge | Gt => false,

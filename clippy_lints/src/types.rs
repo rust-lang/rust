@@ -5,14 +5,14 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc::hir;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
@@ -1452,7 +1452,7 @@ impl<'a, 'tcx> TypeComplexity {
         for arg in decl.inputs {
             self.check_type(cx, arg);
         }
-        if let Return(ref ty) = decl.output {
+        if let FunctionRetTy::Return(ref ty) = decl.output {
             self.check_type(cx, ty);
         }
     }

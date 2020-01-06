@@ -2,8 +2,8 @@ use crate::utils::*;
 use matches::matches;
 use rustc::declare_lint_pass;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
@@ -78,7 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
         }
         if let Some((check, then, _)) = higher::if_block(&expr) {
             if let ExprKind::Block(block, _) = &check.kind {
-                if block.rules == DefaultBlock {
+                if block.rules == BlockCheckMode::DefaultBlock {
                     if block.stmts.is_empty() {
                         if let Some(ex) = &block.expr {
                             // don't dig into the expression here, just suggest that they remove

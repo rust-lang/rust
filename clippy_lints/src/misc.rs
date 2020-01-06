@@ -2,10 +2,10 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::declare_lint_pass;
 use rustc::hir::intravisit::FnKind;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::{ExpnKind, Span};
 use syntax::ast::LitKind;
@@ -482,7 +482,7 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> boo
 // Return true if `expr` is the result of `signum()` invoked on a float value.
 fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     // The negation of a signum is still a signum
-    if let ExprKind::Unary(UnNeg, ref child_expr) = expr.kind {
+    if let ExprKind::Unary(UnOp::UnNeg, ref child_expr) = expr.kind {
         return is_signum(cx, &child_expr);
     }
 
@@ -544,7 +544,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
     }
 
     let other_gets_derefed = match other.kind {
-        ExprKind::Unary(UnDeref, _) => true,
+        ExprKind::Unary(UnOp::UnDeref, _) => true,
         _ => false,
     };
 

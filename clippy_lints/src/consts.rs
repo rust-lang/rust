@@ -2,13 +2,13 @@
 
 use crate::utils::{clip, higher, sext, unsext};
 use if_chain::if_chain;
-use rustc::hir::def::{DefKind, Res};
-use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::*;
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
@@ -240,9 +240,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
-                UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
-                UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
-                UnDeref => Some(o),
+                UnOp::UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
+                UnOp::UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
+                UnOp::UnDeref => Some(o),
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             ExprKind::Call(ref callee, ref args) => {
