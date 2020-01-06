@@ -213,6 +213,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
+        match *b {
+            BindingMode::ByValue(Mutability::Not) => hir::BindingAnnotation::Unannotated,
+            BindingMode::ByRef(Mutability::Not) => hir::BindingAnnotation::Ref,
+            BindingMode::ByValue(Mutability::Mut) => hir::BindingAnnotation::Mutable,
+            BindingMode::ByRef(Mutability::Mut) => hir::BindingAnnotation::RefMut,
+        }
+    }
+
     fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
         self.pat_with_node_id_of(p, hir::PatKind::Wild)
     }

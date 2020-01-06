@@ -2696,15 +2696,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
-        match *b {
-            BindingMode::ByValue(Mutability::Not) => hir::BindingAnnotation::Unannotated,
-            BindingMode::ByRef(Mutability::Not) => hir::BindingAnnotation::Ref,
-            BindingMode::ByValue(Mutability::Mut) => hir::BindingAnnotation::Mutable,
-            BindingMode::ByRef(Mutability::Mut) => hir::BindingAnnotation::RefMut,
-        }
-    }
-
     fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
         match u {
             CompilerGenerated => hir::UnsafeSource::CompilerGenerated,
