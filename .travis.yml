@@ -32,7 +32,11 @@ install:
   - |
     if [[ -z ${INTEGRATION} ]]; then
       if ! rustup component add rustfmt; then
-        cargo install --git https://github.com/rust-lang/rustfmt --bin rustfmt
+        TARGET=$(rustc -Vv | awk '/host/{print $2}')
+        NIGHTLY=$(curl -s "https://rust-lang.github.io/rustup-components-history/${TARGET}/rustfmt")
+        curl -sSL "https://static.rust-lang.org/dist/${NIGHTLY}/rustfmt-nightly-${TARGET}.tar.xz" | \
+        tar -xJf - --strip-components=3 -C ~/.cargo/bin
+        rm -rf ~/.cargo/bin/doc
       fi
       if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         . $HOME/.nvm/nvm.sh
