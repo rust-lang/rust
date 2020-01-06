@@ -1,13 +1,3 @@
-use rustc::infer::at::ToTrace;
-use rustc::infer::canonical::{Canonical, QueryResponse};
-use rustc::infer::InferCtxt;
-use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
-use rustc::traits::query::type_op::eq::Eq;
-use rustc::traits::query::type_op::normalize::Normalize;
-use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
-use rustc::traits::query::type_op::subtype::Subtype;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
 use rustc::ty::{
@@ -15,6 +5,16 @@ use rustc::ty::{
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::at::ToTrace;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::query::type_op::ascribe_user_type::AscribeUserType;
+use rustc_infer::traits::query::type_op::eq::Eq;
+use rustc_infer::traits::query::type_op::normalize::Normalize;
+use rustc_infer::traits::query::type_op::prove_predicate::ProvePredicate;
+use rustc_infer::traits::query::type_op::subtype::Subtype;
+use rustc_infer::traits::query::{Fallible, NoSolution};
+use rustc_infer::traits::{Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc_span::DUMMY_SP;
 use std::fmt;
 
