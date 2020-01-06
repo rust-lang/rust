@@ -2619,7 +2619,6 @@ mod test_map {
     use crate::cell::RefCell;
     use rand::{thread_rng, Rng};
     use realstd::collections::TryReserveError::*;
-    use realusize;
 
     // https://github.com/rust-lang/rust/issues/62301
     fn _assert_hashmap_is_unwind_safe() {
