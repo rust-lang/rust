@@ -5,19 +5,10 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::opaque_types::GenerateMemberConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::AssertKind;
 use rustc::mir::*;
-use rustc::traits::query::type_op;
-use rustc::traits::query::type_op::custom::CustomTypeOp;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::cast::CastTy;
 use rustc::ty::fold::TypeFoldable;
@@ -32,6 +23,17 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::opaque_types::GenerateMemberConstraints;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{
+    InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
+};
+use rustc_infer::traits::query::type_op;
+use rustc_infer::traits::query::type_op::custom::CustomTypeOp;
+use rustc_infer::traits::query::{Fallible, NoSolution};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow::generic::ResultsCursor;

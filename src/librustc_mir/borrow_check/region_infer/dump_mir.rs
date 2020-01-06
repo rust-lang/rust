@@ -4,7 +4,7 @@
 //! context internal state.
 
 use super::{OutlivesConstraint, RegionInferenceContext};
-use rustc::infer::NLLRegionVariableOrigin;
+use rustc_infer::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
 
 // Room for "'_#NNNNr" before things get misaligned.

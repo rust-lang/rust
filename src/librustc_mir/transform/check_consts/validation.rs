@@ -3,12 +3,13 @@
 use rustc::middle::lang_items;
 use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
-use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{self, TraitEngine};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
