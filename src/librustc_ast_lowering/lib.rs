@@ -445,7 +445,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        impl<'tcx, 'lowering, 'hir> Visitor<'tcx> for MiscCollector<'tcx, 'lowering, 'hir> {
+        impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
                 if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node

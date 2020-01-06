@@ -25,7 +25,7 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
 }
 
-impl<'a, 'lowering, 'hir> ItemLowerer<'a, 'lowering, 'hir> {
+impl ItemLowerer<'_, '_, '_> {
     fn with_trait_impl_ref(&mut self, impl_ref: &Option<TraitRef>, f: impl FnOnce(&mut Self)) {
         let old = self.lctx.is_in_trait_impl;
         self.lctx.is_in_trait_impl = if let &None = impl_ref { false } else { true };
@@ -34,7 +34,7 @@ impl<'a, 'lowering, 'hir> ItemLowerer<'a, 'lowering, 'hir> {
     }
 }
 
-impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
+impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_mod(&mut self, m: &'a Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
         let hir_id = self.lctx.lower_node_id(n);
 
