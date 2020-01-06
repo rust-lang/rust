@@ -11,8 +11,8 @@ trait Int {
 }
 macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
-        fn zero() -> $t { 0 }
-        fn one() -> $t { 1 }
+        fn zero() -> Self { 0 }
+        fn one() -> Self { 1 }
     })*)
 }
 doit! { i8 i16 i32 i64 isize }

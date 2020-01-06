@@ -24,8 +24,8 @@ trait Int:
 
 macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
-        fn zero() -> $t { 0 }
-        fn from_u8(u: u8) -> $t { u as $t }
+        fn zero() -> Self { 0 }
+        fn from_u8(u: u8) -> Self { u as Self }
         fn to_u8(&self) -> u8 { *self as u8 }
         fn to_u16(&self) -> u16 { *self as u16 }
         fn to_u32(&self) -> u32 { *self as u32 }
