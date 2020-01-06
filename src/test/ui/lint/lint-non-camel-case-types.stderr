@@ -46,11 +46,17 @@ error: trait `foo6` should have an upper camel case name
 LL | trait foo6 {
    |       ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo6`
 
+error: associated type `foo7` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:26:10
+   |
+LL |     type foo7;
+   |          ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo7`
+
 error: type parameter `ty` should have an upper camel case name
-  --> $DIR/lint-non-camel-case-types.rs:29:6
+  --> $DIR/lint-non-camel-case-types.rs:30:6
    |
 LL | fn f<ty>(_: ty) {}
    |      ^^ help: convert the identifier to upper camel case: `Ty`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
