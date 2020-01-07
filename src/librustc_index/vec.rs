@@ -120,13 +120,13 @@ macro_rules! newtype_index {
         impl $type {
             $v const MAX_AS_U32: u32 = $max;
 
-            $v const MAX: $type = $type::from_u32_const($max);
+            $v const MAX: Self = Self::from_u32_const($max);
 
             #[inline]
             $v fn from_usize(value: usize) -> Self {
                 assert!(value <= ($max as usize));
                 unsafe {
-                    $type::from_u32_unchecked(value as u32)
+                    Self::from_u32_unchecked(value as u32)
                 }
             }
 
@@ -134,7 +134,7 @@ macro_rules! newtype_index {
             $v fn from_u32(value: u32) -> Self {
                 assert!(value <= $max);
                 unsafe {
-                    $type::from_u32_unchecked(value)
+                    Self::from_u32_unchecked(value)
                 }
             }
 
@@ -152,13 +152,13 @@ macro_rules! newtype_index {
                 ];
 
                 unsafe {
-                    $type { private: value }
+                    Self { private: value }
                 }
             }
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                $type { private: value }
+                Self { private: value }
             }
 
             /// Extracts the value of this index as an integer.
@@ -184,14 +184,14 @@ macro_rules! newtype_index {
             type Output = Self;
 
             fn add(self, other: usize) -> Self {
-                Self::new(self.index() + other)
+                Self::from_usize(self.index() + other)
             }
         }
 
-        impl Idx for $type {
+        impl $crate::vec::Idx for $type {
             #[inline]
             fn new(value: usize) -> Self {
-                Self::from(value)
+                Self::from_usize(value)
             }
 
             #[inline]
@@ -204,39 +204,39 @@ macro_rules! newtype_index {
             #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
-                    &Idx::index(*start),
-                    &Idx::index(*end),
+                    &Self::index(*start),
+                    &Self::index(*end),
                 )
             }
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                ::std::mem::replace(self, Self::new(1))
+                ::std::mem::replace(self, Self::from_u32(1))
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                ::std::mem::replace(self, Self::new(0))
+                ::std::mem::replace(self, Self::from_u32(0))
             }
 
             #[inline]
             fn add_one(&self) -> Self {
-                Self::new(Idx::index(*self) + 1)
+                Self::from_usize(Self::index(*self) + 1)
             }
 
             #[inline]
             fn sub_one(&self) -> Self {
-                Self::new(Idx::index(*self) - 1)
+                Self::from_usize(Self::index(*self) - 1)
             }
 
             #[inline]
             fn add_usize(&self, u: usize) -> Option<Self> {
-                Idx::index(*self).checked_add(u).map(Self::new)
+                Self::index(*self).checked_add(u).map(Self::from_usize)
             }
 
             #[inline]
             fn sub_usize(&self, u: usize) -> Option<Self> {
-                Idx::index(*self).checked_sub(u).map(Self::new)
+                Self::index(*self).checked_sub(u).map(Self::from_usize)
             }
         }
 
@@ -257,14 +257,14 @@ macro_rules! newtype_index {
         impl From<usize> for $type {
             #[inline]
             fn from(value: usize) -> Self {
-                $type::from_usize(value)
+                Self::from_usize(value)
             }
         }
 
         impl From<u32> for $type {
             #[inline]
             fn from(value: u32) -> Self {
-                $type::from_u32(value)
+                Self::from_u32(value)
             }
         }
 
@@ -409,7 +409,7 @@ macro_rules! newtype_index {
     (@decodable $type:ident) => (
         impl ::rustc_serialize::Decodable for $type {
             fn decode<D: ::rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
-                d.read_u32().map(Self::from)
+                d.read_u32().map(Self::from_u32)
             }
         }
     );
@@ -500,7 +500,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (
         $(#[doc = $doc])*
-        pub const $name: $type = $type::from_u32_const($constant);
+        $v const $name: $type = $type::from_u32_const($constant);
         $crate::newtype_index!(
             @derives      [$($derives,)*]
             @attrs        [$(#[$attrs])*]
@@ -839,3 +839,6 @@ impl<I: Idx> FnMut<(usize,)> for IntoIdx<I> {
         I::new(n)
     }
 }
+
+#[cfg(test)]
+mod tests;

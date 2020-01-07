@@ -5,7 +5,6 @@
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_index::vec::Idx;
 use rustc_macros::{symbols, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};

@@ -2,7 +2,7 @@ use crate::rustc::ty::{self, Ty};
 use rustc::infer::region_constraints::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::hash::Hash;
 use std::ops::Index;

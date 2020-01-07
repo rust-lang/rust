@@ -56,7 +56,6 @@ impl fmt::Display for HirId {
 rustc_data_structures::define_id_collections!(HirIdMap, HirIdSet, HirId);
 rustc_data_structures::define_id_collections!(ItemLocalMap, ItemLocalSet, ItemLocalId);
 
-use rustc_index::vec::Idx;
 rustc_index::newtype_index! {
     /// An `ItemLocalId` uniquely identifies something within a given "item-like";
     /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
