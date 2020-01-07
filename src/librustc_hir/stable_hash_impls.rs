@@ -44,12 +44,6 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ItemId {
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItemId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_trait_item_id(*self, hasher)
-    }
-}
-
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Mod<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         hcx.hash_hir_mod(self, hasher)

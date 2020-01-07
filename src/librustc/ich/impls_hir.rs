@@ -66,10 +66,9 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     fn hash_trait_item_id(&mut self, id: hir::TraitItemId, hasher: &mut StableHasher) {
         let hcx = self;
-        let hir::TraitItemId { hir_id } = id;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hir_id.hash_stable(hcx, hasher);
+            id.hash_stable(hcx, hasher);
         })
     }
 

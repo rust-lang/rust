@@ -2345,7 +2345,7 @@ fn associated_item_predicates(
     trait_item_ref: &hir::TraitItemRef,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let trait_item = tcx.hir().trait_item(trait_item_ref.id);
-    let item_def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
+    let item_def_id = tcx.hir().local_def_id(trait_item_ref.id);
     let bounds = match trait_item.kind {
         hir::TraitItemKind::Type(ref bounds, _) => bounds,
         _ => return Vec::new(),

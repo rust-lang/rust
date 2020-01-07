@@ -584,7 +584,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_impl_id = parent_id;
-                                let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
+                                let parent_trait_id = parent_id;
                                 let krate = self.tcx.hir().forest.krate();
 
                                 if !(krate.items.contains_key(&parent_id)
@@ -2052,7 +2052,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {
                     assoc_item_kind =
-                        trait_items.iter().find(|ti| ti.id.hir_id == parent).map(|ti| ti.kind);
+                        trait_items.iter().find(|ti| ti.id == parent).map(|ti| ti.kind);
                 }
                 match *m {
                     hir::TraitMethod::Required(_) => None,

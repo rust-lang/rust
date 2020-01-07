@@ -82,7 +82,7 @@ impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
     fn visit_trait_item(&mut self, item: &'a AssocItem) {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_trait_item(item);
-            let id = hir::TraitItemId { hir_id: hir_item.hir_id };
+            let id = hir_item.hir_id;
             lctx.trait_items.insert(id, hir_item);
             lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
         });
@@ -807,7 +807,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Macro(..) => unimplemented!(),
         };
         hir::TraitItemRef {
-            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id) },
+            id: self.lower_node_id(i.id),
             ident: i.ident,
             span: i.span,
             defaultness: self.lower_defaultness(Defaultness::Default, has_default),

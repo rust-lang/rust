@@ -427,7 +427,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.hir_id);
                     for trait_item_ref in trait_item_refs {
-                        self.private_traits.insert(trait_item_ref.id.hir_id);
+                        self.private_traits.insert(trait_item_ref.id);
                     }
                     return;
                 }

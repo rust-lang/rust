@@ -835,7 +835,7 @@ fn compare_synthetic_generics<'tcx>(
                         // as another generic argument
                         let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
                         let trait_m = tcx.hir().as_local_hir_id(trait_m.def_id)?;
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { hir_id: trait_m });
+                        let trait_m = tcx.hir().trait_item(trait_m);
 
                         let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
                         let impl_m = tcx.hir().impl_item(impl_m);

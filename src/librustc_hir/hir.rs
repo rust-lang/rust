@@ -1799,10 +1799,7 @@ pub struct FnSig<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItemId {
-    pub hir_id: HirId,
-}
+pub type TraitItemId = HirId;
 
 /// Represents an item declaration within a trait declaration,
 /// possibly including a default implementation. A trait item is

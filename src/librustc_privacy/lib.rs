@@ -733,7 +733,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             hir::ItemKind::Trait(.., trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
-                    self.update(trait_item_ref.id.hir_id, item_level);
+                    self.update(trait_item_ref.id, item_level);
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
@@ -802,7 +802,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates();
 
                     for trait_item_ref in trait_item_refs {
-                        let mut reach = self.reach(trait_item_ref.id.hir_id, item_level);
+                        let mut reach = self.reach(trait_item_ref.id, item_level);
                         reach.generics().predicates();
 
                         if trait_item_ref.kind == AssocItemKind::Type
@@ -1942,7 +1942,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
                 for trait_item_ref in trait_item_refs {
                     self.check_assoc_item(
-                        trait_item_ref.id.hir_id,
+                        trait_item_ref.id,
                         trait_item_ref.kind,
                         trait_item_ref.defaultness,
                         item_visibility,
