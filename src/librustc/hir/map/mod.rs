@@ -405,6 +405,14 @@ impl<'hir> Map<'hir> {
         self.forest.krate()
     }
 
+    pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.read(id);
+
+        // N.B., intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.item(id)
+    }
+
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
         self.read(id.hir_id);
 
