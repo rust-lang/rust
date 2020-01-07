@@ -6,7 +6,7 @@ LL |     1isize as i8;
    |
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
 
-error: casting isize to f64 causes a loss of precision on targets with 64-bit wide pointers (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
+error: casting `isize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`isize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size.rs:15:5
    |
 LL |     x0 as f64;
@@ -14,19 +14,19 @@ LL |     x0 as f64;
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
-error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size.rs:16:5
    |
 LL |     x1 as f64;
    |     ^^^^^^^^^
 
-error: casting isize to f32 causes a loss of precision (isize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `isize` to `f32` causes a loss of precision (`isize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast_size.rs:17:5
    |
 LL |     x0 as f32;
    |     ^^^^^^^^^
 
-error: casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `usize` to `f32` causes a loss of precision (`usize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast_size.rs:18:5
    |
 LL |     x1 as f32;
@@ -100,13 +100,13 @@ error: casting `u32` to `isize` may wrap around the value on targets with 32-bit
 LL |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
-error: casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast_size.rs:33:5
    |
 LL |     999_999_999 as f32;
    |     ^^^^^^^^^^^^^^^^^^
 
-error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size.rs:34:5
    |
 LL |     9_999_999_999_999_999usize as f64;

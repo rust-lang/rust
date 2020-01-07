@@ -1,4 +1,4 @@
-error: casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `i32` to `f32` causes a loss of precision (`i32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast.rs:11:5
    |
 LL |     x0 as f32;
@@ -6,31 +6,31 @@ LL |     x0 as f32;
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
-error: casting i64 to f32 causes a loss of precision (i64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `i64` to `f32` causes a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast.rs:13:5
    |
 LL |     x1 as f32;
    |     ^^^^^^^^^
 
-error: casting i64 to f64 causes a loss of precision (i64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
+error: casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast.rs:14:5
    |
 LL |     x1 as f64;
    |     ^^^^^^^^^
 
-error: casting u32 to f32 causes a loss of precision (u32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `u32` to `f32` causes a loss of precision (`u32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast.rs:16:5
    |
 LL |     x2 as f32;
    |     ^^^^^^^^^
 
-error: casting u64 to f32 causes a loss of precision (u64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
+error: casting `u64` to `f32` causes a loss of precision (`u64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast.rs:18:5
    |
 LL |     x3 as f32;
    |     ^^^^^^^^^
 
-error: casting u64 to f64 causes a loss of precision (u64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
+error: casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast.rs:19:5
    |
 LL |     x3 as f64;

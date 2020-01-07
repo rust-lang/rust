@@ -953,8 +953,8 @@ fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cast_from
         CAST_PRECISION_LOSS,
         expr.span,
         &format!(
-            "casting {0} to {1} causes a loss of precision {2}({0} is {3} bits wide, but {1}'s mantissa \
-             is only {4} bits wide)",
+            "casting `{0}` to `{1}` causes a loss of precision {2}(`{0}` is {3} bits wide, \
+             but `{1}`'s mantissa is only {4} bits wide)",
             cast_from,
             if cast_to_f64 { "f64" } else { "f32" },
             if arch_dependent { arch_dependent_str } else { "" },
