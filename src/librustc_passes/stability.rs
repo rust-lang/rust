@@ -6,6 +6,7 @@ use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability::{DeprecationEntry, Index};
 use rustc::session::Session;
+use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -488,7 +489,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     .emit();
                 } else {
                     let param_env = self.tcx.param_env(def_id);
-                    if !param_env.can_type_implement_copy(self.tcx, ty).is_ok() {
+                    if !can_type_implement_copy(self.tcx, param_env, ty).is_ok() {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::untagged_unions,

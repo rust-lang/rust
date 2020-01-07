@@ -1,8 +1,9 @@
-use crate::infer::outlives::free_region_map::FreeRegionRelations;
+use crate::infer::error_reporting::{note_and_explain_free_region, note_and_explain_region};
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use crate::ty::free_region_map::FreeRegionRelations;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use errors::DiagnosticBuilder;
@@ -349,7 +350,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             debug!("constrain_opaque_type: bounds={:#?}", bounds);
             let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs);
 
-            let required_region_bounds = tcx.required_region_bounds(opaque_type, bounds.predicates);
+            let required_region_bounds =
+                required_region_bounds(tcx, opaque_type, bounds.predicates);
             debug_assert!(!required_region_bounds.is_empty());
 
             for required_region in required_region_bounds {
@@ -624,7 +626,8 @@ pub fn unexpected_hidden_region_diagnostic(
         //
         // (*) if not, the `tainted_by_errors` flag would be set to
         // true in any case, so we wouldn't be here at all.
-        tcx.note_and_explain_free_region(
+        note_and_explain_free_region(
+            tcx,
             &mut err,
             &format!("hidden type `{}` captures ", hidden_ty),
             hidden_region,
@@ -649,7 +652,8 @@ pub fn unexpected_hidden_region_diagnostic(
             // If the `region_scope_tree` is available, this is being
             // invoked from the "region inferencer error". We can at
             // least report a really cryptic error for now.
-            tcx.note_and_explain_region(
+            note_and_explain_region(
+                tcx,
                 region_scope_tree,
                 &mut err,
                 &format!("hidden type `{}` captures ", hidden_ty),
@@ -1130,7 +1134,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
-        let required_region_bounds = tcx.required_region_bounds(ty, bounds.predicates.clone());
+        let required_region_bounds = required_region_bounds(tcx, ty, bounds.predicates.clone());
         debug!("instantiate_opaque_types: required_region_bounds={:?}", required_region_bounds);
 
         // Make sure that we are in fact defining the *entire* type
@@ -1224,4 +1228,68 @@ pub fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: DefId, opaque_hir_id: hir
         res
     );
     res
+}
+
+/// Given a set of predicates that apply to an object type, returns
+/// the region bounds that the (erased) `Self` type must
+/// outlive. Precisely *because* the `Self` type is erased, the
+/// parameter `erased_self_ty` must be supplied to indicate what type
+/// has been used to represent `Self` in the predicates
+/// themselves. This should really be a unique type; `FreshTy(0)` is a
+/// popular choice.
+///
+/// N.B., in some cases, particularly around higher-ranked bounds,
+/// this function returns a kind of conservative approximation.
+/// That is, all regions returned by this function are definitely
+/// required, but there may be other region bounds that are not
+/// returned, as well as requirements like `for<'a> T: 'a`.
+///
+/// Requires that trait definitions have been processed so that we can
+/// elaborate predicates and walk supertraits.
+//
+// FIXME: callers may only have a `&[Predicate]`, not a `Vec`, so that's
+// what this code should accept.
+crate fn required_region_bounds(
+    tcx: TyCtxt<'tcx>,
+    erased_self_ty: Ty<'tcx>,
+    predicates: Vec<ty::Predicate<'tcx>>,
+) -> Vec<ty::Region<'tcx>> {
+    debug!(
+        "required_region_bounds(erased_self_ty={:?}, predicates={:?})",
+        erased_self_ty, predicates
+    );
+
+    assert!(!erased_self_ty.has_escaping_bound_vars());
+
+    traits::elaborate_predicates(tcx, predicates)
+        .filter_map(|predicate| {
+            match predicate {
+                ty::Predicate::Projection(..)
+                | ty::Predicate::Trait(..)
+                | ty::Predicate::Subtype(..)
+                | ty::Predicate::WellFormed(..)
+                | ty::Predicate::ObjectSafe(..)
+                | ty::Predicate::ClosureKind(..)
+                | ty::Predicate::RegionOutlives(..)
+                | ty::Predicate::ConstEvaluatable(..) => None,
+                ty::Predicate::TypeOutlives(predicate) => {
+                    // Search for a bound of the form `erased_self_ty
+                    // : 'a`, but be wary of something like `for<'a>
+                    // erased_self_ty : 'a` (we interpret a
+                    // higher-ranked bound like that as 'static,
+                    // though at present the code in `fulfill.rs`
+                    // considers such bounds to be unsatisfiable, so
+                    // it's kind of a moot point since you could never
+                    // construct such an object, but this seems
+                    // correct even if that code changes).
+                    let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
+                    if t == &erased_self_ty && !r.has_escaping_bound_vars() {
+                        Some(*r)
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
+        .collect()
 }

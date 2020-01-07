@@ -1057,7 +1057,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     node_item.item.defaultness.has_value()
                 } else {
                     node_item.item.defaultness.is_default()
-                        || selcx.tcx().impl_is_default(node_item.node.def_id())
+                        || super::util::impl_is_default(selcx.tcx(), node_item.node.def_id())
                 };
 
                 // Only reveal a specializable default if we're past type-checking
@@ -1263,26 +1263,30 @@ fn confirm_generator_candidate<'cx, 'tcx>(
 
     let gen_def_id = tcx.lang_items().gen_trait().unwrap();
 
-    let predicate = tcx
-        .generator_trait_ref_and_outputs(gen_def_id, obligation.predicate.self_ty(), gen_sig)
-        .map_bound(|(trait_ref, yield_ty, return_ty)| {
-            let name = tcx.associated_item(obligation.predicate.item_def_id).ident.name;
-            let ty = if name == sym::Return {
-                return_ty
-            } else if name == sym::Yield {
-                yield_ty
-            } else {
-                bug!()
-            };
+    let predicate = super::util::generator_trait_ref_and_outputs(
+        tcx,
+        gen_def_id,
+        obligation.predicate.self_ty(),
+        gen_sig,
+    )
+    .map_bound(|(trait_ref, yield_ty, return_ty)| {
+        let name = tcx.associated_item(obligation.predicate.item_def_id).ident.name;
+        let ty = if name == sym::Return {
+            return_ty
+        } else if name == sym::Yield {
+            yield_ty
+        } else {
+            bug!()
+        };
 
-            ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy {
-                    substs: trait_ref.substs,
-                    item_def_id: obligation.predicate.item_def_id,
-                },
-                ty: ty,
-            }
-        });
+        ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                substs: trait_ref.substs,
+                item_def_id: obligation.predicate.item_def_id,
+            },
+            ty: ty,
+        }
+    });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
         .with_addl_obligations(vtable.nested)
@@ -1349,21 +1353,21 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     // the `Output` associated type is declared on `FnOnce`
     let fn_once_def_id = tcx.lang_items().fn_once_trait().unwrap();
 
-    let predicate = tcx
-        .closure_trait_ref_and_return_type(
-            fn_once_def_id,
-            obligation.predicate.self_ty(),
-            fn_sig,
-            flag,
-        )
-        .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy::from_ref_and_name(
-                tcx,
-                trait_ref,
-                Ident::with_dummy_span(FN_OUTPUT_NAME),
-            ),
-            ty: ret_type,
-        });
+    let predicate = super::util::closure_trait_ref_and_return_type(
+        tcx,
+        fn_once_def_id,
+        obligation.predicate.self_ty(),
+        fn_sig,
+        flag,
+    )
+    .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
+        projection_ty: ty::ProjectionTy::from_ref_and_name(
+            tcx,
+            trait_ref,
+            Ident::with_dummy_span(FN_OUTPUT_NAME),
+        ),
+        ty: ret_type,
+    });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
 }

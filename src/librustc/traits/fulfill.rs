@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use super::engine::{TraitEngine, TraitEngineExt};
 use super::project;
 use super::select::SelectionContext;
+use super::wf;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
@@ -461,7 +462,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::WellFormed(ty) => {
-                match ty::wf::obligations(
+                match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
                     obligation.cause.body_id,

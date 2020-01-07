@@ -411,7 +411,7 @@ fn resolve_associated_item<'tcx>(
             substs: rcvr_substs,
         }),
         traits::VtableObject(ref data) => {
-            let index = tcx.get_vtable_index_of_object_method(data, def_id);
+            let index = traits::get_vtable_index_of_object_method(tcx, data, def_id);
             Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
         }
         traits::VtableBuiltin(..) => {

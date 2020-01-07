@@ -1,3 +1,4 @@
+use crate::infer::opaque_types::required_region_bounds;
 use crate::infer::InferCtxt;
 use crate::middle::lang_items;
 use crate::traits::{self, AssocTypeBoundData};
@@ -514,7 +515,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // of whatever returned this exact `impl Trait`.
 
                     // for named opaque `impl Trait` types we still need to check them
-                    if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
+                    if ty::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
                     }
@@ -668,7 +669,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 /// from the declarations of `SomeTrait`, `Send`, and friends -- if
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
-/// `ty::required_region_bounds`, see that for more information.
+/// `infer::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
@@ -689,7 +690,7 @@ pub fn object_region_bounds<'tcx>(
         })
         .collect();
 
-    tcx.required_region_bounds(open_ty, predicates)
+    required_region_bounds(tcx, open_ty, predicates)
 }
 
 /// Find the span of a generic bound affecting an associated type.

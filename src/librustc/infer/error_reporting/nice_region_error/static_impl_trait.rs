@@ -1,5 +1,6 @@
 //! Error Reporting for static impl Traits.
 
+use crate::infer::error_reporting::msg_span_from_free_region;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::ty::{BoundRegion, FreeRegion, RegionKind};
@@ -32,7 +33,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     );
                     err.span_label(sup_origin.span(), "...but this borrow...");
 
-                    let (lifetime, lt_sp_opt) = self.tcx().msg_span_from_free_region(sup_r);
+                    let (lifetime, lt_sp_opt) = msg_span_from_free_region(self.tcx(), sup_r);
                     if let Some(lifetime_sp) = lt_sp_opt {
                         err.span_note(lifetime_sp, &format!("...can't outlive {}", lifetime));
                     }

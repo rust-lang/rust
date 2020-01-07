@@ -23,6 +23,7 @@ use crate::middle::weak_lang_items;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
+use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::subst::{InternalSubsts, Subst};
@@ -1509,48 +1510,48 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
         }
 
-        Node::GenericParam(param) => {
-            match &param.kind {
-                hir::GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
-                hir::GenericParamKind::Const { ty: ref hir_ty, .. } => {
-                    let ty = icx.to_ty(hir_ty);
-                    if !tcx.features().const_compare_raw_pointers {
-                        let err = match ty.peel_refs().kind {
-                            ty::FnPtr(_) => Some("function pointers"),
-                            ty::RawPtr(_) => Some("raw pointers"),
-                            _ => None,
-                        };
-                        if let Some(unsupported_type) = err {
-                            feature_gate::feature_err(
-                                &tcx.sess.parse_sess,
-                                sym::const_compare_raw_pointers,
-                                hir_ty.span,
-                                &format!(
-                                    "using {} as const generic parameters is unstable",
-                                    unsupported_type
-                                ),
-                            )
-                            .emit();
-                        };
-                    }
-                    if ty::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
-                        .is_some()
-                    {
-                        struct_span_err!(
+        Node::GenericParam(param) => match &param.kind {
+            hir::GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
+            hir::GenericParamKind::Const { ty: ref hir_ty, .. } => {
+                let ty = icx.to_ty(hir_ty);
+                if !tcx.features().const_compare_raw_pointers {
+                    let err = match ty.peel_refs().kind {
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
+                        _ => None,
+                    };
+                    if let Some(unsupported_type) = err {
+                        feature_gate::feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::const_compare_raw_pointers,
+                            hir_ty.span,
+                            &format!(
+                                "using {} as const generic parameters is unstable",
+                                unsupported_type
+                            ),
+                        )
+                        .emit();
+                    };
+                }
+                if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
+                    .is_some()
+                {
+                    struct_span_err!(
                         tcx.sess,
                         hir_ty.span,
                         E0741,
                         "the types of const generic parameters must derive `PartialEq` and `Eq`",
-                    ).span_label(
+                    )
+                    .span_label(
                         hir_ty.span,
                         format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
-                    ).emit();
-                    }
-                    ty
+                    )
+                    .emit();
                 }
-                x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
+                ty
             }
-        }
+            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
+        },
 
         x => {
             bug!("unexpected sort of node in type_of_def_id(): {:?}", x);

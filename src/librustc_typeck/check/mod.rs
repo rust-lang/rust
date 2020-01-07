@@ -100,6 +100,7 @@ use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::middle::region;
 use rustc::mir::interpret::ConstValue;
+use rustc::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -1900,7 +1901,7 @@ fn check_specialization_validity<'tcx>(
         match parent_item {
             // Parent impl exists, and contains the parent item we're trying to specialize, but
             // doesn't mark it `default`.
-            Some(parent_item) if tcx.impl_item_is_final(&parent_item) => {
+            Some(parent_item) if traits::impl_item_is_final(tcx, &parent_item) => {
                 Some(Err(parent_impl.def_id()))
             }
 
@@ -1911,7 +1912,7 @@ fn check_specialization_validity<'tcx>(
             // grandparent. In that case, if parent is a `default impl`, inherited items use the
             // "defaultness" from the grandparent, else they are final.
             None => {
-                if tcx.impl_is_default(parent_impl.def_id()) {
+                if traits::impl_is_default(tcx, parent_impl.def_id()) {
                     None
                 } else {
                     Some(Err(parent_impl.def_id()))
@@ -2075,7 +2076,7 @@ fn check_impl_items_against_trait<'tcx>(
             .map(|node_item| !node_item.node.is_from_trait())
             .unwrap_or(false);
 
-        if !is_implemented && !tcx.impl_is_default(impl_id) {
+        if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
             if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
@@ -2222,7 +2223,7 @@ fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: DefId) -> bool {
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive(spans) => {
-            let mut err = tcx.recursive_type_with_infinite_size_error(item_def_id);
+            let mut err = recursive_type_with_infinite_size_error(tcx, item_def_id);
             for span in spans {
                 err.span_label(span, "recursive without indirection");
             }

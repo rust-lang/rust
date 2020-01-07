@@ -87,10 +87,6 @@ pub use self::context::{
 
 pub use self::instance::{Instance, InstanceDef};
 
-pub use self::structural_match::search_for_structural_match_violation;
-pub use self::structural_match::type_marked_structural;
-pub use self::structural_match::NonStructuralMatchTy;
-
 pub use self::trait_def::TraitDef;
 
 pub use self::query::queries;
@@ -107,8 +103,10 @@ pub mod error;
 pub mod fast_reject;
 pub mod flags;
 pub mod fold;
+pub mod free_region_map;
 pub mod inhabitedness;
 pub mod layout;
+pub mod normalize_erasing_regions;
 pub mod outlives;
 pub mod print;
 pub mod query;
@@ -118,13 +116,11 @@ pub mod subst;
 pub mod trait_def;
 pub mod util;
 pub mod walk;
-pub mod wf;
 
 mod context;
 mod diagnostics;
 mod instance;
 mod structural_impls;
-mod structural_match;
 mod sty;
 
 // Data types
@@ -3322,7 +3318,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
-    util::provide(providers);
     constness::provide(providers);
     *providers = ty::query::Providers {
         asyncness,

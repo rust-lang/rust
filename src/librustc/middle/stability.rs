@@ -245,35 +245,35 @@ pub enum EvalResult {
     Unmarked,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    // See issue #38412.
-    fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
-        // Check if `def_id` is a trait method.
-        match self.def_kind(def_id) {
-            Some(DefKind::Method) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
-                if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
-                    // Trait methods do not declare visibility (even
-                    // for visibility info in cstore). Use containing
-                    // trait instead, so methods of `pub` traits are
-                    // themselves considered `pub`.
-                    def_id = trait_def_id;
-                }
+// See issue #38412.
+fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    // Check if `def_id` is a trait method.
+    match tcx.def_kind(def_id) {
+        Some(DefKind::Method) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
+            if let ty::TraitContainer(trait_def_id) = tcx.associated_item(def_id).container {
+                // Trait methods do not declare visibility (even
+                // for visibility info in cstore). Use containing
+                // trait instead, so methods of `pub` traits are
+                // themselves considered `pub`.
+                def_id = trait_def_id;
             }
-            _ => {}
         }
-
-        let visibility = self.visibility(def_id);
-
-        match visibility {
-            // Must check stability for `pub` items.
-            ty::Visibility::Public => false,
-
-            // These are not visible outside crate; therefore
-            // stability markers are irrelevant, if even present.
-            ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
-        }
+        _ => {}
     }
 
+    let visibility = tcx.visibility(def_id);
+
+    match visibility {
+        // Must check stability for `pub` items.
+        ty::Visibility::Public => false,
+
+        // These are not visible outside crate; therefore
+        // stability markers are irrelevant, if even present.
+        ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates the stability of an item.
     ///
     /// Returns `EvalResult::Allow` if the item is stable, or unstable but the corresponding
@@ -338,7 +338,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // Issue #38412: private items lack stability markers.
-        if self.skip_stability_check_due_to_privacy(def_id) {
+        if skip_stability_check_due_to_privacy(self, def_id) {
             return EvalResult::Allow;
         }
 
@@ -402,9 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
     }
-}
 
-impl<'tcx> TyCtxt<'tcx> {
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
         self.lookup_deprecation_entry(id).map(|depr| depr.attr)
     }

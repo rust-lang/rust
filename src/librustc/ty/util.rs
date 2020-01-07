@@ -2,9 +2,7 @@
 
 use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
-use crate::middle::lang_items;
 use crate::mir::interpret::{sign_extend, truncate};
-use crate::traits::{self, ObligationCause};
 use crate::ty::layout::{Integer, IntegerExt};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
@@ -18,7 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -122,13 +120,6 @@ impl IntTypeExt for attr::IntType {
     }
 }
 
-#[derive(Clone)]
-pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<&'tcx ty::FieldDef>),
-    NotAnAdt,
-    HasDestructor,
-}
-
 /// Describes whether a type is representable. For types that are not
 /// representable, 'SelfRecursive' and 'ContainsRecursive' are used to
 /// distinguish between types that are recursive with themselves and types that
@@ -142,65 +133,6 @@ pub enum Representability {
     Representable,
     ContainsRecursive,
     SelfRecursive(Vec<Span>),
-}
-
-impl<'tcx> ty::ParamEnv<'tcx> {
-    pub fn can_type_implement_copy(
-        self,
-        tcx: TyCtxt<'tcx>,
-        self_type: Ty<'tcx>,
-    ) -> Result<(), CopyImplementationError<'tcx>> {
-        // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt().enter(|infcx| {
-            let (adt, substs) = match self_type.kind {
-                // These types used to have a builtin impl.
-                // Now libcore provides that impl.
-                ty::Uint(_)
-                | ty::Int(_)
-                | ty::Bool
-                | ty::Float(_)
-                | ty::Char
-                | ty::RawPtr(..)
-                | ty::Never
-                | ty::Ref(_, _, hir::Mutability::Not) => return Ok(()),
-
-                ty::Adt(adt, substs) => (adt, substs),
-
-                _ => return Err(CopyImplementationError::NotAnAdt),
-            };
-
-            let mut infringing = Vec::new();
-            for variant in &adt.variants {
-                for field in &variant.fields {
-                    let ty = field.ty(tcx, substs);
-                    if ty.references_error() {
-                        continue;
-                    }
-                    let span = tcx.def_span(field.did);
-                    let cause = ObligationCause { span, ..ObligationCause::dummy() };
-                    let ctx = traits::FulfillmentContext::new();
-                    match traits::fully_normalize(&infcx, ctx, cause, self, &ty) {
-                        Ok(ty) => {
-                            if !infcx.type_is_copy_modulo_regions(self, ty, span) {
-                                infringing.push(field);
-                            }
-                        }
-                        Err(errors) => {
-                            infcx.report_fulfillment_errors(&errors, None, false);
-                        }
-                    };
-                }
-            }
-            if !infringing.is_empty() {
-                return Err(CopyImplementationError::InfrigingFields(infringing));
-            }
-            if adt.has_dtor(tcx) {
-                return Err(CopyImplementationError::HasDestructor);
-            }
-
-            Ok(())
-        })
-    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -391,70 +323,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         (a, b)
-    }
-
-    /// Given a set of predicates that apply to an object type, returns
-    /// the region bounds that the (erased) `Self` type must
-    /// outlive. Precisely *because* the `Self` type is erased, the
-    /// parameter `erased_self_ty` must be supplied to indicate what type
-    /// has been used to represent `Self` in the predicates
-    /// themselves. This should really be a unique type; `FreshTy(0)` is a
-    /// popular choice.
-    ///
-    /// N.B., in some cases, particularly around higher-ranked bounds,
-    /// this function returns a kind of conservative approximation.
-    /// That is, all regions returned by this function are definitely
-    /// required, but there may be other region bounds that are not
-    /// returned, as well as requirements like `for<'a> T: 'a`.
-    ///
-    /// Requires that trait definitions have been processed so that we can
-    /// elaborate predicates and walk supertraits.
-    //
-    // FIXME: callers may only have a `&[Predicate]`, not a `Vec`, so that's
-    // what this code should accept.
-    pub fn required_region_bounds(
-        self,
-        erased_self_ty: Ty<'tcx>,
-        predicates: Vec<ty::Predicate<'tcx>>,
-    ) -> Vec<ty::Region<'tcx>> {
-        debug!(
-            "required_region_bounds(erased_self_ty={:?}, predicates={:?})",
-            erased_self_ty, predicates
-        );
-
-        assert!(!erased_self_ty.has_escaping_bound_vars());
-
-        traits::elaborate_predicates(self, predicates)
-            .filter_map(|predicate| {
-                match predicate {
-                    ty::Predicate::Projection(..)
-                    | ty::Predicate::Trait(..)
-                    | ty::Predicate::Subtype(..)
-                    | ty::Predicate::WellFormed(..)
-                    | ty::Predicate::ObjectSafe(..)
-                    | ty::Predicate::ClosureKind(..)
-                    | ty::Predicate::RegionOutlives(..)
-                    | ty::Predicate::ConstEvaluatable(..) => None,
-                    ty::Predicate::TypeOutlives(predicate) => {
-                        // Search for a bound of the form `erased_self_ty
-                        // : 'a`, but be wary of something like `for<'a>
-                        // erased_self_ty : 'a` (we interpret a
-                        // higher-ranked bound like that as 'static,
-                        // though at present the code in `fulfill.rs`
-                        // considers such bounds to be unsatisfiable, so
-                        // it's kind of a moot point since you could never
-                        // construct such an object, but this seems
-                        // correct even if that code changes).
-                        let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
-                        if t == &erased_self_ty && !r.has_escaping_bound_vars() {
-                            Some(*r)
-                        } else {
-                            None
-                        }
-                    }
-                }
-            })
-            .collect()
     }
 
     /// Calculate the destructor of a given type.
@@ -1006,127 +874,8 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::CopyTraitLangItem)
-}
-
-fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::SizedTraitLangItem)
-}
-
-fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, lang_items::FreezeTraitLangItem)
-}
-
-fn is_item_raw<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    item: lang_items::LangItem,
-) -> bool {
-    let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(item, None);
-    tcx.infer_ctxt().enter(|infcx| {
-        traits::type_known_to_meet_bound_modulo_regions(
-            &infcx,
-            param_env,
-            ty,
-            trait_def_id,
-            DUMMY_SP,
-        )
-    })
-}
-
 #[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
-
-fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
-    let (param_env, ty) = query.into_parts();
-
-    let needs_drop = |ty: Ty<'tcx>| -> bool { tcx.needs_drop_raw(param_env.and(ty)).0 };
-
-    assert!(!ty.needs_infer());
-
-    NeedsDrop(match ty.kind {
-        // Fast-path for primitive types
-        ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Bool
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Never
-        | ty::FnDef(..)
-        | ty::FnPtr(_)
-        | ty::Char
-        | ty::GeneratorWitness(..)
-        | ty::RawPtr(_)
-        | ty::Ref(..)
-        | ty::Str => false,
-
-        // Foreign types can never have destructors
-        ty::Foreign(..) => false,
-
-        // `ManuallyDrop` doesn't have a destructor regardless of field types.
-        ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
-
-        // Issue #22536: We first query `is_copy_modulo_regions`.  It sees a
-        // normalized version of the type, and therefore will definitely
-        // know whether the type implements Copy (and thus needs no
-        // cleanup/drop/zeroing) ...
-        _ if ty.is_copy_modulo_regions(tcx, param_env, DUMMY_SP) => false,
-
-        // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking for the structural "may drop".
-
-        // FIXME(#22815): Note that this is a conservative heuristic;
-        // it may report that the type "may drop" when actual type does
-        // not actually have a destructor associated with it. But since
-        // the type absolutely did not have the `Copy` bound attached
-        // (see above), it is sound to treat it as having a destructor.
-
-        // User destructors are the only way to have concrete drop types.
-        ty::Adt(def, _) if def.has_dtor(tcx) => true,
-
-        // Can refer to a type which may drop.
-        // FIXME(eddyb) check this against a ParamEnv.
-        ty::Dynamic(..)
-        | ty::Projection(..)
-        | ty::Param(_)
-        | ty::Bound(..)
-        | ty::Placeholder(..)
-        | ty::Opaque(..)
-        | ty::Infer(_)
-        | ty::Error => true,
-
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
-        // Zero-length arrays never contain anything to drop.
-        ty::Array(_, len) if len.try_eval_usize(tcx, param_env) == Some(0) => false,
-
-        // Structural recursion.
-        ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
-
-        ty::Closure(def_id, ref substs) => {
-            substs.as_closure().upvar_tys(def_id, tcx).any(needs_drop)
-        }
-
-        // Pessimistically assume that all generators will require destructors
-        // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass
-        ty::Generator(..) => true,
-
-        ty::Tuple(..) => ty.tuple_fields().any(needs_drop),
-
-        // unions don't have destructors because of the child types,
-        // only if they manually implement `Drop` (handled above).
-        ty::Adt(def, _) if def.is_union() => false,
-
-        ty::Adt(def, substs) => def
-            .variants
-            .iter()
-            .any(|variant| variant.fields.iter().any(|field| needs_drop(field.ty(tcx, substs)))),
-    })
-}
 
 pub enum ExplicitSelf<'tcx> {
     ByValue,
@@ -1175,14 +924,4 @@ impl<'tcx> ExplicitSelf<'tcx> {
             _ => Other,
         }
     }
-}
-
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    *providers = ty::query::Providers {
-        is_copy_raw,
-        is_sized_raw,
-        is_freeze_raw,
-        needs_drop_raw,
-        ..*providers
-    };
 }

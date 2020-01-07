@@ -53,6 +53,8 @@ use crate::hir::map;
 use crate::infer::opaque_types;
 use crate::infer::{self, SuppressRegionErrors};
 use crate::middle::region;
+use crate::traits::error_reporting::report_object_safety_error;
+use crate::traits::object_safety_violations;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -79,210 +81,207 @@ pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn note_and_explain_region(
-        self,
-        region_scope_tree: &region::ScopeTree,
-        err: &mut DiagnosticBuilder<'_>,
-        prefix: &str,
-        region: ty::Region<'tcx>,
-        suffix: &str,
-    ) {
-        let (description, span) = match *region {
-            ty::ReScope(scope) => {
-                let new_string;
-                let unknown_scope = || {
-                    format!("{}unknown scope: {:?}{}.  Please report a bug.", prefix, scope, suffix)
-                };
-                let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir().find(scope.hir_id(region_scope_tree)) {
-                    Some(Node::Block(_)) => "block",
-                    Some(Node::Expr(expr)) => match expr.kind {
-                        hir::ExprKind::Call(..) => "call",
-                        hir::ExprKind::MethodCall(..) => "method call",
-                        hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                        hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
-                        hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
-                        hir::ExprKind::Match(..) => "match",
-                        _ => "expression",
-                    },
-                    Some(Node::Stmt(_)) => "statement",
-                    Some(Node::Item(it)) => Self::item_scope_tag(&it),
-                    Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-                    Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
-                    Some(_) | None => {
-                        err.span_note(span, &unknown_scope());
-                        return;
-                    }
-                };
-                let scope_decorated_tag = match scope.data {
-                    region::ScopeData::Node => tag,
-                    region::ScopeData::CallSite => "scope of call-site for function",
-                    region::ScopeData::Arguments => "scope of function body",
-                    region::ScopeData::Destruction => {
-                        new_string = format!("destruction scope surrounding {}", tag);
-                        &new_string[..]
-                    }
-                    region::ScopeData::Remainder(first_statement_index) => {
-                        new_string = format!(
-                            "block suffix following statement {}",
-                            first_statement_index.index()
-                        );
-                        &new_string[..]
-                    }
-                };
-                self.explain_span(scope_decorated_tag, span)
-            }
-
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-                self.msg_span_from_free_region(region)
-            }
-
-            ty::ReEmpty => ("the empty lifetime".to_owned(), None),
-
-            ty::RePlaceholder(_) => (format!("any other region"), None),
-
-            // FIXME(#13998) RePlaceholder should probably print like
-            // ReFree rather than dumping Debug output on the user.
-            //
-            // We shouldn't really be having unification failures with ReVar
-            // and ReLateBound though.
-            ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-                (format!("lifetime {:?}", region), None)
-            }
-
-            // We shouldn't encounter an error message with ReClosureBound.
-            ty::ReClosureBound(..) => {
-                bug!("encountered unexpected ReClosureBound: {:?}", region,);
-            }
-        };
-
-        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
-    }
-
-    pub fn note_and_explain_free_region(
-        self,
-        err: &mut DiagnosticBuilder<'_>,
-        prefix: &str,
-        region: ty::Region<'tcx>,
-        suffix: &str,
-    ) {
-        let (description, span) = self.msg_span_from_free_region(region);
-
-        TyCtxt::emit_msg_span(err, prefix, description, span, suffix);
-    }
-
-    fn msg_span_from_free_region(self, region: ty::Region<'tcx>) -> (String, Option<Span>) {
-        match *region {
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                self.msg_span_from_early_bound_and_free_regions(region)
-            }
-            ty::ReStatic => ("the static lifetime".to_owned(), None),
-            ty::ReEmpty => ("an empty lifetime".to_owned(), None),
-            _ => bug!("{:?}", region),
-        }
-    }
-
-    fn msg_span_from_early_bound_and_free_regions(
-        self,
-        region: ty::Region<'tcx>,
-    ) -> (String, Option<Span>) {
-        let cm = self.sess.source_map();
-
-        let scope = region.free_region_binding_scope(self);
-        let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
-        let tag = match self.hir().find(node) {
-            Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
-            Some(Node::Item(it)) => Self::item_scope_tag(&it),
-            Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
-            Some(Node::ImplItem(it)) => Self::impl_item_scope_tag(&it),
-            _ => unreachable!(),
-        };
-        let (prefix, span) = match *region {
-            ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) =
-                    self.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-                {
-                    sp = param.span;
+pub(super) fn note_and_explain_region(
+    tcx: TyCtxt<'tcx>,
+    region_scope_tree: &region::ScopeTree,
+    err: &mut DiagnosticBuilder<'_>,
+    prefix: &str,
+    region: ty::Region<'tcx>,
+    suffix: &str,
+) {
+    let (description, span) = match *region {
+        ty::ReScope(scope) => {
+            let new_string;
+            let unknown_scope =
+                || format!("{}unknown scope: {:?}{}.  Please report a bug.", prefix, scope, suffix);
+            let span = scope.span(tcx, region_scope_tree);
+            let tag = match tcx.hir().find(scope.hir_id(region_scope_tree)) {
+                Some(Node::Block(_)) => "block",
+                Some(Node::Expr(expr)) => match expr.kind {
+                    hir::ExprKind::Call(..) => "call",
+                    hir::ExprKind::MethodCall(..) => "method call",
+                    hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
+                    hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
+                    hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
+                    hir::ExprKind::Match(..) => "match",
+                    _ => "expression",
+                },
+                Some(Node::Stmt(_)) => "statement",
+                Some(Node::Item(it)) => item_scope_tag(&it),
+                Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
+                Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
+                Some(_) | None => {
+                    err.span_note(span, &unknown_scope());
+                    return;
                 }
-                (format!("the lifetime `{}` as defined on", br.name), sp)
-            }
-            ty::ReFree(ty::FreeRegion {
-                bound_region: ty::BoundRegion::BrNamed(_, name), ..
-            }) => {
-                let mut sp = cm.def_span(self.hir().span(node));
-                if let Some(param) =
-                    self.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
-                {
-                    sp = param.span;
+            };
+            let scope_decorated_tag = match scope.data {
+                region::ScopeData::Node => tag,
+                region::ScopeData::CallSite => "scope of call-site for function",
+                region::ScopeData::Arguments => "scope of function body",
+                region::ScopeData::Destruction => {
+                    new_string = format!("destruction scope surrounding {}", tag);
+                    &new_string[..]
                 }
-                (format!("the lifetime `{}` as defined on", name), sp)
+                region::ScopeData::Remainder(first_statement_index) => {
+                    new_string = format!(
+                        "block suffix following statement {}",
+                        first_statement_index.index()
+                    );
+                    &new_string[..]
+                }
+            };
+            explain_span(tcx, scope_decorated_tag, span)
+        }
+
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+            msg_span_from_free_region(tcx, region)
+        }
+
+        ty::ReEmpty => ("the empty lifetime".to_owned(), None),
+
+        ty::RePlaceholder(_) => (format!("any other region"), None),
+
+        // FIXME(#13998) RePlaceholder should probably print like
+        // ReFree rather than dumping Debug output on the user.
+        //
+        // We shouldn't really be having unification failures with ReVar
+        // and ReLateBound though.
+        ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
+            (format!("lifetime {:?}", region), None)
+        }
+
+        // We shouldn't encounter an error message with ReClosureBound.
+        ty::ReClosureBound(..) => {
+            bug!("encountered unexpected ReClosureBound: {:?}", region,);
+        }
+    };
+
+    emit_msg_span(err, prefix, description, span, suffix);
+}
+
+pub(super) fn note_and_explain_free_region(
+    tcx: TyCtxt<'tcx>,
+    err: &mut DiagnosticBuilder<'_>,
+    prefix: &str,
+    region: ty::Region<'tcx>,
+    suffix: &str,
+) {
+    let (description, span) = msg_span_from_free_region(tcx, region);
+
+    emit_msg_span(err, prefix, description, span, suffix);
+}
+
+fn msg_span_from_free_region(
+    tcx: TyCtxt<'tcx>,
+    region: ty::Region<'tcx>,
+) -> (String, Option<Span>) {
+    match *region {
+        ty::ReEarlyBound(_) | ty::ReFree(_) => {
+            msg_span_from_early_bound_and_free_regions(tcx, region)
+        }
+        ty::ReStatic => ("the static lifetime".to_owned(), None),
+        ty::ReEmpty => ("an empty lifetime".to_owned(), None),
+        _ => bug!("{:?}", region),
+    }
+}
+
+fn msg_span_from_early_bound_and_free_regions(
+    tcx: TyCtxt<'tcx>,
+    region: ty::Region<'tcx>,
+) -> (String, Option<Span>) {
+    let cm = tcx.sess.source_map();
+
+    let scope = region.free_region_binding_scope(tcx);
+    let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
+    let tag = match tcx.hir().find(node) {
+        Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
+        Some(Node::Item(it)) => item_scope_tag(&it),
+        Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
+        Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
+        _ => unreachable!(),
+    };
+    let (prefix, span) = match *region {
+        ty::ReEarlyBound(ref br) => {
+            let mut sp = cm.def_span(tcx.hir().span(node));
+            if let Some(param) =
+                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+            {
+                sp = param.span;
             }
-            ty::ReFree(ref fr) => match fr.bound_region {
-                ty::BrAnon(idx) => (
-                    format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir().span(node),
-                ),
-                _ => (
-                    format!("the lifetime `{}` as defined on", region),
-                    cm.def_span(self.hir().span(node)),
-                ),
-            },
-            _ => bug!(),
-        };
-        let (msg, opt_span) = self.explain_span(tag, span);
-        (format!("{} {}", prefix, msg), opt_span)
-    }
-
-    fn emit_msg_span(
-        err: &mut DiagnosticBuilder<'_>,
-        prefix: &str,
-        description: String,
-        span: Option<Span>,
-        suffix: &str,
-    ) {
-        let message = format!("{}{}{}", prefix, description, suffix);
-
-        if let Some(span) = span {
-            err.span_note(span, &message);
-        } else {
-            err.note(&message);
+            (format!("the lifetime `{}` as defined on", br.name), sp)
         }
-    }
-
-    fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
-        match item.kind {
-            hir::ItemKind::Impl(..) => "impl",
-            hir::ItemKind::Struct(..) => "struct",
-            hir::ItemKind::Union(..) => "union",
-            hir::ItemKind::Enum(..) => "enum",
-            hir::ItemKind::Trait(..) => "trait",
-            hir::ItemKind::Fn(..) => "function body",
-            _ => "item",
+        ty::ReFree(ty::FreeRegion { bound_region: ty::BoundRegion::BrNamed(_, name), .. }) => {
+            let mut sp = cm.def_span(tcx.hir().span(node));
+            if let Some(param) =
+                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
+            {
+                sp = param.span;
+            }
+            (format!("the lifetime `{}` as defined on", name), sp)
         }
-    }
+        ty::ReFree(ref fr) => match fr.bound_region {
+            ty::BrAnon(idx) => {
+                (format!("the anonymous lifetime #{} defined on", idx + 1), tcx.hir().span(node))
+            }
+            _ => (
+                format!("the lifetime `{}` as defined on", region),
+                cm.def_span(tcx.hir().span(node)),
+            ),
+        },
+        _ => bug!(),
+    };
+    let (msg, opt_span) = explain_span(tcx, tag, span);
+    (format!("{} {}", prefix, msg), opt_span)
+}
 
-    fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
-        match item.kind {
-            hir::TraitItemKind::Method(..) => "method body",
-            hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
-        }
-    }
+fn emit_msg_span(
+    err: &mut DiagnosticBuilder<'_>,
+    prefix: &str,
+    description: String,
+    span: Option<Span>,
+    suffix: &str,
+) {
+    let message = format!("{}{}{}", prefix, description, suffix);
 
-    fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
-        match item.kind {
-            hir::ImplItemKind::Method(..) => "method body",
-            hir::ImplItemKind::Const(..)
-            | hir::ImplItemKind::OpaqueTy(..)
-            | hir::ImplItemKind::TyAlias(..) => "associated item",
-        }
+    if let Some(span) = span {
+        err.span_note(span, &message);
+    } else {
+        err.note(&message);
     }
+}
 
-    fn explain_span(self, heading: &str, span: Span) -> (String, Option<Span>) {
-        let lo = self.sess.source_map().lookup_char_pos(span.lo());
-        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1), Some(span))
+fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
+    match item.kind {
+        hir::ItemKind::Impl(..) => "impl",
+        hir::ItemKind::Struct(..) => "struct",
+        hir::ItemKind::Union(..) => "union",
+        hir::ItemKind::Enum(..) => "enum",
+        hir::ItemKind::Trait(..) => "trait",
+        hir::ItemKind::Fn(..) => "function body",
+        _ => "item",
     }
+}
+
+fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
+    match item.kind {
+        hir::TraitItemKind::Method(..) => "method body",
+        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
+    }
+}
+
+fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
+    match item.kind {
+        hir::ImplItemKind::Method(..) => "method body",
+        hir::ImplItemKind::Const(..)
+        | hir::ImplItemKind::OpaqueTy(..)
+        | hir::ImplItemKind::TyAlias(..) => "associated item",
+    }
+}
+
+fn explain_span(tcx: TyCtxt<'tcx>, heading: &str, span: Span) -> (String, Option<Span>) {
+    let lo = tcx.sess.source_map().lookup_char_pos(span.lo());
+    (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1), Some(span))
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -1489,8 +1488,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0038(did) => {
-                let violations = self.tcx.object_safety_violations(did);
-                self.tcx.report_object_safety_error(span, did, violations)
+                let violations = object_safety_violations(self.tcx, did);
+                report_object_safety_error(self.tcx, span, did, violations)
             }
             FailureCode::Error0317(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
@@ -1719,7 +1718,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "consider adding an explicit lifetime bound for `{}`",
                     bound_kind
                 ));
-                self.tcx.note_and_explain_region(
+                note_and_explain_region(
+                    self.tcx,
                     region_scope_tree,
                     &mut err,
                     &format!("{} must be valid for ", labeled_user_string),
@@ -1747,7 +1747,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         let mut err = self.report_inference_failure(var_origin);
 
-        self.tcx.note_and_explain_region(
+        note_and_explain_region(
+            self.tcx,
             region_scope_tree,
             &mut err,
             "first, the lifetime cannot outlive ",
@@ -1771,7 +1772,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     (self.values_str(&sup_trace.values), self.values_str(&sub_trace.values))
                 {
                     if sub_expected == sup_expected && sub_found == sup_found {
-                        self.tcx.note_and_explain_region(
+                        note_and_explain_region(
+                            self.tcx,
                             region_scope_tree,
                             &mut err,
                             "...but the lifetime must also be valid for ",
@@ -1794,7 +1796,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         self.note_region_origin(&mut err, &sup_origin);
 
-        self.tcx.note_and_explain_region(
+        note_and_explain_region(
+            self.tcx,
             region_scope_tree,
             &mut err,
             "but, the lifetime must be valid for ",

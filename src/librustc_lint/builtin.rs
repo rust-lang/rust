@@ -27,6 +27,7 @@ use lint::{EarlyContext, EarlyLintPass, LateLintPass, LintPass};
 use lint::{LateContext, LintArray, LintContext};
 use rustc::lint;
 use rustc::lint::FutureIncompatibleInfo;
+use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Stability;
@@ -555,7 +556,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx, param_env, item.span) {
             return;
         }
-        if param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
+        if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
             cx.span_lint(
                 MISSING_COPY_IMPLEMENTATIONS,
                 item.span,

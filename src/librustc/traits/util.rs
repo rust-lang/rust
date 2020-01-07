@@ -548,123 +548,121 @@ pub fn predicate_for_trait_ref<'tcx>(
     Obligation { cause, param_env, recursion_depth, predicate: trait_ref.to_predicate() }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn predicate_for_trait_def(
-        self,
-        param_env: ty::ParamEnv<'tcx>,
-        cause: ObligationCause<'tcx>,
-        trait_def_id: DefId,
-        recursion_depth: usize,
-        self_ty: Ty<'tcx>,
-        params: &[GenericArg<'tcx>],
-    ) -> PredicateObligation<'tcx> {
-        let trait_ref =
-            ty::TraitRef { def_id: trait_def_id, substs: self.mk_substs_trait(self_ty, params) };
-        predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
+pub fn predicate_for_trait_def(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    trait_def_id: DefId,
+    recursion_depth: usize,
+    self_ty: Ty<'tcx>,
+    params: &[GenericArg<'tcx>],
+) -> PredicateObligation<'tcx> {
+    let trait_ref =
+        ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(self_ty, params) };
+    predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
+}
+
+/// Casts a trait reference into a reference to one of its super
+/// traits; returns `None` if `target_trait_def_id` is not a
+/// supertrait.
+pub fn upcast_choices(
+    tcx: TyCtxt<'tcx>,
+    source_trait_ref: ty::PolyTraitRef<'tcx>,
+    target_trait_def_id: DefId,
+) -> Vec<ty::PolyTraitRef<'tcx>> {
+    if source_trait_ref.def_id() == target_trait_def_id {
+        return vec![source_trait_ref]; // Shortcut the most common case.
     }
 
-    /// Casts a trait reference into a reference to one of its super
-    /// traits; returns `None` if `target_trait_def_id` is not a
-    /// supertrait.
-    pub fn upcast_choices(
-        self,
-        source_trait_ref: ty::PolyTraitRef<'tcx>,
-        target_trait_def_id: DefId,
-    ) -> Vec<ty::PolyTraitRef<'tcx>> {
-        if source_trait_ref.def_id() == target_trait_def_id {
-            return vec![source_trait_ref]; // Shortcut the most common case.
+    supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
+}
+
+/// Given a trait `trait_ref`, returns the number of vtable entries
+/// that come from `trait_ref`, excluding its supertraits. Used in
+/// computing the vtable base for an upcast trait of a trait object.
+pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
+    let mut entries = 0;
+    // Count number of methods and add them to the total offset.
+    // Skip over associated types and constants.
+    for trait_item in tcx.associated_items(trait_ref.def_id()) {
+        if trait_item.kind == ty::AssocKind::Method {
+            entries += 1;
         }
-
-        supertraits(self, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
     }
+    entries
+}
 
-    /// Given a trait `trait_ref`, returns the number of vtable entries
-    /// that come from `trait_ref`, excluding its supertraits. Used in
-    /// computing the vtable base for an upcast trait of a trait object.
-    pub fn count_own_vtable_entries(self, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
-        let mut entries = 0;
-        // Count number of methods and add them to the total offset.
-        // Skip over associated types and constants.
-        for trait_item in self.associated_items(trait_ref.def_id()) {
-            if trait_item.kind == ty::AssocKind::Method {
-                entries += 1;
-            }
+/// Given an upcast trait object described by `object`, returns the
+/// index of the method `method_def_id` (which should be part of
+/// `object.upcast_trait_ref`) within the vtable for `object`.
+pub fn get_vtable_index_of_object_method<N>(
+    tcx: TyCtxt<'tcx>,
+    object: &super::VtableObjectData<'tcx, N>,
+    method_def_id: DefId,
+) -> usize {
+    // Count number of methods preceding the one we are selecting and
+    // add them to the total offset.
+    // Skip over associated types and constants.
+    let mut entries = object.vtable_base;
+    for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()) {
+        if trait_item.def_id == method_def_id {
+            // The item with the ID we were given really ought to be a method.
+            assert_eq!(trait_item.kind, ty::AssocKind::Method);
+            return entries;
         }
-        entries
-    }
-
-    /// Given an upcast trait object described by `object`, returns the
-    /// index of the method `method_def_id` (which should be part of
-    /// `object.upcast_trait_ref`) within the vtable for `object`.
-    pub fn get_vtable_index_of_object_method<N>(
-        self,
-        object: &super::VtableObjectData<'tcx, N>,
-        method_def_id: DefId,
-    ) -> usize {
-        // Count number of methods preceding the one we are selecting and
-        // add them to the total offset.
-        // Skip over associated types and constants.
-        let mut entries = object.vtable_base;
-        for trait_item in self.associated_items(object.upcast_trait_ref.def_id()) {
-            if trait_item.def_id == method_def_id {
-                // The item with the ID we were given really ought to be a method.
-                assert_eq!(trait_item.kind, ty::AssocKind::Method);
-                return entries;
-            }
-            if trait_item.kind == ty::AssocKind::Method {
-                entries += 1;
-            }
-        }
-
-        bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
-    }
-
-    pub fn closure_trait_ref_and_return_type(
-        self,
-        fn_trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        sig: ty::PolyFnSig<'tcx>,
-        tuple_arguments: TupleArgumentsFlag,
-    ) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)> {
-        let arguments_tuple = match tuple_arguments {
-            TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
-            TupleArgumentsFlag::Yes => self.intern_tup(sig.skip_binder().inputs()),
-        };
-        let trait_ref = ty::TraitRef {
-            def_id: fn_trait_def_id,
-            substs: self.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
-        };
-        ty::Binder::bind((trait_ref, sig.skip_binder().output()))
-    }
-
-    pub fn generator_trait_ref_and_outputs(
-        self,
-        fn_trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        sig: ty::PolyGenSig<'tcx>,
-    ) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
-        let trait_ref =
-            ty::TraitRef { def_id: fn_trait_def_id, substs: self.mk_substs_trait(self_ty, &[]) };
-        ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
-    }
-
-    pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
-        match self.hir().as_local_hir_id(node_item_def_id) {
-            Some(hir_id) => {
-                let item = self.hir().expect_item(hir_id);
-                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
-                    defaultness.is_default()
-                } else {
-                    false
-                }
-            }
-            None => self.impl_defaultness(node_item_def_id).is_default(),
+        if trait_item.kind == ty::AssocKind::Method {
+            entries += 1;
         }
     }
 
-    pub fn impl_item_is_final(self, assoc_item: &ty::AssocItem) -> bool {
-        assoc_item.defaultness.is_final() && !self.impl_is_default(assoc_item.container.id())
+    bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
+}
+
+pub fn closure_trait_ref_and_return_type(
+    tcx: TyCtxt<'tcx>,
+    fn_trait_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::PolyFnSig<'tcx>,
+    tuple_arguments: TupleArgumentsFlag,
+) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    let arguments_tuple = match tuple_arguments {
+        TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
+        TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
+    };
+    let trait_ref = ty::TraitRef {
+        def_id: fn_trait_def_id,
+        substs: tcx.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
+    };
+    ty::Binder::bind((trait_ref, sig.skip_binder().output()))
+}
+
+pub fn generator_trait_ref_and_outputs(
+    tcx: TyCtxt<'tcx>,
+    fn_trait_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::PolyGenSig<'tcx>,
+) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
+    let trait_ref =
+        ty::TraitRef { def_id: fn_trait_def_id, substs: tcx.mk_substs_trait(self_ty, &[]) };
+    ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
+}
+
+pub fn impl_is_default(tcx: TyCtxt<'_>, node_item_def_id: DefId) -> bool {
+    match tcx.hir().as_local_hir_id(node_item_def_id) {
+        Some(hir_id) => {
+            let item = tcx.hir().expect_item(hir_id);
+            if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
+                defaultness.is_default()
+            } else {
+                false
+            }
+        }
+        None => tcx.impl_defaultness(node_item_def_id).is_default(),
     }
+}
+
+pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
+    assoc_item.defaultness.is_final() && !impl_is_default(tcx, assoc_item.container.id())
 }
 
 pub enum TupleArgumentsFlag {

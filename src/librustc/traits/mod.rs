@@ -10,6 +10,7 @@ mod coherence;
 mod engine;
 pub mod error_reporting;
 mod fulfill;
+pub mod misc;
 mod object_safety;
 mod on_unimplemented;
 mod project;
@@ -17,7 +18,9 @@ pub mod query;
 mod select;
 mod specialize;
 mod structural_impls;
+mod structural_match;
 mod util;
+pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, SuppressRegionErrors};
@@ -47,6 +50,9 @@ pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls}
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
+pub use self::object_safety::astconv_object_safety_violations;
+pub use self::object_safety::is_vtable_safe_method;
+pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
@@ -59,8 +65,15 @@ pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
+pub use self::structural_match::search_for_structural_match_violation;
+pub use self::structural_match::type_marked_structural;
+pub use self::structural_match::NonStructuralMatchTy;
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
+pub use self::util::{
+    get_vtable_index_of_object_method, impl_is_default, impl_item_is_final,
+    predicate_for_trait_def, upcast_choices,
+};
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,
 };
@@ -1062,7 +1075,7 @@ fn vtable_methods<'tcx>(
             let def_id = trait_method.def_id;
 
             // Some methods cannot be called on an object; skip those.
-            if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
+            if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
                 debug!("vtable_methods: not vtable safe");
                 return None;
             }
@@ -1231,6 +1244,7 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
+    misc::provide(providers);
     *providers = ty::query::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
