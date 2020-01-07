@@ -10,6 +10,7 @@ extern crate rustc;
 extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_span;
@@ -20,7 +21,7 @@ use std::str::FromStr;
 
 use hex::FromHexError;
 
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
 use rustc_interface::{interface, Queries};
 

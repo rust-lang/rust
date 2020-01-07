@@ -2,12 +2,13 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate test;
 
 use self::miri::eval_main;
 use crate::test::Bencher;
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
 use rustc_interface::{interface, Queries};
 

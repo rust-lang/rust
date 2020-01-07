@@ -10,6 +10,7 @@ extern crate rustc_apfloat;
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_hir;
 extern crate rustc_span;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
