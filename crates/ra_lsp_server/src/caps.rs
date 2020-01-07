@@ -56,6 +56,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         color_provider: None,
         execute_command_provider: None,
         workspace: None,
+        call_hierarchy_provider: None,
         experimental: Default::default(),
     }
 }
