@@ -39,7 +39,19 @@ jobs:
           override: true
           components: rustfmt, rust-src
 
-      - name: Cargo target cache
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo target dir
         uses: actions/cache@v1
         with:
           path: target
