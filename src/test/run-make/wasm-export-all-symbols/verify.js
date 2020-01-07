@@ -17,7 +17,7 @@ for (const entry of list) {
   if (entry.kind == 'global'){
     nexports_global += 1;
   }
-    my_exports[entry.name] = true;
+  my_exports[entry.name] = true;
 }
 
 if (my_exports.foo === undefined)
