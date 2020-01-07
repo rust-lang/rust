@@ -11,9 +11,9 @@ use graphviz as dot;
 use super::Constraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::SubregionOrigin;
-use crate::middle::free_region::RegionRelations;
-use crate::middle::region;
-use crate::ty;
+use rustc::middle::free_region::RegionRelations;
+use rustc::middle::region;
+use rustc::ty;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefIndex;
 

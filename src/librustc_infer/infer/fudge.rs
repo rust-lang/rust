@@ -1,5 +1,5 @@
-use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
+use rustc::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;

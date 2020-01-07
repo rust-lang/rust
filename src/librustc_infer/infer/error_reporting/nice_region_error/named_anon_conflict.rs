@@ -1,7 +1,7 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::ty;
+use rustc::ty;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::{FunctionRetTy, TyKind};
 

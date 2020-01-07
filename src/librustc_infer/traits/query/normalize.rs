@@ -7,9 +7,9 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::project::Normalized;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::subst::Subst;
-use crate::ty::{self, Ty, TyCtxt};
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
+use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 

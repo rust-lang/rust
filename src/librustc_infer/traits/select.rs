@@ -33,13 +33,13 @@ use super::{
     VtableGeneratorData, VtableImplData, VtableObjectData, VtableTraitAliasData,
 };
 
-use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
-use crate::middle::lang_items;
-use crate::ty::fast_reject;
-use crate::ty::relate::TypeRelation;
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc::dep_graph::{DepKind, DepNodeIndex};
+use rustc::middle::lang_items;
+use rustc::ty::fast_reject;
+use rustc::ty::relate::TypeRelation;
+use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

@@ -6,8 +6,9 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::error_reporting::suggest_constraining_type_param;
 use crate::traits::object_safety::object_safety_violations;
-use crate::ty::TypeckTables;
-use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+
+use rustc::ty::TypeckTables;
+use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
 };

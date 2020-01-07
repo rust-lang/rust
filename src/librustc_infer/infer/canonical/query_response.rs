@@ -7,7 +7,6 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
@@ -19,6 +18,7 @@ use crate::infer::{InferCtxt, InferOk, InferResult};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use rustc::arena::ArenaAllocatable;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, BoundVar, Ty, TyCtxt};

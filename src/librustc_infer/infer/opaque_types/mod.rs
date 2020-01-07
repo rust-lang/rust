@@ -1,12 +1,12 @@
 use crate::infer::error_reporting::{note_and_explain_free_region, note_and_explain_region};
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
-use crate::middle::region;
 use crate::traits::{self, PredicateObligation};
-use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::free_region_map::FreeRegionRelations;
-use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use rustc::middle::region;
 use rustc::session::config::nightly_options;
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use rustc::ty::free_region_map::FreeRegionRelations;
+use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};

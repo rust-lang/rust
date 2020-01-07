@@ -1,7 +1,7 @@
-use crate::hir::map::Map;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::middle::resolve_lifetime as rl;
-use crate::ty::{self, Region, TyCtxt};
+use rustc::hir::map::Map;
+use rustc::middle::resolve_lifetime as rl;
+use rustc::ty::{self, Region, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;

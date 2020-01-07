@@ -1,7 +1,7 @@
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::outlives_bounds::{self, OutlivesBound};
-use crate::ty::free_region_map::FreeRegionMap;
-use crate::ty::{self, Ty};
+use rustc::ty::free_region_map::FreeRegionMap;
+use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_span::Span;

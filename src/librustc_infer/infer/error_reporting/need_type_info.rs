@@ -1,8 +1,8 @@
-use crate::hir::map::Map;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
-use crate::ty::print::Print;
-use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
+use rustc::hir::map::Map;
+use rustc::ty::print::Print;
+use rustc::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};

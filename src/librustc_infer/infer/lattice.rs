@@ -23,9 +23,9 @@ use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
 use crate::traits::ObligationCause;
-use crate::ty::relate::{RelateResult, TypeRelation};
-use crate::ty::TyVar;
-use crate::ty::{self, Ty};
+use rustc::ty::relate::{RelateResult, TypeRelation};
+use rustc::ty::TyVar;
+use rustc::ty::{self, Ty};
 
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;

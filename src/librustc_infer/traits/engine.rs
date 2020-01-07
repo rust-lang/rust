@@ -1,6 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
-use crate::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_hir::def_id::DefId;
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};

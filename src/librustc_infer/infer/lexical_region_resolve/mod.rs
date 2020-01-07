@@ -8,12 +8,12 @@ use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
 use crate::infer::RegionVariableOrigin;
 use crate::infer::SubregionOrigin;
-use crate::middle::free_region::RegionRelations;
-use crate::ty::fold::TypeFoldable;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use crate::ty::{ReLateBound, RePlaceholder, ReScope, ReVar};
-use crate::ty::{Region, RegionVid};
+use rustc::middle::free_region::RegionRelations;
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use rustc::ty::{ReLateBound, RePlaceholder, ReScope, ReVar};
+use rustc::ty::{Region, RegionVid};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
