@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     pub LET_UNDERSCORE_MUST_USE,
     restriction,
-    "non-binding let on a #[must_use] expression"
+    "non-binding let on a `#[must_use]` expression"
 }
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE]);
@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         cx,
                         LET_UNDERSCORE_MUST_USE,
                         stmt.span,
-                        "non-binding let on an expression with #[must_use] type",
+                        "non-binding let on an expression with `#[must_use]` type",
                         "consider explicitly using expression value"
                     )
                 } else if is_must_use_func_call(cx, init) {
@@ -52,7 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         cx,
                         LET_UNDERSCORE_MUST_USE,
                         stmt.span,
-                        "non-binding let on a result of a #[must_use] function",
+                        "non-binding let on a result of a `#[must_use]` function",
                         "consider explicitly using function result"
                     )
                 }

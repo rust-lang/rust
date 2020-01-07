@@ -112,7 +112,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
                          span_lint(cx,
                                    RANGE_ZIP_WITH_LEN,
                                    expr.span,
-                                   &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                   &format!("It is more idiomatic to use `{}.iter().enumerate()`",
                                             snippet(cx, iter_args[0].span, "_")));
                     }
                 }

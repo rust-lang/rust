@@ -120,7 +120,7 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn bar_copy(x: u32, y: CopyWrapper) {
    |                        ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
-help: consider marking this type as Copy
+help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:124:1
    |
 LL | struct CopyWrapper(u32);
@@ -132,7 +132,7 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
-help: consider marking this type as Copy
+help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:124:1
    |
 LL | struct CopyWrapper(u32);
@@ -144,7 +144,7 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
-help: consider marking this type as Copy
+help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:124:1
    |
 LL | struct CopyWrapper(u32);
@@ -156,7 +156,7 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                                                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
-help: consider marking this type as Copy
+help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:124:1
    |
 LL | struct CopyWrapper(u32);

@@ -5,7 +5,7 @@ LL |     u <= 0;
    |     ^^^^^^
    |
    = note: `-D clippy::absurd-extreme-comparisons` implied by `-D warnings`
-   = help: because 0 is the minimum value for this type, the case where the two sides are not equal never occurs, consider using u == 0 instead
+   = help: because `0` is the minimum value for this type, the case where the two sides are not equal never occurs, consider using `u == 0` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:15:5
@@ -13,7 +13,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u <= Z;
    |     ^^^^^^
    |
-   = help: because Z is the minimum value for this type, the case where the two sides are not equal never occurs, consider using u == Z instead
+   = help: because `Z` is the minimum value for this type, the case where the two sides are not equal never occurs, consider using `u == Z` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:16:5
@@ -21,7 +21,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u < Z;
    |     ^^^^^
    |
-   = help: because Z is the minimum value for this type, this comparison is always false
+   = help: because `Z` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:17:5
@@ -29,7 +29,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     Z >= u;
    |     ^^^^^^
    |
-   = help: because Z is the minimum value for this type, the case where the two sides are not equal never occurs, consider using Z == u instead
+   = help: because `Z` is the minimum value for this type, the case where the two sides are not equal never occurs, consider using `Z == u` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:18:5
@@ -37,7 +37,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     Z > u;
    |     ^^^^^
    |
-   = help: because Z is the minimum value for this type, this comparison is always false
+   = help: because `Z` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:19:5
@@ -45,7 +45,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u > std::u32::MAX;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: because std::u32::MAX is the maximum value for this type, this comparison is always false
+   = help: because `std::u32::MAX` is the maximum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:20:5
@@ -53,7 +53,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u >= std::u32::MAX;
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: because std::u32::MAX is the maximum value for this type, the case where the two sides are not equal never occurs, consider using u == std::u32::MAX instead
+   = help: because `std::u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `u == std::u32::MAX` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:21:5
@@ -61,7 +61,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     std::u32::MAX < u;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: because std::u32::MAX is the maximum value for this type, this comparison is always false
+   = help: because `std::u32::MAX` is the maximum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:22:5
@@ -69,7 +69,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     std::u32::MAX <= u;
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = help: because std::u32::MAX is the maximum value for this type, the case where the two sides are not equal never occurs, consider using std::u32::MAX == u instead
+   = help: because `std::u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `std::u32::MAX == u` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:23:5
@@ -77,7 +77,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     1-1 > u;
    |     ^^^^^^^
    |
-   = help: because 1-1 is the minimum value for this type, this comparison is always false
+   = help: because `1-1` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:24:5
@@ -85,7 +85,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u >= !0;
    |     ^^^^^^^
    |
-   = help: because !0 is the maximum value for this type, the case where the two sides are not equal never occurs, consider using u == !0 instead
+   = help: because `!0` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `u == !0` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:25:5
@@ -93,7 +93,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     u <= 12 - 2*6;
    |     ^^^^^^^^^^^^^
    |
-   = help: because 12 - 2*6 is the minimum value for this type, the case where the two sides are not equal never occurs, consider using u == 12 - 2*6 instead
+   = help: because `12 - 2*6` is the minimum value for this type, the case where the two sides are not equal never occurs, consider using `u == 12 - 2*6` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:27:5
@@ -101,7 +101,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     i < -127 - 1;
    |     ^^^^^^^^^^^^
    |
-   = help: because -127 - 1 is the minimum value for this type, this comparison is always false
+   = help: because `-127 - 1` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:28:5
@@ -109,7 +109,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     std::i8::MAX >= i;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = help: because std::i8::MAX is the maximum value for this type, this comparison is always true
+   = help: because `std::i8::MAX` is the maximum value for this type, this comparison is always true
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:29:5
@@ -117,7 +117,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     3-7 < std::i32::MIN;
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = help: because std::i32::MIN is the minimum value for this type, this comparison is always false
+   = help: because `std::i32::MIN` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:31:5
@@ -125,7 +125,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     b >= true;
    |     ^^^^^^^^^
    |
-   = help: because true is the maximum value for this type, the case where the two sides are not equal never occurs, consider using b == true instead
+   = help: because `true` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `b == true` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:32:5
@@ -133,7 +133,7 @@ error: this comparison involving the minimum or maximum element for this type co
 LL |     false > b;
    |     ^^^^^^^^^
    |
-   = help: because false is the minimum value for this type, this comparison is always false
+   = help: because `false` is the minimum value for this type, this comparison is always false
 
 error: <-comparison of unit values detected. This will always be false
   --> $DIR/absurd-extreme-comparisons.rs:35:5

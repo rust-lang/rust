@@ -68,7 +68,7 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for _v in vec.iter_mut() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
 
-error: it is more concise to loop over containers instead of using explicit iteration methods`
+error: it is more concise to loop over containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:103:15
    |
 LL |     for _v in out_vec.into_iter() {}
@@ -130,7 +130,7 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for _v in bs.iter() {}
    |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
 
-error: it is more concise to loop over containers instead of using explicit iteration methods`
+error: it is more concise to loop over containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:310:18
    |
 LL |         for i in iterator.into_iter() {
@@ -142,7 +142,7 @@ error: it is more concise to loop over references to containers instead of using
 LL |         for _ in t.into_iter() {}
    |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
 
-error: it is more concise to loop over containers instead of using explicit iteration methods`
+error: it is more concise to loop over containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:332:18
    |
 LL |         for _ in r.into_iter() {}

@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// ```
     pub IFS_SAME_COND,
     correctness,
-    "consecutive `ifs` with the same condition"
+    "consecutive `if`s with the same condition"
 }
 
 declare_clippy_lint! {
@@ -85,7 +85,7 @@ declare_clippy_lint! {
     /// ```
     pub SAME_FUNCTIONS_IN_IF_CONDITION,
     pedantic,
-    "consecutive `ifs` with the same function call"
+    "consecutive `if`s with the same function call"
 }
 
 declare_clippy_lint! {
@@ -106,7 +106,7 @@ declare_clippy_lint! {
     /// ```
     pub IF_SAME_THEN_ELSE,
     correctness,
-    "if with the same *then* and *else* blocks"
+    "`if` with the same `then` and `else` blocks"
 }
 
 declare_clippy_lint! {
@@ -206,7 +206,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
             cx,
             IFS_SAME_COND,
             j.span,
-            "this `if` has the same condition as a previous if",
+            "this `if` has the same condition as a previous `if`",
             i.span,
             "same as this",
         );
@@ -234,7 +234,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,
             j.span,
-            "this `if` has the same function call as a previous if",
+            "this `if` has the same function call as a previous `if`",
             i.span,
             "same as this",
         );
@@ -300,7 +300,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
                         db.span_note(
                             i.body.span,
                             &format!(
-                                "`{}` has the same arm body as the `_` wildcard, consider removing it`",
+                                "`{}` has the same arm body as the `_` wildcard, consider removing it",
                                 lhs
                             ),
                         );

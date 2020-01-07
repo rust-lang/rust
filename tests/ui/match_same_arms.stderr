@@ -24,7 +24,7 @@ LL | |             if true {
 LL | |             a
 LL | |         },
    | |_________^
-note: `42` has the same arm body as the `_` wildcard, consider removing it`
+note: `42` has the same arm body as the `_` wildcard, consider removing it
   --> $DIR/match_same_arms.rs:28:15
    |
 LL |           42 => {
@@ -48,7 +48,7 @@ note: same as this
    |
 LL |         Abc::A => 0,
    |                   ^
-note: `Abc::A` has the same arm body as the `_` wildcard, consider removing it`
+note: `Abc::A` has the same arm body as the `_` wildcard, consider removing it
   --> $DIR/match_same_arms.rs:50:19
    |
 LL |         Abc::A => 0,

@@ -1,4 +1,4 @@
-error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
   --> $DIR/block_in_if_condition.rs:26:8
    |
 LL |       if {
@@ -30,7 +30,7 @@ LL |     if { true } {
                6
            } ... 
 
-error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
   --> $DIR/block_in_if_condition.rs:58:17
    |
 LL |               |x| {
@@ -40,7 +40,7 @@ LL | |                 x == target
 LL | |             },
    | |_____________^
 
-error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
   --> $DIR/block_in_if_condition.rs:67:13
    |
 LL |           |x| {

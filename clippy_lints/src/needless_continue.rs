@@ -274,15 +274,15 @@ struct LintData<'a> {
     block_stmts: &'a [ast::Stmt],
 }
 
-const MSG_REDUNDANT_ELSE_BLOCK: &str = "This else block is redundant.\n";
+const MSG_REDUNDANT_ELSE_BLOCK: &str = "This `else` block is redundant.\n";
 
 const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "There is no need for an explicit `else` block for this `if` \
                                          expression\n";
 
-const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "Consider dropping the else clause and merging the code that \
-                                             follows (in the loop) with the if block, like so:\n";
+const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "Consider dropping the `else` clause and merging the code that \
+                                             follows (in the loop) with the `if` block, like so:\n";
 
-const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the else clause, and moving out the code in the else \
+const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the `else` clause, and moving out the code in the `else` \
                                    block, like so:\n";
 
 fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {

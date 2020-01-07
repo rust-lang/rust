@@ -54,7 +54,7 @@ declare_clippy_lint! {
     /// ```
     pub MISSING_INLINE_IN_PUBLIC_ITEMS,
     restriction,
-    "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)"
+    "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"
 }
 
 fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {

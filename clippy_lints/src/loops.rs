@@ -1353,7 +1353,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
                         EXPLICIT_INTO_ITER_LOOP,
                         arg.span,
                         "it is more concise to loop over containers instead of using explicit \
-                         iteration methods`",
+                         iteration methods",
                         "to write this more concisely, try",
                         object.to_string(),
                         applicability,

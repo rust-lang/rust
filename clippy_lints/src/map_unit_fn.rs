@@ -48,7 +48,7 @@ declare_clippy_lint! {
     /// ```
     pub OPTION_MAP_UNIT_FN,
     complexity,
-    "using `option.map(f)`, where f is a function or closure that returns ()"
+    "using `option.map(f)`, where `f` is a function or closure that returns `()`"
 }
 
 declare_clippy_lint! {
@@ -89,7 +89,7 @@ declare_clippy_lint! {
     /// ```
     pub RESULT_MAP_UNIT_FN,
     complexity,
-    "using `result.map(f)`, where f is a function or closure that returns ()"
+    "using `result.map(f)`, where `f` is a function or closure that returns `()`"
 }
 
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
@@ -199,7 +199,7 @@ fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr<'_>) -> String
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
-        "called `map(f)` on an {0} value where `f` is a unit {1}",
+        "called `map(f)` on an `{0}` value where `f` is a unit {1}",
         map_type, function_type
     )
 }

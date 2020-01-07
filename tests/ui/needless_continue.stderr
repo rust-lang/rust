@@ -1,4 +1,4 @@
-error: This else block is redundant.
+error: This `else` block is redundant.
 
   --> $DIR/needless_continue.rs:28:16
    |
@@ -9,7 +9,7 @@ LL | |         }
    | |_________^
    |
    = note: `-D clippy::needless-continue` implied by `-D warnings`
-   = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
+   = help: Consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block, like so:
            if i % 2 == 0 && i % 3 == 0 {
            println!("{}", i);
            println!("{}", i + 1);
@@ -47,7 +47,7 @@ LL | |             println!("Jabber");
 LL | |         }
    | |_________^
    |
-   = help: Consider dropping the else clause, and moving out the code in the else block, like so:
+   = help: Consider dropping the `else` clause, and moving out the code in the `else` block, like so:
            if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
                continue;
            }
@@ -55,7 +55,7 @@ LL | |         }
            println!("Jabber");
            ...
 
-error: This else block is redundant.
+error: This `else` block is redundant.
 
   --> $DIR/needless_continue.rs:100:24
    |
@@ -65,7 +65,7 @@ LL | |                     continue 'inner; // should lint here
 LL | |                 }
    | |_________________^
    |
-   = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
+   = help: Consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block, like so:
            if condition() {
            println!("bar-3");
            // Merged code follows...println!("bar-4");
@@ -90,7 +90,7 @@ LL | |                     println!("bar-5");
 LL | |                 }
    | |_________________^
    |
-   = help: Consider dropping the else clause, and moving out the code in the else block, like so:
+   = help: Consider dropping the `else` clause, and moving out the code in the `else` block, like so:
            if condition() {
                continue;
            }

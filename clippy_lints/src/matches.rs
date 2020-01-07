@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// ```
     pub SINGLE_MATCH,
     style,
-    "a match statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`"
+    "a `match` statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`"
 }
 
 declare_clippy_lint! {
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// ```
     pub SINGLE_MATCH_ELSE,
     pedantic,
-    "a match statement with two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
+    "a `match` statement with two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
 }
 
 declare_clippy_lint! {
@@ -99,7 +99,7 @@ declare_clippy_lint! {
     /// ```
     pub MATCH_REF_PATS,
     style,
-    "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
+    "a `match` or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
 }
 
 declare_clippy_lint! {
@@ -133,7 +133,7 @@ declare_clippy_lint! {
     /// ```
     pub MATCH_BOOL,
     style,
-    "a match on a boolean expression instead of an `if..else` block"
+    "a `match` on a boolean expression instead of an `if..else` block"
 }
 
 declare_clippy_lint! {
@@ -155,7 +155,7 @@ declare_clippy_lint! {
     /// ```
     pub MATCH_OVERLAPPING_ARM,
     style,
-    "a match with overlapping arms"
+    "a `match` with overlapping arms"
 }
 
 declare_clippy_lint! {
@@ -177,7 +177,7 @@ declare_clippy_lint! {
     /// ```
     pub MATCH_WILD_ERR_ARM,
     style,
-    "a match with `Err(_)` arm and take drastic actions"
+    "a `match` with `Err(_)` arm and take drastic actions"
 }
 
 declare_clippy_lint! {
@@ -198,7 +198,7 @@ declare_clippy_lint! {
     /// ```
     pub MATCH_AS_REF,
     complexity,
-    "a match on an Option value instead of using `as_ref()` or `as_mut`"
+    "a `match` on an Option value instead of using `as_ref()` or `as_mut`"
 }
 
 declare_clippy_lint! {
@@ -407,7 +407,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
                         if let Some(sugg) = sugg {
                             db.span_suggestion(
                                 expr.span,
-                                "consider using an if/else expression",
+                                "consider using an `if`/`else` expression",
                                 sugg,
                                 Applicability::HasPlaceholders,
                             );
@@ -461,10 +461,10 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                         span_note_and_lint(cx,
                                            MATCH_WILD_ERR_ARM,
                                            arm.pat.span,
-                                           "Err(_) will match all errors, maybe not a good idea",
+                                           "`Err(_)` will match all errors, maybe not a good idea",
                                            arm.pat.span,
                                            "to remove this warning, match each error separately \
-                                            or use unreachable macro");
+                                            or use `unreachable!` macro");
                     }
                 }
             }
@@ -650,7 +650,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
                 cx,
                 MATCH_AS_REF,
                 expr.span,
-                &format!("use {}() instead", suggestion),
+                &format!("use `{}()` instead", suggestion),
                 "try this",
                 format!(
                     "{}.{}(){}",

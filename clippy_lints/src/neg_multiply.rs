@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// ```
     pub NEG_MULTIPLY,
     style,
-    "multiplying integers with -1"
+    "multiplying integers with `-1`"
 }
 
 declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
@@ -48,7 +48,7 @@ fn check_mul(cx: &LateContext<'_, '_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_
         if let Constant::Int(1) = consts::lit_to_constant(&l.node, cx.tables.expr_ty_opt(lit));
         if cx.tables.expr_ty(exp).is_integral();
         then {
-            span_lint(cx, NEG_MULTIPLY, span, "Negation by multiplying with -1");
+            span_lint(cx, NEG_MULTIPLY, span, "Negation by multiplying with `-1`");
         }
     }
 }

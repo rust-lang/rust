@@ -187,7 +187,7 @@ declare_clippy_lint! {
     /// ```
     pub DEPRECATED_CFG_ATTR,
     complexity,
-    "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`"
+    "usage of `cfg_attr(rustfmt)` instead of tool attributes"
 }
 
 declare_lint_pass!(Attributes => [
@@ -449,7 +449,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
                         "Found an empty line after an outer attribute. \
-                         Perhaps you forgot to add a '!' to make it an inner attribute?",
+                         Perhaps you forgot to add a `!` to make it an inner attribute?",
                     );
                 }
             }
@@ -520,7 +520,7 @@ impl EarlyLintPass for DeprecatedCfgAttribute {
                     cx,
                     DEPRECATED_CFG_ATTR,
                     attr.span,
-                    "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
+                    "`cfg_attr` is deprecated for rustfmt and got replaced by tool attributes",
                     "use",
                     "#[rustfmt::skip]".to_string(),
                     Applicability::MachineApplicable,

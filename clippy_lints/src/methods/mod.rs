@@ -1828,7 +1828,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &h
             cx,
             CLONE_ON_REF_PTR,
             expr.span,
-            "using '.clone()' on a ref-counted pointer",
+            "using `.clone()` on a ref-counted pointer",
             "try this",
             format!(
                 "{}::<{}>::clone(&{})",
@@ -2220,8 +2220,8 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
             lint,
             expr.span,
             &format!(
-                "used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
-                 using expect() to provide a better panic \
+                "used `unwrap()` on `{}` value. If you don't want to handle the `{}` case gracefully, consider \
+                 using `expect()` to provide a better panic \
                  message",
                 kind, none_value
             ),
@@ -2247,7 +2247,7 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
             lint,
             expr.span,
             &format!(
-                "used expect() on {} value. If this value is an {} it will panic",
+                "used `expect()` on `{}` value. If this value is an `{}` it will panic",
                 kind, none_value
             ),
         );
@@ -2268,7 +2268,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir
                 cx,
                 OK_EXPECT,
                 expr.span,
-                "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
+                "called `ok().expect()` on a `Result` value. You can call `expect()` directly on the `Result`",
             );
         }
     }
@@ -2286,7 +2286,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
         span_lint_and_then(cx, MAP_FLATTEN, expr.span, msg, |db| {
             db.span_suggestion(
                 expr.span,
-                "try using flat_map instead",
+                "try using `flat_map` instead",
                 hint,
                 Applicability::MachineApplicable,
             );
@@ -2320,10 +2320,10 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
 
         // lint message
         let msg = if is_option {
-            "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
+            "called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling \
              `map_or_else(g, f)` instead"
         } else {
-            "called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling \
+            "called `map(f).unwrap_or_else(g)` on a `Result` value. This can be done more directly by calling \
              `.map_or_else(g, f)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
@@ -2380,7 +2380,7 @@ fn lint_map_or_none<'a, 'tcx>(
 
         if map_or_arg_is_none {
             // lint message
-            let msg = "called `map_or(None, f)` on an Option value. This can be done more directly by calling \
+            let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
                        `and_then(f)` instead";
             let map_or_self_snippet = snippet(cx, map_or_args[0].span, "..");
             let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
@@ -2388,7 +2388,7 @@ fn lint_map_or_none<'a, 'tcx>(
             span_lint_and_then(cx, OPTION_MAP_OR_NONE, expr.span, msg, |db| {
                 db.span_suggestion(
                     expr.span,
-                    "try using and_then instead",
+                    "try using `and_then` instead",
                     hint,
                     Applicability::MachineApplicable, // snippet
                 );
@@ -2860,7 +2860,7 @@ fn lint_single_char_pattern<'a, 'tcx>(
                 SINGLE_CHAR_PATTERN,
                 arg.span,
                 "single-character string constant used as pattern",
-                "try using a char instead",
+                "try using a `char` instead",
                 hint,
                 applicability,
             );
@@ -2928,7 +2928,7 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, self_ref_ty: T
             INTO_ITER_ON_REF,
             method_span,
             &format!(
-                "this .into_iter() call is equivalent to .{}() and will not move the {}",
+                "this `.into_iter()` call is equivalent to `.{}()` and will not move the `{}`",
                 method_name, kind,
             ),
             "call directly",

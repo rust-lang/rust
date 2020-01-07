@@ -1,4 +1,4 @@
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:9:5
    |
 LL | /     if x == "hello" {
@@ -16,7 +16,7 @@ LL |     println!("Hello world!");
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:15:5
    |
 LL | /     if x == "hello" || x == "world" {
@@ -33,7 +33,7 @@ LL |     println!("Hello world!");
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:21:5
    |
 LL | /     if x == "hello" && x == "world" {
@@ -50,7 +50,7 @@ LL |     println!("Hello world!");
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:27:5
    |
 LL | /     if x == "hello" || x == "world" {
@@ -67,7 +67,7 @@ LL |     println!("Hello world!");
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:33:5
    |
 LL | /     if x == "hello" && x == "world" {
@@ -84,7 +84,7 @@ LL |     println!("Hello world!");
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:39:5
    |
 LL | /     if 42 == 1337 {
@@ -101,7 +101,7 @@ LL |     println!("world!")
 LL | }
    |
 
-error: this if statement can be collapsed
+error: this `if` statement can be collapsed
   --> $DIR/collapsible_if.rs:95:5
    |
 LL | /     if x == "hello" {

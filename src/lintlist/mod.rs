@@ -87,7 +87,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "borrow_interior_mutable_const",
         group: "correctness",
-        desc: "referencing const with interior mutability",
+        desc: "referencing `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
     },
@@ -178,7 +178,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "char_lit_as_u8",
         group: "complexity",
-        desc: "casting a character literal to u8 truncates",
+        desc: "casting a character literal to `u8` truncates",
         deprecation: None,
         module: "types",
     },
@@ -227,7 +227,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "cmp_nan",
         group: "correctness",
-        desc: "comparisons to NAN, which will always return false, probably not intended",
+        desc: "comparisons to `NAN`, which will always return false, probably not intended",
         deprecation: None,
         module: "misc",
     },
@@ -304,21 +304,21 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "declare_interior_mutable_const",
         group: "correctness",
-        desc: "declaring const with interior mutability",
+        desc: "declaring `const` with interior mutability",
         deprecation: None,
         module: "non_copy_const",
     },
     Lint {
         name: "default_trait_access",
         group: "pedantic",
-        desc: "checks for literal calls to Default::default()",
+        desc: "checks for literal calls to `Default::default()`",
         deprecation: None,
         module: "default_trait_access",
     },
     Lint {
         name: "deprecated_cfg_attr",
         group: "complexity",
-        desc: "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`",
+        desc: "usage of `cfg_attr(rustfmt)` instead of tool attributes",
         deprecation: None,
         module: "attrs",
     },
@@ -423,7 +423,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "else_if_without_else",
         group: "restriction",
-        desc: "if expression with an `else if`, but without a final `else` branch",
+        desc: "`if` expression with an `else if`, but without a final `else` branch",
         deprecation: None,
         module: "else_if_without_else",
     },
@@ -710,14 +710,14 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "if_same_then_else",
         group: "correctness",
-        desc: "if with the same *then* and *else* blocks",
+        desc: "`if` with the same `then` and `else` blocks",
         deprecation: None,
         module: "copies",
     },
     Lint {
         name: "ifs_same_cond",
         group: "correctness",
-        desc: "consecutive `ifs` with the same condition",
+        desc: "consecutive `if`s with the same condition",
         deprecation: None,
         module: "copies",
     },
@@ -766,7 +766,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "infallible_destructuring_match",
         group: "style",
-        desc: "a match statement with a single infallible arm instead of a `let`",
+        desc: "a `match` statement with a single infallible arm instead of a `let`",
         deprecation: None,
         module: "infallible_destructuring_match",
     },
@@ -787,7 +787,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "inherent_to_string_shadow_display",
         group: "correctness",
-        desc: "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait ",
+        desc: "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait",
         deprecation: None,
         module: "inherent_to_string",
     },
@@ -808,7 +808,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "int_plus_one",
         group: "complexity",
-        desc: "instead of using x >= y + 1, use x > y",
+        desc: "instead of using `x >= y + 1`, use `x > y`",
         deprecation: None,
         module: "int_plus_one",
     },
@@ -955,21 +955,21 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "let_underscore_must_use",
         group: "restriction",
-        desc: "non-binding let on a #[must_use] expression",
+        desc: "non-binding let on a `#[must_use]` expression",
         deprecation: None,
         module: "let_underscore",
     },
     Lint {
         name: "let_unit_value",
         group: "style",
-        desc: "creating a let binding to a value of unit type, which usually can\'t be used afterwards",
+        desc: "creating a `let` binding to a value of unit type, which usually can\'t be used afterwards",
         deprecation: None,
         module: "types",
     },
     Lint {
         name: "linkedlist",
         group: "pedantic",
-        desc: "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque",
+        desc: "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a `VecDeque`",
         deprecation: None,
         module: "types",
     },
@@ -1046,28 +1046,28 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "match_as_ref",
         group: "complexity",
-        desc: "a match on an Option value instead of using `as_ref()` or `as_mut`",
+        desc: "a `match` on an Option value instead of using `as_ref()` or `as_mut`",
         deprecation: None,
         module: "matches",
     },
     Lint {
         name: "match_bool",
         group: "style",
-        desc: "a match on a boolean expression instead of an `if..else` block",
+        desc: "a `match` on a boolean expression instead of an `if..else` block",
         deprecation: None,
         module: "matches",
     },
     Lint {
         name: "match_overlapping_arm",
         group: "style",
-        desc: "a match with overlapping arms",
+        desc: "a `match` with overlapping arms",
         deprecation: None,
         module: "matches",
     },
     Lint {
         name: "match_ref_pats",
         group: "style",
-        desc: "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression",
+        desc: "a `match` or `if let` with all arms prefixed with `&` instead of deref-ing the match expression",
         deprecation: None,
         module: "matches",
     },
@@ -1081,7 +1081,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "match_wild_err_arm",
         group: "style",
-        desc: "a match with `Err(_)` arm and take drastic actions",
+        desc: "a `match` with `Err(_)` arm and take drastic actions",
         deprecation: None,
         module: "matches",
     },
@@ -1095,7 +1095,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "mem_discriminant_non_enum",
         group: "correctness",
-        desc: "calling mem::descriminant on non-enum type",
+        desc: "calling `mem::descriminant` on non-enum type",
         deprecation: None,
         module: "mem_discriminant",
     },
@@ -1165,7 +1165,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "missing_inline_in_public_items",
         group: "restriction",
-        desc: "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)",
+        desc: "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)",
         deprecation: None,
         module: "missing_inline",
     },
@@ -1270,7 +1270,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "mutable_key_type",
         group: "correctness",
-        desc: "Check for mutable Map/Set key type",
+        desc: "Check for mutable `Map`/`Set` key type",
         deprecation: None,
         module: "mut_key",
     },
@@ -1382,7 +1382,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "neg_multiply",
         group: "style",
-        desc: "multiplying integers with -1",
+        desc: "multiplying integers with `-1`",
         deprecation: None,
         module: "neg_multiply",
     },
@@ -1480,7 +1480,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "option_map_unit_fn",
         group: "complexity",
-        desc: "using `option.map(f)`, where f is a function or closure that returns ()",
+        desc: "using `option.map(f)`, where `f` is a function or closure that returns `()`",
         deprecation: None,
         module: "map_unit_fn",
     },
@@ -1550,7 +1550,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "panicking_unwrap",
         group: "correctness",
-        desc: "checks for calls of unwrap[_err]() that will always fail",
+        desc: "checks for calls of `unwrap[_err]()` that will always fail",
         deprecation: None,
         module: "unwrap",
     },
@@ -1746,7 +1746,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "result_map_unit_fn",
         group: "complexity",
-        desc: "using `result.map(f)`, where f is a function or closure that returns ()",
+        desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
         deprecation: None,
         module: "map_unit_fn",
     },
@@ -1774,7 +1774,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "same_functions_in_if_condition",
         group: "pedantic",
-        desc: "consecutive `ifs` with the same function call",
+        desc: "consecutive `if`s with the same function call",
         deprecation: None,
         module: "copies",
     },
@@ -1844,14 +1844,14 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "single_match",
         group: "style",
-        desc: "a match statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`",
+        desc: "a `match` statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`",
         deprecation: None,
         module: "matches",
     },
     Lint {
         name: "single_match_else",
         group: "pedantic",
-        desc: "a match statement with two arms where the second arm\'s pattern is a placeholder instead of a specific match pattern",
+        desc: "a `match` statement with two arms where the second arm\'s pattern is a placeholder instead of a specific match pattern",
         deprecation: None,
         module: "matches",
     },
@@ -2159,7 +2159,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "unnecessary_unwrap",
         group: "complexity",
-        desc: "checks for calls of unwrap[_err]() that cannot fail",
+        desc: "checks for calls of `unwrap[_err]()` that cannot fail",
         deprecation: None,
         module: "unwrap",
     },
@@ -2390,7 +2390,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "zero_divided_by_zero",
         group: "complexity",
-        desc: "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN",
+        desc: "usage of `0.0 / 0.0` to obtain NaN instead of `std::f32::NAN` or `std::f64::NAN`",
         deprecation: None,
         module: "zero_div_zero",
     },
@@ -2404,7 +2404,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "zero_ptr",
         group: "style",
-        desc: "using 0 as *{const, mut} T",
+        desc: "using `0 as *{const, mut} T`",
         deprecation: None,
         module: "misc",
     },

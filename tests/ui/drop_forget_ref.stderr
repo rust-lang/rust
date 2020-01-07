@@ -5,7 +5,7 @@ LL |     drop(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::drop-ref` implied by `-D warnings`
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:9:10
    |
 LL |     drop(&SomeStruct);
@@ -18,7 +18,7 @@ LL |     forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::forget-ref` implied by `-D warnings`
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:10:12
    |
 LL |     forget(&SomeStruct);
@@ -30,7 +30,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(&owned1);
    |     ^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:13:10
    |
 LL |     drop(&owned1);
@@ -42,7 +42,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(&&owned1);
    |     ^^^^^^^^^^^^^^
    |
-note: argument has type &&SomeStruct
+note: argument has type `&&SomeStruct`
   --> $DIR/drop_forget_ref.rs:14:10
    |
 LL |     drop(&&owned1);
@@ -54,7 +54,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(&mut owned1);
    |     ^^^^^^^^^^^^^^^^^
    |
-note: argument has type &mut SomeStruct
+note: argument has type `&mut SomeStruct`
   --> $DIR/drop_forget_ref.rs:15:10
    |
 LL |     drop(&mut owned1);
@@ -66,7 +66,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&owned2);
    |     ^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:18:12
    |
 LL |     forget(&owned2);
@@ -78,7 +78,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&&owned2);
    |     ^^^^^^^^^^^^^^^^
    |
-note: argument has type &&SomeStruct
+note: argument has type `&&SomeStruct`
   --> $DIR/drop_forget_ref.rs:19:12
    |
 LL |     forget(&&owned2);
@@ -90,7 +90,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&mut owned2);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &mut SomeStruct
+note: argument has type `&mut SomeStruct`
   --> $DIR/drop_forget_ref.rs:20:12
    |
 LL |     forget(&mut owned2);
@@ -102,7 +102,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(reference1);
    |     ^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:24:10
    |
 LL |     drop(reference1);
@@ -114,7 +114,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&*reference1);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:25:12
    |
 LL |     forget(&*reference1);
@@ -126,7 +126,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(reference2);
    |     ^^^^^^^^^^^^^^^^
    |
-note: argument has type &mut SomeStruct
+note: argument has type `&mut SomeStruct`
   --> $DIR/drop_forget_ref.rs:28:10
    |
 LL |     drop(reference2);
@@ -138,7 +138,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(reference3);
    |     ^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &mut SomeStruct
+note: argument has type `&mut SomeStruct`
   --> $DIR/drop_forget_ref.rs:30:12
    |
 LL |     forget(reference3);
@@ -150,7 +150,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(reference4);
    |     ^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:33:10
    |
 LL |     drop(reference4);
@@ -162,7 +162,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(reference4);
    |     ^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:34:12
    |
 LL |     forget(reference4);
@@ -174,7 +174,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     drop(&val);
    |     ^^^^^^^^^^
    |
-note: argument has type &T
+note: argument has type `&T`
   --> $DIR/drop_forget_ref.rs:39:10
    |
 LL |     drop(&val);
@@ -186,7 +186,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     forget(&val);
    |     ^^^^^^^^^^^^
    |
-note: argument has type &T
+note: argument has type `&T`
   --> $DIR/drop_forget_ref.rs:45:12
    |
 LL |     forget(&val);
@@ -198,7 +198,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 LL |     std::mem::drop(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:53:20
    |
 LL |     std::mem::drop(&SomeStruct);
@@ -210,7 +210,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 LL |     std::mem::forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: argument has type &SomeStruct
+note: argument has type `&SomeStruct`
   --> $DIR/drop_forget_ref.rs:56:22
    |
 LL |     std::mem::forget(&SomeStruct);

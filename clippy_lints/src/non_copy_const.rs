@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// ```
     pub DECLARE_INTERIOR_MUTABLE_CONST,
     correctness,
-    "declaring const with interior mutability"
+    "declaring `const` with interior mutability"
 }
 
 declare_clippy_lint! {
@@ -81,7 +81,7 @@ declare_clippy_lint! {
     /// ```
     pub BORROW_INTERIOR_MUTABLE_CONST,
     correctness,
-    "referencing const with interior mutability"
+    "referencing `const` with interior mutability"
 }
 
 #[allow(dead_code)]
@@ -98,12 +98,12 @@ impl Source {
         match self {
             Self::Item { item } | Self::Assoc { item, .. } => (
                 DECLARE_INTERIOR_MUTABLE_CONST,
-                "a const item should never be interior mutable",
+                "a `const` item should never be interior mutable",
                 *item,
             ),
             Self::Expr { expr } => (
                 BORROW_INTERIOR_MUTABLE_CONST,
-                "a const item with interior mutability should not be borrowed",
+                "a `const` item with interior mutability should not be borrowed",
                 *expr,
             ),
         }

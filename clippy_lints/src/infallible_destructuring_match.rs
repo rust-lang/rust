@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// ```
     pub INFALLIBLE_DESTRUCTURING_MATCH,
     style,
-    "a match statement with a single infallible arm instead of a `let`"
+    "a `match` statement with a single infallible arm instead of a `let`"
 }
 
 declare_lint_pass!(InfallibleDestructingMatch => [INFALLIBLE_DESTRUCTURING_MATCH]);
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfallibleDestructingMatch {
                     cx,
                     INFALLIBLE_DESTRUCTURING_MATCH,
                     local.span,
-                    "you seem to be trying to use match to destructure a single infallible pattern. \
+                    "you seem to be trying to use `match` to destructure a single infallible pattern. \
                      Consider using `let`",
                     "try this",
                     format!(

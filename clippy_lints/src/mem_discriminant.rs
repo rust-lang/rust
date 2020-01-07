@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// ```
     pub MEM_DISCRIMINANT_NON_ENUM,
     correctness,
-    "calling mem::descriminant on non-enum type"
+    "calling `mem::descriminant` on non-enum type"
 }
 
 declare_lint_pass!(MemDiscriminant => [MEM_DISCRIMINANT_NON_ENUM]);

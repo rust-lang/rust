@@ -66,7 +66,7 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>,
             UNSAFE_REMOVED_FROM_NAME,
             span,
             &format!(
-                "removed \"unsafe\" from the name of `{}` in use as `{}`",
+                "removed `unsafe` from the name of `{}` in use as `{}`",
                 old_str, new_str
             ),
         );

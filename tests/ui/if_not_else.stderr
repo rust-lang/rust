@@ -9,7 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::if-not-else` implied by `-D warnings`
-   = help: remove the `!` and swap the blocks of the if/else
+   = help: remove the `!` and swap the blocks of the `if`/`else`
 
 error: Unnecessary `!=` operation
   --> $DIR/if_not_else.rs:14:5
@@ -21,7 +21,7 @@ LL | |         println!("Bunny");
 LL | |     }
    | |_____^
    |
-   = help: change to `==` and swap the blocks of the if/else
+   = help: change to `==` and swap the blocks of the `if`/`else`
 
 error: aborting due to 2 previous errors
 

@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,
-    "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"
+    "usage of `0.0 / 0.0` to obtain NaN instead of `std::f32::NAN` or `std::f64::NAN`"
 }
 
 declare_lint_pass!(ZeroDiv => [ZERO_DIVIDED_BY_ZERO]);
@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
                     cx,
                     ZERO_DIVIDED_BY_ZERO,
                     expr.span,
-                    "constant division of 0.0 with 0.0 will always result in NaN",
+                    "constant division of `0.0` with `0.0` will always result in NaN",
                     &format!(
                         "Consider using `std::{}::NAN` if you would like a constant representing NaN",
                         float_type,
