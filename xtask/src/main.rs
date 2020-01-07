@@ -14,7 +14,7 @@ use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
     install::{ClientOpt, InstallCmd, ServerOpt},
-    pre_commit, run_clippy, run_fuzzer, run_rustfmt, Result,
+    pre_commit, run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
@@ -87,6 +87,10 @@ FLAGS:
         "fuzz-tests" => {
             args.finish()?;
             run_fuzzer()
+        }
+        "pre-cache" => {
+            args.finish()?;
+            run_pre_cache()
         }
         _ => {
             eprintln!(

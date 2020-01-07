@@ -9,7 +9,7 @@ mod ast_src;
 
 use anyhow::Context;
 use std::{
-    env,
+    env, fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -100,4 +100,42 @@ pub fn run_fuzzer() -> Result<()> {
     };
 
     run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
+}
+
+/// Cleans the `./target` dir after the build such that only
+/// dependencies are cached on CI.
+pub fn run_pre_cache() -> Result<()> {
+    let slow_tests_cookie = Path::new("./target/.slow_tests_cookie");
+    if !slow_tests_cookie.exists() {
+        panic!("slow tests were skipped on CI!")
+    }
+    rm_rf(slow_tests_cookie)?;
+
+    for entry in Path::new("./target/debug").read_dir()? {
+        let entry = entry?;
+        if entry.file_type().map(|it| it.is_file()).ok() == Some(true) {
+            // Can't delete yourself on windows :-(
+            if !entry.path().ends_with("xtask.exe") {
+                rm_rf(&entry.path())?
+            }
+        }
+    }
+
+    fs::remove_file("./target/.rustc_info.json")?;
+    let to_delete = ["ra_", "heavy_test"];
+    for &dir in ["./target/debug/deps", "target/debug/.fingerprint"].iter() {
+        for entry in Path::new(dir).read_dir()? {
+            let entry = entry?;
+            if to_delete.iter().any(|&it| entry.path().display().to_string().contains(it)) {
+                rm_rf(&entry.path())?
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn rm_rf(path: &Path) -> Result<()> {
+    if path.is_file() { fs::remove_file(path) } else { fs::remove_dir_all(path) }
+        .with_context(|| format!("failed to remove {:?}", path))
 }
