@@ -120,7 +120,7 @@ fn enforce_impl_params_are_constrained(
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs
         .iter()
-        .map(|item_ref| tcx.hir().local_def_id(item_ref.id.hir_id))
+        .map(|item_ref| tcx.hir().local_def_id(item_ref.id))
         .filter(|&def_id| {
             let item = tcx.associated_item(def_id);
             item.kind == ty::AssocKind::Type && item.defaultness.has_value()

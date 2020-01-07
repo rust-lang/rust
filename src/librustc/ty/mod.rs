@@ -2781,7 +2781,7 @@ impl<'tcx> TyCtxt<'tcx> {
         parent_def_id: DefId,
         impl_item_ref: &hir::ImplItemRef<'_>,
     ) -> AssocItem {
-        let def_id = self.hir().local_def_id(impl_item_ref.id.hir_id);
+        let def_id = self.hir().local_def_id(impl_item_ref.id);
         let (kind, has_self) = match impl_item_ref.kind {
             hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
             hir::AssocItemKind::Method { has_self } => (ty::AssocKind::Method, has_self),
@@ -2793,7 +2793,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ident: impl_item_ref.ident,
             kind,
             // Visibility of trait impl items doesn't matter.
-            vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.hir_id, self),
+            vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id, self),
             defaultness: impl_item_ref.defaultness,
             def_id,
             container: ImplContainer(parent_def_id),
@@ -3085,7 +3085,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> AssocItem {
     let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.kind {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
-            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.hir_id == id) {
+            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id == id) {
                 let assoc_item =
                     tcx.associated_item_from_impl_item_ref(parent_def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -3156,7 +3156,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             impl_item_refs
                 .iter()
                 .map(|impl_item_ref| impl_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id)),
+                .map(|id| tcx.hir().local_def_id(id)),
         ),
         hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),

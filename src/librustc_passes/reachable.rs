@@ -348,7 +348,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.kind {
             if !self.access_levels.is_reachable(item.hir_id) {
-                self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
+                self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,

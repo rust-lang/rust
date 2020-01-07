@@ -583,7 +583,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                                let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
+                                let parent_impl_id = parent_id;
                                 let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
                                 let krate = self.tcx.hir().forest.krate();
 
@@ -2066,7 +2066,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind =
-                        impl_items.iter().find(|ii| ii.id.hir_id == parent).map(|ii| ii.kind);
+                        impl_items.iter().find(|ii| ii.id == parent).map(|ii| ii.kind);
                 }
                 Some(body)
             }

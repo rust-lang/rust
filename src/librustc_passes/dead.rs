@@ -412,7 +412,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                             &impl_item.attrs,
                         )
                     {
-                        self.worklist.push(impl_item_ref.id.hir_id);
+                        self.worklist.push(impl_item_ref.id);
                     }
                 }
             }

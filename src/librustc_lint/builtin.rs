@@ -443,7 +443,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
-                                    self.private_traits.insert(impl_item_ref.id.hir_id);
+                                    self.private_traits.insert(impl_item_ref.id);
                                 }
                             }
                         }

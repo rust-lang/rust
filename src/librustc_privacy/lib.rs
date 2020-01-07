@@ -727,7 +727,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Impl(.., ref trait_ref, _, impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     if trait_ref.is_some() || impl_item_ref.vis.node.is_pub() {
-                        self.update(impl_item_ref.id.hir_id, item_level);
+                        self.update(impl_item_ref.id, item_level);
                     }
                 }
             }
@@ -826,9 +826,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_item_refs {
-                        let impl_item_level = self.get(impl_item_ref.id.hir_id);
+                        let impl_item_level = self.get(impl_item_ref.id);
                         if impl_item_level.is_some() {
-                            self.reach(impl_item_ref.id.hir_id, impl_item_level)
+                            self.reach(impl_item_ref.id, impl_item_level)
                                 .generics()
                                 .predicates()
                                 .ty();
@@ -1545,7 +1545,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         match impl_item.kind {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Method(..) => {
-                                self.access_levels.is_reachable(impl_item_ref.id.hir_id)
+                                self.access_levels.is_reachable(impl_item_ref.id)
                             }
                             hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => {
                                 false
@@ -1610,7 +1610,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_item_refs {
-                        if self.item_is_public(&impl_item_ref.id.hir_id, &impl_item_ref.vis) {
+                        if self.item_is_public(&impl_item_ref.id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
                                 AssocItemKind::Const => {
@@ -1996,7 +1996,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                         impl_vis
                     };
                     self.check_assoc_item(
-                        impl_item_ref.id.hir_id,
+                        impl_item_ref.id,
                         impl_item_ref.kind,
                         impl_item_ref.defaultness,
                         impl_item_vis,

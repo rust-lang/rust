@@ -414,7 +414,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.read(id.hir_id);
+        self.read(id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -570,7 +570,7 @@ impl<'hir> Map<'hir> {
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+            visitor.visit_impl_item(self.expect_impl_item(*id));
         }
     }
 

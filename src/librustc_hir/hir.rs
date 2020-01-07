@@ -1843,10 +1843,7 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItemId {
-    pub hir_id: HirId,
-}
+pub type ImplItemId = HirId;
 
 /// Represents anything within an `impl` block.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
