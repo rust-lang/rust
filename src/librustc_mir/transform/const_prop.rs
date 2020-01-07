@@ -74,7 +74,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
-        // Check if it's even possible to satisy the 'where' clauses
+        // Check if it's even possible to satisfy the 'where' clauses
         // for this item.
         // This branch will never be taken for any normal function.
         // However, it's possible to `#!feature(trivial_bounds)]` to write
