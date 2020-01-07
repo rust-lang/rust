@@ -32,15 +32,15 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 if tcx.sess.opts.debugging_opts.incremental_queries {
-                    sess.time("persist query result cache", || {
+                    sess.time("incr_comp_persist_result_cache", || {
                         save_in(sess, query_cache_path, |e| encode_query_cache(tcx, e));
                     });
                 }
             },
             || {
-                sess.time("persist dep-graph", || {
+                sess.time("incr_comp_persist_dep_graph", || {
                     save_in(sess, dep_graph_path, |e| {
-                        sess.time("encode dep-graph", || encode_dep_graph(tcx, e))
+                        sess.time("incr_comp_encode_dep_graph", || encode_dep_graph(tcx, e))
                     });
                 });
             },
@@ -142,7 +142,8 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
     tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
 
     // Encode the graph data.
-    let serialized_graph = tcx.sess.time("getting serialized graph", || tcx.dep_graph.serialize());
+    let serialized_graph =
+        tcx.sess.time("incr_comp_serialize_dep_graph", || tcx.dep_graph.serialize());
 
     if tcx.sess.opts.debugging_opts.incremental_info {
         #[derive(Clone)]
@@ -223,7 +224,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         println!("[incremental]");
     }
 
-    tcx.sess.time("encoding serialized graph", || {
+    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || {
         serialized_graph.encode(encoder).unwrap();
     });
 }
@@ -244,7 +245,7 @@ fn encode_work_product_index(
 }
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
-    tcx.sess.time("serialize query result cache", || {
+    tcx.sess.time("incr_comp_serialize_result_cache", || {
         tcx.serialize_query_result_cache(encoder).unwrap();
     })
 }

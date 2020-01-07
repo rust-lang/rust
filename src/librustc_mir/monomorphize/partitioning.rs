@@ -865,9 +865,7 @@ fn collect_and_partition_mono_items(
         }
     };
 
-    let (items, inlining_map) = tcx.sess.time("monomorphization collection", || {
-        collector::collect_crate_mono_items(tcx, collection_mode)
-    });
+    let (items, inlining_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
     tcx.sess.abort_if_errors();
 
@@ -879,12 +877,10 @@ fn collect_and_partition_mono_items(
         PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
     };
 
-    let codegen_units = tcx.sess.time("codegen unit partitioning", || {
-        partition(tcx, items.iter().cloned(), strategy, &inlining_map)
-            .into_iter()
-            .map(Arc::new)
-            .collect::<Vec<_>>()
-    });
+    let codegen_units = partition(tcx, items.iter().cloned(), strategy, &inlining_map)
+        .into_iter()
+        .map(Arc::new)
+        .collect::<Vec<_>>();
 
     let mono_items: DefIdSet = items
         .iter()

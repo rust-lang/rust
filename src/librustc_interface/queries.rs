@@ -195,7 +195,7 @@ impl<'tcx> Queries<'tcx> {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
                     let (prev_graph, prev_work_products) =
-                        self.session().time("blocked while dep-graph loading finishes", || {
+                        self.session().time("blocked_on_dep_graph_loading", || {
                             future
                                 .open()
                                 .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
