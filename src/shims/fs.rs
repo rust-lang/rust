@@ -312,6 +312,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        this.check_no_isolation("stat")?;
+        // `stat` always follows symlinks.
+        this.stat_or_lstat(true, path_op, buf_op)
+    }
+
+    // `lstat` is used to get symlink metadata.
+    fn lstat(
+        &mut self,
+        path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        this.check_no_isolation("lstat")?;
+        this.stat_or_lstat(false, path_op, buf_op)
+    }
+
+    fn stat_or_lstat(
+        &mut self,
+        follow_symlink: bool,
+        path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
             throw_unsup_format!("The `stat` shim is only available for `macos` targets.")
@@ -322,8 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let buf = this.deref_operand(buf_op)?;
 
-        // `stat` always follows symlinks. `lstat` is used to get symlink metadata.
-        let metadata = match FileMetadata::new(this, path, true)? {
+        let metadata = match FileMetadata::new(this, path, follow_symlink)? {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
