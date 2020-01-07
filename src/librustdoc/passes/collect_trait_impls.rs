@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
-    pass: collect_trait_impls,
+    run: collect_trait_impls,
     description: "retrieves trait impls for items in the crate",
 };
 
