@@ -1,13 +1,13 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
-use crate::hir;
-use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorReported;
+use rustc_hir::def_id::DefId;
+use rustc_hir::ItemKind;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
@@ -85,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if let Some(id) = tcx.hir().as_local_hir_id(trait_def_id) {
             let parent_id = tcx.hir().get_parent_item(id);
             let trait_item = tcx.hir().expect_item(parent_id);
-            if let hir::ItemKind::Trait(_, _, generics, _, _) = &trait_item.kind {
+            if let ItemKind::Trait(_, _, generics, _, _) = &trait_item.kind {
                 for param_ty in visitor.0 {
                     if let Some(generic) = generics.get_named(param_ty.name) {
                         err.span_label(generic.span, &format!(
