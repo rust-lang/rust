@@ -1,10 +1,10 @@
-//! Installs rust-analyzer langauge server and/or editor plugin.
+//! Installs rust-analyzer language server and/or editor plugin.
 
 use std::{env, path::PathBuf, str};
 
 use anyhow::{Context, Result};
 
-use crate::{run, run_with_output, Cmd};
+use crate::cmd::{run, run_with_output, Cmd};
 
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 40;

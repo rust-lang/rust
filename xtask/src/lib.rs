@@ -1,9 +1,10 @@
 //! FIXME: write short doc here
 
 mod cmd;
-pub mod codegen;
 pub mod install;
 pub mod pre_commit;
+
+pub mod codegen;
 mod ast_src;
 
 use anyhow::Context;
@@ -13,10 +14,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::codegen::Mode;
+use crate::{cmd::run, codegen::Mode};
 
 pub use anyhow::Result;
-pub use cmd::{run, run_with_output, Cmd};
 
 const TOOLCHAIN: &str = "stable";
 
@@ -83,7 +83,7 @@ pub fn run_clippy() -> Result<()> {
     Ok(())
 }
 
-pub fn install_clippy() -> Result<()> {
+fn install_clippy() -> Result<()> {
     run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
     run(&format!("rustup component add clippy --toolchain {}", TOOLCHAIN), ".")
 }

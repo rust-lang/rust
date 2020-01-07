@@ -4,7 +4,7 @@ use std::{fs, path::PathBuf};
 
 use anyhow::{bail, Result};
 
-use crate::{project_root, run, run_rustfmt, run_with_output, Mode};
+use crate::{cmd::run_with_output, project_root, run, run_rustfmt, Mode};
 
 // FIXME: if there are changed `.ts` files, also reformat TypeScript (by
 // shelling out to `npm fmt`).
