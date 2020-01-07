@@ -48,8 +48,6 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
-pub type Payload = *mut u8;
-
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     assert!(!ptr.is_null());
     let adjusted_ptr = __cxa_begin_catch(ptr as *mut libc::c_void);
