@@ -91,7 +91,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     }
     .run()?;
 
-    let code_binary = ["code", "code-insiders", "codium"].iter().find(|bin| {
+    let code_binary = ["code", "code-insiders", "codium", "code-oss"].iter().find(|bin| {
         Cmd {
             unix: &format!("{} --version", bin),
             windows: &format!("cmd.exe /c {}.cmd --version", bin),
