@@ -1,58 +1,154 @@
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:19:1
    |
 LL | struct SC(SA);
    | ^^^^^^^^^^^^^^
+   |
+note: `SA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:5:1
+   |
+LL | struct SA(i32);
+   | ^^^^^^^^^^^^^^^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:22:1
    |
 LL | struct SD(SB);
    | ^^^^^^^^^^^^^^
+   |
+note: `SA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:5:1
+   |
+LL | struct SA(i32);
+   | ^^^^^^^^^^^^^^^
+note: `SD` contains a field of type `SB`
+  --> $DIR/repr-packed-contains-align.rs:22:11
+   |
+LL | struct SD(SB);
+   |           ^^
+note: ...which contains a field of type `SA`
+  --> $DIR/repr-packed-contains-align.rs:7:11
+   |
+LL | struct SB(SA);
+   |           ^^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:25:1
    |
 LL | struct SE(UA);
    | ^^^^^^^^^^^^^^
+   |
+note: `UA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:10:1
+   |
+LL | / union UA {
+LL | |     i: i32
+LL | | }
+   | |_^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:28:1
    |
 LL | struct SF(UB);
    | ^^^^^^^^^^^^^^
+   |
+note: `UA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:10:1
+   |
+LL | / union UA {
+LL | |     i: i32
+LL | | }
+   | |_^
+note: `SF` contains a field of type `UB`
+  --> $DIR/repr-packed-contains-align.rs:28:11
+   |
+LL | struct SF(UB);
+   |           ^^
+note: ...which contains a field of type `UA`
+  --> $DIR/repr-packed-contains-align.rs:15:5
+   |
+LL |     a: UA
+   |     ^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:31:1
    |
 LL | / union UC {
 LL | |     a: UA
 LL | | }
    | |_^
+   |
+note: `UA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:10:1
+   |
+LL | / union UA {
+LL | |     i: i32
+LL | | }
+   | |_^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:36:1
    |
 LL | / union UD {
 LL | |     n: UB
 LL | | }
    | |_^
+   |
+note: `UA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:10:1
+   |
+LL | / union UA {
+LL | |     i: i32
+LL | | }
+   | |_^
+note: `UD` contains a field of type `UB`
+  --> $DIR/repr-packed-contains-align.rs:37:5
+   |
+LL |     n: UB
+   |     ^
+note: ...which contains a field of type `UA`
+  --> $DIR/repr-packed-contains-align.rs:15:5
+   |
+LL |     a: UA
+   |     ^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:41:1
    |
 LL | / union UE {
 LL | |     a: SA
 LL | | }
    | |_^
+   |
+note: `SA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:5:1
+   |
+LL | struct SA(i32);
+   | ^^^^^^^^^^^^^^^
 
-error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
+error[E0588]: packed type cannot transitively contain a `#[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:46:1
    |
 LL | / union UF {
 LL | |     n: SB
 LL | | }
    | |_^
+   |
+note: `SA` has a `#[repr(align)]` attribute
+  --> $DIR/repr-packed-contains-align.rs:5:1
+   |
+LL | struct SA(i32);
+   | ^^^^^^^^^^^^^^^
+note: `UF` contains a field of type `SB`
+  --> $DIR/repr-packed-contains-align.rs:47:5
+   |
+LL |     n: SB
+   |     ^
+note: ...which contains a field of type `SA`
+  --> $DIR/repr-packed-contains-align.rs:7:11
+   |
+LL | struct SB(SA);
+   |           ^^
 
 error: aborting due to 8 previous errors
 
