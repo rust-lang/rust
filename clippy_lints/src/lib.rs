@@ -311,6 +311,7 @@ pub mod unwrap;
 pub mod use_self;
 pub mod vec;
 pub mod wildcard_dependencies;
+pub mod wildcard_imports;
 pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -813,6 +814,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &use_self::USE_SELF,
         &vec::USELESS_VEC,
         &wildcard_dependencies::WILDCARD_DEPENDENCIES,
+        &wildcard_imports::WILDCARD_IMPORTS,
         &write::PRINTLN_EMPTY_STRING,
         &write::PRINT_LITERAL,
         &write::PRINT_STDOUT,
@@ -1009,6 +1011,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
+    store.register_late_pass(|| box wildcard_imports::WildcardImports);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1105,6 +1108,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
         LintId::of(&unused_self::UNUSED_SELF),
+        LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
     ]);
 
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![

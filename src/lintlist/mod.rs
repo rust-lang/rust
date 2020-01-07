@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 356] = [
+pub const ALL_LINTS: [Lint; 357] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2414,6 +2414,13 @@ pub const ALL_LINTS: [Lint; 356] = [
         desc: "a wildcard enum match arm using `_`",
         deprecation: None,
         module: "matches",
+    },
+    Lint {
+        name: "wildcard_imports",
+        group: "pedantic",
+        desc: "lint `use _::*` statements",
+        deprecation: None,
+        module: "wildcard_imports",
     },
     Lint {
         name: "wildcard_in_or_patterns",
