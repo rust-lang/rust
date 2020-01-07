@@ -105,6 +105,8 @@ pre {
 .content .highlighted.primitive { background-color: #00708a; }
 .content .highlighted.keyword { background-color: #884719; }
 
+.content .stability::before { color: #ccc; }
+
 .content span.enum, .content a.enum, .block a.current.enum { color: #82b089; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
 .content span.type, .content a.type, .block a.current.type { color: #ff7f00; }
