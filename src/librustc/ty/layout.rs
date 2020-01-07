@@ -2507,17 +2507,21 @@ where
         let extra_args = if sig.abi == RustCall {
             assert!(!sig.c_variadic && extra_args.is_empty());
 
-            match sig.inputs().last().unwrap().kind {
-                ty::Tuple(tupled_arguments) => {
+            if let Some(input) = sig.inputs().last() {
+                if let ty::Tuple(tupled_arguments) = input.kind {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     tupled_arguments.iter().map(|k| k.expect_ty()).collect()
-                }
-                _ => {
+                } else {
                     bug!(
                         "argument to function with \"rust-call\" ABI \
-                         is not a tuple"
+                            is not a tuple"
                     );
                 }
+            } else {
+                bug!(
+                    "argument to function with \"rust-call\" ABI \
+                        is not a tuple"
+                );
             }
         } else {
             assert!(sig.c_variadic || extra_args.is_empty());
