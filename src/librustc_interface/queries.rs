@@ -77,9 +77,9 @@ pub struct Queries<'tcx> {
         Steal<(ast::Crate, Lrc<LintStore>)>,
         Steal<Future<'static, Option<DepGraphFuture>>>,
     )>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    expansion: Query<(Lrc<ast::Crate>, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'tcx map::Forest<'tcx>, Steal<ResolverOutputs>)>,
+    lower_to_hir: Query<(&'tcx map::Forest<'tcx>, Future<'static, ()>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -163,7 +163,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(Lrc<ast::Crate>, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.peek().0.steal();
@@ -176,7 +176,7 @@ impl<'tcx> Queries<'tcx> {
                 &crate_name,
             )
             .map(|(krate, resolver)| {
-                (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
+                (Lrc::new(krate), Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
             })
         })
     }
@@ -204,25 +204,26 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn lower_to_hir(
         &'tcx self,
-    ) -> Result<&Query<(&'tcx map::Forest<'tcx>, Steal<ResolverOutputs>)>> {
+    ) -> Result<&Query<(&'tcx map::Forest<'tcx>, Future<'static, ()>, Steal<ResolverOutputs>)>>
+    {
         self.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
-            let krate = &peeked.0;
+            let krate = peeked.0.clone();
             let resolver = peeked.1.steal();
-            let lint_store = &peeked.2;
-            let hir = resolver.borrow_mut().access(|resolver| {
+            let lint_store = peeked.2.clone();
+            let (hir, lints) = resolver.borrow_mut().access(|resolver| {
                 passes::lower_to_hir(
-                    self.session(),
+                    self.session().clone(),
                     lint_store,
                     resolver,
                     &*self.dep_graph()?.peek(),
-                    &krate,
+                    krate,
                     &self.arena,
                 )
             })?;
             let hir = self.arena.alloc(hir);
-            Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
+            Ok((hir, lints, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
 
@@ -248,7 +249,7 @@ impl<'tcx> Queries<'tcx> {
             let outputs = self.prepare_outputs()?.peek().clone();
             let lint_store = self.expansion()?.peek().2.clone();
             let hir = self.lower_to_hir()?.peek();
-            let (ref hir_forest, ref resolver_outputs) = &*hir;
+            let (ref hir_forest, _, ref resolver_outputs) = &*hir;
             let _timer = self.session().timer("create_global_ctxt");
             Ok(passes::create_global_ctxt(
                 self.compiler,
@@ -338,6 +339,12 @@ impl Compiler {
             });
         });
 
+        // Join the early lint check future if has started, but haven't been stolen yet.
+        let _join_lint_future = OnDrop(|| {
+            let result = queries.lower_to_hir.result.borrow_mut().take();
+            result.map(|result| result.map(|result| result.1.join()));
+        });
+
         let ret = f(&queries);
 
         if self.session().opts.debugging_opts.query_stats {
@@ -369,6 +376,7 @@ impl Compiler {
             queries.global_ctxt()?;
 
             // Drop AST after creating GlobalCtxt to free memory.
+            queries.lower_to_hir()?.take().1.join();
             mem::drop(queries.expansion()?.take());
 
             queries.ongoing_codegen()?;

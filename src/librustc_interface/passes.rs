@@ -435,16 +435,16 @@ fn configure_and_expand_inner<'a>(
 }
 
 pub fn lower_to_hir<'res, 'tcx>(
-    sess: &'tcx Session,
-    lint_store: &LintStore,
+    sess: Lrc<Session>,
+    lint_store: Lrc<LintStore>,
     resolver: &'res mut Resolver<'_>,
     dep_graph: &'res DepGraph,
-    krate: &'res ast::Crate,
+    krate: Lrc<ast::Crate>,
     arena: &'tcx Arena<'tcx>,
-) -> Result<map::Forest<'tcx>> {
+) -> Result<(map::Forest<'tcx>, Future<'static, ()>)> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
-        sess,
+        &sess,
         &dep_graph,
         &krate,
         resolver,
@@ -458,23 +458,27 @@ pub fn lower_to_hir<'res, 'tcx>(
 
     let hir_forest = map::Forest::new(hir_crate, &dep_graph);
 
-    sess.time("early_lint_checks", || {
-        rustc_lint::check_ast_crate(
-            sess,
-            lint_store,
-            &krate,
-            false,
-            Some(std::mem::take(resolver.lint_buffer())),
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-        )
-    });
+    let lint_buffer = std::mem::take(resolver.lint_buffer());
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
-    Ok(hir_forest)
+    let lints = Future::spawn(move || {
+        sess.time("early_lint_checks", || {
+            rustc_lint::check_ast_crate(
+                &sess,
+                &lint_store,
+                &krate,
+                false,
+                Some(lint_buffer),
+                rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            )
+        })
+    });
+
+    Ok((hir_forest, lints))
 }
 
 // Returns all the paths that correspond to generated files.
