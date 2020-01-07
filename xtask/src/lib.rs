@@ -1,19 +1,22 @@
 //! FIXME: write short doc here
 
+mod cmd;
 pub mod codegen;
 pub mod install;
 pub mod pre_commit;
 mod ast_src;
 
 use anyhow::Context;
-pub use anyhow::Result;
 use std::{
     env,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Command, Stdio},
 };
 
 use crate::codegen::Mode;
+
+pub use anyhow::Result;
+pub use cmd::{run, run_with_output, Cmd};
 
 const TOOLCHAIN: &str = "stable";
 
@@ -25,40 +28,6 @@ pub fn project_root() -> PathBuf {
     .nth(1)
     .unwrap()
     .to_path_buf()
-}
-
-pub struct Cmd<'a> {
-    pub unix: &'a str,
-    pub windows: &'a str,
-    pub work_dir: &'a str,
-}
-
-impl Cmd<'_> {
-    pub fn run(self) -> Result<()> {
-        if cfg!(windows) {
-            run(self.windows, self.work_dir)
-        } else {
-            run(self.unix, self.work_dir)
-        }
-    }
-    pub fn run_with_output(self) -> Result<Output> {
-        if cfg!(windows) {
-            run_with_output(self.windows, self.work_dir)
-        } else {
-            run_with_output(self.unix, self.work_dir)
-        }
-    }
-}
-
-pub fn run(cmdline: &str, dir: &str) -> Result<()> {
-    do_run(cmdline, dir, |c| {
-        c.stdout(Stdio::inherit());
-    })
-    .map(|_| ())
-}
-
-pub fn run_with_output(cmdline: &str, dir: &str) -> Result<Output> {
-    do_run(cmdline, dir, |_| {})
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
@@ -131,21 +100,4 @@ pub fn run_fuzzer() -> Result<()> {
     };
 
     run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
-}
-
-fn do_run<F>(cmdline: &str, dir: &str, mut f: F) -> Result<Output>
-where
-    F: FnMut(&mut Command),
-{
-    eprintln!("\nwill run: {}", cmdline);
-    let proj_dir = project_root().join(dir);
-    let mut args = cmdline.split_whitespace();
-    let exec = args.next().unwrap();
-    let mut cmd = Command::new(exec);
-    f(cmd.args(args).current_dir(proj_dir).stderr(Stdio::inherit()));
-    let output = cmd.output().with_context(|| format!("running `{}`", cmdline))?;
-    if !output.status.success() {
-        anyhow::bail!("`{}` exited with {}", cmdline, output.status);
-    }
-    Ok(output)
 }
