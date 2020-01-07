@@ -53,6 +53,10 @@ pub fn payload() -> *mut u8 {
 }
 
 struct Exception {
+    // This needs to be an Option because the object's lifetime follows C++
+    // semantics: when catch_unwind moves the Box out of the exception it must
+    // still leave the exception object in a valid state because its destructor
+    // is still going to be called by __cxa_end_catch..
     data: Option<Box<dyn Any + Send>>,
 }
 

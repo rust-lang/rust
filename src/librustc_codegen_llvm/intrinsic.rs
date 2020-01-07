@@ -953,7 +953,9 @@ fn codegen_msvc_try(
         catchswitch.add_handler(cs, catchpad.llbb());
 
         // The flag value of 8 indicates that we are catching the exception by
-        // reference instead of by value.
+        // reference instead of by value. We can't use catch by value because
+        // that requires copying the exception object, which we don't support
+        // since our exception object effectively contains a Box.
         //
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
         let flags = bx.const_i32(8);
@@ -970,6 +972,8 @@ fn codegen_msvc_try(
         catchpad.store(payload, local_ptr, i64_align);
 
         // Clear the first word of the exception so avoid double-dropping it.
+        // This will be read by the destructor which is implicitly called at the
+        // end of the catch block by the runtime.
         let payload_0_ptr = catchpad.inbounds_gep(payload_ptr, &[bx.const_i32(0), bx.const_i32(0)]);
         catchpad.store(bx.const_u64(0), payload_0_ptr, i64_align);
 

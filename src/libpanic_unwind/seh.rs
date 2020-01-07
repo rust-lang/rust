@@ -224,32 +224,27 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 // used as the result of the exception copy. This is used by the C++ runtime to
 // support capturing exceptions with std::exception_ptr, which we can't support
 // because Box<dyn Any> isn't clonable.
-cfg_if::cfg_if! {
-    if #[cfg(target_arch = "x86")] {
-        unsafe extern "thiscall" fn exception_cleanup(e: *mut [u64; 2]) {
+macro_rules! define_cleanup {
+    ($abi:tt) => {
+        unsafe extern $abi fn exception_cleanup(e: *mut [u64; 2]) {
             if (*e)[0] != 0 {
                 cleanup(*e);
             }
         }
         #[unwind(allowed)]
-        unsafe extern "thiscall" fn exception_copy(_dest: *mut [u64; 2],
-                                                   _src: *mut [u64; 2])
-                                                   -> *mut [u64; 2] {
-            panic!("Rust panics cannot be copied");
-        }
-    } else {
-        unsafe extern "C" fn exception_cleanup(e: *mut [u64; 2]) {
-            if (*e)[0] != 0 {
-                cleanup(*e);
-            }
-        }
-        #[unwind(allowed)]
-        unsafe extern "C" fn exception_copy(_dest: *mut [u64; 2],
-                                            _src: *mut [u64; 2])
-                                            -> *mut [u64; 2] {
+        unsafe extern $abi fn exception_copy(_dest: *mut [u64; 2],
+                                             _src: *mut [u64; 2])
+                                             -> *mut [u64; 2] {
             panic!("Rust panics cannot be copied");
         }
     }
+}
+cfg_if::cfg_if! {
+   if #[cfg(target_arch = "x86")] {
+       define_cleanup!("thiscall");
+   } else {
+       define_cleanup!("C");
+   }
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
