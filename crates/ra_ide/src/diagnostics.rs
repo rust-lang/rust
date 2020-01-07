@@ -66,6 +66,14 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     .on::<hir::diagnostics::MissingFields, _>(|d| {
         let mut field_list = d.ast(db);
         for f in d.missed_fields.iter() {
+            // Note that although we could add a diagnostics to
+            // fill the missing tuple field, e.g :
+            // `struct A(usize);`
+            // `let a = A { 0: () }`
+            // but it is uncommon usage and it should not be encouraged.
+            if f.as_tuple_index().is_some() {
+                continue;
+            }
             let field = make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
             field_list = field_list.append_field(&field);
         }
