@@ -44,7 +44,9 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 }
 
 impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 

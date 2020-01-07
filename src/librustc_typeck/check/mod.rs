@@ -92,6 +92,7 @@ use crate::middle::lang_items;
 use crate::namespace::Namespace;
 use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
@@ -1170,7 +1171,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

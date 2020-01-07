@@ -5,6 +5,7 @@
 //! item.
 
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::map::Map;
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
@@ -519,7 +520,9 @@ impl CheckAttrVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

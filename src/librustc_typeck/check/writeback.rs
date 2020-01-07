@@ -5,6 +5,7 @@
 use crate::check::FnCtxt;
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -242,7 +243,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

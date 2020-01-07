@@ -7,6 +7,7 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::middle::region::*;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -695,7 +696,9 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

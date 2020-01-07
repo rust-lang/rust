@@ -5,6 +5,7 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 use super::{PatCtxt, PatKind, PatternError};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::session::Session;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -49,7 +50,9 @@ struct MatchVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -730,7 +733,9 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     }
 
     impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
-        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+        type Map = Map<'v>;
+
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
             NestedVisitorMap::None
         }
 

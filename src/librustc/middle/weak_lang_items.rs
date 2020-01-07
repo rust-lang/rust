@@ -5,6 +5,7 @@ use crate::session::config;
 
 use crate::hir::intravisit;
 use crate::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::hir::map::Map;
 use crate::ty::TyCtxt;
 use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashSet;
@@ -136,7 +137,9 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+    type Map = Map<'v>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Map<'v>> {
         NestedVisitorMap::None
     }
 

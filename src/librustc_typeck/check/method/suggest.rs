@@ -7,6 +7,7 @@ use crate::namespace::Namespace;
 use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::intravisit;
 use rustc::hir::map as hir_map;
+use rustc::hir::map::Map;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
@@ -1124,7 +1125,9 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

@@ -3,6 +3,7 @@
 // from live codes are live, and everything else is dead.
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::privacy;
@@ -210,7 +211,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -563,11 +566,13 @@ impl DeadVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for DeadVisitor<'tcx> {
+    type Map = Map<'tcx>;
+
     /// Walk nested items in place so that we don't report dead-code
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 

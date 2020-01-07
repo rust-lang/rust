@@ -77,6 +77,7 @@ use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
@@ -414,7 +415,9 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

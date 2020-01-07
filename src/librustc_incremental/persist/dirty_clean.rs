@@ -15,6 +15,7 @@
 
 use rustc::dep_graph::{label_strs, DepNode};
 use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
@@ -547,7 +548,9 @@ impl FindAllAttrs<'tcx> {
 }
 
 impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 

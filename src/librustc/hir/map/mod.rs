@@ -1093,6 +1093,24 @@ impl<'hir> Map<'hir> {
     }
 }
 
+impl<'hir> intravisit::Map<'hir> for Map<'hir> {
+    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
+        self.body(id)
+    }
+
+    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.item(id)
+    }
+
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
+        self.trait_item(id)
+    }
+
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
+        self.impl_item(id)
+    }
+}
+
 pub struct NodesMatchingSuffix<'a> {
     map: &'a Map<'a>,
     item_name: &'a String,

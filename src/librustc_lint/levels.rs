@@ -1,4 +1,5 @@
 use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::lint::{LintLevelMap, LintLevelSets, LintLevelsBuilder, LintStore};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -50,7 +51,9 @@ impl LintLevelMapBuilder<'_, '_> {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 

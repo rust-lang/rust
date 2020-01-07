@@ -2,6 +2,7 @@ use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
 use rustc::hir::map::definitions::DefPathTable;
+use rustc::hir::map::Map;
 use rustc::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
@@ -1520,7 +1521,9 @@ impl EncodeContext<'tcx> {
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
 impl Visitor<'tcx> for EncodeContext<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {

@@ -6,6 +6,7 @@
 
 use errors::struct_span_err;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::middle::lib_features::LibFeatures;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -113,7 +114,9 @@ impl LibFeatureCollector<'tcx> {
 }
 
 impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 

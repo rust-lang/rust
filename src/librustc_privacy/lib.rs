@@ -5,6 +5,7 @@
 
 use rustc::bug;
 use rustc::hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::fold::TypeVisitor;
@@ -372,7 +373,9 @@ struct PubRestrictedVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
     fn visit_vis(&mut self, vis: &'tcx hir::Visibility<'tcx>) {
@@ -670,9 +673,11 @@ impl EmbargoVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
+    type Map = Map<'tcx>;
+
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -1039,9 +1044,11 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -1179,9 +1186,11 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -1437,7 +1446,9 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+    type Map = Map<'v>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -1463,9 +1474,11 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -1906,7 +1919,9 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

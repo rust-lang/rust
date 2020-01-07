@@ -3,6 +3,7 @@
 
 use errors::struct_span_err;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability::{DeprecationEntry, Index};
@@ -204,7 +205,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
@@ -293,7 +296,9 @@ impl<'a, 'tcx> MissingStabilityAnnotations<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
@@ -429,10 +434,12 @@ struct Checker<'tcx> {
 }
 
 impl Visitor<'tcx> for Checker<'tcx> {
+    type Map = Map<'tcx>;
+
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

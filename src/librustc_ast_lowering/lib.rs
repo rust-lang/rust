@@ -37,7 +37,8 @@
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::intravisit;
-use rustc::hir::map::{DefKey, DefPathData, Definitions};
+use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use rustc::middle::cstore::CrateStore;
@@ -1484,7 +1485,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         impl<'r, 'a, 'v, 'hir> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
-            fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
+            type Map = Map<'v>;
+
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 

@@ -7,6 +7,7 @@
 
 use rustc::hir::intravisit;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::privacy;
 use rustc::session::config;
@@ -82,7 +83,9 @@ struct ReachableContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

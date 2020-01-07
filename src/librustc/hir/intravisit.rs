@@ -31,8 +31,6 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use crate::hir::map::Map;
-
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::*;
 use rustc_span::Span;
@@ -42,10 +40,7 @@ pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,
 }
 
-impl<'v, 'hir, V> DeepVisitor<'v, V>
-where
-    V: Visitor<'hir> + 'v,
-{
+impl<'v, V> DeepVisitor<'v, V> {
     pub fn new(base: &'v mut V) -> Self {
         DeepVisitor { visitor: base }
     }
@@ -122,6 +117,14 @@ impl<'a> FnKind<'a> {
     }
 }
 
+/// An abstract representation of the HIR `rustc::hir::map::Map`.
+pub trait Map<'hir> {
+    fn body(&self, id: BodyId) -> &'hir Body<'hir>;
+    fn item(&self, id: HirId) -> &'hir Item<'hir>;
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+}
+
 /// Specifies what nested things a visitor wants to visit. The most
 /// common choice is `OnlyBodies`, which will cause the visitor to
 /// visit fn bodies for fns that it encounters, but skip over nested
@@ -129,7 +132,7 @@ impl<'a> FnKind<'a> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, 'tcx> {
+pub enum NestedVisitorMap<'this, M> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -146,20 +149,20 @@ pub enum NestedVisitorMap<'this, 'tcx> {
     /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
-    OnlyBodies(&'this Map<'tcx>),
+    OnlyBodies(&'this M),
 
     /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
     /// kick off the visit by doing `walk_krate()`.
-    All(&'this Map<'tcx>),
+    All(&'this M),
 }
 
-impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
+impl<'this, M> NestedVisitorMap<'this, M> {
     /// Returns the map to use for an "intra item-like" thing (if any).
     /// E.g., function body.
-    fn intra(self) -> Option<&'this Map<'tcx>> {
+    fn intra(self) -> Option<&'this M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(map) => Some(map),
@@ -169,7 +172,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 
     /// Returns the map to use for an "item-like" thing (if any).
     /// E.g., item, impl-item.
-    fn inter(self) -> Option<&'this Map<'tcx>> {
+    fn inter(self) -> Option<&'this M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(_) => None,
@@ -195,6 +198,8 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v>: Sized {
+    type Map: Map<'v>;
+
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
@@ -214,7 +219,7 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, 'v>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
@@ -496,21 +501,16 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
     }
 }
 
-pub fn walk_poly_trait_ref<'v, V>(
+pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_ref: &'v PolyTraitRef<'v>,
     _modifier: TraitBoundModifier,
-) where
-    V: Visitor<'v>,
-{
+) {
     walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
 
-pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef<'v>)
-where
-    V: Visitor<'v>,
-{
+pub fn walk_trait_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v TraitRef<'v>) {
     visitor.visit_id(trait_ref.hir_ref_id);
     visitor.visit_path(&trait_ref.path, trait_ref.hir_ref_id)
 }

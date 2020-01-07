@@ -37,6 +37,7 @@ use graphviz as dot;
 use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
@@ -159,7 +160,9 @@ impl IfThisChanged<'tcx> {
 }
 
 impl Visitor<'tcx> for IfThisChanged<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

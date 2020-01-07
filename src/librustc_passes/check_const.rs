@@ -200,7 +200,9 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

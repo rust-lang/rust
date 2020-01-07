@@ -66,7 +66,9 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 

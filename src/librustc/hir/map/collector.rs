@@ -1,7 +1,7 @@
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::map::definitions::{self, DefPathHash};
-use crate::hir::map::{Entry, HirEntryMap};
+use crate::hir::map::{Entry, HirEntryMap, Map};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -336,11 +336,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
+    type Map = Map<'hir>;
+
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         panic!("`visit_nested_xxx` must be manually implemented in this visitor");
     }
 

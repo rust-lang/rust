@@ -1,5 +1,6 @@
 use errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::infer::{self, InferOk};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -890,9 +891,10 @@ fn compare_synthetic_generics<'tcx>(
                                     }
                                 }
                             }
-                            fn nested_visit_map<'this>(
-                                &'this mut self,
-                            ) -> intravisit::NestedVisitorMap<'this, 'v>
+                            type Map = Map<'v>;
+                            fn nested_visit_map(
+                                &mut self,
+                            ) -> intravisit::NestedVisitorMap<'_, Self::Map>
                             {
                                 intravisit::NestedVisitorMap::None
                             }

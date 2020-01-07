@@ -16,6 +16,7 @@
 
 use rustc::hir::intravisit as hir_visit;
 use rustc::hir::intravisit::Visitor;
+use rustc::hir::map::Map;
 use rustc::lint::LateContext;
 use rustc::lint::LintPass;
 use rustc::lint::{LateLintPass, LateLintPassObject};
@@ -86,10 +87,12 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
 impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     for LateContextAndPass<'a, 'tcx, T>
 {
+    type Map = Map<'tcx>;
+
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, Self::Map> {
         hir_visit::NestedVisitorMap::All(&self.context.tcx.hir())
     }
 

@@ -98,6 +98,7 @@ use self::VarKind::*;
 
 use errors::Applicability;
 use rustc::hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -153,7 +154,9 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
 }
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
@@ -1348,7 +1351,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
