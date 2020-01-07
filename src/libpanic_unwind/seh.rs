@@ -308,8 +308,6 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
 }
 
-pub type Payload = [u64; 2];
-
 pub unsafe fn cleanup(payload: [u64; 2]) -> Box<dyn Any + Send> {
     mem::transmute(raw::TraitObject { data: payload[0] as *mut _, vtable: payload[1] as *mut _ })
 }

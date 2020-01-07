@@ -6,8 +6,6 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::intrinsics;
 
-pub type Payload = *mut u8;
-
 pub unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
     intrinsics::abort()
 }

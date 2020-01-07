@@ -35,8 +35,8 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::panic::BoxMeUp;
 
-// If adding to this list, you should also look at libstd::panicking's identical
-// list of Payload types and likely add to there as well.
+// If adding to this list, you should also look at the list of TryPayload types
+// defined in payload.rs and likely add to there as well.
 cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
@@ -62,6 +62,8 @@ cfg_if::cfg_if! {
     }
 }
 
+include!("payload.rs");
+
 extern "C" {
     /// Handler in libstd called when a panic object is dropped outside of
     /// `catch_unwind`.
@@ -71,9 +73,9 @@ extern "C" {
 mod dwarf;
 
 #[no_mangle]
-pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
-    let payload = payload as *mut imp::Payload;
-    let payload = *(payload);
+pub unsafe extern "C" fn __rust_panic_cleanup(
+    payload: TryPayload,
+) -> *mut (dyn Any + Send + 'static) {
     Box::into_raw(imp::cleanup(payload))
 }
 

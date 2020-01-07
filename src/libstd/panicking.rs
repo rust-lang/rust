@@ -28,30 +28,8 @@ use crate::io::set_panic;
 #[cfg(test)]
 use realstd::io::set_panic;
 
-// This must be kept in sync with the implementations in libpanic_unwind.
-//
-// This is *not* checked in anyway; the compiler does not allow us to use a
-// type/macro/anything from panic_unwind, since we're then linking in the
-// panic_unwind runtime even during -Cpanic=abort.
-//
-// Essentially this must be the type of `imp::Payload` in libpanic_unwind.
-cfg_if::cfg_if! {
-    if #[cfg(not(feature = "panic_unwind"))] {
-        type Payload = ();
-    } else if #[cfg(target_os = "emscripten")] {
-        type Payload = *mut u8;
-    } else if #[cfg(target_arch = "wasm32")] {
-        type Payload = *mut u8;
-    } else if #[cfg(target_os = "hermit")] {
-        type Payload = *mut u8;
-    } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
-        type Payload = *mut u8;
-    } else if #[cfg(target_env = "msvc")] {
-        type Payload = [u64; 2];
-    } else {
-        type Payload = *mut u8;
-    }
-}
+// Include the definition of UnwindPayload from libpanic_unwind.
+include!("../libpanic_unwind/payload.rs");
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -67,7 +45,7 @@ cfg_if::cfg_if! {
 extern "C" {
     /// The payload ptr here is actually the same as the payload ptr for the try
     /// intrinsic (i.e., is really `*mut [u64; 2]` or `*mut *mut u8`).
-    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
+    fn __rust_panic_cleanup(payload: TryPayload) -> *mut (dyn Any + Send + 'static);
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -297,7 +275,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // method of calling a catch panic whilst juggling ownership.
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let mut payload: MaybeUninit<Payload> = MaybeUninit::uninit();
+    let mut payload: MaybeUninit<TryPayload> = MaybeUninit::uninit();
 
     let data_ptr = &mut data as *mut _ as *mut u8;
     let payload_ptr = payload.as_mut_ptr() as *mut _;
@@ -312,8 +290,8 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // optimizer (in most cases this function is not inlined even as a normal,
     // non-cold function, though, as of the writing of this comment).
     #[cold]
-    unsafe fn cleanup(mut payload: Payload) -> Box<dyn Any + Send + 'static> {
-        let obj = Box::from_raw(__rust_panic_cleanup(&mut payload as *mut _ as *mut u8));
+    unsafe fn cleanup(payload: TryPayload) -> Box<dyn Any + Send + 'static> {
+        let obj = Box::from_raw(__rust_panic_cleanup(payload));
         update_panic_count(-1);
         obj
     }

@@ -48,8 +48,6 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
-pub type Payload = *mut u8;
-
 struct Exception {
     // This needs to be an Option because the object's lifetime follows C++
     // semantics: when catch_unwind moves the Box out of the exception it must

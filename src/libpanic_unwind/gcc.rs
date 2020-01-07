@@ -82,8 +82,6 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     }
 }
 
-pub type Payload = *mut u8;
-
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let exception = Box::from_raw(ptr as *mut Exception);
     exception.cause

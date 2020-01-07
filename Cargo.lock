@@ -2308,6 +2308,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
+ "cfg-if",
  "compiler_builtins",
  "core",
  "libc",
