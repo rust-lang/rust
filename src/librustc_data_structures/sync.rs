@@ -26,6 +26,8 @@ use std::ops::{Deref, DerefMut};
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
+pub mod future;
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
