@@ -2,9 +2,7 @@
 set -euo pipefail
 
 # Determine configuration
-if [ "$TRAVIS_OS_NAME" == osx ]; then
-  FOREIGN_TARGET=i686-apple-darwin
-else
+if [ "$TRAVIS_OS_NAME" == linux ]; then
   FOREIGN_TARGET=i686-unknown-linux-gnu
 fi
 export CARGO_EXTRA_FLAGS="--all-features"
@@ -28,6 +26,8 @@ echo "Test host architecture"
 run_tests
 echo
 
-echo "Test foreign architecture ($FOREIGN_TARGET)"
-MIRI_TEST_TARGET="$FOREIGN_TARGET" run_tests
-echo
+if [ -n "${FOREIGN_TARGET+exists}" ]; then
+  echo "Test foreign architecture ($FOREIGN_TARGET)"
+  MIRI_TEST_TARGET="$FOREIGN_TARGET" run_tests
+  echo
+fi
