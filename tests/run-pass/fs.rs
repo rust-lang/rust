@@ -19,7 +19,11 @@ fn main() {
     let tmp = std::env::temp_dir();
     let filename = PathBuf::from("miri_test_fs.txt");
     let path = tmp.join(&filename);
+    let symlink_path = tmp.join("miri_test_fs_symlink.txt");
     let bytes = b"Hello, World!\n";
+    // Clean the paths for robustness.
+    remove_file(&path).unwrap_or(());
+    remove_file(&symlink_path).unwrap_or(());
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
@@ -42,8 +46,7 @@ fn main() {
     std::env::set_current_dir(&tmp).unwrap();
     test_metadata(bytes, &filename).unwrap();
 
-    // Creating a symbolic link should succeed
-    let symlink_path = tmp.join("miri_test_fs_symlink.txt");
+    // Creating a symbolic link should succeed.
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
     let mut symlink_file = File::open(&symlink_path).unwrap();
