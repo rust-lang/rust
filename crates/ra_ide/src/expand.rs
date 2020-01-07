@@ -76,14 +76,15 @@ pub(crate) fn descend_into_macros(
 ) -> InFile<SyntaxToken> {
     let src = InFile::new(file_id.into(), token);
 
+    let source_analyzer =
+        hir::SourceAnalyzer::new(db, src.with_value(src.value.parent()).as_ref(), None);
+
     successors(Some(src), |token| {
         let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
         let tt = macro_call.token_tree()?;
         if !token.value.text_range().is_subrange(&tt.syntax().text_range()) {
             return None;
         }
-        let source_analyzer =
-            hir::SourceAnalyzer::new(db, token.with_value(token.value.parent()).as_ref(), None);
         let exp = source_analyzer.expand(db, token.with_value(&macro_call))?;
         exp.map_token_down(db, token.as_ref())
     })
