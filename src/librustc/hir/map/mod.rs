@@ -9,6 +9,7 @@ use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::FlexScope;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -1235,20 +1236,26 @@ pub fn map_crate<'hir>(
         collector.finalize_and_compute_crate_hash(crate_disambiguator, cstore, cmdline_args)
     };
 
-    let map = Map {
+    Map {
         forest,
         dep_graph: forest.dep_graph.clone(),
         crate_hash,
         map,
         hir_to_node_id,
         definitions,
-    };
+    }
+}
 
-    sess.time("validate HIR map", || {
-        hir_id_validator::check_crate(&map);
+pub fn validate_map<'hir>(
+    sess: &'hir rustc_session::Session,
+    map: &'hir Map<'hir>,
+    scope: &'hir FlexScope<'hir>,
+) {
+    scope.spawn(move || {
+        sess.time("validate HIR map", || {
+            hir_id_validator::check_crate(&map);
+        })
     });
-
-    map
 }
 
 /// Identical to the `PpAnn` implementation for `hir::Crate`,

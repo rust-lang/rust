@@ -769,8 +769,10 @@ pub fn create_global_ctxt<'tcx>(
         )
     });
 
-    // Do some initialization of the DepGraph that can only be done with the tcx available.
     ty::tls::enter_global(&gcx, |tcx| {
+        map::validate_map(sess, tcx.hir(), scope);
+
+        // Do some initialization of the DepGraph that can only be done with the tcx available.
         tcx.sess.time("dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
     });
 
