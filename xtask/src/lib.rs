@@ -1,13 +1,14 @@
 //! FIXME: write short doc here
 
 pub mod codegen;
+pub mod install;
+pub mod pre_commit;
 mod ast_src;
 
 use anyhow::Context;
 pub use anyhow::Result;
 use std::{
-    env, fs,
-    io::{Error as IoError, ErrorKind},
+    env,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
 };
@@ -79,21 +80,9 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-pub fn install_rustfmt() -> Result<()> {
+fn install_rustfmt() -> Result<()> {
     run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
     run(&format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN), ".")
-}
-
-pub fn install_pre_commit_hook() -> Result<()> {
-    let result_path =
-        PathBuf::from(format!("./.git/hooks/pre-commit{}", std::env::consts::EXE_SUFFIX));
-    if !result_path.exists() {
-        let me = std::env::current_exe()?;
-        fs::copy(me, result_path)?;
-    } else {
-        Err(IoError::new(ErrorKind::AlreadyExists, "Git hook already created"))?;
-    }
-    Ok(())
 }
 
 pub fn run_clippy() -> Result<()> {
@@ -142,28 +131,6 @@ pub fn run_fuzzer() -> Result<()> {
     };
 
     run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
-}
-
-pub fn reformat_staged_files() -> Result<()> {
-    run_rustfmt(Mode::Overwrite)?;
-    let root = project_root();
-    let output = Command::new("git")
-        .arg("diff")
-        .arg("--diff-filter=MAR")
-        .arg("--name-only")
-        .arg("--cached")
-        .current_dir(&root)
-        .output()?;
-    if !output.status.success() {
-        anyhow::bail!(
-            "`git diff --diff-filter=MAR --name-only --cached` exited with {}",
-            output.status
-        );
-    }
-    for line in String::from_utf8(output.stdout)?.lines() {
-        run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;
-    }
-    Ok(())
 }
 
 fn do_run<F>(cmdline: &str, dir: &str, mut f: F) -> Result<Output>
