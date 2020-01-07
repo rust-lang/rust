@@ -10,7 +10,10 @@ on:
 jobs:
   rust:
     name: Rust
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
@@ -19,6 +22,14 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v1
+
+      # We need to disable the existing toolchain to avoid updating rust-docs
+      # which takes a long time. The fastest way to do this is to rename the
+      # existing folder, as deleting it takes about as much time as not doing
+      # anything and just updating rust-docs.
+      - name: Rename existing rust toolchain (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -45,12 +56,28 @@ jobs:
         with:
           command: test
 
-      - name: Prepare build directory for cache
+      - name: Prepare build directory for cache (UNIX)
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run: |
           find ./target/debug -maxdepth 1 -type f -delete \
           && rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} \
           && rm -f  ./target/.rustc_info.json \
           && rm ./target/.slow_tests_cookie
+
+      - name: Prepare build directory for cache (Windows)
+        if: matrix.os == 'windows-latest'
+        run: >-
+          (Get-ChildItem ./target/debug -Recurse -Depth 1 -File | Remove-Item) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*ra_*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*heavy_test*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*gen_lsp*) -and
+          (Remove-Item -Force -Recurse ./target/debug/deps/*thread_worker*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*ra_*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*heavy_test*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*gen_lsp*) -and
+          (Remove-Item -Force -Recurse ./target/debug/.fingerprint/*thread_worker*) -and
+          (Remove-Item -Force ./target/.rustc_info.json) -and
+          (Remove-Item ./target/.slow_tests_cookie)
 
   type-script:
     name: TypeScript
