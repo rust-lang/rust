@@ -1046,48 +1046,7 @@ impl<A> FromIterator<A> for Box<[A]> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
-        let mut new = BoxBuilder { data: RawVec::with_capacity(self.len()), len: 0 };
-
-        let mut target = new.data.ptr();
-
-        for item in self.iter() {
-            unsafe {
-                ptr::write(target, item.clone());
-                target = target.offset(1);
-            };
-
-            new.len += 1;
-        }
-
-        return unsafe { new.into_box() };
-
-        // Helper type for responding to panics correctly.
-        struct BoxBuilder<T> {
-            data: RawVec<T>,
-            len: usize,
-        }
-
-        impl<T> BoxBuilder<T> {
-            unsafe fn into_box(self) -> Box<[T]> {
-                let raw = ptr::read(&self.data);
-                mem::forget(self);
-                raw.into_box()
-            }
-        }
-
-        impl<T> Drop for BoxBuilder<T> {
-            fn drop(&mut self) {
-                let mut data = self.data.ptr();
-                let max = unsafe { data.add(self.len) };
-
-                while data != max {
-                    unsafe {
-                        ptr::read(data);
-                        data = data.offset(1);
-                    }
-                }
-            }
-        }
+        self.to_vec().into_boxed_slice()
     }
 }
 
