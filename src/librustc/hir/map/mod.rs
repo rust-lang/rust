@@ -186,12 +186,12 @@ struct ParentHirIterator<'map, 'hir> {
 }
 
 impl<'map, 'hir> ParentHirIterator<'map, 'hir> {
-    fn new(current_id: HirId, map: &'map Map<'hir>) -> ParentHirIterator<'map, 'hir> {
-        ParentHirIterator { current_id, map }
+    fn new(current_id: HirId, map: &'map Map<'hir>) -> Self {
+        Self { current_id, map }
     }
 }
 
-impl<'map, 'hir> Iterator for ParentHirIterator<'map, 'hir> {
+impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
     type Item = (HirId, Node<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
