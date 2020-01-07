@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(option_expect_none, option_unwrap_none)]
 
