@@ -4,7 +4,6 @@
 #![recursion_limit = "256"]
 
 use rustc::bug;
-use rustc::hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -17,6 +16,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym};

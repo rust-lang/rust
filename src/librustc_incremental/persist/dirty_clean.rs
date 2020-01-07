@@ -14,13 +14,13 @@
 //! the required condition is not met.
 
 use rustc::dep_graph::{label_strs, DepNode};
-use rustc::hir::intravisit;
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};

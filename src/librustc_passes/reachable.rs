@@ -5,8 +5,6 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc::hir::intravisit;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::privacy;
@@ -19,6 +17,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::intravisit;
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdSet, Node};
 use rustc_target::spec::abi::Abi;

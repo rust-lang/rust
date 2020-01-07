@@ -2,11 +2,11 @@
 // pieces of AST and HIR. The resulting numbers are good approximations but not
 // completely accurate (some things might be counted twice, others missed).
 
-use rustc::hir::intravisit as hir_visit;
 use rustc::hir::map::Map;
 use rustc::util::common::to_readable_str;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
 use rustc_span::Span;
 use syntax::ast::{self, AttrId, NodeId};

@@ -4,7 +4,6 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 
 use super::{PatCtxt, PatKind, PatternError};
 
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::session::Session;
@@ -15,6 +14,7 @@ use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span};

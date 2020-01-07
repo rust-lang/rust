@@ -4,13 +4,13 @@ pub use self::definitions::{
 };
 
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
-use crate::hir::intravisit;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
 use rustc_hir::*;

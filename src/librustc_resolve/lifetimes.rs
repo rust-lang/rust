@@ -6,7 +6,6 @@
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
@@ -17,6 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
 use rustc_span::symbol::{kw, sym};

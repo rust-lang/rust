@@ -36,7 +36,6 @@
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir::intravisit;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
 use rustc::lint;
@@ -52,6 +51,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::nightly_options;

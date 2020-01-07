@@ -1089,7 +1089,7 @@ impl TypeAliasBounds {
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
-        use rustc::hir::intravisit::{self, Visitor};
+        use rustc_hir::intravisit::{self, Visitor};
         struct WalkAssocTypes<'a, 'db> {
             err: &'a mut DiagnosticBuilder<'db>,
         }

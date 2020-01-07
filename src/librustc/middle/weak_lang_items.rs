@@ -3,14 +3,13 @@
 use crate::middle::lang_items;
 use crate::session::config;
 
-use crate::hir::intravisit;
-use crate::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::hir::map::Map;
 use crate::ty::TyCtxt;
 use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;

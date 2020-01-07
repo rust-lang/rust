@@ -1,5 +1,4 @@
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::map::definitions::{self, DefPathHash};
 use crate::hir::map::{Entry, HirEntryMap, Map};
 use crate::ich::StableHashingContext;
@@ -11,6 +10,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_session::{CrateDisambiguator, Session};

@@ -36,9 +36,8 @@ use syntax::ast;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 
-use rustc::hir::intravisit;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
 struct EncodeContext<'tcx> {

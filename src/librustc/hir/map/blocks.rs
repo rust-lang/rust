@@ -11,9 +11,9 @@
 //! nested within a uniquely determined `FnLike`), and users can ask
 //! for the `Code` associated with a particular NodeId.
 
-use crate::hir::intravisit::FnKind;
 use crate::hir::map::Map;
 use rustc_hir as hir;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Expr, FnDecl, Node};
 use rustc_span::Span;
 use syntax::ast::{Attribute, Ident};
