@@ -180,13 +180,9 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else
     #[inline]
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
-        MPlaceTy {
-            mplace: MemPlace::from_scalar_ptr(
-                Scalar::from_uint(layout.align.abi.bytes(), cx.pointer_size()),
-                layout.align.abi,
-            ),
-            layout,
-        }
+        let align = layout.align.abi;
+        let ptr = Scalar::from_uint(align.bytes(), cx.pointer_size());
+        MPlaceTy { mplace: MemPlace { ptr, align, meta: MemPlaceMeta::Poison }, layout }
     }
 
     /// Replace ptr tag, maintain vtable tag (if any)
