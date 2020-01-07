@@ -1,7 +1,7 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
-use crate::ty::fold::{TypeFolder, TypeVisitor};
-use crate::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::fold::{TypeFolder, TypeVisitor};
+use rustc::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER

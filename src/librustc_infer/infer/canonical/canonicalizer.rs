@@ -10,10 +10,10 @@ use crate::infer::canonical::{
     OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
-use crate::ty::flags::FlagComputation;
-use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
+use rustc::ty::flags::FlagComputation;
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
+use rustc::ty::subst::GenericArg;
+use rustc::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;

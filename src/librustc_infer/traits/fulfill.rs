@@ -1,6 +1,6 @@
 use crate::infer::{InferCtxt, ShallowResolver};
-use crate::ty::error::ExpectedFound;
-use crate::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
+use rustc::ty::error::ExpectedFound;
+use rustc::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};

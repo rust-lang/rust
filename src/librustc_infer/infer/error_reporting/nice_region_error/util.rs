@@ -2,7 +2,7 @@
 //! anonymous regions.
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::ty::{self, DefIdTree, Region, Ty};
+use rustc::ty::{self, DefIdTree, Region, Ty};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;

@@ -3,7 +3,7 @@
 
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::util::common::ErrorReported;
+use rustc::util::common::ErrorReported;
 
 use rustc_errors::struct_span_err;
 

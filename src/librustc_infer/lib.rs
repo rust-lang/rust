@@ -56,12 +56,5 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 
-use rustc::arena;
-use rustc::dep_graph;
-use rustc::hir;
 pub mod infer;
-use rustc::middle;
-pub use rustc_session as session;
 pub mod traits;
-use rustc::ty;
-use rustc::util;

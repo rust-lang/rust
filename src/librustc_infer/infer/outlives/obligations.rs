@@ -63,9 +63,9 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use crate::traits::ObligationCause;
-use crate::ty::outlives::Component;
-use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::outlives::Component;
+use rustc::ty::subst::GenericArgKind;
+use rustc::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;

@@ -1,6 +1,6 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::ty::{ParamEnvAnd, Predicate, TyCtxt};
+use rustc::ty::{ParamEnvAnd, Predicate, TyCtxt};
 
 pub use rustc::traits::query::type_op::ProvePredicate;
 

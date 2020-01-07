@@ -4,8 +4,8 @@ use crate::infer::canonical::{
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
-use crate::ty::fold::TypeFoldable;
-use crate::ty::{ParamEnvAnd, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{ParamEnvAnd, TyCtxt};
 use std::fmt;
 use std::rc::Rc;
 

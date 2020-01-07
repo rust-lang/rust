@@ -1,7 +1,7 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use crate::ty::{self, GenericParamDefKind, TyCtxt};
-use crate::util::common::ErrorReported;
+use rustc::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc::util::common::ErrorReported;
 
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;

@@ -1,7 +1,7 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::ty::fold::TypeFoldable;
-use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 use std::fmt;
 
 pub use rustc::traits::query::type_op::Normalize;

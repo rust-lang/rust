@@ -1,8 +1,8 @@
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
-use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 

@@ -5,7 +5,7 @@ pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use crate::ty::IntVarValue;
+pub use rustc::ty::IntVarValue;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
@@ -650,8 +650,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
-        use crate::ty::error::UnconstrainedNumeric::Neither;
-        use crate::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.kind {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.inner.borrow_mut().int_unification_table.probe_value(vid).is_some() {

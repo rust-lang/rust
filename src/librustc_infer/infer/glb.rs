@@ -4,8 +4,8 @@ use super::InferCtxt;
 use super::Subtype;
 
 use crate::traits::ObligationCause;
-use crate::ty::relate::{Relate, RelateResult, TypeRelation};
-use crate::ty::{self, Ty, TyCtxt};
+use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc::ty::{self, Ty, TyCtxt};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {

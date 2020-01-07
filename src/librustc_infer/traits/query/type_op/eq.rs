@@ -1,6 +1,6 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use crate::ty::{ParamEnvAnd, TyCtxt};
+use rustc::ty::{ParamEnvAnd, TyCtxt};
 
 pub use rustc::traits::query::type_op::Eq;
 

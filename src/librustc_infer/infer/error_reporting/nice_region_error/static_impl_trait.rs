@@ -3,8 +3,8 @@
 use crate::infer::error_reporting::msg_span_from_free_region;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::ty::{BoundRegion, FreeRegion, RegionKind};
-use crate::util::common::ErrorReported;
+use rustc::ty::{BoundRegion, FreeRegion, RegionKind};
+use rustc::util::common::ErrorReported;
 use rustc_errors::Applicability;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

@@ -24,11 +24,11 @@
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::traits::DomainGoal;
-use crate::ty::error::TypeError;
-use crate::ty::fold::{TypeFoldable, TypeVisitor};
-use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::GenericArg;
-use crate::ty::{self, InferConst, Ty, TyCtxt};
+use rustc::ty::error::TypeError;
+use rustc::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc::ty::subst::GenericArg;
+use rustc::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 

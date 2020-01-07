@@ -1,7 +1,7 @@
 use super::*;
 use crate::infer::{CombinedSnapshot, PlaceholderMap};
-use crate::ty::error::TypeError;
-use crate::ty::relate::RelateResult;
+use rustc::ty::error::TypeError;
+use rustc::ty::relate::RelateResult;
 
 impl<'tcx> RegionConstraintCollector<'tcx> {
     /// Searches region constraints created since `snapshot` that

@@ -4,8 +4,8 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use crate::ty::Ty;
-use crate::util::common::ErrorReported;
+use rustc::ty::Ty;
+use rustc::util::common::ErrorReported;
 use rustc_span::Span;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

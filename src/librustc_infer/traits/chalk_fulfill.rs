@@ -5,7 +5,7 @@ use crate::traits::{
     Environment, FulfillmentError, FulfillmentErrorCode, InEnvironment, ObligationCause,
     PredicateObligation, SelectionError, TraitEngine,
 };
-use crate::ty::{self, Ty};
+use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 
 pub use rustc::traits::ChalkCanonicalGoal as CanonicalGoal;

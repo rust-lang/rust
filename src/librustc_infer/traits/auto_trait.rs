@@ -5,8 +5,8 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
-use crate::ty::fold::TypeFolder;
-use crate::ty::{Region, RegionVid};
+use rustc::ty::fold::TypeFolder;
+use rustc::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 

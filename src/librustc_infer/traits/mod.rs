@@ -24,12 +24,12 @@ pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, SuppressRegionErrors, TyCtxtInferExt};
-use crate::middle::region;
-use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::{InternalSubsts, SubstsRef};
-use crate::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, WithConstness};
-use crate::util::common::ErrorReported;
+use rustc::middle::region;
+use rustc::ty::error::{ExpectedFound, TypeError};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc::util::common::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};

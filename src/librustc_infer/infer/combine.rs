@@ -33,12 +33,12 @@ use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
-use crate::ty::error::TypeError;
-use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::SubstsRef;
-use crate::ty::{self, InferConst, Ty, TyCtxt};
-use crate::ty::{IntType, UintType};
 
+use rustc::ty::error::TypeError;
+use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc::ty::subst::SubstsRef;
+use rustc::ty::{self, InferConst, Ty, TyCtxt};
+use rustc::ty::{IntType, UintType};
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;

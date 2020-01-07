@@ -3,9 +3,9 @@ use rustc_span::Span;
 use smallvec::smallvec;
 use smallvec::SmallVec;
 
-use crate::ty::outlives::Component;
-use crate::ty::subst::{GenericArg, Subst, SubstsRef};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc::ty::outlives::Component;
+use rustc::ty::subst::{GenericArg, Subst, SubstsRef};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

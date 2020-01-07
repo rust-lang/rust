@@ -7,9 +7,9 @@
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
-use crate::ty::fold::TypeFoldable;
-use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::subst::GenericArgKind;
+use rustc::ty::{self, TyCtxt};
 
 pub(super) trait CanonicalExt<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
