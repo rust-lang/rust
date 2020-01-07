@@ -29,6 +29,8 @@ use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
+pub mod future;
+
 pub fn catch<R>(
     store: &Lock<Option<Box<dyn Any + std::marker::Send + 'static>>>,
     f: impl FnOnce() -> R,
