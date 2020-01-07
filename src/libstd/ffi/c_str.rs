@@ -1187,11 +1187,6 @@ impl CStr {
     /// function will return the corresponding [`&str`] slice. Otherwise,
     /// it will return an error with details of where UTF-8 validation failed.
     ///
-    /// > **Note**: This method is currently implemented to check for validity
-    /// > after a constant-time cast, but it is planned to alter its definition
-    /// > in the future to perform the length calculation in addition to the
-    /// > UTF-8 check whenever this method is called.
-    ///
     /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
@@ -1219,11 +1214,6 @@ impl CStr {
     /// replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
-    ///
-    /// > **Note**: This method is currently implemented to check for validity
-    /// > after a constant-time cast, but it is planned to alter its definition
-    /// > in the future to perform the length calculation in addition to the
-    /// > UTF-8 check whenever this method is called.
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
