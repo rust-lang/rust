@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 344] = [
+pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -832,6 +832,13 @@ pub const ALL_LINTS: [Lint; 344] = [
         desc: "using `.into_iter()` on a reference",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "invalid_atomic_ordering",
+        group: "correctness",
+        desc: "usage of invalid atomic ordering in atomic load/store calls",
+        deprecation: None,
+        module: "atomic_ordering",
     },
     Lint {
         name: "invalid_regex",
