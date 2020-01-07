@@ -303,7 +303,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
             }
-            // Nothing to recurse on for these
+            // Nothing to recurse on for these.
             Node::ForeignItem(_)
             | Node::Variant(_)
             | Node::Ctor(..)

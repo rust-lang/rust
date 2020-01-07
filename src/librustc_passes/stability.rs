@@ -28,15 +28,15 @@ use std::num::NonZeroU32;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
-    // Annotation is required if not inherited from unstable parents
+    // Annotation is required if not inherited from unstable parents.
     Required,
-    // Annotation is useless, reject it
+    // Annotation is useless: reject it.
     Prohibited,
-    // Annotation itself is useless, but it can be propagated to children
+    // Annotation itself is useless, but it can be propagated to children.
     Container,
 }
 
-// A private tree-walker for producing an Index.
+// A private tree-walker for producing an index.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index<'tcx>,
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 self.tcx.sess.span_err(
                     item_sp,
                     "`#[deprecated]` cannot be used in staged API; \
-                                                 use `#[rustc_deprecated]` instead",
+                     use `#[rustc_deprecated]` instead",
                 );
             }
             let (stab, const_stab) =
@@ -81,7 +81,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                         && stab.level.is_stable()
                         && stab.rustc_depr.is_none())
                 {
-                    self.tcx.sess.span_err(item_sp, "This stability annotation is useless");
+                    self.tcx.sess.span_err(item_sp, "item does not require a stability annotation");
                 }
 
                 debug!("annotate: found {:?}", stab);
@@ -102,7 +102,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                     &attr::Stable { since: stab_since },
                 ) = (&stab.rustc_depr, &stab.level)
                 {
-                    // Explicit version of iter::order::lt to handle parse errors properly
+                    // Explicit version of `iter::order::lt` to handle parse errors properly.
                     for (dep_v, stab_v) in
                         dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
                     {
@@ -111,8 +111,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                                 Ordering::Less => {
                                     self.tcx.sess.span_err(
                                         item_sp,
-                                        "An API can't be stabilized \
-                                                                     after it is deprecated",
+                                        "an API cannot be stabilized after it has been deprecated",
                                     );
                                     break;
                                 }
@@ -124,8 +123,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             // and this makes us not do anything else interesting.
                             self.tcx.sess.span_err(
                                 item_sp,
-                                "Invalid stability or deprecation \
-                                                             version found",
+                                "item has an invalid stability or deprecation version",
                             );
                             break;
                         }
@@ -140,6 +138,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             } else {
                 debug!("annotate: not found, parent = {:?}", self.parent_stab);
                 if let Some(stab) = self.parent_stab {
+                    // Instability (but not stability) is inherited from the parent.
+                    // If something is unstable, everything inside it should also be
+                    // considered unstable.
                     if stab.level.is_unstable() {
                         self.index.stab_map.insert(hir_id, stab);
                     }
@@ -179,7 +180,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if let Some(depr) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
                 if kind == AnnotationKind::Prohibited {
-                    self.tcx.sess.span_err(item_sp, "This deprecation annotation is useless");
+                    self.tcx
+                        .sess
+                        .span_err(item_sp, "item does not require a deprecation annotation");
                 }
 
                 // `Deprecation` is just two pointers, no need to intern it

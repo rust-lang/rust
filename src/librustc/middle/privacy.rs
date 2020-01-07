@@ -12,7 +12,7 @@ use std::hash::Hash;
 // Accessibility levels, sorted in ascending order
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum AccessLevel {
-    /// Superset of `AccessLevel::Reachable` used to mark impl Trait items.
+    /// Superset of `AccessLevel::Reachable` used to mark `impl Trait` items.
     ReachableFromImplTrait,
     /// Exported items + items participating in various kinds of public interfaces,
     /// but not directly nameable. For example, if function `fn f() -> T {...}` is
