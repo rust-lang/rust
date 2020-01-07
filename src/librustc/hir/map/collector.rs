@@ -11,7 +11,7 @@ use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::iter::repeat;
 use syntax::ast::NodeId;
 
@@ -96,6 +96,21 @@ where
     );
     hir_body_nodes.push((def_path_hash, hash));
     (sig, full)
+}
+
+fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
+    let mut upstream_crates: Vec<_> = cstore
+        .crates_untracked()
+        .iter()
+        .map(|&cnum| {
+            let name = cstore.crate_name_untracked(cnum);
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
+            let hash = cstore.crate_hash_untracked(cnum);
+            (name, disambiguator, hash)
+        })
+        .collect();
+    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+    upstream_crates
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
@@ -190,18 +205,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             },
         );
 
-        let mut upstream_crates: Vec<_> = cstore
-            .crates_untracked()
-            .iter()
-            .map(|&cnum| {
-                let name = cstore.crate_name_untracked(cnum);
-                let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
-                let hash = cstore.crate_hash_untracked(cnum);
-                (name, disambiguator, hash)
-            })
-            .collect();
-
-        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+        let upstream_crates = upstream_crates(cstore);
 
         // We hash the final, remapped names of all local source files so we
         // don't have to include the path prefix remapping commandline args.
