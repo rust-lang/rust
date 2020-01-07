@@ -234,9 +234,7 @@ pub trait Visitor<'v>: Sized {
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.item(id.id));
-        if let Some(item) = opt_item {
-            self.visit_item(item);
-        }
+        walk_list!(self, visit_item, opt_item);
     }
 
     /// Like `visit_nested_item()`, but for trait items. See
@@ -245,9 +243,7 @@ pub trait Visitor<'v>: Sized {
     #[allow(unused_variables)]
     fn visit_nested_trait_item(&mut self, id: TraitItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.trait_item(id));
-        if let Some(item) = opt_item {
-            self.visit_trait_item(item);
-        }
+        walk_list!(self, visit_trait_item, opt_item);
     }
 
     /// Like `visit_nested_item()`, but for impl items. See
@@ -256,9 +252,7 @@ pub trait Visitor<'v>: Sized {
     #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
-        if let Some(item) = opt_item {
-            self.visit_impl_item(item);
-        }
+        walk_list!(self, visit_impl_item, opt_item);
     }
 
     /// Invoked to visit the body of a function, method or closure. Like
@@ -267,9 +261,7 @@ pub trait Visitor<'v>: Sized {
     /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
         let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
-        if let Some(body) = opt_body {
-            self.visit_body(body);
-        }
+        walk_list!(self, visit_body, opt_body);
     }
 
     fn visit_param(&mut self, param: &'v Param<'v>) {
@@ -690,9 +682,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 ) {
     match *qpath {
         QPath::Resolved(ref maybe_qself, ref path) => {
-            if let Some(ref qself) = *maybe_qself {
-                visitor.visit_ty(qself);
-            }
+            walk_list!(visitor, visit_ty, maybe_qself);
             visitor.visit_path(path, id)
         }
         QPath::TypeRelative(ref qself, ref segment) => {
@@ -714,9 +704,7 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(
     segment: &'v PathSegment<'v>,
 ) {
     visitor.visit_ident(segment.ident);
-    if let Some(id) = segment.hir_id {
-        visitor.visit_id(id);
-    }
+    walk_list!(visitor, visit_id, segment.hir_id);
     if let Some(ref args) = segment.args {
         visitor.visit_generic_args(path_span, args);
     }
@@ -1005,9 +993,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
     struct_definition: &'v VariantData<'v>,
 ) {
-    if let Some(ctor_hir_id) = struct_definition.ctor_hir_id() {
-        visitor.visit_id(ctor_hir_id);
-    }
+    walk_list!(visitor, visit_id, struct_definition.ctor_hir_id());
     walk_list!(visitor, visit_struct_field, struct_definition.fields());
 }
 
@@ -1127,15 +1113,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);
         }
         ExprKind::Break(ref destination, ref opt_expr) => {
-            if let Some(ref label) = destination.label {
-                visitor.visit_label(label);
-            }
+            walk_list!(visitor, visit_label, &destination.label);
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprKind::Continue(ref destination) => {
-            if let Some(ref label) = destination.label {
-                visitor.visit_label(label);
-            }
+            walk_list!(visitor, visit_label, &destination.label);
         }
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
