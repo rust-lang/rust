@@ -427,4 +427,11 @@ impl<Id> Res<Id> {
             Res::Err => true,
         }
     }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Res::PrimTy(..) => true,
+            _ => false,
+        }
+    }
 }

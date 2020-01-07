@@ -203,7 +203,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 .ok_or(ErrorKind::ResolutionFailure)?;
 
             if let Some(prim) = is_primitive(&path, TypeNS) {
-                let did = primitive_impl(cx, &path).ok_or(ErrorKind::ResolutionFailure)?;
+                let did =
+                    utils::primitive_path_impl(cx, &path).ok_or(ErrorKind::ResolutionFailure)?;
                 return cx
                     .tcx
                     .associated_items(did)
@@ -888,50 +889,10 @@ fn handle_variant(
     Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
 }
 
-const PRIMITIVES: &[(&str, Res)] = &[
-    ("u8", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U8))),
-    ("u16", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U16))),
-    ("u32", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U32))),
-    ("u64", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U64))),
-    ("u128", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U128))),
-    ("usize", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::Usize))),
-    ("i8", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I8))),
-    ("i16", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I16))),
-    ("i32", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I32))),
-    ("i64", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I64))),
-    ("i128", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I128))),
-    ("isize", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::Isize))),
-    ("f32", Res::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F32))),
-    ("f64", Res::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F64))),
-    ("str", Res::PrimTy(hir::PrimTy::Str)),
-    ("bool", Res::PrimTy(hir::PrimTy::Bool)),
-    ("char", Res::PrimTy(hir::PrimTy::Char)),
-];
-
 fn is_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
-    if ns == TypeNS { PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1) } else { None }
-}
-
-fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
-    let tcx = cx.tcx;
-    match path_str {
-        "u8" => tcx.lang_items().u8_impl(),
-        "u16" => tcx.lang_items().u16_impl(),
-        "u32" => tcx.lang_items().u32_impl(),
-        "u64" => tcx.lang_items().u64_impl(),
-        "u128" => tcx.lang_items().u128_impl(),
-        "usize" => tcx.lang_items().usize_impl(),
-        "i8" => tcx.lang_items().i8_impl(),
-        "i16" => tcx.lang_items().i16_impl(),
-        "i32" => tcx.lang_items().i32_impl(),
-        "i64" => tcx.lang_items().i64_impl(),
-        "i128" => tcx.lang_items().i128_impl(),
-        "isize" => tcx.lang_items().isize_impl(),
-        "f32" => tcx.lang_items().f32_impl(),
-        "f64" => tcx.lang_items().f64_impl(),
-        "str" => tcx.lang_items().str_impl(),
-        "bool" => tcx.lang_items().bool_impl(),
-        "char" => tcx.lang_items().char_impl(),
-        _ => None,
+    if ns == TypeNS {
+        utils::PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1)
+    } else {
+        None
     }
 }

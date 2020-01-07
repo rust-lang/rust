@@ -428,12 +428,20 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         for &item in cx.tcx.item_children(did).iter() {
-            let def_id = item.res.def_id();
+            eprintln!("==> {:?}", item.res);
+            let def_id = match clean::utils::res_to_def_id(cx, &item.res) {
+                Some(did) => did,
+                None => continue,
+            };
+            eprintln!("TOUDOUM ==> {:?} {:?}", item.res, item.vis);
             if item.vis == ty::Visibility::Public {
                 if did == def_id || !visited.insert(def_id) {
+                    eprintln!("1");
                     continue;
                 }
+                eprintln!("2");
                 if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
+                    eprintln!("3");
                     items.extend(i)
                 }
             }
