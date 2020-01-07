@@ -196,7 +196,7 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
   return false;
 }
 
-GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned> &returnMapping ) {
+GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned> &returnMapping ) {
     assert(!todiff->empty());
 
     // Since this is forward pass this should always return the tape (at index 0)
@@ -246,11 +246,11 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
         }
     }
 
-    auto res = new GradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
+    auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
     return res;
 }
 
-DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
+DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
   assert(!todiff->empty());
   ValueToValueMapTy invertedPointers;
   SmallPtrSet<Value*,4> constants;
@@ -265,7 +265,7 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, AAResu
         nonconstant_values.insert(a);
     }
     }
-  auto res = new DiffeGradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
+  auto res = new DiffeGradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
   return res;
 }
 
@@ -329,8 +329,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
           type_args.insert(std::pair<Argument*, DataType>(&a, DataType(IntType::Unknown)));
       }
-      auto& augdata = CreateAugmentedPrimal(fn, AA, /*constant_args*/{}, TLI, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
+      auto& augdata = CreateAugmentedPrimal(fn, /*constant_args*/{}, TLI, TA, AA, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, TA, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       auto cdata = ConstantStruct::get(StructType::get(newf->getContext(), {augdata.fn->getType(), newf->getType()}), {augdata.fn, newf});
       std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
       auto GV = newf->getParent()->getNamedValue(globalname);

@@ -16,6 +16,7 @@
  */
 
 #include <cstdint>
+#include <deque>
 
 #include <llvm/Config/llvm-config.h>
 
@@ -205,7 +206,6 @@ void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
     //assert(newtrace.size() < 12);
 }
 
-typedef std::map<Argument*, DataType> FnTypeInfo; 
 typedef std::tuple<const FnTypeInfo, Value*,bool> IntSeenKey;
 typedef std::tuple<const FnTypeInfo, Value*> PtrSeenKey;
 
@@ -214,480 +214,6 @@ void appendArgumentInformation(FnTypeInfo &typeInfo, const FnTypeInfo &oldTypeIn
 bool trackInt(const FnTypeInfo &typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false, bool* sawReturn=nullptr /*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/);
         
 bool trackPointer(const FnTypeInfo &typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& seen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool* sawReturn, bool onlyFirst, std::vector<int> indices = {});
-
-class ValueData {
-    private:
-        DataType alwaystype;
-
-        //for geps, mapping of known indices to type if one exists
-        std::map<const std::vector<int>, DataType> mapping;
-
-        ValueData(DataType alwaystype) :
-            alwaystype(alwaystype) {
-        }
-    public:
-        ValueData() : ValueData(DataType(IntType::Unknown)) {}
-        
-        static ValueData Always(DataType type) {
-            return ValueData(type);
-        }
-        
-        static ValueData Unknown() {
-            return ValueData();
-        }
-
-        static std::vector<int> mergeIndices(std::vector<int> first, const std::vector<int> &second) {
-            assert(first.size() > 0);
-            assert(second.size() > 0);
-
-            //-1 represents all elements in that range
-            if (first[0] >= 0 && second[0] >= 0) {
-                first[0] += second[0];
-            } else {
-                first[0] = -1;
-            }
-
-            for(unsigned i=1; i<second.size(); i++)
-                first.push_back(second[i]);
-            return first;
-        }
-
-        ValueData Only(std::vector<int> indices) const {
-            ValueData dat;
-
-            if (always != IntType::Unknown) {
-                assert(mapping.size() == 0);
-                dat.mapping[indices] = alwaystype;
-                return dat;
-            }
-
-            for(const auto &pair : mapping) {
-                dat.mapping[mergeIndices(indices, pair.first)] = pair.second;
-            }
-
-            return dat;
-        }
-        
-        bool lookupIndices(std::vector<int> &first, const std::vector<int> &second) {
-            if (first.size() > second.size()) return false;
-
-            auto fs = first.size();
-            for(int i=0; i<fs; i++) {
-                if (first[i] == -1) continue;
-                if (second[i] == -1) continue;
-                if (first[i] != second[i]) return false;
-            }
-
-            first.clear();
-            for(auto i=fs; i<second.size(); i++) {
-                first.push_back(second[i]);
-            }
-        }
-
-        ValueData Lookup(std::vector<int> indices) const {
-            if (always != IntType::Unknown) {
-                return Always(always);
-            }
-
-            ValueData dat;
-
-            for(const auto &pair : mapping) {
-                std::vector<int> next = indices;
-                if (lookupIndices(next, pair.first)) 
-                    dat.mapping[next] = pair.second;
-            }
-
-            return dat;
-        }
-
-        static ValueData Argument(DataType type, Value* v) {
-            if (!type.isKnown()) return Unknown();
-            if (v->getType()->isIntOrIntVectorTy()) return Always(type);
-            return OnlyFirst(type);
-        }
-
-        bool operator==(const ValueData &v) const {
-            if (alwaystype != v.alwaystype) return false;
-            return (mapping == v.mapping);
-        }
-
-        // Return if changed
-        bool operator=(const ValueData& v) {
-            if (*this == v) return false;
-            alwaystype = v.alwaystype;
-            mapping = v.mapping;
-            return true;
-        }
-
-        bool operator|=(const ValueData &v) {
-            bool changed = false;
-            
-            changed = (alwaysdata |= v.alwaysdata);
-
-            if (alwaysdata != IntType::Unknown) {
-
-                if (mapping.size() != 0) {
-                    changed = true;
-                    auto tmp = alwaysdata;
-                    for(auto &pair : mapping) {
-                        //This will check for an inconsistency between something in the map and alwaysdata
-                        tmp |= pair.second;
-                    }
-                    //This will check if an anything was in the map, but alwaysdata is not anything
-                    assert(tmp == alwaysdata);
-                    mapping.clear();
-                }
-
-                if (v.mapping.size() != 0) {
-                    auto tmp = alwaysdata;
-                    for(auto &pair : mapping) {
-                        //This will check for an inconsistency between something in the v.map and alwaysdata
-                        tmp |= pair.second;
-                    }
-                    //This will check if an anything was in the map, but alwaysdata is not anything
-                    assert(tmp == alwaysdata);
-                }
-            } else {
-                for(auto &pair : v.mapping) {
-                    changed |= ( mapping[pair.first] |= pair.second );
-                }
-            }
-
-            if (mapping.size() != 0) assert(alwaysdata == IntType::Unknown);
-            if (alwaysdata != IntType::Unknown) assert(mapping.size() == 0);
-
-            return changed;
-        }
-
-        void operator&=(const ValueData &v) {
-            bool changed = false;
-            
-                
-            if (mapping.size() != 0) {
-
-                if (v.alwaysdata == IntType::Unknown) {
-                    mapping.clear();
-                    alwaysdata = IntType::Unknown;
-
-                    if (mapping.size() != 0) assert(alwaysdata == IntType::Unknown);
-                    if (alwaysdata != IntType::Unknown) assert(mapping.size() == 0);
-                    return true;
-                } else {
-                    std::vector<std::vector<int>> keystodelete;
-                    for(auto &pair : mapping) {
-                        ValueData other;
-                        auto fd = v.mapping.find(pair.first);
-                        if (fd != v.mapping.end()) {
-                            other = fd->second;
-                        }
-                        changed = (pair.second &= other);
-                        if (pair.second == IntType::Unknown) {
-                            keystodelete.push_back(pair.first);
-                        }
-                    }
-                    for(auto &key : keystodelete) {
-                        mapping.erase(key);
-                    }
-                    
-                    if (mapping.size() != 0) assert(alwaysdata == IntType::Unknown);
-                    if (alwaysdata != IntType::Unknown) assert(mapping.size() == 0);
-                    return changed;
-                }
-            }
-
-            if (v.mapping.size() != 0) {
-                assert(mapping.size() == 0);
-
-                mapping = v.mapping;
-                for(auto &pair : v.mapping) {
-                    pair.second &= alwaysdata;
-                }
-
-                alwaysdata = IntType::Unknown;
-                    
-                if (mapping.size() != 0) assert(alwaysdata == IntType::Unknown);
-                if (alwaysdata != IntType::Unknown) assert(mapping.size() == 0);
-                return true;
-            }
-
-            return alwaysdata &= v.alwaysdata;
-        }
-};
-    
-DataType parseTBAA(Instruction* inst) {
-        auto typeNameStringRef = getAccessNameTBAA(inst);
-        if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
-            if (printconst) {
-                llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-            }
-            return DataType(IntType::Integer);
-        } else if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer") {// || typeNameStringRef == "omnipotent char") {
-            if (printconst) {
-                llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-            }
-            return DataType(IntType::Pointer);
-        } else if (typeNameStringRef == "float") {
-            if (printconst)
-                llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-            return Type::getFloatTy(inst->getContext());
-        } else if (typeNameStringRef == "double") {
-            if (printconst)
-                llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-            return Type::getDoubleTy(inst->getContext());
-        } else {
-            return DataType(IntegerType::Unknown);
-        }
-}
-    
-class TypeAnalyzer : public InstVisitor<TypeAnalyzer> {
-public:
-    Function* function;
-
-    //Calling context
-    const FnTypeInfo fntypeinfo;
-    
-    //List of value's which should be re-analyzed now with new information
-    std::deque<Value*> workList;
-
-    TypeAnalyzer(Function* function, const FnTypeInfo& fn) : function(function), fntypeinfo(fn) {
-        for(auto &BB: *function) {
-            for(auto &inst : *BB) {
-                workList.push_back(&inst);
-            }
-        }
-    }
-
-
-    std::map<Value*, DataType> analysis;
-    
-    enum class Direction {
-        Forward,
-        Backward,
-        Both
-    };
-
-    DataType getAnalysis(Value* val) {
-        if (isa<Constant>(val)) return IntType::Anything;
-        if (isa<Argument>(val) || isa<Instruction>(val)) analysis[val];
-        //TODO consider other things like globals perhaps?
-    }
-
-    void updateAnalysis(Value* val, ValueData data, Direction dir) {
-        if (isa<Constant>(val)) return;
-
-        if (analysis[val] |= data) {
-            //TODO interprocedural in here eventuall via call
-            if (dir == Direction::Forward || dir == Direction::Both) {
-                for (User* use : val->users()) {
-                    if (workList.find(use) != workList.end())
-                        workList.push_back(use);
-                }
-            }
-
-            if (dir == Direction::Backward || dir == Direction::Both) {
-                if (User* me = dyn_cast<User>(val) {
-                    for (Value* op : me->operands()) {
-                        if (workList.find(op) != workList.end())
-                            workList.push_back(op);
-                    }
-                }
-            }
-        }
-    }
-
-    void prepareArgs() {
-        for(auto &pair: fn) {
-            assert(pair.first->getParent() == function);
-            updateAnalysis(pair.first, ValueData::Argument(pair.second, pair.first), Direction::Forward);
-        }
-    }
-
-    void considerTBAA() {
-        for(auto &BB: *function) {
-            for(auto &inst : *BB) {
-                auto dt = parseTBAA(inst);
-                if (!dt.isKnown()) continue;
-
-                if (auto call = dyn_cast<CallInst>(v)) {
-                    if (call->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
-                        updateAnalysis(call->getOperand(0), ValueData::Always(dt), Direction::Both);
-                        updateAnalysis(call->getOperand(1), ValueData::Always(dt), Direction::Both);
-                    } else if (call->getType()->isPointerTy()) {
-                        updateAnalysis(call, ValueData::OnlyFirst(dt), Direction::Both);
-                    } else {
-                        assert(0 && "unknown tbaa call instruction user");
-                    }
-                } else if (auto si = dyn_cast<StoreInst>(v)) {
-                    updateAnalysis(si->getPointerOperand(), ValueData::OnlyFirst(dt), Direction::Both));
-                    updateAnalysis(si->getValueOperand(), ValueData::Always(dt), Direction::Both);
-                } else if (auto li = dyn_cast<LoadInst>(v)) {
-                    updateAnalysis(li->getPointerOperand(), ValueData::OnlyFirst(dt), Direction::Both);
-                    updateAnalysis(li->getValueOperand(), ValueData::Always(dt), Direction::Both);
-                } else {
-                    assert(0 && "unknown tbaa instruction user");
-                }
-            }
-        }
-    }
-
-
-
-    void run() {
-        while (workList.size()) {
-            auto todo = workList.front();
-            todo.pop_front();
-            visitValue(*todo);
-        }
-    }
-
-    void visitValue(Value& val) {
-        if (isa<Constant>(&val)) return;
-        if (!isa<Argument>(&val) && !isa<Instruction>(&val)) return;
-
-        //TODO add no users integral here
-
-        if (auto inst = dyn_cast<Instruction>(&val)) visitInstruction(&inst);
-    }
-
-    void visitAllocaInst(AllocaInst &I) {
-        updateAnalysis(I.getArraySize(), ValueData::Always(IntType::Integer), Direction::Both);
-        //todo consider users
-    }
-    
-    void visitLoadInst(LoadInst &I) {
-        updateAnalysis(I.getOperand(0), getAnalysis(I).Only({0}), Direction::Backward);
-        updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup({0}), Direction::Forward);
-    }
-
-
-
-    //TODO store
-    void visitStoreInst(StoreInst &I) {
-
-        ValueData toprop;
-
-        if (analysis[I.getPointerOperand()].isKnown())
-            toprop = analysis[I.getPointerOperand()].type;
-
-        if (auto ci = isa<Constant>(I.getValueOperand())) {
-
-        } else {
-
-            //check if we have an inconsistent merge
-            if (toprop.merge(analysis[I.getValueOperand()].)) {
-                llvm::errs() << "inconsistent type information found:\n";
-                assert(0 && "bad type information deduction");
-            }
-        }
-
-        updateAnalysis(I.getPointerOperand(), getAnalysis(I.getValueOperand()).Only({0}), Direction::Backward);
-        updateAnalysis(&I, getAnalysis(analysis[I].type), Direction::Forward);
-    }
-
-    //TODO gep
-    void visitGetElementPtrInst(GetElementPtrInst &gep) {
-    }
-
-    void visitPHINode(PHINode& phi) {
-
-        for(auto op : phi.incoming_values()) {
-            updateAnalysis(op, analysis[phi], Direction::Backward);
-        }
-
-        assert(phi.getNumIncomingValues() > 0);
-
-        ValueData vd = analysis[phi.get
-        for(auto op : phi.incoming_values()) {
-
-        }
-
-    }
-
-};
-
-class TypeAnalysis {
-    typedef std::tuple<Value*, bool> Query;
-
-
-    std::map<FnTypeInfo, std::map<Value*, DataType> > analyzedFunctions;
-
-    DataType getArgumentType(Argument* arg, const FnTypeInfo& fn) {
-        auto fd = typeInfo.find(arg);
-
-        if (fd != typeInfo.end()) {
-            return fd->second;
-        } else {
-            llvm::errs() << "couldn't find arg: " << *arg << "(" << arg->getParent()->getName() << ") " << "\n";
-            for(auto &pair : typeInfo) {
-                llvm::errs() << "    + option: " << *pair.first << "(" << pair.first->getParent()->getName() << ") " << "\n";
-            }
-            if (fn.size() != 0) //} && arg->getParent()->getName()) 
-                assert(0 && "no arg for tracking");
-            return DataType(IntType::Unknown);
-        }
-    }
-
-    void analyzeFunction(const FnTypeInfo& fn, Function* function) {
-        if (analyzedFunctions.find(fn) != analyzedFunctions.end()) return;
-
-        Analyzer analysis(function, fn);
-
-        analysis.prepareArgs();
-
-
-
-        SmallPtrSet<Type*, 4> typeseen;
-
-        for(auto &BB: *function) {
-            for(auto &inst : *BB) {
-                auto ty = inst.getType();
-                ValueData vd;
-
-                Type* floatingUse = nullptr;
-                bool pointerUse = false;
-                bool onlyFirst = false;
-
-                if (ty->isIntOrIntVectorTy()) {
-                
-                
-                
-                } else if (ty->isPointerTy() && cast<Pointe {rType>(ty)->getElementType()->isIntOrIntVectorTy()) {
-
-
-
-
-                }
-                //if changed put into lists
-                if (analyzedFunctions[fn][&inst] |= vd) {
-                    forwardWorkList.push_back(&inst);
-                    backwardWorkList.push_back(&inst);
-                }
-            }
-        }
-
-
-        do{
-
-
-
-        }while(0);
-
-
-
-    }
-
-    
-
-    DataType intType(Value* val, const FnTypeInfo& fn, bool considerUnknownUse) {
-        assert(val);
-        assert(val->getType());
-        assert(val->getType()->isIntOrIntVectorTy());
-        analyzeFunction(fn);
-        assert(analyzedFunctions.find(fn) != analyzedFunctions.end());
-        if analyzedFunctions
-    }
-};
-
 
 bool trackPointer(const FnTypeInfo &typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& seen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool &intUse, bool* sawReturn, bool onlyFirst, std::vector<int> indices) {
     auto idx = PtrSeenKey(typeInfo, v);
@@ -1358,7 +884,7 @@ bool trackIntUses(const FnTypeInfo& typeInfo, const std::vector<CallInst*> trace
     return false;
 }
 
-bool trackInt(const FnTypeInfo typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+bool trackInt(const FnTypeInfo &typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = IntSeenKey(typeInfo, v, shouldConsiderUnknownUse);
     //llvm::errs() << "trackingInt" << *v << " [";
     //for(auto a : trace) llvm::errs() << a << "," ;
@@ -1439,8 +965,6 @@ bool trackInt(const FnTypeInfo typeInfo, const std::vector<CallInst*> trace, Val
         return true;
     }
     
-    llvm::errs() << "tracking int: " << *v << " \t " << &intseen << "\n";
-
     if (trackIntUses(typeInfo, trace, v, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, shouldConsiderUnknownUse, sawReturn)) {
         return true;
     }
@@ -1618,7 +1142,7 @@ bool trackInt(const FnTypeInfo typeInfo, const std::vector<CallInst*> trace, Val
         if (fast_tracking) return true;
     }
 
-    llvm::errs() << " could not find type info for: " << *v << "\n";
+    //llvm::errs() << " could not find type info for: " << *v << "\n";
     return false;
 }
 
@@ -1756,40 +1280,6 @@ cl::opt<bool> emptyfnconst(
 #include <map>
 #include <unordered_map>
 #include "llvm/IR/InstIterator.h"
-
-/*
-namespace std {
-template <typename T>
-struct hash<SmallPtrSetImpl<T>>
-{
-std::size_t operator()(const SmallPtrSetImpl<T>& k) const
-{
-  return std::hash<std::set<T>>(std::set<T>(k.begin(), k.end()));
-}
-};
-
-template <class T>
-inline void hash_combine(std::size_t& seed, const T& v)
-{
-    std::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-};
-
-template <typename A, typename B, typename C, typename D>
-struct hash<tuple<A, B, C, D>>
-{
-std::size_t operator()(const tuple<A, B, C, D>& k) const
-{
-  return hash_combine(hash_combine(hash_combine(
-					std::hash<A>(std::get<0>(k)),
-					std::get<1>(k)),
-					std::get<2>(k)),
-					std::get<3>(k));
-}
-};
-
-}
-*/
 
 bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, const SmallPtrSetImpl<Value*> &retvals, AAResults &AA, int directions) {
     Function* F = CI->getCalledFunction();
@@ -1952,7 +1442,6 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 	metacache.erase(metatuple);
     return cache[tuple] = true;
 }
-
 
 static bool isGuaranteedConstantValue(Value* val, const SmallPtrSetImpl<Value*> *constantvals) {
     //This result of this instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is inactive

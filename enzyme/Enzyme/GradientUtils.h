@@ -50,6 +50,8 @@
 
 #include "llvm/Support/ErrorHandling.h"
 
+#include "ActiveVariable.h"
+
 using namespace llvm;
 
 enum class AugmentedStruct; 
@@ -73,6 +75,7 @@ static inline bool operator==(const LoopContext& lhs, const LoopContext &rhs) {
 
 class GradientUtils {
 public:
+  TypeAnalysis &TA;
   llvm::Function *newFunc;
   llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
@@ -735,8 +738,8 @@ public:
 protected:
   AAResults &AA;
   TargetLibraryInfo &TLI;
-  GradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA_, TargetLibraryInfo &TLI_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
-      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), AA(AA_), TLI(TLI_) {
+  GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
+      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
@@ -752,7 +755,7 @@ protected:
     }
 
 public:
-  static GradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
+  static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
 
   void prepareForReverse() {
     assert(reverseBlocks.size() == 0);
@@ -1716,14 +1719,14 @@ endCheck:
 };
 
 class DiffeGradientUtils : public GradientUtils {
-  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
-      : GradientUtils(newFunc_, oldFunc_, AA, TLI, invertedPointers_, constants_, nonconstant_, constantvalues_, returnvals_, origToNew_) {
+  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
+      : GradientUtils(newFunc_, oldFunc_, TLI, TA, AA, invertedPointers_, constants_, nonconstant_, constantvalues_, returnvals_, origToNew_) {
         prepareForReverse();
     }
 
 public:
   ValueToValueMapTy differentials;
-  static DiffeGradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg);
+  static DiffeGradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg);
 
 private:
   Value* getDifferential(Value *val) {
