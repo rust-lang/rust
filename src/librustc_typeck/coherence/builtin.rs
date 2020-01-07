@@ -7,7 +7,7 @@ use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
 
 use rustc::infer;
-use rustc::traits::drop::{can_type_implement_copy, CopyImplementationError};
+use rustc::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc::traits::predicate_for_trait_def;
 use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;

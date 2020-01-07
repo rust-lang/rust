@@ -27,7 +27,7 @@ use lint::{EarlyContext, EarlyLintPass, LateLintPass, LintPass};
 use lint::{LateContext, LintArray, LintContext};
 use rustc::lint;
 use rustc::lint::FutureIncompatibleInfo;
-use rustc::traits::drop::can_type_implement_copy;
+use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Stability;

@@ -7,10 +7,10 @@ pub mod auto_trait;
 mod chalk_fulfill;
 pub mod codegen;
 mod coherence;
-pub mod drop;
 mod engine;
 pub mod error_reporting;
 mod fulfill;
+pub mod misc;
 mod object_safety;
 mod on_unimplemented;
 mod project;
@@ -1244,7 +1244,7 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    drop::provide(providers);
+    misc::provide(providers);
     *providers = ty::query::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
