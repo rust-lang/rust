@@ -562,8 +562,8 @@ pub const ALL_LINTS: [Lint; 346] = [
     },
     Lint {
         name: "filetype_is_file",
-        group: "style",
-        desc: "`FileType::is_file` is not recommended to test for readable file type.",
+        group: "restriction",
+        desc: "`FileType::is_file` is not recommended to test for readable file type",
         deprecation: None,
         module: "methods",
     },
