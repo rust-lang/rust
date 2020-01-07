@@ -71,6 +71,12 @@ impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
                 if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.kind {
+                    if opt_trait_ref.as_ref().map(|tr| tr.constness.is_some()).unwrap_or(false) {
+                        this.lctx
+                            .diagnostic()
+                            .span_err(item.span, "const trait impls are not yet implemented");
+                    }
+
                     this.with_trait_impl_ref(opt_trait_ref, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
