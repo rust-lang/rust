@@ -1997,7 +1997,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     },
     Lint {
         name: "transmute_float_to_int",
-        group: "nursery",
+        group: "complexity",
         desc: "transmutes from a float to an integer",
         deprecation: None,
         module: "transmute",

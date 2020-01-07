@@ -210,7 +210,7 @@ declare_clippy_lint! {
     /// let _: u32 = 1f32.to_bits();
     /// ```
     pub TRANSMUTE_FLOAT_TO_INT,
-    nursery,
+    complexity,
     "transmutes from a float to an integer"
 }
 
