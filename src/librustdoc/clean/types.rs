@@ -1044,6 +1044,30 @@ pub enum PrimitiveType {
     Never,
 }
 
+impl From<&hir::PrimTy> for PrimitiveType {
+    fn from(other: &hir::PrimTy) -> PrimitiveType {
+        match other {
+            hir::PrimTy::Uint(syntax::ast::UintTy::U8) => PrimitiveType::U8,
+            hir::PrimTy::Uint(syntax::ast::UintTy::U16) => PrimitiveType::U16,
+            hir::PrimTy::Uint(syntax::ast::UintTy::U32) => PrimitiveType::U32,
+            hir::PrimTy::Uint(syntax::ast::UintTy::U64) => PrimitiveType::U64,
+            hir::PrimTy::Uint(syntax::ast::UintTy::U128) => PrimitiveType::U128,
+            hir::PrimTy::Uint(syntax::ast::UintTy::Usize) => PrimitiveType::Usize,
+            hir::PrimTy::Int(syntax::ast::IntTy::I8) => PrimitiveType::I8,
+            hir::PrimTy::Int(syntax::ast::IntTy::I16) => PrimitiveType::I16,
+            hir::PrimTy::Int(syntax::ast::IntTy::I32) => PrimitiveType::I32,
+            hir::PrimTy::Int(syntax::ast::IntTy::I64) => PrimitiveType::I64,
+            hir::PrimTy::Int(syntax::ast::IntTy::I128) => PrimitiveType::I128,
+            hir::PrimTy::Int(syntax::ast::IntTy::Isize) => PrimitiveType::Isize,
+            hir::PrimTy::Float(syntax::ast::FloatTy::F32) => PrimitiveType::F32,
+            hir::PrimTy::Float(syntax::ast::FloatTy::F64) => PrimitiveType::F64,
+            hir::PrimTy::Str => PrimitiveType::Str,
+            hir::PrimTy::Bool => PrimitiveType::Bool,
+            hir::PrimTy::Char => PrimitiveType::Char,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum TypeKind {
     Enum,
@@ -1060,6 +1084,7 @@ pub enum TypeKind {
     Attr,
     Derive,
     TraitAlias,
+    Primitive,
 }
 
 pub trait GetDefId {

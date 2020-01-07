@@ -9,7 +9,6 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS, Res,
 };
-use rustc_hir::def_id::DefId;
 use rustc_resolve::ParentScope;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;

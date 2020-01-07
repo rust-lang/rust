@@ -427,23 +427,29 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
         // If we're re-exporting a re-export it may actually re-export something in
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
-        for &item in cx.tcx.item_children(did).iter() {
-            eprintln!("==> {:?}", item.res);
+        for &item in cx.tcx.item_children(did).iter().filter(|item| item.vis == ty::Visibility::Public) {
             let def_id = match clean::utils::res_to_def_id(cx, &item.res) {
                 Some(did) => did,
                 None => continue,
             };
-            eprintln!("TOUDOUM ==> {:?} {:?}", item.res, item.vis);
-            if item.vis == ty::Visibility::Public {
-                if did == def_id || !visited.insert(def_id) {
-                    eprintln!("1");
-                    continue;
-                }
-                eprintln!("2");
-                if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
-                    eprintln!("3");
-                    items.extend(i)
-                }
+            if did == def_id || !visited.insert(def_id) {
+                continue;
+            }
+            if let Res::PrimTy(ref primitive) = item.res {
+                record_extern_fqn(cx, def_id, TypeKind::Primitive);
+                cx.renderinfo.borrow_mut().inlined.insert(def_id);
+                items.push(clean::Item {
+                    source: cx.tcx.def_span(def_id).clean(cx),
+                    name: Some(item.ident.clean(cx)),
+                    attrs: cx.tcx.get_attrs(def_id).clean(cx),
+                    inner: clean::ItemEnum::PrimitiveItem(clean::PrimitiveType::from(primitive)),
+                    visibility: clean::Public,
+                    stability: cx.tcx.lookup_stability(def_id).clean(cx),
+                    deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
+                    def_id,
+                });
+            } else if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
+                items.extend(i);
             }
         }
     }

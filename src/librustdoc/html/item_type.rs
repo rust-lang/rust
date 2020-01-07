@@ -119,6 +119,7 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Attr => ItemType::ProcAttribute,
             clean::TypeKind::Derive => ItemType::ProcDerive,
             clean::TypeKind::TraitAlias => ItemType::TraitAlias,
+            clean::TypeKind::Primitive => ItemType::Primitive,
         }
     }
 }
