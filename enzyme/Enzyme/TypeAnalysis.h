@@ -449,20 +449,25 @@ class TypeAnalysis;
 class TypeResults {
 	TypeAnalysis &analysis;
 	const NewFnTypeInfo info;
+    llvm::Function* function;
 public:
-	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn);
+	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
 	DataType intType(llvm::Value* val);
+    NewFnTypeInfo getAnalyzedTypeInfo();
+    FnTypeInfo getAnalyzedTypeInfoSimple();
 };
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
+private:
+    //List of value's which should be re-analyzed now with new information
+    std::deque<llvm::Value*> workList;
+    void addToWorkList(llvm::Value* val);
 public:
     llvm::Function* function;
 
     //Calling context
     const NewFnTypeInfo fntypeinfo;
     
-    //List of value's which should be re-analyzed now with new information
-    std::deque<llvm::Value*> workList;
 
 	TypeAnalysis &interprocedural;
     

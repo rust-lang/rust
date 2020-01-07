@@ -168,7 +168,10 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
     volatile_args[&a] = false;
     type_args.insert(std::pair<Argument*, DataType>(&a, DataType(IntType::Unknown)));
   }
+
   TypeAnalysis TA;
+  type_args = TA.analyzeFunction(type_args, cast<Function>(fn)).getAnalyzedTypeInfoSimple();
+
   auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, TA, AA, /*should return*/false, differentialReturn, /*dretPtr*/false, /*topLevel*/true, /*addedType*/nullptr, type_args, volatile_args, /*index mapping*/nullptr); //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>({}));
 
   if (differentialReturn)

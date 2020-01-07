@@ -73,7 +73,7 @@ DataType parseTBAA(Instruction* inst) {
 TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA) : function(function), fntypeinfo(fn), interprocedural(TA) {
     for(auto &BB: *function) {
         for(auto &inst : BB) {
-            workList.push_back(&inst);
+	        workList.push_back(&inst);
         }
     }
 }
@@ -119,6 +119,12 @@ void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
 	updateAnalysis(val, ValueData(DataType(data)), origin);
 }
 
+void TypeAnalyzer::addToWorkList(Value* val) {
+	if (!isa<Instruction>(val) || isa<Argument>(val)) return;
+    if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
+	workList.push_back(val);
+}
+
 void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
     if (isa<Constant>(val)) return;
     if (printtype) {
@@ -126,19 +132,26 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 		if (origin) llvm::errs() << " from " << *origin;
 		llvm::errs() << "\n";
 	}
-    if (analysis[val] |= data) {
-        //TODO interprocedural in here eventuall via call
-            for (User* use : val->users()) {
-                if (use != origin)// && workList.find(use) != workList.end())
-                    workList.push_back(use);
-            }
 
-            if (User* me = dyn_cast<User>(val)) {
-                for (Value* op : me->operands()) {
-                    if (op != origin) // && workList.find(op) != workList.end())
-                        workList.push_back(op);
+    if (analysis[val] |= data) {
+    	//Add val so it can explicitly propagate this new info, if able to
+    	if (val != origin)
+    		addToWorkList(val);
+
+    	//Add users and operands of the value so they can update from the new operand/use
+        for (User* use : val->users()) {
+            if (use != origin) {
+                addToWorkList(use);
+            }
+        }
+
+        if (User* me = dyn_cast<User>(val)) {
+            for (Value* op : me->operands()) {
+                if (op != origin) {
+                    addToWorkList(op);
                 }
             }
+        }
     }
 }
 
@@ -146,6 +159,11 @@ void TypeAnalyzer::prepareArgs() {
     for(auto &pair: fntypeinfo) {
         assert(pair.first->getParent() == function);
         updateAnalysis(pair.first, pair.second, nullptr);
+    }
+
+    for(auto &arg : function->args()) {
+    	//Get type and other information about argument
+        updateAnalysis(&arg, getAnalysis(&arg), &arg);
     }
 }
 
@@ -180,11 +198,28 @@ void TypeAnalyzer::considerTBAA() {
 
 
 void TypeAnalyzer::run() {
+	std::deque<CallInst*> pendingCalls;
+
+	do {
+
     while (workList.size()) {
         auto todo = workList.front();
         workList.pop_front();
+        if (auto ci = dyn_cast<CallInst>(todo)) {
+        	pendingCalls.push_back(ci);
+        	continue;
+        }
         visitValue(*todo);
     }
+
+    if (pendingCalls.size() > 0) {
+    	auto todo = pendingCalls.front();
+    	pendingCalls.pop_front();
+    	visitValue(*todo);
+    	continue;
+    } else break;
+
+	}while(1);
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
@@ -374,6 +409,7 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
 
 void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 	if (I.getOpcode() != BinaryOperator::And && I.getOpcode() != BinaryOperator::Or) {
+		//llvm::errs() << "visiting binary op " << I << " analysis " << getAnalysis(&I).str() << "\n";
 		updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 		updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
@@ -462,7 +498,7 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 }
 
 TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* function) {
-    if (analyzedFunctions.find(fn) != analyzedFunctions.end()) return TypeResults(*this, fn);
+    if (analyzedFunctions.find(fn) != analyzedFunctions.end()) return TypeResults(*this, fn, function);
 
 	auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(function, fn, *this));
 	auto& analysis = res.first->second;
@@ -477,7 +513,7 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* fun
     analysis.prepareArgs();
 	analysis.considerTBAA();
 	analysis.run();
-	return TypeResults(*this, fn);
+	return TypeResults(*this, fn, function);
 }
 
 ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
@@ -537,10 +573,35 @@ DataType TypeAnalysis::firstPointer(Value* val, const NewFnTypeInfo& fn, bool er
 		llvm::errs() << "could not deduce type of integer " << *val << "\n";
 		assert(0 && "could not deduce type of integer");
 	}
+	llvm::errs() << " querying first pointer of " << *val << " found " << dt.str() << " higher info found " << q.str() << "\n";
 	return dt;
 }
 
-TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn) : analysis(analysis), info(fn) {}
+TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, Function* function) : analysis(analysis), info(fn), function(function) {}
+
+
+NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
+	NewFnTypeInfo res;
+	for(auto &arg : function->args()) {
+		res[&arg] = analysis.query(&arg, info);
+	}
+	return res;
+}
+
+FnTypeInfo TypeResults::getAnalyzedTypeInfoSimple() {
+	FnTypeInfo res;
+	for(auto &arg : function->args()) {
+        DataType dt(IntType::Unknown);
+
+        if (auto pt = dyn_cast<PointerType>(arg.getType())) {
+            dt = analysis.firstPointer(&arg, info, /*errifnotfound*/false);
+        } else if (arg.getType()->isIntOrIntVectorTy()) {
+            dt = analysis.intType(&arg, info, /*errifnotfound*/false);
+        }
+		res[&arg] = dt;
+	}
+	return res;
+}
 
 DataType TypeResults::intType(Value* val) {
 	return analysis.intType(val, info);
