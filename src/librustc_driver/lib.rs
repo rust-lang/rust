@@ -388,9 +388,14 @@ pub fn run_compiler(
                     // (needed by the RLS)
                 })?;
             } else {
-                // Drop AST after creating GlobalCtxt to free memory
+                // Drop a reference to the AST
                 mem::drop(queries.expansion()?.take());
             }
+
+            queries.global_ctxt()?;
+
+            // Drop a reference to the AST by waiting on the lint future.
+            queries.lower_to_hir()?.take().1.join();
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
@@ -399,6 +404,7 @@ pub fn run_compiler(
             }
 
             if sess.opts.debugging_opts.save_analysis {
+                // Drop AST to free memory
                 mem::drop(queries.expansion()?.take());
             }
 

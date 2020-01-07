@@ -12,6 +12,7 @@ use rustc::ty::steal::Steal;
 use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::sync::future::Future;
 use rustc_data_structures::sync::{FlexScope, Lrc, Once, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::DepGraphFuture;
@@ -75,9 +76,9 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    expansion: Query<(Lrc<ast::Crate>, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'tcx map::Forest<'tcx>, Steal<ResolverOutputs>)>,
+    lower_to_hir: Query<(&'tcx map::Forest<'tcx>, Future<'tcx, ()>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -174,7 +175,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(Lrc<ast::Crate>, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
@@ -186,7 +187,7 @@ impl<'tcx> Queries<'tcx> {
                 &crate_name,
             )
             .map(|(krate, resolver)| {
-                (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
+                (Lrc::new(krate), Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
             })
         })
     }
@@ -213,25 +214,26 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn lower_to_hir(
         &'tcx self,
-    ) -> Result<&Query<(&'tcx map::Forest<'tcx>, Steal<ResolverOutputs>)>> {
+    ) -> Result<&Query<(&'tcx map::Forest<'tcx>, Future<'tcx, ()>, Steal<ResolverOutputs>)>> {
         self.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
-            let krate = &peeked.0;
+            let krate = peeked.0.clone();
             let resolver = peeked.1.steal();
-            let lint_store = &peeked.2;
-            let hir = resolver.borrow_mut().access(|resolver| {
+            let lint_store = peeked.2.clone();
+            let (hir, lints) = resolver.borrow_mut().access(|resolver| {
                 passes::lower_to_hir(
                     self.session(),
                     lint_store,
                     resolver,
                     &*self.dep_graph()?.peek(),
-                    &krate,
+                    krate,
                     &self.arena,
+                    &self.scope,
                 )
             })?;
             let hir = self.arena.alloc(hir);
-            Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
+            Ok((hir, lints, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
 
@@ -257,7 +259,7 @@ impl<'tcx> Queries<'tcx> {
             let outputs = self.prepare_outputs()?.peek().clone();
             let lint_store = self.expansion()?.peek().2.clone();
             let hir = self.lower_to_hir()?.peek();
-            let (ref hir_forest, ref resolver_outputs) = &*hir;
+            let (ref hir_forest, _, ref resolver_outputs) = &*hir;
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
@@ -361,6 +363,7 @@ impl Compiler {
             queries.global_ctxt()?;
 
             // Drop AST after creating GlobalCtxt to free memory.
+            queries.lower_to_hir()?.take().1.join();
             mem::drop(queries.expansion()?.take());
 
             queries.ongoing_codegen()?;

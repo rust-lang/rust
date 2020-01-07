@@ -21,6 +21,7 @@ use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
+use rustc_data_structures::sync::future::Future;
 use rustc_data_structures::sync::{par_iter, FlexScope, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
@@ -433,12 +434,13 @@ fn configure_and_expand_inner<'a>(
 
 pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
-    lint_store: &lint::LintStore,
+    lint_store: Lrc<lint::LintStore>,
     resolver: &'res mut Resolver<'_>,
     dep_graph: &'res DepGraph,
-    krate: &'res ast::Crate,
+    krate: Lrc<ast::Crate>,
     arena: &'tcx Arena<'tcx>,
-) -> Result<map::Forest<'tcx>> {
+    scope: &'tcx FlexScope<'tcx>,
+) -> Result<(map::Forest<'tcx>, Future<'tcx, ()>)> {
     // Lower AST to HIR.
     let hir_forest = sess.time("lowering AST -> HIR", || {
         let hir_crate = rustc_ast_lowering::lower_crate(
@@ -457,15 +459,19 @@ pub fn lower_to_hir<'res, 'tcx>(
         map::Forest::new(hir_crate, &dep_graph)
     });
 
-    sess.time("early lint checks", || {
-        rustc_lint::check_ast_crate(
-            sess,
-            lint_store,
-            &krate,
-            false,
-            Some(std::mem::take(resolver.lint_buffer())),
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-        )
+    let lint_buffer = std::mem::take(resolver.lint_buffer());
+
+    let lints = Future::spawn_in_scope(scope, move || {
+        sess.time("early lint checks", || {
+            rustc_lint::check_ast_crate(
+                sess,
+                &lint_store,
+                &krate,
+                false,
+                Some(lint_buffer),
+                rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            )
+        })
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.
@@ -473,7 +479,7 @@ pub fn lower_to_hir<'res, 'tcx>(
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
-    Ok(hir_forest)
+    Ok((hir_forest, lints))
 }
 
 // Returns all the paths that correspond to generated files.
