@@ -3295,8 +3295,7 @@ dependencies = [
 [[package]]
 name = "rustc-rayon-core"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea2427831f0053ea3ea73559c8eabd893133a51b251d142bacee53c62a288cb3"
+source = "git+https://github.com/Zoxc/rayon.git?branch=single-lifetime-scope#f5d9d8b52dbfc64728d3a42ed3f7292e2eb6ee6b"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-queue",
