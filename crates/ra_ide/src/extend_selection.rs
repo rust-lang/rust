@@ -9,21 +9,22 @@ use ra_syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
-use crate::{db::RootDatabase, FileRange};
-use hir::{db::AstDatabase, InFile};
+use crate::{db::RootDatabase, expand::descend_into_macros, FileId, FileRange};
+use hir::db::AstDatabase;
 use itertools::Itertools;
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let src = db.parse(frange.file_id).tree();
-    let root = InFile::new(frange.file_id.into(), src.syntax());
-    try_extend_selection(db, root, frange.range).unwrap_or(frange.range)
+    try_extend_selection(db, src.syntax(), frange).unwrap_or(frange.range)
 }
 
 fn try_extend_selection(
     db: &RootDatabase,
-    root: InFile<&SyntaxNode>,
-    range: TextRange,
+    root: &SyntaxNode,
+    frange: FileRange,
 ) -> Option<TextRange> {
+    let range = frange.range;
+
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     let list_kinds = [
         RECORD_FIELD_PAT_LIST,
@@ -46,9 +47,9 @@ fn try_extend_selection(
 
     if range.is_empty() {
         let offset = range.start();
-        let mut leaves = root.value.token_at_offset(offset);
+        let mut leaves = root.token_at_offset(offset);
         if leaves.clone().all(|it| it.kind() == WHITESPACE) {
-            return Some(extend_ws(root.value, leaves.next()?, offset));
+            return Some(extend_ws(root, leaves.next()?, offset));
         }
         let leaf_range = match leaves {
             TokenAtOffset::None => return None,
@@ -64,7 +65,7 @@ fn try_extend_selection(
         };
         return Some(leaf_range);
     };
-    let node = match find_covering_element(root.value, range) {
+    let node = match find_covering_element(root, range) {
         NodeOrToken::Token(token) => {
             if token.text_range() != range {
                 return Some(token.text_range());
@@ -82,7 +83,7 @@ fn try_extend_selection(
     // if we are in single token_tree, we maybe live in macro or attr
     if node.kind() == TOKEN_TREE {
         if let Some(macro_call) = node.ancestors().find_map(ast::MacroCall::cast) {
-            if let Some(range) = extend_tokens_from_range(db, &root, macro_call, range) {
+            if let Some(range) = extend_tokens_from_range(db, frange.file_id, macro_call, range) {
                 return Some(range);
             }
         }
@@ -105,48 +106,52 @@ fn try_extend_selection(
 
 fn extend_tokens_from_range(
     db: &RootDatabase,
-    root: &InFile<&SyntaxNode>,
+    file_id: FileId,
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {
-    let analyzer = hir::SourceAnalyzer::new(db, root.clone(), None);
-    let expansion = analyzer.expand(db, root.with_value(&macro_call))?;
-
     // compute original mapped token range
+    let mut expanded = None;
     let range = macro_call
         .syntax()
         .descendants_with_tokens()
         .filter_map(|n| match n {
             NodeOrToken::Token(token) if token.text_range().is_subrange(&original_range) => {
-                expansion
-                    .map_token_down(db, root.with_value(&token))
-                    .map(|node| node.value.text_range())
+                let node = descend_into_macros(db, file_id, token);
+                match node.file_id {
+                    it if it == file_id.into() => None,
+                    it if expanded.is_none() || expanded == Some(it) => {
+                        expanded = Some(it.into());
+                        Some(node.value.text_range())
+                    }
+                    _ => None,
+                }
             }
             _ => None,
         })
         .fold1(|x, y| union_range(x, y))?;
 
-    let src = db.parse_or_expand(expansion.file_id())?;
+    let expanded = expanded?;
+    let src = db.parse_or_expand(expanded)?;
     let parent = shallowest_node(&find_covering_element(&src, range))?.parent()?;
-
     // compute parent mapped token range
     let range = macro_call
         .syntax()
         .descendants_with_tokens()
         .filter_map(|n| match n {
             NodeOrToken::Token(token) => {
-                expansion.map_token_down(db, root.with_value(&token)).and_then(|node| {
-                    if node.value.text_range().is_subrange(&parent.text_range()) {
-                        Some(token.text_range())
-                    } else {
-                        None
-                    }
-                })
+                let node = descend_into_macros(db, file_id, token.clone());
+                if node.file_id == expanded
+                    && node.value.text_range().is_subrange(&parent.text_range())
+                {
+                    Some(token.text_range())
+                } else {
+                    None
+                }
             }
             _ => None,
         })
         .fold1(|x, y| union_range(x, y))?;
-
     if original_range.is_subrange(&range) && original_range != range {
         Some(range)
     } else {
@@ -586,6 +591,23 @@ fn main() { let var = (
     fn extend_selection_inside_macros() {
         do_check(
             r#"macro_rules! foo { ($item:item) => {$item} }
+                foo!{fn hello(na<|>me:usize){}}"#,
+            &[
+                "name",
+                "name:usize",
+                "(name:usize)",
+                "fn hello(name:usize){}",
+                "{fn hello(name:usize){}}",
+                "foo!{fn hello(name:usize){}}",
+            ],
+        );
+    }
+
+    #[test]
+    fn extend_selection_inside_recur_macros() {
+        do_check(
+            r#" macro_rules! foo2 { ($item:item) => {$item} }
+                macro_rules! foo { ($item:item) => {foo2!($item);} }
                 foo!{fn hello(na<|>me:usize){}}"#,
             &[
                 "name",
