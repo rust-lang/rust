@@ -2,7 +2,7 @@ use core::slice::Iter;
 use rustc::mir::*;
 use rustc::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{Enumerated, Idx, IndexVec};
+use rustc_index::vec::{Enumerated, IndexVec};
 use rustc_span::Span;
 use smallvec::SmallVec;
 

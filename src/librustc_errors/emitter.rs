@@ -1530,7 +1530,7 @@ impl EmitterWriter {
 
             // This offset and the ones below need to be signed to account for replacement code
             // that is shorter than the original code.
-            let mut offset: isize = 0;
+            let mut offsets: Vec<(usize, isize)> = Vec::new();
             // Only show an underline in the suggestions if the suggestion is not the
             // entirety of the code being shown and the displayed code is not multiline.
             if show_underline {
@@ -1550,12 +1550,19 @@ impl EmitterWriter {
                         .map(|ch| unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1))
                         .sum();
 
+                    let offset: isize = offsets
+                        .iter()
+                        .filter_map(
+                            |(start, v)| if span_start_pos <= *start { None } else { Some(v) },
+                        )
+                        .sum();
                     let underline_start = (span_start_pos + start) as isize + offset;
                     let underline_end = (span_start_pos + start + sub_len) as isize + offset;
+                    assert!(underline_start >= 0 && underline_end >= 0);
                     for p in underline_start..underline_end {
                         buffer.putc(
                             row_num,
-                            max_line_num_len + 3 + p as usize,
+                            ((max_line_num_len + 3) as isize + p) as usize,
                             '^',
                             Style::UnderlinePrimary,
                         );
@@ -1565,7 +1572,7 @@ impl EmitterWriter {
                         for p in underline_start - 1..underline_start + 1 {
                             buffer.putc(
                                 row_num,
-                                max_line_num_len + 3 + p as usize,
+                                ((max_line_num_len + 3) as isize + p) as usize,
                                 '-',
                                 Style::UnderlineSecondary,
                             );
@@ -1582,8 +1589,9 @@ impl EmitterWriter {
                     // length of the code to be substituted
                     let snippet_len = span_end_pos as isize - span_start_pos as isize;
                     // For multiple substitutions, use the position *after* the previous
-                    // substitutions have happened.
-                    offset += full_sub_len - snippet_len;
+                    // substitutions have happened, only when further substitutions are
+                    // located strictly after.
+                    offsets.push((span_end_pos, full_sub_len - snippet_len));
                 }
                 row_num += 1;
             }

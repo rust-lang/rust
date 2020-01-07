@@ -15,6 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
+use crate::html::escape::Escape;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_DEPTH};
 
@@ -314,8 +315,14 @@ impl clean::Lifetime {
 }
 
 impl clean::Constant {
-    crate fn print(&self) -> &str {
-        &self.expr
+    crate fn print(&self) -> impl fmt::Display + '_ {
+        display_fn(move |f| {
+            if f.alternate() {
+                f.write_str(&self.expr)
+            } else {
+                write!(f, "{}", Escape(&self.expr))
+            }
+        })
     }
 }
 
@@ -689,7 +696,11 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Array(ref t, ref n) => {
             primitive_link(f, PrimitiveType::Array, "[")?;
             fmt::Display::fmt(&t.print(), f)?;
-            primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
+            if f.alternate() {
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
+            } else {
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)))
+            }
         }
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {

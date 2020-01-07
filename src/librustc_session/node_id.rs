@@ -1,4 +1,3 @@
-use rustc_index::vec::Idx;
 use rustc_serialize::{Decoder, Encoder};
 use rustc_span::ExpnId;
 use std::fmt;

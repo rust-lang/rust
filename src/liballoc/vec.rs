@@ -1054,7 +1054,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.retain(|&x| x%2 == 0);
+    /// vec.retain(|&x| x % 2 == 0);
     /// assert_eq!(vec, [2, 4]);
     /// ```
     ///
@@ -1696,14 +1696,13 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_remove_item)]
     /// let mut vec = vec![1, 2, 3, 1];
     ///
     /// vec.remove_item(&1);
     ///
     /// assert_eq!(vec, vec![2, 3, 1]);
     /// ```
-    #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
+    #[stable(feature = "vec_remove_item", since = "1.42.0")]
     pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
     where
         T: PartialEq<V>,

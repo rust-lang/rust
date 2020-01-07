@@ -7,7 +7,7 @@ LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    = help: consider replacing `'a` with `'static`
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
    |
-LL | type E<'a, 'b> = impl Sized; + 'a
+LL | type E<'a, 'b> = impl Sized + 'a;
    |
 
 error: aborting due to previous error
