@@ -401,19 +401,24 @@ fn configure_and_expand_inner<'a>(
         println!("{}", json::as_json(&krate));
     }
 
-    sess.time("name resolution", || {
-        resolver.resolve_crate(&krate);
-    });
-
-    // Needs to go *after* expansion to be able to check the results of macro expansion.
-    sess.time("complete gated feature checking", || {
-        syntax::feature_gate::check_crate(
-            &krate,
-            &sess.parse_sess,
-            &sess.features_untracked(),
-            sess.opts.unstable_features,
-        );
-    });
+    parallel!(
+        {
+            sess.time("name resolution", || {
+                resolver.resolve_crate(&krate);
+            });
+        },
+        {
+            // Needs to go *after* expansion to be able to check the results of macro expansion.
+            sess.time("complete gated feature checking", || {
+                syntax::feature_gate::check_crate(
+                    &krate,
+                    &sess.parse_sess,
+                    &sess.features_untracked(),
+                    sess.opts.unstable_features,
+                );
+            })
+        }
+    );
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
