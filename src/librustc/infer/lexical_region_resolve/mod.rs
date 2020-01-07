@@ -295,30 +295,49 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        let mut process_constraint = |constraint: &Constraint<'tcx>| {
-            let (a_region, b_vid, b_data, retain) = match *constraint {
+        let mut changed = false;
+        let mut constraints = Vec::new();
+        for constraint in self.data.constraints.keys() {
+            let (a_region, b_vid, b_data) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
-                    (a_region, b_vid, b_data, false)
+                    (a_region, b_vid, b_data)
                 }
                 Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => return (false, false),
+                    VarValue::ErrorValue => continue,
                     VarValue::Value(a_region) => {
                         let b_data = var_values.value_mut(b_vid);
-                        let retain = match *b_data {
-                            VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
-                            _ => true,
-                        };
-                        (a_region, b_vid, b_data, retain)
+                        match *b_data {
+                            VarValue::Value(ReStatic) | VarValue::ErrorValue => (),
+                            _ => constraints.push((a_vid, b_vid)),
+                        }
+                        (a_region, b_vid, b_data)
                     }
                 },
                 Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
-                    return (false, false);
+                    continue;
                 }
             };
+            let edge_changed = self.expand_node(a_region, b_vid, b_data);
+            if edge_changed {
+                changed = true
+            }
+        }
 
+        let mut process_constraint = |a_vid, b_vid| {
+            let (a_region, b_data, retain) = match *var_values.value(a_vid) {
+                VarValue::ErrorValue => return (false, false),
+                VarValue::Value(a_region) => {
+                    let b_data = var_values.value_mut(b_vid);
+                    let retain = match *b_data {
+                        VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
+                        _ => true,
+                    };
+                    (a_region, b_data, retain)
+                }
+            };
             let changed = self.expand_node(a_region, b_vid, b_data);
             (changed, retain)
         };
@@ -326,15 +345,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // Using bitsets to track the remaining elements is faster than using a
         // `Vec` by itself (which requires removing elements, which requires
         // element shuffling, which is slow).
-        let constraints: Vec<_> = self.data.constraints.keys().collect();
         let mut live_indices: BitSet<usize> = BitSet::new_filled(constraints.len());
         let mut killed_indices: BitSet<usize> = BitSet::new_empty(constraints.len());
-        let mut changed = true;
         while changed {
             changed = false;
             for index in live_indices.iter() {
-                let constraint = constraints[index];
-                let (edge_changed, retain) = process_constraint(constraint);
+                let (a_vid, b_vid) = constraints[index];
+                let (edge_changed, retain) = process_constraint(a_vid, b_vid);
                 changed |= edge_changed;
                 if !retain {
                     let changed = killed_indices.insert(index);
@@ -790,8 +807,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.var_infos[node_idx].origin.span(),
             &format!(
                 "collect_error_for_expanding_node() could not find \
-                      error for var {:?} in universe {:?}, lower_bounds={:#?}, \
-                      upper_bounds={:#?}",
+                 error for var {:?} in universe {:?}, lower_bounds={:#?}, \
+                 upper_bounds={:#?}",
                 node_idx, node_universe, lower_bounds, upper_bounds
             ),
         );
