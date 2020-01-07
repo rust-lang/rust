@@ -281,10 +281,7 @@ impl IpAddr {
     /// ```
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
-        match self {
-            IpAddr::V4(_) => true,
-            IpAddr::V6(_) => false,
-        }
+        matches!(self, IpAddr::V4(_))
     }
 
     /// Returns [`true`] if this address is an [IPv6 address], and [`false`] otherwise.
@@ -303,10 +300,7 @@ impl IpAddr {
     /// ```
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
-        match self {
-            IpAddr::V4(_) => false,
-            IpAddr::V6(_) => true,
-        }
+        matches!(self, IpAddr::V6(_))
     }
 }
 

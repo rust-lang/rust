@@ -187,10 +187,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_some(&self) -> bool {
-        match *self {
-            Some(_) => true,
-            None => false,
-        }
+        matches!(*self, Some(_))
     }
 
     /// Returns `true` if the option is a [`None`] value.

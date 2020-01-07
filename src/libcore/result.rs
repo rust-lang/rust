@@ -282,10 +282,7 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_ok(&self) -> bool {
-        match *self {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        matches!(*self, Ok(_))
     }
 
     /// Returns `true` if the result is [`Err`].

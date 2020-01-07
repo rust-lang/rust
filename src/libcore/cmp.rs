@@ -821,10 +821,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lt(&self, other: &Rhs) -> bool {
-        match self.partial_cmp(other) {
-            Some(Less) => true,
-            _ => false,
-        }
+        matches!(self.partial_cmp(other), Some(Less))
     }
 
     /// This method tests less than or equal to (for `self` and `other`) and is used by the `<=`
@@ -843,10 +840,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        match self.partial_cmp(other) {
-            Some(Less) | Some(Equal) => true,
-            _ => false,
-        }
+        matches!(self.partial_cmp(other), Some(Less) | Some(Equal))
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -864,10 +858,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gt(&self, other: &Rhs) -> bool {
-        match self.partial_cmp(other) {
-            Some(Greater) => true,
-            _ => false,
-        }
+        matches!(self.partial_cmp(other), Some(Greater))
     }
 
     /// This method tests greater than or equal to (for `self` and `other`) and is used by the `>=`
@@ -886,10 +877,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ge(&self, other: &Rhs) -> bool {
-        match self.partial_cmp(other) {
-            Some(Greater) | Some(Equal) => true,
-            _ => false,
-        }
+        matches!(self.partial_cmp(other), Some(Greater) | Some(Equal))
     }
 }
 
