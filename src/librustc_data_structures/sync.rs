@@ -160,6 +160,26 @@ cfg_if! {
             (oper_a(), oper_b())
         }
 
+        pub struct FlexScope<'scope> {
+            marker: PhantomData<fn(&'scope ()) -> &'scope ()>,
+        }
+
+        impl<'scope> FlexScope<'scope> {
+            pub fn new() -> Self {
+                Self {
+                    marker: PhantomData,
+                }
+            }
+
+            pub fn activate<R>(&self, f: impl FnOnce() -> R) -> R {
+                f()
+            }
+
+            pub fn spawn(&self, f: impl FnOnce() + 'scope) {
+                f();
+            }
+        }
+
         pub struct SerialScope;
 
         impl SerialScope {
@@ -362,6 +382,7 @@ cfg_if! {
         use std;
         use std::thread;
         pub use rayon::{join, scope};
+        pub use rayon_core::FlexScope;
 
         /// Runs a list of blocks in parallel. The first block is executed immediately on
         /// the current thread. Use that for the longest running block.

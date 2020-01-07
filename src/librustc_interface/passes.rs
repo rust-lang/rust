@@ -21,7 +21,7 @@ use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
-use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
+use rustc_data_structures::sync::{par_iter, FlexScope, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
@@ -721,6 +721,7 @@ pub fn create_global_ctxt<'tcx>(
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
     all_arenas: &'tcx AllArenas,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    scope: &'tcx FlexScope<'tcx>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
@@ -759,6 +760,7 @@ pub fn create_global_ctxt<'tcx>(
             query_result_on_disk_cache,
             &crate_name,
             &outputs,
+            scope,
         )
     });
 

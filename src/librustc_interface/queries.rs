@@ -12,7 +12,7 @@ use rustc::ty::steal::Steal;
 use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_data_structures::sync::{FlexScope, Lrc, Once, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::DepGraphFuture;
 use std::any::Any;
@@ -69,6 +69,7 @@ pub struct Queries<'tcx> {
 
     all_arenas: AllArenas,
     arena: WorkerLocal<Arena<'tcx>>,
+    scope: FlexScope<'tcx>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -88,6 +89,7 @@ impl<'tcx> Queries<'tcx> {
             compiler,
             gcx: Once::new(),
             all_arenas: AllArenas::new(),
+            scope: FlexScope::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
@@ -266,6 +268,7 @@ impl<'tcx> Queries<'tcx> {
                 &self.gcx,
                 &self.all_arenas,
                 &self.arena,
+                &self.scope,
             ))
         })
     }
@@ -329,7 +332,7 @@ impl Compiler {
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
         let queries = Queries::new(&self);
-        let ret = f(&queries);
+        let ret = queries.scope.activate(|| f(&queries));
 
         if self.session().opts.debugging_opts.query_stats {
             if let Ok(gcx) = queries.global_ctxt() {

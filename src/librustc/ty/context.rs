@@ -58,7 +58,7 @@ use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
-use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{FlexScope, Lock, Lrc, WorkerLocal};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::node_id::NodeMap;
@@ -942,6 +942,8 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
+    pub scope: &'tcx FlexScope<'tcx>,
+
     cstore: Box<CrateStoreDyn>,
 
     pub sess: &'tcx Session,
@@ -1125,6 +1127,7 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
+        scope: &'tcx FlexScope<'tcx>,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
@@ -1174,6 +1177,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lint_store,
             cstore,
             arena,
+            scope,
             interners,
             dep_graph,
             prof: s.prof.clone(),
