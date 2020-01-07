@@ -159,7 +159,7 @@ pub enum NestedVisitorMap<'this, 'tcx> {
 impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
     /// Returns the map to use for an "intra item-like" thing (if any).
     /// E.g., function body.
-    pub fn intra(self) -> Option<&'this Map<'tcx>> {
+    fn intra(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(map) => Some(map),
@@ -169,7 +169,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 
     /// Returns the map to use for an "item-like" thing (if any).
     /// E.g., item, impl-item.
-    pub fn inter(self) -> Option<&'this Map<'tcx>> {
+    fn inter(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(_) => None,
@@ -214,7 +214,7 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, 'v>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
