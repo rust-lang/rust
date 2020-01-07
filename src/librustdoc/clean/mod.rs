@@ -144,17 +144,17 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().expect_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
-                            as_primitive(Res::Def(DefKind::Mod, cx.tcx.hir().local_def_id(id.id)))
+                            as_primitive(Res::Def(DefKind::Mod, cx.tcx.hir().local_def_id(id)))
                         }
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
                             as_primitive(path.res).map(|(_, prim, attrs)| {
                                 // Pretend the primitive is local.
-                                (cx.tcx.hir().local_def_id(id.id), prim, attrs)
+                                (cx.tcx.hir().local_def_id(id), prim, attrs)
                             })
                         }
                         _ => None,
@@ -197,16 +197,16 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().expect_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
-                            as_keyword(Res::Def(DefKind::Mod, cx.tcx.hir().local_def_id(id.id)))
+                            as_keyword(Res::Def(DefKind::Mod, cx.tcx.hir().local_def_id(id)))
                         }
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
                             as_keyword(path.res).map(|(_, prim, attrs)| {
-                                (cx.tcx.hir().local_def_id(id.id), prim, attrs)
+                                (cx.tcx.hir().local_def_id(id), prim, attrs)
                             })
                         }
                         _ => None,
@@ -1337,7 +1337,7 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::Def(item_id, _) => {
-                let item = cx.tcx.hir().expect_item(item_id.id);
+                let item = cx.tcx.hir().expect_item(item_id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {

@@ -1256,7 +1256,7 @@ pub fn map_crate<'hir>(
 impl<'hir> print::PpAnn for Map<'hir> {
     fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.expect_item(id.id)),
+            Nested::Item(id) => state.print_item(self.expect_item(id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),

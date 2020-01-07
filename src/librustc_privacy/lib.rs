@@ -533,8 +533,7 @@ impl EmbargoVisitor<'tcx> {
     fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
         let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
         let module = self.tcx.hir().get_module(module_def_id).0;
-        for item_id in module.item_ids {
-            let hir_id = item_id.id;
+        for &hir_id in module.item_ids {
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
             if let Some(def_kind) = self.tcx.def_kind(item_def_id) {
                 let item = self.tcx.hir().expect_item(hir_id);
@@ -655,9 +654,9 @@ impl EmbargoVisitor<'tcx> {
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {
                 if let hir::ItemKind::Mod(m) = &item.kind {
-                    for item_id in m.item_ids.as_ref() {
-                        let item = self.tcx.hir().expect_item(item_id.id);
-                        let def_id = self.tcx.hir().local_def_id(item_id.id);
+                    for &item_id in m.item_ids.as_ref() {
+                        let item = self.tcx.hir().expect_item(item_id);
+                        let def_id = self.tcx.hir().local_def_id(item_id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) {
                             continue;
                         }

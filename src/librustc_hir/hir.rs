@@ -2343,10 +2343,7 @@ impl VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ItemId {
-    pub id: HirId,
-}
+pub type ItemId = HirId;
 
 /// An item
 ///

@@ -190,10 +190,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             _ => smallvec![i.id],
         };
 
-        node_ids
-            .into_iter()
-            .map(|node_id| hir::ItemId { id: self.allocate_hir_id_counter(node_id) })
-            .collect()
+        node_ids.into_iter().map(|node_id| self.allocate_hir_id_counter(node_id)).collect()
     }
 
     fn lower_item_id_use_tree(

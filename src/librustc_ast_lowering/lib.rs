@@ -1424,7 +1424,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lctx.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, lifetimes)
+            hir::TyKind::Def(opaque_ty_id, lifetimes)
         })
     }
 
@@ -2364,7 +2364,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
-        let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args);
+        let opaque_ty_ref = hir::TyKind::Def(opaque_ty_id, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
         hir::FunctionRetTy::Return(self.arena.alloc(opaque_ty))
     }
@@ -2904,7 +2904,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
-                        let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
+                        let item_id = self.lower_node_id(item_id);
                         self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();

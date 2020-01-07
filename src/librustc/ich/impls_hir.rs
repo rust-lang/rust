@@ -49,7 +49,6 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     fn hash_item_id(&mut self, id: hir::ItemId, hasher: &mut StableHasher) {
         let hcx = self;
-        let hir::ItemId { id } = id;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             id.hash_stable(hcx, hasher);
@@ -84,7 +83,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         let item_ids_hash = item_ids
             .iter()
             .map(|id| {
-                let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
+                let (def_path_hash, local_id) = id.to_stable_hash_key(hcx);
                 debug_assert_eq!(local_id, hir::ItemLocalId::from_u32(0));
                 def_path_hash.0
             })

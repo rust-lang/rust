@@ -681,7 +681,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.per_def.attributes[def_id] <- attrs);
         record!(self.per_def.children[def_id] <- md.item_ids.iter().map(|item_id| {
-            tcx.hir().local_def_id(item_id.id).index
+            tcx.hir().local_def_id(*item_id).index
         }));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);

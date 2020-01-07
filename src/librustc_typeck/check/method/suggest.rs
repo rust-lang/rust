@@ -1091,7 +1091,7 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
         // Find a `use` statement.
         for item_id in module.item_ids {
-            let item = self.tcx.hir().expect_item(item_id.id);
+            let item = self.tcx.hir().expect_item(*item_id);
             match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
