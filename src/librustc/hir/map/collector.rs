@@ -49,15 +49,12 @@ pub(super) struct NodeCollector<'a, 'hir> {
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
 
-fn input_dep_node_and_hash<I>(
+fn input_dep_node_and_hash(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'_>,
     dep_node: DepNode,
-    input: I,
-) -> (DepNodeIndex, Fingerprint)
-where
-    I: for<'a> HashStable<StableHashingContext<'a>>,
-{
+    input: impl for<'a> HashStable<StableHashingContext<'a>>,
+) -> (DepNodeIndex, Fingerprint) {
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
     let hash = if dep_graph.is_fully_enabled() {
@@ -71,16 +68,13 @@ where
     (dep_node_index, hash)
 }
 
-fn alloc_hir_dep_nodes<I>(
+fn alloc_hir_dep_nodes(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
-    item_like: I,
+    item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
-) -> (DepNodeIndex, DepNodeIndex)
-where
-    I: for<'a> HashStable<StableHashingContext<'a>>,
-{
+) -> (DepNodeIndex, DepNodeIndex) {
     let sig = dep_graph
         .input_task(
             def_path_hash.to_dep_node(DepKind::Hir),
