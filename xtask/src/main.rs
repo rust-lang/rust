@@ -70,42 +70,14 @@ fn main() -> Result<()> {
             install(opts)?
         }
         "codegen" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
             codegen::generate_syntax(Mode::Overwrite)?;
             codegen::generate_parser_tests(Mode::Overwrite)?;
             codegen::generate_assists_docs(Mode::Overwrite)?;
         }
-        "format" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
-            run_rustfmt(Mode::Overwrite)?
-        }
-        "install-pre-commit-hook" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
-            install_pre_commit_hook()?
-        }
-        "lint" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
-            run_clippy()?
-        }
-        "fuzz-tests" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
-            run_fuzzer()?
-        }
+        "format" => run_rustfmt(Mode::Overwrite)?,
+        "install-pre-commit-hook" => install_pre_commit_hook()?,
+        "lint" => run_clippy()?,
+        "fuzz-tests" => run_fuzzer()?,
         _ => eprintln!("{}", help::GLOBAL_HELP),
     }
     Ok(())
