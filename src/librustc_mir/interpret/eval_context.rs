@@ -34,6 +34,9 @@ pub struct InterpCx<'infcx, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// The results of the type checker, from rustc.
     pub tcx: TyCtxtAt<'tcx>,
 
+    /// The inference context for inference variables that are within this `InterpCx`. Inference
+    /// variables may be within either the `param_env` or within `substs` of frames. Many operations
+    /// outside of mir which takes values that may contain variable require this context.
     pub(super) infcx: &'infcx InferCtxt<'infcx, 'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.

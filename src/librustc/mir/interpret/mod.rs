@@ -149,7 +149,7 @@ pub struct GlobalId<'tcx> {
     pub promoted: Option<mir::Promoted>,
 }
 
-/// The input type for const eval queries. Const eval queries a given both the `ParamEnv` in which
+/// The input type for const eval queries. Const eval queries are given both the `ParamEnv` in which
 /// the constant is evaluated in and the identifier of the constant.
 pub type ConstEvalInput<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>>;
 

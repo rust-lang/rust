@@ -2396,8 +2396,9 @@ impl<'tcx> Const<'tcx> {
                 // HACK(eddyb) when substs contain e.g. inference variables,
                 // attempt using identity substs instead, that will succeed
                 // when the expression doesn't depend on any parameters.
-                // FIXME(eddyb) make `const_eval` a canonical query instead,
-                // that would properly handle inference variables in `substs`.
+                // FIXME(skinny121) to handle inference variables correctly, the inference context
+                // needs to be passed into here so that the inference variables can be used within
+                // the `const_eval` canonical query.
                 if substs.has_local_value() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, did);
                     // The `ParamEnv` needs to match the `identity_substs`.
