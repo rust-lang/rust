@@ -31,10 +31,12 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_hir::*;
+use crate::hir::*;
+use crate::hir_id::CRATE_HIR_ID;
+use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_span::Span;
 use syntax::ast::{Attribute, Ident, Label, Name};
+use syntax::walk_list;
 
 pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,

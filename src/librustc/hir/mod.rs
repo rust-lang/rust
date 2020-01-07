@@ -4,9 +4,10 @@
 
 pub mod check_attr;
 pub mod exports;
-pub mod intravisit;
 pub mod map;
 pub mod upvars;
+
+pub use rustc_hir::intravisit;
 
 use crate::ty::query::Providers;
 
