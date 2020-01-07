@@ -1,22 +1,24 @@
-use super::*;
-use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use crate::hir::intravisit::{NestedVisitorMap, Visitor};
-use crate::hir::map::HirEntryMap;
-use crate::ich::Fingerprint;
+use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::map::definitions::{self, DefPathHash};
+use crate::hir::map::{Entry, HirEntryMap};
+use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
+use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
+use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Span, Symbol};
-use std::iter::repeat;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use syntax::ast::NodeId;
 
-use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use std::iter::repeat;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
