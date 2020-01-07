@@ -742,24 +742,6 @@ impl fmt::Debug for Pat<'_> {
 }
 
 impl Pat<'_> {
-    // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) -> bool {
-        if !it(self) {
-            return false;
-        }
-
-        use PatKind::*;
-        match &self.kind {
-            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
-            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
-            Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
-            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
-            Slice(before, slice, after) => {
-                before.iter().chain(slice.iter()).chain(after.iter()).all(|p| p.walk_short_(it))
-            }
-        }
-    }
-
     /// Walk the pattern in left-to-right order,
     /// short circuiting (with `.all(..)`) if `false` is returned.
     ///
@@ -767,23 +749,18 @@ impl Pat<'_> {
     /// if visiting `ps[0]` returns `false`,
     /// then `ps[1]` will not be visited.
     pub fn walk_short(&self, mut it: impl FnMut(&Pat<'_>) -> bool) -> bool {
-        self.walk_short_(&mut it)
-    }
-
-    // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) {
         if !it(self) {
-            return;
+            return false;
         }
 
         use PatKind::*;
         match &self.kind {
-            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
-            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
-            Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
-            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short(&mut it),
+            Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short(&mut it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short(&mut it)),
             Slice(before, slice, after) => {
-                before.iter().chain(slice.iter()).chain(after.iter()).for_each(|p| p.walk_(it))
+                before.iter().chain(slice.iter()).chain(after.iter()).all(|p| p.walk_short(&mut it))
             }
         }
     }
@@ -792,7 +769,20 @@ impl Pat<'_> {
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
     pub fn walk(&self, mut it: impl FnMut(&Pat<'_>) -> bool) {
-        self.walk_(&mut it)
+        if !it(self) {
+            return;
+        }
+
+        use PatKind::*;
+        match &self.kind {
+            Wild | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
+            Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk(&mut it),
+            Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(&mut it)),
+            TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk(&mut it)),
+            Slice(before, slice, after) => {
+                before.iter().chain(slice.iter()).chain(after.iter()).for_each(|p| p.walk(&mut it))
+            }
+        }
     }
 
     /// Walk the pattern in left-to-right order.

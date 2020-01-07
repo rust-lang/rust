@@ -561,22 +561,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     crate fn cat_pattern<F>(
         &self,
-        place: Place<'tcx>,
-        pat: &hir::Pat<'_>,
-        mut op: F,
-    ) -> McResult<()>
-    where
-        F: FnMut(&Place<'tcx>, &hir::Pat<'_>),
-    {
-        self.cat_pattern_(place, pat, &mut op)
-    }
-
-    // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(
-        &self,
         mut place: Place<'tcx>,
         pat: &hir::Pat<'_>,
-        op: &mut F,
+        mut op: F,
     ) -> McResult<()>
     where
         F: FnMut(&Place<'tcx>, &hir::Pat<'_>),
@@ -646,7 +633,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 for subpat in subpats.iter() {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?;
                     let sub_place = self.cat_projection(pat, place.clone(), subpat_ty);
-                    self.cat_pattern_(sub_place, &subpat, op)?;
+                    self.cat_pattern(sub_place, &subpat, &mut op)?;
                 }
             }
 
@@ -655,18 +642,18 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?;
                     let field_place = self.cat_projection(pat, place.clone(), field_ty);
-                    self.cat_pattern_(field_place, &fp.pat, op)?;
+                    self.cat_pattern(field_place, &fp.pat, &mut op)?;
                 }
             }
 
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.cat_pattern_(place.clone(), &pat, op)?;
+                    self.cat_pattern(place.clone(), &pat, &mut op)?;
                 }
             }
 
             PatKind::Binding(.., Some(ref subpat)) => {
-                self.cat_pattern_(place, &subpat, op)?;
+                self.cat_pattern(place, &subpat, &mut op)?;
             }
 
             PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
@@ -674,7 +661,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat, place)?;
-                self.cat_pattern_(subplace, &subpat, op)?;
+                self.cat_pattern(subplace, &subpat, &mut op)?;
             }
 
             PatKind::Slice(before, ref slice, after) => {
@@ -687,15 +674,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 };
                 let elt_place = self.cat_projection(pat, place.clone(), element_ty);
                 for before_pat in before {
-                    self.cat_pattern_(elt_place.clone(), &before_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), &before_pat, &mut op)?;
                 }
                 if let Some(ref slice_pat) = *slice {
                     let slice_pat_ty = self.pat_ty_adjusted(&slice_pat)?;
                     let slice_place = self.cat_projection(pat, place, slice_pat_ty);
-                    self.cat_pattern_(slice_place, &slice_pat, op)?;
+                    self.cat_pattern(slice_place, &slice_pat, &mut op)?;
                 }
                 for after_pat in after {
-                    self.cat_pattern_(elt_place.clone(), &after_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), &after_pat, &mut op)?;
                 }
             }
 
