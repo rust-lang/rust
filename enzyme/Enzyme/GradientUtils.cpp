@@ -391,6 +391,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto arg = dyn_cast<LoadInst>(val)) {
       IRBuilder <> bb(arg);
         if(isConstantValue(arg->getOperand(0))) {
+            return lookupM(arg, BuilderM);
             llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
             dumpSet(this->originalInstructions);

@@ -29,19 +29,28 @@
 #include "llvm/Support/CommandLine.h"
 
 extern llvm::cl::opt<bool> printconst;
+extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
 
 enum class IntType {
+    //integral type
     Integer,
+    //floating point
     Float,
+    //pointer
     Pointer,
+    //can be anything of users choosing [usually result of a constant]
+    Anything,
+    //insufficient information
     Unknown
 };
+
 
 static inline std::string to_string(IntType t) {
     switch(t) {
         case IntType::Integer: return "Integer";
         case IntType::Float: return "Float";
         case IntType::Pointer: return "Pointer";
+        case IntType::Anything: return "Anything";
         case IntType::Unknown: return "Unknown";
     }
     llvm_unreachable("unknown inttype");
@@ -51,6 +60,7 @@ static inline IntType parseIntType(std::string str) {
     if (str == "Integer") return IntType::Integer;
     if (str == "Float") return IntType::Float;
     if (str == "Pointer") return IntType::Pointer;
+    if (str == "Anything") return IntType::Everything;
     if (str == "Unknown") return IntType::Unknown;
     llvm_unreachable("unknown inttype str");
 }
@@ -95,12 +105,66 @@ public:
         }
     }
 
+    bool isKnown() const {
+        return typeEnum != IntType::Unknown;
+    }
+    
     llvm::Type* isFloat() const {
         return type;
     }
+
     bool operator==(const DataType dt) const {
         return type == dt.type && typeEnum == dt.typeEnum;
     }
+    
+    //returns whether changed
+    bool operator=(const DataType dt) {
+        bool changed = false;
+        if (typeEnum != dt.typeEnum) changed = true;
+        typeEnum = dt.typeEnum;
+        if (type != dt.type) changed = true;
+        type = dt.type;
+        return changed;
+    }
+    
+    //returns whether changed
+    bool operator|=(const DataType dt) {
+        if (typeEnum == IntType::Anything) {
+            return false;
+        }
+        if (dt.typeEnum == IntType::Anything) {
+            return *this = dt;
+        }
+        if (typeEnum == IntType::Unknown) {
+            return *this = dt;
+        }
+        if (dt.typeEnum == IntType::Unknown) {
+            return false;
+        }
+        assert(dt.typeEnum == typeEnum);
+        assert(dt.type == type);
+        return false;
+    }
+    
+    //returns whether changed
+    bool operator&=(const DataType dt) {
+        if (typeEnum == IntType::Anything) {
+            return *this = dt;
+        }
+        if (dt.typeEnum == IntType::Anything) {
+            return false;
+        }
+        if (typeEnum == IntType::Unknown) {
+            return false;
+        }
+        if (dt.typeEnum == IntType::Unknown) {
+            return *this = dt;
+        }
+        assert(dt.typeEnum == typeEnum);
+        assert(dt.type == type);
+        return false;
+    }
+     
     bool operator<(const DataType dt) const {
         if (typeEnum == dt.typeEnum) {
             return type < dt.type;

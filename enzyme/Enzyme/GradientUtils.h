@@ -939,9 +939,13 @@ public:
             if (res == "const") return true;
             if (res == "active") return false;
         }
+        if (nonmarkedglobals_inactive) return true;
         goto err;
     }
-    if (isa<GlobalValue>(val)) goto err;
+    if (isa<GlobalValue>(val)) {
+        if (nonmarkedglobals_inactive) return true;
+        goto err;
+    }
 
     //TODO allow gv/inline asm
     //if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
