@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![warn(clippy::wildcard_in_or_patterns)]
 
 fn main() {
