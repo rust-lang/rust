@@ -18,6 +18,8 @@ jobs:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
       RUN_SLOW_TESTS: 1
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
     steps:
 
       - name: Checkout repository
@@ -39,7 +41,19 @@ jobs:
           override: true
           components: rustfmt, rust-src
 
-      - name: Cargo target cache
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo target dir
         uses: actions/cache@v1
         with:
           path: target
