@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Span};
 use syntax::ast;
 
@@ -514,16 +514,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.statics.push(s);
             }
             hir::ItemKind::Const(type_, expr) => {
-                let s = Constant {
-                    type_,
-                    expr,
-                    id: item.hir_id,
-                    name: ident.name,
-                    attrs: &item.attrs,
-                    whence: item.span,
-                    vis: &item.vis,
-                };
-                om.constants.push(s);
+                // Underscore constants do not correspond to a nameable item and
+                // so are never useful in documentation.
+                if ident.name != kw::Underscore {
+                    let s = Constant {
+                        type_,
+                        expr,
+                        id: item.hir_id,
+                        name: ident.name,
+                        attrs: &item.attrs,
+                        whence: item.span,
+                        vis: &item.vis,
+                    };
+                    om.constants.push(s);
+                }
             }
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
                 let items = item_ids.iter().map(|ti| self.cx.tcx.hir().trait_item(ti.id)).collect();
