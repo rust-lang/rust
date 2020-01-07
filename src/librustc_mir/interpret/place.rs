@@ -21,7 +21,9 @@ use super::{
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
+/// Information required for the sound usage of a `MemPlace`.
 pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
+    /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
     Unsized(Scalar<Tag, Id>),
     /// `Sized` types or unsized `extern type`
     None,

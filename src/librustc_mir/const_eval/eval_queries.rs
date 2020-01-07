@@ -124,7 +124,12 @@ pub(super) fn op_to_const<'tcx>(
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
         Scalar::Raw { data, .. } => {
-            assert_eq!(data, mplace.layout.align.abi.bytes().into());
+            assert_eq!(
+                data,
+                mplace.layout.align.abi.bytes().into(),
+                "this MPlaceTy must come from `try_as_mplace` being used on a zst, so we know what
+                 value this integer address must have",
+            );
             assert!(mplace.layout.is_zst());
             ConstValue::Scalar(Scalar::zst())
         }
