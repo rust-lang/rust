@@ -493,7 +493,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                              (index={})",
                             data.name, self.root_ty, data.index
                         );
-                        span_bug!(span, "{}", msg);
+                        self.tcx.sess.delay_span_bug(span, &msg);
+                        r
                     }
                 }
             }

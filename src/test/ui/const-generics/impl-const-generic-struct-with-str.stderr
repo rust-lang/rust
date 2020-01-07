@@ -1,0 +1,34 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/impl-const-generic-struct-with-str.rs:3:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/impl-const-generic-struct-with-str.rs:10:38
+   |
+LL | impl<const A: &str> Default for Caca<A> {
+   |                                      ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime `'_` as defined on the impl at 10:15
+  --> $DIR/impl-const-generic-struct-with-str.rs:10:15
+   |
+LL | impl<const A: &str> Default for Caca<A> {
+   |               ^
+
+error[E0599]: no associated item named `A` found for type `Caca<A>` in the current scope
+  --> $DIR/impl-const-generic-struct-with-str.rs:13:23
+   |
+LL | struct Caca<const A: &'static str> {
+   | ---------------------------------- associated item `A` not found for this
+...
+LL |         let a = Self::A;
+   |                       ^ associated item not found in `Caca<A>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0312, E0599.
+For more information about an error, try `rustc --explain E0312`.
