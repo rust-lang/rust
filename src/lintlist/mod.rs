@@ -836,7 +836,7 @@ pub const ALL_LINTS: [Lint; 345] = [
     Lint {
         name: "invalid_atomic_ordering",
         group: "correctness",
-        desc: "lint usage of invalid atomic ordering in atomic load/store calls",
+        desc: "usage of invalid atomic ordering in atomic load/store calls",
         deprecation: None,
         module: "atomic_ordering",
     },

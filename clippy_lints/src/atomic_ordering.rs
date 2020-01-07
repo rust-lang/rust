@@ -1,10 +1,10 @@
 use crate::utils::{match_def_path, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::def_id::DefId;
-use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
+use rustc_hir::def_id::DefId;
+use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust,no_run
     /// # use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let x = AtomicBool::new(true);
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
-    "lint usage of invalid atomic ordering in atomic load/store calls"
+    "usage of invalid atomic ordering in atomic load/store calls"
 }
 
 declare_lint_pass!(AtomicOrdering => [INVALID_ATOMIC_ORDERING]);
