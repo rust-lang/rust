@@ -946,6 +946,20 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             module_id = self.tcx.hir().get_parent_node(module_id);
         }
     }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        // Generic parameters cannot be directly accessed by users, so restricting privacy is
+        // unimportant here.
+        // However, parameters must be (at least) `Reachable` in order for stability requirements to
+        // be enforced (see `check_missing_stability` in `src/librustc_passes/stability.rs`).
+        match &p.kind {
+            // FIXME(const_generics:defaults)
+            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
+                self.update(p.hir_id, Some(AccessLevel::Reachable));
+            }
+            _ => {}
+        }
+    }
 }
 
 impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {

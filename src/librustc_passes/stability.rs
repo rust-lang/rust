@@ -278,6 +278,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.annotate(md.hir_id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
     }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        let kind = match &p.kind {
+            // FIXME(const_generics:defaults)
+            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
+                AnnotationKind::Required
+            }
+            _ => AnnotationKind::Prohibited,
+        };
+
+        self.annotate(p.hir_id, &p.attrs, p.span, kind, |v| {
+            intravisit::walk_generic_param(v, p);
+        });
+    }
 }
 
 struct MissingStabilityAnnotations<'a, 'tcx> {
@@ -347,6 +361,17 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.check_missing_stability(md.hir_id, md.span, "macro");
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        match &p.kind {
+            // FIXME(const_generics:defaults)
+            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
+                self.check_missing_stability(p.hir_id, p.span, "default type parameter");
+            }
+            _ => {}
+        }
+        intravisit::walk_generic_param(self, p);
     }
 }
 

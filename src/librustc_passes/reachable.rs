@@ -309,6 +309,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             | Node::Ctor(..)
             | Node::Field(_)
             | Node::Ty(_)
+            | Node::GenericParam(_)
             | Node::MacroDef(_) => {}
             _ => {
                 bug!(
