@@ -3268,18 +3268,27 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
         return;
     }
 
+    let span: &hir::Expr<'_>;
+    let verb: &str;
+    let lint_unary: &str;
+    let help_unary: &str;
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let hir::ExprKind::Unary(op, _) = parent.kind;
         if op == hir::UnNot;
         then {
-            let lint_msg = "`!FileType::is_file()` does not deny all readable file types";
-            let help_msg = "use `FileType::is_dir()` instead";
-            span_help_and_lint(cx, FILETYPE_IS_FILE, parent.span, lint_msg, help_msg);
+            lint_unary = "!";
+            verb = "denys";
+            help_unary = "";
+            span = parent;
         } else {
-            let lint_msg = "`FileType::is_file()` does not cover all readable file types";
-            let help_msg = "use `!FileType::is_dir()` instead";
-            span_help_and_lint(cx, FILETYPE_IS_FILE, expr.span, lint_msg, help_msg);
+            lint_unary = "";
+            verb = "covers";
+            help_unary = "!";
+            span = expr;
         }
     }
+    let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
+    let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
+    span_help_and_lint(cx, FILETYPE_IS_FILE, span.span, &lint_msg, &help_msg);
 }
