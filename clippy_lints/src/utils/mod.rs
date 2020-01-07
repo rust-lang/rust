@@ -873,12 +873,11 @@ pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
 ///
 /// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return
 /// themselves.
-pub fn remove_blocks<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
-    if let ExprKind::Block(ref block, _) = expr.kind {
-        if block.stmts.is_empty() {
-            if let Some(ref expr) = block.expr {
-                return remove_blocks(expr);
-            }
+pub fn remove_blocks<'tcx>(mut expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
+    while let ExprKind::Block(ref block, ..) = expr.kind {
+        match (block.stmts.is_empty(), block.expr.as_ref()) {
+            (true, Some(e)) => expr = e,
+            _ => break,
         }
     }
     expr
