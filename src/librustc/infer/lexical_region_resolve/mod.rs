@@ -204,9 +204,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // want to stop at the first constraint that makes a change.
         let mut any_changed = false;
         for member_constraint in &self.data.member_constraints {
-            if self.enforce_member_constraint(graph, member_constraint, var_values) {
-                any_changed = true;
-            }
+            any_changed |= self.enforce_member_constraint(graph, member_constraint, var_values);
         }
         any_changed
     }
@@ -337,9 +335,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             for index in live_indices.iter() {
                 let constraint = constraints[index];
                 let (edge_changed, retain) = process_constraint(constraint);
-                if edge_changed {
-                    changed = true;
-                }
+                changed |= edge_changed;
                 if !retain {
                     let changed = killed_indices.insert(index);
                     debug_assert!(changed);
