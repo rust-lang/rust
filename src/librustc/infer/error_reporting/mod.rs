@@ -1303,10 +1303,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        enum TyKind {
+            Closure,
+            Opaque,
+            Generator,
+            Foreign,
+        }
+
+        impl TyKind {
+            fn descr(&self) -> &'static str {
+                match self {
+                    Self::Closure => "closure",
+                    Self::Opaque => "opaque type",
+                    Self::Generator => "generator",
+                    Self::Foreign => "foreign type",
+                }
+            }
+
+            fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+                match ty.kind {
+                    ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
+                    ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+                    ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+                    ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
+                    _ => None,
+                }
+            }
+        }
+
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxHashMap<&'static str, FxHashSet<Span>>,
-            expected: FxHashMap<&'static str, FxHashSet<Span>>,
-            found: FxHashMap<&'static str, FxHashSet<Span>>,
+            types: FxHashMap<TyKind, FxHashSet<Span>>,
+            expected: FxHashMap<TyKind, FxHashSet<Span>>,
+            found: FxHashMap<TyKind, FxHashSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1350,7 +1379,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     },
                                     if count > 1 { "one of the " } else { "" },
                                     target,
-                                    key,
+                                    key.descr(),
                                     pluralize!(count),
                                 ),
                             );
@@ -1362,18 +1391,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                let kind = match t.kind {
-                    ty::Closure(..) => "closure",
-                    ty::Opaque(..) => "opaque type",
-                    ty::Generator(..) => "generator",
-                    ty::Foreign(..) => "foreign type",
-                    _ => "",
-                };
-                if let ty::Closure(def_id, _)
-                | ty::Opaque(def_id, _)
-                | ty::Generator(def_id, ..)
-                | ty::Foreign(def_id) = t.kind
-                {
+                if let Some((kind, def_id)) = TyKind::from_ty(t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
