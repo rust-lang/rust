@@ -643,8 +643,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.write_immediate(val, place)?;
         }
 
-        this.process_errors();
-
         Ok(())
     }
 }

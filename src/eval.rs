@@ -183,7 +183,9 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
 
     // Perform the main execution.
     let res: InterpResult<'_, i64> = (|| {
-        ecx.run()?;
+        while ecx.step()? {
+            ecx.process_errors();
+        }
         // Read the return code pointer *before* we run TLS destructors, to assert
         // that it was written to by the time that `start` lang item returned.
         let return_code = ecx.read_scalar(ret_place.into())?.not_undef()?.to_machine_isize(&ecx)?;
