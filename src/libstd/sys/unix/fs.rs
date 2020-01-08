@@ -51,24 +51,14 @@ pub use crate::sys_common::fs::remove_dir_all;
 
 pub struct File(FileDesc);
 
-// FIXME: This should be available on Linux with all `target_arch` and `target_env`.
-// https://github.com/rust-lang/libc/issues/1545
+// FIXME: This should be available on Linux with all `target_env`.
+// But currently only glibc exposes `statx` fn and structs.
+// We don't want to import unverified raw C structs here directly.
+// https://github.com/rust-lang/rust/pull/67774
 macro_rules! cfg_has_statx {
     ({ $($then_tt:tt)* } else { $($else_tt:tt)* }) => {
         cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "linux", target_env = "gnu", any(
-                target_arch = "x86",
-                target_arch = "arm",
-                // target_arch = "mips",
-                target_arch = "powerpc",
-                target_arch = "x86_64",
-                // target_arch = "aarch64",
-                target_arch = "powerpc64",
-                // target_arch = "mips64",
-                // target_arch = "s390x",
-                target_arch = "sparc64",
-                target_arch = "riscv64",
-            )))] {
+            if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
                 $($then_tt)*
             } else {
                 $($else_tt)*
@@ -76,19 +66,7 @@ macro_rules! cfg_has_statx {
         }
     };
     ($($block_inner:tt)*) => {
-        #[cfg(all(target_os = "linux", target_env = "gnu", any(
-            target_arch = "x86",
-            target_arch = "arm",
-            // target_arch = "mips",
-            target_arch = "powerpc",
-            target_arch = "x86_64",
-            // target_arch = "aarch64",
-            target_arch = "powerpc64",
-            // target_arch = "mips64",
-            // target_arch = "s390x",
-            target_arch = "sparc64",
-            target_arch = "riscv64",
-        )))]
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
         {
             $($block_inner)*
         }
