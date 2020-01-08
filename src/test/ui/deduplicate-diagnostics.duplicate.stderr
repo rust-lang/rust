@@ -1,3 +1,9 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:8:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ bad attribute argument
+
 error: cannot find derive macro `Unresolved` in this scope
   --> $DIR/deduplicate-diagnostics.rs:4:10
    |
@@ -10,5 +16,18 @@ error: cannot find derive macro `Unresolved` in this scope
 LL | #[derive(Unresolved)]
    |          ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:8:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ bad attribute argument
 
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:8:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ bad attribute argument
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0452`.
