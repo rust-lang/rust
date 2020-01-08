@@ -2075,7 +2075,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
                 err.note(&format!("cannot resolve `{}`", predicate));
-                if let (Ok(ref snippet), ObligationCauseCode::BindingObligation(ref def_id, _)) =
+                if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
+                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
+                } else if let (
+                    Ok(ref snippet),
+                    ObligationCauseCode::BindingObligation(ref def_id, _),
+                ) =
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
                     let generics = self.tcx.generics_of(*def_id);
@@ -2171,6 +2176,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    fn suggest_fully_qualified_path(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        def_id: DefId,
+        span: Span,
+        trait_ref: DefId,
+    ) {
+        if let Some(assoc_item) = self.tcx.opt_associated_item(def_id) {
+            if let ty::AssocKind::Const | ty::AssocKind::Type = assoc_item.kind {
+                err.note(&format!(
+                    "{}s cannot be accessed directly on a `trait`, they can only be \
+                        accessed through a specific `impl`",
+                    assoc_item.kind.suggestion_descr(),
+                ));
+                err.span_suggestion(
+                    span,
+                    "use the fully qualified path to an implementation",
+                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.ident),
+                    Applicability::HasPlaceholders,
+                );
+            }
+        }
     }
 
     /// Returns `true` if the trait predicate may apply for *some* assignment
