@@ -1303,39 +1303,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {}
         }
 
-        /// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
-        /// extra information about each type, but we only care about the category.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        enum TyCategory {
-            Closure,
-            Opaque,
-            Generator,
-            Foreign,
-        }
-
-        impl TyCategory {
-            fn descr(&self) -> &'static str {
-                match self {
-                    Self::Closure => "closure",
-                    Self::Opaque => "opaque type",
-                    Self::Generator => "generator",
-                    Self::Foreign => "foreign type",
-                }
-            }
-
-            fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
-                match ty.kind {
-                    ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-                    ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
-                    ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
-                    ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
-                    _ => None,
-                }
-            }
-        }
-
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxHashMap<TyKind, FxHashSet<Span>>,
+            types: FxHashMap<TyCategory, FxHashSet<Span>>,
             expected: FxHashMap<TyCategory, FxHashSet<Span>>,
             found: FxHashMap<TyCategory, FxHashSet<Span>>,
             ignore_span: Span,
@@ -1375,7 +1344,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 &self,
                 err: &mut DiagnosticBuilder<'_>,
                 target: &str,
-                types: &FxHashMap<TyKind, FxHashSet<Span>>,
+                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
             ) {
                 for (key, values) in types.iter() {
                     let count = values.len();
@@ -1394,7 +1363,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 },
                                 if count > 1 { "one of the " } else { "" },
                                 target,
-                                key,
+                                kind,
                                 pluralize!(count),
                             ),
                         );
@@ -1405,7 +1374,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                if let Some((kind, def_id)) = TyKind::from_ty(t) {
+                if let Some((kind, def_id)) = TyCategory::from_ty(t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
@@ -2064,6 +2033,37 @@ impl<'tcx> ObligationCause<'tcx> {
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
+        }
+    }
+}
+
+/// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
+/// extra information about each type, but we only care about the category.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+crate enum TyCategory {
+    Closure,
+    Opaque,
+    Generator,
+    Foreign,
+}
+
+impl TyCategory {
+    fn descr(&self) -> &'static str {
+        match self {
+            Self::Closure => "closure",
+            Self::Opaque => "opaque type",
+            Self::Generator => "generator",
+            Self::Foreign => "foreign type",
+        }
+    }
+
+    pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+        match ty.kind {
+            ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
+            ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+            ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+            ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
+            _ => None,
         }
     }
 }

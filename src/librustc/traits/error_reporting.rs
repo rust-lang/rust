@@ -6,7 +6,7 @@ use super::{
     TraitNotObjectSafe,
 };
 
-use crate::infer::error_reporting::TypeAnnotationNeeded as ErrorCode;
+use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
 use crate::mir::interpret::ErrorHandled;
@@ -676,15 +676,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
-                        let span = if let ty::Closure(def_id, _)
-                        | ty::Opaque(def_id, _)
-                        | ty::Generator(def_id, ..)
-                        | ty::Foreign(def_id) = ty.kind
-                        {
-                            Some(self.tcx.def_span(def_id))
-                        } else {
-                            None
-                        };
+                        let span =
+                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
                         Some((ty.to_string(), span))
                     }
                 }
