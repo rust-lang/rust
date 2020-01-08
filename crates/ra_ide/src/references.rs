@@ -214,7 +214,7 @@ fn process_definition(
 mod tests {
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
-        ReferenceSearchResult, SearchScope,
+        Reference, ReferenceKind, ReferenceSearchResult, SearchScope,
     };
 
     #[test]
@@ -232,7 +232,12 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15)",
+            ReferenceKind::Other,
+            &["FileId(1) [142; 145) StructLiteral"],
+        );
     }
 
     #[test]
@@ -251,7 +256,17 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 5);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [33; 34)",
+            ReferenceKind::Other,
+            &[
+                "FileId(1) [67; 68) Other",
+                "FileId(1) [71; 72) Other",
+                "FileId(1) [101; 102) Other",
+                "FileId(1) [127; 128) Other",
+            ],
+        );
     }
 
     #[test]
@@ -262,7 +277,12 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [12; 13)",
+            ReferenceKind::Other,
+            &["FileId(1) [38; 39) Other"],
+        );
     }
 
     #[test]
@@ -273,7 +293,12 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [12; 13)",
+            ReferenceKind::Other,
+            &["FileId(1) [38; 39) Other"],
+        );
     }
 
     #[test]
@@ -290,7 +315,12 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "spam RECORD_FIELD_DEF FileId(1) [66; 79) [70; 74)",
+            ReferenceKind::Other,
+            &["FileId(1) [152; 156) Other"],
+        );
     }
 
     #[test]
@@ -304,7 +334,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 1);
+        check_result(refs, "f FN_DEF FileId(1) [88; 104) [91; 92)", ReferenceKind::Other, &[]);
     }
 
     #[test]
@@ -319,7 +349,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 1);
+        check_result(refs, "B ENUM_VARIANT FileId(1) [83; 84) [83; 84)", ReferenceKind::Other, &[]);
     }
 
     #[test]
@@ -358,7 +388,12 @@ mod tests {
 
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        assert_eq!(refs.len(), 3);
+        check_result(
+            refs,
+            "Foo STRUCT_DEF FileId(2) [16; 50) [27; 30)",
+            ReferenceKind::Other,
+            &["FileId(1) [52; 55) StructLiteral", "FileId(3) [77; 80) StructLiteral"],
+        );
     }
 
     // `mod foo;` is not in the results because `foo` is an `ast::Name`.
@@ -384,7 +419,12 @@ mod tests {
 
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "foo SOURCE_FILE FileId(2) [0; 35)",
+            ReferenceKind::Other,
+            &["FileId(1) [13; 16) Other"],
+        );
     }
 
     #[test]
@@ -409,7 +449,12 @@ mod tests {
 
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        assert_eq!(refs.len(), 3);
+        check_result(
+            refs,
+            "Foo STRUCT_DEF FileId(3) [0; 41) [18; 21)",
+            ReferenceKind::Other,
+            &["FileId(2) [20; 23) Other", "FileId(2) [46; 49) StructLiteral"],
+        );
     }
 
     #[test]
@@ -433,11 +478,21 @@ mod tests {
         let analysis = mock.analysis();
 
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        assert_eq!(refs.len(), 3);
+        check_result(
+            refs,
+            "quux FN_DEF FileId(1) [18; 34) [25; 29)",
+            ReferenceKind::Other,
+            &["FileId(2) [16; 20) Other", "FileId(3) [16; 20) Other"],
+        );
 
         let refs =
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
-        assert_eq!(refs.len(), 2);
+        check_result(
+            refs,
+            "quux FN_DEF FileId(1) [18; 34) [25; 29)",
+            ReferenceKind::Other,
+            &["FileId(3) [16; 20) Other"],
+        );
     }
 
     #[test]
@@ -452,11 +507,40 @@ mod tests {
         }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 3);
+        check_result(
+            refs,
+            "m1 MACRO_CALL FileId(1) [9; 63) [46; 48)",
+            ReferenceKind::Other,
+            &["FileId(1) [96; 98) Other", "FileId(1) [114; 116) Other"],
+        );
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
         analysis.find_all_refs(position, None).unwrap().unwrap()
+    }
+
+    fn check_result(
+        res: ReferenceSearchResult,
+        expected_decl: &str,
+        decl_kind: ReferenceKind,
+        expected_refs: &[&str],
+    ) {
+        res.declaration().assert_match(expected_decl);
+        assert_eq!(res.declaration_kind, decl_kind);
+
+        assert_eq!(res.references.len(), expected_refs.len());
+        res.references().iter().enumerate().for_each(|(i, r)| r.assert_match(expected_refs[i]));
+    }
+
+    impl Reference {
+        pub fn debug_render(&self) -> String {
+            format!("{:?} {:?} {:?}", self.file_range.file_id, self.file_range.range, self.kind)
+        }
+
+        pub fn assert_match(&self, expected: &str) {
+            let actual = self.debug_render();
+            test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
+        }
     }
 }

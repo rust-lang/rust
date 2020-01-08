@@ -75,7 +75,7 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayKind},
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
-    references::{ReferenceSearchResult, SearchScope},
+    references::{Reference, ReferenceKind, ReferenceSearchResult, SearchScope},
     runnables::{Runnable, RunnableKind},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     syntax_highlighting::HighlightedRange,
