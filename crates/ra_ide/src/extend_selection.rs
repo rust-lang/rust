@@ -139,9 +139,10 @@ fn extend_tokens_from_range(
             })
             .collect();
 
-    // Compute the first and last token index in original_range
-    let first_idx = *indices.iter().min_by_key(|&&idx| all_tokens[idx].text_range().start())?;
-    let last_idx = *indices.iter().max_by_key(|&&idx| all_tokens[idx].text_range().end())?;
+    // The first and last token index in original_range
+    // Note that the indices is sorted
+    let first_idx = *indices.first()?;
+    let last_idx = *indices.last()?;
 
     // compute original mapped token range
     let expanded = {
