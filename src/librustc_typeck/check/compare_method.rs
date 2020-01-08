@@ -1,5 +1,5 @@
 use errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
-use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::infer::{self, InferOk};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -9,6 +9,7 @@ use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_span::Span;
 
@@ -890,9 +891,10 @@ fn compare_synthetic_generics<'tcx>(
                                     }
                                 }
                             }
-                            fn nested_visit_map<'this>(
-                                &'this mut self,
-                            ) -> intravisit::NestedVisitorMap<'this, 'v>
+                            type Map = Map<'v>;
+                            fn nested_visit_map(
+                                &mut self,
+                            ) -> intravisit::NestedVisitorMap<'_, Self::Map>
                             {
                                 intravisit::NestedVisitorMap::None
                             }

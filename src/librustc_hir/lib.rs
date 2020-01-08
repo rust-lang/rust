@@ -15,6 +15,7 @@ pub mod def;
 pub mod def_id;
 mod hir;
 pub mod hir_id;
+pub mod intravisit;
 pub mod itemlikevisit;
 pub mod pat_util;
 pub mod print;

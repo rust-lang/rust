@@ -21,11 +21,10 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use rustc_data_structures::sync;
-
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::ty::TyCtxt;
 use errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::node_id::NodeMap;
 use rustc_session::{DiagnosticMessageId, Session};
@@ -109,13 +108,13 @@ macro_rules! late_lint_methods {
             fn check_where_predicate(a: &$hir hir::WherePredicate<$hir>);
             fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>, b: hir::TraitBoundModifier);
             fn check_fn(
-                a: $crate::hir::intravisit::FnKind<$hir>,
+                a: rustc_hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId);
             fn check_fn_post(
-                a: $crate::hir::intravisit::FnKind<$hir>,
+                a: rustc_hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
                 d: Span,

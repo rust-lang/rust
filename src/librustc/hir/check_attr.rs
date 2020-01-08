@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::map::Map;
 use crate::lint::builtin::UNUSED_ATTRIBUTES;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
@@ -13,6 +13,7 @@ use errors::struct_span_err;
 use rustc_error_codes::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem, TraitItemKind};
 use rustc_span::symbol::sym;
@@ -519,7 +520,9 @@ impl CheckAttrVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

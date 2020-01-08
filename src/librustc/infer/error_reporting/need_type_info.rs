@@ -1,4 +1,3 @@
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::map::Map;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
@@ -7,6 +6,7 @@ use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FunctionRetTy, HirId, Local, Pat};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
@@ -66,7 +66,9 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 

@@ -4,7 +4,6 @@
 
 pub mod check_attr;
 pub mod exports;
-pub mod intravisit;
 pub mod map;
 pub mod upvars;
 

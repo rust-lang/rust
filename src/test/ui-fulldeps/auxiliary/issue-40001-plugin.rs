@@ -8,7 +8,7 @@ extern crate rustc_hir;
 extern crate rustc_span;
 extern crate syntax;
 
-use rustc::hir::intravisit;
+use rustc_hir::intravisit;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};

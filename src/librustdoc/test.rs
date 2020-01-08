@@ -1,10 +1,10 @@
-use rustc::hir::intravisit;
 use rustc::hir::map::Map;
 use rustc::session::{self, config, DiagnosticOutput};
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::sync::Lrc;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
+use rustc_hir::intravisit;
 use rustc_interface::interface;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -899,7 +899,9 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::All(&self.map)
     }
 

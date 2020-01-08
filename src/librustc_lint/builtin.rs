@@ -25,6 +25,7 @@ use std::fmt::Write;
 
 use lint::{EarlyContext, EarlyLintPass, LateLintPass, LintPass};
 use lint::{LateContext, LintArray, LintContext};
+use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::lint::FutureIncompatibleInfo;
 use rustc::traits::misc::can_type_implement_copy;
@@ -1088,12 +1089,14 @@ impl TypeAliasBounds {
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
-        use rustc::hir::intravisit::{self, Visitor};
+        use rustc_hir::intravisit::{self, Visitor};
         struct WalkAssocTypes<'a, 'db> {
             err: &'a mut DiagnosticBuilder<'db>,
         }
         impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {
+            type Map = Map<'v>;
+
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 

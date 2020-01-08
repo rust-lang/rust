@@ -1,8 +1,9 @@
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::map::Map;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::middle::resolve_lifetime as rl;
 use crate::ty::{self, Region, TyCtxt};
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -90,7 +91,9 @@ struct FindNestedTypeVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
@@ -207,7 +210,9 @@ struct TyPathVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for TyPathVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Map<'tcx>> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

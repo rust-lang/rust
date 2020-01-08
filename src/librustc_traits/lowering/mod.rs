@@ -1,7 +1,7 @@
 mod environment;
 
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
+use rustc::hir::map::Map;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, FromEnv, GoalKind, PolyDomainGoal, ProgramClause,
     ProgramClauseCategory, WellFormed, WhereClause,
@@ -12,6 +12,7 @@ use rustc::ty::{self, List, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 use syntax::ast;
 
@@ -600,7 +601,9 @@ impl ClauseDumper<'tcx> {
 }
 
 impl Visitor<'tcx> for ClauseDumper<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
