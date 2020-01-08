@@ -42,7 +42,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let instance = ty::Instance::resolve(self, param_env, def_id, substs);
         if let Some(instance) = instance {
             if let Some(promoted) = promoted {
-                self.const_eval_promoted(instance, promoted)
+                self.const_eval_promoted(param_env, instance, promoted)
             } else {
                 self.const_eval_instance(param_env, instance, span)
             }
@@ -68,11 +68,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluate a promoted constant.
     pub fn const_eval_promoted(
         self,
+        param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
         promoted: mir::Promoted,
     ) -> ConstEvalResult<'tcx> {
         let cid = GlobalId { instance, promoted: Some(promoted) };
-        let param_env = ty::ParamEnv::reveal_all();
         self.const_eval_validated(param_env.and(cid))
     }
 }
