@@ -289,7 +289,6 @@ fn rustbook_features() -> Vec<String> {
 macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
-        $(,llvm_tools = $llvm:expr)*
         $(,is_external_tool = $external:expr)*
         $(,features = $features:expr)*
         ;
@@ -299,15 +298,6 @@ macro_rules! bootstrap_tool {
             $(
                 $name,
             )+
-        }
-
-        impl Tool {
-            /// Whether this tool requires LLVM to run
-            pub fn uses_llvm_tools(&self) -> bool {
-                match self {
-                    $(Tool::$name => false $(|| $llvm)*,)+
-                }
-            }
         }
 
         impl<'a> Builder<'a> {
@@ -377,7 +367,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", llvm_tools = true;
+    Compiletest, "src/tools/compiletest", "compiletest";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
