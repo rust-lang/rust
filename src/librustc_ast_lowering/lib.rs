@@ -173,7 +173,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 pub trait Resolver {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
-    fn item_generics_cloned_untracked_liftimes(&self, def: DefId, sess: &Session) -> usize;
+    fn item_generics_num_liftimes(&self, def: DefId, sess: &Session) -> usize;
 
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;

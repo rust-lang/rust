@@ -1031,7 +1031,7 @@ impl rustc_ast_lowering::Resolver for Resolver<'_> {
         if id.is_local() { self.definitions().def_key(id.index) } else { self.cstore().def_key(id) }
     }
 
-    fn item_generics_cloned_untracked_liftimes(&self, def_id: DefId, sess: &Session) -> usize {
+    fn item_generics_num_liftimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.cstore().item_generics_cloned_untracked(def_id, sess).own_counts().lifetimes
     }
 
