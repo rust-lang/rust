@@ -1287,6 +1287,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         if !concrete_is_opaque {
+                            // Equate concrete_ty (an inference variable) with
+                            // the renumbered type from typeck.
                             obligations.add(
                                 infcx
                                     .at(&ObligationCause::dummy(), param_env)
