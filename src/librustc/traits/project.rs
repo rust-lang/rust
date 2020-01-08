@@ -216,7 +216,22 @@ pub fn normalize<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
-    normalize_with_depth(selcx, param_env, cause, 0, value)
+    let mut obligations = Vec::new();
+    let value = normalize_to(selcx, param_env, cause, value, &mut obligations);
+    Normalized { value, obligations }
+}
+
+pub fn normalize_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    value: &T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    normalize_with_depth_to(selcx, param_env, cause, 0, value, obligations)
 }
 
 /// As `normalize`, but with a custom depth.
@@ -230,8 +245,24 @@ pub fn normalize_with_depth<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
+    let mut obligations = Vec::new();
+    let value = normalize_with_depth_to(selcx, param_env, cause, depth, value, &mut obligations);
+    Normalized { value, obligations }
+}
+
+pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    value: &T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
     debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
-    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth);
+    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
     let result = normalizer.fold(value);
     debug!(
         "normalize_with_depth: depth={} result={:?} with {} obligations",
@@ -240,14 +271,14 @@ where
         normalizer.obligations.len()
     );
     debug!("normalize_with_depth: depth={} obligations={:?}", depth, normalizer.obligations);
-    Normalized { value: result, obligations: normalizer.obligations }
+    result
 }
 
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     depth: usize,
 }
 
@@ -257,8 +288,9 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cause: ObligationCause<'tcx>,
         depth: usize,
+        obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
-        AssocTypeNormalizer { selcx, param_env, cause, obligations: vec![], depth }
+        AssocTypeNormalizer { selcx, param_env, cause, obligations, depth }
     }
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
@@ -343,7 +375,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 );
                 debug!(
                     "AssocTypeNormalizer: depth={} normalized {:?} to {:?}, \
-                        now with {} obligations",
+                     now with {} obligations",
                     self.depth,
                     ty,
                     normalized_ty,
@@ -441,8 +473,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
     debug!(
         "opt_normalize_projection_type(\
-           projection_ty={:?}, \
-           depth={})",
+         projection_ty={:?}, \
+         depth={})",
         projection_ty, depth
     );
 
@@ -469,7 +501,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // changes
             debug!(
                 "opt_normalize_projection_type: \
-                    found cache entry: ambiguous"
+                 found cache entry: ambiguous"
             );
             if !projection_ty.has_closure_types() {
                 return None;
@@ -498,7 +530,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!(
                 "opt_normalize_projection_type: \
-                    found cache entry: in-progress"
+                 found cache entry: in-progress"
             );
 
             // But for now, let's classify this as an overflow:
@@ -521,7 +553,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // evaluations can causes ICEs (e.g., #43132).
             debug!(
                 "opt_normalize_projection_type: \
-                    found normalized ty `{:?}`",
+                 found normalized ty `{:?}`",
                 ty
             );
 
@@ -546,7 +578,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Err(ProjectionCacheEntry::Error) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    found error"
+                 found error"
             );
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
             obligations.extend(result.obligations);
@@ -567,23 +599,28 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!(
                 "opt_normalize_projection_type: \
-                    projected_ty={:?} \
-                    depth={} \
-                    projected_obligations={:?}",
+                 projected_ty={:?} \
+                 depth={} \
+                 projected_obligations={:?}",
                 projected_ty, depth, projected_obligations
             );
 
             let result = if projected_ty.has_projections() {
-                let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth + 1);
+                let mut normalizer = AssocTypeNormalizer::new(
+                    selcx,
+                    param_env,
+                    cause,
+                    depth + 1,
+                    &mut projected_obligations,
+                );
                 let normalized_ty = normalizer.fold(&projected_ty);
 
                 debug!(
                     "opt_normalize_projection_type: \
-                        normalized_ty={:?} depth={}",
+                     normalized_ty={:?} depth={}",
                     normalized_ty, depth
                 );
 
-                projected_obligations.extend(normalizer.obligations);
                 Normalized { value: normalized_ty, obligations: projected_obligations }
             } else {
                 Normalized { value: projected_ty, obligations: projected_obligations }
@@ -597,7 +634,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    projected_ty={:?} no progress",
+                 projected_ty={:?} no progress",
                 projected_ty
             );
             let result = Normalized { value: projected_ty, obligations: vec![] };
@@ -608,7 +645,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!(
                 "opt_normalize_projection_type: \
-                    too many candidates"
+                 too many candidates"
             );
             infcx.projection_cache.borrow_mut().ambiguous(cache_key);
             None
@@ -930,7 +967,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx, I>(
 
             debug!(
                 "assemble_candidates_from_predicates: candidate={:?} \
-                    is_match={} same_def_id={}",
+                 is_match={} same_def_id={}",
                 data, is_match, same_def_id
             );
 
@@ -1192,7 +1229,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
             None => {
                 debug!(
                     "confirm_object_candidate: no env-predicate \
-                        found in object type `{:?}`; ill-formed",
+                     found in object type `{:?}`; ill-formed",
                     object_ty
                 );
                 return Progress::error(selcx.tcx());
