@@ -22,8 +22,8 @@ fn main() -> Result<()> {
         return pre_commit::run_hook();
     }
 
-    let subcommand = std::env::args().nth(1).unwrap_or_default();
-    let mut args = Arguments::from_vec(std::env::args_os().skip(2).collect());
+    let mut args = Arguments::from_env();
+    let subcommand = args.subcommand()?.unwrap_or_default();
 
     match subcommand.as_str() {
         "install" => {
