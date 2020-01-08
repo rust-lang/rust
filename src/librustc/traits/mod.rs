@@ -50,7 +50,9 @@ pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
 pub use self::project::MismatchedProjectionTypes;
-pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
+pub use self::project::{
+    normalize, normalize_projection_type, normalize_to, poly_project_and_unify_type,
+};
 pub use self::project::{Normalized, ProjectionCache, ProjectionCacheSnapshot};
 pub use self::select::{IntercrateAmbiguityCause, SelectionContext};
 pub use self::specialize::find_associated_item;

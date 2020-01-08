@@ -9,7 +9,9 @@ use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
 use super::project;
-use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
+use super::project::{
+    normalize_with_depth, normalize_with_depth_to, Normalized, ProjectionCacheKey,
+};
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
@@ -1019,7 +1021,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let Some(value) = value {
                             debug!(
                                 "filter_negative_and_reservation_impls: \
-                                    reservation impl ambiguity on {:?}",
+                                 reservation impl ambiguity on {:?}",
                                 def_id
                             );
                             intercrate_ambiguity_clauses.push(
@@ -1317,7 +1319,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if !self.can_cache_candidate(&candidate) {
             debug!(
                 "insert_candidate_cache(trait_ref={:?}, candidate={:?} -\
-                    candidate is not cacheable",
+                 candidate is not cacheable",
                 trait_ref, candidate
             );
             return;
@@ -3484,25 +3486,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // that order.
         let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
-        let mut predicates: Vec<_> = predicates
-            .predicates
-            .iter()
-            .flat_map(|(predicate, _)| {
-                let predicate = normalize_with_depth(
-                    self,
-                    param_env,
-                    cause.clone(),
-                    recursion_depth,
-                    &predicate.subst(tcx, substs),
-                );
-                predicate.obligations.into_iter().chain(Some(Obligation {
-                    cause: cause.clone(),
-                    recursion_depth,
-                    param_env,
-                    predicate: predicate.value,
-                }))
-            })
-            .collect();
+        let mut obligations = Vec::new();
+        for (predicate, _) in predicates.predicates {
+            let predicate = normalize_with_depth_to(
+                self,
+                param_env,
+                cause.clone(),
+                recursion_depth,
+                &predicate.subst(tcx, substs),
+                &mut obligations,
+            );
+            obligations.push(Obligation {
+                cause: cause.clone(),
+                recursion_depth,
+                param_env,
+                predicate,
+            });
+        }
 
         // We are performing deduplication here to avoid exponential blowups
         // (#38528) from happening, but the real cause of the duplication is
@@ -3513,20 +3513,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This code is hot enough that it's worth avoiding the allocation
         // required for the FxHashSet when possible. Special-casing lengths 0,
         // 1 and 2 covers roughly 75-80% of the cases.
-        if predicates.len() <= 1 {
+        if obligations.len() <= 1 {
             // No possibility of duplicates.
-        } else if predicates.len() == 2 {
+        } else if obligations.len() == 2 {
             // Only two elements. Drop the second if they are equal.
-            if predicates[0] == predicates[1] {
-                predicates.truncate(1);
+            if obligations[0] == obligations[1] {
+                obligations.truncate(1);
             }
         } else {
             // Three or more elements. Use a general deduplication process.
             let mut seen = FxHashSet::default();
-            predicates.retain(|i| seen.insert(i.clone()));
+            obligations.retain(|i| seen.insert(i.clone()));
         }
 
-        predicates
+        obligations
     }
 }
 
