@@ -1303,15 +1303,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        /// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
+        /// extra information about each type, but we only care about the category.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        enum TyKind {
+        enum TyCategory {
             Closure,
             Opaque,
             Generator,
             Foreign,
         }
 
-        impl TyKind {
+        impl TyCategory {
             fn descr(&self) -> &'static str {
                 match self {
                     Self::Closure => "closure",
@@ -1334,8 +1336,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         struct OpaqueTypesVisitor<'tcx> {
             types: FxHashMap<TyKind, FxHashSet<Span>>,
-            expected: FxHashMap<TyKind, FxHashSet<Span>>,
-            found: FxHashMap<TyKind, FxHashSet<Span>>,
+            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
+            found: FxHashMap<TyCategory, FxHashSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1354,6 +1356,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ignore_span,
                     tcx,
                 };
+                // The visitor puts all the relevant encountered types in `self.types`, but in
+                // here we want to visit two separate types with no relation to each other, so we
+                // move the results from `types` to `expected` or `found` as appropriate.
                 expected.visit_with(&mut types_visitor);
                 std::mem::swap(&mut types_visitor.expected, &mut types_visitor.types);
                 found.visit_with(&mut types_visitor);
@@ -1362,28 +1367,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             fn report(&self, err: &mut DiagnosticBuilder<'_>) {
-                for (target, types) in &[("expected", &self.expected), ("found", &self.found)] {
-                    for (key, values) in types.iter() {
-                        let count = values.len();
-                        for sp in values {
-                            err.span_label(
-                                *sp,
-                                format!(
-                                    "{}{}{} {}{}",
-                                    if sp.is_desugaring(DesugaringKind::Async) {
-                                        "the `Output` of this `async fn`'s "
-                                    } else if count == 1 {
-                                        "the "
-                                    } else {
-                                        ""
-                                    },
-                                    if count > 1 { "one of the " } else { "" },
-                                    target,
-                                    key.descr(),
-                                    pluralize!(count),
-                                ),
-                            );
-                        }
+                self.add_labels_for_types(err, "expected", &self.expected);
+                self.add_labels_for_types(err, "found", &self.found);
+            }
+
+            fn add_labels_for_types(
+                &self,
+                err: &mut DiagnosticBuilder<'_>,
+                target: &str,
+                types: &FxHashMap<TyKind, FxHashSet<Span>>,
+            ) {
+                for (key, values) in types.iter() {
+                    let count = values.len();
+                    let kind = key.descr();
+                    for sp in values {
+                        err.span_label(
+                            *sp,
+                            format!(
+                                "{}{}{} {}{}",
+                                if sp.is_desugaring(DesugaringKind::Async) {
+                                    "the `Output` of this `async fn`'s "
+                                } else if count == 1 {
+                                    "the "
+                                } else {
+                                    ""
+                                },
+                                if count > 1 { "one of the " } else { "" },
+                                target,
+                                key,
+                                pluralize!(count),
+                            ),
+                        );
                     }
                 }
             }
