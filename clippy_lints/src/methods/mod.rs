@@ -3278,7 +3278,7 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
         if op == hir::UnNot;
         then {
             lint_unary = "!";
-            verb = "denys";
+            verb = "denies";
             help_unary = "";
             span = parent;
         } else {
