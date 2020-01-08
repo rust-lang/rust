@@ -60,6 +60,18 @@ LL |     let _s = Path::new("/a/b/").join("c").to_owned();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant clone
+  --> $DIR/redundant_clone.rs:21:42
+   |
+LL |     let _s = Path::new("/a/b/").join("c").to_path_buf();
+   |                                          ^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:21:14
+   |
+LL |     let _s = Path::new("/a/b/").join("c").to_path_buf();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
   --> $DIR/redundant_clone.rs:23:29
    |
 LL |     let _s = OsString::new().to_owned();
@@ -69,6 +81,18 @@ note: this value is dropped without further use
   --> $DIR/redundant_clone.rs:23:14
    |
 LL |     let _s = OsString::new().to_owned();
+   |              ^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/redundant_clone.rs:25:29
+   |
+LL |     let _s = OsString::new().to_os_string();
+   |                             ^^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:25:14
+   |
+LL |     let _s = OsString::new().to_os_string();
    |              ^^^^^^^^^^^^^^^
 
 error: redundant clone
@@ -131,5 +155,5 @@ note: this value is dropped without further use
 LL |         let _f = f.clone();
    |                  ^
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 

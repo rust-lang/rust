@@ -307,6 +307,13 @@ fn find_stmt_assigns_to<'tcx>(
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
             base_local_and_movability(cx, mir, place)
         },
+        (false, mir::Rvalue::Ref(_, _, place)) => {
+            if let [mir::ProjectionElem::Deref] = place.as_ref().projection {
+                base_local_and_movability(cx, mir, place)
+            } else {
+                None
+            }
+        },
         _ => None,
     }
 }
