@@ -726,7 +726,7 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&my_out, &rustdoc);
         }
 
-        cargo.env("CARGO_TARGET_DIR", out_dir).arg(cmd).arg("-Zconfig-profile");
+        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd).arg("-Zconfig-profile");
 
         let profile_var = |name: &str| {
             let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
@@ -864,6 +864,18 @@ impl<'a> Builder<'a> {
         let maybe_sysroot = self.sysroot(compiler);
         let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
         let libdir = self.rustc_libdir(compiler);
+
+        // Clear the output directory if the real rustc we're using has changed;
+        // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
+        //
+        // Avoid doing this during dry run as that usually means the relevant
+        // compiler is not yet linked/copied properly.
+        //
+        // Only clear out the directory if we're compiling std; otherwise, we
+        // should let Cargo take care of things for us (via depdep info)
+        if !self.config.dry_run && mode == Mode::ToolStd && cmd == "build" {
+            self.clear_if_dirty(&out_dir, &self.rustc(compiler));
+        }
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
