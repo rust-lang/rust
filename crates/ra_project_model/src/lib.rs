@@ -25,16 +25,10 @@ pub use crate::{
 
 pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CargoTomlNotFoundError(pub PathBuf);
 
 impl std::fmt::Display for CargoTomlNotFoundError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "can't find Cargo.toml at {}", self.0.display())
-    }
-}
-
-impl std::fmt::Debug for CargoTomlNotFoundError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "can't find Cargo.toml at {}", self.0.display())
     }
