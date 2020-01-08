@@ -1,6 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
-
 // ignore-tidy-tab
 
 static FOO: u8 = b'\f';  //~ ERROR unknown byte escape

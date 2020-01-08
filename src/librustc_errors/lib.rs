@@ -278,7 +278,6 @@ struct HandlerInner {
     err_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
-    continue_after_error: bool,
     delayed_span_bugs: Vec<Diagnostic>,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -402,7 +401,6 @@ impl Handler {
                 err_count: 0,
                 deduplicated_err_count: 0,
                 emitter,
-                continue_after_error: true,
                 delayed_span_bugs: Vec::new(),
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
@@ -410,10 +408,6 @@ impl Handler {
                 stashed_diagnostics: Default::default(),
             }),
         }
-    }
-
-    pub fn set_continue_after_error(&self, continue_after_error: bool) {
-        self.inner.borrow_mut().continue_after_error = continue_after_error;
     }
 
     // This is here to not allow mutation of flags;
@@ -672,10 +666,6 @@ impl Handler {
         self.inner.borrow_mut().abort_if_errors()
     }
 
-    pub fn abort_if_errors_and_should_abort(&self) {
-        self.inner.borrow_mut().abort_if_errors_and_should_abort()
-    }
-
     /// `true` if we haven't taught a diagnostic with this code already.
     /// The caller must then teach the user about such a diagnostic.
     ///
@@ -696,7 +686,6 @@ impl Handler {
     fn emit_diag_at_span(&self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         let mut inner = self.inner.borrow_mut();
         inner.emit_diagnostic(diag.set_span(sp));
-        inner.abort_if_errors_and_should_abort();
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -830,14 +819,6 @@ impl HandlerInner {
         self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
 
-    fn abort_if_errors_and_should_abort(&mut self) {
-        self.emit_stashed_diagnostics();
-
-        if self.has_errors() && !self.continue_after_error {
-            FatalError.raise();
-        }
-    }
-
     fn abort_if_errors(&mut self) {
         self.emit_stashed_diagnostics();
 
@@ -853,7 +834,6 @@ impl HandlerInner {
 
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         self.emit_diagnostic(diag.set_span(sp));
-        self.abort_if_errors_and_should_abort();
     }
 
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {

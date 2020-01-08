@@ -54,15 +54,12 @@ use std::rc::Rc;
 use std::{env, fs, iter, mem};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    sess.diagnostic().set_continue_after_error(sess.opts.debugging_opts.continue_parse_after_error);
     let krate = sess.time("parsing", || match input {
         Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
         Input::Str { input, name } => {
             parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
         }
     })?;
-
-    sess.diagnostic().set_continue_after_error(true);
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
