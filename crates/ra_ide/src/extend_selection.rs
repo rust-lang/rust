@@ -110,48 +110,69 @@ fn extend_tokens_from_range(
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {
-    // compute original mapped token range
-    let mut expanded = None;
-    let range = macro_call
+    // Find all non-whitespace tokens under MacroCall
+    let all_tokens: Vec<_> = macro_call
         .syntax()
         .descendants_with_tokens()
-        .filter_map(|n| match n {
-            NodeOrToken::Token(token) if token.text_range().is_subrange(&original_range) => {
-                let node = descend_into_macros(db, file_id, token);
-                match node.file_id {
-                    it if it == file_id.into() => None,
-                    it if expanded.is_none() || expanded == Some(it) => {
-                        expanded = Some(it.into());
-                        Some(node.value.text_range())
-                    }
-                    _ => None,
-                }
+        .filter_map(|n| {
+            let token = n.as_token()?;
+            if token.kind() == WHITESPACE {
+                None
+            } else {
+                Some(token.clone())
             }
-            _ => None,
         })
-        .fold1(|x, y| union_range(x, y))?;
+        .sorted_by(|a, b| Ord::cmp(&a.text_range().start(), &b.text_range().start()))
+        .collect();
 
-    let expanded = expanded?;
-    let src = db.parse_or_expand(expanded)?;
-    let parent = shallowest_node(&find_covering_element(&src, range))?.parent()?;
-    // compute parent mapped token range
-    let range = macro_call
-        .syntax()
-        .descendants_with_tokens()
-        .filter_map(|n| match n {
-            NodeOrToken::Token(token) => {
-                let node = descend_into_macros(db, file_id, token.clone());
-                if node.file_id == expanded
-                    && node.value.text_range().is_subrange(&parent.text_range())
-                {
-                    Some(token.text_range())
+    // Get all indices which is in original range
+    let indices: Vec<_> =
+        all_tokens
+            .iter()
+            .enumerate()
+            .filter_map(|(i, token)| {
+                if token.text_range().is_subrange(&original_range) {
+                    Some(i)
                 } else {
                     None
                 }
-            }
-            _ => None,
-        })
-        .fold1(|x, y| union_range(x, y))?;
+            })
+            .collect();
+
+    // Compute the first and last token index in original_range
+    let first_idx = *indices.iter().min_by_key(|&&idx| all_tokens[idx].text_range().start())?;
+    let last_idx = *indices.iter().max_by_key(|&&idx| all_tokens[idx].text_range().end())?;
+
+    // compute original mapped token range
+    let expanded = {
+        let first_node = descend_into_macros(db, file_id, all_tokens[first_idx].clone());
+        let first_node = first_node.map(|it| it.text_range());
+
+        let last_node = descend_into_macros(db, file_id, all_tokens[last_idx].clone());
+        if last_node.file_id == file_id.into() || first_node.file_id != last_node.file_id {
+            return None;
+        }
+        first_node.map(|it| union_range(it, last_node.value.text_range()))
+    };
+
+    // Compute parent node range
+    let src = db.parse_or_expand(expanded.file_id)?;
+    let parent = shallowest_node(&find_covering_element(&src, expanded.value))?.parent()?;
+
+    let validate = |&idx: &usize| {
+        let token: &SyntaxToken = &all_tokens[idx];
+        let node = descend_into_macros(db, file_id, token.clone());
+
+        node.file_id == expanded.file_id
+            && node.value.text_range().is_subrange(&parent.text_range())
+    };
+
+    // Find the first and last text range under expanded parent
+    let first = (0..=first_idx).rev().take_while(validate).last()?;
+    let last = (last_idx..all_tokens.len()).take_while(validate).last()?;
+
+    let range = union_range(all_tokens[first].text_range(), all_tokens[last].text_range());
+
     if original_range.is_subrange(&range) && original_range != range {
         Some(range)
     } else {
