@@ -33,7 +33,7 @@ pub struct FileId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
     /// Sysroot or crates.io library.
     ///
@@ -44,11 +44,11 @@ pub struct SourceRoot {
 }
 
 impl SourceRoot {
-    pub fn new() -> SourceRoot {
-        Default::default()
+    pub fn new_local() -> SourceRoot {
+        SourceRoot { is_library: false, files: Default::default() }
     }
     pub fn new_library() -> SourceRoot {
-        SourceRoot { is_library: true, ..SourceRoot::new() }
+        SourceRoot { is_library: true, files: Default::default() }
     }
     pub fn insert_file(&mut self, path: RelativePathBuf, file_id: FileId) {
         self.files.insert(path, file_id);
