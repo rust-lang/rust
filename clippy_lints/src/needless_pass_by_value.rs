@@ -9,6 +9,7 @@ use rustc::declare_lint_pass;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::traits;
+use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -205,7 +206,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     let sugg = |db: &mut DiagnosticBuilder<'_>| {
                         if let ty::Adt(def, ..) = ty.kind {
                             if let Some(span) = cx.tcx.hir().span_if_local(def.did) {
-                                if cx.param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
+                                if can_type_implement_copy(cx.tcx, cx.param_env, ty).is_ok() {
                                     db.span_help(span, "consider marking this type as `Copy`");
                                 }
                             }
