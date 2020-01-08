@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 struct Foo {
     x: isize,
     y: isize,

@@ -602,10 +602,6 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.continue_parse_after_error = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.debugging_opts.force_overflow_checks = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 

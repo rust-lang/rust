@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 // Test that we can recover from mismatched braces in the parser.
 
 trait Foo {

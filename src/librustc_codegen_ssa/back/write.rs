@@ -1679,7 +1679,6 @@ impl SharedEmitterMain {
                         d.code(code);
                     }
                     handler.emit_diagnostic(&d);
-                    handler.abort_if_errors_and_should_abort();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
                     sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
