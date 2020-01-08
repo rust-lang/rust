@@ -10,7 +10,7 @@ use rustc::mir::visit::{
 };
 use rustc::mir::{
     read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
+    Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceRef, ReadOnlyBodyAndCache, Rvalue,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
@@ -602,20 +602,24 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // (e.g. for CTFE) it can never happen. But here in const_prop
             // unknown data is uninitialized, so if e.g. a function argument is unsized
             // and has a reference taken, we get an ICE.
+            //
+            // Additionally, to evaluate a Ref into a place to const prop, we must ensure that the
+            // underlying base data is initialized before we evaluate the rvalue, or we will end up
+            // propagating an allocation which will never be initialized.
             Rvalue::Ref(_, _, place_ref) => {
                 trace!("checking Ref({:?})", place_ref);
 
-                if let Some(local) = place_ref.as_local() {
-                    let alive = if let LocalValue::Live(_) = self.ecx.frame().locals[local].value {
-                        true
-                    } else {
-                        false
-                    };
+                let PlaceRef { local, .. } = place_ref.as_ref();
 
-                    if !alive {
-                        trace!("skipping Ref({:?}) to uninitialized local", place);
-                        return None;
-                    }
+                let alive = if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
+                    true
+                } else {
+                    false
+                };
+
+                if !alive {
+                    trace!("skipping Ref({:?}) to uninitialized local", place);
+                    return None;
                 }
             }
 
