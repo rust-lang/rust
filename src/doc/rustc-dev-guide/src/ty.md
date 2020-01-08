@@ -30,8 +30,8 @@ representation of types, but in reality it reflects more of what the user wrote,
 wrote so as to represent that type.
 
 In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning* of what the user
-wrote. For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice in their
-program, but the `ty::Ty` would record the fact that both usages refer to the same type.
+wrote. For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
+in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
 **Example: `fn foo(x: u32) → u32 { }`** In this function we see that `u32` appears twice. We know
 that that is the same type, i.e. the function takes an argument and returns an argument of the same
@@ -68,9 +68,9 @@ HIR is built, some basic type inference and type checking is done. During the ty
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous. The `ty::Ty` then, is used for type checking while making sure everything has the
 expected type. The [`astconv` module][astconv], is where the code responsible for converting a
-`rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase, but also in other
-parts of the compiler that want to ask questions like "what argument types does this function
-expect"?.
+`rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase,
+but also in other parts of the compiler that want to ask questions like "what argument types does
+this function expect"?.
 
 [astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/astconv/index.html
 
@@ -85,11 +85,11 @@ we determine that they semantically are the same type and that’s the `ty::Ty` 
 
 Consider another example: `fn foo<T>(x: T) -> u32` and suppose that someone invokes `foo::<u32>(0)`.
 This means that `T` and `u32` (in this invocation) actually turns out to be the same type, so we
-would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`. (This is
-a bit over-simplified, though, since during type checking, we would check the function generically
-and would still have a `T` distinct from `u32`. Later, when doing code generation, we would always
-be handling "monomorphized" (fully substituted) versions of each function, and hence we would know
-what `T` represents (and specifically that it is `u32`).
+would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`.
+(This is a bit over-simplified, though, since during type checking, we would check the function
+generically and would still have a `T` distinct from `u32`. Later, when doing code generation,
+we would always be handling "monomorphized" (fully substituted) versions of each function,
+and hence we would know what `T` represents (and specifically that it is `u32`).
 
 Here is one more example:
 
@@ -104,10 +104,10 @@ mod b {
 }
 ```
 
-Here the type `X` will vary depending on context, clearly. If you look at the `rustc_hir::Ty`, you will
-get back that `X` is an alias in both cases (though it will be mapped via name resolution to
-distinct aliases). But if you look at the `ty::Ty` signature, it will be either `fn(u32) -> u32` or
-`fn(i32) -> i32` (with type aliases fully expanded).
+Here the type `X` will vary depending on context, clearly. If you look at the `rustc_hir::Ty`,
+you will get back that `X` is an alias in both cases (though it will be mapped via name resolution
+to distinct aliases). But if you look at the `ty::Ty` signature, it will be either `fn(u32) -> u32`
+or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
@@ -466,9 +466,10 @@ You may have a couple of followup questions…
 replace a `SubstRef` with another list of types.
 
 [Here is an example of actually using `subst` in the compiler][substex].  The exact details are not
-too important, but in this piece of code, we happen to be converting from the `rustc_hir::Ty` to a real
-`ty::Ty`. You can see that we first get some substitutions (`substs`).  Then we call `type_of` to
-get a type and call `ty.subst(substs)` to get a new version of `ty` with the substitutions made.
+too important, but in this piece of code, we happen to be converting from the `rustc_hir::Ty` to
+a real `ty::Ty`. You can see that we first get some substitutions (`substs`).  Then we call
+`type_of` to get a type and call `ty.subst(substs)` to get a new version of `ty` with
+the substitutions made.
 
 [substex]: https://github.com/rust-lang/rust/blob/597f432489f12a3f33419daa039ccef11a12c4fd/src/librustc_typeck/astconv.rs#L942-L953
 
