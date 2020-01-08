@@ -107,27 +107,42 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     };
 
     Cmd {
-        unix: &format!(r"{} --install-extension ./ra-lsp-0.0.1.vsix --force", code_binary),
+        unix: &format!(r"{} --install-extension ./rust-analyzer-0.1.0.vsix --force", code_binary),
         windows: &format!(
-            r"cmd.exe /c {}.cmd --install-extension ./ra-lsp-0.0.1.vsix --force",
+            r"cmd.exe /c {}.cmd --install-extension ./rust-analyzer-0.1.0.vsix --force",
             code_binary
         ),
         work_dir: "./editors/code",
     }
     .run()?;
 
-    let output = Cmd {
-        unix: &format!(r"{} --list-extensions", code_binary),
-        windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
-        work_dir: ".",
-    }
-    .run_with_output()?;
+    let installed_extensions = {
+        let output = Cmd {
+            unix: &format!(r"{} --list-extensions", code_binary),
+            windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
+            work_dir: ".",
+        }
+        .run_with_output()?;
+        String::from_utf8(output.stdout)?
+    };
 
-    if !str::from_utf8(&output.stdout)?.contains("ra-lsp") {
+    if !installed_extensions.contains("rust-analyzer") {
         anyhow::bail!(
             "Could not install the Visual Studio Code extension. \
              Please make sure you have at least NodeJS 10.x together with the latest version of VS Code installed and try again."
         );
+    }
+
+    if installed_extensions.contains("ra-lsp") {
+        Cmd {
+            unix: &format!(r"{} --uninstall-extension matklad.ra-lsp", code_binary),
+            windows: &format!(
+                r"cmd.exe /c {}.cmd --uninstall-extension matklad.ra-lsp",
+                code_binary
+            ),
+            work_dir: "./editors/code",
+        }
+        .run()?;
     }
 
     Ok(())
