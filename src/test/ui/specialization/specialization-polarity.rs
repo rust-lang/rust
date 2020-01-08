@@ -6,11 +6,11 @@
 auto trait Foo {}
 
 impl<T> Foo for T {}
-impl !Foo for u8 {} //~ ERROR E0119
+impl !Foo for u8 {} //~ ERROR E0748
 
 auto trait Bar {}
 
 impl<T> !Bar for T {}
-impl Bar for u8 {} //~ ERROR E0119
+impl Bar for u8 {} //~ ERROR E0748
 
 fn main() {}

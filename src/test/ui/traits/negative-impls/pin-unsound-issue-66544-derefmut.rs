@@ -9,12 +9,12 @@ use std::pin::Pin;
 
 struct MyType<'a>(Cell<Option<&'a mut MyType<'a>>>, PhantomPinned);
 
-impl<'a> DerefMut for &'a MyType<'a> { //~ ERROR conflicting implementations
+impl<'a> DerefMut for &'a MyType<'a> {
+    //~^ ERROR E0748
     fn deref_mut(&mut self) -> &mut MyType<'a> {
         self.0.replace(None).unwrap()
     }
 }
-
 
 fn main() {
     let mut unpinned = MyType(Cell::new(None), PhantomPinned);
