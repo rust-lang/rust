@@ -16,21 +16,6 @@ use crate::{
     goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
 };
 
-#[derive(Default)]
-struct CallLocations {
-    funcs: IndexMap<NavigationTarget, Vec<TextRange>>,
-}
-
-impl CallLocations {
-    pub fn add(&mut self, target: &NavigationTarget, range: TextRange) {
-        self.funcs.entry(target.clone()).or_default().push(range);
-    }
-
-    pub fn into_items(self) -> Vec<CallItem> {
-        self.funcs.into_iter().map(|(target, ranges)| CallItem { target, ranges }).collect()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct CallItem {
     pub target: NavigationTarget,
@@ -144,6 +129,21 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
         .for_each(|(nav, range)| calls.add(&nav, range));
 
     Some(calls.into_items())
+}
+
+#[derive(Default)]
+struct CallLocations {
+    funcs: IndexMap<NavigationTarget, Vec<TextRange>>,
+}
+
+impl CallLocations {
+    fn add(&mut self, target: &NavigationTarget, range: TextRange) {
+        self.funcs.entry(target.clone()).or_default().push(range);
+    }
+
+    fn into_items(self) -> Vec<CallItem> {
+        self.funcs.into_iter().map(|(target, ranges)| CallItem { target, ranges }).collect()
+    }
 }
 
 #[cfg(test)]
