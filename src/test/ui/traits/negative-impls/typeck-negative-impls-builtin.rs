@@ -1,4 +1,7 @@
+// run-pass
+
 #![feature(optin_builtin_traits)]
+#![allow(dead_code)]
 
 struct TestType;
 
@@ -7,6 +10,5 @@ trait TestTrait {
 }
 
 impl !TestTrait for TestType {}
-//~^ ERROR negative impls are only allowed for auto traits (e.g., `Send` and `Sync`)
 
 fn main() {}

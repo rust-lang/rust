@@ -1,5 +1,5 @@
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:23:11
+  --> $DIR/negated-auto-traits-error.rs:23:11
    |
 LL | struct Outer<T: Send>(T);
    | ------------------------- required by `Outer`
@@ -10,7 +10,7 @@ LL |     Outer(TestType);
    = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
 
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:23:5
+  --> $DIR/negated-auto-traits-error.rs:23:5
    |
 LL | struct Outer<T: Send>(T);
    | ------------------------- required by `Outer`
@@ -21,7 +21,7 @@ LL |     Outer(TestType);
    = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
 
 error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:32:13
+  --> $DIR/negated-auto-traits-error.rs:32:13
    |
 LL | fn is_send<T: Send>(_: T) {}
    |    -------    ---- required by this bound in `is_send`
@@ -32,7 +32,7 @@ LL |     is_send(TestType);
    = help: the trait `std::marker::Send` is not implemented for `dummy1b::TestType`
 
 error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:40:13
+  --> $DIR/negated-auto-traits-error.rs:40:13
    |
 LL | fn is_send<T: Send>(_: T) {}
    |    -------    ---- required by this bound in `is_send`
@@ -44,7 +44,7 @@ LL |     is_send((8, TestType));
    = note: required because it appears within the type `({integer}, dummy1c::TestType)`
 
 error[E0277]: `dummy2::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:48:13
+  --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL | fn is_send<T: Send>(_: T) {}
    |    -------    ---- required by this bound in `is_send`
@@ -60,7 +60,7 @@ LL |     is_send(Box::new(TestType));
    = note: required because it appears within the type `std::boxed::Box<dummy2::TestType>`
 
 error[E0277]: `dummy3::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:56:13
+  --> $DIR/negated-auto-traits-error.rs:56:13
    |
 LL | fn is_send<T: Send>(_: T) {}
    |    -------    ---- required by this bound in `is_send`
@@ -74,7 +74,7 @@ LL |     is_send(Box::new(Outer2(TestType)));
    = note: required because it appears within the type `std::boxed::Box<Outer2<dummy3::TestType>>`
 
 error[E0277]: `main::TestType` cannot be sent between threads safely
-  --> $DIR/traits-negative-impls.rs:66:13
+  --> $DIR/negated-auto-traits-error.rs:66:13
    |
 LL | fn is_sync<T: Sync>(_: T) {}
    |    -------    ---- required by this bound in `is_sync`

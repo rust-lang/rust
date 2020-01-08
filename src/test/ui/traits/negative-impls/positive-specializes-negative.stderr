@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `u32`:
+  --> $DIR/positive-specializes-negative.rs:7:1
+   |
+LL | impl<T> !MyTrait for T { }
+   | ---------------------- first implementation here
+LL | impl MyTrait for u32 { }
+   | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.
