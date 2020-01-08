@@ -138,10 +138,13 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             } else {
                 debug!("annotate: not found, parent = {:?}", self.parent_stab);
                 if let Some(stab) = self.parent_stab {
-                    // Instability (but not stability) is inherited from the parent.
+                    // Instability (but not typically stability) is inherited from the parent.
                     // If something is unstable, everything inside it should also be
                     // considered unstable.
-                    if stab.level.is_unstable() {
+                    // `AnnotationKind::Optional` items also inherit stability, as they may be
+                    // considered stable-by-default items, requiring an instability attribute to
+                    // override this.
+                    if stab.level.is_unstable() || kind == AnnotationKind::Optional {
                         self.index.stab_map.insert(hir_id, stab);
                     }
                 }
@@ -173,7 +176,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // Propagate unstability.  This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
-                if stab.level.is_unstable() {
+                if stab.level.is_unstable() || kind == AnnotationKind::Optional {
                     self.index.stab_map.insert(hir_id, stab);
                 }
             }

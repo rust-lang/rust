@@ -697,7 +697,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                     self.ast_region_to_region(&lt, Some(param)).into()
                 }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
+                    if *has_default {
+                        tcx.check_stability(param.def_id, Some(arg.id()), arg.span());
+                    }
+
                     self.ast_ty_to_ty(&ty).into()
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
