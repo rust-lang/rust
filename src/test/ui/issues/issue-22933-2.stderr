@@ -1,4 +1,4 @@
-error[E0599]: no variant or associated item named `PIE` found for type `Delicious` in the current scope
+error[E0599]: no variant or associated item named `PIE` found for enum `Delicious` in the current scope
   --> $DIR/issue-22933-2.rs:4:55
    |
 LL | enum Delicious {

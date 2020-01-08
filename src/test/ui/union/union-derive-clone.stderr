@@ -6,7 +6,7 @@ LL | #[derive(Clone)]
    |
    = note: required by `std::clone::AssertParamIsCopy`
 
-error[E0599]: no method named `clone` found for type `U5<CloneNoCopy>` in the current scope
+error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the current scope
   --> $DIR/union-derive-clone.rs:37:15
    |
 LL | union U5<T> {

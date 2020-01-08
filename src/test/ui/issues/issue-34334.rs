@@ -7,5 +7,5 @@ fn main () {
     //~| ERROR expected expression, found reserved identifier `_`
     //~| ERROR expected expression, found reserved identifier `_`
     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
-    //~^ ERROR no method named `iter` found for type `()` in the current scope
+    //~^ ERROR no method named `iter` found
 }

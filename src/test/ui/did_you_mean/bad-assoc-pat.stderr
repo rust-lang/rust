@@ -37,13 +37,13 @@ LL |     ($ty: ty) => ($ty::AssocItem)
 LL |         pat!(u8) => {}
    |         -------- in this macro invocation
 
-error[E0599]: no associated item named `AssocItem` found for type `[u8]` in the current scope
+error[E0599]: no associated item named `AssocItem` found for slice `[u8]` in the current scope
   --> $DIR/bad-assoc-pat.rs:3:15
    |
 LL |         [u8]::AssocItem => {}
    |               ^^^^^^^^^ associated item not found in `[u8]`
 
-error[E0599]: no associated item named `AssocItem` found for type `(u8, u8)` in the current scope
+error[E0599]: no associated item named `AssocItem` found for tuple `(u8, u8)` in the current scope
   --> $DIR/bad-assoc-pat.rs:6:19
    |
 LL |         (u8, u8)::AssocItem => {}
@@ -55,7 +55,7 @@ error[E0599]: no associated item named `AssocItem` found for type `_` in the cur
 LL |         _::AssocItem => {}
    |            ^^^^^^^^^ associated item not found in `_`
 
-error[E0599]: no associated item named `AssocItem` found for type `(u8,)` in the current scope
+error[E0599]: no associated item named `AssocItem` found for tuple `(u8,)` in the current scope
   --> $DIR/bad-assoc-pat.rs:14:17
    |
 LL |         &(u8,)::AssocItem => {}

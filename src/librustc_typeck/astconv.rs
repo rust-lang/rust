@@ -2114,9 +2114,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
                     tcx.sess.span_err(span, &msg);
                 } else if qself_ty.is_enum() {
-                    let mut err = tcx.sess.struct_span_err(
+                    let mut err = struct_span_err!(
+                        tcx.sess,
                         assoc_ident.span,
-                        &format!("no variant `{}` in enum `{}`", assoc_ident, qself_ty),
+                        E0599,
+                        "no variant named `{}` found for enum `{}`",
+                        assoc_ident,
+                        qself_ty,
                     );
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");

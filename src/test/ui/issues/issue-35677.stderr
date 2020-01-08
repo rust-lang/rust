@@ -1,4 +1,4 @@
-error[E0599]: no method named `is_subset` found for type `&std::collections::HashSet<T>` in the current scope
+error[E0599]: no method named `is_subset` found for reference `&std::collections::HashSet<T>` in the current scope
   --> $DIR/issue-35677.rs:4:10
    |
 LL |     this.is_subset(other)

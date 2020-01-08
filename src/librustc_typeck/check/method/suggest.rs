@@ -361,10 +361,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess,
                             span,
                             E0599,
-                            "no {} named `{}` found for type `{}` in the current scope",
+                            "no {} named `{}` found for {} `{}` in the current scope",
                             item_kind,
                             item_name,
-                            ty_str
+                            actual.prefix_string(),
+                            ty_str,
                         );
                         if let Some(span) =
                             tcx.sess.confused_type_with_std_module.borrow().get(&span)

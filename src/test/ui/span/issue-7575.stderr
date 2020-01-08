@@ -38,7 +38,7 @@ help: disambiguate the method call for candidate #3
 LL |     u.f8(42) + UnusedTrait::f9(u, 342) + m.fff(42)
    |                ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0599]: no method named `fff` found for type `Myisize` in the current scope
+error[E0599]: no method named `fff` found for struct `Myisize` in the current scope
   --> $DIR/issue-7575.rs:62:30
    |
 LL | struct Myisize(isize);
@@ -57,7 +57,7 @@ note: the candidate is defined in an impl for the type `Myisize`
 LL |     fn fff(i: isize) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0599]: no method named `is_str` found for type `T` in the current scope
+error[E0599]: no method named `is_str` found for type parameter `T` in the current scope
   --> $DIR/issue-7575.rs:70:7
    |
 LL |     t.is_str()

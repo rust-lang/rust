@@ -1,4 +1,4 @@
-error[E0599]: no method named `clone` found for type `Bar<NotClone>` in the current scope
+error[E0599]: no method named `clone` found for struct `Bar<NotClone>` in the current scope
   --> $DIR/derive-assoc-type-not-impl.rs:18:30
    |
 LL | struct Bar<T: Foo> {
