@@ -1,8 +1,8 @@
 //! Advertizes the capabilities of the LSP Server.
 
 use lsp_types::{
-    CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
-    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
+    CallHierarchyServerCapability, CodeActionProviderCapability, CodeLensOptions,
+    CompletionOptions, DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, ServerCapabilities, SignatureHelpOptions,
     TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
@@ -56,7 +56,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         color_provider: None,
         execute_command_provider: None,
         workspace: None,
-        call_hierarchy_provider: None,
+        call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
         experimental: Default::default(),
     }
 }

@@ -6,13 +6,15 @@ use serde::{Deserialize, Serialize};
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
-    CodeLensParams, CompletionParams, CompletionResponse, DidChangeConfigurationParams,
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
-    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
-    FileSystemWatcher, Hover, InitializeResult, MessageType, ProgressParams, ProgressParamsValue,
-    ProgressToken, PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams,
-    SelectionRange, SelectionRangeParams, ShowMessageParams, SignatureHelp, TextDocumentEdit,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
+    CodeLensParams, CompletionParams, CompletionResponse, DiagnosticTag,
+    DidChangeConfigurationParams, DidChangeWatchedFilesParams,
+    DidChangeWatchedFilesRegistrationOptions, DocumentOnTypeFormattingParams, DocumentSymbolParams,
+    DocumentSymbolResponse, FileSystemWatcher, Hover, InitializeResult, MessageType,
+    PartialResultParams, ProgressParams, ProgressParamsValue, ProgressToken,
+    PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams, SelectionRange,
+    SelectionRangeParams, ServerCapabilities, ShowMessageParams, SignatureHelp, SymbolKind,
+    TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkDoneProgressParams, WorkspaceEdit,
+    WorkspaceSymbolParams,
 };
 
 pub enum AnalyzerStatus {}

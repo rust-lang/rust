@@ -88,7 +88,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
 }
 
 #[derive(Debug)]
-enum FnCallNode {
+pub(crate) enum FnCallNode {
     CallExpr(ast::CallExpr),
     MethodCallExpr(ast::MethodCallExpr),
     MacroCallExpr(ast::MacroCall),
@@ -108,7 +108,18 @@ impl FnCallNode {
         })
     }
 
-    fn name_ref(&self) -> Option<ast::NameRef> {
+    pub(crate) fn with_node_exact(node: &SyntaxNode) -> Option<FnCallNode> {
+        match_ast! {
+            match node {
+                ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
+                ast::MethodCallExpr(it) => { Some(FnCallNode::MethodCallExpr(it)) },
+                ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
+                _ => { None },
+            }
+        }
+    }
+
+    pub(crate) fn name_ref(&self) -> Option<ast::NameRef> {
         match self {
             FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
                 ast::Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,

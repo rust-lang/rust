@@ -490,6 +490,24 @@ impl TryConvWith<&WorldSnapshot> for (FileId, RangeInfo<Vec<NavigationTarget>>) 
     }
 }
 
+pub fn to_call_hierarchy_item(
+    file_id: FileId,
+    range: TextRange,
+    world: &WorldSnapshot,
+    line_index: &LineIndex,
+    nav: NavigationTarget,
+) -> Result<lsp_types::CallHierarchyItem> {
+    Ok(lsp_types::CallHierarchyItem {
+        name: nav.name().to_string(),
+        kind: nav.kind().conv(),
+        tags: None,
+        detail: nav.description().map(|it| it.to_string()),
+        uri: file_id.try_conv_with(&world)?,
+        range: nav.range().conv_with(&line_index),
+        selection_range: range.conv_with(&line_index),
+    })
+}
+
 pub fn to_location(
     file_id: FileId,
     range: TextRange,

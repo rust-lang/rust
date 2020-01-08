@@ -499,6 +499,9 @@ fn on_request(
         .on::<req::Formatting>(handlers::handle_formatting)?
         .on::<req::DocumentHighlightRequest>(handlers::handle_document_highlight)?
         .on::<req::InlayHints>(handlers::handle_inlay_hints)?
+        .on::<req::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)?
+        .on::<req::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)?
+        .on::<req::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)?
         .finish();
     Ok(())
 }
