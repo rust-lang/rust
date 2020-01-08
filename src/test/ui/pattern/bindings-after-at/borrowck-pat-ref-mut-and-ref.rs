@@ -101,12 +101,14 @@ fn main() {
         //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
         //~| ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
         //~| ERROR cannot move out of `b` in pattern guard
+        //~| ERROR cannot move out of `b` in pattern guard
         _ => {}
     }
     match Ok(U) {
         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
         //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
         //~| ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
+        //~| ERROR cannot move out of `a` in pattern guard
         //~| ERROR cannot move out of `a` in pattern guard
         _ => {}
     }

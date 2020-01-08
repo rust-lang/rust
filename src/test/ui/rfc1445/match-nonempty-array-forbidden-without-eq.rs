@@ -15,5 +15,6 @@ fn main() {
     match [B(1)] {
         FOO => { }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     }
 }

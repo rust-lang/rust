@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ref_to_int_match.rs:24:1
+  --> $DIR/ref_to_int_match.rs:25:1
    |
 LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
@@ -12,6 +12,12 @@ error: could not evaluate constant pattern
 LL |         10..=BAR => {},
    |              ^^^
 
-error: aborting due to 2 previous errors
+error: could not evaluate constant pattern
+  --> $DIR/ref_to_int_match.rs:7:14
+   |
+LL |         10..=BAR => {},
+   |              ^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

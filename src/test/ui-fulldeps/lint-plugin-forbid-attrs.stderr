@@ -7,6 +7,15 @@ LL | #![forbid(test_lint)]
 LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
 
+error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+  --> $DIR/lint-plugin-forbid-attrs.rs:11:9
+   |
+LL | #![forbid(test_lint)]
+   |           --------- `forbid` level set here
+...
+LL | #[allow(test_lint)]
+   |         ^^^^^^^^^ overruled by previous forbid
+
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-plugin-forbid-attrs.rs:5:1
    |
@@ -27,6 +36,15 @@ note: lint level defined here
 LL | #![forbid(test_lint)]
    |           ^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+  --> $DIR/lint-plugin-forbid-attrs.rs:11:9
+   |
+LL | #![forbid(test_lint)]
+   |           --------- `forbid` level set here
+...
+LL | #[allow(test_lint)]
+   |         ^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0453`.

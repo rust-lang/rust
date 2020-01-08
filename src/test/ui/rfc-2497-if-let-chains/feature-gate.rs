@@ -123,8 +123,10 @@ fn _macros() {
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     //~| ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
+    //~| ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
     #[cfg(FALSE)] (let 0 = 1);
     //~^ ERROR `let` expressions in this position are experimental [E0658]

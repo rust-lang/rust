@@ -29,6 +29,7 @@ fn main() {
     };
     assert_foo(gen);
     //~^ ERROR implementation of `Foo` is not general enough
+    //~| ERROR implementation of `Foo` is not general enough
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
@@ -47,4 +48,5 @@ fn main() {
     };
     assert_foo(gen);
     //~^ ERROR not general enough
+    //~| ERROR not general enough
 }

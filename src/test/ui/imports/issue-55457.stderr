@@ -29,6 +29,22 @@ LL | #[non_existent]
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to 4 previous errors
+error: cannot determine resolution for the derive macro `NonExistent`
+  --> $DIR/issue-55457.rs:5:10
+   |
+LL | #[derive(NonExistent)]
+   |          ^^^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot determine resolution for the derive macro `NonExistent`
+  --> $DIR/issue-55457.rs:5:10
+   |
+LL | #[derive(NonExistent)]
+   |          ^^^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0432`.

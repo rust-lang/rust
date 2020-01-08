@@ -5,6 +5,9 @@
 //~| ERROR cannot determine resolution for the derive macro `Debug`
 //~| ERROR cannot determine resolution for the derive macro `PartialEq`
 //~| ERROR cannot determine resolution for the derive macro `Eq`
+//~| ERROR cannot determine resolution for the derive macro `Debug`
+//~| ERROR cannot determine resolution for the derive macro `PartialEq`
+//~| ERROR cannot determine resolution for the derive macro `Eq`
 struct DerivedOn;
 
 fn main() {}

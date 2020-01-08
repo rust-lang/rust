@@ -1,5 +1,5 @@
 error: no rules expected the token `let`
-  --> $DIR/feature-gate.rs:131:15
+  --> $DIR/feature-gate.rs:133:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -260,7 +260,7 @@ LL |     while let Range { start: _, end: _ } = (true..true) && false {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:129:20
+  --> $DIR/feature-gate.rs:131:20
    |
 LL |     #[cfg(FALSE)] (let 0 = 1);
    |                    ^^^^^^^^^
@@ -287,7 +287,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:126:16
+  --> $DIR/feature-gate.rs:127:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -557,7 +557,16 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:126:16
+  --> $DIR/feature-gate.rs:123:16
+   |
+LL |     use_expr!((let 0 = 1 && 0 == 0));
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/feature-gate.rs:127:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -565,6 +574,15 @@ LL |     use_expr!((let 0 = 1));
    = note: only supported directly in conditions of `if`- and `while`-expressions
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
-error: aborting due to 63 previous errors
+error: `let` expressions are not supported here
+  --> $DIR/feature-gate.rs:127:16
+   |
+LL |     use_expr!((let 0 = 1));
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: aborting due to 65 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
