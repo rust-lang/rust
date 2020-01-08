@@ -117,6 +117,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("lock_api"),
     Crate("log"),
     Crate("log_settings"),
+    Crate("maybe-uninit"),
     Crate("measureme"),
     Crate("memchr"),
     Crate("memmap"),
