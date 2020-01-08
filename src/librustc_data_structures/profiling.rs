@@ -134,7 +134,9 @@ impl SelfProfilerRef {
     }
 
     /// Start profiling a verbose generic activity. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped.
+    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
+    /// a measureme event, "verbose" generic activities also print a timing entry to
+    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
     #[inline(always)]
     pub fn verbose_generic_activity<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
         VerboseTimingGuard::start(
@@ -145,7 +147,9 @@ impl SelfProfilerRef {
     }
 
     /// Start profiling a extra verbose generic activity. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped.
+    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
+    /// a measureme event, "extra verbose" generic activities also print a timing entry to
+    /// stdout if the compiler is invoked with -Ztime-passes.
     #[inline(always)]
     pub fn extra_verbose_generic_activity<'a>(
         &'a self,
