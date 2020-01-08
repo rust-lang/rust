@@ -26,6 +26,7 @@
 
 #[macro_use]
 extern crate rustc_macros;
+#[cfg(target_arch = "x86_64")]
 #[macro_use]
 extern crate rustc_data_structures;
 #[macro_use]
