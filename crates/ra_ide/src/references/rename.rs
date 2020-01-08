@@ -110,7 +110,13 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|range| source_edit_from_file_id_range(range.file_id, range.range, new_name))
+        .map(|reference| {
+            source_edit_from_file_id_range(
+                reference.file_range.file_id,
+                reference.file_range.range,
+                new_name,
+            )
+        })
         .collect::<Vec<_>>();
 
     if edit.is_empty() {

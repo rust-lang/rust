@@ -18,7 +18,10 @@ use hir::InFile;
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
-use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode, TextUnit};
+use ra_syntax::{
+    algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextUnit,
+    TokenAtOffset,
+};
 
 use crate::{
     db::RootDatabase, display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo,
@@ -35,7 +38,20 @@ pub use self::search_scope::SearchScope;
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     declaration: NavigationTarget,
-    references: Vec<FileRange>,
+    declaration_kind: ReferenceKind,
+    references: Vec<Reference>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub file_range: FileRange,
+    pub kind: ReferenceKind,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReferenceKind {
+    StructLiteral,
+    Other,
 }
 
 impl ReferenceSearchResult {
@@ -43,7 +59,7 @@ impl ReferenceSearchResult {
         &self.declaration
     }
 
-    pub fn references(&self) -> &[FileRange] {
+    pub fn references(&self) -> &[Reference] {
         &self.references
     }
 
@@ -58,12 +74,18 @@ impl ReferenceSearchResult {
 // allow turning ReferenceSearchResult into an iterator
 // over FileRanges
 impl IntoIterator for ReferenceSearchResult {
-    type Item = FileRange;
-    type IntoIter = std::vec::IntoIter<FileRange>;
+    type Item = Reference;
+    type IntoIter = std::vec::IntoIter<Reference>;
 
     fn into_iter(mut self) -> Self::IntoIter {
         let mut v = Vec::with_capacity(self.len());
-        v.push(FileRange { file_id: self.declaration.file_id(), range: self.declaration.range() });
+        v.push(Reference {
+            file_range: FileRange {
+                file_id: self.declaration.file_id(),
+                range: self.declaration.range(),
+            },
+            kind: self.declaration_kind,
+        });
         v.append(&mut self.references);
         v.into_iter()
     }
@@ -71,11 +93,24 @@ impl IntoIterator for ReferenceSearchResult {
 
 pub(crate) fn find_all_refs(
     db: &RootDatabase,
-    position: FilePosition,
+    mut position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let parse = db.parse(position.file_id);
     let syntax = parse.tree().syntax().clone();
+
+    let token = syntax.token_at_offset(position.offset);
+    let mut search_kind = ReferenceKind::Other;
+
+    if let TokenAtOffset::Between(ref left, ref right) = token {
+        if (right.kind() == SyntaxKind::L_CURLY || right.kind() == SyntaxKind::L_PAREN)
+            && left.kind() != SyntaxKind::IDENT
+        {
+            position = FilePosition { offset: left.text_range().start(), ..position };
+            search_kind = ReferenceKind::StructLiteral;
+        }
+    }
+
     let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position)?;
 
     let declaration = match def.kind {
@@ -96,9 +131,15 @@ pub(crate) fn find_all_refs(
         }
     };
 
-    let references = process_definition(db, def, name, search_scope);
+    let references = process_definition(db, def, name, search_scope)
+        .into_iter()
+        .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
+        .collect();
 
-    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
+    Some(RangeInfo::new(
+        range,
+        ReferenceSearchResult { declaration, references, declaration_kind: ReferenceKind::Other },
+    ))
 }
 
 fn find_name<'a>(
@@ -122,7 +163,7 @@ fn process_definition(
     def: NameDefinition,
     name: String,
     scope: SearchScope,
-) -> Vec<FileRange> {
+) -> Vec<Reference> {
     let _p = profile("process_definition");
 
     let pat = name.as_str();
@@ -146,7 +187,21 @@ fn process_definition(
                 }
                 if let Some(d) = classify_name_ref(db, InFile::new(file_id.into(), &name_ref)) {
                     if d == def {
-                        refs.push(FileRange { file_id, range });
+                        let kind = if name_ref
+                            .syntax()
+                            .ancestors()
+                            .find_map(ast::RecordLit::cast)
+                            .and_then(|l| l.path())
+                            .and_then(|p| p.segment())
+                            .and_then(|p| p.name_ref())
+                            .map(|n| n == name_ref)
+                            .unwrap_or(false)
+                        {
+                            ReferenceKind::StructLiteral
+                        } else {
+                            ReferenceKind::Other
+                        };
+                        refs.push(Reference { file_range: FileRange { file_id, range }, kind });
                     }
                 }
             }
@@ -161,6 +216,24 @@ mod tests {
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
         ReferenceSearchResult, SearchScope,
     };
+
+    #[test]
+    fn test_struct_literal() {
+        let code = r#"
+    struct Foo <|>{
+        a: i32,
+    }
+    impl Foo {
+        fn f() -> i32 { 42 }
+    }    
+    fn main() {
+        let f: Foo;
+        f = Foo {a: Foo::f()};
+    }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 2);
+    }
 
     #[test]
     fn test_find_all_refs_for_local() {
