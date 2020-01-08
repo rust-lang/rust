@@ -5,8 +5,8 @@
 #![warn(unreachable_pub)]
 #![feature(rustc_private)]
 
-#[allow(dead_code)]
-#[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
+#![allow(dead_code)]
+#![cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[rustfmt::skip]
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
@@ -46,7 +46,7 @@ mod a {
 }
 
 fn test_indented_attr() {
-    #[allow(clippy::almost_swapped)]
+    #![allow(clippy::almost_swapped)]
     use std::collections::HashSet;
 
     let _ = HashSet::<u32>::default();
