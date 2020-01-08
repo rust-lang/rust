@@ -18,11 +18,11 @@ fn main() {
 
     let _s = Path::new("/a/b/").join("c");
 
-    let _s = Path::new("/a/b/").join("c").to_path_buf();
+    let _s = Path::new("/a/b/").join("c");
 
     let _s = OsString::new();
 
-    let _s = OsString::new().to_os_string();
+    let _s = OsString::new();
 
     // Check that lint level works
     #[allow(clippy::redundant_clone)]
