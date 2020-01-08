@@ -18,12 +18,12 @@ error[E0080]: evaluation of constant expression failed
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error[E0080]: erroneous constant used
+warning: erroneous constant used
   --> $DIR/conditional_array_execution.rs:11:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

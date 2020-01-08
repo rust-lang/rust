@@ -13,5 +13,5 @@ const C: () = foo(); //~ WARN: skipping const checks
 fn main() {
     println!("{:?}", C);
     //~^ ERROR: evaluation of constant expression failed
-    //~| ERROR: erroneous constant used [E0080]
+    //~| WARN: erroneous constant used [const_err]
 }

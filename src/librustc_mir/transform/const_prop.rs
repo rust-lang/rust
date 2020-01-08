@@ -18,7 +18,7 @@ use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
 use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -441,8 +441,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let err = error_to_const_error(&self.ecx, error);
-                match self.lint_root(source_info) {
-                    Some(lint_root) if c.literal.needs_subst() => {
+                if let Some(lint_root) = self.lint_root(source_info) {
+                    let lint_only = match c.literal.val {
+                        // Promoteds must lint and not error as the user didn't ask for them
+                        ConstKind::Unevaluated(_, _, Some(_)) => true,
+                        // Out of backwards compatibility we cannot report hard errors in unused
+                        // generic functions using associated constants of the generic parameters.
+                        _ => c.literal.needs_subst(),
+                    };
+                    if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
                         err.report_as_lint(
@@ -451,10 +458,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             lint_root,
                             Some(c.span),
                         );
-                    }
-                    _ => {
+                    } else {
                         err.report_as_error(self.ecx.tcx, "erroneous constant used");
                     }
+                } else {
+                    err.report_as_error(self.ecx.tcx, "erroneous constant used");
                 }
                 None
             }
