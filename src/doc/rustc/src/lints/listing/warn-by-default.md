@@ -779,7 +779,7 @@ fn main() {
 This will produce:
 
 ```text
-warning: unused `std::result::Result` that must be used
+warning: unused `std::result::Result` that should be used
  --> src/main.rs:6:5
   |
 6 |     returns_result();
