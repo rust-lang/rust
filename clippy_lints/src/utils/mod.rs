@@ -42,8 +42,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_hir::*;
 use rustc_span::hygiene::ExpnKind;
-use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, Symbol};
+use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
 use syntax::attr;
@@ -554,7 +554,16 @@ pub fn last_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = source_map_and_line.line;
     let line_start = &source_map_and_line.sf.lines[line_no];
-    Span::new(*line_start, span.hi(), span.ctxt())
+    let span = Span::new(*line_start, span.hi(), span.ctxt());
+    if_chain! {
+        if let Some(snip) = snippet_opt(cx, span);
+        if let Some(first_ch_pos) = snip.find(|c: char| !c.is_whitespace());
+        then {
+            span.with_lo(span.lo() + BytePos::from_usize(first_ch_pos))
+        } else {
+            span
+        }
+    }
 }
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
