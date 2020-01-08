@@ -3268,7 +3268,7 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
         return;
     }
 
-    let span: &hir::Expr<'_>;
+    let span: Span;
     let verb: &str;
     let lint_unary: &str;
     let help_unary: &str;
@@ -3280,15 +3280,15 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
             lint_unary = "!";
             verb = "denies";
             help_unary = "";
-            span = parent;
+            span = parent.span;
         } else {
             lint_unary = "";
             verb = "covers";
             help_unary = "!";
-            span = expr;
+            span = expr.span;
         }
     }
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
     let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
-    span_help_and_lint(cx, FILETYPE_IS_FILE, span.span, &lint_msg, &help_msg);
+    span_help_and_lint(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
 }

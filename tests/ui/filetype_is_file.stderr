@@ -7,7 +7,7 @@ LL |     if fs::metadata("foo.txt")?.file_type().is_file() {
    = note: `-D clippy::filetype-is-file` implied by `-D warnings`
    = help: use `!FileType::is_dir()` instead
 
-error: `!FileType::is_file()` only denys regular files
+error: `!FileType::is_file()` only denies regular files
   --> $DIR/filetype_is_file.rs:13:8
    |
 LL |     if !fs::metadata("foo.txt")?.file_type().is_file() {
