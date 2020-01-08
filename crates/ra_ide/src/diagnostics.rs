@@ -64,22 +64,36 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
-        let mut field_list = d.ast(db);
-        for f in d.missed_fields.iter() {
-            let field = make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
-            field_list = field_list.append_field(&field);
-        }
+        // Note that although we could add a diagnostics to
+        // fill the missing tuple field, e.g :
+        // `struct A(usize);`
+        // `let a = A { 0: () }`
+        // but it is uncommon usage and it should not be encouraged.
+        let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
+            None
+        } else {
+            let mut field_list = d.ast(db);
+            for f in d.missed_fields.iter() {
+                let field =
+                    make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
+                field_list = field_list.append_field(&field);
+            }
 
-        let mut builder = TextEditBuilder::default();
-        algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
+            let mut builder = TextEditBuilder::default();
+            algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
 
-        let fix =
-            SourceChange::source_file_edit_from("fill struct fields", file_id, builder.finish());
+            Some(SourceChange::source_file_edit_from(
+                "fill struct fields",
+                file_id,
+                builder.finish(),
+            ))
+        };
+
         res.borrow_mut().push(Diagnostic {
             range: d.highlight_range(),
             message: d.message(),
             severity: Severity::Error,
-            fix: Some(fix),
+            fix,
         })
     })
     .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
