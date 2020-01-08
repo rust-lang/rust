@@ -8,7 +8,7 @@ LL |     a + a;
    |
    = note: an implementation of `std::ops::Add` might be missing for `A`
 
-error[E0369]: cannot substract `A` from `A`
+error[E0369]: cannot subtract `A` from `A`
   --> $DIR/issue-28837.rs:8:7
    |
 LL |     a - a;
