@@ -438,7 +438,7 @@ pub enum UnsupportedOpInfo<'tcx> {
 impl fmt::Debug for UnsupportedOpInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
-        #[rustfmt::skip] // rustfmt and long matches do not go well together
+        #[rustfmt::skip] // FIXME: https://github.com/rust-lang/rustfmt/issues/3995
         match self {
             PointerOutOfBounds { ptr, msg, allocation_size } =>
                 write!(
