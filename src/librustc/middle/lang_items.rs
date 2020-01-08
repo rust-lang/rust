@@ -14,6 +14,7 @@ use crate::middle::cstore::ExternCrate;
 use crate::middle::weak_lang_items;
 use crate::ty::{self, TyCtxt};
 
+use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -184,7 +185,8 @@ impl LanguageItemCollector<'tcx> {
                         span,
                         E0152,
                         "duplicate lang item found: `{}`.",
-                        name),
+                        name
+                    ),
                     None => {
                         match self.tcx.extern_crate(item_def_id) {
                             Some(ExternCrate {dependency_of, ..}) => {
@@ -204,7 +206,7 @@ impl LanguageItemCollector<'tcx> {
                     },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
-                    span_note!(&mut err, span, "first defined here.");
+                    err.span_note(span, "first defined here.");
                 } else {
                     match self.tcx.extern_crate(original_def_id) {
                         Some(ExternCrate {dependency_of, ..}) => {

@@ -9,6 +9,7 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use crate::constrained_generic_params as cgp;
+use errors::struct_span_err;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

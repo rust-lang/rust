@@ -3,18 +3,17 @@
 use crate::Registry;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::Session;
+use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
-
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use syntax::ast::{Crate, Ident};
+
 use std::borrow::ToOwned;
 use std::env;
 use std::mem;
 use std::path::PathBuf;
-use syntax::ast::{Crate, Ident};
-use syntax::struct_span_err;
-
-use rustc_error_codes::*;
 
 /// Pointer to a registrar function.
 type PluginRegistrarFn = fn(&mut Registry<'_>);

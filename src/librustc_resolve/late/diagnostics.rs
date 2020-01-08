@@ -4,7 +4,7 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashSet;
@@ -73,7 +73,6 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
-        let code = source.error_code(res.is_some());
         let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
             (
                 format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
@@ -123,7 +122,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             )
         };
 
-        let code = DiagnosticId::Error(code.into());
+        let code = source.error_code(res.is_some());
         let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
 
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
@@ -140,8 +139,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
-            syntax::diagnostic_used!(E0411);
-            err.code(DiagnosticId::Error("E0411".into()));
+            err.code(errors::error_code!(E0411));
             err.span_label(
                 span,
                 format!("`Self` is only available in impls, traits, and type definitions"),
@@ -151,8 +149,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_value(path, ns) {
             debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
 
-            syntax::diagnostic_used!(E0424);
-            err.code(DiagnosticId::Error("E0424".into()));
+            err.code(errors::error_code!(E0424));
             err.span_label(span, match source {
                 PathSource::Pat => format!(
                     "`self` value is a keyword and may not be bound to variables or shadowed",

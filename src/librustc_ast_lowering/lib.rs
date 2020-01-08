@@ -47,7 +47,7 @@ use rustc::{bug, span_bug};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_error_codes::*;
-use rustc_errors::Applicability;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
@@ -69,7 +69,7 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::{self, Visitor};
-use syntax::{help, struct_span_err, walk_list};
+use syntax::walk_list;
 
 use log::{debug, trace};
 use smallvec::{smallvec, SmallVec};
@@ -1347,10 +1347,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                         if pos == ImplTraitPosition::Binding && nightly_options::is_nightly_build()
                         {
-                            help!(
-                                err,
+                            err.help(
                                 "add `#![feature(impl_trait_in_bindings)]` to the crate \
-                                   attributes to enable"
+                                   attributes to enable",
                             );
                         }
                         err.emit();

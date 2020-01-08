@@ -4,7 +4,7 @@ use crate::attr;
 use crate::sess::ParseSess;
 use crate::visit::{self, FnKind, Visitor};
 
-use errors::{Applicability, DiagnosticBuilder, Handler};
+use errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_codes::*;
 use rustc_feature::{find_feature_issue, GateIssue};
@@ -91,9 +91,7 @@ fn leveled_feature_err<'a>(
     let diag = &sess.span_diagnostic;
 
     let mut err = match level {
-        GateStrength::Hard => {
-            diag.struct_span_err_with_code(span, explain, stringify_error_code!(E0658))
-        }
+        GateStrength::Hard => diag.struct_span_err_with_code(span, explain, error_code!(E0658)),
         GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
 
@@ -827,15 +825,9 @@ pub fn get_features(
             };
 
             if let Some(edition) = edition_enabled_features.get(&name) {
-                struct_span_warn!(
-                    span_handler,
-                    mi.span(),
-                    E0705,
-                    "the feature `{}` is included in the Rust {} edition",
-                    name,
-                    edition,
-                )
-                .emit();
+                let msg =
+                    &format!("the feature `{}` is included in the Rust {} edition", name, edition);
+                span_handler.struct_span_warn_with_code(mi.span(), msg, error_code!(E0705)).emit();
                 continue;
             }
 
@@ -863,13 +855,14 @@ pub fn get_features(
 
             if let Some(allowed) = allow_features.as_ref() {
                 if allowed.iter().find(|&f| name.as_str() == *f).is_none() {
-                    span_err!(
+                    struct_span_err!(
                         span_handler,
                         mi.span(),
                         E0725,
                         "the feature `{}` is not in the list of allowed features",
                         name
-                    );
+                    )
+                    .emit();
                     continue;
                 }
             }
@@ -953,13 +946,14 @@ pub fn check_crate(
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {
     if !unstable.is_nightly_build() {
         for attr in krate.attrs.iter().filter(|attr| attr.check_name(sym::feature)) {
-            span_err!(
+            struct_span_err!(
                 span_handler,
                 attr.span,
                 E0554,
                 "`#![feature]` may not be used on the {} release channel",
                 option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
-            );
+            )
+            .emit();
         }
     }
 }

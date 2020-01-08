@@ -1,3 +1,4 @@
+use errors::struct_span_err;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};

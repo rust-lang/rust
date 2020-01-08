@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::session::Session;
@@ -16,7 +16,6 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast::{self, Ident, Path};
 use syntax::print::pprust;
-use syntax::struct_span_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};

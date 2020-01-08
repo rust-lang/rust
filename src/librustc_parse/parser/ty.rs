@@ -4,7 +4,7 @@ use super::{Parser, PathStyle, PrevTokenKind, TokenType};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_error_codes::*;
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 use syntax::ast::{
@@ -15,7 +15,6 @@ use syntax::ast::{
 };
 use syntax::ast::{Mac, Mutability};
 use syntax::ptr::P;
-use syntax::struct_span_err;
 use syntax::token::{self, Token};
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,

@@ -5,7 +5,7 @@ use crate::lint::builtin;
 use crate::lint::context::{CheckLintNameResult, LintStore};
 use crate::lint::{self, Level, Lint, LintId, LintSource};
 use crate::session::Session;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::HirId;
@@ -274,13 +274,14 @@ impl<'a> LintLevelsBuilder<'a> {
                 let tool_name = if meta_item.path.segments.len() > 1 {
                     let tool_ident = meta_item.path.segments[0].ident;
                     if !attr::is_known_lint_tool(tool_ident) {
-                        span_err!(
+                        struct_span_err!(
                             sess,
                             tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
                             pprust::path_to_string(&meta_item.path),
-                        );
+                        )
+                        .emit();
                         continue;
                     }
 

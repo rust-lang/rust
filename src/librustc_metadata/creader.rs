@@ -20,6 +20,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use std::path::Path;
 use std::{cmp, fs};
 
+use errors::struct_span_err;
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 use rustc_expand::base::SyntaxExtension;
@@ -29,7 +30,6 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
-use syntax::span_fatal;
 
 use rustc_error_codes::*;
 
@@ -261,7 +261,7 @@ impl<'a> CrateLoader<'a> {
         if self.local_crate_name == root.name()
             && self.sess.local_crate_disambiguator() == root.disambiguator()
         {
-            span_fatal!(
+            struct_span_err!(
                 self.sess,
                 span,
                 E0519,
@@ -271,6 +271,7 @@ impl<'a> CrateLoader<'a> {
                          will result in symbol conflicts between the two.",
                 root.name()
             )
+            .emit()
         }
 
         // Check for conflicts with any crate loaded so far
@@ -280,7 +281,7 @@ impl<'a> CrateLoader<'a> {
                other.hash() != root.hash()
             {
                 // but different SVH
-                span_fatal!(
+                struct_span_err!(
                     self.sess,
                     span,
                     E0523,
@@ -289,6 +290,7 @@ impl<'a> CrateLoader<'a> {
                          will result in symbol conflicts between the two.",
                     root.name()
                 )
+                .emit();
             }
         });
     }

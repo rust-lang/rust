@@ -20,7 +20,8 @@ use crate::ty::GenericParamDefKind;
 use crate::ty::SubtypePredicate;
 use crate::ty::TypeckTables;
 use crate::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use errors::{pluralize, Applicability, DiagnosticBuilder, Style};
+
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};

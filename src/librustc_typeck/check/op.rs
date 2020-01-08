@@ -2,7 +2,7 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use errors::{self, Applicability};
+use errors::{self, struct_span_err, Applicability};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};

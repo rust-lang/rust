@@ -16,6 +16,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{GenericArg, SubstsRef};
 use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -463,12 +464,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                 PatKind::Range(PatRange { lo, hi, end })
                             }
                             (RangeEnd::Excluded, _) => {
-                                span_err!(
+                                struct_span_err!(
                                     self.tcx.sess,
                                     lo_expr.span,
                                     E0579,
                                     "lower range bound must be less than upper",
-                                );
+                                )
+                                .emit();
                                 PatKind::Wild
                             }
                             (RangeEnd::Included, Some(Ordering::Equal)) => {

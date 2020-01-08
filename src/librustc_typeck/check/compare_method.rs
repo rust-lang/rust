@@ -1,4 +1,4 @@
-use errors::{Applicability, DiagnosticId};
+use errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc::hir::intravisit;
 use rustc::infer::{self, InferOk};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -11,7 +11,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_span::Span;
-use syntax::errors::pluralize;
 
 use super::{potentially_plural_count, FnCtxt, Inherited};
 

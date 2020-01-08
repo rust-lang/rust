@@ -6,7 +6,7 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
-use errors::{Applicability, FatalError};
+use errors::{struct_span_err, Applicability, FatalError};
 use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
@@ -20,7 +20,7 @@ use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
-use syntax::{span_err, struct_span_err, walk_list};
+use syntax::walk_list;
 
 use rustc_error_codes::*;
 
@@ -470,7 +470,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_fn_decl(fn_decl);
             }
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
-                span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
+                struct_span_err!(
+                    self.session,
+                    expr.span,
+                    E0472,
+                    "asm! is unsupported on this target"
+                )
+                .emit();
             }
             _ => {}
         }
@@ -498,12 +504,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 for bound in bounds {
                     if let GenericBound::Outlives(ref lifetime) = *bound {
                         if any_lifetime_bounds {
-                            span_err!(
+                            struct_span_err!(
                                 self.session,
                                 lifetime.ident.span,
                                 E0226,
                                 "only a single explicit lifetime bound is permitted"
-                            );
+                            )
+                            .emit();
                             break;
                         }
                         any_lifetime_bounds = true;
@@ -575,7 +582,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
                 if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
-                    span_err!(self.session, item.span, E0198, "negative impls cannot be unsafe");
+                    struct_span_err!(
+                        self.session,
+                        item.span,
+                        E0198,
+                        "negative impls cannot be unsafe"
+                    )
+                    .emit();
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, None);
@@ -591,7 +604,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some("place qualifiers on individual impl items instead"),
                 );
                 if unsafety == Unsafety::Unsafe {
-                    span_err!(self.session, item.span, E0197, "inherent impls cannot be unsafe");
+                    struct_span_err!(
+                        self.session,
+                        item.span,
+                        E0197,
+                        "inherent impls cannot be unsafe"
+                    )
+                    .emit();
                 }
                 if polarity == ImplPolarity::Negative {
                     self.err_handler().span_err(item.span, "inherent impls cannot be negative");

@@ -9,6 +9,7 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 use crate::namespace::Namespace;
 
+use errors::struct_span_err;
 use rustc::infer::canonical::OriginalQueryValues;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -373,13 +374,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.rust_2018() {
-                    span_err!(
+                    struct_span_err!(
                         self.tcx.sess,
                         span,
                         E0699,
                         "the type of this value must be known \
                                to call a method on a raw pointer on it"
-                    );
+                    )
+                    .emit();
                 } else {
                     self.tcx.lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,

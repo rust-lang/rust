@@ -25,17 +25,17 @@ use crate::middle::privacy::AccessLevels;
 use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use errors::DiagnosticBuilder;
+use errors::{struct_span_err, DiagnosticBuilder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
+use rustc_error_codes::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_span::{symbol::Symbol, MultiSpan, Span};
-use std::slice;
+use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_error_codes::*;
+use std::slice;
 
 /// Information about the registered lints.
 ///
@@ -290,7 +290,8 @@ impl LintStore {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
-                let mut err = struct_err!(sess, E0602, "unknown lint: `{}`", lint_name);
+                let mut err =
+                    struct_span_err!(sess, DUMMY_SP, E0602, "unknown lint: `{}`", lint_name);
 
                 if let Some(suggestion) = suggestion {
                     err.help(&format!("did you mean: `{}`", suggestion));
