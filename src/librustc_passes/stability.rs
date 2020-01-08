@@ -26,6 +26,20 @@ use std::cmp::Ordering;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
+/// *** Adding stability attributes to a new kind of node ***
+///
+/// 1.  In `<Annotator as Visitor>`, visit the node and call `self.annotate` to record the new
+///     stability attribute. This will also do some validity checking for the attributes.
+/// 2.  If stability attributes should be required, visit the node in
+///     `<MissingStabilityAnnotations as Visitor>` and call `self.check_missing_stability`.
+/// 3.  If using `check_missing_stability`, you'll also need to make sure the node is reachable. In
+///     `ReachableContext::propagate_node` in `src/librustc_passes/reachable.rs`, make sure the node
+///     is handled. Then, in `<EmbargoVisitor as Visitor>` in `src/librustc_privacy`, visit the node
+///     and call `self.reach`.
+/// 4.  Finally, we need to make sure that stability information is recorded in crate metadata. In
+///     `src/librustc_metadata/rmeta/encoder.rs`, make sure that `self.encode_stability(def_id)` is
+///     called in the relevant `encode_info_for_[your node]` method.
+
 #[derive(PartialEq)]
 enum AnnotationKind {
     // Annotation is required if not inherited from unstable parents.
