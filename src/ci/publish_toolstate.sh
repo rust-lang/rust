@@ -3,7 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
+source "$(cd "$(dirname "$0")" && pwd)/shared.sh"
 
 # The following lines are also found in src/bootstrap/toolstate.rs,
 # so if updating here, please also update that file.
