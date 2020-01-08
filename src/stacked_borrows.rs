@@ -4,7 +4,6 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::fmt::Write;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
@@ -279,13 +278,10 @@ impl<'tcx> Stack {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
-                    return Err(err_ub_experimental(
-                        tag,
-                        format!(
-                            "not granting access to tag {:?} because incompatible item is protected: {:?}",
-                            tag, item
-                        ),
-                    ));
+                    throw_ub!(UbExperimental(format!(
+                        "not granting access to tag {:?} because incompatible item is protected: {:?}",
+                        tag, item
+                    )));
                 } else {
                     throw_ub!(UbExperimental(format!(
                         "deallocating while item is protected: {:?}",
@@ -303,12 +299,9 @@ impl<'tcx> Stack {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
-            err_ub_experimental(
-                tag,
-                format!("no item granting {} to tag {:?} found in borrow stack.", access, tag),
-            )
-        })?;
+        let granting_idx = self.find_granting(access, tag).ok_or_else(|| err_ub!(UbExperimental(
+            format!("no item granting {} to tag {:?} found in borrow stack.", access, tag),
+        )))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -347,13 +340,10 @@ impl<'tcx> Stack {
     /// active protectors at all because we will remove all items.
     fn dealloc(&mut self, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
-            err_ub_experimental(
-                tag,format!(
-                "no item granting write access for deallocation to tag {:?} found in borrow stack",
-                tag,
-            ))
-        })?;
+        self.find_granting(AccessKind::Write, tag).ok_or_else(|| err_ub!(UbExperimental(format!(
+            "no item granting write access for deallocation to tag {:?} found in borrow stack",
+            tag,
+        ))))?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
@@ -374,14 +364,10 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
-            .ok_or_else(||
-            err_ub_experimental(
-                derived_from,
-                format!(
-                    "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
-                    new.perm, derived_from,
-                ),
-            ))?;
+            .ok_or_else(|| err_ub!(UbExperimental(format!(
+                "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
+                new.perm, derived_from,
+            ))))?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
@@ -647,10 +633,3 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-fn err_ub_experimental(tag: Tag, mut msg: String) -> InterpErrorInfo<'static> {
-    if let Tag::Tagged(id) = tag {
-        // FIXME: do not add this message when the flag is already set
-        write!(msg, " Rerun with `-Zmiri-track-pointer-tag={}` for more information", id).unwrap();
-    }
-    err_ub!(UbExperimental(msg)).into()
-}
