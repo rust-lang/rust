@@ -46,10 +46,7 @@ pub trait Pattern<'a>: Sized {
     /// Checks whether the pattern matches at the front of the haystack
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        match self.into_searcher(haystack).next() {
-            SearchStep::Match(0, _) => true,
-            _ => false,
-        }
+        matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
     }
 
     /// Checks whether the pattern matches at the back of the haystack
@@ -58,10 +55,7 @@ pub trait Pattern<'a>: Sized {
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
-        match self.into_searcher(haystack).next_back() {
-            SearchStep::Match(_, j) if haystack.len() == j => true,
-            _ => false,
-        }
+        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
     }
 }
 

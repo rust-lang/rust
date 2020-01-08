@@ -4286,10 +4286,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
-        match *self {
-            b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false,
-        }
+        matches!(*self, b'A'..=b'Z' | b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -4321,10 +4318,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
-        match *self {
-            b'A'..=b'Z' => true,
-            _ => false,
-        }
+        matches!(*self, b'A'..=b'Z')
     }
 
     /// Checks if the value is an ASCII lowercase character:
@@ -4356,10 +4350,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
-        match *self {
-            b'a'..=b'z' => true,
-            _ => false,
-        }
+        matches!(*self, b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII alphanumeric character:
@@ -4394,10 +4385,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
-        match *self {
-            b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false,
-        }
+        matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -4429,10 +4417,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
-        match *self {
-            b'0'..=b'9' => true,
-            _ => false,
-        }
+        matches!(*self, b'0'..=b'9')
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:
@@ -4467,10 +4452,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
-        match *self {
-            b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f' => true,
-            _ => false,
-        }
+        matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
     }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -4506,10 +4488,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
-        match *self {
-            b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~' => true,
-            _ => false,
-        }
+        matches!(*self, b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~')
     }
 
     /// Checks if the value is an ASCII graphic character:
@@ -4541,10 +4520,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
-        match *self {
-            b'!'..=b'~' => true,
-            _ => false,
-        }
+        matches!(*self, b'!'..=b'~')
     }
 
     /// Checks if the value is an ASCII whitespace character:
@@ -4593,10 +4569,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
-        match *self {
-            b'\t' | b'\n' | b'\x0C' | b'\r' | b' ' => true,
-            _ => false,
-        }
+        matches!(*self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ')
     }
 
     /// Checks if the value is an ASCII control character:
@@ -4630,10 +4603,7 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
-        match *self {
-            b'\0'..=b'\x1F' | b'\x7F' => true,
-            _ => false,
-        }
+        matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
     }
 }
 
