@@ -1296,6 +1296,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
         LintId::of(&transmute::TRANSMUTE_BYTES_TO_STR),
+        LintId::of(&transmute::TRANSMUTE_FLOAT_TO_INT),
         LintId::of(&transmute::TRANSMUTE_INT_TO_BOOL),
         LintId::of(&transmute::TRANSMUTE_INT_TO_CHAR),
         LintId::of(&transmute::TRANSMUTE_INT_TO_FLOAT),
@@ -1494,6 +1495,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
         LintId::of(&transmute::TRANSMUTE_BYTES_TO_STR),
+        LintId::of(&transmute::TRANSMUTE_FLOAT_TO_INT),
         LintId::of(&transmute::TRANSMUTE_INT_TO_BOOL),
         LintId::of(&transmute::TRANSMUTE_INT_TO_CHAR),
         LintId::of(&transmute::TRANSMUTE_INT_TO_FLOAT),
@@ -1612,7 +1614,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
         LintId::of(&path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
-        LintId::of(&transmute::TRANSMUTE_FLOAT_TO_INT),
         LintId::of(&use_self::USE_SELF),
     ]);
 }
