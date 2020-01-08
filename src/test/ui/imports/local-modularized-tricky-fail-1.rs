@@ -26,6 +26,7 @@ mod inner1 {
 }
 
 exported!(); //~ ERROR `exported` is ambiguous
+             //~| ERROR `exported` is ambiguous
 
 mod inner2 {
     define_exported!();

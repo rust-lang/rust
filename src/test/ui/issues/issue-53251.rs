@@ -10,6 +10,7 @@ macro_rules! impl_add {
             fn $n() {
                 S::f::<i64>();
                 //~^ ERROR wrong number of type arguments
+                //~| ERROR wrong number of type arguments
             }
         )*
     }

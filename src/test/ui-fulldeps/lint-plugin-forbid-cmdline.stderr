@@ -6,6 +6,14 @@ LL | #[allow(test_lint)]
    |
    = note: `forbid` lint level was set on command line
 
+error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+  --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
+   |
+LL | #[allow(test_lint)]
+   |         ^^^^^^^^^ overruled by previous forbid
+   |
+   = note: `forbid` lint level was set on command line
+
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-plugin-forbid-cmdline.rs:6:1
    |
@@ -22,6 +30,14 @@ LL | fn lintme() { }
    |
    = note: requested on the command line with `-F test-lint`
 
-error: aborting due to 2 previous errors
+error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+  --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
+   |
+LL | #[allow(test_lint)]
+   |         ^^^^^^^^^ overruled by previous forbid
+   |
+   = note: `forbid` lint level was set on command line
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0453`.

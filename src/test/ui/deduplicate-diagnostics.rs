@@ -1,5 +1,5 @@
 // revisions: duplicate deduplicate
-//[duplicate] compile-flags: -Z deduplicate-diagnostics=no
+//[deduplicate] compile-flags: -Z deduplicate-diagnostics=yes
 
 #[derive(Unresolved)] //~ ERROR cannot find derive macro `Unresolved` in this scope
                       //[duplicate]~| ERROR cannot find derive macro `Unresolved` in this scope

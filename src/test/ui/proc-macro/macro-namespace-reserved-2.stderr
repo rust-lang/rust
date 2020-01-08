@@ -47,19 +47,19 @@ LL | #[MyTrait]
    |   ^^^^^^^ not an attribute
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:52:10
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
    |
 LL | #[derive(my_macro_attr)]
    |          ^^^^^^^^^^^^^
 
 error: expected derive macro, found attribute macro `my_macro_attr`
-  --> $DIR/macro-namespace-reserved-2.rs:52:10
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
    |
 LL | #[derive(my_macro_attr)]
    |          ^^^^^^^^^^^^^ not a derive macro
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:55:10
+  --> $DIR/macro-namespace-reserved-2.rs:56:10
    |
 LL | #[derive(MyTrait)]
    |          ^^^^^^^
@@ -77,13 +77,13 @@ LL | #[crate::my_macro]
    |   ^^^^^^^^^^^^^^^ not an attribute
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:49:10
+  --> $DIR/macro-namespace-reserved-2.rs:50:10
    |
 LL | #[derive(crate::my_macro)]
    |          ^^^^^^^^^^^^^^^
 
 error: expected derive macro, found macro `crate::my_macro`
-  --> $DIR/macro-namespace-reserved-2.rs:49:10
+  --> $DIR/macro-namespace-reserved-2.rs:50:10
    |
 LL | #[derive(crate::my_macro)]
    |          ^^^^^^^^^^^^^^^ not a derive macro
@@ -112,5 +112,11 @@ error: cannot find derive macro `my_macro` in this scope
 LL | #[derive(my_macro)]
    |          ^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: cannot find derive macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:48:10
+   |
+LL | #[derive(my_macro)]
+   |          ^^^^^^^^
+
+error: aborting due to 20 previous errors
 
