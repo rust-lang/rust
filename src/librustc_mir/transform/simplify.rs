@@ -94,6 +94,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         self.strip_nops();
 
         let mut start = START_BLOCK;
+        let mut new_stmts = vec![];
 
         loop {
             let mut changed = false;
@@ -114,7 +115,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
 
-                let mut new_stmts = vec![];
                 let mut inner_changed = true;
                 while inner_changed {
                     inner_changed = false;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 }
 
                 let data = &mut self.basic_blocks[bb];
-                data.statements.extend(new_stmts);
+                data.statements.extend(new_stmts.drain(..));
                 data.terminator = Some(terminator);
 
                 changed |= inner_changed;
