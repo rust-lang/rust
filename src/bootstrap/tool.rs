@@ -290,6 +290,7 @@ macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,is_external_tool = $external:expr)*
+        $(,is_unstable_tool = $unstable:expr)*
         $(,features = $features:expr)*
         ;
     )+) => {
@@ -340,7 +341,12 @@ macro_rules! bootstrap_tool {
                     compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: Mode::ToolBootstrap,
+                    mode: if false $(|| $unstable)* {
+                        // use in-tree libraries for unstable features
+                        Mode::ToolStd
+                    } else {
+                        Mode::ToolBootstrap
+                    },
                     path: $path,
                     is_optional_tool: false,
                     source_type: if false $(|| $external)* {
@@ -367,7 +373,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest";
+    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
