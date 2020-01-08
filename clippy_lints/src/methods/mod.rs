@@ -3275,7 +3275,7 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let hir::ExprKind::Unary(op, _) = parent.kind;
-        if op == hir::UnNot;
+        if op == hir::UnOp::UnNot;
         then {
             lint_unary = "!";
             verb = "denies";
