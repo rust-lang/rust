@@ -1,9 +1,9 @@
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
 
-trait MyTrait { }
+trait MyTrait {}
 
-impl<T> !MyTrait for T { }
-impl MyTrait for u32 { } //~ ERROR conflicting implementations
+impl<T> !MyTrait for T {}
+impl MyTrait for u32 {} //~ ERROR E0748
 
-fn main() { }
+fn main() {}

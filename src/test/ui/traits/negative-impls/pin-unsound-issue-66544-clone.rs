@@ -4,12 +4,12 @@ use std::pin::Pin;
 
 struct MyType<'a>(Cell<Option<&'a mut MyType<'a>>>, PhantomPinned);
 
-impl<'a> Clone for &'a mut MyType<'a> { //~ ERROR conflicting implementations
+impl<'a> Clone for &'a mut MyType<'a> {
+    //~^ ERROR E0748
     fn clone(&self) -> &'a mut MyType<'a> {
         self.0.replace(None).unwrap()
     }
 }
-
 
 fn main() {
     let mut unpinned = MyType(Cell::new(None), PhantomPinned);

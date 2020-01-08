@@ -6,8 +6,8 @@ trait MyTrait {
     fn foo();
 }
 impl<T> MyTrait for T {
-    default fn foo() { }
+    default fn foo() {}
 }
-impl !MyTrait for u32 { } //~ ERROR conflicting implementations
+impl !MyTrait for u32 {} //~ ERROR E0748
 
-fn main() { }
+fn main() {}
