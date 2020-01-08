@@ -32,8 +32,8 @@ enum AnnotationKind {
     Required,
     // Annotation is useless: reject it.
     Prohibited,
-    // Annotation itself is useless, but it can be propagated to children.
-    Container,
+    // Annotation is optional. Stability can be propagated to children.
+    Optional,
 }
 
 // A private tree-walker for producing an index.
@@ -77,7 +77,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if let Some(mut stab) = stab {
                 // Error if prohibited, or can't inherit anything from a container.
                 if kind == AnnotationKind::Prohibited
-                    || (kind == AnnotationKind::Container
+                    || (kind == AnnotationKind::Optional
                         && stab.level.is_stable()
                         && stab.rustc_depr.is_none())
                 {
@@ -222,7 +222,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {
                 self.in_trait_impl = false;
-                kind = AnnotationKind::Container;
+                kind = AnnotationKind::Optional;
             }
             hir::ItemKind::Impl { of_trait: Some(_), .. } => {
                 self.in_trait_impl = true;
@@ -283,7 +283,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         let kind = match &p.kind {
             // FIXME(const_generics:defaults)
             hir::GenericParamKind::Type { default, .. } if default.is_some() => {
-                AnnotationKind::Required
+                AnnotationKind::Optional
             }
             _ => AnnotationKind::Prohibited,
         };
@@ -363,16 +363,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         self.check_missing_stability(md.hir_id, md.span, "macro");
     }
 
-    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
-        match &p.kind {
-            // FIXME(const_generics:defaults)
-            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
-                self.check_missing_stability(p.hir_id, p.span, "default type parameter");
-            }
-            _ => {}
-        }
-        intravisit::walk_generic_param(self, p);
-    }
+    // Note that we don't need to `check_missing_stability` for default generic parameters,
+    // as we assume that any default generic parameters without attributes are automatically
+    // stable (assuming they have not inherited instability from their parent).
 }
 
 fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
