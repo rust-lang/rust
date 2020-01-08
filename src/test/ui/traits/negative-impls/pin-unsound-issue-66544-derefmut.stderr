@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `std::ops::DerefMut` for type `&MyType<'_>`:
+  --> $DIR/pin-unsound-issue-66544-derefmut.rs:12:1
+   |
+LL | impl<'a> DerefMut for &'a MyType<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> std::ops::DerefMut for &T
+             where T: ?Sized;
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

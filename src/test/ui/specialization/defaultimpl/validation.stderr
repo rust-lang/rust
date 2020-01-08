@@ -24,14 +24,18 @@ LL | default impl !Send for Z {}
    | |
    | default because of this
 
-error[E0192]: invalid negative impl
-  --> $DIR/validation.rs:13:14
+error[E0750]: negative impls cannot be default impls
+  --> $DIR/validation.rs:10:14
+   |
+LL | default impl !Send for Z {}
+   | ^^^^^^^      ^
+
+error[E0750]: negative impls cannot be default impls
+  --> $DIR/validation.rs:14:14
    |
 LL | default impl !Tr for S {}
-   |              ^^^
-   |
-   = note: negative impls are only allowed for auto traits, like `Send` and `Sync`
+   | ^^^^^^^      ^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0192`.
+For more information about this error, try `rustc --explain E0750`.

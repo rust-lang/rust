@@ -1,0 +1,9 @@
+error[E0750]: negative impls cannot be default impls
+  --> $DIR/negative-default-impls.rs:8:14
+   |
+LL | default impl !MyTrait for u32 {}
+   | ^^^^^^^      ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0750`.

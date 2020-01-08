@@ -1,12 +1,14 @@
+// run-pass
+
 #![feature(optin_builtin_traits)]
+#![allow(dead_code)]
 
 struct TestType;
 
 trait TestTrait {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 impl !TestTrait for TestType {}
-//~^ ERROR invalid negative impl
 
 fn main() {}
