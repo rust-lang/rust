@@ -14,13 +14,13 @@ for (const entry of list) {
   if (entry.kind == 'function'){
     nexports += 1;
   }
-  my_exports[entry.name] = true;
+  my_exports[entry.name] = entry.kind;
 }
 
-if (my_exports.foo === undefined)
+if (my_exports.foo != "function")
   throw new Error("`foo` wasn't defined");
 
-if (my_exports.FOO === undefined)
+if (my_exports.FOO != "global")
   throw new Error("`FOO` wasn't defined");
 
 if (my_exports.main === undefined) {
