@@ -8,6 +8,7 @@ use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::mem;
 use std::ops::Range;
 
+use self::Condition::*;
 use crate::clean::{self, GetDefId, Item};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
@@ -52,8 +53,27 @@ pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 #[derive(Copy, Clone)]
 pub struct Pass {
     pub name: &'static str,
-    pub pass: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
+    pub run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
     pub description: &'static str,
+}
+
+/// In a list of passes, a pass that may or may not need to be run depending on options.
+#[derive(Copy, Clone)]
+pub struct ConditionalPass {
+    pub pass: Pass,
+    pub condition: Condition,
+}
+
+/// How to decide whether to run a conditional pass.
+#[derive(Copy, Clone)]
+pub enum Condition {
+    Always,
+    /// When `--document-private-items` is passed.
+    WhenDocumentPrivate,
+    /// When `--document-private-items` is not passed.
+    WhenNotDocumentPrivate,
+    /// When `--document-hidden-items` is not passed.
+    WhenNotDocumentHidden,
 }
 
 /// The full list of passes.
@@ -72,63 +92,58 @@ pub const PASSES: &[Pass] = &[
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    COLLAPSE_DOCS,
-    UNINDENT_COMMENTS,
-    CHECK_PRIVATE_ITEMS_DOC_TESTS,
-    STRIP_HIDDEN,
-    STRIP_PRIVATE,
-    COLLECT_INTRA_DOC_LINKS,
-    CHECK_CODE_BLOCK_SYNTAX,
-    PROPAGATE_DOC_CFG,
-];
-
-/// The list of default passes run with `--document-private-items` is passed to rustdoc.
-pub const DEFAULT_PRIVATE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    COLLAPSE_DOCS,
-    UNINDENT_COMMENTS,
-    CHECK_PRIVATE_ITEMS_DOC_TESTS,
-    STRIP_PRIV_IMPORTS,
-    COLLECT_INTRA_DOC_LINKS,
-    CHECK_CODE_BLOCK_SYNTAX,
-    PROPAGATE_DOC_CFG,
+pub const DEFAULT_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
+    ConditionalPass::always(COLLAPSE_DOCS),
+    ConditionalPass::always(UNINDENT_COMMENTS),
+    ConditionalPass::always(CHECK_PRIVATE_ITEMS_DOC_TESTS),
+    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+    ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
+    ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
+    ConditionalPass::always(PROPAGATE_DOC_CFG),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const DEFAULT_COVERAGE_PASSES: &[Pass] =
-    &[COLLECT_TRAIT_IMPLS, STRIP_HIDDEN, STRIP_PRIVATE, CALCULATE_DOC_COVERAGE];
+pub const COVERAGE_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
+    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+    ConditionalPass::always(CALCULATE_DOC_COVERAGE),
+];
 
-/// The list of default passes run when `--doc-coverage --document-private-items` is passed to
-/// rustdoc.
-pub const PRIVATE_COVERAGE_PASSES: &[Pass] = &[COLLECT_TRAIT_IMPLS, CALCULATE_DOC_COVERAGE];
+impl ConditionalPass {
+    pub const fn always(pass: Pass) -> Self {
+        Self::new(pass, Always)
+    }
+
+    pub const fn new(pass: Pass, condition: Condition) -> Self {
+        ConditionalPass { pass, condition }
+    }
+}
 
 /// A shorthand way to refer to which set of passes to use, based on the presence of
-/// `--no-defaults` or `--document-private-items`.
+/// `--no-defaults` and `--show-coverage`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DefaultPassOption {
     Default,
-    Private,
     Coverage,
-    PrivateCoverage,
     None,
 }
 
 /// Returns the given default set of passes.
-pub fn defaults(default_set: DefaultPassOption) -> &'static [Pass] {
+pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
-        DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
-        DefaultPassOption::Coverage => DEFAULT_COVERAGE_PASSES,
-        DefaultPassOption::PrivateCoverage => PRIVATE_COVERAGE_PASSES,
+        DefaultPassOption::Coverage => COVERAGE_PASSES,
         DefaultPassOption::None => &[],
     }
 }
 
 /// If the given name matches a known pass, returns its information.
-pub fn find_pass(pass_name: &str) -> Option<&'static Pass> {
-    PASSES.iter().find(|p| p.name == pass_name)
+pub fn find_pass(pass_name: &str) -> Option<Pass> {
+    PASSES.iter().find(|p| p.name == pass_name).copied()
 }
 
 struct Stripper<'a> {

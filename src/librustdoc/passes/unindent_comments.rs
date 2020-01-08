@@ -12,7 +12,7 @@ mod tests;
 
 pub const UNINDENT_COMMENTS: Pass = Pass {
     name: "unindent-comments",
-    pass: unindent_comments,
+    run: unindent_comments,
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 

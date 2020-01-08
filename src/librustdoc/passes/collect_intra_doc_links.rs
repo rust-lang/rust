@@ -28,7 +28,7 @@ use super::span_of_attrs;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
-    pass: collect_intra_doc_links,
+    run: collect_intra_doc_links,
     description: "reads a crate's documentation to resolve intra-doc-links",
 };
 
