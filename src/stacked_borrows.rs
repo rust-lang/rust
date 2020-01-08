@@ -266,7 +266,7 @@ impl<'tcx> Stack {
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                register_err(NonHaltingDiagnostic::PoppedTrackedPointerTag(item.clone()));
+                register_diagnostic(NonHaltingDiagnostic::PoppedTrackedPointerTag(item.clone()));
             }
         }
         if let Some(call) = item.protector {

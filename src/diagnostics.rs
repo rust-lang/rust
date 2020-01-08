@@ -77,19 +77,19 @@ pub fn report_msg<'tcx, 'mir>(
 }
 
 thread_local! {
-    static ECX: RefCell<Vec<NonHaltingDiagnostic>> = RefCell::new(Vec::new());
+    static DIAGNOSTICS: RefCell<Vec<NonHaltingDiagnostic>> = RefCell::new(Vec::new());
 }
 
-pub fn register_err(e: NonHaltingDiagnostic) {
-    ECX.with(|ecx| ecx.borrow_mut().push(e));
+pub fn register_diagnostic(e: NonHaltingDiagnostic) {
+    DIAGNOSTICS.with(|diagnostics| diagnostics.borrow_mut().push(e));
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn process_errors(&self) {
+    fn process_diagnostics(&self) {
         let this = self.eval_context_ref();
-        ECX.with(|ecx| {
-            for e in ecx.borrow_mut().drain(..) {
+        DIAGNOSTICS.with(|diagnostics| {
+            for e in diagnostics.borrow_mut().drain(..) {
                 let msg = match e {
                     NonHaltingDiagnostic::PoppedTrackedPointerTag(item) =>
                         format!("popped tracked tag for item {:?}", item),
