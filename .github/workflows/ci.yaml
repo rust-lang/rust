@@ -107,4 +107,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: editors
-          path: /home/runner/work/rust-analyzer/editors
+          path: ./editors
