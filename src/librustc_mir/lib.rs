@@ -52,6 +52,7 @@ use rustc::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {
     borrow_check::provide(providers);
+    const_eval::provide(providers);
     shim::provide(providers);
     transform::provide(providers);
     monomorphize::partitioning::provide(providers);

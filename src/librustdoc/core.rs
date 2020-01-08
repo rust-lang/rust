@@ -33,7 +33,7 @@ use crate::clean::{AttributesExt, MAX_DEF_ID};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::html::render::RenderInfo;
 
-use crate::passes;
+use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc::session::config::{CodegenOptions, DebuggingOptions, Input, Options};
 pub use rustc::session::search_paths::SearchPath;
@@ -221,6 +221,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         describe_lints,
         lint_cap,
         mut default_passes,
+        mut document_private,
+        document_hidden,
         mut manual_passes,
         display_warnings,
         render_options,
@@ -457,16 +459,14 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
 
                     if attr.is_word() && name == sym::document_private_items {
-                        if default_passes == passes::DefaultPassOption::Default {
-                            default_passes = passes::DefaultPassOption::Private;
-                        }
+                        document_private = true;
                     }
                 }
 
-                let passes = passes::defaults(default_passes).iter().chain(
+                let passes = passes::defaults(default_passes).iter().copied().chain(
                     manual_passes.into_iter().flat_map(|name| {
                         if let Some(pass) = passes::find_pass(&name) {
-                            Some(pass)
+                            Some(ConditionalPass::always(pass))
                         } else {
                             error!("unknown pass {}, skipping", name);
                             None
@@ -476,9 +476,17 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 info!("Executing passes");
 
-                for pass in passes {
-                    debug!("running pass {}", pass.name);
-                    krate = (pass.pass)(krate, &ctxt);
+                for p in passes {
+                    let run = match p.condition {
+                        Always => true,
+                        WhenDocumentPrivate => document_private,
+                        WhenNotDocumentPrivate => !document_private,
+                        WhenNotDocumentHidden => !document_hidden,
+                    };
+                    if run {
+                        debug!("running pass {}", p.pass.name);
+                        krate = (p.pass.run)(krate, &ctxt);
+                    }
                 }
 
                 ctxt.sess().abort_if_errors();

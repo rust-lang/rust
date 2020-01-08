@@ -97,7 +97,6 @@ pub mod cast;
 #[macro_use]
 pub mod codec;
 pub mod _match;
-mod constness;
 mod erase_regions;
 pub mod error;
 pub mod fast_reject;
@@ -3318,7 +3317,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
-    constness::provide(providers);
     *providers = ty::query::Providers {
         asyncness,
         associated_item,

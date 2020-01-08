@@ -202,23 +202,34 @@ impl ops::Not for Cfg {
 
 impl ops::BitAndAssign for Cfg {
     fn bitand_assign(&mut self, other: Cfg) {
-        if *self == other {
-            return;
-        }
         match (self, other) {
             (&mut Cfg::False, _) | (_, Cfg::True) => {}
             (s, Cfg::False) => *s = Cfg::False,
             (s @ &mut Cfg::True, b) => *s = b,
-            (&mut Cfg::All(ref mut a), Cfg::All(ref mut b)) => a.append(b),
-            (&mut Cfg::All(ref mut a), ref mut b) => a.push(mem::replace(b, Cfg::True)),
+            (&mut Cfg::All(ref mut a), Cfg::All(ref mut b)) => {
+                for c in b.drain(..) {
+                    if !a.contains(&c) {
+                        a.push(c);
+                    }
+                }
+            }
+            (&mut Cfg::All(ref mut a), ref mut b) => {
+                if !a.contains(b) {
+                    a.push(mem::replace(b, Cfg::True));
+                }
+            }
             (s, Cfg::All(mut a)) => {
                 let b = mem::replace(s, Cfg::True);
-                a.push(b);
+                if !a.contains(&b) {
+                    a.push(b);
+                }
                 *s = Cfg::All(a);
             }
             (s, b) => {
-                let a = mem::replace(s, Cfg::True);
-                *s = Cfg::All(vec![a, b]);
+                if *s != b {
+                    let a = mem::replace(s, Cfg::True);
+                    *s = Cfg::All(vec![a, b]);
+                }
             }
         }
     }
@@ -234,23 +245,34 @@ impl ops::BitAnd for Cfg {
 
 impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
-        if *self == other {
-            return;
-        }
         match (self, other) {
             (&mut Cfg::True, _) | (_, Cfg::False) => {}
             (s, Cfg::True) => *s = Cfg::True,
             (s @ &mut Cfg::False, b) => *s = b,
-            (&mut Cfg::Any(ref mut a), Cfg::Any(ref mut b)) => a.append(b),
-            (&mut Cfg::Any(ref mut a), ref mut b) => a.push(mem::replace(b, Cfg::True)),
+            (&mut Cfg::Any(ref mut a), Cfg::Any(ref mut b)) => {
+                for c in b.drain(..) {
+                    if !a.contains(&c) {
+                        a.push(c);
+                    }
+                }
+            }
+            (&mut Cfg::Any(ref mut a), ref mut b) => {
+                if !a.contains(b) {
+                    a.push(mem::replace(b, Cfg::True));
+                }
+            }
             (s, Cfg::Any(mut a)) => {
                 let b = mem::replace(s, Cfg::True);
-                a.push(b);
+                if !a.contains(&b) {
+                    a.push(b);
+                }
                 *s = Cfg::Any(a);
             }
             (s, b) => {
-                let a = mem::replace(s, Cfg::True);
-                *s = Cfg::Any(vec![a, b]);
+                if *s != b {
+                    let a = mem::replace(s, Cfg::True);
+                    *s = Cfg::Any(vec![a, b]);
+                }
             }
         }
     }

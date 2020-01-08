@@ -327,7 +327,7 @@ fn check_terminator(
         TerminatorKind::Call { func, args, from_hir_call: _, destination: _, cleanup: _ } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.kind {
-                if !tcx.is_min_const_fn(def_id) {
+                if !crate::const_eval::is_min_const_fn(tcx, def_id) {
                     return Err((
                         span,
                         format!(

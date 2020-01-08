@@ -9,10 +9,12 @@ use crate::interpret::{intern_const_alloc_recursive, ConstValue, InterpCx};
 
 mod error;
 mod eval_queries;
+mod fn_queries;
 mod machine;
 
 pub use error::*;
 pub use eval_queries::*;
+pub use fn_queries::*;
 pub use machine::*;
 
 /// Extracts a field of a (variant of a) const.

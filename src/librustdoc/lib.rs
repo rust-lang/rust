@@ -32,6 +32,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
 extern crate rustc_span as rustc_span;
@@ -172,6 +173,9 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("no-default", |o| o.optflag("", "no-defaults", "don't run the default passes")),
         stable("document-private-items", |o| {
             o.optflag("", "document-private-items", "document private items")
+        }),
+        unstable("document-hidden-items", |o| {
+            o.optflag("", "document-hidden-items", "document items that have doc(hidden)")
         }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {

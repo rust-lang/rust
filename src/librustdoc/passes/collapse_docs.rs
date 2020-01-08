@@ -8,7 +8,7 @@ use std::mem::take;
 
 pub const COLLAPSE_DOCS: Pass = Pass {
     name: "collapse-docs",
-    pass: collapse_docs,
+    run: collapse_docs,
     description: "concatenates all document attributes into one document attribute",
 };
 
