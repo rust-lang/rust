@@ -1,6 +1,11 @@
 use rustc_mir::interpret::InterpErrorInfo;
+use std::cell::RefCell;
 
 use crate::*;
+
+pub enum NonHaltingDiagnostic {
+    PoppedTrackedPointerTag(Item),
+}
 
 pub fn report_err<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
@@ -12,8 +17,6 @@ pub fn report_err<'tcx, 'mir>(
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             match info {
                 TerminationInfo::Exit(code) => return Some(*code),
-                TerminationInfo::PoppedTrackedPointerTag(item) =>
-                    format!("popped tracked tag for item {:?}", item),
                 TerminationInfo::Abort => format!("the evaluated program aborted execution"),
             }
         }
@@ -25,11 +28,23 @@ pub fn report_err<'tcx, 'mir>(
         _ => e.to_string(),
     };
     e.print_backtrace();
+    report_msg(ecx, msg, true)
+}
+
+pub fn report_msg<'tcx, 'mir>(
+    ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+    msg: String,
+    error: bool,
+) -> Option<i64> {
     if let Some(frame) = ecx.stack().last() {
         let span = frame.current_source_info().unwrap().span;
 
-        let msg = format!("Miri evaluation error: {}", msg);
-        let mut err = ecx.tcx.sess.struct_span_err(span, msg.as_str());
+        let mut err = if error {
+            let msg = format!("Miri evaluation error: {}", msg);
+            ecx.tcx.sess.struct_span_err(span, msg.as_str())
+        } else {
+            ecx.tcx.sess.diagnostic().span_note_diag(span, msg.as_str())
+        };
         let frames = ecx.generate_stacktrace(None);
         err.span_label(span, msg);
         // We iterate with indices because we need to look at the next frame (the caller).
@@ -61,12 +76,11 @@ pub fn report_err<'tcx, 'mir>(
     return None;
 }
 
-use std::cell::RefCell;
 thread_local! {
-    static ECX: RefCell<Vec<InterpErrorInfo<'static>>> = RefCell::new(Vec::new());
+    static ECX: RefCell<Vec<NonHaltingDiagnostic>> = RefCell::new(Vec::new());
 }
 
-pub fn register_err(e: InterpErrorInfo<'static>) {
+pub fn register_err(e: NonHaltingDiagnostic) {
     ECX.with(|ecx| ecx.borrow_mut().push(e));
 }
 
@@ -76,7 +90,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         ECX.with(|ecx| {
             for e in ecx.borrow_mut().drain(..) {
-                report_err(this, e);
+                let msg = match e {
+                    NonHaltingDiagnostic::PoppedTrackedPointerTag(item) =>
+                        format!("popped tracked tag for item {:?}", item),
+                };
+                report_msg(this, msg, false);
             }
         });
     }

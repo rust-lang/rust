@@ -10,7 +10,6 @@ use std::rc::Rc;
 use rustc_hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
-use rustc_mir::interpret::InterpError;
 
 use crate::*;
 
@@ -267,12 +266,7 @@ impl<'tcx> Stack {
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                register_err(
-                    InterpError::MachineStop(Box::new(TerminationInfo::PoppedTrackedPointerTag(
-                        item.clone(),
-                    )))
-                    .into(),
-                );
+                register_err(NonHaltingDiagnostic::PoppedTrackedPointerTag(item.clone()));
             }
         }
         if let Some(call) = item.protector {

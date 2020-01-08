@@ -33,7 +33,6 @@ pub struct MiriConfig {
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit(i64),
-    PoppedTrackedPointerTag(Item),
     Abort,
 }
 
