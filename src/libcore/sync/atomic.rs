@@ -134,16 +134,10 @@ use crate::hint::spin_loop;
 /// This function is different from [`std::thread::yield_now`] which directly yields to the
 /// system's scheduler, whereas `spin_loop_hint` does not interact with the operating system.
 ///
-/// Spin locks can be very efficient for short lock durations because they do not involve context
-/// switches or interaction with the operating system. For long lock durations they become wasteful
-/// however because they use CPU cycles for the entire lock duration, and using a
-/// [`std::sync::Mutex`] is likely the better approach. If actively spinning for a long time is
-/// required, e.g. because code polls a non-blocking API, calling [`std::thread::yield_now`]
-/// or [`std::thread::sleep`] may be the best option.
-///
-/// **Note**: Spin locks are based on the underlying assumption that another thread will release
-/// the lock 'soon'. In order for this to work, that other thread must run on a different CPU or
-/// core (at least potentially). Spin locks do not work efficiently on single CPU / core platforms.
+/// A common use case for `spin_loop_hint` is implementing bounded optimistic spinning in a CAS
+/// loop in synchronization primitives. To avoid problems like priority inversion, it is strongly
+/// recommended that the spin loop is terminated after a finite amount of iterations and an
+/// appropriate blocking syscall is made.
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
