@@ -8,7 +8,7 @@ use ra_db::Edition;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
-use crate::WorkspaceError;
+use crate::Result;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -156,7 +156,7 @@ impl CargoWorkspace {
     pub fn from_cargo_metadata(
         cargo_toml: &Path,
         cargo_features: &CargoFeatures,
-    ) -> Result<CargoWorkspace, WorkspaceError> {
+    ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.manifest_path(cargo_toml);
         if cargo_features.all_features {
@@ -171,7 +171,7 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
         }
-        let meta = meta.exec().map_err(|e| WorkspaceError::CargoMetadataFailed(e))?;
+        let meta = meta.exec().map_err(|e| format!("cargo metadata failed: {}", e))?;
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();

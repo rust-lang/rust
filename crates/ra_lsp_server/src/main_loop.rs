@@ -13,7 +13,6 @@ use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_cargo_watch::{CheckOptions, CheckTask};
 use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
-use ra_project_model::WorkspaceError;
 use ra_vfs::{VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
@@ -92,7 +91,8 @@ pub fn main_loop(
                     Ok(workspace) => loaded_workspaces.push(workspace),
                     Err(e) => {
                         log::error!("loading workspace failed: {}", e);
-                        if let WorkspaceError::CargoTomlNotFound(_) = e {
+                        if let Some(ra_project_model::CargoTomlNotFoundError(_)) = e.downcast_ref()
+                        {
                             if !feature_flags.get("notifications.cargo-toml-not-found") {
                                 continue;
                             }
