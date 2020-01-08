@@ -15,13 +15,13 @@ quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/index.html
 
 The specific `Ty` we are referring to is [`rustc::ty::Ty`][ty_ty] (and not
-[`rustc::hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
+[`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
 into the details of `ty::Ty`.
 
 [ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/type.Ty.html
-[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Ty.html
 
-## `hir::Ty` vs `ty::Ty`
+## `rustc_hir::Ty` vs `ty::Ty`
 
 The HIR in rustc can be thought of as the high-level intermediate representation. It is more or less
 the AST (see [this chapter](hir.md)) as it represents the
@@ -30,7 +30,7 @@ representation of types, but in reality it reflects more of what the user wrote,
 wrote so as to represent that type.
 
 In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning* of what the user
-wrote. For example, `hir::Ty` would record the fact that a user used the name `u32` twice in their
+wrote. For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice in their
 program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
 **Example: `fn foo(x: u32) → u32 { }`** In this function we see that `u32` appears twice. We know
@@ -49,26 +49,26 @@ look like  `fn foo<'a>(x: &'a u32) -> &'a u32)`.
 In the HIR level, these things are not spelled out and you can say the picture is rather incomplete.
 However, at the `ty::Ty` level, these details are added and it is complete. Moreover, we will have
 exactly one `ty::Ty` for a given type, like `u32`, and that `ty::Ty` is used for all `u32`s in the
-whole program, not a specific usage, unlike `hir::Ty`.
+whole program, not a specific usage, unlike `rustc_hir::Ty`.
 
 Here is a summary:
 
-| [`hir::Ty`][hir_ty] | [`ty::Ty`][ty_ty] |
+| [`rustc_hir::Ty`][hir_ty] | [`ty::Ty`][ty_ty] |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Describe the *syntax* of a type: what the user wrote (with some desugaring).  | Describe the *semantics* of a type: the meaning of what the user wrote. |
-| Each `hir::Ty` has its own spans corresponding to the appropriate place in the program. | Doesn’t correspond to a single place in the user’s program. |
-| `hir::Ty` has generics and lifetimes; however, some of those lifetimes are special markers like [`LifetimeName::Implicit`][implicit]. | `ty::Ty` has the full type, including generics and lifetimes, even if the user left them out |
-| `fn foo(x: u32) → u32 { }` - Two `hir::Ty` representing each usage of `u32`. Each has its own `Span`s, etc.- `hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) → u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program.- `ty::Ty` tells us that both usages of `u32` mean the same type. |
-| `fn foo(x: &u32) -> &u32)`- Two `hir::Ty` again.- Lifetimes for the references show up in the `hir::Ty`s using a special marker, [`LifetimeName::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32)`- A single `ty::Ty`.- The `ty::Ty` has the hidden lifetime param |
+| Each `rustc_hir::Ty` has its own spans corresponding to the appropriate place in the program. | Doesn’t correspond to a single place in the user’s program. |
+| `rustc_hir::Ty` has generics and lifetimes; however, some of those lifetimes are special markers like [`LifetimeName::Implicit`][implicit]. | `ty::Ty` has the full type, including generics and lifetimes, even if the user left them out |
+| `fn foo(x: u32) → u32 { }` - Two `rustc_hir::Ty` representing each usage of `u32`. Each has its own `Span`s, etc.- `rustc_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) → u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program.- `ty::Ty` tells us that both usages of `u32` mean the same type. |
+| `fn foo(x: &u32) -> &u32)`- Two `rustc_hir::Ty` again.- Lifetimes for the references show up in the `rustc_hir::Ty`s using a special marker, [`LifetimeName::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32)`- A single `ty::Ty`.- The `ty::Ty` has the hidden lifetime param |
 
-[implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/enum.LifetimeName.html#variant.Implicit
+[implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.LifetimeName.html#variant.Implicit
 
 **Order** HIR is built directly from the AST, so it happens before any `ty::Ty` is produced. After
 HIR is built, some basic type inference and type checking is done. During the type inference, we
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous. The `ty::Ty` then, is used for type checking while making sure everything has the
 expected type. The [`astconv` module][astconv], is where the code responsible for converting a
-`hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase, but also in other
+`rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase, but also in other
 parts of the compiler that want to ask questions like "what argument types does this function
 expect"?.
 
@@ -85,7 +85,7 @@ we determine that they semantically are the same type and that’s the `ty::Ty` 
 
 Consider another example: `fn foo<T>(x: T) -> u32` and suppose that someone invokes `foo::<u32>(0)`.
 This means that `T` and `u32` (in this invocation) actually turns out to be the same type, so we
-would eventually end up with the same `ty::Ty` in the end, but we have distinct `hir::Ty`. (This is
+would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`. (This is
 a bit over-simplified, though, since during type checking, we would check the function generically
 and would still have a `T` distinct from `u32`. Later, when doing code generation, we would always
 be handling "monomorphized" (fully substituted) versions of each function, and hence we would know
@@ -104,7 +104,7 @@ mod b {
 }
 ```
 
-Here the type `X` will vary depending on context, clearly. If you look at the `hir::Ty`, you will
+Here the type `X` will vary depending on context, clearly. If you look at the `rustc_hir::Ty`, you will
 get back that `X` is an alias in both cases (though it will be mapped via name resolution to
 distinct aliases). But if you look at the `ty::Ty` signature, it will be either `fn(u32) -> u32` or
 `fn(i32) -> i32` (with type aliases fully expanded).
@@ -466,7 +466,7 @@ You may have a couple of followup questions…
 replace a `SubstRef` with another list of types.
 
 [Here is an example of actually using `subst` in the compiler][substex].  The exact details are not
-too important, but in this piece of code, we happen to be converting from the `hir::Ty` to a real
+too important, but in this piece of code, we happen to be converting from the `rustc_hir::Ty` to a real
 `ty::Ty`. You can see that we first get some substitutions (`substs`).  Then we call `type_of` to
 get a type and call `ty.subst(substs)` to get a new version of `ty` with the substitutions made.
 
@@ -475,7 +475,7 @@ get a type and call `ty.subst(substs)` to get a new version of `ty` with the sub
 **Note on indices:** It is possible for the indices in `Param` to not match with what we expect. For
 example, the index could be out of bounds or it could be the index of a lifetime when we were
 expecting a type. These sorts of errors would be caught earlier in the compiler when translating
-from a `hir::Ty` to a `ty::Ty`. If they occur later, that is a compiler bug.
+from a `rustc_hir::Ty` to a `ty::Ty`. If they occur later, that is a compiler bug.
 
 ### `TypeFoldable` and `TypeFolder`
 

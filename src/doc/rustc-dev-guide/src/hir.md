@@ -27,7 +27,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Crate.html
+[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Crate.html
 
 For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
@@ -45,7 +45,7 @@ struct) would only have the **`ItemId`** `I` of `bar()`. To get the
 details of the function `bar()`, we would lookup `I` in the
 `items` map.
 
-[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Mod.html
+[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Mod.html
 
 One nice result from this representation is that one can iterate
 over all items in the crate by iterating over the key-value pairs
@@ -55,14 +55,14 @@ as well as "bodies" (explained below).
 
 The other reason to set up the representation this way is for better
 integration with incremental compilation. This way, if you gain access
-to an [`&hir::Item`] (e.g. for the mod `foo`), you do not immediately
+to an [`&rustc_hir::Item`] (e.g. for the mod `foo`), you do not immediately
 gain access to the contents of the function `bar()`. Instead, you only
 gain access to the **id** for `bar()`, and you must invoke some
 function to lookup the contents of `bar()` given its id; this gives
 the compiler a chance to observe that you accessed the data for
 `bar()`, and then record the dependency.
 
-[`&hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Item.html
+[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Item.html
 
 <a name="hir-id"></a>
 
@@ -97,9 +97,9 @@ sorts of identifiers in active use:
     tree causes the [`NodeId`]s of all subsequent code in the crate to change.
     This is terrible for incremental compilation, as you can perhaps imagine.
 
-[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/def_id/struct.DefId.html
-[`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.HirId.html
-[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.BodyId.html
+[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
+[`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
+[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.BodyId.html
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/struct.NodeId.html
 
 We also have an internal map to go from `DefId` to what’s called "Def path". "Def path" is like a
@@ -141,9 +141,9 @@ that `n` must be some HIR expression, you can do
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.find
-[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/enum.Node.html
+[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.Node.html
 [expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.expect_expr
-[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Expr.html
+[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via
 calls like [`tcx.hir.get_parent_node(n)`][get_parent_node].
@@ -152,7 +152,7 @@ calls like [`tcx.hir.get_parent_node(n)`][get_parent_node].
 
 ### HIR Bodies
 
-A [`hir::Body`] represents some kind of executable code, such as the body
+A [`rustc_hir::Body`] represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant. Bodies are
 associated with an **owner**, which is typically some kind of item
 (e.g. an `fn()` or `const`), but could also be a closure expression
@@ -160,6 +160,6 @@ associated with an **owner**, which is typically some kind of item
 associated with a given def-id ([`maybe_body_owned_by`]) or to find
 the owner of a body ([`body_owner_def_id`]).
 
-[`hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Body.html
+[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Body.html
 [`maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.maybe_body_owned_by
 [`body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.body_owner_def_id

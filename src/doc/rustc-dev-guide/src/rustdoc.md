@@ -84,7 +84,7 @@ is the `impl Clean<Crate> for visit_ast::RustdocVisitor`, which is called by
 
 You see, I actually lied a little earlier: There's another AST transformation
 that happens before the events in `clean/mod.rs`.  In `visit_ast.rs` is the
-type `RustdocVisitor`, which *actually* crawls a `hir::Crate` to get the first
+type `RustdocVisitor`, which *actually* crawls a `rustc_hir::Crate` to get the first
 intermediate representation, defined in `doctree.rs`. This pass is mainly to
 get a few intermediate wrappers around the HIR types and to process visibility
 and inlining. This is where `#[doc(inline)]`, `#[doc(no_inline)]`, and
