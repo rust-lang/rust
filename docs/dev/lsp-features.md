@@ -41,7 +41,7 @@ This list documents LSP features, supported by rust-analyzer.
  - trigger characters: `:`, `.`
 - [x] [textDocument/hover](https://microsoft.github.io/language-server-protocol/specification#textDocument_hover)
 - [x] [textDocument/signatureHelp](https://microsoft.github.io/language-server-protocol/specification#textDocument_signatureHelp)
- - trigger characters: `(`,  `,`,  `)`
+ - trigger characters: `(`,  `,`
 - [ ] [textDocument/declaration](https://microsoft.github.io/language-server-protocol/specification#textDocument_declaration)
 - [x] [textDocument/definition](https://microsoft.github.io/language-server-protocol/specification#textDocument_definition)
 - [x] [textDocument/typeDefinition](https://microsoft.github.io/language-server-protocol/specification#textDocument_typeDefinition)
@@ -58,7 +58,7 @@ This list documents LSP features, supported by rust-analyzer.
  - rust-analyzer.run
  - rust-analyzer.analyzerStatus
 - [x] [textDocument/codeLens](https://microsoft.github.io/language-server-protocol/specification#textDocument_codeLens)
-- [ ] [textDocument/documentLink](https://microsoft.github.io/language-server-protocol/specification#codeLens_resolve)
+- [x] [codeLens/resolve](https://microsoft.github.io/language-server-protocol/specification#codeLens_resolve)
 - [ ] [documentLink/resolve](https://microsoft.github.io/language-server-protocol/specification#documentLink_resolve)
 - [ ] [textDocument/documentColor](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentColor)
 - [ ] [textDocument/colorPresentation](https://microsoft.github.io/language-server-protocol/specification#textDocument_colorPresentation)
