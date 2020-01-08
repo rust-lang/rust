@@ -77,6 +77,11 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: Remove-Item ./target/debug/xtask.exe
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: editors
+          path: ./target/release
 
   type-script:
     name: TypeScript
@@ -101,7 +106,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: ubuntu-editors
+          name: editors
           path: /home/runner/work/rust-analyzer/editors
-
-
