@@ -1,7 +1,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use crate::def_id::DefId;
-use crate::hir::{BodyId, Expr, ImplItemId, ItemId, Mod, TraitItemId, Ty, VisibilityKind};
+use crate::hir::{BodyId, Expr, Mod, Ty, VisibilityKind};
 use crate::hir_id::HirId;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
@@ -11,9 +11,6 @@ pub trait HashStableContext: syntax::HashStableContext + rustc_target::HashStabl
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
-    fn hash_item_id(&mut self, _: ItemId, hasher: &mut StableHasher);
-    fn hash_impl_item_id(&mut self, _: ImplItemId, hasher: &mut StableHasher);
-    fn hash_trait_item_id(&mut self, _: TraitItemId, hasher: &mut StableHasher);
     fn hash_hir_mod(&mut self, _: &Mod<'_>, hasher: &mut StableHasher);
     fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
