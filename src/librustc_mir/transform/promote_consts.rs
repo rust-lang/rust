@@ -29,6 +29,7 @@ use rustc_target::spec::abi::Abi;
 use std::cell::Cell;
 use std::{iter, mem, usize};
 
+use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};
 use crate::transform::{MirPass, MirSource};
 
@@ -702,8 +703,8 @@ impl<'tcx> Validator<'_, 'tcx> {
 
         let is_const_fn = match fn_ty.kind {
             ty::FnDef(def_id, _) => {
-                self.tcx.is_const_fn(def_id)
-                    || self.tcx.is_unstable_const_fn(def_id).is_some()
+                is_const_fn(self.tcx, def_id)
+                    || is_unstable_const_fn(self.tcx, def_id).is_some()
                     || is_lang_panic_fn(self.tcx, self.def_id)
             }
             _ => false,

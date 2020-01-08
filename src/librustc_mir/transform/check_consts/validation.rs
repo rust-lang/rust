@@ -21,6 +21,7 @@ use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
+use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
 
 pub type IndirectlyMutableResults<'mir, 'tcx> =
@@ -173,7 +174,7 @@ impl Validator<'a, 'mir, 'tcx> {
         let Item { tcx, body, def_id, const_kind, .. } = *self.item;
 
         let use_min_const_fn_checks = (const_kind == Some(ConstKind::ConstFn)
-            && tcx.is_min_const_fn(def_id))
+            && crate::const_eval::is_min_const_fn(tcx, def_id))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
@@ -560,13 +561,13 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 // At this point, we are calling a function whose `DefId` is known...
-                if self.tcx.is_const_fn(def_id) {
+                if is_const_fn(self.tcx, def_id) {
                     return;
                 }
 
                 if is_lang_panic_fn(self.tcx, def_id) {
                     self.check_op(ops::Panic);
-                } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
+                } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
                     // Exempt unstable const fns inside of macros with
                     // `#[allow_internal_unstable]`.
                     if !self.span.allows_unstable(feature) {
