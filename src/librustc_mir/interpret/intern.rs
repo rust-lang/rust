@@ -361,6 +361,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                 // everything as immutable. Creating a promoted with interior mutability is UB, but
                 // there's no way we can check whether the user is using raw pointers correctly.
                 // So all we can do is mark this as immutable here.
+                // It is UB to mutate through a raw pointer obtained via an immutable reference.
+                // Since all references and pointers inside a promoted must by their very definition
+                // be created from an immutable reference, mutating though them would be UB.
                 InternKind::Promoted => {
                     alloc.mutability = Mutability::Not;
                 }
@@ -388,19 +391,27 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
         } else if let Some(_) = ecx.tcx.alloc_map.lock().get(alloc_id) {
-            // If we encounter an `AllocId` that points to a mutable `Allocation`,
-            // (directly or via relocations in its `Allocation`), we should panic,
-            // the static rules should prevent this.
-            // We may hit an `AllocId` that belongs to an already interned static,
+            // We have hit an `AllocId` that belongs to an already interned static,
             // and are thus not interning any further.
-            // But since we are also checking things during interning,
-            // we should probably continue doing those checks no matter what we encounter.
 
             // E.g. this should be unreachable for `InternKind::Promoted` except for allocations
-            // created for string and byte string literals.
+            // created for string and byte string literals, since these are interned immediately
+            // at creation time.
 
-            // FIXME: check if the allocation is ok as per the interning rules as if we interned
-            // it right here.
+            // FIXME(oli-obk): Since we are also checking things during interning,
+            // we should probably continue doing those checks no matter what we encounter.
+            // So we basically have to check if the allocation is ok as per the interning rules as
+            // if we interned it right here.
+            // This should be as simple as
+            /*
+            for &(_, ((), reloc)) in alloc.relocations().iter() {
+                if leftover_allocations.insert(reloc) {
+                    todo.push(reloc);
+                }
+            }
+            */
+            // But I (oli-obk) haven't thought about the ramnificatons yet. This also would cause
+            // compile-time regressions, so we should think about caching these.
         } else {
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
