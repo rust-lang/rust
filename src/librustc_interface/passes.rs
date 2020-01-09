@@ -21,7 +21,7 @@ use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
-use rustc_data_structures::sync::{par_for_each, Lrc, Once, WorkerLocal};
+use rustc_data_structures::sync::{join, par_for_each, Lrc, Once, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
@@ -721,10 +721,13 @@ pub fn create_global_ctxt<'tcx>(
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
 
-    // Construct the HIR map.
-    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs);
-
-    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
+    let (query_result_on_disk_cache, hir_map) = join(
+        || rustc_incremental::load_query_result_cache(sess),
+        || {
+            // Construct the HIR map.
+            map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
+        },
+    );
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = ty::query::Providers::default();
