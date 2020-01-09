@@ -8,9 +8,12 @@
 #![allow(dead_code)]
 #![cfg_attr(foo, warn(test_lint))]
 //~^ WARNING lint name `test_lint` is deprecated and may not have an effect in the future
-//~^^ WARNING lint name `test_lint` is deprecated and may not have an effect in the future
+//~| WARNING lint name `test_lint` is deprecated and may not have an effect in the future
+//~| WARNING lint name `test_lint` is deprecated and may not have an effect in the future
 #![deny(clippy_group)]
 //~^ WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
+//~| WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
+//~| WARNING lint name `clippy_group` is deprecated and may not have an effect in the future
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 
@@ -25,6 +28,8 @@ pub fn main() {
 
 #[allow(test_group)]
 //~^ WARNING lint name `test_group` is deprecated and may not have an effect in the future
+//~| WARNING lint name `test_group` is deprecated and may not have an effect in the future
+//~| WARNING lint name `test_group` is deprecated and may not have an effect in the future
 #[deny(this_lint_does_not_exist)] //~ WARNING unknown lint: `this_lint_does_not_exist`
 fn hello() {
     fn lintmetoo() { }

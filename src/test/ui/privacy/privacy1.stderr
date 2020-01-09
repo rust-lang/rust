@@ -5,13 +5,19 @@ LL |         use bar::baz::{foo, bar};
    |                  ^^^
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:140:18
+  --> $DIR/privacy1.rs:132:18
+   |
+LL |         use bar::baz::{foo, bar};
+   |                  ^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:141:18
    |
 LL |         use bar::baz;
    |                  ^^^
 
 error[E0603]: module `i` is private
-  --> $DIR/privacy1.rs:164:20
+  --> $DIR/privacy1.rs:165:20
    |
 LL |     use self::foo::i::A;
    |                    ^
@@ -65,7 +71,7 @@ LL |         ::bar::baz::bar();
    |                ^^^
 
 error[E0603]: trait `B` is private
-  --> $DIR/privacy1.rs:156:17
+  --> $DIR/privacy1.rs:157:17
    |
 LL |     impl ::bar::B for f32 { fn foo() -> f32 { 1.0 } }
    |                 ^
@@ -100,7 +106,7 @@ error[E0624]: method `bar2` is private
 LL |         ::bar::baz::A.bar2();
    |                       ^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
 Some errors have detailed explanations: E0603, E0624.
 For more information about an error, try `rustc --explain E0603`.

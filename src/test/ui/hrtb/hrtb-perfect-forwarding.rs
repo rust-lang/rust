@@ -44,6 +44,7 @@ fn foo_hrtb_bar_not<'b,T>(mut t: T)
     // isize>`, we require `T : for<'a> Bar<&'a isize>`, but the where
     // clause only specifies `T : Bar<&'b isize>`.
     foo_hrtb_bar_not(&mut t); //~ ERROR mismatched types
+                              //~| ERROR mismatched types
 }
 
 fn foo_hrtb_bar_hrtb<T>(mut t: T)

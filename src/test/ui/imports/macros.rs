@@ -14,6 +14,7 @@ mod m1 {
 mod m2 {
     use two_macros::*;
     m! { //~ ERROR ambiguous
+         //~| ERROR ambiguous
         use foo::m;
     }
 }

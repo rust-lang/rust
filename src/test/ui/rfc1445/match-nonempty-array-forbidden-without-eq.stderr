@@ -4,5 +4,11 @@ error: to use a constant of type `B` in a pattern, `B` must be annotated with `#
 LL |         FOO => { }
    |         ^^^
 
-error: aborting due to previous error
+error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/match-nonempty-array-forbidden-without-eq.rs:16:9
+   |
+LL |         FOO => { }
+   |         ^^^
+
+error: aborting due to 2 previous errors
 

@@ -2,6 +2,18 @@ warning: lint `raw_pointer_derive` has been removed: `using derive with raw poin
    |
    = note: requested on the command line with `-D raw_pointer_derive`
 
+warning: lint `raw_pointer_derive` has been removed: `using derive with raw pointers is ok`
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+
+warning: lint `raw_pointer_derive` has been removed: `using derive with raw pointers is ok`
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+
+warning: lint `raw_pointer_derive` has been removed: `using derive with raw pointers is ok`
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+
 error: unused variable: `unused`
   --> $DIR/lint-removed-cmdline.rs:12:17
    |

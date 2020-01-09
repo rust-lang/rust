@@ -11,7 +11,19 @@ LL |     assert_foo(gen);
    = note: ...but `Foo` is actually implemented for the type `&'1 OnlyFooIfStaticRef`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:48:5
+  --> $DIR/auto-trait-regions.rs:30:5
+   |
+LL | auto trait Foo {}
+   | ----------------- trait `Foo` defined here
+...
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo` would have to be implemented for the type `&'0 OnlyFooIfStaticRef`, for any lifetime `'0`...
+   = note: ...but `Foo` is actually implemented for the type `&'1 OnlyFooIfStaticRef`, for some specific lifetime `'1`
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/auto-trait-regions.rs:49:5
    |
 LL | auto trait Foo {}
    | ----------------- trait `Foo` defined here
@@ -22,5 +34,17 @@ LL |     assert_foo(gen);
    = note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`...
    = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
 
-error: aborting due to 2 previous errors
+error: implementation of `Foo` is not general enough
+  --> $DIR/auto-trait-regions.rs:49:5
+   |
+LL | auto trait Foo {}
+   | ----------------- trait `Foo` defined here
+...
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
+
+error: aborting due to 4 previous errors
 

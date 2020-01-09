@@ -9,6 +9,17 @@ LL |
 LL | 
    |  ^
 
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62973.rs:8:2
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |        -         - unclosed delimiter
+   |        |
+   |        unclosed delimiter
+LL | 
+LL | 
+   |  ^
+
 error: expected one of `,` or `}`, found `{`
   --> $DIR/issue-62973.rs:6:25
    |
@@ -60,5 +71,5 @@ LL | fn p() { match s { v, E { [) {) }
    |                              |
    |                              unclosed delimiter
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

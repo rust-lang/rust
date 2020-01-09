@@ -9,6 +9,7 @@ macro_rules! define_struct {
 
 mod foo {
     define_struct! { (foo) } //~ ERROR cannot find type `foo` in this scope
+                             //~| ERROR cannot find type `foo` in this scope
 }
 
 fn main() {}

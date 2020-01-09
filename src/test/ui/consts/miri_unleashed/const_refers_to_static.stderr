@@ -29,7 +29,13 @@ LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:35:6
+  --> $DIR/const_refers_to_static.rs:29:32
+   |
+LL | const READ_MUT: u32 = unsafe { MUTABLE };
+   |                                ^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:36:6
    |
 LL |     &FOO
    |      ^^^
@@ -84,7 +90,7 @@ LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                constant accesses static
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:33:1
+  --> $DIR/const_refers_to_static.rs:34:1
    |
 LL | / const READ_IMMUT: &usize = {
 LL | |     static FOO: usize = 0;
