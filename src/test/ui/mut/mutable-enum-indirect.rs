@@ -1,7 +1,7 @@
 // Tests that an `&` pointer to something inherently mutable is itself
 // to be considered mutable.
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 use std::marker::Sync;
 

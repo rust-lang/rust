@@ -278,6 +278,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]

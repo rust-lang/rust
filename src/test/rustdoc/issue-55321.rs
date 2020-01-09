@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 // @has issue_55321/struct.A.html
 // @has - '//*[@id="implementations-list"]/*[@class="impl"]//code' "impl !Send for A"

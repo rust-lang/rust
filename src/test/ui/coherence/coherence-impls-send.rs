@@ -1,9 +1,9 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 use std::marker::Copy;
 
 enum TestE {
-  A
+    A,
 }
 
 struct MyType;
@@ -26,5 +26,4 @@ unsafe impl Send for &'static [NotSync] {}
 //~^ ERROR conflicting implementations of trait
 //~| ERROR only traits defined in the current crate
 
-fn main() {
-}
+fn main() {}

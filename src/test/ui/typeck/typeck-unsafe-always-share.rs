@@ -1,6 +1,6 @@
 // Verify that UnsafeCell is *always* !Sync regardless if `T` is sync.
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 use std::cell::UnsafeCell;
 use std::marker::Sync;

@@ -9,6 +9,7 @@
 #![feature(const_if_match)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
@@ -315,7 +316,11 @@ impl Span {
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
-        if self.is_dummy() { other } else { self }
+        if self.is_dummy() {
+            other
+        } else {
+            self
+        }
     }
 
     /// Returns `true` if `self` fully encloses `other`.
@@ -346,21 +351,33 @@ impl Span {
     pub fn trim_start(self, other: Span) -> Option<Span> {
         let span = self.data();
         let other = other.data();
-        if span.hi > other.hi { Some(span.with_lo(cmp::max(span.lo, other.hi))) } else { None }
+        if span.hi > other.hi {
+            Some(span.with_lo(cmp::max(span.lo, other.hi)))
+        } else {
+            None
+        }
     }
 
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { expn_data.call_site.source_callsite() } else { self }
+        if !expn_data.is_root() {
+            expn_data.call_site.source_callsite()
+        } else {
+            self
+        }
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
     /// if any.
     pub fn parent(self) -> Option<Span> {
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(expn_data.call_site) } else { None }
+        if !expn_data.is_root() {
+            Some(expn_data.call_site)
+        } else {
+            None
+        }
     }
 
     /// Edition of the crate from which this span came.
@@ -386,10 +403,18 @@ impl Span {
     pub fn source_callee(self) -> Option<ExpnData> {
         fn source_callee(expn_data: ExpnData) -> ExpnData {
             let next_expn_data = expn_data.call_site.ctxt().outer_expn_data();
-            if !next_expn_data.is_root() { source_callee(next_expn_data) } else { expn_data }
+            if !next_expn_data.is_root() {
+                source_callee(next_expn_data)
+            } else {
+                expn_data
+            }
         }
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(source_callee(expn_data)) } else { None }
+        if !expn_data.is_root() {
+            Some(source_callee(expn_data))
+        } else {
+            None
+        }
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
@@ -1209,7 +1234,11 @@ impl SourceFile {
 
         let line_index = lookup_line(&self.lines[..], pos);
         assert!(line_index < self.lines.len() as isize);
-        if line_index >= 0 { Some(line_index as usize) } else { None }
+        if line_index >= 0 {
+            Some(line_index as usize)
+        } else {
+            None
+        }
     }
 
     pub fn line_bounds(&self, line_index: usize) -> (BytePos, BytePos) {

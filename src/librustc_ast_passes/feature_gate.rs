@@ -286,8 +286,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         start,
                         i.span,
                         "`#[start]` functions are experimental \
-                                       and their signature may change \
-                                       over time"
+                         and their signature may change \
+                         over time"
                     );
                 }
                 if attr::contains_name(&i.attrs[..], sym::main) {
@@ -296,8 +296,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         main,
                         i.span,
                         "declaration of a non-standard `#[main]` \
-                                        function may change over time, for now \
-                                        a top-level `fn main()` is required"
+                         function may change over time, for now \
+                         a top-level `fn main()` is required"
                     );
                 }
             }
@@ -341,7 +341,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
-                        optin_builtin_traits,
+                        negative_impls,
                         span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
                         "negative trait bounds are not yet fully implemented; \
                          use marker types for now"

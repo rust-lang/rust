@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 #![crate_name = "foo"]
 
 pub struct Foo;
