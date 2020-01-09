@@ -17,8 +17,8 @@
 use self::TargetLint::*;
 
 use crate::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
-use crate::lint::levels::LintLevelsBuilder;
-use crate::lint::{EarlyLintPassObject, LateLintPassObject};
+use crate::lint::passes::{EarlyLintPassObject, LateLintPassObject};
+use crate::lint::LintLevelsBuilder;
 use crate::middle::privacy::AccessLevels;
 use crate::middle::stability;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};

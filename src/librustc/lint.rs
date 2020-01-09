@@ -1,12 +1,12 @@
 use std::cmp;
 
 use crate::ich::StableHashingContext;
-use crate::lint::context::{CheckLintNameResult, LintStore};
+use crate::lint::context::CheckLintNameResult;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
-use rustc_session::lint::{builtin, Level, Lint, LintId};
+pub use rustc_session::lint::{builtin, Level, Lint, LintId, LintPass};
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
@@ -18,6 +18,14 @@ use syntax::print::pprust;
 use syntax::sess::feature_err;
 
 use rustc_error_codes::*;
+
+mod context;
+pub mod internal;
+mod passes;
+
+pub use context::add_elided_lifetime_in_path_suggestion;
+pub use context::{EarlyContext, LateContext, LintContext, LintStore};
+pub use passes::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]

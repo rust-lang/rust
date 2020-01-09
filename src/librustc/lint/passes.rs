@@ -18,8 +18,8 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 
-pub use self::levels::LintSource::{self, *};
 pub use self::Level::*;
+pub use crate::lint::LintSource::{self, *};
 
 use rustc_data_structures::sync;
 use rustc_hir as hir;
@@ -308,9 +308,3 @@ macro_rules! declare_combined_early_lint_pass {
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject =
     Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send + sync::Sync + 'static>;
-
-mod context;
-pub mod internal;
-mod levels;
-
-pub use self::levels::{struct_lint_level, LintLevelMap, LintLevelSets, LintLevelsBuilder};
