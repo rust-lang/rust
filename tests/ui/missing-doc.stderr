@@ -12,131 +12,32 @@ error: missing documentation for a type alias
 LL | pub type PubTypedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: missing documentation for a struct
-  --> $DIR/missing-doc.rs:13:1
-   |
-LL | / struct Foo {
-LL | |     a: isize,
-LL | |     b: isize,
-LL | | }
-   | |_^
-
-error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:14:5
-   |
-LL |     a: isize,
-   |     ^^^^^^^^
-
-error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:15:5
-   |
-LL |     b: isize,
-   |     ^^^^^^^^
-
-error: missing documentation for a struct
-  --> $DIR/missing-doc.rs:18:1
-   |
-LL | / pub struct PubFoo {
-LL | |     pub a: isize,
-LL | |     b: isize,
-LL | | }
-   | |_^
-
-error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:19:5
-   |
-LL |     pub a: isize,
-   |     ^^^^^^^^^^^^
-
-error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:20:5
-   |
-LL |     b: isize,
-   |     ^^^^^^^^
-
 error: missing documentation for a module
-  --> $DIR/missing-doc.rs:29:1
+  --> $DIR/missing-doc.rs:13:1
    |
 LL | mod module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a module
-  --> $DIR/missing-doc.rs:30:1
+  --> $DIR/missing-doc.rs:14:1
    |
 LL | pub mod pub_module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:34:1
+  --> $DIR/missing-doc.rs:18:1
    |
 LL | pub fn foo2() {}
    | ^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:35:1
+  --> $DIR/missing-doc.rs:19:1
    |
 LL | fn foo3() {}
    | ^^^^^^^^^^^^
 
-error: missing documentation for a trait
-  --> $DIR/missing-doc.rs:53:1
-   |
-LL | / pub trait C {
-LL | |     fn foo(&self);
-LL | |     fn foo_with_impl(&self) {}
-LL | | }
-   | |_^
-
-error: missing documentation for a trait method
-  --> $DIR/missing-doc.rs:54:5
-   |
-LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
-
-error: missing documentation for a trait method
-  --> $DIR/missing-doc.rs:55:5
-   |
-LL |     fn foo_with_impl(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for an associated type
-  --> $DIR/missing-doc.rs:65:5
-   |
-LL |     type AssociatedType;
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for an associated type
-  --> $DIR/missing-doc.rs:66:5
-   |
-LL |     type AssociatedTypeDef = Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing documentation for a method
-  --> $DIR/missing-doc.rs:77:5
-   |
-LL |     pub fn foo() {}
-   |     ^^^^^^^^^^^^^^^
-
-error: missing documentation for a method
-  --> $DIR/missing-doc.rs:78:5
-   |
-LL |     fn bar() {}
-   |     ^^^^^^^^^^^
-
-error: missing documentation for a method
-  --> $DIR/missing-doc.rs:82:5
-   |
-LL |     pub fn foo() {}
-   |     ^^^^^^^^^^^^^^^
-
-error: missing documentation for a method
-  --> $DIR/missing-doc.rs:85:5
-   |
-LL |     fn foo2() {}
-   |     ^^^^^^^^^^^^
-
 error: missing documentation for an enum
-  --> $DIR/missing-doc.rs:112:1
+  --> $DIR/missing-doc.rs:33:1
    |
 LL | / enum Baz {
 LL | |     BazA { a: isize, b: isize },
@@ -145,31 +46,31 @@ LL | | }
    | |_^
 
 error: missing documentation for a variant
-  --> $DIR/missing-doc.rs:113:5
+  --> $DIR/missing-doc.rs:34:5
    |
 LL |     BazA { a: isize, b: isize },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:113:12
+  --> $DIR/missing-doc.rs:34:12
    |
 LL |     BazA { a: isize, b: isize },
    |            ^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:113:22
+  --> $DIR/missing-doc.rs:34:22
    |
 LL |     BazA { a: isize, b: isize },
    |                      ^^^^^^^^
 
 error: missing documentation for a variant
-  --> $DIR/missing-doc.rs:114:5
+  --> $DIR/missing-doc.rs:35:5
    |
 LL |     BarB,
    |     ^^^^
 
 error: missing documentation for an enum
-  --> $DIR/missing-doc.rs:117:1
+  --> $DIR/missing-doc.rs:38:1
    |
 LL | / pub enum PubBaz {
 LL | |     PubBazA { a: isize },
@@ -177,43 +78,43 @@ LL | | }
    | |_^
 
 error: missing documentation for a variant
-  --> $DIR/missing-doc.rs:118:5
+  --> $DIR/missing-doc.rs:39:5
    |
 LL |     PubBazA { a: isize },
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing-doc.rs:118:15
+  --> $DIR/missing-doc.rs:39:15
    |
 LL |     PubBazA { a: isize },
    |               ^^^^^^^^
 
 error: missing documentation for a constant
-  --> $DIR/missing-doc.rs:138:1
+  --> $DIR/missing-doc.rs:59:1
    |
 LL | const FOO: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a constant
-  --> $DIR/missing-doc.rs:145:1
+  --> $DIR/missing-doc.rs:66:1
    |
 LL | pub const FOO4: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
-  --> $DIR/missing-doc.rs:147:1
+  --> $DIR/missing-doc.rs:68:1
    |
 LL | static BAR: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
-  --> $DIR/missing-doc.rs:154:1
+  --> $DIR/missing-doc.rs:75:1
    |
 LL | pub static BAR4: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a module
-  --> $DIR/missing-doc.rs:156:1
+  --> $DIR/missing-doc.rs:77:1
    |
 LL | / mod internal_impl {
 LL | |     /// dox
@@ -225,34 +126,34 @@ LL | | }
    | |_^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:159:5
+  --> $DIR/missing-doc.rs:80:5
    |
 LL |     pub fn undocumented1() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:160:5
+  --> $DIR/missing-doc.rs:81:5
    |
 LL |     pub fn undocumented2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:161:5
+  --> $DIR/missing-doc.rs:82:5
    |
 LL |     fn undocumented3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:166:9
+  --> $DIR/missing-doc.rs:87:9
    |
 LL |         pub fn also_undocumented1() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing-doc.rs:167:9
+  --> $DIR/missing-doc.rs:88:9
    |
 LL |         fn also_undocumented2() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 39 previous errors
+error: aborting due to 24 previous errors
 
