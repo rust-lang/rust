@@ -9,7 +9,7 @@ use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of invalid atomic
-    /// ordering in Atomic*::{load, store} calls.
+    /// ordering in atomic loads/stores and memory fences.
     ///
     /// **Why is this bad?** Using an invalid atomic ordering
     /// will cause a panic at run-time.
@@ -18,7 +18,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,no_run
-    /// # use std::sync::atomic::{AtomicBool, Ordering};
+    /// # use std::sync::atomic::{self, AtomicBool, Ordering};
     ///
     /// let x = AtomicBool::new(true);
     ///
@@ -27,10 +27,13 @@ declare_clippy_lint! {
     ///
     /// x.store(false, Ordering::Acquire);
     /// x.store(false, Ordering::AcqRel);
+    ///
+    /// atomic::fence(Ordering::Relaxed);
+    /// atomic::compiler_fence(Ordering::Relaxed);
     /// ```
     pub INVALID_ATOMIC_ORDERING,
     correctness,
-    "usage of invalid atomic ordering in atomic load/store calls"
+    "usage of invalid atomic ordering in atomic loads/stores and memory fences"
 }
 
 declare_lint_pass!(AtomicOrdering => [INVALID_ATOMIC_ORDERING]);
@@ -66,37 +69,65 @@ fn match_ordering_def_path(cx: &LateContext<'_, '_>, did: DefId, orderings: &[&s
         .any(|ordering| match_def_path(cx, did, &["core", "sync", "atomic", "Ordering", ordering]))
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AtomicOrdering {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::MethodCall(ref method_path, _, args) = &expr.kind;
-            let method = method_path.ident.name.as_str();
-            if type_is_atomic(cx, &args[0]);
-            if method == "load" || method == "store";
-            let ordering_arg = if method == "load" { &args[1] } else { &args[2] };
-            if let ExprKind::Path(ref ordering_qpath) = ordering_arg.kind;
-            if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
-            then {
-                if method == "load" &&
-                    match_ordering_def_path(cx, ordering_def_id, &["Release", "AcqRel"]) {
-                    span_help_and_lint(
-                        cx,
-                        INVALID_ATOMIC_ORDERING,
-                        ordering_arg.span,
-                        "atomic loads cannot have `Release` and `AcqRel` ordering",
-                        "consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`"
-                    );
-                } else if method == "store" &&
-                    match_ordering_def_path(cx, ordering_def_id, &["Acquire", "AcqRel"]) {
-                    span_help_and_lint(
-                        cx,
-                        INVALID_ATOMIC_ORDERING,
-                        ordering_arg.span,
-                        "atomic stores cannot have `Acquire` and `AcqRel` ordering",
-                        "consider using ordering modes `Release`, `SeqCst` or `Relaxed`"
-                    );
-                }
+fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let ExprKind::MethodCall(ref method_path, _, args) = &expr.kind;
+        let method = method_path.ident.name.as_str();
+        if type_is_atomic(cx, &args[0]);
+        if method == "load" || method == "store";
+        let ordering_arg = if method == "load" { &args[1] } else { &args[2] };
+        if let ExprKind::Path(ref ordering_qpath) = ordering_arg.kind;
+        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
+        then {
+            if method == "load" &&
+                match_ordering_def_path(cx, ordering_def_id, &["Release", "AcqRel"]) {
+                span_help_and_lint(
+                    cx,
+                    INVALID_ATOMIC_ORDERING,
+                    ordering_arg.span,
+                    "atomic loads cannot have `Release` and `AcqRel` ordering",
+                    "consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`"
+                );
+            } else if method == "store" &&
+                match_ordering_def_path(cx, ordering_def_id, &["Acquire", "AcqRel"]) {
+                span_help_and_lint(
+                    cx,
+                    INVALID_ATOMIC_ORDERING,
+                    ordering_arg.span,
+                    "atomic stores cannot have `Acquire` and `AcqRel` ordering",
+                    "consider using ordering modes `Release`, `SeqCst` or `Relaxed`"
+                );
             }
         }
+    }
+}
+
+fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let ExprKind::Call(ref func, ref args) = expr.kind;
+        if let ExprKind::Path(ref func_qpath) = func.kind;
+        if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
+        if ["fence", "compiler_fence"]
+            .iter()
+            .any(|func| match_def_path(cx, def_id, &["core", "sync", "atomic", func]));
+        if let ExprKind::Path(ref ordering_qpath) = &args[0].kind;
+        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
+        if match_ordering_def_path(cx, ordering_def_id, &["Relaxed"]);
+        then {
+            span_help_and_lint(
+                cx,
+                INVALID_ATOMIC_ORDERING,
+                args[0].span,
+                "memory fences cannot have `Relaxed` ordering",
+                "consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`"
+            );
+        }
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AtomicOrdering {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+        check_atomic_load_store(cx, expr);
+        check_memory_fence(cx, expr);
     }
 }
