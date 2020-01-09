@@ -1,4 +1,4 @@
-error[E0599]: no method named `f` found for type `fn(&u8)` in the current scope
+error[E0599]: no method named `f` found for fn pointer `fn(&u8)` in the current scope
   --> $DIR/issue-57362-1.rs:20:7
    |
 LL |     a.f();

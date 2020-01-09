@@ -15,7 +15,7 @@ LL |     fn f() { ::bar::m!(); }
 LL |         Vec::new();
    |         ^^^ use of undeclared type or module `Vec`
 
-error[E0599]: no method named `clone` found for type `()` in the current scope
+error[E0599]: no method named `clone` found for unit type `()` in the current scope
   --> $DIR/no_implicit_prelude.rs:12:12
    |
 LL |     fn f() { ::bar::m!(); }

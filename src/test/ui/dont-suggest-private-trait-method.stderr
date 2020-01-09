@@ -1,4 +1,4 @@
-error[E0599]: no function or associated item named `new` found for type `T` in the current scope
+error[E0599]: no function or associated item named `new` found for struct `T` in the current scope
   --> $DIR/dont-suggest-private-trait-method.rs:4:8
    |
 LL | struct T;

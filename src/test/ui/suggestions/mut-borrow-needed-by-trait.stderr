@@ -25,7 +25,7 @@ LL |     let fp = BufWriter::new(fp);
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
    = note: required by `std::io::BufWriter`
 
-error[E0599]: no method named `write_fmt` found for type `std::io::BufWriter<&dyn std::io::Write>` in the current scope
+error[E0599]: no method named `write_fmt` found for struct `std::io::BufWriter<&dyn std::io::Write>` in the current scope
   --> $DIR/mut-borrow-needed-by-trait.rs:22:5
    |
 LL |     writeln!(fp, "hello world").unwrap();

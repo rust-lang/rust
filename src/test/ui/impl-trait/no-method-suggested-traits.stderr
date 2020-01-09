@@ -16,7 +16,7 @@ LL | use no_method_suggested_traits::qux::PrivPub;
 LL | use no_method_suggested_traits::Reexported;
    |
 
-error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&u32>>` in the current scope
+error[E0599]: no method named `method` found for struct `std::rc::Rc<&mut std::boxed::Box<&u32>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:26:44
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
@@ -46,7 +46,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use foo::Bar;
    |
 
-error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&char>>` in the current scope
+error[E0599]: no method named `method` found for struct `std::rc::Rc<&mut std::boxed::Box<&char>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:32:43
    |
 LL |         fn method(&self) {}
@@ -78,7 +78,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use no_method_suggested_traits::foo::PubPub;
    |
 
-error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&i32>>` in the current scope
+error[E0599]: no method named `method` found for struct `std::rc::Rc<&mut std::boxed::Box<&i32>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:37:44
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
@@ -90,7 +90,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use no_method_suggested_traits::foo::PubPub;
    |
 
-error[E0599]: no method named `method` found for type `Foo` in the current scope
+error[E0599]: no method named `method` found for struct `Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:40:9
    |
 LL | struct Foo;
@@ -106,7 +106,7 @@ LL |     Foo.method();
            candidate #3: `no_method_suggested_traits::qux::PrivPub`
            candidate #4: `no_method_suggested_traits::Reexported`
 
-error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
+error[E0599]: no method named `method` found for struct `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:42:43
    |
 LL |     std::rc::Rc::new(&mut Box::new(&Foo)).method();
@@ -129,7 +129,7 @@ LL |     1u64.method2();
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&u64>>` in the current scope
+error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&u64>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:47:44
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
@@ -139,7 +139,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Foo` in the current scope
+error[E0599]: no method named `method2` found for struct `no_method_suggested_traits::Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:50:37
    |
 LL |     no_method_suggested_traits::Foo.method2();
@@ -149,7 +149,7 @@ LL |     no_method_suggested_traits::Foo.method2();
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
+error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:52:71
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
@@ -159,7 +159,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).metho
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Bar` in the current scope
+error[E0599]: no method named `method2` found for enum `no_method_suggested_traits::Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:54:40
    |
 LL |     no_method_suggested_traits::Bar::X.method2();
@@ -169,7 +169,7 @@ LL |     no_method_suggested_traits::Bar::X.method2();
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
+error[E0599]: no method named `method2` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:56:74
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
@@ -179,7 +179,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).me
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
-error[E0599]: no method named `method3` found for type `Foo` in the current scope
+error[E0599]: no method named `method3` found for struct `Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:59:9
    |
 LL | struct Foo;
@@ -192,7 +192,7 @@ LL |     Foo.method3();
    = note: the following trait defines an item `method3`, perhaps you need to implement it:
            candidate #1: `no_method_suggested_traits::foo::PubPub`
 
-error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
+error[E0599]: no method named `method3` found for struct `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:61:43
    |
 LL |     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
@@ -202,7 +202,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
    = note: the following trait defines an item `method3`, perhaps you need to implement it:
            candidate #1: `no_method_suggested_traits::foo::PubPub`
 
-error[E0599]: no method named `method3` found for type `Bar` in the current scope
+error[E0599]: no method named `method3` found for enum `Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:63:12
    |
 LL | enum Bar { X }
@@ -215,7 +215,7 @@ LL |     Bar::X.method3();
    = note: the following trait defines an item `method3`, perhaps you need to implement it:
            candidate #1: `no_method_suggested_traits::foo::PubPub`
 
-error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&Bar>>` in the current scope
+error[E0599]: no method named `method3` found for struct `std::rc::Rc<&mut std::boxed::Box<&Bar>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:65:46
    |
 LL |     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
@@ -231,31 +231,31 @@ error[E0599]: no method named `method3` found for type `usize` in the current sc
 LL |     1_usize.method3();
    |             ^^^^^^^ method not found in `usize`
 
-error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&usize>>` in the current scope
+error[E0599]: no method named `method3` found for struct `std::rc::Rc<&mut std::boxed::Box<&usize>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:70:47
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1_usize)).method3();
    |                                               ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&usize>>`
 
-error[E0599]: no method named `method3` found for type `no_method_suggested_traits::Foo` in the current scope
+error[E0599]: no method named `method3` found for struct `no_method_suggested_traits::Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:71:37
    |
 LL |     no_method_suggested_traits::Foo.method3();
    |                                     ^^^^^^^ method not found in `no_method_suggested_traits::Foo`
 
-error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
+error[E0599]: no method named `method3` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:72:71
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method3();
    |                                                                       ^^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>`
 
-error[E0599]: no method named `method3` found for type `no_method_suggested_traits::Bar` in the current scope
+error[E0599]: no method named `method3` found for enum `no_method_suggested_traits::Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:74:40
    |
 LL |     no_method_suggested_traits::Bar::X.method3();
    |                                        ^^^^^^^ method not found in `no_method_suggested_traits::Bar`
 
-error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
+error[E0599]: no method named `method3` found for struct `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:75:74
    |
 LL |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method3();

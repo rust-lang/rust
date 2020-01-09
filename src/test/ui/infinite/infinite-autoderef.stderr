@@ -37,7 +37,7 @@ LL |     Foo.bar();
    |
    = help: consider adding a `#![recursion_limit="256"]` attribute to your crate
 
-error[E0599]: no method named `bar` found for type `Foo` in the current scope
+error[E0599]: no method named `bar` found for struct `Foo` in the current scope
   --> $DIR/infinite-autoderef.rs:26:9
    |
 LL | struct Foo;

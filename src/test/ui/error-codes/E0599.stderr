@@ -1,4 +1,4 @@
-error[E0599]: no associated item named `NotEvenReal` found for type `Foo` in the current scope
+error[E0599]: no associated item named `NotEvenReal` found for struct `Foo` in the current scope
   --> $DIR/E0599.rs:4:20
    |
 LL | struct Foo;

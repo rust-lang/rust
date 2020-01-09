@@ -18,5 +18,5 @@ fn main() {
     let f1 = Bar;
 
     f1.foo(1usize);
-    //~^ error: method named `foo` found for type `Bar` in the current scope
+    //~^ error: method named `foo` found for struct `Bar` in the current scope
 }

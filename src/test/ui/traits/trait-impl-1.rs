@@ -12,5 +12,5 @@ impl T for i32 {}
 
 fn main() {
     let x = &42i32;
-    x.foo(); //~ERROR: no method named `foo` found for type `&i32` in the current scope
+    x.foo(); //~ERROR: no method named `foo` found
 }
