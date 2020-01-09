@@ -150,6 +150,14 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "VALUE",
         );
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
+        opts.optopt(
+            "",
+            "llvm-skip-rebuild",
+            "whether rebuilding llvm should be skipped \
+             a VALUE of TRUE indicates that llvm will not be rebuilt \
+             VALUE overrides the skip-rebuild option in config.toml.",
+            "VALUE",
+        );
 
         // fn usage()
         let usage =
