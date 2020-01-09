@@ -49,7 +49,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, text: &str) -> FileId {
     let file_id = FileId(0);
     let rel_path: RelativePathBuf = "/main.rs".into();
 
-    let mut source_root = SourceRoot::default();
+    let mut source_root = SourceRoot::new_local();
     source_root.insert_file(rel_path.clone(), file_id);
 
     let mut crate_graph = CrateGraph::default();
@@ -77,7 +77,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     let mut crate_deps = Vec::new();
     let mut default_crate_root: Option<FileId> = None;
 
-    let mut source_root = SourceRoot::default();
+    let mut source_root = SourceRoot::new_local();
     let mut source_root_id = WORKSPACE;
     let mut source_root_prefix: RelativePathBuf = "/".into();
     let mut file_id = FileId(0);
@@ -87,7 +87,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     for entry in fixture.iter() {
         let meta = match parse_meta(&entry.meta) {
             ParsedMeta::Root { path } => {
-                let source_root = std::mem::replace(&mut source_root, SourceRoot::default());
+                let source_root = std::mem::replace(&mut source_root, SourceRoot::new_local());
                 db.set_source_root(source_root_id, Arc::new(source_root));
                 source_root_id.0 += 1;
                 source_root_prefix = path;

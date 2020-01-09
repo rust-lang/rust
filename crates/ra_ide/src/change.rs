@@ -176,7 +176,8 @@ impl RootDatabase {
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
-                let root = if is_local { SourceRoot::new() } else { SourceRoot::new_library() };
+                let root =
+                    if is_local { SourceRoot::new_local() } else { SourceRoot::new_library() };
                 let durability = durability(&root);
                 self.set_source_root_with_durability(root_id, Arc::new(root), durability);
                 if is_local {
