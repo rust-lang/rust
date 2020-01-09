@@ -214,8 +214,7 @@ fn with_children(
     new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
 ) -> SyntaxNode {
     let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
-    let new_node =
-        rowan::GreenNode::new(rowan::cursor::SyntaxKind(parent.kind() as u16), new_children);
+    let new_node = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
     let new_root_node = parent.replace_with(new_node);
     let new_root_node = SyntaxNode::new_root(new_root_node);
 
