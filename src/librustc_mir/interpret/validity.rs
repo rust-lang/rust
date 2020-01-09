@@ -252,7 +252,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {
             ty::Dynamic(..) => {
-                let vtable = meta.unwrap_unsized();
+                let vtable = meta.unwrap_meta();
                 try_validation!(
                     self.ecx.memory.check_ptr_access(
                         vtable,
@@ -276,7 +276,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
-                    meta.unwrap_unsized().to_machine_usize(self.ecx),
+                    meta.unwrap_meta().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer",
                     self.path
                 );

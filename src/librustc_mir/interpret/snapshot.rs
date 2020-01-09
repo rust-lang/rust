@@ -209,7 +209,7 @@ impl_snapshot_for!(
 
 impl_snapshot_for!(
     enum MemPlaceMeta {
-        Unsized(s),
+        Meta(s),
         None,
         Poison,
     }

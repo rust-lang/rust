@@ -465,13 +465,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.unwrap_unsized();
+                let vtable = metadata.unwrap_meta();
                 // Read size and align from vtable (already checks size).
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.unwrap_unsized().to_machine_usize(self)?;
+                let len = metadata.unwrap_meta().to_machine_usize(self)?;
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
@@ -817,7 +817,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 " by align({}){} ref:",
                                 mplace.align.bytes(),
                                 match mplace.meta {
-                                    MemPlaceMeta::Unsized(meta) => format!(" meta({:?})", meta),
+                                    MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
                                     MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
                                 }
                             )

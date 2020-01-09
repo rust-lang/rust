@@ -24,7 +24,7 @@ use super::{
 /// Information required for the sound usage of a `MemPlace`.
 pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
-    Unsized(Scalar<Tag, Id>),
+    Meta(Scalar<Tag, Id>),
     /// `Sized` types or unsized `extern type`
     None,
     /// The address of this place may not be taken. This protects the `MemPlace` from coming from
@@ -35,17 +35,17 @@ pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
 }
 
 impl<Tag, Id> MemPlaceMeta<Tag, Id> {
-    pub fn unwrap_unsized(self) -> Scalar<Tag, Id> {
+    pub fn unwrap_meta(self) -> Scalar<Tag, Id> {
         match self {
-            Self::Unsized(s) => s,
+            Self::Meta(s) => s,
             Self::None | Self::Poison => {
                 bug!("expected wide pointer extra data (e.g. slice length or trait object vtable)")
             }
         }
     }
-    fn is_unsized(self) -> bool {
+    fn has_meta(self) -> bool {
         match self {
-            Self::Unsized(_) => true,
+            Self::Meta(_) => true,
             Self::None | Self::Poison => false,
         }
     }
@@ -54,7 +54,7 @@ impl<Tag, Id> MemPlaceMeta<Tag, Id> {
 impl<Tag> MemPlaceMeta<Tag> {
     pub fn erase_tag(self) -> MemPlaceMeta<()> {
         match self {
-            Self::Unsized(s) => MemPlaceMeta::Unsized(s.erase_tag()),
+            Self::Meta(s) => MemPlaceMeta::Meta(s.erase_tag()),
             Self::None => MemPlaceMeta::None,
             Self::Poison => MemPlaceMeta::Poison,
         }
@@ -154,7 +154,7 @@ impl<Tag> MemPlace<Tag> {
     pub fn to_ref(self) -> Immediate<Tag> {
         match self.meta {
             MemPlaceMeta::None => Immediate::Scalar(self.ptr.into()),
-            MemPlaceMeta::Unsized(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
+            MemPlaceMeta::Meta(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
             MemPlaceMeta::Poison => bug!(
                 "MPlaceTy::dangling may never be used to produce a \
                 place that will have the address of its pointee taken"
@@ -214,7 +214,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
                 ty::Slice(..) | ty::Str => {
-                    return self.mplace.meta.unwrap_unsized().to_machine_usize(cx);
+                    return self.mplace.meta.unwrap_meta().to_machine_usize(cx);
                 }
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
@@ -231,7 +231,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub(super) fn vtable(self) -> Scalar<Tag> {
         match self.layout.ty.kind {
-            ty::Dynamic(..) => self.mplace.meta.unwrap_unsized(),
+            ty::Dynamic(..) => self.mplace.meta.unwrap_meta(),
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
@@ -312,7 +312,7 @@ where
         let (ptr, meta) = match *val {
             Immediate::Scalar(ptr) => (ptr.not_undef()?, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => {
-                (ptr.not_undef()?, MemPlaceMeta::Unsized(meta.not_undef()?))
+                (ptr.not_undef()?, MemPlaceMeta::Meta(meta.not_undef()?))
             }
         };
 
@@ -354,7 +354,7 @@ where
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
         let size = size.unwrap_or_else(|| {
             assert!(!place.layout.is_unsized());
-            assert!(!place.meta.is_unsized());
+            assert!(!place.meta.has_meta());
             place.layout.size
         });
         self.memory.check_ptr_access(place.ptr, size, place.align)
@@ -505,7 +505,7 @@ where
             ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(inner, inner_len)),
             ty::Slice(..) => {
                 let len = Scalar::from_uint(inner_len, self.pointer_size());
-                (MemPlaceMeta::Unsized(len), base.layout.ty)
+                (MemPlaceMeta::Meta(len), base.layout.ty)
             }
             _ => bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
         };
@@ -519,7 +519,7 @@ where
         variant: VariantIdx,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        assert!(!base.meta.is_unsized());
+        assert!(!base.meta.has_meta());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..base })
     }
 
@@ -1081,7 +1081,7 @@ where
         let mplace = MemPlace {
             ptr: ptr.into(),
             align: Align::from_bytes(1).unwrap(),
-            meta: MemPlaceMeta::Unsized(meta),
+            meta: MemPlaceMeta::Meta(meta),
         };
 
         let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
