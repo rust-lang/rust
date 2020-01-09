@@ -1,9 +1,25 @@
-//! # Lints in the Rust compiler
+//! Lints, aka compiler warnings.
 //!
-//! This currently only contains the definitions and implementations
-//! of most of the lints that `rustc` supports directly, it does not
-//! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc_driver::plugin` respectively.
+//! A 'lint' check is a kind of miscellaneous constraint that a user _might_
+//! want to enforce, but might reasonably want to permit as well, on a
+//! module-by-module basis. They contrast with static constraints enforced by
+//! other phases of the compiler, which are generally required to hold in order
+//! to compile the program at all.
+//!
+//! Most lints can be written as `LintPass` instances. These run after
+//! all other analyses. The `LintPass`es built into rustc are defined
+//! within `rustc_session::lint::builtin`,
+//! which has further comments on how to add such a lint.
+//! rustc can also load user-defined lint plugins via the plugin mechanism.
+//!
+//! Some of rustc's lints are defined elsewhere in the compiler and work by
+//! calling `add_lint()` on the overall `Session` object. This works when
+//! it happens before the main lint pass, which emits the lints stored by
+//! `add_lint()`. To emit lints after the main lint pass (from codegen, for
+//! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
+//! in `context.rs`.
+//!
+//! Some code also exists in `rustc_session::lint`, `rustc::lint`.
 //!
 //! ## Note
 //!
