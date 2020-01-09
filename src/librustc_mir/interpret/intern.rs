@@ -358,12 +358,12 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                     alloc.mutability = Mutability::Not;
                 }
                 // Raw pointers in promoteds may only point to immutable things so we mark
-                // everything as immutable. Creating a promoted with interior mutability is UB, but
-                // there's no way we can check whether the user is using raw pointers correctly.
-                // So all we can do is mark this as immutable here.
+                // everything as immutable.
                 // It is UB to mutate through a raw pointer obtained via an immutable reference.
                 // Since all references and pointers inside a promoted must by their very definition
                 // be created from an immutable reference, mutating though them would be UB.
+                // There's no way we can check whether the user is using raw pointers correctly,
+                // so all we can do is mark this as immutable here.
                 InternKind::Promoted => {
                     alloc.mutability = Mutability::Not;
                 }
@@ -394,7 +394,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // We have hit an `AllocId` that belongs to an already interned static,
             // and are thus not interning any further.
 
-            // E.g. this should be unreachable for `InternKind::Promoted` except for allocations
+            // For `InternKind::Promoted` this is only reachable for allocations
             // created for string and byte string literals, since these are interned immediately
             // at creation time.
 
