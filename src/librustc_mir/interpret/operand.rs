@@ -467,7 +467,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.
-                // FIXME use place_projection.is_empty() when is available
                 let layout = if place.projection.is_empty() { layout } else { None };
 
                 self.access_local(self.frame(), local, layout)?
