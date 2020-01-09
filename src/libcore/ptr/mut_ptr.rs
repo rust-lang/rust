@@ -250,6 +250,20 @@ impl<T: ?Sized> *mut T {
     /// *first_value = 4;
     /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
     /// ```
+    ///
+    /// # Null-unchecked version
+    ///
+    /// If you are sure the pointer can never be null and are looking for some kind of
+    /// `as_mut_unchecked` that returns the `&mut T` instead of `Option<&mut T>`, know that
+    /// you can dereference the pointer directly.
+    ///
+    /// ```
+    /// let mut s = [1, 2, 3];
+    /// let ptr: *mut u32 = s.as_mut_ptr();
+    /// let first_value = unsafe { &mut *ptr };
+    /// *first_value = 4;
+    /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
+    /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
