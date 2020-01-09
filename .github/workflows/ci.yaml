@@ -83,7 +83,7 @@ jobs:
 
       - name: Copy binaries (non-win)
         if: matrix.os != 'windows-latest'
-        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
+        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server* ./dist
 
       - name: Copy binaries (win)
         if: matrix.os == 'windows-latest'
