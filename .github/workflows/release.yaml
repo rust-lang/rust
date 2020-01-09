@@ -1,4 +1,4 @@
-name: CI
+name: CI-Release
 on:
   pull_request:
   push:
@@ -70,6 +70,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --release
 
       - name: Prepare cache
         run: cargo xtask pre-cache
