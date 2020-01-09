@@ -20,7 +20,6 @@ use syntax::sess::feature_err;
 use rustc_error_codes::*;
 
 mod context;
-pub mod internal;
 mod passes;
 
 pub use context::add_elided_lifetime_in_path_suggestion;

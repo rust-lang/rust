@@ -26,6 +26,7 @@ extern crate rustc_session;
 mod array_into_iter;
 pub mod builtin;
 mod early;
+mod internal;
 mod late;
 mod levels;
 mod non_ascii_idents;
@@ -53,10 +54,10 @@ use lint::LintId;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use internal::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
-use rustc::lint::internal::*;
 use types::*;
 use unused::*;
 
