@@ -7,8 +7,8 @@ use rustc_session::declare_tool_lint;
 declare_clippy_lint! {
     /// **What it does:** Checks for unused written/read amount.
     ///
-    /// **Why is this bad?** `io::Write::write` and `io::Read::read` are not
-    /// guaranteed to
+    /// **Why is this bad?** `io::Write::write(_vectored)` and
+    /// `io::Read::read(_vectored)` are not guaranteed to
     /// process the entire buffer. They return how many bytes were processed, which
     /// might be smaller
     /// than a given buffer's length. If you don't need to deal with
@@ -68,20 +68,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
 fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     if let hir::ExprKind::MethodCall(ref path, _, _) = call.kind {
         let symbol = &*path.ident.as_str();
-        if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
-            span_lint(
+        let read_trait = match_trait_method(cx, call, &paths::IO_READ);
+        let write_trait = match_trait_method(cx, call, &paths::IO_WRITE);
+
+        match (read_trait, write_trait, symbol) {
+            (true, _, "read") => span_lint(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "handle read amount returned or use `Read::read_exact` instead",
-            );
-        } else if match_trait_method(cx, call, &paths::IO_WRITE) && symbol == "write" {
-            span_lint(
+                "read amount is not handled. Use `Read::read_exact` instead",
+            ),
+            (true, _, "read_vectored") => span_lint(cx, UNUSED_IO_AMOUNT, expr.span, "read amount is not handled"),
+            (_, true, "write") => span_lint(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "handle written amount returned or use `Write::write_all` instead",
-            );
+                "written amount is not handled. Use `Write::write_all` instead",
+            ),
+            (_, true, "write_vectored") => span_lint(cx, UNUSED_IO_AMOUNT, expr.span, "written amount is not handled"),
+            _ => (),
         }
     }
 }
