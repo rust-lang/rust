@@ -2562,32 +2562,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
     }
 
-    pub fn lint_hir_note(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
-    pub fn lint_node_note(
-        self,
-        lint: &'static Lint,
-        id: hir::HirId,
-        span: impl Into<MultiSpan>,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
     pub fn maybe_lint_level_root_bounded(

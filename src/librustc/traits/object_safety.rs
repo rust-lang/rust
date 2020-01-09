@@ -179,7 +179,7 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                tcx.lint_node_note(
+                tcx.struct_span_lint_hir(
                     WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
@@ -187,8 +187,9 @@ fn object_safety_violations_for_trait(
                         "the trait `{}` cannot be made into an object",
                         tcx.def_path_str(trait_def_id)
                     ),
-                    &violation.error_msg(),
-                );
+                )
+                .note(&violation.error_msg())
+                .emit();
                 false
             } else {
                 true
