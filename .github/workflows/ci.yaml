@@ -107,7 +107,7 @@ jobs:
         run: mkdir ./dist
 
       - name: Copy vscode extension
-        run: cp ./editors/code/*.vsix ./dist/code/
+        run: mkdir ./dist/code && cp ./editors/code/*.vsix ./dist/code/
 
       - name: Copy emacs mode
         run: cp -R ./editors/emacs ./dist/
