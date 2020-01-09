@@ -1,11 +1,15 @@
 #![feature(option_expect_none, option_unwrap_none)]
-
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
 //! location reported.
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static HOOK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 fn main() {
     // inspect the `PanicInfo` we receive to ensure the right file is the source
     std::panic::set_hook(Box::new(|info| {
+        HOOK_COUNT.fetch_add(1, Ordering::Relaxed);
         let actual = info.location().unwrap();
         if actual.file() != file!() {
             eprintln!("expected a location in the test file, found {:?}", actual);
@@ -35,4 +39,6 @@ fn main() {
 
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
+
+    assert_eq!(HOOK_COUNT.load(Ordering::Relaxed), 8);
 }
