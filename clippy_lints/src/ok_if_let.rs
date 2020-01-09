@@ -1,5 +1,6 @@
-use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
+use crate::utils::{match_type, method_chain_args, paths, snippet, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc_errors::Applicability;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -40,18 +41,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! { //begin checking variables
             if let ExprKind::Match(ref op, ref body, ref source) = expr.kind; //test if expr is a match
-            if let MatchSource::IfLetDesugar { .. } = *source; //test if it is an If Let
-            if let ExprKind::MethodCall(_, _, ref result_types) = op.kind; //check is expr.ok() has type Result<T,E>.ok()
+            if let MatchSource::IfLetDesugar { contains_else_clause } = *source; //test if it is an If Let
+            if let ExprKind::MethodCall(_, ok_span, ref result_types) = op.kind; //check is expr.ok() has type Result<T,E>.ok()
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
 
             then {
                 let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
-                let some_expr_string = snippet(cx, y[0].span, "");
+                let mut applicability = Applicability::MachineApplicable;
+                let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
+                let trimmed_ok = snippet_with_applicability(cx, op.span.until(ok_span), "", &mut applicability);
+                let mut sugg = format!(
+                    "if let Ok({}) = {} {}",
+                    some_expr_string,
+                    // FIXME(JohnTitor): this trimming is hacky, probably can improve it
+                    trimmed_ok.trim_matches('.'),
+                    snippet(cx, body[0].span, ".."),
+                );
+                if contains_else_clause {
+                    sugg = format!("{} else {}", sugg, snippet(cx, body[1].span, ".."));
+                }
                 if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type {
-                    span_help_and_lint(cx, IF_LET_SOME_RESULT, expr.span,
-                    "Matching on `Some` with `ok()` is redundant",
-                    &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string));
+                    span_lint_and_sugg(
+                        cx,
+                        IF_LET_SOME_RESULT,
+                        expr.span,
+                        "Matching on `Some` with `ok()` is redundant",
+                        &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
+                        sugg,
+                        applicability,
+                    );
                 }
             }
         }

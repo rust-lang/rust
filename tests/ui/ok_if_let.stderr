@@ -1,5 +1,5 @@
 error: Matching on `Some` with `ok()` is redundant
-  --> $DIR/ok_if_let.rs:4:5
+  --> $DIR/ok_if_let.rs:6:5
    |
 LL | /     if let Some(y) = x.parse().ok() {
 LL | |         y
@@ -9,7 +9,29 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::if-let-some-result` implied by `-D warnings`
-   = help: Consider matching on `Ok(y)` and removing the call to `ok` instead
+help: Consider matching on `Ok(y)` and removing the call to `ok` instead
+   |
+LL |     if let Ok(y) = x.parse() {
+LL |         y
+LL |     } else {
+LL |         0
+LL |     }
+   |
 
-error: aborting due to previous error
+error: Matching on `Some` with `ok()` is redundant
+  --> $DIR/ok_if_let.rs:23:9
+   |
+LL | /         if let Some(y) = x.parse().ok() {
+LL | |             return y;
+LL | |         };
+   | |_________^
+   |
+help: Consider matching on `Ok(y)` and removing the call to `ok` instead
+   |
+LL |         if let Ok(y) = x.parse() {
+LL |             return y;
+LL |         };
+   |
+
+error: aborting due to 2 previous errors
 
