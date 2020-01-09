@@ -2122,7 +2122,7 @@ where
 }
 
 impl<T> Vec<T> {
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, iterator: I) {
         // This is the case for a general iterator.
         //
         // This function should be the moral equivalent of:
@@ -2130,18 +2130,10 @@ impl<T> Vec<T> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-            unsafe {
-                ptr::write(self.get_unchecked_mut(len), element);
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
-            }
-        }
+        let (lower, _) = iterator.size_hint();
+        self.reserve(lower);
+
+        iterator.for_each(|element| self.push(element));
     }
 
     /// Creates a splicing iterator that replaces the specified range in the vector
