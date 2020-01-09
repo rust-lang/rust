@@ -104,7 +104,7 @@ impl SmolStr {
 
     pub fn new<T>(text: T) -> SmolStr
     where
-        T: Into<String> + AsRef<str>,
+        T: AsRef<str>,
     {
         SmolStr(Repr::new(text))
     }
@@ -343,7 +343,7 @@ enum Repr {
 impl Repr {
     fn new<T>(text: T) -> Self
     where
-        T: Into<String> + AsRef<str>,
+        T: AsRef<str>,
     {
         {
             let text = text.as_ref();
@@ -367,7 +367,7 @@ impl Repr {
             }
         }
 
-        Repr::Heap(text.into().into_boxed_str().into())
+        Repr::Heap(text.as_ref().into())
     }
 
     #[inline(always)]
