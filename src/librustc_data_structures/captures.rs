@@ -8,8 +8,3 @@
 pub trait Captures<'a> {}
 
 impl<T: ?Sized> Captures<'_> for T {}
-
-#[allow(unused_lifetimes)]
-pub trait Captures2<'a, 'b> {}
-
-impl<T: ?Sized> Captures2<'_, '_> for T {}

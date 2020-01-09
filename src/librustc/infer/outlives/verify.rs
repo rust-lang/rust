@@ -51,10 +51,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // Start with anything like `T: 'a` we can scrape from the
         // environment
-        let param_bounds = self
-            .declared_generic_bounds_from_env(GenericKind::Param(param_ty))
-            .into_iter()
-            .map(|outlives| outlives.1);
+        let param_bounds =
+            self.declared_generic_bounds_from_env(param_ty).into_iter().map(|outlives| outlives.1);
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
@@ -110,24 +108,21 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         let projection_ty_as_ty = projection_ty.as_ty();
 
-        let mut bounds = Vec::new();
-
         // Search the env for where clauses like `P: 'a`.
-        bounds.extend(
-            self.projection_approx_declared_bounds_from_env(projection_ty).into_iter().map(
-                |ty::OutlivesPredicate(ty, r)| {
-                    let vb = VerifyBound::OutlivedBy(r);
-                    if ty == projection_ty_as_ty {
-                        // Micro-optimize if this is an exact match (this
-                        // occurs often when there are no region variables
-                        // involved).
-                        vb
-                    } else {
-                        VerifyBound::IfEq(ty, Box::new(vb))
-                    }
-                },
-            ),
-        );
+        let env_bounds = self
+            .projection_approx_declared_bounds_from_env(projection_ty)
+            .into_iter()
+            .map(|ty::OutlivesPredicate(ty, r)| {
+                let vb = VerifyBound::OutlivedBy(r);
+                if ty == projection_ty_as_ty {
+                    // Micro-optimize if this is an exact match (this
+                    // occurs often when there are no region variables
+                    // involved).
+                    vb
+                } else {
+                    VerifyBound::IfEq(ty, Box::new(vb))
+                }
+            });
 
         // Extend with bounds that we can find from the trait.
         let trait_bounds = self
@@ -176,8 +171,6 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
     ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        let tcx = self.tcx;
-
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
         // have to worry about that. Comparing using `==` is a bit

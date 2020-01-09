@@ -904,18 +904,13 @@ impl<'tcx> VerifyBound<'tcx> {
         }
     }
 
-    pub fn or(self, vb: impl FnOnce() -> VerifyBound<'tcx>) -> VerifyBound<'tcx> {
-        if self.must_hold() {
+    pub fn or(self, vb: VerifyBound<'tcx>) -> VerifyBound<'tcx> {
+        if self.must_hold() || vb.cannot_hold() {
             self
+        } else if self.cannot_hold() || vb.must_hold() {
+            vb
         } else {
-            let vb = vb();
-            if vb.cannot_hold() {
-                self
-            } else if self.cannot_hold() || vb.must_hold() {
-                vb
-            } else {
-                VerifyBound::AnyBound(vec![self, vb])
-            }
+            VerifyBound::AnyBound(vec![self, vb])
         }
     }
 

@@ -60,106 +60,106 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
     // with `collect()` because of the need to sometimes skip subtrees
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
-    match ty.kind {
-            ty::view::Closure(def_id, ref substs) => {
-                for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
-                    compute_components(tcx, upvar_ty, out);
-                }
-            }
-
-            ty::view::Generator(def_id, ref substs, _) => {
-                // Same as the closure case
-                for upvar_ty in substs.as_generator().upvar_tys(def_id, tcx) {
-                    compute_components(tcx, upvar_ty, out);
-                }
-
-                // We ignore regions in the generator interior as we don't
-                // want these to affect region inference
-            }
-
-            // All regions are bound inside a witness
-            ty::view::GeneratorWitness(..) => (),
-
-            // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
-            // is implied by the environment is done in regionck.
-            ty::view::Param(p) => {
-                out.push(Component::Param(p));
-            }
-
-            // For projections, we prefer to generate an obligation like
-            // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
-            // regionck more ways to prove that it holds. However,
-            // regionck is not (at least currently) prepared to deal with
-            // higher-ranked regions that may appear in the
-            // trait-ref. Therefore, if we see any higher-ranke regions,
-            // we simply fallback to the most restrictive rule, which
-            // requires that `Pi: 'a` for all `i`.
-            ty::view::Projection(data) => {
-                if !data.has_escaping_bound_vars() {
-                    // best case: no escaping regions, so push the
-                    // projection and skip the subtree (thus generating no
-                    // constraints for Pi). This defers the choice between
-                    // the rules OutlivesProjectionEnv,
-                    // OutlivesProjectionTraitDef, and
-                    // OutlivesProjectionComponents to regionck.
-                    out.push(Component::Projection(data));
-                } else {
-                    // fallback case: hard code
-                    // OutlivesProjectionComponents.  Continue walking
-                    // through and constrain Pi.
-                    let subcomponents = capture_components(tcx, ty);
-                    out.push(Component::EscapingProjection(subcomponents));
-                }
-            }
-
-            ty::view::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
-
-            // We assume that inference variables are fully resolved.
-            // So, if we encounter an inference variable, just record
-            // the unresolved variable as a component.
-            ty::view::Infer(infer_ty) => {
-                out.push(Component::UnresolvedInferenceVariable(infer_ty));
-            }
-
-            // Most types do not introduce any region binders, nor
-            // involve any other subtle cases, and so the WF relation
-            // simply constraints any regions referenced directly by
-            // the type and then visits the types that are lexically
-            // contained within. (The comments refer to relevant rules
-            // from RFC1214.)
-            ty::view::Bool |            // OutlivesScalar
-            ty::view::Char |            // OutlivesScalar
-            ty::view::Int(..) |         // OutlivesScalar
-            ty::view::Uint(..) |        // OutlivesScalar
-            ty::view::Float(..) |       // OutlivesScalar
-            ty::view::Never |           // ...
-            ty::view::Adt(..) |         // OutlivesNominalType
-            ty::view::Opaque(..) |        // OutlivesNominalType (ish)
-            ty::view::Foreign(..) |     // OutlivesNominalType
-            ty::view::Str |             // OutlivesScalar (ish)
-            ty::view::Array(..) |       // ...
-            ty::view::Slice(..) |       // ...
-            ty::view::RawPtr(..) |      // ...
-            ty::view::Ref(..) |         // OutlivesReference
-            ty::view::Tuple(..) |       // ...
-            ty::view::FnDef(..) |       // OutlivesFunction (*)
-            ty::view::FnPtr(_) |        // OutlivesFunction (*)
-            ty::view::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
-            ty::view::Placeholder(..) |
-            ty::view::Bound(..) |
-            ty::view::Error => {
-                // (*) Bare functions and traits are both binders. In the
-                // RFC, this means we would add the bound regions to the
-                // "bound regions list".  In our representation, no such
-                // list is maintained explicitly, because bound regions
-                // themselves can be readily identified.
-
-                push_region_constraints(ty, out);
-                for subty in ty.walk_shallow() {
-                    compute_components(tcx, subty, out);
-                }
+    match ty.into() {
+        ty::view::Closure(def_id, ref substs) => {
+            for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
+                compute_components(tcx, upvar_ty, out);
             }
         }
+
+        ty::view::Generator(def_id, ref substs, _) => {
+            // Same as the closure case
+            for upvar_ty in substs.as_generator().upvar_tys(def_id, tcx) {
+                compute_components(tcx, upvar_ty, out);
+            }
+
+            // We ignore regions in the generator interior as we don't
+            // want these to affect region inference
+        }
+
+        // All regions are bound inside a witness
+        ty::view::GeneratorWitness(..) => (),
+
+        // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
+        // is implied by the environment is done in regionck.
+        ty::view::Param(p) => {
+            out.push(Component::Param(p));
+        }
+
+        // For projections, we prefer to generate an obligation like
+        // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
+        // regionck more ways to prove that it holds. However,
+        // regionck is not (at least currently) prepared to deal with
+        // higher-ranked regions that may appear in the
+        // trait-ref. Therefore, if we see any higher-ranke regions,
+        // we simply fallback to the most restrictive rule, which
+        // requires that `Pi: 'a` for all `i`.
+        ty::view::Projection(data) => {
+            if !data.has_escaping_bound_vars() {
+                // best case: no escaping regions, so push the
+                // projection and skip the subtree (thus generating no
+                // constraints for Pi). This defers the choice between
+                // the rules OutlivesProjectionEnv,
+                // OutlivesProjectionTraitDef, and
+                // OutlivesProjectionComponents to regionck.
+                out.push(Component::Projection(data));
+            } else {
+                // fallback case: hard code
+                // OutlivesProjectionComponents.  Continue walking
+                // through and constrain Pi.
+                let subcomponents = capture_components(tcx, ty);
+                out.push(Component::EscapingProjection(subcomponents));
+            }
+        }
+
+        ty::view::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
+
+        // We assume that inference variables are fully resolved.
+        // So, if we encounter an inference variable, just record
+        // the unresolved variable as a component.
+        ty::view::Infer(infer_ty) => {
+            out.push(Component::UnresolvedInferenceVariable(infer_ty));
+        }
+
+        // Most types do not introduce any region binders, nor
+        // involve any other subtle cases, and so the WF relation
+        // simply constraints any regions referenced directly by
+        // the type and then visits the types that are lexically
+        // contained within. (The comments refer to relevant rules
+        // from RFC1214.)
+        ty::view::Bool |            // OutlivesScalar
+        ty::view::Char |            // OutlivesScalar
+        ty::view::Int(..) |         // OutlivesScalar
+        ty::view::Uint(..) |        // OutlivesScalar
+        ty::view::Float(..) |       // OutlivesScalar
+        ty::view::Never |           // ...
+        ty::view::Adt(..) |         // OutlivesNominalType
+        ty::view::Opaque(..) |        // OutlivesNominalType (ish)
+        ty::view::Foreign(..) |     // OutlivesNominalType
+        ty::view::Str |             // OutlivesScalar (ish)
+        ty::view::Array(..) |       // ...
+        ty::view::Slice(..) |       // ...
+        ty::view::RawPtr(..) |      // ...
+        ty::view::Ref(..) |         // OutlivesReference
+        ty::view::Tuple(..) |       // ...
+        ty::view::FnDef(..) |       // OutlivesFunction (*)
+        ty::view::FnPtr(_) |        // OutlivesFunction (*)
+        ty::view::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
+        ty::view::Placeholder(..) |
+        ty::view::Bound(..) |
+        ty::view::Error => {
+            // (*) Bare functions and traits are both binders. In the
+            // RFC, this means we would add the bound regions to the
+            // "bound regions list".  In our representation, no such
+            // list is maintained explicitly, because bound regions
+            // themselves can be readily identified.
+
+            push_region_constraints(ty, out);
+            for subty in ty.walk_shallow() {
+                compute_components(tcx, subty, out);
+            }
+        }
+    }
 }
 
 fn capture_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
