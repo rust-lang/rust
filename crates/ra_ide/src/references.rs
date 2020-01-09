@@ -55,7 +55,7 @@ pub enum ReferenceKind {
     Other,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ReferenceAccess {
     Read,
     Write,
@@ -225,49 +225,41 @@ fn process_definition(
 }
 
 fn access_mode(kind: NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+    // Only Locals and Fields have accesses for now.
     match kind {
-        NameKind::Local(_) | NameKind::Field(_) => {
-            //LetExpr or BinExpr
-            name_ref.syntax().ancestors().find_map(|node| {
-                match_ast! {
-                    match (node) {
-                        ast::BinExpr(expr) => {
-                            if expr.op_kind()?.is_assignment() {
-                                // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
-                                // FIXME: This is not terribly accurate.
-                                if let Some(lhs) = expr.lhs() {
-                                    if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
-                                        return Some(ReferenceAccess::Write);
-                                    } else if name_ref.syntax().text_range().is_subrange(&lhs.syntax().text_range()) {
-                                        return Some(ReferenceAccess::Read);
-                                    }
-                                }
+        NameKind::Local(_) | NameKind::Field(_) => {}
+        _ => return None,
+    };
 
-                                // If the variable is on the RHS then it's a Read.
-                                if let Some(rhs) = expr.rhs() {
-                                    if name_ref.syntax().text_range().is_subrange(&rhs.syntax().text_range()) {
-                                        return Some(ReferenceAccess::Read);
-                                    }
-                                }
+    let mode = name_ref.syntax().ancestors().find_map(|node| {
+        match_ast! {
+            match (node) {
+                ast::BinExpr(expr) => {
+                    if expr.op_kind()?.is_assignment() {
+                        // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
+                        // FIXME: This is not terribly accurate.
+                        if let Some(lhs) = expr.lhs() {
+                            if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
+                                return Some(ReferenceAccess::Write);
                             }
-
-                            // Cannot determine access
-                            None
-                        },
-                        _ => {None}
+                        }
                     }
-                }
-            })
+                    return Some(ReferenceAccess::Read);
+                },
+                _ => {None}
+            }
         }
-        _ => None,
-    }
+    });
+
+    // Default Locals and Fields to read
+    mode.or(Some(ReferenceAccess::Read))
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
-        Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
+        Reference, ReferenceKind, ReferenceSearchResult, SearchScope,
     };
 
     #[test]
@@ -314,10 +306,10 @@ mod tests {
             "i BIND_PAT FileId(1) [33; 34)",
             ReferenceKind::Other,
             &[
-                "FileId(1) [67; 68) Other",
-                "FileId(1) [71; 72) Other",
-                "FileId(1) [101; 102) Other",
-                "FileId(1) [127; 128) Other",
+                "FileId(1) [67; 68) Other Write",
+                "FileId(1) [71; 72) Other Read",
+                "FileId(1) [101; 102) Other Write",
+                "FileId(1) [127; 128) Other Write",
             ],
         );
     }
@@ -334,7 +326,7 @@ mod tests {
             refs,
             "i BIND_PAT FileId(1) [12; 13)",
             ReferenceKind::Other,
-            &["FileId(1) [38; 39) Other"],
+            &["FileId(1) [38; 39) Other Read"],
         );
     }
 
@@ -350,7 +342,7 @@ mod tests {
             refs,
             "i BIND_PAT FileId(1) [12; 13)",
             ReferenceKind::Other,
-            &["FileId(1) [38; 39) Other"],
+            &["FileId(1) [38; 39) Other Read"],
         );
     }
 
@@ -372,7 +364,7 @@ mod tests {
             refs,
             "spam RECORD_FIELD_DEF FileId(1) [66; 79) [70; 74)",
             ReferenceKind::Other,
-            &["FileId(1) [152; 156) Other"],
+            &["FileId(1) [152; 156) Other Read"],
         );
     }
 
@@ -577,9 +569,12 @@ mod tests {
         }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 3);
-        assert_eq!(refs.references[0].access, Some(ReferenceAccess::Write));
-        assert_eq!(refs.references[1].access, Some(ReferenceAccess::Read));
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [36; 37)",
+            ReferenceKind::Other,
+            &["FileId(1) [55; 56) Other Write", "FileId(1) [59; 60) Other Read"],
+        );
     }
 
     #[test]
@@ -595,9 +590,12 @@ mod tests {
         }"#;
 
         let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 3);
-        //assert_eq!(refs.references[0].access, Some(ReferenceAccess::Write));
-        assert_eq!(refs.references[1].access, Some(ReferenceAccess::Write));
+        check_result(
+            refs,
+            "f RECORD_FIELD_DEF FileId(1) [32; 38) [32; 33)",
+            ReferenceKind::Other,
+            &["FileId(1) [96; 97) Other Read", "FileId(1) [117; 118) Other Write"],
+        );
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
@@ -620,7 +618,14 @@ mod tests {
 
     impl Reference {
         fn debug_render(&self) -> String {
-            format!("{:?} {:?} {:?}", self.file_range.file_id, self.file_range.range, self.kind)
+            let mut s = format!(
+                "{:?} {:?} {:?}",
+                self.file_range.file_id, self.file_range.range, self.kind
+            );
+            if let Some(access) = self.access {
+                s.push_str(&format!(" {:?}", access));
+            }
+            s
         }
 
         fn assert_match(&self, expected: &str) {
