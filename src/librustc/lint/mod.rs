@@ -18,8 +18,8 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 
+pub use self::levels::LintSource::{self, *};
 pub use self::Level::*;
-pub use self::LintSource::*;
 
 use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
@@ -29,7 +29,6 @@ use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use syntax::ast;
 
@@ -38,9 +37,8 @@ pub use crate::lint::context::{
     LintContext, LintStore,
 };
 
-pub use rustc_session::lint::builtin;
+pub use rustc_session::lint::{builtin, LintArray, LintPass};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
-pub use rustc_session::lint::{LintArray, LintPass};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -315,22 +313,6 @@ macro_rules! declare_combined_early_lint_pass {
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject =
     Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send + sync::Sync + 'static>;
-
-/// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
-pub enum LintSource {
-    /// Lint is at the default level as declared
-    /// in rustc or a plugin.
-    Default,
-
-    /// Lint level was set by an attribute.
-    Node(ast::Name, Span, Option<Symbol> /* RFC 2383 reason */),
-
-    /// Lint level was set by a command-line flag.
-    CommandLine(Symbol),
-}
-
-pub type LevelSource = (Level, LintSource);
 
 mod context;
 pub mod internal;

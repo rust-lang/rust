@@ -20,9 +20,6 @@ use crate::mir::interpret::{Allocation, ConstValue, Scalar};
 use crate::mir::{
     interpret, BodyAndCache, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
-use crate::session::config::CrateType;
-use crate::session::config::{BorrowckMode, OutputFilenames};
-use crate::session::Session;
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
 use crate::ty::free_region_map::FreeRegionMap;
@@ -49,6 +46,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
+use rustc_session::config::CrateType;
+use rustc_session::config::{BorrowckMode, OutputFilenames};
+use rustc_session::Session;
 
 use arena::SyncDroplessArena;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

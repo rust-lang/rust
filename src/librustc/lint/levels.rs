@@ -1,8 +1,8 @@
 use std::cmp;
 
 use crate::ich::StableHashingContext;
+use crate::lint;
 use crate::lint::context::{CheckLintNameResult, LintStore};
-use crate::lint::{self, LintSource};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -11,12 +11,29 @@ use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
 use syntax::sess::feature_err;
 
 use rustc_error_codes::*;
+
+/// How a lint level was set.
+#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
+pub enum LintSource {
+    /// Lint is at the default level as declared
+    /// in rustc or a plugin.
+    Default,
+
+    /// Lint level was set by an attribute.
+    Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
+
+    /// Lint level was set by a command-line flag.
+    CommandLine(Symbol),
+}
+
+pub type LevelSource = (Level, LintSource);
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,
@@ -27,27 +44,27 @@ enum LintSet {
     CommandLine {
         // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
         // flag.
-        specs: FxHashMap<LintId, (Level, LintSource)>,
+        specs: FxHashMap<LintId, LevelSource>,
     },
 
     Node {
-        specs: FxHashMap<LintId, (Level, LintSource)>,
+        specs: FxHashMap<LintId, LevelSource>,
         parent: u32,
     },
 }
 
 impl LintLevelSets {
-    fn new() -> Self {
+    pub fn new() -> Self {
         LintLevelSets { list: Vec::new(), lint_cap: Level::Forbid }
     }
 
-    fn get_lint_level(
+    pub fn get_lint_level(
         &self,
         lint: &'static Lint,
         idx: u32,
-        aux: Option<&FxHashMap<LintId, (Level, LintSource)>>,
+        aux: Option<&FxHashMap<LintId, LevelSource>>,
         sess: &Session,
-    ) -> (Level, LintSource) {
+    ) -> LevelSource {
         let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
 
         // If `level` is none then we actually assume the default level for this
@@ -59,7 +76,7 @@ impl LintLevelSets {
         // `allow(warnings)` in scope then we want to respect that instead.
         if level == Level::Warn {
             let (warnings_level, warnings_src) =
-                self.get_lint_id_level(LintId::of(lint::builtin::WARNINGS), idx, aux);
+                self.get_lint_id_level(LintId::of(builtin::WARNINGS), idx, aux);
             if let Some(configured_warning_level) = warnings_level {
                 if configured_warning_level != Level::Warn {
                     level = configured_warning_level;
@@ -79,11 +96,11 @@ impl LintLevelSets {
         return (level, src);
     }
 
-    fn get_lint_id_level(
+    pub fn get_lint_id_level(
         &self,
         id: LintId,
         mut idx: u32,
-        aux: Option<&FxHashMap<LintId, (Level, LintSource)>>,
+        aux: Option<&FxHashMap<LintId, LevelSource>>,
     ) -> (Option<Level>, LintSource) {
         if let Some(specs) = aux {
             if let Some(&(level, src)) = specs.get(&id) {
@@ -499,7 +516,7 @@ impl LintLevelMap {
         lint: &'static Lint,
         id: HirId,
         session: &Session,
-    ) -> Option<(Level, LintSource)> {
+    ) -> Option<LevelSource> {
         self.id_to_set.get(&id).map(|idx| self.sets.get_lint_level(lint, *idx, None, session))
     }
 }
