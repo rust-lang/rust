@@ -163,14 +163,25 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
   std::map<Argument*, bool> volatile_args;
-  std::map<Argument*, DataType> type_args;
+  std::map<Argument*, ValueData> type_args;
   for(auto &a : cast<Function>(fn)->args()) {
     volatile_args[&a] = false;
-    type_args.insert(std::pair<Argument*, DataType>(&a, DataType(IntType::Unknown)));
+    ValueData dt;
+    if (a.getType()->isFPOrFPVectorTy()) {
+        dt = DataType(a.getType()->getScalarType());
+    } else if (a.getType()->isPointerTy()) {
+        auto et = cast<PointerType>(a.getType())->getElementType();
+        if (et->isFPOrFPVectorTy()) {
+            dt = ValueData(DataType(et->getScalarType())).Only({-1});
+        } else if (et->isPointerTy()) {
+            dt = ValueData(DataType(IntType::Pointer)).Only({-1});
+        }
+    }
+    type_args.insert(std::pair<Argument*, ValueData>(&a, dt));
   }
 
   TypeAnalysis TA;
-  type_args = TA.analyzeFunction(type_args, cast<Function>(fn)).getAnalyzedTypeInfoSimple();
+  type_args = TA.analyzeFunction(type_args, cast<Function>(fn)).getAnalyzedTypeInfo();
 
   auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, TA, AA, /*should return*/false, differentialReturn, /*dretPtr*/false, /*topLevel*/true, /*addedType*/nullptr, type_args, volatile_args, /*index mapping*/nullptr); //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>({}));
 

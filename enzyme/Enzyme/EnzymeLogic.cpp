@@ -528,18 +528,18 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, DataType> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
+void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA, 
-                                             bool differentialReturn, bool returnUsed, const std::map<Argument*, DataType> oldTypeInfo,
+                                             bool differentialReturn, bool returnUsed, const std::map<Argument*, ValueData> oldTypeInfo,
                                              const std::map<Argument*, bool> _uncacheable_args, bool forceAnonymousTape) {
   if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
   if (differentialReturn) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
 
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, DataType>>, AugmentedReturn> cachedfunctions;
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, DataType>>, bool> cachedfinished;
-  std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, DataType>> tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed, oldTypeInfo);
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>>, AugmentedReturn> cachedfunctions;
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>>, bool> cachedfinished;
+  std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>> tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed, oldTypeInfo);
   auto found = cachedfunctions.find(tup);
   //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
   if (found != cachedfunctions.end()) {
@@ -622,14 +622,14 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
     }
   }
   
-  std::map<Argument*, DataType> typeInfo;
+  std::map<Argument*, ValueData> typeInfo;
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
         auto fd = oldTypeInfo.find(toarg);
         assert(fd != oldTypeInfo.end());
-        typeInfo.insert(std::pair<Argument*, DataType>(olarg, fd->second));
+        typeInfo.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
     }
   }
 
@@ -749,7 +749,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
                 if (gutils->isConstantInstruction(inst)) continue;
 
 
-                if (!isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getOperand(0)), false).isFloat() ) {
+                if (!TA.getKnownFloat(gutils->getOriginal(op->getOperand(0)), typeInfo)) {
 
                     //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
                     if (gutils->isConstantValue(op->getOperand(0))) continue;
@@ -1355,7 +1355,7 @@ bool shouldAugmentCall(CallInst* op, GradientUtils* gutils) {
   return modifyPrimal;
 }
 
-void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, DataType> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -1467,21 +1467,11 @@ void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, DataTyp
 
 
       if (called) {
-        std::map<Argument*, DataType> nextTypeInfo;
+        std::map<Argument*, ValueData> nextTypeInfo;
         int argnum = 0;
 
         for(auto &arg : called->args()) {
-            DataType dt(IntType::Unknown);
-            if (auto pt = dyn_cast<PointerType>(arg.getType())) {
-                if (pt->getElementType()->isIntOrIntVectorTy()) {
-                    dt = TA.firstPointer(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo, /*errifnotfound*/false);
-                    //dt = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), /*onlyFirst*/false, /*errifnotfound*/false);
-                }
-            } else if (arg.getType()->isIntOrIntVectorTy()) {
-                dt = TA.intType(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo, /*errifnotfound*/false);
-                //dt = isIntASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), IntType::Unknown, /*errifnotfound*/false);
-            }
-            nextTypeInfo.insert(std::pair<Argument*, DataType>(&arg, dt));
+            nextTypeInfo.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
             argnum++;
         }
 
@@ -1591,7 +1581,7 @@ void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, DataTyp
         gutils->erase(op);
 }
 
-void handleGradientCallInst(TypeAnalysis &TA, const std::map<Argument*, DataType> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+void handleGradientCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2045,22 +2035,12 @@ void handleGradientCallInst(TypeAnalysis &TA, const std::map<Argument*, DataType
 
   bool constval = gutils->isConstantValue(op);
                 
-  std::map<Argument*, DataType> nextTypeInfo;
+  std::map<Argument*, ValueData> nextTypeInfo;
   int argnum = 0;
 
   if (called) {
       for(auto &arg : called->args()) {
-        DataType dt(IntType::Unknown);
-        if (auto pt = dyn_cast<PointerType>(arg.getType())) {
-            if (pt->getElementType()->isIntOrIntVectorTy()) {
-                dt = TA.firstPointer(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo, /*errifnotfound*/false);
-                //dt = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), /*onlyFirst*/false, /*errifnotfound*/false);
-            }
-        } else if (arg.getType()->isIntOrIntVectorTy()) {
-            dt = TA.intType(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo, /*errifnotfound*/false);
-            //dt = isIntASecretFloat(typeInfo, gutils->getOriginal(op->getArgOperand(argnum)), IntType::Unknown, /*errifnotfound*/false);
-        }
-        nextTypeInfo.insert(std::pair<Argument*, DataType>(&arg, dt));
+        nextTypeInfo.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
         argnum++;
       }
   }
@@ -2457,7 +2437,7 @@ badfn:;
 
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI,
                                   TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg,
-                                  const std::map<Argument*, DataType> oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
+                                  const std::map<Argument*, ValueData> oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
                                   const AugmentedReturn* augmenteddata) {
   //if (additionalArg && !additionalArg->isStructTy()) {
   //    llvm::errs() << *todiff << "\n";
@@ -2465,7 +2445,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   //}
   if (additionalArg) assert(additionalArg->isStructTy() || (additionalArg == Type::getInt8PtrTy(additionalArg->getContext()) )  );
   if (differentialReturn) assert(!todiff->getReturnType()->isVoidTy());
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*, const std::map<Argument*, DataType>>, Function*> cachedfunctions;
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*, const std::map<Argument*, ValueData>>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), returnUsed, differentialReturn, dretPtr, topLevel, additionalArg, oldTypeInfo);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
@@ -2587,14 +2567,14 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     }
   }
   
-  std::map<Argument*, DataType> typeInfo;
+  std::map<Argument*, ValueData> typeInfo;
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
         auto fd = oldTypeInfo.find(toarg);
         assert(fd != oldTypeInfo.end());
-        typeInfo.insert(std::pair<Argument*, DataType>(olarg, fd->second));
+        typeInfo.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
     }
   }
   TypeResults TR = TA.analyzeFunction(typeInfo, gutils->oldFunc);
@@ -2867,7 +2847,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             if (isa<ConstantPointerNull>(op->getOperand(0))) continue;
 
             // If destination (operand 0) is constant 
-                if (Type* secretty = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getOperand(0)), false).isFloat() ) {
+                if (Type* secretty = TA.getKnownFloat(gutils->getOriginal(op->getOperand(0)), typeInfo) ) {
                     SmallVector<Value*, 4> args;
                     auto secretpt = PointerType::getUnqual(secretty);
 
@@ -2914,7 +2894,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
         case Intrinsic::memmove: {
             if (gutils->isConstantInstruction(inst)) continue;
-                if (Type* secretty = isIntPointerASecretFloat(typeInfo, gutils->getOriginal(op->getOperand(0)), false).isFloat() ) {
+                if (Type* secretty = TA.getKnownFloat(gutils->getOriginal(op->getOperand(0)), typeInfo) ) {
                     SmallVector<Value*, 4> args;
                     auto secretpt = PointerType::getUnqual(secretty);
 

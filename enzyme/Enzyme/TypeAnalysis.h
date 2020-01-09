@@ -72,7 +72,7 @@ public:
         assert(type != nullptr);
     }
 
-    DataType(IntType typeEnum=IntType::Unknown) : type(nullptr), typeEnum(typeEnum) {
+    DataType(IntType typeEnum) : type(nullptr), typeEnum(typeEnum) {
         assert(typeEnum != IntType::Float);
     }
 
@@ -236,11 +236,23 @@ static inline std::string to_string(const DataType dt) {
 
 class ValueData {
     private:
-public:
         //mapping of known indices to type if one exists
         std::map<const std::vector<int>, DataType> mapping;
+public:
 
     public:
+        DataType operator[] (const std::vector<int> v) const {
+            auto found = mapping.find(v);
+            if (found != mapping.end()) {
+                return found->second;
+            }
+            return IntType::Unknown;
+        }
+
+        void insert(const std::vector<int> v, DataType d) {
+            mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
+        }
+
         bool operator<(const ValueData& vd) const {
             return mapping < vd.mapping;
         }
@@ -248,8 +260,20 @@ public:
         ValueData() {}
         ValueData(DataType dat) {
             if (dat != DataType(IntType::Unknown)) {
-                mapping[{}] = dat;
+                insert({}, dat);
             }
+        }
+        
+        llvm::Type* getKnownFloat(llvm::Value* val) const {
+            for(const auto &pair : mapping) {
+                auto s = pair.second;
+                if (s == IntType::Anything) continue;
+                if (s == IntType::Unknown) continue;
+                return s.isFloat();
+            }
+            llvm::errs() << " could not find known for value " << *val << "\n";
+            assert(0 && "could not find known for value");
+            exit(1);
         }
         
         static ValueData Unknown() {
@@ -260,7 +284,7 @@ public:
 			ValueData vd;
 			for(auto &pair : mapping) {
 				if (pair.second.typeEnum == IntType::Integer) {
-					vd.mapping[pair.first] = pair.second;
+					vd.insert(pair.first, pair.second);
 				}
 			}	
 
@@ -271,26 +295,16 @@ public:
 		ValueData KeepFirst() const {
 			ValueData vd;
 			if (mapping.find({0}) != mapping.end()) {
-				vd.mapping[{0}] = mapping.find({0})->second;
+				vd.insert({0}, mapping.find({0})->second);
 			}
 			if (mapping.find({-1}) != mapping.end()) {
-				vd.mapping[{-1}] = mapping.find({-1})->second;
+                vd.insert({-1}, mapping.find({-1})->second);
 			}
 
 			return vd;
 		}
 
-        static std::vector<int> mergeIndices(std::vector<int> first, const std::vector<int> &second) {
-            //assert(first.size() > 0);
-            //assert(second.size() > 0);
-
-            //-1 represents all elements in that range
-            //if (first[0] >= 0 && second[0] >= 0) {
-            //    first[0] += second[0];
-            //} else {
-            //    first[0] = -1;
-            //}
-
+        static std::vector<int> appendIndices(std::vector<int> first, const std::vector<int> &second) {
             for(unsigned i=0; i<second.size(); i++)
                 first.push_back(second[i]);
             return first;
@@ -300,7 +314,7 @@ public:
             ValueData dat;
 
             for(const auto &pair : mapping) {
-                dat.mapping[mergeIndices(indices, pair.first)] = pair.second;
+                dat.insert(appendIndices(indices, pair.first), pair.second);
             }
 
             return dat;
@@ -330,7 +344,36 @@ public:
             for(const auto &pair : mapping) {
                 std::vector<int> next = indices;
                 if (lookupIndices(next, pair.first)) 
-                    dat.mapping[next] = pair.second;
+                    dat.insert(next, pair.second);
+            }
+
+            return dat;
+        }
+        
+        static std::vector<int> mergeIndices(std::vector<int> first, const std::vector<int> &second) {
+            assert(first.size() > 0);
+            assert(second.size() > 0);
+
+            //-1 represents all elements in that range
+            if (first.back() != -1) {
+                if (second[0] == -1) {
+                    first[first.size()-1] = -1;
+                } else {
+                    first[first.size()-1] += second[0];
+                }
+            }
+
+            for(unsigned i=1; i<second.size(); i++)
+                first.push_back(second[i]);
+            return first;
+        }
+        ValueData MergeIndices(std::vector<int> indices) const {
+            ValueData dat;
+
+            for(const auto &pair : mapping) {
+                ValueData dat2;
+                dat2.insert(mergeIndices(indices, pair.first), pair.second);
+                dat |= dat2;
             }
 
             return dat;
@@ -341,7 +384,7 @@ public:
             ValueData dat;
             for(const auto &pair : mapping) {
                 if (pair.second == DataType(IntType::Anything)) continue;
-                dat.mapping[pair.first] = pair.second;
+                dat.insert(pair.first, pair.second);
             }
             return dat;
         }
@@ -363,10 +406,19 @@ public:
         }
 
         bool operator|=(const ValueData &v) {
+            //! Detect recursive merge
+            //if (v.mapping.size() == mapping.size() && mapping.size() ) {
+            //    if 
+            //}
+            
+            
             bool changed = false;
             
             for(auto &pair : v.mapping) {
-                changed |= ( mapping[pair.first] |= pair.second );
+                assert(pair.second != IntType::Unknown);
+                DataType dt = operator[](pair.first);
+                changed |= (dt |= pair.second);
+                insert(pair.first, dt);
             }
 
             return changed;
@@ -429,7 +481,7 @@ public:
 			out += "[";
 			for(unsigned i=0; i<pair.first.size(); i++) {
 				if (i != 0) out +=",";
-				out += std::to_string(i); 
+				out += std::to_string(pair.first[i]); 
 			}
 			out +="]:" + pair.second.str();
 			first = false;
@@ -574,6 +626,10 @@ public:
             nti[pair.first] = ValueData::Argument(pair.second, pair.first);
         }
         return firstPointer(val, nti, errIfNotFound);
+    }
+    //err if not known; if found float anywhere return the type
+    inline llvm::Type* getKnownFloat(llvm::Value* val, const NewFnTypeInfo &fn) {
+        return query(val, fn).getKnownFloat(val);
     }
 };
 

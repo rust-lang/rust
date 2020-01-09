@@ -44,9 +44,9 @@ declare dso_local void @free(i8* nocapture) local_unnamed_addr #1
 declare dso_local noalias i8* @malloc(i64) local_unnamed_addr #1
 
 ; Function Attrs: noinline nounwind uwtable
-define linkonce_odr dso_local void @subfn(i64* %lhs, double* %res, i1 %cmp.i.i.i) local_unnamed_addr #0 {
+define linkonce_odr dso_local void @subfn(i64* %lhs, double* %argres, i1 %cmp.i.i.i) local_unnamed_addr #0 {
 entry:
-  %a0 = ptrtoint double* %res to i64
+  %a0 = ptrtoint double* %argres to i64
   %a2 = load i64, i64* %lhs, align 8
   %a3 = inttoptr i64 %a2 to double*
   %cond.i.i.i = select i1 %cmp.i.i.i, i64 %a2, i64 0
@@ -55,7 +55,7 @@ entry:
   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
   %a4 = bitcast double* %arrayidx.i.i814 to i64*
   %a51 = load i64, i64* %a4, align 8
-  %a5 = bitcast double* %res to i64*
+  %a5 = bitcast double* %argres to i64*
   store i64 %a51, i64* %a5, align 8
   ret void
 }
@@ -110,9 +110,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesubfn(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", i1 %cmp.i.i.i)
+; CHECK: define internal {} @diffesubfn(i64* %lhs, i64* %"lhs'", double* %argres, double* %"argres'", i1 %cmp.i.i.i)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %a0 = ptrtoint double* %res to i64
+; CHECK-NEXT:   %a0 = ptrtoint double* %argres to i64
 ; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
 ; CHECK-NEXT:   %"a2'ipl3" = load double*, double** %0, align 8
 ; CHECK-NEXT:   %a2 = load i64, i64* %lhs, align 8
@@ -124,10 +124,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
 ; CHECK-NEXT:   %a4 = bitcast double* %arrayidx.i.i814 to i64*
 ; CHECK-NEXT:   %a51 = load i64, i64* %a4, align 8
-; CHECK-NEXT:   %a5 = bitcast double* %res to i64*
+; CHECK-NEXT:   %a5 = bitcast double* %argres to i64*
 ; CHECK-NEXT:   store i64 %a51, i64* %a5, align 8
-; CHECK-NEXT:   %1 = load double, double* %"res'", align 8
-; CHECK-NEXT:   %"a5'ipc1" = bitcast double* %"res'" to i64*
+; CHECK-NEXT:   %1 = load double, double* %"argres'", align 8
+; CHECK-NEXT:   %"a5'ipc1" = bitcast double* %"argres'" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %"a5'ipc1", align 8
 ; CHECK-NEXT:   %2 = load double, double* %"arrayidx.i.i814'ipge", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %1

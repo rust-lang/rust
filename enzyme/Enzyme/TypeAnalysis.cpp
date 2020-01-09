@@ -94,14 +94,15 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
 		vt = cast<PointerType>(vt)->getElementType();
 	}
 
-	DataType dt;
+    /*
+	DataType dt = IntType::Unknown;
 
     if (vt->isPointerTy()) {
 		dt = DataType(IntType::Pointer);
     }
-    if (vt->isFPOrFPVectorTy()) {
-		dt = DataType(vt->getScalarType());
-    }
+    //if (vt->isFPOrFPVectorTy()) {
+	//	dt = DataType(vt->getScalarType());
+    //}
 	if (dt.isKnown()) {
 		if (val->getType()->isPointerTy()) {
 			return ValueData(dt).Only({0});
@@ -109,6 +110,7 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
 			return ValueData(dt);
 		}
 	}
+    */
 
     if (isa<Argument>(val) || isa<Instruction>(val)) return analysis[val];
     //TODO consider other things like globals perhaps?
@@ -263,9 +265,12 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
             idnext.push_back(-1);
         }
     }
+
 	//TODO GEP
-    //updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).MergeIndices(idnext), &gep);
-    //updateAnalysis(gep.getPointerOperand(), getAnalysis(&gep).UnmergeIndices(idnext), &gep);
+    //updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(idnext), &gep);
+    auto merged = getAnalysis(&gep).MergeIndices(idnext);
+    //llvm::errs() << "GEP: " << gep << " analysis: " << getAnalysis(&gep).str() << " merged: " << merged.str() << "\n";
+    updateAnalysis(gep.getPointerOperand(), merged, &gep);
 }
 
 void TypeAnalyzer::visitPHINode(PHINode& phi) {
@@ -353,10 +358,10 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
 	updateAnalysis(I.getIndexOperand(), IntType::Integer, &I);
 
-	int idx = -1;
-    if (auto ci = dyn_cast<ConstantInt>(I.getIndexOperand())) {
-    	idx = (int)ci->getLimitedValue();
-	}
+	//int idx = -1;
+    //if (auto ci = dyn_cast<ConstantInt>(I.getIndexOperand())) {
+    // 	idx = (int)ci->getLimitedValue();
+	//}
 
 	//updateAnalysis(I.getVectorOperand(), getAnalysis(&I).Only({idx}), Direction::Both);
     //updateAnalysis(&I, getAnalysis(I.getVectorOperand()).Lookup({idx}), Direction::Both);
@@ -367,12 +372,14 @@ void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
 void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 	updateAnalysis(I.getOperand(2), IntType::Integer, &I);
     
-	int idx = -1;
-	if (auto ci = dyn_cast<ConstantInt>(I.getOperand(2))) {
-    	idx = (int)ci->getLimitedValue();
-	}
+	//int idx = -1;
+	//if (auto ci = dyn_cast<ConstantInt>(I.getOperand(2))) {
+    //	idx = (int)ci->getLimitedValue();
+	//}
 	
-	auto res = getAnalysis(I.getOperand(0));
+    //if we are inserting into undef/etc the anything should not be propagated
+	auto res = getAnalysis(I.getOperand(0)).PurgeAnything();
+
 	res |= getAnalysis(I.getOperand(1));
 	//res |= getAnalysis(I.getOperand(1)).Only({idx});
 	res |= getAnalysis(&I);
@@ -394,22 +401,30 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 }
 
 void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
-	for(auto &a : I.indices()) {
+	//for(auto &a : I.indices()) {
 	//	updateAnalysis(a, IntType::Integer, &I);
-	}
+	//}
 	//TODO aggregate flow
 }
 
 void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
-	for(auto &a : I.indices()) {
+	//for(auto &a : I.indices()) {
 	//	updateAnalysis(a, IntType::Integer, &I);
-	}
+	//}
 	//TODO aggregate flow
 }
 
 void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
-	if (I.getOpcode() != BinaryOperator::And && I.getOpcode() != BinaryOperator::Or) {
-		//llvm::errs() << "visiting binary op " << I << " analysis " << getAnalysis(&I).str() << "\n";
+    if (I.getOpcode() == BinaryOperator::FAdd || I.getOpcode() == BinaryOperator::FSub ||
+            I.getOpcode() == BinaryOperator::FMul || I.getOpcode() == BinaryOperator::FDiv ||
+            I.getOpcode() == BinaryOperator::FRem) {
+        auto ty = I.getType()->getScalarType();
+        assert(ty->isFloatingPointTy());
+        DataType dt(ty);
+        updateAnalysis(I.getOperand(0), dt, &I);
+        updateAnalysis(I.getOperand(1), dt, &I);
+        updateAnalysis(&I, dt, &I);
+    } else if (I.getOpcode() != BinaryOperator::And && I.getOpcode() != BinaryOperator::Or) {
 		updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 		updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
@@ -418,7 +433,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 
 		updateAnalysis(&I, vd, &I);
 	} else {
-		
 		ValueData vd = getAnalysis(I.getOperand(0)).JustInt();
 		vd &= getAnalysis(I.getOperand(1)).JustInt();
 
@@ -542,7 +556,7 @@ DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNo
     assert(val);
     assert(val->getType());
     assert(val->getType()->isIntOrIntVectorTy());
-	auto dt = query(val, fn).mapping[{}];
+	auto dt = query(val, fn)[{}];
 	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
@@ -561,8 +575,8 @@ DataType TypeAnalysis::firstPointer(Value* val, const NewFnTypeInfo& fn, bool er
     assert(val->getType());
     assert(val->getType()->isPointerTy());
 	auto q = query(val, fn);
-	auto dt = q.mapping[{0}];
-	dt |= q.mapping[{-1}];
+	auto dt = q[{0}];
+	dt |= q[{-1}];
 	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
@@ -573,7 +587,6 @@ DataType TypeAnalysis::firstPointer(Value* val, const NewFnTypeInfo& fn, bool er
 		llvm::errs() << "could not deduce type of integer " << *val << "\n";
 		assert(0 && "could not deduce type of integer");
 	}
-	llvm::errs() << " querying first pointer of " << *val << " found " << dt.str() << " higher info found " << q.str() << "\n";
 	return dt;
 }
 
@@ -583,7 +596,7 @@ TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, Functi
 NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 	NewFnTypeInfo res;
 	for(auto &arg : function->args()) {
-		res[&arg] = analysis.query(&arg, info);
+		res.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
 	}
 	return res;
 }
@@ -598,7 +611,7 @@ FnTypeInfo TypeResults::getAnalyzedTypeInfoSimple() {
         } else if (arg.getType()->isIntOrIntVectorTy()) {
             dt = analysis.intType(&arg, info, /*errifnotfound*/false);
         }
-		res[&arg] = dt;
+		res.insert(std::pair<Argument*, DataType>(&arg, dt));
 	}
 	return res;
 }

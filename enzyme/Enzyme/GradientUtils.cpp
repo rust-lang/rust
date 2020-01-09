@@ -323,11 +323,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       //  However, in the absence of a way to pass tape data from an indirect augmented (and also since we dont presently allow indirect augmented calls), topLevel MUST be true
       //  otherwise subcalls will not be able to lookup the augmenteddata/subdata (triggering an assertion failure, among much worse)
       std::map<Argument*, bool> uncacheable_args;
-      std::map<Argument*, DataType> type_args;
+      std::map<Argument*, ValueData> type_args;
       //conservatively assume that we can only cache existing floating types (i.e. that all args are uncacheable)
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
-          type_args.insert(std::pair<Argument*, DataType>(&a, DataType(IntType::Unknown)));
+          type_args.insert(std::pair<Argument*, ValueData>(&a, DataType(IntType::Unknown)));
       }
       auto& augdata = CreateAugmentedPrimal(fn, /*constant_args*/{}, TLI, TA, AA, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
       auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, TA, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
