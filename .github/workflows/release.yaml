@@ -20,7 +20,7 @@ jobs:
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
-      PROFILE: debug
+      PROFILE: release
     steps:
 
       - name: Checkout repository
@@ -63,8 +63,8 @@ jobs:
       - name: Compile
         uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --no-run
+          command: build
+          args: --release
 
       - name: Test
         uses: actions-rs/cargo@v1
@@ -77,6 +77,23 @@ jobs:
       - name: Prepare cache 2
         if: matrix.os == 'windows-latest'
         run: Remove-Item ./target/${{ env.PROFILE }}/xtask.exe
+
+      - name: Creat distribution dir
+        run: mkdir ./dist
+
+      - name: Copy binaries (non-win)
+        if: matrix.os != 'windows-latest'
+        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server* ./dist
+
+      - name: Copy binaries (win)
+        if: matrix.os == 'windows-latest'
+        run: copy ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: executables-${{ matrix.os }}
+          path: ./dist
 
   type-script:
     name: TypeScript
@@ -97,3 +114,18 @@ jobs:
         working-directory: ./editors/code
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
+
+      - name: Create distribution directory
+        run: mkdir ./dist
+
+      - name: Copy vscode extension
+        run: mkdir ./dist/code && cp ./editors/code/*.vsix ./dist/code/
+
+      - name: Copy emacs mode
+        run: cp -R ./editors/emacs ./dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: editors
+          path: ./dist
