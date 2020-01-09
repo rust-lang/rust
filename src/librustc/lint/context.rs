@@ -17,7 +17,7 @@
 use self::TargetLint::*;
 
 use crate::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
-use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
+use crate::lint::levels::LintLevelsBuilder;
 use crate::lint::{EarlyLintPassObject, LateLintPassObject};
 use crate::middle::privacy::AccessLevels;
 use crate::middle::stability;
@@ -674,7 +674,7 @@ impl<'a> EarlyContext<'a> {
             sess,
             krate,
             lint_store,
-            builder: LintLevelSets::builder(sess, warn_about_weird_lints, lint_store),
+            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store),
             buffered,
         }
     }

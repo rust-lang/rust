@@ -37,44 +37,8 @@ enum LintSet {
 }
 
 impl LintLevelSets {
-    pub fn new(sess: &Session, lint_store: &LintStore) -> LintLevelSets {
-        let mut me = LintLevelSets { list: Vec::new(), lint_cap: Level::Forbid };
-        me.process_command_line(sess, lint_store);
-        return me;
-    }
-
-    pub fn builder<'a>(
-        sess: &'a Session,
-        warn_about_weird_lints: bool,
-        store: &LintStore,
-    ) -> LintLevelsBuilder<'a> {
-        LintLevelsBuilder::new(sess, warn_about_weird_lints, LintLevelSets::new(sess, store))
-    }
-
-    fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
-        let mut specs = FxHashMap::default();
-        self.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
-
-        for &(ref lint_name, level) in &sess.opts.lint_opts {
-            store.check_lint_name_cmdline(sess, &lint_name, level);
-
-            // If the cap is less than this specified level, e.g., if we've got
-            // `--cap-lints allow` but we've also got `-D foo` then we ignore
-            // this specification as the lint cap will set it to allow anyway.
-            let level = cmp::min(level, self.lint_cap);
-
-            let lint_flag_val = Symbol::intern(lint_name);
-            let ids = match store.find_lints(&lint_name) {
-                Ok(ids) => ids,
-                Err(_) => continue, // errors handled in check_lint_name_cmdline above
-            };
-            for id in ids {
-                let src = LintSource::CommandLine(lint_flag_val);
-                specs.insert(id, (level, src));
-            }
-        }
-
-        self.list.push(LintSet::CommandLine { specs: specs });
+    fn new() -> Self {
+        LintLevelSets { list: Vec::new(), lint_cap: Level::Forbid }
     }
 
     fn get_lint_level(
@@ -159,19 +123,43 @@ pub struct BuilderPush {
 }
 
 impl<'a> LintLevelsBuilder<'a> {
-    pub fn new(
-        sess: &'a Session,
-        warn_about_weird_lints: bool,
-        sets: LintLevelSets,
-    ) -> LintLevelsBuilder<'a> {
-        assert_eq!(sets.list.len(), 1);
-        LintLevelsBuilder {
+    pub fn new(sess: &'a Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
+        let mut builder = LintLevelsBuilder {
             sess,
-            sets,
+            sets: LintLevelSets::new(),
             cur: 0,
             id_to_set: Default::default(),
             warn_about_weird_lints,
+        };
+        builder.process_command_line(sess, store);
+        assert_eq!(builder.sets.list.len(), 1);
+        builder
+    }
+
+    fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
+        let mut specs = FxHashMap::default();
+        self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
+
+        for &(ref lint_name, level) in &sess.opts.lint_opts {
+            store.check_lint_name_cmdline(sess, &lint_name, level);
+
+            // If the cap is less than this specified level, e.g., if we've got
+            // `--cap-lints allow` but we've also got `-D foo` then we ignore
+            // this specification as the lint cap will set it to allow anyway.
+            let level = cmp::min(level, self.sets.lint_cap);
+
+            let lint_flag_val = Symbol::intern(lint_name);
+            let ids = match store.find_lints(&lint_name) {
+                Ok(ids) => ids,
+                Err(_) => continue, // errors handled in check_lint_name_cmdline above
+            };
+            for id in ids {
+                let src = LintSource::CommandLine(lint_flag_val);
+                specs.insert(id, (level, src));
+            }
         }
+
+        self.sets.list.push(LintSet::CommandLine { specs });
     }
 
     /// Pushes a list of AST lint attributes onto this context.
