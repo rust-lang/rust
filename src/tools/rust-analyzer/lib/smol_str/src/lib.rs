@@ -359,9 +359,11 @@ impl Repr {
             }
 
             let newlines = text.bytes().take_while(|&b| b == b'\n').count();
-            let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
-            if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
-                return Repr::Substring { newlines, spaces };
+            if text[newlines..].bytes().all(|b| b == b' ') {
+                let spaces = len - newlines;
+                if newlines <= N_NEWLINES && spaces <= N_SPACES {
+                    return Repr::Substring { newlines, spaces };
+                }
             }
         }
 
