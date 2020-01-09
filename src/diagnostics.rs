@@ -3,11 +3,13 @@ use std::cell::RefCell;
 
 use crate::*;
 
+/// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
     PoppedTrackedPointerTag(Item),
 }
 
-pub fn report_err<'tcx, 'mir>(
+/// Emit a custom diagnostic without going through the miri-engine machinery
+pub fn report_diagnostic<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     mut e: InterpErrorInfo<'tcx>,
 ) -> Option<i64> {
@@ -31,6 +33,8 @@ pub fn report_err<'tcx, 'mir>(
     report_msg(ecx, msg, true)
 }
 
+/// Report an error or note (depending on the `error` argument) at the current frame's current statement.
+/// Also emits a full stacktrace of the interpreter stack.
 pub fn report_msg<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     msg: String,
@@ -80,12 +84,15 @@ thread_local! {
     static DIAGNOSTICS: RefCell<Vec<NonHaltingDiagnostic>> = RefCell::new(Vec::new());
 }
 
+/// Schedule a diagnostic for emitting. This function works even if you have no `InterpCx` available.
+/// The diagnostic will be emitted after the current interpreter step is finished.
 pub fn register_diagnostic(e: NonHaltingDiagnostic) {
     DIAGNOSTICS.with(|diagnostics| diagnostics.borrow_mut().push(e));
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Emit all diagnostics that were registed with `register_diagnostics`
     fn process_diagnostics(&self) {
         let this = self.eval_context_ref();
         DIAGNOSTICS.with(|diagnostics| {

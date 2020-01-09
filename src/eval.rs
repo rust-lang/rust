@@ -206,6 +206,6 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             }
             Some(return_code)
         }
-        Err(e) => report_err(&ecx, e),
+        Err(e) => report_diagnostic(&ecx, e),
     }
 }
