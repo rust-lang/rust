@@ -199,6 +199,10 @@ cfg_if! {
             f(&SerialScope)
         }
 
+        pub fn spawn(f: impl FnOnce() + 'static) {
+            f()
+        }
+
         #[macro_export]
         macro_rules! parallel {
             ($($blocks:tt),*) => {
@@ -385,7 +389,7 @@ cfg_if! {
 
         use std;
         use std::thread;
-        pub use rayon::{join, scope};
+        pub use rayon::{join, scope, spawn};
 
         /// Runs a list of blocks in parallel. The first block is executed immediately on
         /// the current thread. Use that for the longest running block.
