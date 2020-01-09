@@ -33,6 +33,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::sync::future::Future;
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::{registry::Registry, PResult};
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
@@ -362,7 +363,7 @@ pub fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.save_analysis {
+            let drop_ast_future = if sess.opts.debugging_opts.save_analysis {
                 let expanded_crate = &queries.expansion()?.peek().0;
                 let crate_name = queries.crate_name()?.peek().clone();
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
@@ -386,13 +387,21 @@ pub fn run_compiler(
                     // AST will be dropped *after* the `after_analysis` callback
                     // (needed by the RLS)
                 })?;
+                None
             } else {
                 // Drop AST after creating GlobalCtxt to free memory
-                let _timer = sess.prof.generic_activity("drop_ast");
-                mem::drop(queries.expansion()?.take());
-            }
+                let prof = sess.prof.clone();
+                let ast = queries.expansion()?.take().0;
+                Some(Future::spawn(move || {
+                    let _timer = prof.generic_activity("drop_ast");
+                    mem::drop(ast);
+                }))
+            };
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
+
+            // Ensure the AST is dropped by this point.
+            drop_ast_future.map(|future| future.join());
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
