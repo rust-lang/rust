@@ -21,7 +21,6 @@
 pub use self::levels::LintSource::{self, *};
 pub use self::Level::*;
 
-use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
@@ -315,8 +314,3 @@ pub mod internal;
 mod levels;
 
 pub use self::levels::{struct_lint_level, LintLevelMap, LintLevelSets, LintLevelsBuilder};
-
-pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    let attrs = tcx.hir().attrs(id);
-    attrs.iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some())
-}

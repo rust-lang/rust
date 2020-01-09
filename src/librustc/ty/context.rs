@@ -8,7 +8,7 @@ use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::{maybe_lint_level_root, struct_lint_level, LintSource};
+use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
@@ -2568,19 +2568,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
-    pub fn maybe_lint_level_root_bounded(
-        self,
-        mut id: hir::HirId,
-        bound: hir::HirId,
-    ) -> hir::HirId {
+    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.hir();
         loop {
             if id == bound {
                 return bound;
             }
-            if maybe_lint_level_root(self, id) {
+
+            if hir.attrs(id).iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some()) {
                 return id;
             }
-            let next = self.hir().get_parent_node(id);
+            let next = hir.get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
