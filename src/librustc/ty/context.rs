@@ -51,7 +51,6 @@ use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 
 use arena::SyncDroplessArena;
-use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::ShardedHashMap;
@@ -59,6 +58,7 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::node_id::NodeMap;
@@ -1613,10 +1613,10 @@ pub mod tls {
 
     use crate::dep_graph::TaskDeps;
     use crate::ty::query;
-    use errors::Diagnostic;
     use rustc_data_structures::sync::{self, Lock, Lrc};
     use rustc_data_structures::thin_vec::ThinVec;
     use rustc_data_structures::OnDrop;
+    use rustc_errors::Diagnostic;
     use std::mem;
 
     #[cfg(not(parallel_compiler))]

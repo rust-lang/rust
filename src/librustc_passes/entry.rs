@@ -1,9 +1,9 @@
-use errors::struct_span_err;
 use rustc::hir::map as hir_map;
 use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};

@@ -1,13 +1,13 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
 use rustc_span::symbol::sym;

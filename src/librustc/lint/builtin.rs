@@ -7,7 +7,7 @@
 use crate::lint::{FutureIncompatibleInfo, LateLintPass, LintArray, LintPass};
 use crate::middle::stability;
 use crate::session::Session;
-use errors::{pluralize, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_session::declare_lint;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Span;

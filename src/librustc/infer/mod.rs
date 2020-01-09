@@ -21,10 +21,10 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use crate::ty::{ConstVid, FloatVid, IntVid, TyVid};
 
-use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;

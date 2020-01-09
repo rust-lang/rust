@@ -90,7 +90,6 @@ pub mod writeback;
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::map::Map;
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -116,6 +115,7 @@ use rustc::ty::{
 };
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
@@ -164,7 +164,7 @@ macro_rules! type_error_struct {
         if $typ.references_error() {
             $session.diagnostic().struct_dummy()
         } else {
-            errors::struct_span_err!($session, $span, $code, $($message)*)
+            rustc_errors::struct_span_err!($session, $span, $code, $($message)*)
         }
     })
 }

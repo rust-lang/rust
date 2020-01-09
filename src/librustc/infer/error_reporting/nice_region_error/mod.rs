@@ -3,7 +3,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError::*;
 use crate::infer::InferCtxt;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::ErrorReported;
-use errors::DiagnosticBuilder;
+use rustc_errors::DiagnosticBuilder;
 use rustc_span::source_map::Span;
 
 mod different_lifetimes;

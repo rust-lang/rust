@@ -1,5 +1,5 @@
-use errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_parse::lexer::StringReader as Lexer;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan};

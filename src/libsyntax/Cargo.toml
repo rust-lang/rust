@@ -13,8 +13,8 @@ doctest = false
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 log = "0.4"
 scoped-tls = "1.0"
+rustc_errors = { path = "../librustc_errors" }
 rustc_span = { path = "../librustc_span" }
-errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_index = { path = "../librustc_index" }

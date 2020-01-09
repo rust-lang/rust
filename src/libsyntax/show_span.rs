@@ -29,7 +29,7 @@ impl FromStr for Mode {
 }
 
 struct ShowSpanVisitor<'a> {
-    span_diagnostic: &'a errors::Handler,
+    span_diagnostic: &'a rustc_errors::Handler,
     mode: Mode,
 }
 
@@ -60,7 +60,7 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
     }
 }
 
-pub fn run(span_diagnostic: &errors::Handler, mode: &str, krate: &ast::Crate) {
+pub fn run(span_diagnostic: &rustc_errors::Handler, mode: &str, krate: &ast::Crate) {
     let mode = match mode.parse().ok() {
         Some(mode) => mode,
         None => return,

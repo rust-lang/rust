@@ -91,7 +91,6 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use errors::struct_span_err;
 use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
@@ -103,6 +102,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util;
 use rustc::util::common::ErrorReported;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;

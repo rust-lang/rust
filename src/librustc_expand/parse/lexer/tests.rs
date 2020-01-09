@@ -1,4 +1,5 @@
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::{emitter::EmitterWriter, Handler};
 use rustc_parse::lexer::StringReader;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::Symbol;
@@ -8,7 +9,6 @@ use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments::is_doc_comment;
 use syntax::with_default_globals;
 
-use errors::{emitter::EmitterWriter, Handler};
 use std::io;
 use std::path::PathBuf;
 

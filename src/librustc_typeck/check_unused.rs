@@ -1,15 +1,13 @@
 use crate::lint;
 use rustc::ty::TyCtxt;
-
-use errors::Applicability;
-use rustc_span::Span;
-use syntax::ast;
-
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::visibility_qualified;
+use rustc_span::Span;
+use syntax::ast;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports = DefIdSet::default();

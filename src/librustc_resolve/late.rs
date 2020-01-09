@@ -11,10 +11,9 @@ use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
-use errors::DiagnosticId;
-use log::debug;
 use rustc::{bug, lint, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -28,6 +27,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::{unwrap_or, walk_list};
 
+use log::debug;
 use std::collections::BTreeSet;
 use std::mem::replace;
 
@@ -306,7 +306,7 @@ impl<'a> PathSource<'a> {
     }
 
     fn error_code(self, has_unexpected_resolution: bool) -> DiagnosticId {
-        use errors::error_code;
+        use rustc_errors::error_code;
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => error_code!(E0404),
             (PathSource::Trait(_), false) => error_code!(E0405),

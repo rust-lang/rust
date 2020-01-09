@@ -1,7 +1,6 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use errors::struct_span_err;
 use rustc::infer;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::SuppressRegionErrors;
@@ -14,6 +13,7 @@ use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;

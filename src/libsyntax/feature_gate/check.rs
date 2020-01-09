@@ -4,9 +4,9 @@ use crate::attr;
 use crate::sess::ParseSess;
 use crate::visit::{self, FnKind, Visitor};
 
-use errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_codes::*;
+use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
 use rustc_feature::{find_feature_issue, GateIssue};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Feature, Features, State as FeatureState, UnstableFeatures};
