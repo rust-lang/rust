@@ -20,6 +20,7 @@ jobs:
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
+      PROFILE: debug
     steps:
 
       - name: Checkout repository
@@ -75,18 +76,18 @@ jobs:
 
       - name: Prepare cache 2
         if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/debug/xtask.exe
+        run: Remove-Item ./target/${{ env.PROFILE }}/xtask.exe
 
       - name: Creat distribution dir
         run: mkdir ./dist
 
       - name: Copy binaries (non-win)
         if: matrix.os != 'windows-latest'
-        run: cp ./target/debug/ra-lsp-server.* ./dist
+        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
 
       - name: Copy binaries (win)
         if: matrix.os == 'windows-latest'
-        run: copy ./target/debug/ra-lsp-server.* ./dist
+        run: copy ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
