@@ -104,7 +104,7 @@ impl SmolStr {
 
     pub fn new<T>(text: T) -> SmolStr
     where
-        T: Into<String> + AsRef<str>,
+        T: AsRef<str>,
     {
         SmolStr(Repr::new(text))
     }
@@ -343,7 +343,7 @@ enum Repr {
 impl Repr {
     fn new<T>(text: T) -> Self
     where
-        T: Into<String> + AsRef<str>,
+        T: AsRef<str>,
     {
         {
             let text = text.as_ref();
@@ -359,13 +359,15 @@ impl Repr {
             }
 
             let newlines = text.bytes().take_while(|&b| b == b'\n').count();
-            let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
-            if newlines + spaces == len && newlines <= N_NEWLINES && spaces <= N_SPACES {
-                return Repr::Substring { newlines, spaces };
+            if text[newlines..].bytes().all(|b| b == b' ') {
+                let spaces = len - newlines;
+                if newlines <= N_NEWLINES && spaces <= N_SPACES {
+                    return Repr::Substring { newlines, spaces };
+                }
             }
         }
 
-        Repr::Heap(text.into().into_boxed_str().into())
+        Repr::Heap(text.as_ref().into())
     }
 
     #[inline(always)]
