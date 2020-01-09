@@ -103,8 +103,13 @@ jobs:
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
 
+      - name: Remove files not to be published
+        run: mkdir ./dist
+        run: cp ./editors/code/*.vsix ./dist/code/
+        run: cp -R ./editors/emacs ./dist/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: editors
-          path: ./editors
+          name: executables
+          path: ./dist
