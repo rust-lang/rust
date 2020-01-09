@@ -479,6 +479,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         return work_products;
     }
 
+    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
+
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = vec![];
 
@@ -1714,8 +1716,11 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
+        let _timer = sess.timer("finish_ongoing_codegen");
+
         self.shared_emitter_main.check(sess, true);
-        let compiled_modules = match self.future.join() {
+        let future = self.future;
+        let compiled_modules = sess.time("join_worker_thread", || match future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
             Ok(Err(())) => {
                 sess.abort_if_errors();
@@ -1724,7 +1729,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             Err(_) => {
                 bug!("panic during codegen/LLVM phase");
             }
-        };
+        });
 
         sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 

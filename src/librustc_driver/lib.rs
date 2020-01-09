@@ -389,6 +389,7 @@ pub fn run_compiler(
                 })?;
             } else {
                 // Drop AST after creating GlobalCtxt to free memory
+                let _timer = sess.prof.generic_activity("drop_ast");
                 mem::drop(queries.expansion()?.take());
             }
 
@@ -408,11 +409,13 @@ pub fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
+            let _timer = sess.timer("query_linker");
             let linker = queries.linker()?;
             Ok(Some(linker))
         })?;
 
         if let Some(linker) = linker {
+            let _timer = sess.timer("link");
             linker.link()?
         }
 

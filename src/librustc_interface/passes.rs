@@ -163,19 +163,22 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = rustc_expand::config::features(
-        krate,
-        &sess.parse_sess,
-        sess.edition(),
-        &sess.opts.debugging_opts.allow_features,
-    );
+    let (krate, features) = sess.time("compute_features", || {
+        rustc_expand::config::features(
+            krate,
+            &sess.parse_sess,
+            sess.edition(),
+            &sess.opts.debugging_opts.allow_features,
+        )
+    });
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
     sess.crate_types.set(crate_types);
 
-    let disambiguator = util::compute_crate_disambiguator(sess);
+    let disambiguator =
+        sess.time("compute_crate_disambiguator", || util::compute_crate_disambiguator(sess));
     sess.crate_disambiguator.set(disambiguator);
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
@@ -611,6 +614,8 @@ pub fn prepare_outputs(
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
+    let _timer = sess.timer("prepare_outputs");
+
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(
         &compiler.input,
@@ -721,33 +726,40 @@ pub fn create_global_ctxt<'tcx>(
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
-    let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = ty::query::Providers::default();
-    default_provide(&mut local_providers);
-    codegen_backend.provide(&mut local_providers);
+    let codegen_backend = sess.time("load_codegen_backend", || compiler.codegen_backend());
 
-    let mut extern_providers = local_providers;
-    default_provide_extern(&mut extern_providers);
-    codegen_backend.provide_extern(&mut extern_providers);
+    let (local_providers, extern_providers) = sess.time("load_codegen_backend", || {
+        let mut local_providers = ty::query::Providers::default();
+        default_provide(&mut local_providers);
+        codegen_backend.provide(&mut local_providers);
 
-    if let Some(callback) = compiler.override_queries {
-        callback(sess, &mut local_providers, &mut extern_providers);
-    }
+        let mut extern_providers = local_providers;
+        default_provide_extern(&mut extern_providers);
+        codegen_backend.provide_extern(&mut extern_providers);
 
-    let gcx = global_ctxt.init_locking(|| {
-        TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &all_arenas,
-            arena,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs,
-        )
+        if let Some(callback) = compiler.override_queries {
+            callback(sess, &mut local_providers, &mut extern_providers);
+        }
+
+        (local_providers, extern_providers)
+    });
+
+    let gcx = sess.time("setup_global_ctxt", || {
+        global_ctxt.init_locking(|| {
+            TyCtxt::create_global_ctxt(
+                sess,
+                lint_store,
+                local_providers,
+                extern_providers,
+                &all_arenas,
+                arena,
+                resolver_outputs,
+                hir_map,
+                query_result_on_disk_cache,
+                &crate_name,
+                &outputs,
+            )
+        })
     });
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.
