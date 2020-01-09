@@ -1,7 +1,13 @@
 // run-rustfix
 
 #![deny(clippy::wildcard_enum_match_arm)]
-#![allow(unreachable_code, unused_variables, dead_code, clippy::single_match)]
+#![allow(
+    unreachable_code,
+    unused_variables,
+    dead_code,
+    clippy::single_match,
+    clippy::wildcard_in_or_patterns
+)]
 
 use std::io::ErrorKind;
 

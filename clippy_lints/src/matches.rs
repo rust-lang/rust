@@ -3,7 +3,8 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
-    snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,
+    snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
@@ -223,6 +224,26 @@ declare_clippy_lint! {
     "a wildcard enum match arm using `_`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard pattern used with others patterns in same match arm.
+    ///
+    /// **Why is this bad?** Wildcard pattern already covers any other pattern as it will match anyway.
+    /// It makes the code less readable, especially to spot wildcard pattern use in match arm.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// match "foo" {
+    ///     "a" => {},
+    ///     "bar" | _ => {},
+    /// }
+    /// ```
+    pub WILDCARD_IN_OR_PATTERNS,
+    complexity,
+    "a wildcard pattern used with others patterns in same match arm"
+}
+
 declare_lint_pass!(Matches => [
     SINGLE_MATCH,
     MATCH_REF_PATS,
@@ -231,7 +252,8 @@ declare_lint_pass!(Matches => [
     MATCH_OVERLAPPING_ARM,
     MATCH_WILD_ERR_ARM,
     MATCH_AS_REF,
-    WILDCARD_ENUM_MATCH_ARM
+    WILDCARD_ENUM_MATCH_ARM,
+    WILDCARD_IN_OR_PATTERNS
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
@@ -246,6 +268,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
             check_wild_err_arm(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
+            check_wild_in_or_pats(cx, arms);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms, expr);
@@ -660,6 +683,23 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
                 ),
                 applicability,
             )
+        }
+    }
+}
+
+fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
+    for arm in arms {
+        if let PatKind::Or(ref fields) = arm.pat.kind {
+            // look for multiple fields in this arm that contains at least one Wild pattern
+            if fields.len() > 1 && fields.iter().any(is_wild) {
+                span_help_and_lint(
+                    cx,
+                    WILDCARD_IN_OR_PATTERNS,
+                    arm.pat.span,
+                    "wildcard pattern covers any other pattern as it will match anyway.",
+                    "Consider handling `_` separately.",
+                );
+            }
         }
     }
 }

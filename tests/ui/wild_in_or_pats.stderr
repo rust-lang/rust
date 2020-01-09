@@ -1,0 +1,35 @@
+error: wildcard pattern covers any other pattern as it will match anyway.
+  --> $DIR/wild_in_or_pats.rs:8:9
+   |
+LL |         "bar" | _ => {
+   |         ^^^^^^^^^
+   |
+   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
+   = help: Consider handling `_` separately.
+
+error: wildcard pattern covers any other pattern as it will match anyway.
+  --> $DIR/wild_in_or_pats.rs:16:9
+   |
+LL |         "bar" | "bar2" | _ => {
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = help: Consider handling `_` separately.
+
+error: wildcard pattern covers any other pattern as it will match anyway.
+  --> $DIR/wild_in_or_pats.rs:24:9
+   |
+LL |         _ | "bar" | _ => {
+   |         ^^^^^^^^^^^^^
+   |
+   = help: Consider handling `_` separately.
+
+error: wildcard pattern covers any other pattern as it will match anyway.
+  --> $DIR/wild_in_or_pats.rs:32:9
+   |
+LL |         _ | "bar" => {
+   |         ^^^^^^^^^
+   |
+   = help: Consider handling `_` separately.
+
+error: aborting due to 4 previous errors
+
