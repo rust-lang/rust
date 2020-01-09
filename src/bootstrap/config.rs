@@ -493,9 +493,13 @@ impl Config {
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
+        // We want the llvm-skip-rebuild flag to take precedence over the
+        // skip-rebuild config.toml option so we store it separately
+        // so that we can infer the right value
+        let mut llvm_skip_rebuild = flags.llvm_skip_rebuild;
+
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
-        let mut llvm_skip_rebuild = None;
         let mut llvm_assertions = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -517,7 +521,7 @@ impl Config {
             }
             set(&mut config.ninja, llvm.ninja);
             llvm_assertions = llvm.assertions;
-            llvm_skip_rebuild = llvm.skip_rebuild;
+            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
