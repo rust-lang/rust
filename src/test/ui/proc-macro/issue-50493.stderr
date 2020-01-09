@@ -1,5 +1,5 @@
 error[E0742]: visibilities can only be restricted to ancestor modules
-  --> $DIR/issue-50493.rs:8:12
+  --> $DIR/issue-50493.rs:9:12
    |
 LL |     pub(in restricted) field: usize,
    |            ^^^^^^^^^^
@@ -10,7 +10,13 @@ error[E0616]: field `field` of struct `Restricted` is private
 LL | #[derive(Derive)]
    |          ^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0616]: field `field` of struct `Restricted` is private
+  --> $DIR/issue-50493.rs:6:10
+   |
+LL | #[derive(Derive)]
+   |          ^^^^^^
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0616, E0742.
 For more information about an error, try `rustc --explain E0616`.

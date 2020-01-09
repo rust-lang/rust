@@ -5,7 +5,7 @@ LL |         C => {}
    |         ^
 
 error[E0004]: non-exhaustive patterns: `&T` not covered
-  --> $DIR/match_ice.rs:15:11
+  --> $DIR/match_ice.rs:16:11
    |
 LL | struct T;
    | --------- `T` defined here
@@ -15,6 +15,12 @@ LL |     match K {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 2 previous errors
+error: to use a constant of type `S` in a pattern, `S` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/match_ice.rs:11:9
+   |
+LL |         C => {}
+   |         ^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

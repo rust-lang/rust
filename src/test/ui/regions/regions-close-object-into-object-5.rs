@@ -21,6 +21,7 @@ fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
         //~| ERROR the parameter type `T` may not live long enough
         //~| ERROR the parameter type `T` may not live long enough
         //~| ERROR the parameter type `T` may not live long enough
+        //~| ERROR the parameter type `T` may not live long enough
 }
 
 fn main() {}

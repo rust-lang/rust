@@ -1,11 +1,23 @@
 error: cannot find derive macro `x3300` in this scope
-  --> $DIR/issue-43106-gating-of-derive-2.rs:12:14
+  --> $DIR/issue-43106-gating-of-derive-2.rs:14:14
    |
 LL |     #[derive(x3300)]
    |              ^^^^^
 
 error: cannot find derive macro `x3300` in this scope
-  --> $DIR/issue-43106-gating-of-derive-2.rs:8:14
+  --> $DIR/issue-43106-gating-of-derive-2.rs:14:14
+   |
+LL |     #[derive(x3300)]
+   |              ^^^^^
+
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:9:14
+   |
+LL |     #[derive(x3300)]
+   |              ^^^^^
+
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:9:14
    |
 LL |     #[derive(x3300)]
    |              ^^^^^
@@ -16,5 +28,11 @@ error: cannot find derive macro `x3300` in this scope
 LL |     #[derive(x3300)]
    |              ^^^^^
 
-error: aborting due to 3 previous errors
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:4:14
+   |
+LL |     #[derive(x3300)]
+   |              ^^^^^
+
+error: aborting due to 6 previous errors
 

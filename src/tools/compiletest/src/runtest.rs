@@ -1864,12 +1864,14 @@ impl<'test> TestCx<'test> {
                     rustc.args(&["--error-format", "json"]);
                 }
                 rustc.arg("-Zui-testing");
+                rustc.arg("-Zdeduplicate-diagnostics=no");
             }
             Ui => {
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
                 }
                 rustc.arg("-Zui-testing");
+                rustc.arg("-Zdeduplicate-diagnostics=no");
             }
             MirOpt => {
                 rustc.args(&[

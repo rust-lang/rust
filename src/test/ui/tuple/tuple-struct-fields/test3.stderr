@@ -15,6 +15,12 @@ error[E0412]: cannot find type `foo` in this scope
 LL |     define_struct! { foo }
    |                      ^^^ not found in this scope
 
-error: aborting due to 2 previous errors
+error[E0412]: cannot find type `foo` in this scope
+  --> $DIR/test3.rs:11:22
+   |
+LL |     define_struct! { foo }
+   |                      ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

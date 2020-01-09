@@ -113,7 +113,12 @@ fn main() {
     //[migrate]~| NOTE  implementation of `Stream` is not general enough
     let filter = map.filter(|x: &_| true);
     //[nll]~^ ERROR higher-ranked subtype error
+    //[nll]~| ERROR higher-ranked subtype error
+    //[nll]~| ERROR higher-ranked subtype error
+    //[nll]~| ERROR higher-ranked subtype error
     let count = filter.count(); // Assert that we still have a valid stream.
     //[nll]~^ ERROR higher-ranked subtype error
-
+    //[nll]~| ERROR higher-ranked subtype error
+    //[nll]~| ERROR higher-ranked subtype error
+    //[nll]~| ERROR higher-ranked subtype error
 }

@@ -1,17 +1,17 @@
 error: cannot find macro `bang_proc_macrp` in this scope
-  --> $DIR/resolve-error.rs:56:5
+  --> $DIR/resolve-error.rs:60:5
    |
 LL |     bang_proc_macrp!();
    |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
 
 error: cannot find macro `Dlona` in this scope
-  --> $DIR/resolve-error.rs:53:5
+  --> $DIR/resolve-error.rs:57:5
    |
 LL |     Dlona!();
    |     ^^^^^
 
 error: cannot find macro `attr_proc_macra` in this scope
-  --> $DIR/resolve-error.rs:50:5
+  --> $DIR/resolve-error.rs:54:5
    |
 LL | / macro_rules! attr_proc_mac {
 LL | |     () => {}
@@ -22,7 +22,7 @@ LL |       attr_proc_macra!();
    |       ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
 
 error: cannot find macro `FooWithLongNama` in this scope
-  --> $DIR/resolve-error.rs:47:5
+  --> $DIR/resolve-error.rs:51:5
    |
 LL | / macro_rules! FooWithLongNam {
 LL | |     () => {}
@@ -33,31 +33,49 @@ LL |       FooWithLongNama!();
    |       ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `FooWithLongNam`
 
 error: cannot find derive macro `attr_proc_macra` in this scope
-  --> $DIR/resolve-error.rs:42:10
+  --> $DIR/resolve-error.rs:45:10
+   |
+LL | #[derive(attr_proc_macra)]
+   |          ^^^^^^^^^^^^^^^
+
+error: cannot find derive macro `attr_proc_macra` in this scope
+  --> $DIR/resolve-error.rs:45:10
    |
 LL | #[derive(attr_proc_macra)]
    |          ^^^^^^^^^^^^^^^
 
 error: cannot find derive macro `Dlona` in this scope
-  --> $DIR/resolve-error.rs:38:10
+  --> $DIR/resolve-error.rs:40:10
+   |
+LL | #[derive(Dlona)]
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
+
+error: cannot find derive macro `Dlona` in this scope
+  --> $DIR/resolve-error.rs:40:10
    |
 LL | #[derive(Dlona)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
 
 error: cannot find derive macro `Dlone` in this scope
-  --> $DIR/resolve-error.rs:34:10
+  --> $DIR/resolve-error.rs:35:10
+   |
+LL | #[derive(Dlone)]
+   |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
+
+error: cannot find derive macro `Dlone` in this scope
+  --> $DIR/resolve-error.rs:35:10
    |
 LL | #[derive(Dlone)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
 
 error: cannot find attribute `FooWithLongNan` in this scope
-  --> $DIR/resolve-error.rs:31:3
+  --> $DIR/resolve-error.rs:32:3
    |
 LL | #[FooWithLongNan]
    |   ^^^^^^^^^^^^^^
 
 error: cannot find attribute `attr_proc_macra` in this scope
-  --> $DIR/resolve-error.rs:27:3
+  --> $DIR/resolve-error.rs:28:3
    |
 LL | #[attr_proc_macra]
    |   ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
@@ -68,5 +86,11 @@ error: cannot find derive macro `FooWithLongNan` in this scope
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
 
-error: aborting due to 10 previous errors
+error: cannot find derive macro `FooWithLongNan` in this scope
+  --> $DIR/resolve-error.rs:22:10
+   |
+LL | #[derive(FooWithLongNan)]
+   |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
+
+error: aborting due to 14 previous errors
 

@@ -12,6 +12,7 @@ fn main() {
 fn cycle1() -> impl Clone {
     //~^ ERROR cycle detected
     //~| ERROR cycle detected
+    //~| ERROR cycle detected
     send(cycle2().clone());
     //~^ ERROR cannot be sent between threads safely
 
