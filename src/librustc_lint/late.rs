@@ -434,18 +434,27 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
         late_lint_pass_crate(tcx, builtin_lints);
     } else {
         for pass in &mut passes {
-            tcx.sess.time(&format!("running late lint: {}", pass.name()), || {
-                late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-            });
+            tcx.sess
+                .prof
+                .extra_verbose_generic_activity(&format!("running late lint: {}", pass.name()))
+                .run(|| {
+                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
+                });
         }
 
         let mut passes: Vec<_> =
             tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
-            tcx.sess.time(&format!("running late module lint: {}", pass.name()), || {
-                late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-            });
+            tcx.sess
+                .prof
+                .extra_verbose_generic_activity(&format!(
+                    "running late module lint: {}",
+                    pass.name()
+                ))
+                .run(|| {
+                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
+                });
         }
     }
 }
@@ -457,13 +466,13 @@ pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 ) {
     join(
         || {
-            tcx.sess.time("crate lints", || {
+            tcx.sess.time("crate_lints", || {
                 // Run whole crate non-incremental lints
                 late_lint_crate(tcx, builtin_lints());
             });
         },
         || {
-            tcx.sess.time("module lints", || {
+            tcx.sess.time("module_lints", || {
                 // Run per-module lints
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
                     tcx.ensure().lint_mod(tcx.hir().local_def_id(module));

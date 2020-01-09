@@ -120,12 +120,13 @@ fn prepare_lto(
                 info!("adding bytecode {}", name);
                 let bc_encoded = data.data();
 
-                let (bc, id) = cgcx.prof.generic_pass(&format!("decode {}", name)).run(|| {
-                    match DecodedBytecode::new(bc_encoded) {
+                let (bc, id) = cgcx
+                    .prof
+                    .extra_verbose_generic_activity(&format!("decode {}", name))
+                    .run(|| match DecodedBytecode::new(bc_encoded) {
                         Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
                         Err(e) => Err(diag_handler.fatal(&e)),
-                    }
-                })?;
+                    })?;
                 let bc = SerializedModule::FromRlib(bc);
                 upstream_modules.push((bc, CString::new(id).unwrap()));
             }
@@ -280,8 +281,9 @@ fn fat_lto(
         // save and persist everything with the original module.
         let mut linker = Linker::new(llmod);
         for (bc_decoded, name) in serialized_modules {
+            let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_link_module");
             info!("linking {:?}", name);
-            cgcx.prof.generic_pass(&format!("ll link {:?}", name)).run(|| {
+            cgcx.prof.extra_verbose_generic_activity(&format!("ll link {:?}", name)).run(|| {
                 let data = bc_decoded.data();
                 linker.add(&data).map_err(|()| {
                     let msg = format!("failed to load bc of {:?}", name);
@@ -633,7 +635,7 @@ pub(crate) fn run_pass_manager(
         }
 
         cgcx.prof
-            .generic_pass("LTO passes")
+            .extra_verbose_generic_activity("LTO_passes")
             .run(|| llvm::LLVMRunPassManager(pm, module.module_llvm.llmod()));
 
         llvm::LLVMDisposePassManager(pm);

@@ -424,13 +424,23 @@ pub(crate) unsafe fn optimize(
 
         // Finally, run the actual optimization passes
         {
+            let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_function_passes");
             let desc = &format!("llvm function passes [{}]", module_name.unwrap());
-            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
+            let _timer = if config.time_module {
+                Some(cgcx.prof.extra_verbose_generic_activity(desc))
+            } else {
+                None
+            };
             llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
         }
         {
+            let _timer = cgcx.prof.generic_activity("LLVM_module_optimize_module_passes");
             let desc = &format!("llvm module passes [{}]", module_name.unwrap());
-            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
+            let _timer = if config.time_module {
+                Some(cgcx.prof.extra_verbose_generic_activity(desc))
+            } else {
+                None
+            };
             llvm::LLVMRunPassManager(mpm, llmod);
         }
 
@@ -556,7 +566,11 @@ pub(crate) unsafe fn codegen(
 
         {
             let desc = &format!("codegen passes [{}]", module_name.unwrap());
-            let _timer = if config.time_module { Some(cgcx.prof.generic_pass(desc)) } else { None };
+            let _timer = if config.time_module {
+                Some(cgcx.prof.extra_verbose_generic_activity(desc))
+            } else {
+                None
+            };
 
             if config.emit_ir {
                 let _timer = cgcx.prof.generic_activity("LLVM_module_codegen_emit_ir");

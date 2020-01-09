@@ -566,7 +566,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
         tcx.sess
-            .time("write allocator module", || backend.codegen_allocator(tcx, &mut modules, kind));
+            .time("write_allocator_module", || backend.codegen_allocator(tcx, &mut modules, kind));
 
         Some(ModuleCodegen { name: llmod_id, module_llvm: modules, kind: ModuleKind::Allocator })
     } else {
@@ -582,7 +582,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
         let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
-        tcx.sess.time("write compressed metadata", || {
+        tcx.sess.time("write_compressed_metadata", || {
             backend.write_compressed_metadata(
                 tcx,
                 &ongoing_codegen.metadata,
@@ -652,7 +652,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    print_time_passes_entry(tcx.sess.time_passes(), "codegen to LLVM IR", total_codegen_time);
+    print_time_passes_entry(tcx.sess.time_passes(), "codegen_to_LLVM_IR", total_codegen_time);
 
     ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
@@ -712,9 +712,9 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 fn assert_and_save_dep_graph(tcx: TyCtxt<'_>) {
-    tcx.sess.time("assert dep graph", || ::rustc_incremental::assert_dep_graph(tcx));
+    tcx.sess.time("assert_dep_graph", || ::rustc_incremental::assert_dep_graph(tcx));
 
-    tcx.sess.time("serialize dep graph", || ::rustc_incremental::save_dep_graph(tcx));
+    tcx.sess.time("serialize_dep_graph", || ::rustc_incremental::save_dep_graph(tcx));
 }
 
 impl CrateInfo {

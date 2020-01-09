@@ -54,7 +54,7 @@ use std::rc::Rc;
 use std::{env, fs, iter, mem};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parsing", || match input {
+    let krate = sess.time("parse_crate", || match input {
         Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
         Input::Str { input, name } => {
             parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
@@ -155,7 +155,7 @@ pub fn register_plugins<'a>(
     mut krate: ast::Crate,
     crate_name: &str,
 ) -> Result<(ast::Crate, Lrc<lint::LintStore>)> {
-    krate = sess.time("attributes injection", || {
+    krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
             &sess.parse_sess,
@@ -180,9 +180,7 @@ pub fn register_plugins<'a>(
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
-        sess.time("garbage-collect incremental cache directory", || {
-            let _prof_timer =
-                sess.prof.generic_activity("incr_comp_garbage_collect_session_directories");
+        sess.time("incr_comp_garbage_collect_session_directories", || {
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
@@ -193,7 +191,7 @@ pub fn register_plugins<'a>(
         });
     }
 
-    sess.time("recursion limit", || {
+    sess.time("recursion_limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
@@ -204,8 +202,8 @@ pub fn register_plugins<'a>(
     register_lints(&sess, &mut lint_store);
 
     let registrars =
-        sess.time("plugin loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
-    sess.time("plugin registration", || {
+        sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
+    sess.time("plugin_registration", || {
         let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
             registrar(&mut registry);
@@ -223,7 +221,7 @@ fn configure_and_expand_inner<'a>(
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    sess.time("pre-AST-expansion lint checks", || {
+    sess.time("pre_AST_expansion_lint_checks", || {
         rustc_lint::check_ast_crate(
             sess,
             lint_store,
@@ -237,7 +235,7 @@ fn configure_and_expand_inner<'a>(
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
     rustc_builtin_macros::register_builtin_macros(&mut resolver, sess.edition());
 
-    krate = sess.time("crate injection", || {
+    krate = sess.time("crate_injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
         let (krate, name) = rustc_builtin_macros::standard_library_imports::inject(
             krate,
@@ -254,7 +252,7 @@ fn configure_and_expand_inner<'a>(
     util::check_attr_crate_type(&krate.attrs, &mut resolver.lint_buffer());
 
     // Expand all macros
-    krate = sess.time("expansion", || {
+    krate = sess.time("macro_expand_crate", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
         // dependent dlls. Note that this uses cfg!(windows) as opposed to
@@ -299,11 +297,11 @@ fn configure_and_expand_inner<'a>(
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
 
         // Expand macros now!
-        let krate = sess.time("expand crate", || ecx.monotonic_expander().expand_crate(krate));
+        let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
         // The rest is error reporting
 
-        sess.time("check unused macros", || {
+        sess.time("check_unused_macros", || {
             ecx.check_unused_macros();
         });
 
@@ -322,7 +320,7 @@ fn configure_and_expand_inner<'a>(
         krate
     });
 
-    sess.time("maybe building test harness", || {
+    sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(
             &sess.parse_sess,
             &mut resolver,
@@ -346,7 +344,7 @@ fn configure_and_expand_inner<'a>(
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
-    let has_proc_macro_decls = sess.time("AST validation", || {
+    let has_proc_macro_decls = sess.time("AST_validation", || {
         ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
@@ -368,7 +366,7 @@ fn configure_and_expand_inner<'a>(
         msg.warn("The generated documentation may be incorrect");
         msg.emit()
     } else {
-        krate = sess.time("maybe creating a macro crate", || {
+        krate = sess.time("maybe_create_a_macro_crate", || {
             let num_crate_types = crate_types.len();
             let is_test_crate = sess.opts.test;
             rustc_builtin_macros::proc_macro_harness::inject(
@@ -398,12 +396,10 @@ fn configure_and_expand_inner<'a>(
         println!("{}", json::as_json(&krate));
     }
 
-    sess.time("name resolution", || {
-        resolver.resolve_crate(&krate);
-    });
+    resolver.resolve_crate(&krate);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
-    sess.time("complete gated feature checking", || {
+    sess.time("complete_gated_feature_checking", || {
         syntax::feature_gate::check_crate(
             &krate,
             &sess.parse_sess,
@@ -432,24 +428,22 @@ pub fn lower_to_hir<'res, 'tcx>(
     arena: &'tcx Arena<'tcx>,
 ) -> Result<map::Forest<'tcx>> {
     // Lower AST to HIR.
-    let hir_forest = sess.time("lowering AST -> HIR", || {
-        let hir_crate = rustc_ast_lowering::lower_crate(
-            sess,
-            &dep_graph,
-            &krate,
-            resolver,
-            rustc_parse::nt_to_tokenstream,
-            arena,
-        );
+    let hir_crate = rustc_ast_lowering::lower_crate(
+        sess,
+        &dep_graph,
+        &krate,
+        resolver,
+        rustc_parse::nt_to_tokenstream,
+        arena,
+    );
 
-        if sess.opts.debugging_opts.hir_stats {
-            hir_stats::print_hir_stats(&hir_crate);
-        }
+    if sess.opts.debugging_opts.hir_stats {
+        hir_stats::print_hir_stats(&hir_crate);
+    }
 
-        map::Forest::new(hir_crate, &dep_graph)
-    });
+    let hir_forest = map::Forest::new(hir_crate, &dep_graph);
 
-    sess.time("early lint checks", || {
+    sess.time("early_lint_checks", || {
         rustc_lint::check_ast_crate(
             sess,
             lint_store,
@@ -723,12 +717,9 @@ pub fn create_global_ctxt<'tcx>(
     let defs = mem::take(&mut resolver_outputs.definitions);
 
     // Construct the HIR map.
-    let hir_map = sess.time("indexing HIR", || {
-        map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
-    });
+    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs);
 
-    let query_result_on_disk_cache =
-        sess.time("load query result cache", || rustc_incremental::load_query_result_cache(sess));
+    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = ty::query::Providers::default();
@@ -761,7 +752,7 @@ pub fn create_global_ctxt<'tcx>(
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.
     ty::tls::enter_global(&gcx, |tcx| {
-        tcx.sess.time("dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
+        tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(tcx));
     });
 
     QueryContext(gcx)
@@ -775,17 +766,17 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     let sess = tcx.sess;
     let mut entry_point = None;
 
-    sess.time("misc checking 1", || {
+    sess.time("misc_checking_1", || {
         parallel!(
             {
                 entry_point = sess
-                    .time("looking for entry point", || rustc_passes::entry::find_entry_point(tcx));
+                    .time("looking_for_entry_point", || rustc_passes::entry::find_entry_point(tcx));
 
-                sess.time("looking for plugin registrar", || {
+                sess.time("looking_for_plugin_registrar", || {
                     plugin::build::find_plugin_registrar(tcx)
                 });
 
-                sess.time("looking for derive registrar", || proc_macro_decls::find(tcx));
+                sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
@@ -802,17 +793,17 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     // passes are timed inside typeck
     typeck::check_crate(tcx)?;
 
-    sess.time("misc checking 2", || {
+    sess.time("misc_checking_2", || {
         parallel!(
             {
-                sess.time("match checking", || {
+                sess.time("match_checking", || {
                     tcx.par_body_owners(|def_id| {
                         tcx.ensure().check_match(def_id);
                     });
                 });
             },
             {
-                sess.time("liveness checking + intrinsic checking", || {
+                sess.time("liveness_and_intrinsic_checking", || {
                     par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
@@ -828,21 +819,21 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         );
     });
 
-    sess.time("MIR borrow checking", || {
+    sess.time("MIR_borrow_checking", || {
         tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
-    sess.time("dumping Chalk-like clauses", || {
+    sess.time("dumping_chalk_like_clauses", || {
         rustc_traits::lowering::dump_program_clauses(tcx);
     });
 
-    sess.time("MIR effect checking", || {
+    sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
             mir::transform::check_unsafety::check_unsafety(tcx, def_id)
         }
     });
 
-    sess.time("layout testing", || layout_test::test_layout(tcx));
+    sess.time("layout_testing", || layout_test::test_layout(tcx));
 
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
@@ -853,28 +844,25 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         return Err(ErrorReported);
     }
 
-    sess.time("misc checking 3", || {
+    sess.time("misc_checking_3", || {
         parallel!(
             {
-                sess.time("privacy access levels", || {
-                    tcx.ensure().privacy_access_levels(LOCAL_CRATE);
-                });
+                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+
                 parallel!(
                     {
-                        sess.time("private in public", || {
-                            tcx.ensure().check_private_in_public(LOCAL_CRATE);
-                        });
+                        tcx.ensure().check_private_in_public(LOCAL_CRATE);
                     },
                     {
-                        sess.time("death checking", || rustc_passes::dead::check_crate(tcx));
+                        sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
                     },
                     {
-                        sess.time("unused lib feature checking", || {
+                        sess.time("unused_lib_feature_checking", || {
                             rustc_passes::stability::check_unused_or_stable_features(tcx)
                         });
                     },
                     {
-                        sess.time("lint checking", || {
+                        sess.time("lint_checking", || {
                             rustc_lint::check_crate(tcx, || {
                                 rustc_lint::BuiltinCombinedLateLintPass::new()
                             });
@@ -883,7 +871,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 );
             },
             {
-                sess.time("privacy checking modules", || {
+                sess.time("privacy_checking_modules", || {
                     par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
                         tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
                     });
@@ -925,6 +913,8 @@ fn encode_and_write_metadata(
         MetadataKind::None => middle::cstore::EncodedMetadata::new(),
         MetadataKind::Uncompressed | MetadataKind::Compressed => tcx.encode_metadata(),
     };
+
+    let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     if need_metadata_file {
@@ -968,10 +958,9 @@ pub fn start_codegen<'tcx>(
         tcx.print_debug_stats();
     }
 
-    let (metadata, need_metadata_module) =
-        tcx.sess.time("metadata encoding and writing", || encode_and_write_metadata(tcx, outputs));
+    let (metadata, need_metadata_module) = encode_and_write_metadata(tcx, outputs);
 
-    let codegen = tcx.sess.time("codegen", move || {
+    let codegen = tcx.sess.time("codegen_crate", move || {
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
 

@@ -198,7 +198,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Encode query results.
             let mut query_result_index = EncodedQueryResultIndex::new();
 
-            tcx.sess.time("encode query results", || {
+            tcx.sess.time("encode_query_results", || {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
@@ -1053,8 +1053,8 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results for {}", ::std::any::type_name::<Q>());
-    let _timer = tcx.sess.prof.generic_pass(desc);
+    let desc = &format!("encode_query_results_for_{}", ::std::any::type_name::<Q>());
+    let _timer = tcx.sess.prof.extra_verbose_generic_activity(desc);
 
     let shards = Q::query_cache(tcx).lock_shards();
     assert!(shards.iter().all(|shard| shard.active.is_empty()));

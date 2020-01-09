@@ -283,7 +283,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
-        sess.time("serialize work products", move || {
+        sess.time("serialize_work_products", move || {
             rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
         });
 
@@ -300,7 +300,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.time("linking", || {
+        sess.time("link_crate", || {
             use crate::back::archive::LlvmArchiveBuilder;
             use rustc_codegen_ssa::back::link::link_binary;
 

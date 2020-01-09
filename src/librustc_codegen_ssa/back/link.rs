@@ -577,7 +577,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     let mut i = 0;
     loop {
         i += 1;
-        prog = sess.time("running linker", || exec_linker(sess, &mut cmd, out_filename, tmpdir));
+        prog = sess.time("run_linker", || exec_linker(sess, &mut cmd, out_filename, tmpdir));
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -1562,7 +1562,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        sess.prof.generic_pass(&format!("altering {}.rlib", name)).run(|| {
+        sess.prof.extra_verbose_generic_activity(&format!("altering {}.rlib", name)).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 

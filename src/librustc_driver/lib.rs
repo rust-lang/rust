@@ -369,7 +369,7 @@ pub fn run_compiler(
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
                     let result = tcx.analysis(LOCAL_CRATE);
 
-                    sess.time("save analysis", || {
+                    sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
                             &expanded_crate,

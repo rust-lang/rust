@@ -283,10 +283,8 @@ pub fn collect_crate_mono_items(
 ) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
-    let roots = tcx.sess.time("collecting roots", || {
-        let _prof_timer = tcx.prof.generic_activity("monomorphization_collector_root_collections");
-        collect_roots(tcx, mode)
-    });
+    let roots =
+        tcx.sess.time("monomorphization_collector_root_collections", || collect_roots(tcx, mode));
 
     debug!("building mono item graph, beginning at roots");
 
@@ -297,7 +295,7 @@ pub fn collect_crate_mono_items(
         let visited: MTRef<'_, _> = &mut visited;
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
-        tcx.sess.time("collecting mono items", || {
+        tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_iter(roots).for_each(|root| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(tcx, root, visited, &mut recursion_depths, inlining_map);
