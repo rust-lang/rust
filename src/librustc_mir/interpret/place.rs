@@ -182,6 +182,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         let align = layout.align.abi;
         let ptr = Scalar::from_uint(align.bytes(), cx.pointer_size());
+        // `Poison` this to make sure that the pointer value `ptr` is never observable by the program.
         MPlaceTy { mplace: MemPlace { ptr, align, meta: MemPlaceMeta::Poison }, layout }
     }
 
