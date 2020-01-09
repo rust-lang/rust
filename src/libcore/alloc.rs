@@ -17,7 +17,7 @@ use crate::usize;
 #[derive(Debug)]
 pub struct Excess(pub NonNull<u8>, pub usize);
 
-fn size_align<T>() -> (usize, usize) {
+const fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
 }
 
@@ -120,14 +120,14 @@ impl Layout {
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[inline]
-    pub fn new<T>() -> Self {
+    pub const fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
         // Note that the align is guaranteed by rustc to be a power of two and
         // the size+align combo is guaranteed to fit in our address space. As a
         // result use the unchecked constructor here to avoid inserting code
         // that panics if it isn't optimized well enough.
-        debug_assert!(Layout::from_size_align(size, align).is_ok());
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
