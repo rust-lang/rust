@@ -10,6 +10,16 @@ pub(super) fn trait_def(p: &mut Parser) {
     p.bump(T![trait]);
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
+    // test trait_alias
+    // trait Z<U> = T<U>;
+    // trait Z<U> = T<U> where U: Copy;
+    // trait Z<U> = where Self: T<U>;
+    if p.eat(T![=]) {
+        type_params::bounds_without_colon(p);
+        type_params::opt_where_clause(p);
+        p.expect(T![;]);
+        return;
+    }
     if p.at(T![:]) {
         type_params::bounds(p);
     }
