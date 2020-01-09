@@ -93,7 +93,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             return n;
                         }
                         assert!(!def_id.is_local());
-                        let n = self.resolver.item_generics_num_liftimes(def_id, self.sess);
+                        let n = self.resolver.item_generics_num_lifetimes(def_id, self.sess);
                         self.type_def_lifetime_params.insert(def_id, n);
                         n
                     });

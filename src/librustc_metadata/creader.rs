@@ -12,8 +12,7 @@ use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::CrateNum;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
