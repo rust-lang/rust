@@ -11,10 +11,7 @@ use rustc_hir::Mutability;
 use rustc::mir::RetagKind;
 use rustc::ty::{self, layout::Size};
 
-use crate::{
-    AllocId, HelpersEvalContextExt, ImmTy, Immediate, InterpResult, MPlaceTy, MemoryKind,
-    MiriMemoryKind, PlaceTy, Pointer, RangeMap, TerminationInfo,
-};
+use crate::*;
 
 pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
@@ -269,7 +266,7 @@ impl<'tcx> Stack {
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                throw_machine_stop!(TerminationInfo::PoppedTrackedPointerTag(item.clone()));
+                register_diagnostic(NonHaltingDiagnostic::PoppedTrackedPointerTag(item.clone()));
             }
         }
         if let Some(call) = item.protector {
@@ -296,12 +293,9 @@ impl<'tcx> Stack {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
-            err_ub!(UbExperimental(format!(
-                "no item granting {} to tag {:?} found in borrow stack",
-                access, tag,
-            )))
-        })?;
+        let granting_idx = self.find_granting(access, tag).ok_or_else(|| err_ub!(UbExperimental(
+            format!("no item granting {} to tag {:?} found in borrow stack.", access, tag),
+        )))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -340,12 +334,10 @@ impl<'tcx> Stack {
     /// active protectors at all because we will remove all items.
     fn dealloc(&mut self, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
-            err_ub!(UbExperimental(format!(
-                "no item granting write access for deallocation to tag {:?} found in borrow stack",
-                tag,
-            )))
-        })?;
+        self.find_granting(AccessKind::Write, tag).ok_or_else(|| err_ub!(UbExperimental(format!(
+            "no item granting write access for deallocation to tag {:?} found in borrow stack",
+            tag,
+        ))))?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
@@ -367,7 +359,8 @@ impl<'tcx> Stack {
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
             .ok_or_else(|| err_ub!(UbExperimental(format!(
-                "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack", new.perm, derived_from,
+                "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
+                new.perm, derived_from,
             ))))?;
 
         // Compute where to put the new item.
