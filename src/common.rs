@@ -73,7 +73,7 @@ pub fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types:
 
 /// Is a pointer to this type a fat ptr?
 pub fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc::hir::Mutability::Not });
+    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
     match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,

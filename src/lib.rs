@@ -9,6 +9,7 @@ extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_fs_util;
+extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_mir;
@@ -68,7 +69,7 @@ mod prelude {
     pub use rustc_span::{Pos, Span};
 
     pub use rustc::bug;
-    pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+    pub use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, mono::MonoItem, *};
     pub use rustc::session::{
         config::{CrateType, Lto},

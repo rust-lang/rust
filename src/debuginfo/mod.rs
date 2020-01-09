@@ -138,7 +138,7 @@ impl<'tcx> DebugContext<'tcx> {
 
                 let type_entry = self.dwarf.unit.get_mut(type_id);
 
-                //type_entry.set(gimli::DW_AT_mutable, AttributeValue::Flag(mutbl == rustc::hir::Mutability::Mut));
+                //type_entry.set(gimli::DW_AT_mutable, AttributeValue::Flag(mutbl == rustc_hir::Mutability::Mut));
                 type_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(pointee));
 
                 type_id

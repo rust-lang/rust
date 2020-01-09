@@ -533,7 +533,7 @@ fn trans_stmt<'tcx>(
                 outputs: _,
                 inputs: _,
             } = &**asm;
-            let rustc::hir::InlineAsmInner {
+            let rustc_hir::InlineAsmInner {
                 asm: asm_code, // Name
                 outputs,       // Vec<Name>
                 inputs,        // Vec<Name>

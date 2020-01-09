@@ -14,7 +14,7 @@ pub use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/c2f4c57296f0d929618baed0b0d6eb594abf01eb/src/librustc/ty/layout.rs#L2349
 pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
-    let ty = instance.ty(tcx);
+    let ty = instance.monomorphic_ty(tcx);
     match ty.kind {
         ty::FnDef(..) |
         // Shims currently have type FnPtr. Not sure this should remain.
@@ -66,7 +66,7 @@ pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> t
                 tcx.mk_fn_sig(std::iter::once(env_ty),
                     ret_ty,
                     false,
-                    rustc::hir::Unsafety::Normal,
+                    rustc_hir::Unsafety::Normal,
                     rustc_target::spec::abi::Abi::Rust
                 )
             })
@@ -611,7 +611,7 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
     if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
         // we don't actually need to drop anything
     } else {
-        let drop_fn_ty = drop_fn.ty(fx.tcx);
+        let drop_fn_ty = drop_fn.monomorphic_ty(fx.tcx);
         match ty.kind {
             ty::Dynamic(..) => {
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized(fx);
@@ -636,7 +636,7 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
                         &ty::RegionKind::ReErased,
                         TypeAndMut {
                             ty,
-                            mutbl: crate::rustc::hir::Mutability::Mut,
+                            mutbl: crate::rustc_hir::Mutability::Mut,
                         },
                     ),
                 );
