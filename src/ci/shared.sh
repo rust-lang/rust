@@ -80,7 +80,7 @@ function ciCommit {
 
 function ciCheckoutPath {
     if isAzurePipelines; then
-        echo "${SYSTEM_WORKFOLDER}"
+        echo "${BUILD_SOURCESDIRECTORY}"
     elif isGitHubActions; then
         echo "${GITHUB_WORKSPACE}"
     else
