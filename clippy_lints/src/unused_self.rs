@@ -1,8 +1,9 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_hir::def::Res;
+use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirId, ImplItemKind, ImplItemRef, Item, ItemKind, Path};
 use rustc_session::declare_tool_lint;
 
@@ -86,6 +87,8 @@ struct UnusedSelfVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnusedSelfVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if self.uses_self {
             // This function already uses `self`
@@ -97,7 +100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedSelfVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }

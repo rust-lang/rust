@@ -1,10 +1,11 @@
 use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{match_qpath, match_trait_method, span_lint};
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::LateContext;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 
 use if_chain::if_chain;
 
@@ -123,6 +124,8 @@ impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Ret(Some(expr)) = &expr.kind {
             let (found_mapping, found_filtering) = check_expression(self.cx, self.arg_id, expr);
@@ -133,7 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

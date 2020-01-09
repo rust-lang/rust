@@ -1,11 +1,12 @@
 use crate::utils::{higher, qpath_res, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::intravisit;
 use rustc_hir::BindingAnnotation;
 use rustc_session::declare_tool_lint;
 
@@ -144,6 +145,8 @@ struct UsedVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.kind;
@@ -156,7 +159,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         }
         intravisit::walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

@@ -2,17 +2,18 @@ use crate::reexport::*;
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::middle::region;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id;
+use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
+use rustc::hir::map::Map;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -1706,6 +1707,8 @@ struct UsedVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for UsedVisitor {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if match_var(expr, self.var) {
             self.used = true;
@@ -1714,7 +1717,7 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -1726,6 +1729,8 @@ struct LocalUsedVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if same_var(self.cx, expr, self.local) {
             self.used = true;
@@ -1734,7 +1739,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -1824,6 +1829,8 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
@@ -1905,7 +1912,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         }
         self.prefer_mutable = old;
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -1950,6 +1957,8 @@ struct VarUsedAfterLoopVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.past_while_let {
             if Some(self.def_id) == var_def_id(self.cx, expr) {
@@ -1960,7 +1969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
         }
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2058,6 +2067,8 @@ struct IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.done {
             return;
@@ -2100,7 +2111,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         }
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2117,6 +2128,8 @@ struct InitializeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         // Look for declarations of the variable
         if let StmtKind::Local(ref local) = stmt.kind {
@@ -2190,7 +2203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }
@@ -2285,6 +2298,8 @@ struct LoopNestVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
+    type Map = Map<'tcx>;
+
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
@@ -2324,7 +2339,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         walk_pat(self, pat)
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2392,6 +2407,8 @@ struct HasBreakOrReturnVisitor {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.has_break_or_return {
             return;
@@ -2408,7 +2425,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2447,6 +2464,8 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
             ExprKind::Path(_) => self.insert_def_id(ex),
@@ -2457,7 +2476,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

@@ -1,8 +1,8 @@
-use rustc::hir::intravisit as visit;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
+use rustc_hir::intravisit as visit;
 use rustc_hir::HirIdSet;
 use rustc_hir::{self, *};
 use rustc_session::declare_tool_lint;

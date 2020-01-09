@@ -1,8 +1,9 @@
 use crate::utils::*;
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
@@ -51,6 +52,8 @@ struct ExVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
             let body = self.cx.tcx.hir().body(eid);
@@ -62,7 +65,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
         }
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

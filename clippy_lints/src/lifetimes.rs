@@ -1,9 +1,10 @@
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::*;
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::*;
 use rustc_hir::FunctionRetTy::Return;
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
@@ -359,6 +360,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.record(&Some(*lifetime));
@@ -398,7 +401,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         }
         walk_ty(self, ty);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -453,6 +456,8 @@ struct LifetimeChecker {
 }
 
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {
+    type Map = Map<'tcx>;
+
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.map.remove(&lifetime.name.ident().name);
@@ -468,7 +473,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
             walk_generic_param(self, param)
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -502,6 +507,8 @@ struct BodyLifetimeChecker {
 }
 
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+    type Map = Map<'tcx>;
+
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         if lifetime.name.ident().name != kw::Invalid && lifetime.name.ident().name != kw::StaticLifetime {
@@ -509,7 +516,7 @@ impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

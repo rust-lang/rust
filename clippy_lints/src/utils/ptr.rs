@@ -1,6 +1,7 @@
 use crate::utils::{get_pat_name, match_var, snippet};
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::LateContext;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_span::source_map::Span;
 use std::borrow::Cow;
@@ -52,6 +53,8 @@ struct PtrCloneVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.abort {
             return;
@@ -75,7 +78,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

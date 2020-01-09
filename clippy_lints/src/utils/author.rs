@@ -3,11 +3,12 @@
 
 use crate::utils::{get_attr, higher};
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_session::declare_tool_lint;
 use syntax::ast::{Attribute, LitFloatType, LitKind};
@@ -188,6 +189,8 @@ struct PrintVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
+    type Map = Map<'tcx>;
+
     #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         // handle if desugarings
@@ -686,7 +689,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

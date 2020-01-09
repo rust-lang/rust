@@ -1,9 +1,10 @@
 use crate::utils::{is_direct_expn_of, span_lint};
 use if_chain::if_chain;
 use matches::matches;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, ty};
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
 use rustc_session::declare_tool_lint;
 use rustc_span::Span;
@@ -127,6 +128,8 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
@@ -150,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
         walk_expr(self, expr)
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }

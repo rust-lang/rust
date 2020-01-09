@@ -6,13 +6,13 @@ use crate::utils::{
 use if_chain::if_chain;
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::FnKind;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::traits;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::{Span, Symbol};

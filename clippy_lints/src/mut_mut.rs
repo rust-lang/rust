@@ -1,9 +1,10 @@
 use crate::utils::{higher, span_lint};
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc_hir as hir;
+use rustc_hir::intravisit;
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
@@ -33,7 +34,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty<'_>) {
-        use rustc::hir::intravisit::Visitor;
+        use rustc_hir::intravisit::Visitor;
 
         MutVisitor { cx }.visit_ty(ty);
     }
@@ -44,6 +45,8 @@ pub struct MutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if in_external_macro(self.cx.sess(), expr.span) {
             return;
@@ -105,7 +108,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
 
         intravisit::walk_ty(self, ty);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

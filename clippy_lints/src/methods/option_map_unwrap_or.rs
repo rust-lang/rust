@@ -1,9 +1,10 @@
 use crate::utils::{differing_macro_contexts, paths, snippet_with_applicability, span_lint_and_then};
 use crate::utils::{is_copy, match_type};
-use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc_hir::{self, *};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -91,12 +92,14 @@ struct UnwrapVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }
@@ -108,6 +111,8 @@ struct MapExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
             self.found_identifier = true;
@@ -116,7 +121,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }

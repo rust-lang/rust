@@ -2,6 +2,7 @@ use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESU
 use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_hir as hir;
@@ -47,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
-    use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+    use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc_hir::*;
 
     struct FindPanicUnwrap<'a, 'tcx> {
@@ -57,6 +58,8 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+        type Map = Map<'tcx>;
+
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
             // check for `begin_panic`
             if_chain! {
@@ -83,7 +86,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             intravisit::walk_expr(self, expr);
         }
 
-        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
             NestedVisitorMap::None
         }
     }
