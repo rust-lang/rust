@@ -28,12 +28,14 @@ use syntax::ast;
 use syntax::walk_list;
 
 use log::debug;
+use std::any::Any;
 use std::slice;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
 crate fn unerased_lint_store<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx LintStore {
-    tcx.lint_store.downcast_ref().unwrap()
+    let store: &dyn Any = &*tcx.lint_store;
+    store.downcast_ref().unwrap()
 }
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({

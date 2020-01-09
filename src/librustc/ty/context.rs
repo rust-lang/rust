@@ -41,6 +41,7 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
+use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
@@ -951,7 +952,7 @@ pub struct GlobalCtxt<'tcx> {
     ///
     /// FIXME(Centril): consider `dyn LintStoreMarker` once
     /// we can upcast to `Any` for some additional type safety.
-    pub lint_store: Lrc<dyn Any>,
+    pub lint_store: Lrc<dyn Any + sync::Sync + sync::Send>,
 
     pub dep_graph: DepGraph,
 
@@ -1120,7 +1121,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<dyn Any>,
+        lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
