@@ -224,18 +224,12 @@ impl<'a> Prefix<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
-        match *self {
-            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..) => true,
-            _ => false,
-        }
+        matches!(*self, Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..))
     }
 
     #[inline]
     fn is_drive(&self) -> bool {
-        match *self {
-            Prefix::Disk(_) => true,
-            _ => false,
-        }
+        matches!(*self, Prefix::Disk(_))
     }
 
     #[inline]

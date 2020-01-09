@@ -8,7 +8,6 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use errors::struct_span_err;
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::Map;
 use rustc::session::config::nightly_options;
 use rustc::ty::query::Providers;
@@ -16,6 +15,7 @@ use rustc::ty::TyCtxt;
 use rustc_error_codes::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
 use syntax::feature_gate::feature_err;
@@ -200,7 +200,9 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 

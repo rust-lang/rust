@@ -4,13 +4,13 @@ pub use self::definitions::{
 };
 
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
-use crate::hir::intravisit;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
 use rustc_hir::*;
@@ -18,7 +18,7 @@ use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 
@@ -186,12 +186,12 @@ struct ParentHirIterator<'map, 'hir> {
 }
 
 impl<'map, 'hir> ParentHirIterator<'map, 'hir> {
-    fn new(current_id: HirId, map: &'map Map<'hir>) -> ParentHirIterator<'map, 'hir> {
-        ParentHirIterator { current_id, map }
+    fn new(current_id: HirId, map: &'map Map<'hir>) -> Self {
+        Self { current_id, map }
     }
 }
 
-impl<'map, 'hir> Iterator for ParentHirIterator<'map, 'hir> {
+impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
     type Item = (HirId, Node<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -403,6 +403,14 @@ impl<'hir> Map<'hir> {
 
     pub fn krate(&self) -> &'hir Crate<'hir> {
         self.forest.krate()
+    }
+
+    pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.read(id);
+
+        // N.B., intentionally bypass `self.forest.krate()` so that we
+        // do not trigger a read of the whole krate here
+        self.forest.krate.item(id)
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
@@ -1082,6 +1090,24 @@ impl<'hir> Map<'hir> {
 
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
         print::to_string(self, |s| s.print_node(self.get(id)))
+    }
+}
+
+impl<'hir> intravisit::Map<'hir> for Map<'hir> {
+    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
+        self.body(id)
+    }
+
+    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.item(id)
+    }
+
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
+        self.trait_item(id)
+    }
+
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
+        self.impl_item(id)
     }
 }
 

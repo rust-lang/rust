@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 impl ! {} // OK
 impl ! where u8: Copy {} // OK
 

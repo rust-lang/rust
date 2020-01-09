@@ -31,21 +31,18 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use crate::hir::map::Map;
-
-use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_hir::*;
+use crate::hir::*;
+use crate::hir_id::CRATE_HIR_ID;
+use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_span::Span;
 use syntax::ast::{Attribute, Ident, Label, Name};
+use syntax::walk_list;
 
 pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,
 }
 
-impl<'v, 'hir, V> DeepVisitor<'v, V>
-where
-    V: Visitor<'hir> + 'v,
-{
+impl<'v, V> DeepVisitor<'v, V> {
     pub fn new(base: &'v mut V) -> Self {
         DeepVisitor { visitor: base }
     }
@@ -122,6 +119,14 @@ impl<'a> FnKind<'a> {
     }
 }
 
+/// An abstract representation of the HIR `rustc::hir::map::Map`.
+pub trait Map<'hir> {
+    fn body(&self, id: BodyId) -> &'hir Body<'hir>;
+    fn item(&self, id: HirId) -> &'hir Item<'hir>;
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+}
+
 /// Specifies what nested things a visitor wants to visit. The most
 /// common choice is `OnlyBodies`, which will cause the visitor to
 /// visit fn bodies for fns that it encounters, but skip over nested
@@ -129,7 +134,7 @@ impl<'a> FnKind<'a> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, 'tcx> {
+pub enum NestedVisitorMap<'this, M> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -146,20 +151,20 @@ pub enum NestedVisitorMap<'this, 'tcx> {
     /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
-    OnlyBodies(&'this Map<'tcx>),
+    OnlyBodies(&'this M),
 
     /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
     /// kick off the visit by doing `walk_krate()`.
-    All(&'this Map<'tcx>),
+    All(&'this M),
 }
 
-impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
+impl<'this, M> NestedVisitorMap<'this, M> {
     /// Returns the map to use for an "intra item-like" thing (if any).
     /// E.g., function body.
-    pub fn intra(self) -> Option<&'this Map<'tcx>> {
+    fn intra(self) -> Option<&'this M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(map) => Some(map),
@@ -169,7 +174,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 
     /// Returns the map to use for an "item-like" thing (if any).
     /// E.g., item, impl-item.
-    pub fn inter(self) -> Option<&'this Map<'tcx>> {
+    fn inter(self) -> Option<&'this M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(_) => None,
@@ -195,6 +200,8 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v>: Sized {
+    type Map: Map<'v>;
+
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
@@ -214,7 +221,7 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
@@ -226,10 +233,8 @@ pub trait Visitor<'v>: Sized {
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item(id.id));
-        if let Some(item) = opt_item {
-            self.visit_item(item);
-        }
+        let opt_item = self.nested_visit_map().inter().map(|map| map.item(id.id));
+        walk_list!(self, visit_item, opt_item);
     }
 
     /// Like `visit_nested_item()`, but for trait items. See
@@ -238,9 +243,7 @@ pub trait Visitor<'v>: Sized {
     #[allow(unused_variables)]
     fn visit_nested_trait_item(&mut self, id: TraitItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.trait_item(id));
-        if let Some(item) = opt_item {
-            self.visit_trait_item(item);
-        }
+        walk_list!(self, visit_trait_item, opt_item);
     }
 
     /// Like `visit_nested_item()`, but for impl items. See
@@ -249,9 +252,7 @@ pub trait Visitor<'v>: Sized {
     #[allow(unused_variables)]
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
         let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
-        if let Some(item) = opt_item {
-            self.visit_impl_item(item);
-        }
+        walk_list!(self, visit_impl_item, opt_item);
     }
 
     /// Invoked to visit the body of a function, method or closure. Like
@@ -260,9 +261,7 @@ pub trait Visitor<'v>: Sized {
     /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
         let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
-        if let Some(body) = opt_body {
-            self.visit_body(body);
-        }
+        walk_list!(self, visit_body, opt_body);
     }
 
     fn visit_param(&mut self, param: &'v Param<'v>) {
@@ -496,21 +495,16 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
     }
 }
 
-pub fn walk_poly_trait_ref<'v, V>(
+pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_ref: &'v PolyTraitRef<'v>,
     _modifier: TraitBoundModifier,
-) where
-    V: Visitor<'v>,
-{
+) {
     walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
 
-pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef<'v>)
-where
-    V: Visitor<'v>,
-{
+pub fn walk_trait_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v TraitRef<'v>) {
     visitor.visit_id(trait_ref.hir_ref_id);
     visitor.visit_path(&trait_ref.path, trait_ref.hir_ref_id)
 }
@@ -688,9 +682,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 ) {
     match *qpath {
         QPath::Resolved(ref maybe_qself, ref path) => {
-            if let Some(ref qself) = *maybe_qself {
-                visitor.visit_ty(qself);
-            }
+            walk_list!(visitor, visit_ty, maybe_qself);
             visitor.visit_path(path, id)
         }
         QPath::TypeRelative(ref qself, ref segment) => {
@@ -712,9 +704,7 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(
     segment: &'v PathSegment<'v>,
 ) {
     visitor.visit_ident(segment.ident);
-    if let Some(id) = segment.hir_id {
-        visitor.visit_id(id);
-    }
+    walk_list!(visitor, visit_id, segment.hir_id);
     if let Some(ref args) = segment.args {
         visitor.visit_generic_args(path_span, args);
     }
@@ -1003,9 +993,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
     struct_definition: &'v VariantData<'v>,
 ) {
-    if let Some(ctor_hir_id) = struct_definition.ctor_hir_id() {
-        visitor.visit_id(ctor_hir_id);
-    }
+    walk_list!(visitor, visit_id, struct_definition.ctor_hir_id());
     walk_list!(visitor, visit_struct_field, struct_definition.fields());
 }
 
@@ -1125,15 +1113,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);
         }
         ExprKind::Break(ref destination, ref opt_expr) => {
-            if let Some(ref label) = destination.label {
-                visitor.visit_label(label);
-            }
+            walk_list!(visitor, visit_label, &destination.label);
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprKind::Continue(ref destination) => {
-            if let Some(ref label) = destination.label {
-                visitor.visit_label(label);
-            }
+            walk_list!(visitor, visit_label, &destination.label);
         }
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

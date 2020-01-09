@@ -330,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Some("std::ops::Add"),
                                 ),
                                 hir::BinOpKind::Sub => (
-                                    format!("cannot substract `{}` from `{}`", rhs_ty, lhs_ty),
+                                    format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Sub"),
                                 ),
                                 hir::BinOpKind::Mul => (

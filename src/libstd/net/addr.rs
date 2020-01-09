@@ -227,10 +227,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv4(&self) -> bool {
-        match *self {
-            SocketAddr::V4(_) => true,
-            SocketAddr::V6(_) => false,
-        }
+        matches!(*self, SocketAddr::V4(_))
     }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
@@ -252,10 +249,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "sockaddr_checker", since = "1.16.0")]
     pub fn is_ipv6(&self) -> bool {
-        match *self {
-            SocketAddr::V4(_) => false,
-            SocketAddr::V6(_) => true,
-        }
+        matches!(*self, SocketAddr::V6(_))
     }
 }
 

@@ -1,11 +1,11 @@
 error: unexpected token: `;`
-  --> $DIR/parser-recovery-2.rs:12:15
+  --> $DIR/parser-recovery-2.rs:10:15
    |
 LL |     let x = y.;
    |               ^
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/parser-recovery-2.rs:8:5
+  --> $DIR/parser-recovery-2.rs:6:5
    |
 LL |     fn bar() {
    |              - unclosed delimiter
@@ -14,13 +14,13 @@ LL |     )
    |     ^ mismatched closing delimiter
 
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/parser-recovery-2.rs:7:17
+  --> $DIR/parser-recovery-2.rs:5:17
    |
 LL |         let x = foo();
    |                 ^^^ not found in this scope
 
 error[E0425]: cannot find value `y` in this scope
-  --> $DIR/parser-recovery-2.rs:12:13
+  --> $DIR/parser-recovery-2.rs:10:13
    |
 LL |     let x = y.;
    |             ^ not found in this scope

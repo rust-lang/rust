@@ -39,10 +39,7 @@ impl<T> Poll<T> {
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn is_ready(&self) -> bool {
-        match *self {
-            Poll::Ready(_) => true,
-            Poll::Pending => false,
-        }
+        matches!(*self, Poll::Ready(_))
     }
 
     /// Returns `true` if this is `Poll::Pending`

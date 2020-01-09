@@ -1,12 +1,12 @@
 use errors::struct_span_err;
+use rustc::hir::map::Map;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir as hir;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
@@ -124,7 +124,9 @@ impl ExprVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ItemVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -139,7 +141,9 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ExprVisitor<'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 

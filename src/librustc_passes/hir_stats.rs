@@ -2,10 +2,11 @@
 // pieces of AST and HIR. The resulting numbers are good approximations but not
 // completely accurate (some things might be counted twice, others missed).
 
-use rustc::hir::intravisit as hir_visit;
+use rustc::hir::map::Map;
 use rustc::util::common::to_readable_str;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
 use rustc_span::Span;
 use syntax::ast::{self, AttrId, NodeId};
@@ -92,7 +93,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_param(self, param)
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'v> {
+    type Map = Map<'v>;
+
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 

@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 // ignore-tidy-cr
 
 /// doc comment with bare CR: ''

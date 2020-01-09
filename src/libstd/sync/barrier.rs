@@ -199,10 +199,7 @@ mod tests {
 
         // At this point, all spawned threads should be blocked,
         // so we shouldn't get anything from the port
-        assert!(match rx.try_recv() {
-            Err(TryRecvError::Empty) => true,
-            _ => false,
-        });
+        assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
 
         let mut leader_found = barrier.wait().is_leader();
 

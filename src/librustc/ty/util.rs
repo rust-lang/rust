@@ -533,8 +533,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if self.is_mutable_static(def_id) {
             self.mk_mut_ptr(static_ty)
-        } else if self.is_foreign_item(def_id) {
-            self.mk_imm_ptr(static_ty)
         } else {
             self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
         }
