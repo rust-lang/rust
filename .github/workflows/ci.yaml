@@ -77,11 +77,22 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: Remove-Item ./target/debug/xtask.exe
 
+      - name: Creat distribution dir
+        run: mkdir ./dist
+
+      - name: Copy binaries (non-win)
+        if: matrix.os != 'windows-latest'
+        run: cp ./target/debug/ra-lsp-server.* ./dist
+
+      - name: Copy binaries (win)
+        if: matrix.os == 'windows-latest'
+        run: copy ./target/debug/ra-lsp-server.* ./dist
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: executables
-          path: ./target/debug
+          name: executables-${{ matrix.os }}
+          path: ./dist
 
   type-script:
     name: TypeScript
