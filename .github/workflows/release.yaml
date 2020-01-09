@@ -60,17 +60,11 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Compile
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-
-      - name: Test
+      - name: Compile and Test
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --release
+          args: --release --all-targets
 
       - name: Prepare cache
         run: cargo xtask pre-cache
@@ -93,7 +87,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: executables-${{ matrix.os }}
+          name: server-${{ matrix.os }}
           path: ./dist
 
   type-script:
