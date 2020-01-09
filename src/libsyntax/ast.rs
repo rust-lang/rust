@@ -796,6 +796,7 @@ impl BinOpKind {
             Gt => ">",
         }
     }
+    
     pub fn lazy(&self) -> bool {
         match *self {
             BinOpKind::And | BinOpKind::Or => true,
