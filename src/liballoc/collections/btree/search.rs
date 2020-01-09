@@ -46,6 +46,11 @@ where
     }
 }
 
+/// Returns the index in the node at which the key (or an equivalent) exists
+/// or could exist, and whether it exists in the node itself. If it doesn't
+/// exist in the node itself, it may exist in the subtree with that index
+/// (if the node has subtrees). If the key doesn't exist in node or subtree,
+/// the returned index is the position or subtree to insert at.
 pub fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q,
@@ -54,6 +59,12 @@ where
     Q: Ord,
     K: Borrow<Q>,
 {
+    // This function is defined over all borrow types (immutable, mutable, owned),
+    // and may be called on the shared root in each case.
+    // Crucially, we use `keys()` here, i.e., we work with immutable data.
+    // `keys_mut()` does not support the shared root, so we cannot use it.
+    // Using `keys()` is fine here even if BorrowType is mutable, as all we return
+    // is an index -- not a reference.
     for (i, k) in node.keys().iter().enumerate() {
         match key.cmp(k.borrow()) {
             Ordering::Greater => {}
