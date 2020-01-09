@@ -1,9 +1,9 @@
 use crate::reexport::*;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::FnKind;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;

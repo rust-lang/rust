@@ -1,15 +1,15 @@
-use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_session::declare_tool_lint;
-
 use crate::utils::{
     get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
 };
 use crate::utils::{higher, sugg};
+use if_chain::if_chain;
+use rustc::declare_lint_pass;
+use rustc::hir::map::Map;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
@@ -246,6 +246,8 @@ struct ExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, expr) {
             self.counter += 1;
@@ -253,7 +255,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
 
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

@@ -1,8 +1,9 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
-use rustc::hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
@@ -141,6 +142,8 @@ struct CCHelper {
 }
 
 impl<'tcx> Visitor<'tcx> for CCHelper {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         walk_expr(self, e);
         match e.kind {
@@ -154,7 +157,7 @@ impl<'tcx> Visitor<'tcx> for CCHelper {
             _ => {},
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

@@ -5,7 +5,6 @@ use crate::utils::{
 use if_chain::if_chain;
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::FnKind;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::mir::{
     self, traversal,
@@ -14,6 +13,7 @@ use rustc::mir::{
 use rustc::ty::{self, fold::TypeVisitor, Ty};
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, HirId};
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_mir::dataflow::{

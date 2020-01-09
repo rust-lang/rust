@@ -1,9 +1,10 @@
 use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
@@ -185,6 +186,8 @@ struct BinaryExprVisitor {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
@@ -195,7 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
 
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

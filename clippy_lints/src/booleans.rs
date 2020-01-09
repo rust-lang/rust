@@ -4,10 +4,11 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit;
-use rustc::hir::intravisit::*;
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::intravisit;
+use rustc_hir::intravisit::*;
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
@@ -438,6 +439,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if in_macro(e.span) {
             return;
@@ -456,7 +459,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
             _ => walk_expr(self, e),
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -471,6 +474,8 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::Unary(UnOp::UnNot, inner) = &expr.kind {
             if let Some(suggestion) = simplify_not(self.cx, inner) {
@@ -488,7 +493,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
 
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

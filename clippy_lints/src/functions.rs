@@ -4,13 +4,14 @@ use crate::utils::{
     type_is_unsafe_function,
 };
 use matches::matches;
-use rustc::hir::intravisit;
+use rustc::hir::map::Map;
 use rustc::impl_lint_pass;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::intravisit;
 use rustc_hir::{def::Res, def_id::DefId};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
@@ -538,6 +539,8 @@ struct DerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Call(ref f, args) => {
@@ -566,7 +569,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }
@@ -594,6 +597,8 @@ struct StaticMutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         use hir::ExprKind::*;
 
@@ -627,7 +632,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

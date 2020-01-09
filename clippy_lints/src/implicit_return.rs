@@ -6,10 +6,10 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::{
     declare_lint_pass,
-    hir::intravisit::FnKind,
     lint::{LateContext, LateLintPass, LintArray, LintPass},
 };
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, MatchSource, StmtKind};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;

@@ -1,11 +1,11 @@
+use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc_session::declare_tool_lint;
-
-use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
-use rustc::hir::intravisit::*;
+use rustc_hir::intravisit::*;
 use rustc_hir::*;
+use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -136,6 +136,8 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let Some((cond, then, els)) = if_block(&expr) {
             walk_expr(self, cond);
@@ -179,7 +181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }

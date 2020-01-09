@@ -3,13 +3,14 @@ use crate::utils::{
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
@@ -239,6 +240,8 @@ struct LintCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         walk_expr(self, expr);
     }
@@ -248,7 +251,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
             self.output.insert(path.segments[0].ident.name);
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }

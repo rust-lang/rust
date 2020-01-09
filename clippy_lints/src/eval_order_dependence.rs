@@ -1,9 +1,10 @@
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 
@@ -124,6 +125,8 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
@@ -156,7 +159,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_block(&mut self, _: &'tcx Block<'_>) {
         // don't continue over blocks, LateLintPass already does that
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -288,6 +291,8 @@ struct ReadVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if expr.hir_id == self.last_expr.hir_id {
             return;
@@ -337,7 +342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 
         walk_expr(self, expr);
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

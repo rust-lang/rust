@@ -2,9 +2,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::symbol::Symbol;
@@ -279,6 +280,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if self.initialization_found {
             match stmt.kind {
@@ -316,7 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

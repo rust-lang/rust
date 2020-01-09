@@ -25,7 +25,7 @@ use std::mem;
 
 use if_chain::if_chain;
 use matches::matches;
-use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::traits;
 use rustc::traits::predicate_for_trait_def;
@@ -39,6 +39,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::*;
 use rustc_span::hygiene::ExpnKind;
@@ -455,12 +456,14 @@ struct ContainsName {
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName {
+    type Map = Map<'tcx>;
+
     fn visit_name(&mut self, _: Span, name: Name) {
         if self.name == name {
             self.result = true;
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }

@@ -10,11 +10,12 @@ use std::iter;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Predicate, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol, SymbolStr};
@@ -1412,6 +1413,8 @@ fn lint_or_fun_call<'a, 'tcx>(
     }
 
     impl<'a, 'tcx> intravisit::Visitor<'tcx> for FunCallFinder<'a, 'tcx> {
+        type Map = Map<'tcx>;
+
         fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
             let call_found = match &expr.kind {
                 // ignore enum and struct constructors
@@ -1429,7 +1432,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             }
         }
 
-        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }
@@ -3188,6 +3191,8 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
     }
 
     impl<'tcx> intravisit::Visitor<'tcx> for RetCallFinder {
+        type Map = Map<'tcx>;
+
         fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
             if self.found {
                 return;
@@ -3199,7 +3204,7 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
             }
         }
 
-        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
             intravisit::NestedVisitorMap::None
         }
     }

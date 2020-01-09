@@ -1,12 +1,13 @@
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::ty::{DefIdTree, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::symbol::kw;
@@ -84,6 +85,8 @@ struct TraitImplTyVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         let trait_ty = self.trait_type_walker.next();
         let impl_ty = self.impl_type_walker.next();
@@ -107,7 +110,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
         walk_ty(self, t)
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -223,6 +226,8 @@ struct UseSelfVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if !path.segments.iter().any(|p| p.ident.span.is_dummy()) {
             if path.segments.len() >= 2 {
@@ -272,7 +277,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }

@@ -5,13 +5,14 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -1493,6 +1494,8 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
+    type Map = Map<'tcx>;
+
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
         let (add_score, sub_nest) = match ty.kind {
             // _, &x and *x have only small overhead; don't mess with nesting level
@@ -1527,7 +1530,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
         walk_ty(self, ty);
         self.nest -= sub_nest;
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2272,6 +2275,8 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
@@ -2280,7 +2285,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
         walk_ty(self, t);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
@@ -2305,6 +2310,8 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+    type Map = Map<'tcx>;
+
     fn visit_body(&mut self, body: &'tcx Body<'_>) {
         let prev_body = self.body;
         self.body = self.cx.tcx.body_tables(body.id());
@@ -2355,7 +2362,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
         walk_expr(self, e);
     }
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }

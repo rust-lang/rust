@@ -3,9 +3,10 @@ use crate::utils::{get_item_name, higher, match_type, paths, snippet, snippet_op
 use crate::utils::{snippet_with_applicability, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
-use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::map::Map;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
 use rustc_span::source_map::Span;
@@ -136,6 +137,8 @@ struct InsertVisitor<'a, 'tcx, 'b> {
 }
 
 impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
+    type Map = Map<'tcx>;
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref params) = expr.kind;
@@ -179,7 +182,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
             walk_expr(self, expr);
         }
     }
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
         NestedVisitorMap::None
     }
 }
