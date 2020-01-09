@@ -1,6 +1,7 @@
 // Matching against float literals should result in a linter error
 
 #![feature(exclusive_range_pattern)]
+#![feature(half_open_range_patterns)]
 #![allow(unused)]
 #![forbid(illegal_floating_point_literal_pattern)]
 
@@ -23,6 +24,16 @@ fn main() {
                              //~| WARNING hard error
                              //~| ERROR floating-point types cannot be used in patterns
                              //~| WARNING hard error
+
+        ..71.0 => {}
+        //~^ ERROR floating-point types cannot be used in patterns
+        //~| WARNING hard error
+        ..=72.0 => {}
+        //~^ ERROR floating-point types cannot be used in patterns
+        //~| WARNING hard error
+        71.0.. => {}
+        //~^ ERROR floating-point types cannot be used in patterns
+        //~| WARNING hard error
         _ => {},
     };
     let y = 5.0;

@@ -649,7 +649,7 @@ pub enum PatKind {
     Lit(P<Expr>),
 
     /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
-    Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
+    Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
     Slice(Vec<P<Pat>>),

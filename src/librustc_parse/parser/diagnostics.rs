@@ -51,7 +51,6 @@ pub enum Error {
         secondary_path: String,
     },
     UselessDocComment,
-    InclusiveRangeWithNoEnd,
 }
 
 impl Error {
@@ -100,11 +99,6 @@ impl Error {
                     "doc comments must come before what they document, maybe a comment was \
                           intended with `//`?",
                 );
-                err
-            }
-            Error::InclusiveRangeWithNoEnd => {
-                let mut err = struct_span_err!(handler, sp, E0586, "inclusive range with no end",);
-                err.help("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)");
                 err
             }
         }

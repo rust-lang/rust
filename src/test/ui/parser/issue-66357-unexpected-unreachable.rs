@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 // The problem in #66357 was that the call trace:
 //
 // - parse_fn_block_decl
@@ -11,4 +13,4 @@
 
 fn f() { |[](* }
 //~^ ERROR expected one of `,` or `:`, found `(`
-//~| ERROR expected one of `)`, `-`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
+//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
