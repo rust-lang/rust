@@ -9,15 +9,19 @@ console.log('exports', list);
 
 const my_exports = {};
 let nexports = 0;
+
 for (const entry of list) {
-  if (entry.kind !== 'function')
-    continue;
-  my_exports[entry.name] = true;
-  nexports += 1;
+  if (entry.kind == 'function'){
+    nexports += 1;
+  }
+  my_exports[entry.name] = entry.kind;
 }
 
-if (my_exports.foo === undefined)
+if (my_exports.foo != "function")
   throw new Error("`foo` wasn't defined");
+
+if (my_exports.FOO != "global")
+  throw new Error("`FOO` wasn't defined");
 
 if (my_exports.main === undefined) {
   if (nexports != 1)
