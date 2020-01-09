@@ -103,9 +103,13 @@ jobs:
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
 
-      - name: Remove files not to be published
+      - name: Create distribution directory
         run: mkdir ./dist
+
+      - name: Copy vscode extension
         run: cp ./editors/code/*.vsix ./dist/code/
+
+      - name: Copy emacs mode
         run: cp -R ./editors/emacs ./dist/
 
       - name: Upload artifacts
