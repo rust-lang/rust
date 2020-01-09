@@ -1,3 +1,4 @@
+use super::late::unerased_lint_store;
 use rustc::hir::map::Map;
 use rustc::lint::{LintLevelMap, LintLevelSets, LintLevelsBuilder, LintStore};
 use rustc::ty::query::Providers;
@@ -11,11 +12,11 @@ pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};
 
 fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
-    let store = &tcx.lint_store;
+    let store = unerased_lint_store(tcx);
     let mut builder = LintLevelMapBuilder {
         levels: LintLevelSets::builder(tcx.sess, false, &store),
         tcx: tcx,
-        store: store,
+        store,
     };
     let krate = tcx.hir().krate();
 

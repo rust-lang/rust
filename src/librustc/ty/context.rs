@@ -8,7 +8,7 @@ use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::{maybe_lint_level_root, struct_lint_level, LintSource, LintStore};
+use crate::lint::{maybe_lint_level_root, struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
@@ -947,7 +947,11 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-    pub lint_store: Lrc<LintStore>,
+    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
+    ///
+    /// FIXME(Centril): consider `dyn LintStoreMarker` once
+    /// we can upcast to `Any` for some additional type safety.
+    pub lint_store: Lrc<dyn Any>,
 
     pub dep_graph: DepGraph,
 
@@ -1116,7 +1120,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<LintStore>,
+        lint_store: Lrc<dyn Any>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
