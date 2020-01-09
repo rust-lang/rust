@@ -327,10 +327,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_callee(&mut self, call: &hir::Expr<'_>, callee: &hir::Expr<'_>) {
-        let callee_ty = return_if_err!(self.mc.expr_ty_adjusted(callee));
+        let callee_ty = self.mc.tables.expr_ty_adjusted(callee);
         debug!("walk_callee: callee={:?} callee_ty={:?}", callee, callee_ty);
         match callee_ty.kind {
-            ty::FnDef(..) | ty::FnPtr(_) => {
+            ty::FnDef(..) | ty::FnPtr(_) | ty::Closure(..) => {
                 self.consume_expr(callee);
             }
             ty::Error => {}
