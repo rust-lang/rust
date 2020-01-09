@@ -5,35 +5,71 @@ LL | #[repr(align(16.0))]
    |        ^^^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
-  --> $DIR/repr-align.rs:6:8
+  --> $DIR/repr-align.rs:7:8
    |
 LL | #[repr(align(15))]
    |        ^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: larger than 2^29
-  --> $DIR/repr-align.rs:9:8
+  --> $DIR/repr-align.rs:11:8
    |
 LL | #[repr(align(4294967296))]
    |        ^^^^^^^^^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
-  --> $DIR/repr-align.rs:15:8
+  --> $DIR/repr-align.rs:18:8
    |
 LL | #[repr(align(16.0))]
    |        ^^^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
-  --> $DIR/repr-align.rs:18:8
+  --> $DIR/repr-align.rs:22:8
    |
 LL | #[repr(align(15))]
    |        ^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: larger than 2^29
-  --> $DIR/repr-align.rs:21:8
+  --> $DIR/repr-align.rs:26:8
    |
 LL | #[repr(align(4294967296))]
    |        ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:3:8
+   |
+LL | #[repr(align(16.0))]
+   |        ^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:7:8
+   |
+LL | #[repr(align(15))]
+   |        ^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:11:8
+   |
+LL | #[repr(align(4294967296))]
+   |        ^^^^^^^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:18:8
+   |
+LL | #[repr(align(16.0))]
+   |        ^^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:22:8
+   |
+LL | #[repr(align(15))]
+   |        ^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:26:8
+   |
+LL | #[repr(align(4294967296))]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0589`.

@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns a list of `ClosureUpvar`s for each upvar.
+    // Returns a list of `Ty`s for each upvar.
     fn final_upvar_tys(&self, closure_id: hir::HirId) -> Vec<Ty<'tcx>> {
         // Presently an unboxed closure type cannot "escape" out of a
         // function, so we will only encounter ones that originated in the

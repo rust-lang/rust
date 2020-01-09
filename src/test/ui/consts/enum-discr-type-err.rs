@@ -17,6 +17,7 @@ macro_rules! mac {
         enum E {
             $( $v = $s::V, )*
             //~^ ERROR mismatched types
+            //~| ERROR mismatched types
         }
     }
 }

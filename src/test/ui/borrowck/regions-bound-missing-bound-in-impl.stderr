@@ -35,8 +35,27 @@ note: ...does not necessarily outlive the lifetime `'c` as defined on the method
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
 
+error[E0308]: method not compatible with trait
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:5
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected fn pointer `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'_>)`
+              found fn pointer `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'_>)`
+note: the lifetime `'c` as defined on the method body at 27:24...
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
+note: ...does not necessarily outlive the lifetime `'c` as defined on the method body at 27:24
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
+
 error[E0195]: lifetime parameters or bounds on method `wrong_bound2` do not match the trait declaration
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:41:20
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:42:20
    |
 LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
    |                    ---------------- lifetimes in impl do not match this method in trait
@@ -45,7 +64,7 @@ LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
    |                    ^ lifetimes do not match method in trait
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:48:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:49:5
    |
 LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
    |     ------------------------------------------------------- definition of `another_bound` from trait
@@ -53,7 +72,7 @@ LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
 LL |     fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'x: 't`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0195, E0276, E0308.
 For more information about an error, try `rustc --explain E0195`.

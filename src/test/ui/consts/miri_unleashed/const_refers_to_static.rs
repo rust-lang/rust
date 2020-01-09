@@ -28,6 +28,7 @@ const READ_INTERIOR_MUT: usize = {
 static mut MUTABLE: u32 = 0;
 const READ_MUT: u32 = unsafe { MUTABLE }; //~ WARN any use of this value will cause an error
 //~^ WARN skipping const checks
+//~| WARN skipping const checks
 
 // ok some day perhaps
 const READ_IMMUT: &usize = { //~ ERROR it is undefined behavior to use this value

@@ -191,7 +191,7 @@ LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false 
    |                                 immutable borrow occurs here
 
 error: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:107:9
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:108:9
    |
 LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
    |         ---------^^^^^^-----^
@@ -200,7 +200,7 @@ LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false 
    |         mutable borrow occurs here
 
 error: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:107:33
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:108:33
    |
 LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
    |                                 ---------^^^^^^^-----^
@@ -209,7 +209,7 @@ LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false 
    |                                 mutable borrow occurs here
 
 error: cannot borrow `a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:114:9
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:116:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         -----^^^^---------^^---------^
@@ -219,7 +219,7 @@ LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         immutable borrow occurs here
 
 error: cannot borrow `a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:119:9
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:121:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         -----^^^^---------^^---------^
@@ -229,7 +229,7 @@ LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         immutable borrow occurs here
 
 error: cannot borrow `a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:126:9
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:128:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         -----^^^^---------^^---------^
@@ -239,7 +239,7 @@ LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         immutable borrow occurs here
 
 error: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:131:9
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:133:9
    |
 LL |     let ref mut a @ (ref b, ref c) = (U, U);
    |         ---------^^^^-----^^-----^
@@ -359,8 +359,24 @@ LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false 
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 
+error[E0507]: cannot move out of `b` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:100:66
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |                                                                  ^ move occurs because `b` has type `&mut main::U`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
 error[E0507]: cannot move out of `a` in pattern guard
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:107:66
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:108:66
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
+   |                                                                  ^ move occurs because `a` has type `&mut std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error[E0507]: cannot move out of `a` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:108:66
    |
 LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
    |                                                                  ^ move occurs because `a` has type `&mut std::result::Result<main::U, main::U>`, which does not implement the `Copy` trait
@@ -368,7 +384,7 @@ LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false 
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 
 error[E0502]: cannot borrow `_` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:119:18
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:121:18
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         ---------^^^^^^^^^------------
@@ -380,7 +396,7 @@ LL |     drop(a);
    |          - immutable borrow later used here
 
 error[E0502]: cannot borrow `_` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:119:29
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:121:29
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         --------------------^^^^^^^^^-
@@ -392,7 +408,7 @@ LL |     drop(a);
    |          - immutable borrow later used here
 
 error[E0502]: cannot borrow `_` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:126:18
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:128:18
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         ---------^^^^^^^^^------------
@@ -404,7 +420,7 @@ LL |     drop(a);
    |          - immutable borrow later used here
 
 error[E0502]: cannot borrow `_` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:126:29
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:128:29
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
    |         --------------------^^^^^^^^^-
@@ -415,7 +431,7 @@ LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
 LL |     drop(a);
    |          - immutable borrow later used here
 
-error: aborting due to 43 previous errors
+error: aborting due to 45 previous errors
 
 Some errors have detailed explanations: E0502, E0507, E0594.
 For more information about an error, try `rustc --explain E0502`.

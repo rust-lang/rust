@@ -67,6 +67,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("powerpc", "powerpc"),
     ("powerpc64", "powerpc64"),
     ("powerpc64le", "powerpc64"),
+    ("riscv64gc", "riscv64"),
     ("s390x", "s390x"),
     ("sparc", "sparc"),
     ("sparc64", "sparc64"),

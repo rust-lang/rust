@@ -17,7 +17,9 @@ fn main() {
 
     match [x, 1.0] {
         [NAN, _] => {}, //~ ERROR floating-point types cannot be used
-        //~^ WARN this was previously accepted by the compiler but is being phased out
+                        //~| ERROR floating-point types cannot be used
+        //~| WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN this was previously accepted by the compiler but is being phased out
         _ => {},
     };
 }

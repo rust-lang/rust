@@ -8,6 +8,7 @@
 fn main() {
     match &b""[..] {
         ZST => {} //~ ERROR could not evaluate constant pattern
+                  //~| ERROR could not evaluate constant pattern
     }
 }
 

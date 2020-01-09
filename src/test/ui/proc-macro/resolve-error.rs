@@ -21,6 +21,7 @@ macro_rules! attr_proc_mac {
 
 #[derive(FooWithLongNan)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct Foo;
 
 // Interpreted as an unstable custom attribute
@@ -33,14 +34,17 @@ struct Asdf;
 
 #[derive(Dlone)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct A;
 
 #[derive(Dlona)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct B;
 
 #[derive(attr_proc_macra)]
 //~^ ERROR cannot find
+//~| ERROR cannot find
 struct C;
 
 fn main() {

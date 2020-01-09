@@ -22,5 +22,17 @@ note: the tool module imported here
 LL | use cross_crate::*;
    |     ^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: cannot use a tool module through an import
+  --> $DIR/cross-crate.rs:8:3
+   |
+LL | #[tool_mod::skip]
+   |   ^^^^^^^^
+   |
+note: the tool module imported here
+  --> $DIR/cross-crate.rs:5:5
+   |
+LL | use cross_crate::*;
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

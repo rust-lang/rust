@@ -808,13 +808,6 @@ pub struct UpvarBorrow<'tcx> {
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
-#[derive(Copy, Clone, TypeFoldable)]
-pub struct ClosureUpvar<'tcx> {
-    pub res: Res,
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
     IntType(ast::IntTy),

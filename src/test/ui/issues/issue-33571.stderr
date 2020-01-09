@@ -10,5 +10,17 @@ note: unsafe traits like `Sync` should be implemented explicitly
 LL |          Sync,
    |          ^^^^
 
-error: aborting due to previous error
+error: cannot find derive macro `Sync` in this scope
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+   |
+note: unsafe traits like `Sync` should be implemented explicitly
+  --> $DIR/issue-33571.rs:2:10
+   |
+LL |          Sync,
+   |          ^^^^
+
+error: aborting due to 2 previous errors
 

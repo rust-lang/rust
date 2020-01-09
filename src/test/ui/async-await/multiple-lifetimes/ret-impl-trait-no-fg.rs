@@ -8,6 +8,7 @@ impl<T> Trait<'_, '_> for T { }
 
 async fn async_ret_impl_trait<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
     //~^ ERROR ambiguous lifetime bound
+    //~| ERROR ambiguous lifetime bound
     (a, b)
 }
 

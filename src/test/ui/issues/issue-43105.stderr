@@ -20,6 +20,12 @@ error: could not evaluate constant pattern
 LL |         NUM => unimplemented!(),
    |         ^^^
 
-error: aborting due to 3 previous errors
+error: could not evaluate constant pattern
+  --> $DIR/issue-43105.rs:9:9
+   |
+LL |         NUM => unimplemented!(),
+   |         ^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

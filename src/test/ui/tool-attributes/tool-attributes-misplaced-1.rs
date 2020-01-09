@@ -2,6 +2,7 @@ type A = rustfmt; //~ ERROR expected type, found tool module `rustfmt`
 type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::skip`
 
 #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
+                   //~| ERROR cannot find derive macro `rustfmt` in this scope
 struct S;
 
 // Interpreted as an unstable custom attribute

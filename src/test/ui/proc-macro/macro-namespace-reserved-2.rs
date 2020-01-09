@@ -46,6 +46,7 @@ fn check_attr2() {}
 fn check_attr3() {}
 
 #[derive(my_macro)] //~ ERROR cannot find derive macro `my_macro` in this scope
+                    //~| ERROR cannot find derive macro `my_macro` in this scope
 #[derive(crate::my_macro)] //~ ERROR can't use a procedural macro from the same crate that defines
                            //~| ERROR expected derive macro, found macro `crate::my_macro`
 struct CheckDerive1;
