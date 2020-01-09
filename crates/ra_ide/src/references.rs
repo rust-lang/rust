@@ -534,11 +534,11 @@ mod tests {
     }
 
     impl Reference {
-        pub fn debug_render(&self) -> String {
+        fn debug_render(&self) -> String {
             format!("{:?} {:?} {:?}", self.file_range.file_id, self.file_range.range, self.kind)
         }
 
-        pub fn assert_match(&self, expected: &str) {
+        fn assert_match(&self, expected: &str) {
             let actual = self.debug_render();
             test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
         }
