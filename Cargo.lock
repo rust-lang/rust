@@ -1137,7 +1137,7 @@ dependencies = [
  "once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_parser 0.1.0",
  "ra_text_edit 0.1.0",
- "rowan 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rowan 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1393,7 +1393,7 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.8.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1895,7 +1895,7 @@ dependencies = [
 "checksum regex-syntax 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)" = "11a7e20d1cce64ef2fed88b66d347f88bd9babb82845b2b858f3edbf59a4f716"
 "checksum relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bedde000f40f2921ce439ea165c9c53fd629bfa115140c72e22aceacb4a21954"
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
-"checksum rowan 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3eb10a10a48f0f809a217bcf074b85a03dcf79831bae80e7f1a043d0897463e2"
+"checksum rowan 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6d03d4eff7a4e8dcc362e4c06bb2b1b33af4bcd64336c7f40a31a05850336b6c"
 "checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c86aae0c77166108c01305ee1a36a1e77289d7dc6ca0a3cd91ff4992de2d16a5"

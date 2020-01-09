@@ -21,18 +21,18 @@ pub enum RustLanguage {}
 impl Language for RustLanguage {
     type Kind = SyntaxKind;
 
-    fn kind_from_raw(raw: rowan::cursor::SyntaxKind) -> SyntaxKind {
+    fn kind_from_raw(raw: rowan::SyntaxKind) -> SyntaxKind {
         SyntaxKind::from(raw.0)
     }
 
-    fn kind_to_raw(kind: SyntaxKind) -> rowan::cursor::SyntaxKind {
-        rowan::cursor::SyntaxKind(kind.into())
+    fn kind_to_raw(kind: SyntaxKind) -> rowan::SyntaxKind {
+        rowan::SyntaxKind(kind.into())
     }
 }
 
 pub type SyntaxNode = rowan::SyntaxNode<RustLanguage>;
 pub type SyntaxToken = rowan::SyntaxToken<RustLanguage>;
-pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
+pub type SyntaxElement = rowan::SyntaxElement<RustLanguage>;
 pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<RustLanguage>;
 pub type SyntaxElementChildren = rowan::SyntaxElementChildren<RustLanguage>;
 

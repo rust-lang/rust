@@ -70,8 +70,7 @@ fn reparse_token<'node>(
                 }
             }
 
-            let new_token =
-                GreenToken::new(rowan::cursor::SyntaxKind(token.kind().into()), text.into());
+            let new_token = GreenToken::new(rowan::SyntaxKind(token.kind().into()), text.into());
             Some((token.replace_with(new_token), token.text_range()))
         }
         _ => None,
