@@ -10,7 +10,6 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-graphviz = { path = "../libgraphviz" }
 lazy_static = "1.0"
 log = "0.4"
 env_logger = { version = "0.7", default-features = false }
@@ -30,7 +29,6 @@ rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-rustc_resolve = { path = "../librustc_resolve" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 

@@ -9,7 +9,6 @@ name = "rustc_binary"
 path = "rustc.rs"
 
 [dependencies]
-rustc_target = { path = "../librustc_target" }
 rustc_driver = { path = "../librustc_driver" }
 
 # Make sure rustc_codegen_ssa ends up in the sysroot, because this
