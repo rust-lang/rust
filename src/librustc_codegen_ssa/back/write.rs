@@ -1511,7 +1511,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     ) {
         if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.generic_pass("LLVM passes"));
+            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes"));
         }
     }
 }

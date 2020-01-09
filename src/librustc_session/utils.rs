@@ -2,11 +2,11 @@ use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 
 impl Session {
-    pub fn timer<'a>(&'a self, what: &'a str) -> VerboseTimingGuard<'a> {
-        self.prof.sparse_pass(what)
+    pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
+        self.prof.verbose_generic_activity(what)
     }
-    pub fn time<R>(&self, what: &str, f: impl FnOnce() -> R) -> R {
-        self.prof.sparse_pass(what).run(f)
+    pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
+        self.prof.verbose_generic_activity(what).run(f)
     }
 }
 

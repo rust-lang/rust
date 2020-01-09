@@ -8,8 +8,6 @@ use std::thread::ThreadId;
 use std::time::{Duration, Instant};
 use std::u32;
 
-use crate::cold_path;
-
 use measureme::StringId;
 
 /// MmapSerializatioSink is faster on macOS and Linux
@@ -44,15 +42,11 @@ bitflags::bitflags! {
         const QUERY_CACHE_HITS   = 1 << 2;
         const QUERY_BLOCKED      = 1 << 3;
         const INCR_CACHE_LOADS   = 1 << 4;
-        const SPARSE_PASS   = 1 << 5;
-        const GENERIC_PASS   = 1 << 6;
 
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
-                        Self::INCR_CACHE_LOADS.bits |
-                        Self::SPARSE_PASS.bits |
-                        Self::GENERIC_PASS.bits;
+                        Self::INCR_CACHE_LOADS.bits;
 
         // empty() and none() aren't const-fns unfortunately
         const NONE = 0;
@@ -63,8 +57,6 @@ bitflags::bitflags! {
 const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("none", EventFilter::NONE),
     ("all", EventFilter::ALL),
-    ("sparse-pass", EventFilter::SPARSE_PASS),
-    ("generic-pass", EventFilter::GENERIC_PASS),
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),
@@ -89,101 +81,86 @@ pub struct SelfProfilerRef {
     // actually enabled.
     event_filter_mask: EventFilter,
 
-    // Print sparse passes to stdout
-    verbose_sparse: bool,
+    // Print verbose generic activities to stdout
+    print_verbose_generic_activities: bool,
 
-    // Print generic passes to stdout
-    verbose_generic: bool,
+    // Print extra verbose generic activities to stdout
+    print_extra_verbose_generic_activities: bool,
 }
 
 impl SelfProfilerRef {
     pub fn new(
         profiler: Option<Arc<SelfProfiler>>,
-        verbose_sparse: bool,
-        verbose_generic: bool,
+        print_verbose_generic_activities: bool,
+        print_extra_verbose_generic_activities: bool,
     ) -> SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
-        let mut event_filter_mask =
+        let event_filter_mask =
             profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::NONE);
 
-        if verbose_sparse {
-            event_filter_mask |= EventFilter::SPARSE_PASS;
+        SelfProfilerRef {
+            profiler,
+            event_filter_mask,
+            print_verbose_generic_activities,
+            print_extra_verbose_generic_activities,
         }
-
-        if verbose_generic {
-            event_filter_mask |= EventFilter::GENERIC_PASS;
-        }
-
-        SelfProfilerRef { profiler, event_filter_mask, verbose_sparse, verbose_generic }
     }
 
-    #[inline(always)]
-    fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
-    where
-        F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
-    {
-        self.handle_event(
-            event_filter,
-            || f(self.profiler.as_ref().unwrap()),
-            || TimingGuard::none(),
-        )
-    }
-
-    // This shim makes sure that cold calls only get executed if the filter mask
+    // This shim makes sure that calls only get executed if the filter mask
     // lets them pass. It also contains some trickery to make sure that
     // code is optimized for non-profiling compilation sessions, i.e. anything
     // past the filter check is never inlined so it doesn't clutter the fast
     // path.
     #[inline(always)]
-    fn handle_event<R>(
-        &self,
-        event_filter: EventFilter,
-        cold: impl FnOnce() -> R,
-        hot: impl FnOnce() -> R,
-    ) -> R {
+    fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
+    where
+        F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
+    {
+        #[inline(never)]
+        fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
+        where
+            F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
+        {
+            let profiler = profiler_ref.profiler.as_ref().unwrap();
+            f(&**profiler)
+        }
+
         if unlikely!(self.event_filter_mask.contains(event_filter)) {
-            cold_path(|| cold())
+            cold_call(self, f)
         } else {
-            hot()
+            TimingGuard::none()
         }
     }
 
-    /// Start profiling a sparse pass. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped.
+    /// Start profiling a verbose generic activity. Profiling continues until the
+    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
+    /// a measureme event, "verbose" generic activities also print a timing entry to
+    /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
     #[inline(always)]
-    pub fn sparse_pass<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
-        self.handle_event(
-            EventFilter::SPARSE_PASS,
-            || {
-                VerboseTimingGuard::start(
-                    self.profiler
-                        .as_ref()
-                        .map(|profiler| (&**profiler, profiler.sparse_pass_event_kind)),
-                    event_id,
-                    self.verbose_sparse,
-                )
-            },
-            || VerboseTimingGuard::none(),
+    pub fn verbose_generic_activity<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
+        VerboseTimingGuard::start(
+            event_id,
+            self.print_verbose_generic_activities,
+            self.generic_activity(event_id),
         )
     }
 
-    /// Start profiling a generic pass. Profiling continues until the
-    /// VerboseTimingGuard returned from this call is dropped.
+    /// Start profiling a extra verbose generic activity. Profiling continues until the
+    /// VerboseTimingGuard returned from this call is dropped. In addition to recording
+    /// a measureme event, "extra verbose" generic activities also print a timing entry to
+    /// stdout if the compiler is invoked with -Ztime-passes.
     #[inline(always)]
-    pub fn generic_pass<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
-        self.handle_event(
-            EventFilter::GENERIC_PASS,
-            || {
-                VerboseTimingGuard::start(
-                    self.profiler
-                        .as_ref()
-                        .map(|profiler| (&**profiler, profiler.generic_pass_event_kind)),
-                    event_id,
-                    self.verbose_generic,
-                )
-            },
-            || VerboseTimingGuard::none(),
+    pub fn extra_verbose_generic_activity<'a>(
+        &'a self,
+        event_id: &'a str,
+    ) -> VerboseTimingGuard<'a> {
+        // FIXME: This does not yet emit a measureme event
+        // because callers encode arguments into `event_id`.
+        VerboseTimingGuard::start(
+            event_id,
+            self.print_extra_verbose_generic_activities,
+            TimingGuard::none(),
         )
     }
 
@@ -267,8 +244,6 @@ pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
     query_event_kind: StringId,
-    sparse_pass_event_kind: StringId,
-    generic_pass_event_kind: StringId,
     generic_activity_event_kind: StringId,
     incremental_load_result_event_kind: StringId,
     query_blocked_event_kind: StringId,
@@ -289,8 +264,6 @@ impl SelfProfiler {
         let profiler = Profiler::new(&path)?;
 
         let query_event_kind = profiler.alloc_string("Query");
-        let sparse_pass_event_kind = profiler.alloc_string("SparsePass");
-        let generic_pass_event_kind = profiler.alloc_string("GenericPass");
         let generic_activity_event_kind = profiler.alloc_string("GenericActivity");
         let incremental_load_result_event_kind = profiler.alloc_string("IncrementalLoadResult");
         let query_blocked_event_kind = profiler.alloc_string("QueryBlocked");
@@ -333,8 +306,6 @@ impl SelfProfiler {
             profiler,
             event_filter_mask,
             query_event_kind,
-            sparse_pass_event_kind,
-            generic_pass_event_kind,
             generic_activity_event_kind,
             incremental_load_result_event_kind,
             query_blocked_event_kind,
@@ -386,19 +357,11 @@ pub struct VerboseTimingGuard<'a> {
 }
 
 impl<'a> VerboseTimingGuard<'a> {
-    pub fn start(
-        profiler: Option<(&'a SelfProfiler, StringId)>,
-        event_id: &'a str,
-        verbose: bool,
-    ) -> Self {
-        let _guard = profiler.map_or(TimingGuard::none(), |(profiler, event_kind)| {
-            let event = profiler.profiler.alloc_string(event_id);
-            TimingGuard::start(profiler, event_kind, event)
-        });
+    pub fn start(event_id: &'a str, verbose: bool, _guard: TimingGuard<'a>) -> Self {
         VerboseTimingGuard {
             event_id,
             _guard,
-            start: if verbose { Some(Instant::now()) } else { None },
+            start: if unlikely!(verbose) { Some(Instant::now()) } else { None },
         }
     }
 
@@ -406,10 +369,6 @@ impl<'a> VerboseTimingGuard<'a> {
     pub fn run<R>(self, f: impl FnOnce() -> R) -> R {
         let _timer = self;
         f()
-    }
-
-    fn none() -> Self {
-        VerboseTimingGuard { event_id: "", start: None, _guard: TimingGuard::none() }
     }
 }
 

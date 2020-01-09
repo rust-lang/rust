@@ -309,7 +309,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     // have valid types and not error
     // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
-        tcx.sess.time("type collecting", || {
+        tcx.sess.time("type_collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
                 tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
             }
@@ -318,35 +318,35 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            tcx.sess.time("outlives testing", || outlives::test::test_inferred_outlives(tcx));
+            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl wf inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl_wf_inference", || impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence checking", || coherence::check_coherence(tcx));
+        tcx.sess.time("coherence_checking", || coherence::check_coherence(tcx));
     })?;
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            tcx.sess.time("variance testing", || variance::test::test_variance(tcx));
+            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("wf checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
     })?;
 
-    tcx.sess.time("item-types checking", || {
+    tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
             tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     });
 
-    tcx.sess.time("item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
+    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

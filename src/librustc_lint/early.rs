@@ -350,16 +350,19 @@ pub fn check_ast_crate<T: EarlyLintPass>(
         }
     } else {
         for pass in &mut passes {
-            buffered = sess.time(&format!("running lint: {}", pass.name()), || {
-                early_lint_crate(
-                    sess,
-                    lint_store,
-                    krate,
-                    EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                    buffered,
-                    pre_expansion,
-                )
-            });
+            buffered = sess
+                .prof
+                .extra_verbose_generic_activity(&format!("running lint: {}", pass.name()))
+                .run(|| {
+                    early_lint_crate(
+                        sess,
+                        lint_store,
+                        krate,
+                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
+                        buffered,
+                        pre_expansion,
+                    )
+                });
         }
     }
 
