@@ -53,9 +53,10 @@ impl Sysroot {
         if !src.exists() {
             Err(format!(
                 "can't load standard library from sysroot\n\
-                 {:?}\n\
+                 {}\n\
+                 (discovered via `rustc --print sysroot`)\n\
                  try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-                src,
+                src.display(),
             ))?;
         }
 
