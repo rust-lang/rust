@@ -1,4 +1,4 @@
-use rustc::lint::{LateContext, LateLintPass, LintContext};
+use crate::{LateContext, LateLintPass, LintContext};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc_errors::Applicability;

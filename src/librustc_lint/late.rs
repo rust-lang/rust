@@ -14,8 +14,8 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
+use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LateLintPassObject, LintStore};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
@@ -347,7 +347,7 @@ macro_rules! late_lint_pass_impl {
     )
 }
 
-late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
+crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
 fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx>,

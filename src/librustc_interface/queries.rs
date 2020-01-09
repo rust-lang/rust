@@ -4,8 +4,6 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map;
-use rustc::lint;
-use rustc::lint::LintStore;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::ty::steal::Steal;
@@ -15,6 +13,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::DepGraphFuture;
+use rustc_lint::LintStore;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
@@ -133,7 +132,7 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
-            let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
+            let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),

@@ -21,8 +21,8 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::hir::map::Map;
-use rustc::lint::{self, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -51,7 +51,7 @@ use log::debug;
 use std::fmt::Write;
 
 // hardwired lints from librustc
-pub use lint::builtin::*;
+pub use rustc_session::lint::builtin::*;
 
 declare_lint! {
     WHILE_TRUE,

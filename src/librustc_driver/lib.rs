@@ -23,9 +23,7 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-//use rustc_resolve as resolve;
-use rustc::lint;
-use rustc::lint::Lint;
+use rustc::lint::{Lint, LintId};
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::config::nightly_options;
 use rustc::session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
@@ -41,6 +39,7 @@ use rustc_feature::{find_gated_cfg, UnstableFeatures};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::get_builtin_codegen_backend;
 use rustc_interface::{interface, Queries};
+use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -811,7 +810,7 @@ the command line flag directly.
     );
 }
 
-fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
+fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
     println!(
         "
 Available lint options:
@@ -832,8 +831,8 @@ Available lint options:
     }
 
     fn sort_lint_groups(
-        lints: Vec<(&'static str, Vec<lint::LintId>, bool)>,
-    ) -> Vec<(&'static str, Vec<lint::LintId>)> {
+        lints: Vec<(&'static str, Vec<LintId>, bool)>,
+    ) -> Vec<(&'static str, Vec<LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
         lints.sort_by_key(|l| l.0);
         lints
@@ -892,7 +891,7 @@ Available lint options:
     println!("    {}  {}", padded("----"), "---------");
     println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
+    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
         for (name, to) in lints {
             let name = name.to_lowercase().replace("_", "-");
             let desc = to

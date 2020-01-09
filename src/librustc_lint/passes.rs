@@ -18,22 +18,14 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 
-pub use self::Level::*;
-pub use crate::lint::LintSource::{self, *};
+use crate::context::{EarlyContext, LateContext};
 
 use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
+use rustc_session::lint::LintPass;
 use rustc_span::Span;
 use syntax::ast;
-
-pub use crate::lint::context::{
-    add_elided_lifetime_in_path_suggestion, CheckLintNameResult, EarlyContext, LateContext,
-    LintContext, LintStore,
-};
-
-pub use rustc_session::lint::{builtin, LintArray, LintPass};
-pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -169,6 +161,7 @@ macro_rules! declare_combined_late_lint_pass {
             expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
         }
 
+        #[allow(rustc::lint_pass_impl_without_macro)]
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
@@ -296,6 +289,7 @@ macro_rules! declare_combined_early_lint_pass {
             expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
         }
 
+        #[allow(rustc::lint_pass_impl_without_macro)]
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()

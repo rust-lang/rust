@@ -72,8 +72,6 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate syntax;
-#[macro_use]
 extern crate smallvec;
 
 #[cfg(test)]

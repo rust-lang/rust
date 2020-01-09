@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
+#![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 
@@ -25,32 +26,28 @@ extern crate rustc_session;
 
 mod array_into_iter;
 pub mod builtin;
+mod context;
 mod early;
 mod internal;
 mod late;
 mod levels;
 mod non_ascii_idents;
 mod nonstandard_style;
+mod passes;
 mod redundant_semicolon;
 mod types;
 mod unused;
 
-use rustc::lint;
-use rustc::lint::builtin::{
-    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-    INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
-};
-use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_session::lint::{LintArray, LintPass};
-
+use rustc_session::lint::builtin::{
+    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
+    INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
+};
 use rustc_span::Span;
 use syntax::ast;
-
-use lint::LintId;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
@@ -61,10 +58,15 @@ use redundant_semicolon::*;
 use types::*;
 use unused::*;
 
-/// Useful for other parts of the compiler.
+/// Useful for other parts of the compiler / Clippy.
 pub use builtin::SoftLints;
+pub use context::{EarlyContext, LateContext, LintContext, LintStore};
 pub use early::check_ast_crate;
 pub use late::check_crate;
+pub use passes::{EarlyLintPass, LateLintPass};
+pub use rustc_session::lint::Level::{self, *};
+pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
+pub use rustc_session::lint::{LintArray, LintPass};
 
 pub fn provide(providers: &mut Providers<'_>) {
     levels::provide(providers);
@@ -181,8 +183,8 @@ late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass])
 
 late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
 
-pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> lint::LintStore {
-    let mut lint_store = lint::LintStore::new();
+pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintStore {
+    let mut lint_store = LintStore::new();
 
     register_builtins(&mut lint_store, no_interleave_lints);
     if internal_lints {
@@ -195,7 +197,7 @@ pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> lint::
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
-fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
+fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
@@ -392,7 +394,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
     store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
 }
 
-fn register_internals(store: &mut lint::LintStore) {
+fn register_internals(store: &mut LintStore) {
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());
