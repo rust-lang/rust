@@ -23,8 +23,18 @@ pub use crate::{
     sysroot::Sysroot,
 };
 
-// FIXME use proper error enum
 pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct CargoTomlNotFoundError(pub PathBuf);
+
+impl std::fmt::Display for CargoTomlNotFoundError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "can't find Cargo.toml at {}", self.0.display())
+    }
+}
+
+impl Error for CargoTomlNotFoundError {}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -362,7 +372,7 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         }
         curr = path.parent();
     }
-    Err(format!("can't find Cargo.toml at {}", path.display()))?
+    Err(CargoTomlNotFoundError(path.to_path_buf()))?
 }
 
 pub fn get_rustc_cfg_options() -> CfgOptions {

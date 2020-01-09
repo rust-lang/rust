@@ -122,6 +122,8 @@ host.
        "completion.enable-postfix": true,
        // Show notification when workspace is fully loaded
        "notifications.workspace-loaded": true,
+       // Show error when no Cargo.toml was found
+       "notifications.cargo-toml-not-found": true,
    }
    ```
 
