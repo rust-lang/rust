@@ -1,3 +1,15 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/typeck_type_placeholder_item.rs:135:18
+   |
+LL | struct BadStruct<_>(_);
+   |                  ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/typeck_type_placeholder_item.rs:138:16
+   |
+LL | trait BadTrait<_> {}
+   |                ^ expected identifier, found reserved identifier
+
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:4:14
    |
@@ -256,6 +268,36 @@ LL |     fn fn_test13(x: _) -> (i32, _) { (x, x) }
    |                           help: replace with the correct return type: `(i32, i32)`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:135:21
+   |
+LL | struct BadStruct<_>(_);
+   |                     ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | struct BadStruct<T>(T);
+   |                  ^  ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:140:15
+   |
+LL | impl BadTrait<_> for BadStruct<_> {}
+   |               ^                ^ not allowed in type signatures
+   |               |
+   |               not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | impl<T> BadTrait<T> for BadStruct<T> {}
+   |     ^^^          ^                ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:143:34
+   |
+LL | fn impl_trait() -> impl BadTrait<_> {
+   |                                  ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:121:31
    |
 LL |     fn method_test1(&self, x: _);
@@ -405,7 +447,7 @@ help: use type parameters instead
 LL |         fn clone_from<T>(&mut self, other: T) { *self = FnTest9; }
    |                      ^^^                   ^
 
-error: aborting due to 40 previous errors
+error: aborting due to 45 previous errors
 
 Some errors have detailed explanations: E0121, E0282.
 For more information about an error, try `rustc --explain E0121`.

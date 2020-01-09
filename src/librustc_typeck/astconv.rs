@@ -2803,7 +2803,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // allowed. `allow_ty_infer` gates this behavior.
             crate::collect::placeholder_type_error(
                 tcx,
-                ident_span.unwrap_or(DUMMY_SP),
+                ident_span.map(|sp| sp.shrink_to_hi()).unwrap_or(DUMMY_SP),
                 generic_params,
                 visitor.0,
                 ident_span.is_some(),

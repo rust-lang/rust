@@ -555,7 +555,11 @@ impl<'a> Parser<'a> {
         let mut generics = if self.choose_generics_over_qpath() {
             self.parse_generics()?
         } else {
-            Generics::default()
+            let mut generics = Generics::default();
+            // impl A for B {}
+            //    /\ this is where `generics.span` should point when there are no type params.
+            generics.span = self.prev_span.shrink_to_hi();
+            generics
         };
 
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.

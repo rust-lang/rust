@@ -131,3 +131,16 @@ trait T {
     fn assoc_fn_test3() -> _;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
+
+struct BadStruct<_>(_);
+//~^ ERROR expected identifier, found reserved identifier `_`
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+trait BadTrait<_> {}
+//~^ ERROR expected identifier, found reserved identifier `_`
+impl BadTrait<_> for BadStruct<_> {}
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
+fn impl_trait() -> impl BadTrait<_> {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    unimplemented!()
+}
