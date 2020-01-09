@@ -1,5 +1,5 @@
 #![feature(specialization)]
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 // Negative impl for u32 cannot "specialize" the base impl.
 trait MyTrait {

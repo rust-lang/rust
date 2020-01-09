@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 #![allow(order_dependent_trait_objects)]
 
 // Check that the issue #33140 hack does not allow unintended things.

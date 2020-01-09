@@ -1,6 +1,7 @@
 // Make sure specialization cannot change impl polarity
 
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 #![feature(specialization)]
 
 auto trait Foo {}

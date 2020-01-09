@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 #![allow(dead_code)]
 
 struct TestType;

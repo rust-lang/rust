@@ -23,6 +23,7 @@
 // }
 
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 auto trait Magic: Copy {} //~ ERROR E0568
 impl<T:Magic> Magic for T {}

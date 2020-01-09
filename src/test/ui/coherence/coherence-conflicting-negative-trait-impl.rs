@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 #![feature(marker_trait_attr)]
 
 #[marker]

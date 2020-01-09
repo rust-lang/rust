@@ -152,6 +152,9 @@ declare_features! (
     /// Allows features specific to OIBIT (auto traits).
     (active, optin_builtin_traits, "1.0.0", Some(13231), None),
 
+    /// Allow negative trait implementations.
+    (active, negative_impls, "1.0.0", Some(13231), None),
+
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
