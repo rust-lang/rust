@@ -62,7 +62,7 @@ where
     // This function is defined over all borrow types (immutable, mutable, owned),
     // and may be called on the shared root in each case.
     // Crucially, we use `keys()` here, i.e., we work with immutable data.
-    // We do not need to make `keys_mut()` public and require support for the shared root.
+    // `keys_mut()` does not support the shared root, so we cannot use it.
     // Using `keys()` is fine here even if BorrowType is mutable, as all we return
     // is an index -- not a reference.
     for (i, k) in node.keys().iter().enumerate() {

@@ -591,6 +591,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         unsafe { &mut *(self.root as *mut Root<K, V>) }
     }
 
+    /// The caller must ensure that the node is not the shared root.
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
         debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf_mut` is okay.
