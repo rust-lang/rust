@@ -1078,7 +1078,7 @@ where
     }) {
         // An element changed, prepare to intern the resulting list
         let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
-        new_list.copy_from_slice(&list[..i]);
+        new_list.extend_from_slice(&list[..i]);
         new_list.push(new_t);
         new_list.extend(iter.map(|t| t.fold_with(folder)));
         intern(folder.tcx(), &new_list)
