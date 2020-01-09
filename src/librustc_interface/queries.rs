@@ -158,7 +158,6 @@ impl<'tcx> Queries<'tcx> {
             Ok(match self.compiler.crate_name {
                 Some(ref crate_name) => crate_name.clone(),
                 None => {
-                    let _timer = self.session().timer("crate_name");
                     let parse_result = self.parse()?;
                     let krate = parse_result.peek();
                     rustc_codegen_utils::link::find_crate_name(

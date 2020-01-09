@@ -163,22 +163,19 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = sess.time("compute_features", || {
-        rustc_expand::config::features(
-            krate,
-            &sess.parse_sess,
-            sess.edition(),
-            &sess.opts.debugging_opts.allow_features,
-        )
-    });
+    let (krate, features) = rustc_expand::config::features(
+        krate,
+        &sess.parse_sess,
+        sess.edition(),
+        &sess.opts.debugging_opts.allow_features,
+    );
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
     sess.crate_types.set(crate_types);
 
-    let disambiguator =
-        sess.time("compute_crate_disambiguator", || util::compute_crate_disambiguator(sess));
+    let disambiguator = util::compute_crate_disambiguator(sess);
     sess.crate_disambiguator.set(disambiguator);
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
@@ -726,23 +723,18 @@ pub fn create_global_ctxt<'tcx>(
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
-    let codegen_backend = sess.time("load_codegen_backend", || compiler.codegen_backend());
+    let codegen_backend = compiler.codegen_backend();
+    let mut local_providers = ty::query::Providers::default();
+    default_provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
 
-    let (local_providers, extern_providers) = sess.time("load_codegen_backend", || {
-        let mut local_providers = ty::query::Providers::default();
-        default_provide(&mut local_providers);
-        codegen_backend.provide(&mut local_providers);
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
 
-        let mut extern_providers = local_providers;
-        default_provide_extern(&mut extern_providers);
-        codegen_backend.provide_extern(&mut extern_providers);
-
-        if let Some(callback) = compiler.override_queries {
-            callback(sess, &mut local_providers, &mut extern_providers);
-        }
-
-        (local_providers, extern_providers)
-    });
+    if let Some(callback) = compiler.override_queries {
+        callback(sess, &mut local_providers, &mut extern_providers);
+    }
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.init_locking(|| {

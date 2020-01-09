@@ -409,7 +409,6 @@ pub fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
-            let _timer = sess.timer("query_linker");
             let linker = queries.linker()?;
             Ok(Some(linker))
         })?;

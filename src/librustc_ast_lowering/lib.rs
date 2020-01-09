@@ -268,7 +268,7 @@ pub fn lower_crate<'a, 'hir>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let _prof_timer = sess.prof.generic_activity("hir_lowering");
+    let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
     LoweringContext {
         crate_root: sess.parse_sess.injected_crate_name.try_get().copied(),
