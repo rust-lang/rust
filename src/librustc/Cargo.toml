@@ -15,7 +15,6 @@ bitflags = "1.2.1"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
-num_cpus = "1.0"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc-rayon = "0.3.0"
@@ -36,8 +35,6 @@ backtrace = "0.3.40"
 parking_lot = "0.9"
 byteorder = { version = "1.3" }
 chalk-engine = { version = "0.9.0", default-features=false }
-rustc_fs_util = { path = "../librustc_fs_util" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-measureme = "0.5"
 rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_session = { path = "../librustc_session" }

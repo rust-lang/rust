@@ -10,11 +10,9 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-bitflags = "1.2.1"
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 log = "0.4"
 scoped-tls = "1.0"
-lazy_static = "1.0.0"
 rustc_span = { path = "../librustc_span" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }

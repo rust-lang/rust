@@ -3079,8 +3079,6 @@ dependencies = [
  "graphviz",
  "jobserver",
  "log",
- "measureme",
- "num_cpus",
  "parking_lot",
  "polonius-engine",
  "rustc-rayon",
@@ -3090,7 +3088,6 @@ dependencies = [
  "rustc_error_codes",
  "rustc_errors",
  "rustc_feature",
- "rustc_fs_util",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
@@ -3278,7 +3275,6 @@ dependencies = [
  "jemalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
- "rustc_target",
 ]
 
 [[package]]
@@ -3409,7 +3405,6 @@ dependencies = [
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_expand",
  "rustc_feature",
  "rustc_fs_util",
  "rustc_hir",
@@ -3497,7 +3492,6 @@ name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
  "env_logger 0.7.1",
- "graphviz",
  "lazy_static 1.3.0",
  "log",
  "rustc",
@@ -3513,7 +3507,6 @@ dependencies = [
  "rustc_mir",
  "rustc_parse",
  "rustc_plugin_impl",
- "rustc_resolve",
  "rustc_save_analysis",
  "rustc_span",
  "rustc_target",
@@ -3660,7 +3653,6 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
- "rustc_error_codes",
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
@@ -4464,8 +4456,6 @@ dependencies = [
 name = "syntax"
 version = "0.0.0"
 dependencies = [
- "bitflags",
- "lazy_static 1.3.0",
  "log",
  "rustc_data_structures",
  "rustc_error_codes",
