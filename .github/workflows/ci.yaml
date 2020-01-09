@@ -80,8 +80,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: editors
-          path: ./target/release
+          name: executables
+          path: ./target/debug
 
   type-script:
     name: TypeScript
@@ -115,5 +115,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: executables
+          name: editors
           path: ./dist
