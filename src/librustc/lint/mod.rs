@@ -494,11 +494,3 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         ExpnKind::Macro(..) => true, // definitely a plugin
     }
 }
-
-/// Returns `true` if `span` originates in a derive-macro's expansion.
-pub fn in_derive_expansion(span: Span) -> bool {
-    if let ExpnKind::Macro(MacroKind::Derive, _) = span.ctxt().outer_expn_data().kind {
-        return true;
-    }
-    false
-}

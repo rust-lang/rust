@@ -3,7 +3,6 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::lint::in_derive_expansion;
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -201,7 +200,7 @@ pub fn early_report_deprecation(
     lint: &'static Lint,
     span: Span,
 ) {
-    if in_derive_expansion(span) {
+    if span.in_derive_expansion() {
         return;
     }
 
@@ -218,7 +217,7 @@ fn late_report_deprecation(
     def_id: DefId,
     hir_id: HirId,
 ) {
-    if in_derive_expansion(span) {
+    if span.in_derive_expansion() {
         return;
     }
 
