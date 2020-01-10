@@ -44,6 +44,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::sync::Lrc;
 
 mod back {
     pub mod archive;
@@ -271,7 +272,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn join_codegen_and_link(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
+        sess: &Lrc<Session>,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
@@ -298,9 +299,11 @@ impl CodegenBackend for LlvmCodegenBackend {
             return Ok(());
         }
 
+        let codegen_results = Lrc::new(codegen_results);
+
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.time("link_crate", || {
+        let cleanup_future = sess.time("link_crate", || {
             use crate::back::archive::LlvmArchiveBuilder;
             use rustc_codegen_ssa::back::link::link_binary;
 
@@ -311,12 +314,15 @@ impl CodegenBackend for LlvmCodegenBackend {
                 outputs,
                 &codegen_results.crate_name.as_str(),
                 target_cpu,
-            );
+            )
         });
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
         rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
+
+        // Join the cleanup future so it drops the `Lrc<Session>` it holds.
+        cleanup_future.join();
 
         Ok(())
     }

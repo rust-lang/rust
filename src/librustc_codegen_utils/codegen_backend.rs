@@ -15,6 +15,7 @@ use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
+use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Symbol;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -46,7 +47,7 @@ pub trait CodegenBackend {
     fn join_codegen_and_link(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
+        sess: &Lrc<Session>,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported>;

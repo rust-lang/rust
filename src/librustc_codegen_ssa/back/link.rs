@@ -8,6 +8,8 @@ use rustc::session::search_paths::PathKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc::session::{filesearch, Session};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::future::Future;
+use rustc_data_structures::sync::Lrc;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_span::symbol::Symbol;
@@ -47,12 +49,12 @@ pub fn remove(sess: &Session, path: &Path) {
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
-    sess: &'a Session,
-    codegen_results: &CodegenResults,
+    sess: &'a Lrc<Session>,
+    codegen_results: &Lrc<CodegenResults>,
     outputs: &OutputFilenames,
     crate_name: &str,
     target_cpu: &str,
-) {
+) -> Future<'static, ()> {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types.borrow().iter() {
@@ -122,34 +124,40 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
-    sess.time("link_binary_remove_temps", || {
-        if !sess.opts.cg.save_temps {
-            if sess.opts.output_types.should_codegen()
-                && !preserve_objects_for_their_debuginfo(sess)
-            {
-                for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+    let sess = sess.clone();
+    let codegen_results = codegen_results.clone();
+    Future::spawn(move || {
+        let sess = &*sess;
+        sess.time("link_binary_remove_temps", || {
+            if !sess.opts.cg.save_temps {
+                if sess.opts.output_types.should_codegen()
+                    && !preserve_objects_for_their_debuginfo(sess)
+                {
+                    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                        remove(sess, obj);
+                    }
+                }
+                for obj in
+                    codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref())
+                {
                     remove(sess, obj);
                 }
-            }
-            for obj in codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref())
-            {
-                remove(sess, obj);
-            }
-            if let Some(ref metadata_module) = codegen_results.metadata_module {
-                if let Some(ref obj) = metadata_module.object {
-                    remove(sess, obj);
+                if let Some(ref metadata_module) = codegen_results.metadata_module {
+                    if let Some(ref obj) = metadata_module.object {
+                        remove(sess, obj);
+                    }
+                }
+                if let Some(ref allocator_module) = codegen_results.allocator_module {
+                    if let Some(ref obj) = allocator_module.object {
+                        remove(sess, obj);
+                    }
+                    if let Some(ref bc) = allocator_module.bytecode_compressed {
+                        remove(sess, bc);
+                    }
                 }
             }
-            if let Some(ref allocator_module) = codegen_results.allocator_module {
-                if let Some(ref obj) = allocator_module.object {
-                    remove(sess, obj);
-                }
-                if let Some(ref bc) = allocator_module.bytecode_compressed {
-                    remove(sess, bc);
-                }
-            }
-        }
-    });
+        });
+    })
 }
 
 // The third parameter is for env vars, used on windows to set up the

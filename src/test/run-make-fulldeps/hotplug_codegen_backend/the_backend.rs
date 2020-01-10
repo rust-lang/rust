@@ -4,32 +4,33 @@ extern crate rustc;
 extern crate rustc_codegen_utils;
 #[macro_use]
 extern crate rustc_data_structures;
-extern crate rustc_hir;
-extern crate rustc_target;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_span;
+extern crate rustc_target;
 
-use std::any::Any;
-use std::sync::Arc;
-use std::path::Path;
-use rustc_span::symbol::Symbol;
-use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
-use rustc::ty::TyCtxt;
-use rustc::ty::query::Providers;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
 use rustc::dep_graph::DepGraph;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
+use rustc::session::config::OutputFilenames;
+use rustc::session::Session;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::sync::MetadataRef;
 use rustc_data_structures::owning_ref::OwningRef;
+use rustc_data_structures::sync::{Lrc, MetadataRef};
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::Target;
+use std::any::Any;
+use std::path::Path;
+use std::sync::Arc;
 
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        let buf = std::fs::read(filename).map_err(|e| format!("metadata file open err: {:?}", e))?;
+        let buf =
+            std::fs::read(filename).map_err(|e| format!("metadata file open err: {:?}", e))?;
         let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
         Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
@@ -74,21 +75,21 @@ impl CodegenBackend for TheBackend {
     fn join_codegen_and_link(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        sess: &Session,
+        sess: &Lrc<Session>,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
-        use std::io::Write;
         use rustc::session::config::CrateType;
         use rustc_codegen_utils::link::out_filename;
-        let crate_name = ongoing_codegen.downcast::<Symbol>()
+        use std::io::Write;
+        let crate_name = ongoing_codegen
+            .downcast::<Symbol>()
             .expect("in join_codegen_and_link: ongoing_codegen is not a Symbol");
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
-            let output_name =
-                out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
+            let output_name = out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
             let mut out_file = ::std::fs::File::create(output_name).unwrap();
             write!(out_file, "This has been \"compiled\" successfully.").unwrap();
         }
