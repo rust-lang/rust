@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use std::i16;
 use std::str;
 
@@ -89,9 +87,6 @@ where
     F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
     G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
 {
-    if cfg!(target_os = "emscripten") {
-        return; // using rng pulls in i128 support, which doesn't work
-    }
     let mut rng = StdRng::from_entropy();
     let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000);
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
@@ -105,9 +100,6 @@ where
     F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
     G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
 {
-    if cfg!(target_os = "emscripten") {
-        return; // using rng pulls in i128 support, which doesn't work
-    }
     let mut rng = StdRng::from_entropy();
     let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {

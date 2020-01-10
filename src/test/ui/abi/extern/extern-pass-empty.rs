@@ -5,7 +5,6 @@
 
 // pretty-expanded FIXME #23616
 // ignore-msvc
-// ignore-emscripten emcc asserts on an empty struct as an argument
 
 #[repr(C)]
 struct TwoU8s {

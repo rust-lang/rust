@@ -2,7 +2,7 @@
 // compile-flags:-C panic=abort -C prefer-dynamic
 // ignore-musl - no dylibs here
 // ignore-cloudabi
-// ignore-emscripten
+// ignore-emscripten no dylib support
 // ignore-sgx no dynamic lib support
 // error-pattern:`panic_unwind` is not compiled with this crate's panic strategy
 

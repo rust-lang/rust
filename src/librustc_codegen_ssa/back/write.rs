@@ -86,8 +86,7 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
     // Instead of creating an object file by doing LLVM codegen, just
-    // make the object file bitcode. Provides easy compatibility with
-    // emscripten's ecc compiler, when used as the linker.
+    // make the object file bitcode.
     pub obj_is_bitcode: bool,
     pub no_integrated_as: bool,
     pub embed_bitcode: bool,

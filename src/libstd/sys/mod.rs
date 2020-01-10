@@ -41,7 +41,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         mod wasi;
         pub use self::wasi::*;
-    } else if #[cfg(target_arch = "wasm32")] {
+    } else if #[cfg(any(target_arch = "wasm32", target_arch = "asmjs"))] {
         mod wasm;
         pub use self::wasm::*;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
@@ -64,7 +64,8 @@ cfg_if::cfg_if! {
         pub use self::ext as unix_ext;
     } else if #[cfg(any(target_os = "cloudabi",
                         target_os = "hermit",
-                        target_arch = "wasm32",
+                        all(not(target_os = "emscripten"),
+                            target_arch = "wasm32"),
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
@@ -88,7 +89,8 @@ cfg_if::cfg_if! {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as windows_ext;
     } else if #[cfg(any(target_os = "cloudabi",
-                        target_arch = "wasm32",
+                        all(not(target_os = "emscripten"),
+                            target_arch = "wasm32"),
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
         // just omit it

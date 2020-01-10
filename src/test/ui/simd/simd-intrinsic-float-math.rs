@@ -1,5 +1,4 @@
 // run-pass
-// ignore-emscripten
 // ignore-android
 
 // FIXME: this test fails on arm-android because the NDK version 14 is too old.

@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 #![allow(deprecated)]
 // ignore-cloudabi no environment variables present
-// ignore-emscripten env vars don't work?
+// ignore-emscripten issue #31622
 // ignore-sgx env vars cannot be modified
 
 use std::env::*;

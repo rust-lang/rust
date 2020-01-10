@@ -1,5 +1,4 @@
 // build-fail
-// ignore-emscripten no asm! support
 
 #![feature(asm)]
 

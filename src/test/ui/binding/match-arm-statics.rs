@@ -1,7 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 // compile-flags: -g
-// ignore-asmjs wasm2js does not support source maps yet
 
 #[derive(PartialEq, Eq)]
 struct NewBool(bool);

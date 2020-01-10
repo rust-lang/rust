@@ -2,7 +2,6 @@
 // operands.
 
 // build-fail
-// ignore-emscripten
 
 #![feature(asm)]
 

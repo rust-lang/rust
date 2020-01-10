@@ -1,5 +1,4 @@
 // check-pass
-// ignore-emscripten
 
 #![feature(asm)]
 

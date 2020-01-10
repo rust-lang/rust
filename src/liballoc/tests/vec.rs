@@ -937,9 +937,7 @@ fn drain_filter_complex() {
     }
 }
 
-// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn drain_filter_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -989,9 +987,7 @@ fn drain_filter_consumed_panic() {
     }
 }
 
-// FIXME: Re-enable emscripten once it can catch panics
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn drain_filter_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;

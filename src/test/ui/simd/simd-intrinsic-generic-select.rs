@@ -1,7 +1,6 @@
 // run-pass
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten
 // ignore-mips       behavior of simd_select_bitmask is endian-specific
 // ignore-mips64     behavior of simd_select_bitmask is endian-specific
 // ignore-powerpc    behavior of simd_select_bitmask is endian-specific

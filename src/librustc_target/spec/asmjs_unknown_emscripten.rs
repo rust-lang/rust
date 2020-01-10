@@ -8,5 +8,6 @@ pub fn target() -> Result<Target, String> {
         .entry(LinkerFlavor::Em)
         .or_default()
         .extend(vec!["-s".to_string(), "WASM=0".to_string()]);
+    target.arch = "asmjs".to_string();
     Ok(target)
 }

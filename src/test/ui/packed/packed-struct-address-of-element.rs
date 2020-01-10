@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![deny(safe_packed_borrows)]
 #![feature(raw_ref_op)]
-// ignore-emscripten weird assertion?
 
 #[repr(packed)]
 struct Foo1 {

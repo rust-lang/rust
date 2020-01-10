@@ -154,9 +154,10 @@ impl<'a> GccLinker<'a> {
         // platforms where currently this is guaranteed to *not* be the case:
         //
         // * On OSX they have their own linker, not binutils'
-        // * For WebAssembly the only functional linker is LLD, which doesn't
+        // * For WebAssembly/JS the only functional linker is LLD, which doesn't
         //   support hint flags
-        !self.sess.target.target.options.is_like_osx && self.sess.target.target.arch != "wasm32"
+        !self.sess.target.target.options.is_like_osx && self.sess.target.target.arch != "wasm32" &&
+            self.sess.target.target.arch != "asmjs"
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -866,7 +867,9 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
             DebugInfo::Limited => "-g3",
-            DebugInfo::Full => "-g4",
+            // FIXME: wasm2js errors with -g3 and above because it does not support source maps.
+            // See https://github.com/WebAssembly/binaryen/issues/2410
+            DebugInfo::Full => if self.sess.target.target.arch == "asmjs" { "-g3" } else { "-g4" },
         });
     }
 

@@ -4,7 +4,6 @@
 
 // aux-build:sepcomp_lib.rs
 // compile-flags: -C lto -g
-// ignore-asmjs wasm2js does not support source maps yet
 // no-prefer-dynamic
 
 extern crate sepcomp_lib;

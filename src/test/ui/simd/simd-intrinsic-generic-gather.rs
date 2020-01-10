@@ -1,5 +1,4 @@
 // run-pass
-// ignore-emscripten
 
 // Test that the simd_{gather,scatter} intrinsics produce the correct results.
 

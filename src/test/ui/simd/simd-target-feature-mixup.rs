@@ -3,7 +3,7 @@
 #![allow(stable_features)]
 #![allow(overflowing_literals)]
 
-// ignore-emscripten
+// ignore-emscripten no processes
 // ignore-sgx no processes
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]

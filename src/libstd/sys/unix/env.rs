@@ -108,18 +108,7 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
-#[cfg(all(target_os = "emscripten", target_arch = "asmjs"))]
-pub mod os {
-    pub const FAMILY: &str = "unix";
-    pub const OS: &str = "emscripten";
-    pub const DLL_PREFIX: &str = "lib";
-    pub const DLL_SUFFIX: &str = ".so";
-    pub const DLL_EXTENSION: &str = "so";
-    pub const EXE_SUFFIX: &str = ".js";
-    pub const EXE_EXTENSION: &str = "js";
-}
-
-#[cfg(all(target_os = "emscripten", target_arch = "wasm32"))]
+#[cfg(target_os = "emscripten")]
 pub mod os {
     pub const FAMILY: &str = "unix";
     pub const OS: &str = "emscripten";

@@ -3,7 +3,7 @@
 #![allow(deprecated)]
 // ignore-cloudabi no files or I/O
 // ignore-wasm32-bare no files or I/O
-// ignore-emscripten no files
+// ignore-emscripten issue #31622
 // ignore-sgx no files
 
 use std::fs;

@@ -1,6 +1,6 @@
 // run-pass
 // compile-flags:--test
-// ignore-emscripten
+// ignore-emscripten no threads support
 // ignore-sgx no thread sleep support
 
 use std::sync::mpsc::channel;

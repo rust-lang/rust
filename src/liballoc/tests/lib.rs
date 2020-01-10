@@ -36,9 +36,6 @@ fn hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-// FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.
-// See https://github.com/kripken/emscripten-fastcomp/issues/169
-#[cfg(not(target_os = "emscripten"))]
 #[test]
 fn test_boxed_hasher() {
     let ordinary_hash = hash(&5u32);

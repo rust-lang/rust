@@ -27,7 +27,6 @@ use crate::{
     },
     time::{TestTimeOptions, TimeThreshold},
 };
-use std::any::TypeId;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -119,9 +118,7 @@ pub fn ignored_tests_result_in_ignored() {
     assert_eq!(result, TrIgnored);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic() {
     fn f() {
         panic!();
@@ -142,9 +139,7 @@ fn test_should_panic() {
     assert_eq!(result, TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_good_message() {
     fn f() {
         panic!("an error message");
@@ -165,9 +160,7 @@ fn test_should_panic_good_message() {
     assert_eq!(result, TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_bad_message() {
     use crate::tests::TrFailedMsg;
     fn f() {
@@ -193,10 +186,9 @@ fn test_should_panic_bad_message() {
     assert_eq!(result, TrFailedMsg(failed_msg.to_string()));
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_non_string_message_type() {
+    use std::any::TypeId;
     use crate::tests::TrFailedMsg;
     fn f() {
         panic!(1i32);
@@ -224,9 +216,7 @@ fn test_should_panic_non_string_message_type() {
     assert_eq!(result, TrFailedMsg(failed_msg));
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_but_succeeds() {
     fn f() {}
     let desc = TestDescAndFn {

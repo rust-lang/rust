@@ -1,5 +1,4 @@
 // run-pass
-// ignore-emscripten
 
 #[repr(C)]
 pub struct Foo(i128);

@@ -2,7 +2,6 @@
 // compile-flags: -Z query-dep-graph -g
 // aux-build:extern_crate.rs
 
-// ignore-asmjs wasm2js does not support source maps yet
 // This test case makes sure that we detect if paths emitted into debuginfo
 // are changed, even when the change happens in an external crate.
 

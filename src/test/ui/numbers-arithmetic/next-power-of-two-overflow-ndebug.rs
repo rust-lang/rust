@@ -1,6 +1,5 @@
 // run-pass
 // compile-flags: -C debug_assertions=no
-// ignore-emscripten dies with an LLVM error
 
 fn main() {
     for i in 129..256 {

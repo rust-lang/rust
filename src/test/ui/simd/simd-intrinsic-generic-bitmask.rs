@@ -1,8 +1,6 @@
 // run-pass
 #![allow(non_camel_case_types)]
 
-// ignore-emscripten
-
 // Test that the simd_bitmask intrinsic produces correct results.
 
 #![feature(repr_simd, platform_intrinsics)]

@@ -345,9 +345,7 @@ fn assert_covariance() {
 // even if the order may not be correct.
 //
 // Destructors must be called exactly once per element.
-// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
     use rand::{seq::SliceRandom, thread_rng};
     use std::cmp;

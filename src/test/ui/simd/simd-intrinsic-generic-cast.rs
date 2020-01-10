@@ -1,6 +1,5 @@
 // run-pass
 #![allow(unused_must_use)]
-// ignore-emscripten FIXME(#45351) hits an LLVM assert
 
 #![feature(repr_simd, platform_intrinsics, concat_idents, test)]
 #![allow(non_camel_case_types)]

@@ -1,6 +1,5 @@
 // run-pass (note: this is spec-UB, but it works for now)
 #![allow(dead_code)]
-// ignore-emscripten weird assertion?
 
 #[repr(packed)]
 struct Foo1 {

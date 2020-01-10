@@ -1,6 +1,5 @@
 // run-pass
-// ignore-emscripten
-// ignore-wasm32
+// ignore-emscripten no processes
 // ignore-sgx no processes
 
 use std::env;
