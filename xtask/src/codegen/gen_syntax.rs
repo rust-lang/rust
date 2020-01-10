@@ -152,7 +152,7 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
         #(#enums)*
     };
 
-    let pretty = codegen::reformat(ast)?;
+    let pretty = crate::reformat(ast)?;
     Ok(pretty)
 }
 
@@ -265,7 +265,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         }
     };
 
-    codegen::reformat(ast)
+    crate::reformat(ast)
 }
 
 fn to_upper_snake_case(s: &str) -> String {
