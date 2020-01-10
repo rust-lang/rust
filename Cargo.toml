@@ -60,7 +60,15 @@ opt-level = 0
 opt-level = 0
 debug = false
 
+[profile.release.build-override]
+opt-level = 0
+debug = false
+
 [profile.dev.package.cranelift-codegen-meta]
+opt-level = 0
+debug = false
+
+[profile.release.package.cranelift-codegen-meta]
 opt-level = 0
 debug = false
 
@@ -68,3 +76,6 @@ debug = false
 opt-level = 0
 debug = false
 
+[profile.release.package.syn]
+opt-level = 0
+debug = false
