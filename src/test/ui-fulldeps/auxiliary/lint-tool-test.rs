@@ -4,11 +4,11 @@
 extern crate syntax;
 
 // Load rustc as a plugin to get macros
-#[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
+#[macro_use] extern crate rustc_lint;
+#[macro_use] extern crate rustc_session;
 
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass, LintId};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass, LintId};
 use rustc_driver::plugin::Registry;
 use syntax::ast;
 declare_tool_lint!(pub clippy::TEST_LINT, Warn, "Warn about stuff");
