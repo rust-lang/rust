@@ -3,7 +3,7 @@
 // - repr-transparent-other-reprs.rs
 // - repr-transparent-other-items.rs
 
-#![feature(repr_align, transparent_enums, transparent_unions)]
+#![feature(transparent_unions)]
 
 use std::marker::PhantomData;
 

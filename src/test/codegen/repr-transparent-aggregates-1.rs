@@ -10,7 +10,7 @@
 // ignore-windows
 // See repr-transparent.rs
 
-#![feature(transparent_enums, transparent_unions)]
+#![feature(transparent_unions)]
 
 #![crate_type="lib"]
 

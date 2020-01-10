@@ -468,9 +468,6 @@ declare_features! (
     /// Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
 
-    /// Allows #[repr(transparent)] on enums (RFC 2645).
-    (active, transparent_enums, "1.37.0", Some(60405), None),
-
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
