@@ -530,10 +530,9 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                             span_note_and_lint(cx,
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
-                                &format!("`Err({})` will match all errors, maybe not a good idea", &ident_bind_name),
+                                &format!("`Err({})` matches all errors", &ident_bind_name),
                                 arm.pat.span,
-                                "to remove this warning, match each error separately \
-                                    or use `unreachable!` macro"
+                                "match each error separately or use the error output",
                             );
                         }
                     }
