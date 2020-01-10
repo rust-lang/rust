@@ -277,7 +277,7 @@ impl DocFolder for Cache {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.parent_stack.last().unwrap()),
+                        Some(*self.parent_stack.last().expect("parent_stack is empty")),
                         Some(&self.stack[..self.stack.len() - 1]),
                     ),
                     false,
@@ -286,7 +286,7 @@ impl DocFolder for Cache {
                     if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
-                        let last = self.parent_stack.last().unwrap();
+                        let last = self.parent_stack.last().expect("parent_stack is empty 2");
                         let did = *last;
                         let path = match self.paths.get(&did) {
                             // The current stack not necessarily has correlation
@@ -468,7 +468,7 @@ impl DocFolder for Cache {
                         self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
                     }
                 } else {
-                    let trait_did = impl_item.trait_did().unwrap();
+                    let trait_did = impl_item.trait_did().expect("no trait did");
                     self.orphan_trait_impls.push((trait_did, dids, impl_item));
                 }
                 None
@@ -478,10 +478,10 @@ impl DocFolder for Cache {
         });
 
         if pushed {
-            self.stack.pop().unwrap();
+            self.stack.pop().expect("stack already empty");
         }
         if parent_pushed {
-            self.parent_stack.pop().unwrap();
+            self.parent_stack.pop().expect("parent stack already empty");
         }
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
@@ -574,6 +574,9 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // has since been learned.
     for &(did, ref item) in orphan_impl_items {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
+            if item.name.is_none() { // this is most likely from a typedef
+                continue;
+            }
             search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
@@ -592,19 +595,25 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut lastpathid = 0usize;
 
     for item in search_index {
-        item.parent_idx = item.parent.map(|nodeid| {
-            if nodeid_to_pathid.contains_key(&nodeid) {
-                *nodeid_to_pathid.get(&nodeid).unwrap()
-            } else {
-                let pathid = lastpathid;
-                nodeid_to_pathid.insert(nodeid, pathid);
-                lastpathid += 1;
+        item.parent_idx = match item.parent {
+            Some(nodeid) => {
+                Some(if nodeid_to_pathid.contains_key(&nodeid) {
+                    *nodeid_to_pathid.get(&nodeid).expect("no pathid")
+                } else {
+                    let pathid = lastpathid;
+                    nodeid_to_pathid.insert(nodeid, pathid);
+                    lastpathid += 1;
 
-                let &(ref fqp, short) = paths.get(&nodeid).unwrap();
-                crate_paths.push((short, fqp.last().unwrap().clone()));
-                pathid
+                    if let Some(&(ref fqp, short)) = paths.get(&nodeid) {
+                        crate_paths.push((short, fqp.last().expect("no fqp").clone()));
+                    } else {
+                        continue
+                    }
+                    pathid
+                })
             }
-        });
+            None => None,
+        };
 
         // Omit the parent path if it is same to that of the prior item.
         if lastpath == item.path {
@@ -639,7 +648,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             items: crate_items,
             paths: crate_paths,
         })
-        .unwrap()
+        .expect("failed serde conversion")
     )
 }
 

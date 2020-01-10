@@ -3469,22 +3469,27 @@ fn render_deref_methods(
     deref_mut: bool,
 ) {
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
-    let target = impl_
+    let (target, real_target) = impl_
         .inner_impl()
         .items
         .iter()
         .filter_map(|item| match item.inner {
-            clean::TypedefItem(ref t, true) => Some(&t.type_),
+            clean::TypedefItem(ref t, true) => {
+                Some(match *t {
+                    clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
+                    _ => (&t.type_, &t.type_),
+                })
+            }
             _ => None,
         })
         .next()
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: target, deref_mut_: deref_mut };
-    if let Some(did) = target.def_id() {
+    if let Some(did) = real_target.def_id() {
         render_assoc_items(w, cx, container_item, did, what)
     } else {
-        if let Some(prim) = target.primitive_type() {
+        if let Some(prim) = real_target.primitive_type() {
             if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what);
             }
@@ -4123,17 +4128,22 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some(target) = impl_
+                if let Some((target, real_target)) = impl_
                     .inner_impl()
                     .items
                     .iter()
                     .filter_map(|item| match item.inner {
-                        clean::TypedefItem(ref t, true) => Some(&t.type_),
+                        clean::TypedefItem(ref t, true) => {
+                            Some(match *t {
+                                clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
+                                _ => (&t.type_, &t.type_),
+                            })
+                        }
                         _ => None,
                     })
                     .next()
                 {
-                    let inner_impl = target
+                    let inner_impl = real_target
                         .def_id()
                         .or(target
                             .primitive_type()
