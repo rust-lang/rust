@@ -478,15 +478,15 @@ impl CStore {
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
         self.get_crate_data(cnum).source.clone()
     }
+
+    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
+        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
+    }
 }
 
 impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
-    }
-
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index, sess)
     }
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol {

@@ -100,7 +100,6 @@ pub mod ty;
 
 pub mod util {
     pub mod bug;
-    pub mod captures;
     pub mod common;
 }
 
