@@ -615,6 +615,7 @@ impl OsStr {
     /// assert!(!os_str.is_empty());
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.inner.is_empty()
     }
