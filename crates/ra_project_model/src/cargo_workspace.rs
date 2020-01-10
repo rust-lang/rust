@@ -21,7 +21,7 @@ use crate::Result;
 pub struct CargoWorkspace {
     packages: Arena<Package, PackageData>,
     targets: Arena<Target, TargetData>,
-    pub(crate) workspace_root: PathBuf,
+    pub workspace_root: PathBuf,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]

@@ -74,7 +74,7 @@ impl WorldState {
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         watch: Watch,
-        options: Options,
+        mut options: Options,
         feature_flags: FeatureFlags,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
@@ -132,8 +132,20 @@ impl WorldState {
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation
-        let check_watcher =
-            CheckWatcher::new(&options.cargo_watch, folder_roots.first().cloned().unwrap());
+        let check_watcher = {
+            let first_workspace = workspaces.first().unwrap();
+            let cargo_project_root = match first_workspace {
+                ProjectWorkspace::Cargo { cargo, .. } => cargo.workspace_root.clone(),
+                ProjectWorkspace::Json { .. } => {
+                    log::warn!(
+                        "Cargo check watching only supported for cargo workspaces, disabling"
+                    );
+                    options.cargo_watch.enable = false;
+                    PathBuf::new()
+                }
+            };
+            CheckWatcher::new(&options.cargo_watch, cargo_project_root)
+        };
 
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);
