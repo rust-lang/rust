@@ -187,6 +187,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> Fragmen
         ARG_LIST => FragmentKind::Expr,
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
+        PAREN_EXPR => FragmentKind::Expr,
         ITEM_LIST => FragmentKind::Items,
         _ => {
             // Unknown , Just guess it is `Items`

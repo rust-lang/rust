@@ -310,6 +310,23 @@ fn test<R>(query_response: Canonical<QueryResponse<R>>) {
 }
 
 #[test]
+fn infer_paren_macro_call() {
+    assert_snapshot!(
+        infer(r#"
+macro_rules! bar { () => {0u32} }
+fn test() {
+    let a = (bar!());
+}
+"#),
+        @r###"
+    ![0; 4) '0u32': u32
+    [45; 70) '{     ...()); }': ()
+    [55; 56) 'a': u32
+        "###
+    );
+}
+
+#[test]
 fn bug_1030() {
     assert_snapshot!(infer(r#"
 struct HashSet<T, H>;
