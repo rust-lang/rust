@@ -294,18 +294,20 @@ fn codegen_mono_items<'tcx>(
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
 
-    time("codegen mono items", move || {
-        for (&mono_item, &(linkage, visibility)) in &mono_items {
-            match mono_item {
-                MonoItem::Fn(instance) => {
-                    let (name, sig) =
-                        get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
-                    let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-                    cx.module.declare_function(&name, linkage, &sig).unwrap();
+    time(tcx.sess, "codegen mono items", move || {
+        tcx.sess.time("predefine functions", || {
+            for (&mono_item, &(linkage, visibility)) in &mono_items {
+                match mono_item {
+                    MonoItem::Fn(instance) => {
+                        let (name, sig) =
+                            get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+                        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+                        cx.module.declare_function(&name, linkage, &sig).unwrap();
+                    }
+                    MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
                 }
-                MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }
-        }
+        });
 
         for (mono_item, (linkage, visibility)) in mono_items {
             crate::unimpl::try_unimpl(tcx, || {
@@ -314,7 +316,7 @@ fn codegen_mono_items<'tcx>(
             });
         }
 
-        cx.finalize();
+        tcx.sess.time("finalize CodegenCx", || cx.finalize());
     });
 }
 
@@ -350,7 +352,7 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
                 }
             });
 
-            crate::base::trans_fn(cx, inst, linkage);
+            cx.tcx.sess.time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);
@@ -361,10 +363,10 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
     }
 }
 
-fn time<R>(name: &str, f: impl FnOnce() -> R) -> R {
+fn time<R>(sess: &Session, name: &str, f: impl FnOnce() -> R) -> R {
     println!("[{}] start", name);
     let before = std::time::Instant::now();
-    let res = f();
+    let res = sess.time(name, f);
     let after = std::time::Instant::now();
     println!("[{}] end time: {:?}", name, after - before);
     res

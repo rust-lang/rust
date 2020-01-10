@@ -61,8 +61,10 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         fx.bcx.switch_to_block(entry_block);
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
     } else {
-        crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
-        codegen_fn_content(&mut fx);
+        tcx.sess.time("codegen clif ir", || {
+            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_ebb));
+            codegen_fn_content(&mut fx);
+        });
     }
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
@@ -78,10 +80,13 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     verify_func(tcx, &clif_comments, &context.func);
 
     // Perform rust specific optimizations
-    crate::optimize::optimize_function(cx.tcx, instance, context, &mut clif_comments);
+    tcx.sess.time("optimize clif ir", || {
+        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
+    });
 
     // Define function
-    cx.module.define_function(func_id, context).unwrap();
+    let module = &mut cx.module;
+    tcx.sess.time("define function", || module.define_function(func_id, context).unwrap());
 
     // Write optimized function to file for debugging
     #[cfg(debug_assertions)]
@@ -102,30 +107,34 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Define debuginfo for function
     let isa = cx.module.isa();
-    debug_context
-        .as_mut()
-        .map(|x| x.define(context, isa, &source_info_set, local_map));
+    tcx.sess.time("generate debug info", || {
+        debug_context
+            .as_mut()
+            .map(|x| x.define(context, isa, &source_info_set, local_map));
+    });
 
     // Clear context to make it usable for the next function
     context.clear();
 }
 
 pub fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
-    let flags = settings::Flags::new(settings::builder());
-    match ::cranelift_codegen::verify_function(&func, &flags) {
-        Ok(_) => {}
-        Err(err) => {
-            tcx.sess.err(&format!("{:?}", err));
-            let pretty_error = ::cranelift_codegen::print_errors::pretty_verifier_error(
-                &func,
-                None,
-                Some(Box::new(writer)),
-                err,
-            );
-            tcx.sess
-                .fatal(&format!("cranelift verify error:\n{}", pretty_error));
+    tcx.sess.time("verify clif ir", || {
+        let flags = settings::Flags::new(settings::builder());
+        match ::cranelift_codegen::verify_function(&func, &flags) {
+            Ok(_) => {}
+            Err(err) => {
+                tcx.sess.err(&format!("{:?}", err));
+                let pretty_error = ::cranelift_codegen::print_errors::pretty_verifier_error(
+                    &func,
+                    None,
+                    Some(Box::new(writer)),
+                    err,
+                );
+                tcx.sess
+                    .fatal(&format!("cranelift verify error:\n{}", pretty_error));
+            }
         }
-    }
+    });
 }
 
 fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
@@ -225,13 +234,13 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                crate::abi::codegen_terminator_call(
+                fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
                     fx,
                     func,
                     args,
                     destination,
                     bb_data.terminator().source_info.span,
-                );
+                ));
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 trap_unreachable(fx, "[corruption] Unwinding bb reached.");

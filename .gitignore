@@ -4,6 +4,8 @@ target
 *.o
 perf.data
 perf.data.old
+*.events
+*.string*
 /build_sysroot/sysroot
 /build_sysroot/sysroot_src
 /build_sysroot/Cargo.lock
