@@ -1535,7 +1535,7 @@ impl fmt::Debug for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for PathBuf {
     type Target = Path;
-
+    #[inline]
     fn deref(&self) -> &Path {
         Path::new(&self.inner)
     }
