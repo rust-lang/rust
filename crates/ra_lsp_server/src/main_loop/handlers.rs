@@ -536,18 +536,32 @@ pub fn handle_references(
 
     let locations = if params.context.include_declaration {
         refs.into_iter()
-            .filter_map(|r| {
-                let line_index = world.analysis().file_line_index(r.file_range.file_id).ok()?;
-                to_location(r.file_range.file_id, r.file_range.range, &world, &line_index).ok()
+            .filter_map(|reference| {
+                let line_index =
+                    world.analysis().file_line_index(reference.file_range.file_id).ok()?;
+                to_location(
+                    reference.file_range.file_id,
+                    reference.file_range.range,
+                    &world,
+                    &line_index,
+                )
+                .ok()
             })
             .collect()
     } else {
         // Only iterate over the references if include_declaration was false
         refs.references()
             .iter()
-            .filter_map(|r| {
-                let line_index = world.analysis().file_line_index(r.file_range.file_id).ok()?;
-                to_location(r.file_range.file_id, r.file_range.range, &world, &line_index).ok()
+            .filter_map(|reference| {
+                let line_index =
+                    world.analysis().file_line_index(reference.file_range.file_id).ok()?;
+                to_location(
+                    reference.file_range.file_id,
+                    reference.file_range.range,
+                    &world,
+                    &line_index,
+                )
+                .ok()
             })
             .collect()
     };
@@ -836,10 +850,10 @@ pub fn handle_document_highlight(
 
     Ok(Some(
         refs.into_iter()
-            .filter(|r| r.file_range.file_id == file_id)
-            .map(|r| DocumentHighlight {
-                range: r.file_range.range.conv_with(&line_index),
-                kind: None,
+            .filter(|reference| reference.file_range.file_id == file_id)
+            .map(|reference| DocumentHighlight {
+                range: reference.file_range.range.conv_with(&line_index),
+                kind: reference.access.map(|it| it.conv()),
             })
             .collect(),
     ))

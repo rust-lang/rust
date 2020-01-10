@@ -9,7 +9,7 @@ use lsp_types::{
 use ra_ide::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
     FileRange, FileSystemEdit, Fold, FoldKind, InsertTextFormat, LineCol, LineIndex,
-    NavigationTarget, RangeInfo, Severity, SourceChange, SourceFileEdit,
+    NavigationTarget, RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -49,6 +49,18 @@ impl Conv for SyntaxKind {
             SyntaxKind::CONST_DEF => SymbolKind::Constant,
             SyntaxKind::IMPL_BLOCK => SymbolKind::Object,
             _ => SymbolKind::Variable,
+        }
+    }
+}
+
+impl Conv for ReferenceAccess {
+    type Output = ::lsp_types::DocumentHighlightKind;
+
+    fn conv(self) -> Self::Output {
+        use lsp_types::DocumentHighlightKind;
+        match self {
+            ReferenceAccess::Read => DocumentHighlightKind::Read,
+            ReferenceAccess::Write => DocumentHighlightKind::Write,
         }
     }
 }

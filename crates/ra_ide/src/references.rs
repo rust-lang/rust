@@ -19,8 +19,9 @@ use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextUnit,
-    TokenAtOffset,
+    algo::find_node_at_offset,
+    ast::{self, NameOwner},
+    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
 };
 
 use crate::{
@@ -37,15 +38,22 @@ pub use self::search_scope::SearchScope;
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
-    declaration: NavigationTarget,
-    declaration_kind: ReferenceKind,
+    declaration: Declaration,
     references: Vec<Reference>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Declaration {
+    pub nav: NavigationTarget,
+    pub kind: ReferenceKind,
+    pub access: Option<ReferenceAccess>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Reference {
     pub file_range: FileRange,
     pub kind: ReferenceKind,
+    pub access: Option<ReferenceAccess>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,9 +62,19 @@ pub enum ReferenceKind {
     Other,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ReferenceAccess {
+    Read,
+    Write,
+}
+
 impl ReferenceSearchResult {
-    pub fn declaration(&self) -> &NavigationTarget {
+    pub fn declaration(&self) -> &Declaration {
         &self.declaration
+    }
+
+    pub fn decl_target(&self) -> &NavigationTarget {
+        &self.declaration.nav
     }
 
     pub fn references(&self) -> &[Reference] {
@@ -72,7 +90,7 @@ impl ReferenceSearchResult {
 }
 
 // allow turning ReferenceSearchResult into an iterator
-// over FileRanges
+// over References
 impl IntoIterator for ReferenceSearchResult {
     type Item = Reference;
     type IntoIter = std::vec::IntoIter<Reference>;
@@ -81,10 +99,11 @@ impl IntoIterator for ReferenceSearchResult {
         let mut v = Vec::with_capacity(self.len());
         v.push(Reference {
             file_range: FileRange {
-                file_id: self.declaration.file_id(),
-                range: self.declaration.range(),
+                file_id: self.declaration.nav.file_id(),
+                range: self.declaration.nav.range(),
             },
-            kind: self.declaration_kind,
+            kind: self.declaration.kind,
+            access: self.declaration.access,
         });
         v.append(&mut self.references);
         v.into_iter()
@@ -131,15 +150,20 @@ pub(crate) fn find_all_refs(
         }
     };
 
+    let decl_range = declaration.range();
+
+    let declaration = Declaration {
+        nav: declaration,
+        kind: ReferenceKind::Other,
+        access: decl_access(&def.kind, &name, &syntax, decl_range),
+    };
+
     let references = process_definition(db, def, name, search_scope)
         .into_iter()
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();
 
-    Some(RangeInfo::new(
-        range,
-        ReferenceSearchResult { declaration, references, declaration_kind: ReferenceKind::Other },
-    ))
+    Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
 }
 
 fn find_name<'a>(
@@ -201,7 +225,12 @@ fn process_definition(
                         } else {
                             ReferenceKind::Other
                         };
-                        refs.push(Reference { file_range: FileRange { file_id, range }, kind });
+
+                        refs.push(Reference {
+                            file_range: FileRange { file_id, range },
+                            kind,
+                            access: reference_access(&d.kind, &name_ref),
+                        });
                     }
                 }
             }
@@ -210,11 +239,69 @@ fn process_definition(
     refs
 }
 
+fn decl_access(
+    kind: &NameKind,
+    name: &str,
+    syntax: &SyntaxNode,
+    range: TextRange,
+) -> Option<ReferenceAccess> {
+    match kind {
+        NameKind::Local(_) | NameKind::Field(_) => {}
+        _ => return None,
+    };
+
+    let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
+    if let Some(_) = stmt.initializer() {
+        let pat = stmt.pat()?;
+        match pat {
+            ast::Pat::BindPat(it) => {
+                if it.name()?.text().as_str() == name {
+                    return Some(ReferenceAccess::Write);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn reference_access(kind: &NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+    // Only Locals and Fields have accesses for now.
+    match kind {
+        NameKind::Local(_) | NameKind::Field(_) => {}
+        _ => return None,
+    };
+
+    let mode = name_ref.syntax().ancestors().find_map(|node| {
+        match_ast! {
+            match (node) {
+                ast::BinExpr(expr) => {
+                    if expr.op_kind()?.is_assignment() {
+                        // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).
+                        // FIXME: This is not terribly accurate.
+                        if let Some(lhs) = expr.lhs() {
+                            if lhs.syntax().text_range().end() == name_ref.syntax().text_range().end() {
+                                return Some(ReferenceAccess::Write);
+                            }
+                        }
+                    }
+                    return Some(ReferenceAccess::Read);
+                },
+                _ => {None}
+            }
+        }
+    });
+
+    // Default Locals and Fields to read
+    mode.or(Some(ReferenceAccess::Read))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
-        Reference, ReferenceKind, ReferenceSearchResult, SearchScope,
+        Declaration, Reference, ReferenceSearchResult, SearchScope,
     };
 
     #[test]
@@ -234,8 +321,7 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15)",
-            ReferenceKind::Other,
+            "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15) Other",
             &["FileId(1) [142; 145) StructLiteral"],
         );
     }
@@ -258,13 +344,12 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [33; 34)",
-            ReferenceKind::Other,
+            "i BIND_PAT FileId(1) [33; 34) Other Write",
             &[
-                "FileId(1) [67; 68) Other",
-                "FileId(1) [71; 72) Other",
-                "FileId(1) [101; 102) Other",
-                "FileId(1) [127; 128) Other",
+                "FileId(1) [67; 68) Other Write",
+                "FileId(1) [71; 72) Other Read",
+                "FileId(1) [101; 102) Other Write",
+                "FileId(1) [127; 128) Other Write",
             ],
         );
     }
@@ -279,9 +364,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [12; 13)",
-            ReferenceKind::Other,
-            &["FileId(1) [38; 39) Other"],
+            "i BIND_PAT FileId(1) [12; 13) Other",
+            &["FileId(1) [38; 39) Other Read"],
         );
     }
 
@@ -295,9 +379,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [12; 13)",
-            ReferenceKind::Other,
-            &["FileId(1) [38; 39) Other"],
+            "i BIND_PAT FileId(1) [12; 13) Other",
+            &["FileId(1) [38; 39) Other Read"],
         );
     }
 
@@ -317,9 +400,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "spam RECORD_FIELD_DEF FileId(1) [66; 79) [70; 74)",
-            ReferenceKind::Other,
-            &["FileId(1) [152; 156) Other"],
+            "spam RECORD_FIELD_DEF FileId(1) [66; 79) [70; 74) Other",
+            &["FileId(1) [152; 156) Other Read"],
         );
     }
 
@@ -334,7 +416,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        check_result(refs, "f FN_DEF FileId(1) [88; 104) [91; 92)", ReferenceKind::Other, &[]);
+        check_result(refs, "f FN_DEF FileId(1) [88; 104) [91; 92) Other", &[]);
     }
 
     #[test]
@@ -349,7 +431,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        check_result(refs, "B ENUM_VARIANT FileId(1) [83; 84) [83; 84)", ReferenceKind::Other, &[]);
+        check_result(refs, "B ENUM_VARIANT FileId(1) [83; 84) [83; 84) Other", &[]);
     }
 
     #[test]
@@ -390,8 +472,7 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) [16; 50) [27; 30)",
-            ReferenceKind::Other,
+            "Foo STRUCT_DEF FileId(2) [16; 50) [27; 30) Other",
             &["FileId(1) [52; 55) StructLiteral", "FileId(3) [77; 80) StructLiteral"],
         );
     }
@@ -421,8 +502,7 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "foo SOURCE_FILE FileId(2) [0; 35)",
-            ReferenceKind::Other,
+            "foo SOURCE_FILE FileId(2) [0; 35) Other",
             &["FileId(1) [13; 16) Other"],
         );
     }
@@ -451,8 +531,7 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(3) [0; 41) [18; 21)",
-            ReferenceKind::Other,
+            "Foo STRUCT_DEF FileId(3) [0; 41) [18; 21) Other",
             &["FileId(2) [20; 23) Other", "FileId(2) [46; 49) StructLiteral"],
         );
     }
@@ -480,8 +559,7 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) [18; 34) [25; 29)",
-            ReferenceKind::Other,
+            "quux FN_DEF FileId(1) [18; 34) [25; 29) Other",
             &["FileId(2) [16; 20) Other", "FileId(3) [16; 20) Other"],
         );
 
@@ -489,8 +567,7 @@ mod tests {
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) [18; 34) [25; 29)",
-            ReferenceKind::Other,
+            "quux FN_DEF FileId(1) [18; 34) [25; 29) Other",
             &["FileId(3) [16; 20) Other"],
         );
     }
@@ -509,9 +586,60 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "m1 MACRO_CALL FileId(1) [9; 63) [46; 48)",
-            ReferenceKind::Other,
+            "m1 MACRO_CALL FileId(1) [9; 63) [46; 48) Other",
             &["FileId(1) [96; 98) Other", "FileId(1) [114; 116) Other"],
+        );
+    }
+
+    #[test]
+    fn test_basic_highlight_read_write() {
+        let code = r#"
+        fn foo() {
+            let i<|> = 0;
+            i = i + 1;
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [36; 37) Other Write",
+            &["FileId(1) [55; 56) Other Write", "FileId(1) [59; 60) Other Read"],
+        );
+    }
+
+    #[test]
+    fn test_basic_highlight_field_read_write() {
+        let code = r#"
+        struct S {
+            f: u32,
+        }
+
+        fn foo() {
+            let mut s = S{f: 0};
+            s.f<|> = 0;
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "f RECORD_FIELD_DEF FileId(1) [32; 38) [32; 33) Other",
+            &["FileId(1) [96; 97) Other Read", "FileId(1) [117; 118) Other Write"],
+        );
+    }
+
+    #[test]
+    fn test_basic_highlight_decl_no_write() {
+        let code = r#"
+        fn foo() {
+            let i<|>;
+            i = 1;
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [36; 37) Other",
+            &["FileId(1) [51; 52) Other Write"],
         );
     }
 
@@ -520,22 +648,37 @@ mod tests {
         analysis.find_all_refs(position, None).unwrap().unwrap()
     }
 
-    fn check_result(
-        res: ReferenceSearchResult,
-        expected_decl: &str,
-        decl_kind: ReferenceKind,
-        expected_refs: &[&str],
-    ) {
+    fn check_result(res: ReferenceSearchResult, expected_decl: &str, expected_refs: &[&str]) {
         res.declaration().assert_match(expected_decl);
-        assert_eq!(res.declaration_kind, decl_kind);
-
         assert_eq!(res.references.len(), expected_refs.len());
         res.references().iter().enumerate().for_each(|(i, r)| r.assert_match(expected_refs[i]));
     }
 
+    impl Declaration {
+        fn debug_render(&self) -> String {
+            let mut s = format!("{} {:?}", self.nav.debug_render(), self.kind);
+            if let Some(access) = self.access {
+                s.push_str(&format!(" {:?}", access));
+            }
+            s
+        }
+
+        fn assert_match(&self, expected: &str) {
+            let actual = self.debug_render();
+            test_utils::assert_eq_text!(expected.trim(), actual.trim(),);
+        }
+    }
+
     impl Reference {
         fn debug_render(&self) -> String {
-            format!("{:?} {:?} {:?}", self.file_range.file_id, self.file_range.range, self.kind)
+            let mut s = format!(
+                "{:?} {:?} {:?}",
+                self.file_range.file_id, self.file_range.range, self.kind
+            );
+            if let Some(access) = self.access {
+                s.push_str(&format!(" {:?}", access));
+            }
+            s
         }
 
         fn assert_match(&self, expected: &str) {
