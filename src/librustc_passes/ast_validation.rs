@@ -24,6 +24,24 @@ use syntax::walk_list;
 
 use rustc_error_codes::*;
 
+/// A syntactic context that disallows certain kinds of bounds (e.g., `?Trait` or `?const Trait`).
+#[derive(Clone, Copy)]
+enum BoundContext {
+    ImplTrait,
+    TraitBounds,
+    TraitObject,
+}
+
+impl BoundContext {
+    fn description(&self) -> &'static str {
+        match self {
+            Self::ImplTrait => "`impl Trait`",
+            Self::TraitBounds => "supertraits",
+            Self::TraitObject => "trait objects",
+        }
+    }
+}
+
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,
@@ -32,6 +50,12 @@ struct AstValidator<'a> {
     /// Nested `impl Trait` _is_ allowed in associated type position,
     /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<Span>,
+
+    /// Keeps track of the `BoundContext` as we recurse.
+    ///
+    /// This is used to forbid `?const Trait` bounds in, e.g.,
+    /// `impl Iterator<Item = Box<dyn ?const Trait>`.
+    bound_context: Option<BoundContext>,
 
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
@@ -59,8 +83,18 @@ impl<'a> AstValidator<'a> {
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
-        f(self);
+        if outer.is_some() {
+            self.with_bound_context(BoundContext::ImplTrait, |this| f(this));
+        } else {
+            f(self)
+        }
         self.outer_impl_trait = old;
+    }
+
+    fn with_bound_context(&mut self, ctx: BoundContext, f: impl FnOnce(&mut Self)) {
+        let old = self.bound_context.replace(ctx);
+        f(self);
+        self.bound_context = old;
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
@@ -83,6 +117,9 @@ impl<'a> AstValidator<'a> {
         match t.kind {
             TyKind::ImplTrait(..) => {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
+            }
+            TyKind::TraitObject(..) => {
+                self.with_bound_context(BoundContext::TraitObject, |this| visit::walk_ty(this, t));
             }
             TyKind::Path(ref qself, ref path) => {
                 // We allow these:
@@ -192,6 +229,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    // FIXME(ecstaticmorse): Instead, use `bound_context` to check this in `visit_param_bound`.
     fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
             if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
@@ -697,6 +735,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
+
+                // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
+                // context for the supertraits.
+                self.visit_vis(&item.vis);
+                self.visit_ident(item.ident);
+                self.visit_generics(generics);
+                self.with_bound_context(BoundContext::TraitBounds, |this| {
+                    walk_list!(this, visit_param_bound, bounds);
+                });
+                walk_list!(self, visit_trait_item, trait_items);
+                walk_list!(self, visit_attribute, &item.attrs);
+                return;
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
@@ -841,6 +891,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_generic_param(self, param);
     }
 
+    fn visit_param_bound(&mut self, bound: &'a GenericBound) {
+        if let GenericBound::Trait(poly, maybe_bound) = bound {
+            match poly.trait_ref.constness {
+                Some(Constness::NotConst) => {
+                    if *maybe_bound == TraitBoundModifier::Maybe {
+                        self.err_handler()
+                            .span_err(bound.span(), "`?const` and `?` are mutually exclusive");
+                    }
+
+                    if let Some(ctx) = self.bound_context {
+                        let msg = format!("`?const` is not permitted in {}", ctx.description());
+                        self.err_handler().span_err(bound.span(), &msg);
+                    }
+                }
+
+                Some(Constness::Const) => bug!("Parser should reject bare `const` on bounds"),
+                None => {}
+            }
+        }
+
+        visit::walk_param_bound(self, bound)
+    }
+
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.kind {
             PatKind::Lit(ref expr) => {
@@ -949,6 +1022,7 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut lint::LintBuffe
         session,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
+        bound_context: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
         lint_buffer: lints,
