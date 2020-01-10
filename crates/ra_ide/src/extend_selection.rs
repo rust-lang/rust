@@ -171,14 +171,11 @@ fn extend_tokens_from_range(
     }
 }
 
-fn skip_whitespace(
-    mut token: SyntaxToken,
-    direction: Direction,
-) -> Option<SyntaxToken> {
+fn skip_whitespace(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
     while token.kind() == WHITESPACE {
         token = match direction {
             Direction::Next => token.next_token()?,
-            Direction::Prev =>  token.prev_token()?,
+            Direction::Prev => token.prev_token()?,
         }
     }
     Some(token)
