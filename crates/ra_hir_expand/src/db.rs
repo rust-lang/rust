@@ -178,6 +178,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> Fragmen
 
     match parent.kind() {
         MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
+        ITEM_LIST => FragmentKind::Items,
         LET_STMT => {
             // FIXME: Handle Pattern
             FragmentKind::Expr
@@ -188,7 +189,28 @@ fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> Fragmen
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
         PAREN_EXPR => FragmentKind::Expr,
-        ITEM_LIST => FragmentKind::Items,
+
+        // FIXME: Add tests for following cases in hir_ty
+        FOR_EXPR => FragmentKind::Expr,
+        PATH_EXPR => FragmentKind::Expr,
+        LAMBDA_EXPR => FragmentKind::Expr,
+        CONDITION => FragmentKind::Expr,
+        BREAK_EXPR => FragmentKind::Expr,
+        RETURN_EXPR => FragmentKind::Expr,
+        BLOCK_EXPR => FragmentKind::Expr,
+        MATCH_EXPR => FragmentKind::Expr,
+        MATCH_ARM => FragmentKind::Expr,
+        MATCH_GUARD => FragmentKind::Expr,
+        RECORD_FIELD => FragmentKind::Expr,
+        CALL_EXPR => FragmentKind::Expr,
+        INDEX_EXPR => FragmentKind::Expr,
+        METHOD_CALL_EXPR => FragmentKind::Expr,
+        AWAIT_EXPR => FragmentKind::Expr,
+        CAST_EXPR => FragmentKind::Expr,
+        REF_EXPR => FragmentKind::Expr,
+        PREFIX_EXPR => FragmentKind::Expr,
+        RANGE_EXPR => FragmentKind::Expr,
+        BIN_EXPR => FragmentKind::Expr,
         _ => {
             // Unknown , Just guess it is `Items`
             FragmentKind::Items
