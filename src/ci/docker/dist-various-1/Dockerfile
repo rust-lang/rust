@@ -2,11 +2,24 @@ FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
+  automake \
+  bison \
+  bzip2 \
+  flex \
+  help2man \
+  libtool-bin \
+  texinfo \
+  unzip \
+  wget \
+  xz-utils \
+  libncurses-dev \
+  gawk \
   make \
   file \
   curl \
   ca-certificates \
   python2.7 \
+  python3 \
   git \
   cmake \
   sudo \
@@ -34,6 +47,18 @@ WORKDIR /build
 RUN add-apt-repository ppa:team-gcc-arm-embedded/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends gcc-arm-embedded
+
+COPY scripts/rustbuild-setup.sh dist-various-1/build-riscv-toolchain.sh dist-various-1/riscv64-unknown-linux-gnu.config dist-various-1/crosstool-ng.sh /build/
+RUN ./crosstool-ng.sh
+
+# Crosstool-ng will refuse to build as root
+RUN sh ./rustbuild-setup.sh
+USER rustbuild
+
+RUN ./build-riscv-toolchain.sh
+
+USER root
+ENV PATH=/x-tools/riscv64-unknown-linux-gnu/bin:$PATH
 
 COPY dist-various-1/build-rumprun.sh /build
 RUN ./build-rumprun.sh
@@ -129,6 +154,7 @@ ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64gc-unknown-none-elf
+ENV TARGETS=$TARGETS,riscv64gc-unknown-linux-gnu
 ENV TARGETS=$TARGETS,armebv7r-none-eabi
 ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
@@ -147,6 +173,9 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ \
+    CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
+    AR_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
+    CXX_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++ \
     CC_riscv32i_unknown_none_elf=false \
     CC_riscv32imc_unknown_none_elf=false \
     CC_riscv32imac_unknown_none_elf=false \
