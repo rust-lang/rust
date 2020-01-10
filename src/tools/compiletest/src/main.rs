@@ -1,6 +1,8 @@
 #![crate_name = "compiletest"]
-#![feature(test)]
 #![deny(warnings)]
+// The `test` crate is the only unstable feature
+// allowed here, just to share similar code.
+#![feature(test)]
 
 extern crate test;
 
