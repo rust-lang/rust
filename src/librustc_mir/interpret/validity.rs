@@ -16,7 +16,7 @@ use rustc_span::symbol::{sym, Symbol};
 use std::hash::Hash;
 
 use super::{
-    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, Scalar,
+    CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
     ValueVisitor,
 };
 
@@ -246,13 +246,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
 
     fn check_wide_ptr_meta(
         &mut self,
-        meta: Option<Scalar<M::PointerTag>>,
+        meta: MemPlaceMeta<M::PointerTag>,
         pointee: TyLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {
             ty::Dynamic(..) => {
-                let vtable = meta.unwrap();
+                let vtable = meta.unwrap_meta();
                 try_validation!(
                     self.ecx.memory.check_ptr_access(
                         vtable,
@@ -276,7 +276,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
-                    meta.unwrap().to_machine_usize(self.ecx),
+                    meta.unwrap_meta().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer",
                     self.path
                 );
@@ -571,7 +571,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind {
             ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are never immediate
+                let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 try_validation!(
                     self.ecx.read_str(mplace),
                     "uninitialized or non-UTF-8 data in str",
@@ -599,15 +599,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             {
                 // Optimized handling for arrays of integer/float type.
 
-                // bailing out for zsts is ok, since the array element type can only be int/float
-                if op.layout.is_zst() {
-                    return Ok(());
-                }
-                // non-ZST array cannot be immediate, slices are never immediate
-                let mplace = op.assert_mem_place();
+                // Arrays cannot be immediate, slices are never immediate.
+                let mplace = op.assert_mem_place(self.ecx);
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
-                // zero length slices have nothing to be checked
+                // Zero length slices have nothing to be checked.
                 if len == 0 {
                     return Ok(());
                 }

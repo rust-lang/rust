@@ -707,7 +707,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 ScalarMaybeUndef::Scalar(r),
             )) => l.is_bits() && r.is_bits(),
             interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
-                intern_const_alloc_recursive(&mut self.ecx, None, op.assert_mem_place())
+                let mplace = op.assert_mem_place(&self.ecx);
+                intern_const_alloc_recursive(&mut self.ecx, None, mplace)
                     .expect("failed to intern alloc");
                 true
             }

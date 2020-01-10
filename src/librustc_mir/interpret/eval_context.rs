@@ -20,7 +20,7 @@ use rustc_macros::HashStable;
 use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
-    Immediate, MPlaceTy, Machine, MemPlace, Memory, OpTy, Operand, Place, PlaceTy,
+    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
     ScalarMaybeUndef, StackPopInfo,
 };
 
@@ -393,7 +393,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: Option<Scalar<M::PointerTag>>,
+        metadata: MemPlaceMeta<M::PointerTag>,
         layout: TyLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
@@ -465,14 +465,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.expect("dyn trait fat ptr must have vtable");
+                let vtable = metadata.unwrap_meta();
                 // Read size and align from vtable (already checks size).
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
-                let len =
-                    metadata.expect("slice fat ptr must have length").to_machine_usize(self)?;
+                let len = metadata.unwrap_meta().to_machine_usize(self)?;
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
@@ -818,8 +817,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 " by align({}){} ref:",
                                 mplace.align.bytes(),
                                 match mplace.meta {
-                                    Some(meta) => format!(" meta({:?})", meta),
-                                    None => String::new(),
+                                    MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
+                                    MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
                                 }
                             )
                             .unwrap();
