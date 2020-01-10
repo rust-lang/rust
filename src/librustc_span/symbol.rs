@@ -219,6 +219,8 @@ symbols! {
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_transmute,
+        const_trait_bound_opt_out,
+        const_trait_impl,
         contents,
         context,
         convert,

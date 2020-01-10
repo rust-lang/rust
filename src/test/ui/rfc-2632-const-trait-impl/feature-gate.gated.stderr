@@ -1,0 +1,8 @@
+error: const trait impls are not yet implemented
+  --> $DIR/feature-gate.rs:9:1
+   |
+LL | impl const T for S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
