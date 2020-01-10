@@ -4,10 +4,10 @@ set -e
 
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo build --release $CG_CLIF_COMPILE_FLAGS
+    CARGO_INCREMENTAL=1 cargo build --release
 else
     export CHANNEL='debug'
-    cargo build $CG_CLIF_COMPILE_FLAGS
+    cargo build
 fi
 
 source config.sh

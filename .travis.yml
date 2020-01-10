@@ -21,6 +21,3 @@ env:
     - RUST_BACKTRACE=1
     # Reduce amount of benchmark runs as they are slow.
     - COMPILE_RUNS=2 RUN_RUNS=2
-  jobs:
-    - "CG_CLIF_COMPILE_FLAGS="
-    - "CG_CLIF_COMPILE_FLAGS='--features backend_object'"

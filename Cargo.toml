@@ -7,19 +7,13 @@ edition = "2018"
 [lib]
 crate-type = ["dylib"]
 
-[features]
-default = ["backend_object"]
-backend_object = ["object/write", "cranelift-object"]
-
 [dependencies]
 # These have to be in sync with each other
 cranelift-codegen = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
 cranelift-module = { git = "https://github.com/bytecodealliance/cranelift/" }
-cranelift-faerie = { git = "https://github.com/bytecodealliance/cranelift/" }
-cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/", optional = true }
+cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/" }
 target-lexicon = "0.10.0"
-faerie = "0.14.0"
 
 #goblin = "0.0.17"
 ar = "0.8.0"
@@ -30,7 +24,7 @@ indexmap = "1.0.2"
 [dependencies.object]
 version = "0.17.0"
 default-features = false
-features = ["compression", "read", "std"] # We don't need WASM support
+features = ["compression", "read", "std", "write"] # We don't need WASM support
 
 [dependencies.gimli]
 version = "0.19.0"
@@ -43,7 +37,6 @@ features = ["write"] # We don't need read support
 #cranelift-frontend = { path = "../cranelift/cranelift-frontend", default-features = false, features = ["std"] }
 #cranelift-module = { path = "../cranelift/cranelift-module" }
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
-#cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
 #cranelift-object = { path = "../cranelift/cranelift-object" }
 
 #[patch.crates-io]
