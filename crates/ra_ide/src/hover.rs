@@ -128,7 +128,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<S
             hir::ModuleDef::TypeAlias(it) => from_def_source(db, it),
             hir::ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Local(_) => None,
+        Local(it) => Some(rust_code_markup(it.ty(db).display_truncated(db, None).to_string())),
         TypeParam(_) | SelfType(_) => {
             // FIXME: Hover for generic param
             None
@@ -174,6 +174,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         .value
         .ancestors()
         .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+
+    // The following logic will not work if token is coming from a macro
     let frange = FileRange { file_id: position.file_id, range: node.text_range() };
     res.extend(type_of(db, frange).map(rust_code_markup));
     if res.is_empty() {
@@ -727,6 +729,22 @@ fn func(foo: i32) { if true { <|>foo; }; }
             }
             ",
             &["fn foo()"],
+        );
+    }
+
+    #[test]
+    fn test_hover_through_expr_in_macro() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            macro_rules! id {
+                ($($tt:tt)*) => { $($tt)* }
+            }
+            fn foo(bar:u32) {
+                let a = id!(ba<|>r);
+            }            
+            ",
+            &["u32"],
         );
     }
 }
