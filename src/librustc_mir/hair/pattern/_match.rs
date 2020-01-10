@@ -229,6 +229,7 @@ use self::SliceKind::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 
@@ -243,7 +244,6 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
-use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
 
 use rustc_span::{Span, DUMMY_SP};

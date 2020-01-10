@@ -1,0 +1,18 @@
+error: expected `fn`, found `PUT_ANYTHING_YOU_WANT_HERE`
+  --> $DIR/issue-68062-const-extern-fns-dont-need-fn-specifier.rs:5:25
+   |
+LL |     const extern "Rust" PUT_ANYTHING_YOU_WANT_HERE bug() -> usize { 1 }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `fn`
+
+error[E0658]: `const extern fn` definitions are unstable
+  --> $DIR/issue-68062-const-extern-fns-dont-need-fn-specifier.rs:5:5
+   |
+LL |     const extern "Rust" PUT_ANYTHING_YOU_WANT_HERE bug() -> usize { 1 }
+   |     ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64926
+   = help: add `#![feature(const_extern_fn)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

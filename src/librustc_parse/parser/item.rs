@@ -5,7 +5,7 @@ use crate::maybe_whole;
 
 use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
-use rustc_span::source_map::{self, respan, Span};
+use rustc_span::source_map::{self, respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::BytePos;
 use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
                     self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
                 }
                 let ext = self.parse_extern()?;
-                self.bump(); // `fn`
+                self.expect_keyword(kw::Fn)?;
 
                 let header = FnHeader {
                     unsafety,
@@ -542,10 +542,11 @@ impl<'a> Parser<'a> {
     ///    impl<'a, T> TYPE { /* impl items */ }
     ///    impl<'a, T> TRAIT for TYPE { /* impl items */ }
     ///    impl<'a, T> !TRAIT for TYPE { /* impl items */ }
+    ///    impl<'a, T> const TRAIT for TYPE { /* impl items */ }
     ///
     /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
-    ///     `impl` GENERICS `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
-    ///     `impl` GENERICS `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
+    ///   `impl` GENERICS `const`? `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
+    ///   `impl` GENERICS `const`? `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
     fn parse_item_impl(
         &mut self,
         unsafety: Unsafety,
@@ -555,7 +556,19 @@ impl<'a> Parser<'a> {
         let mut generics = if self.choose_generics_over_qpath() {
             self.parse_generics()?
         } else {
-            Generics::default()
+            let mut generics = Generics::default();
+            // impl A for B {}
+            //    /\ this is where `generics.span` should point when there are no type params.
+            generics.span = self.prev_span.shrink_to_hi();
+            generics
+        };
+
+        let constness = if self.eat_keyword(kw::Const) {
+            let span = self.prev_span;
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            Some(respan(span, Constness::Const))
+        } else {
+            None
         };
 
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
@@ -618,7 +631,8 @@ impl<'a> Parser<'a> {
                         err_path(ty_first.span)
                     }
                 };
-                let trait_ref = TraitRef { path, ref_id: ty_first.id };
+                let constness = constness.map(|c| c.node);
+                let trait_ref = TraitRef { path, constness, ref_id: ty_first.id };
 
                 ItemKind::Impl(
                     unsafety,
@@ -631,6 +645,13 @@ impl<'a> Parser<'a> {
                 )
             }
             None => {
+                // Reject `impl const Type {}` here
+                if let Some(Spanned { node: Constness::Const, span }) = constness {
+                    self.struct_span_err(span, "`const` cannot modify an inherent impl")
+                        .help("only a trait impl can be `const`")
+                        .emit();
+                }
+
                 // impl Type
                 ItemKind::Impl(
                     unsafety,

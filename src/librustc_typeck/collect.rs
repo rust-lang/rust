@@ -32,7 +32,7 @@ use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
-use rustc::util::captures::Captures;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -127,7 +127,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
 crate fn placeholder_type_error(
     tcx: TyCtxt<'tcx>,
-    ident_span: Span,
+    span: Span,
     generics: &[hir::GenericParam<'_>],
     placeholder_types: Vec<Span>,
     suggest: bool,
@@ -153,7 +153,14 @@ crate fn placeholder_type_error(
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, type_name.to_string())).collect();
     if generics.is_empty() {
-        sugg.push((ident_span.shrink_to_hi(), format!("<{}>", type_name)));
+        sugg.push((span, format!("<{}>", type_name)));
+    } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
+        hir::ParamName::Plain(Ident { name: kw::Underscore, .. }) => true,
+        _ => false,
+    }) {
+        // Account for `_` already present in cases like `struct S<_>(_);` and suggest
+        // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
+        sugg.push((arg.span, format!("{}", type_name)));
     } else {
         sugg.push((
             generics.iter().last().unwrap().span.shrink_to_hi(),
@@ -175,8 +182,12 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let (generics, suggest) = match &item.kind {
         hir::ItemKind::Union(_, generics)
         | hir::ItemKind::Enum(_, generics)
-        | hir::ItemKind::Struct(_, generics) => (&generics.params[..], true),
-        hir::ItemKind::TyAlias(_, generics) => (&generics.params[..], false),
+        | hir::ItemKind::TraitAlias(generics, _)
+        | hir::ItemKind::Trait(_, _, generics, ..)
+        | hir::ItemKind::Impl(_, _, _, generics, ..)
+        | hir::ItemKind::Struct(_, generics) => (generics, true),
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. })
+        | hir::ItemKind::TyAlias(_, generics) => (generics, false),
         // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
     };
@@ -184,7 +195,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(tcx, item.ident.span, generics, visitor.0, suggest);
+    placeholder_type_error(tcx, generics.span, &generics.params[..], visitor.0, suggest);
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -1798,10 +1809,19 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 /// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
 /// use inference to provide suggestions for the appropriate type if possible.
 fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
+    use hir::TyKind::*;
     match &ty.kind {
-        hir::TyKind::Infer => true,
-        hir::TyKind::Slice(ty) | hir::TyKind::Array(ty, _) => is_suggestable_infer_ty(ty),
-        hir::TyKind::Tup(tys) => tys.iter().any(|ty| is_suggestable_infer_ty(ty)),
+        Infer => true,
+        Slice(ty) | Array(ty, _) => is_suggestable_infer_ty(ty),
+        Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
+        Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
+        Def(_, generic_args) => generic_args
+            .iter()
+            .filter_map(|arg| match arg {
+                hir::GenericArg::Type(ty) => Some(ty),
+                _ => None,
+            })
+            .any(is_suggestable_infer_ty),
         _ => false,
     }
 }

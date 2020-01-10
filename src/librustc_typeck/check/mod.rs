@@ -114,6 +114,7 @@ use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
     ToPredicate, Ty, TyCtxt, UserType,
 };
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -146,7 +147,6 @@ use crate::lint;
 use crate::require_c_abi_if_c_variadic;
 use crate::session::config::EntryFnType;
 use crate::session::Session;
-use crate::util::captures::Captures;
 use crate::util::common::{indenter, ErrorReported};
 use crate::TypeAndSubsts;
 
@@ -4746,14 +4746,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .join(", ");
                 }
                 Some(Node::Expr(hir::Expr {
-                    kind: ExprKind::Closure(_, _, body_id, closure_span, _),
+                    kind: ExprKind::Closure(_, _, body_id, _, _),
                     span: full_closure_span,
                     ..
                 })) => {
                     if *full_closure_span == expr.span {
                         return false;
                     }
-                    err.span_label(*closure_span, "closure defined here");
                     msg = "call this closure";
                     let body = hir.body(*body_id);
                     sugg_call = body

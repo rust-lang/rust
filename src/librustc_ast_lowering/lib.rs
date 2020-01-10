@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Lowers the AST to the HIR.
 //!
 //! Since the AST and HIR are fairly similar, this is mostly a simple procedure,
@@ -33,21 +31,20 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(array_value_iter)]
+#![feature(crate_visibility_modifier)]
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::hir::map::Map;
 use rustc::lint;
-use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
-use rustc::middle::cstore::CrateStore;
-use rustc::util::captures::Captures;
-use rustc::util::common::FN_OUTPUT_NAME;
+use rustc::lint::builtin;
 use rustc::{bug, span_bug};
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_error_codes::*;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIndex, CRATE_DEF_INDEX};
@@ -58,14 +55,13 @@ use rustc_session::config::nightly_options;
 use rustc_session::node_id::NodeMap;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind, Spanned};
+use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::print::pprust;
-use syntax::ptr::P as AstP;
 use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
@@ -86,6 +82,8 @@ macro_rules! arena_vec {
 
 mod expr;
 mod item;
+mod pat;
+mod path;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -173,7 +171,9 @@ struct LoweringContext<'a, 'hir: 'a> {
 }
 
 pub trait Resolver {
-    fn cstore(&self) -> &dyn CrateStore;
+    fn def_key(&mut self, id: DefId) -> DefKey;
+
+    fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
 
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
@@ -433,10 +433,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
 
-            fn with_hir_id_owner<F, T>(&mut self, owner: Option<NodeId>, f: F) -> T
-            where
-                F: FnOnce(&mut Self) -> T,
-            {
+            fn with_hir_id_owner<T>(
+                &mut self,
+                owner: Option<NodeId>,
+                f: impl FnOnce(&mut Self) -> T,
+            ) -> T {
                 let old = mem::replace(&mut self.hir_id_owner, owner);
                 let r = f(self);
                 self.hir_id_owner = old;
@@ -444,7 +445,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        impl<'tcx, 'lowering, 'hir> Visitor<'tcx> for MiscCollector<'tcx, 'lowering, 'hir> {
+        impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
             fn visit_pat(&mut self, p: &'tcx Pat) {
                 if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node
@@ -577,10 +578,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lowered
     }
 
-    fn lower_node_id_generic<F>(&mut self, ast_node_id: NodeId, alloc_hir_id: F) -> hir::HirId
-    where
-        F: FnOnce(&mut Self) -> hir::HirId,
-    {
+    fn lower_node_id_generic(
+        &mut self,
+        ast_node_id: NodeId,
+        alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
+    ) -> hir::HirId {
         if ast_node_id == DUMMY_NODE_ID {
             return hir::DUMMY_HIR_ID;
         }
@@ -604,10 +606,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn with_hir_id_owner<F, T>(&mut self, owner: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_hir_id_owner<T>(&mut self, owner: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let counter = self
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
@@ -736,15 +735,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
     /// parameter while `f` is running (and restored afterwards).
-    fn collect_in_band_defs<T, F>(
+    fn collect_in_band_defs<T>(
         &mut self,
         parent_id: DefId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: F,
-    ) -> (Vec<hir::GenericParam<'hir>>, T)
-    where
-        F: FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
-    {
+        f: impl FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
+    ) -> (Vec<hir::GenericParam<'hir>>, T) {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
         let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
@@ -847,10 +843,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
-    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_in_scope_lifetime_defs<T>(
+        &mut self,
+        params: &[GenericParam],
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => Some(ParamName::Plain(param.ident.modern())),
@@ -870,16 +867,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
     /// parameter while `f` is running (and restored afterwards).
-    fn add_in_band_defs<F, T>(
+    fn add_in_band_defs<T>(
         &mut self,
         generics: &Generics,
         parent_id: DefId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: F,
-    ) -> (hir::Generics<'hir>, T)
-    where
-        F: FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
-    {
+        f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
+    ) -> (hir::Generics<'hir>, T) {
         let (in_band_defs, (mut lowered_generics, res)) =
             self.with_in_scope_lifetime_defs(&generics.params, |this| {
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
@@ -917,10 +911,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         (lowered_generics, res)
     }
 
-    fn with_dyn_type_scope<T, F>(&mut self, in_scope: bool, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_dyn_type = self.is_in_dyn_type;
         self.is_in_dyn_type = in_scope;
 
@@ -931,10 +922,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         result
     }
 
-    fn with_new_scopes<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_new_scopes<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
@@ -947,14 +935,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.is_in_loop_condition = was_in_loop_condition;
 
         ret
-    }
-
-    fn def_key(&mut self, id: DefId) -> DefKey {
-        if id.is_local() {
-            self.resolver.definitions().def_key(id.index)
-        } else {
-            self.resolver.cstore().def_key(id)
-        }
     }
 
     fn lower_attrs(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
@@ -1635,403 +1615,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    fn lower_qpath(
-        &mut self,
-        id: NodeId,
-        qself: &Option<QSelf>,
-        p: &Path,
-        param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> hir::QPath<'hir> {
-        let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
-
-        let partial_res =
-            self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
-
-        let proj_start = p.segments.len() - partial_res.unresolved_segments();
-        let path = self.arena.alloc(hir::Path {
-            res: self.lower_res(partial_res.base_res()),
-            segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
-                |(i, segment)| {
-                    let param_mode = match (qself_position, param_mode) {
-                        (Some(j), ParamMode::Optional) if i < j => {
-                            // This segment is part of the trait path in a
-                            // qualified path - one of `a`, `b` or `Trait`
-                            // in `<X as a::b::Trait>::T::U::method`.
-                            ParamMode::Explicit
-                        }
-                        _ => param_mode,
-                    };
-
-                    // Figure out if this is a type/trait segment,
-                    // which may need lifetime elision performed.
-                    let parent_def_id = |this: &mut Self, def_id: DefId| DefId {
-                        krate: def_id.krate,
-                        index: this.def_key(def_id).parent.expect("missing parent"),
-                    };
-                    let type_def_id = match partial_res.base_res() {
-                        Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
-                            Some(parent_def_id(self, def_id))
-                        }
-                        Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
-                            Some(parent_def_id(self, def_id))
-                        }
-                        Res::Def(DefKind::Struct, def_id)
-                        | Res::Def(DefKind::Union, def_id)
-                        | Res::Def(DefKind::Enum, def_id)
-                        | Res::Def(DefKind::TyAlias, def_id)
-                        | Res::Def(DefKind::Trait, def_id)
-                            if i + 1 == proj_start =>
-                        {
-                            Some(def_id)
-                        }
-                        _ => None,
-                    };
-                    let parenthesized_generic_args = match partial_res.base_res() {
-                        // `a::b::Trait(Args)`
-                        Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            ParenthesizedGenericArgs::Ok
-                        }
-                        // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::Method, _)
-                        | Res::Def(DefKind::AssocConst, _)
-                        | Res::Def(DefKind::AssocTy, _)
-                            if i + 2 == proj_start =>
-                        {
-                            ParenthesizedGenericArgs::Ok
-                        }
-                        // Avoid duplicated errors.
-                        Res::Err => ParenthesizedGenericArgs::Ok,
-                        // An error
-                        _ => ParenthesizedGenericArgs::Err,
-                    };
-
-                    let num_lifetimes = type_def_id.map_or(0, |def_id| {
-                        if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
-                            return n;
-                        }
-                        assert!(!def_id.is_local());
-                        let item_generics = self
-                            .resolver
-                            .cstore()
-                            .item_generics_cloned_untracked(def_id, self.sess);
-                        let n = item_generics.own_counts().lifetimes;
-                        self.type_def_lifetime_params.insert(def_id, n);
-                        n
-                    });
-                    self.lower_path_segment(
-                        p.span,
-                        segment,
-                        param_mode,
-                        num_lifetimes,
-                        parenthesized_generic_args,
-                        itctx.reborrow(),
-                        None,
-                    )
-                },
-            )),
-            span: p.span,
-        });
-
-        // Simple case, either no projections, or only fully-qualified.
-        // E.g., `std::mem::size_of` or `<I as Iterator>::Item`.
-        if partial_res.unresolved_segments() == 0 {
-            return hir::QPath::Resolved(qself, path);
-        }
-
-        // Create the innermost type that we're projecting from.
-        let mut ty = if path.segments.is_empty() {
-            // If the base path is empty that means there exists a
-            // syntactical `Self`, e.g., `&i32` in `<&i32>::clone`.
-            qself.expect("missing QSelf for <T>::...")
-        } else {
-            // Otherwise, the base path is an implicit `Self` type path,
-            // e.g., `Vec` in `Vec::new` or `<I as Iterator>::Item` in
-            // `<I as Iterator>::Item::default`.
-            let new_id = self.next_id();
-            self.arena.alloc(self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path)))
-        };
-
-        // Anything after the base path are associated "extensions",
-        // out of which all but the last one are associated types,
-        // e.g., for `std::vec::Vec::<T>::IntoIter::Item::clone`:
-        // * base path is `std::vec::Vec<T>`
-        // * "extensions" are `IntoIter`, `Item` and `clone`
-        // * type nodes are:
-        //   1. `std::vec::Vec<T>` (created above)
-        //   2. `<std::vec::Vec<T>>::IntoIter`
-        //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
-        // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
-        for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
-            let segment = self.arena.alloc(self.lower_path_segment(
-                p.span,
-                segment,
-                param_mode,
-                0,
-                ParenthesizedGenericArgs::Err,
-                itctx.reborrow(),
-                None,
-            ));
-            let qpath = hir::QPath::TypeRelative(ty, segment);
-
-            // It's finished, return the extension of the right node type.
-            if i == p.segments.len() - 1 {
-                return qpath;
-            }
-
-            // Wrap the associated extension in another type node.
-            let new_id = self.next_id();
-            ty = self.arena.alloc(self.ty_path(new_id, p.span, qpath));
-        }
-
-        // We should've returned in the for loop above.
-        span_bug!(
-            p.span,
-            "lower_qpath: no final extension segment in {}..{}",
-            proj_start,
-            p.segments.len()
-        )
-    }
-
-    fn lower_path_extra(
-        &mut self,
-        res: Res,
-        p: &Path,
-        param_mode: ParamMode,
-        explicit_owner: Option<NodeId>,
-    ) -> &'hir hir::Path<'hir> {
-        self.arena.alloc(hir::Path {
-            res,
-            segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
-                self.lower_path_segment(
-                    p.span,
-                    segment,
-                    param_mode,
-                    0,
-                    ParenthesizedGenericArgs::Err,
-                    ImplTraitContext::disallowed(),
-                    explicit_owner,
-                )
-            })),
-            span: p.span,
-        })
-    }
-
-    fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> &'hir hir::Path<'hir> {
-        let res = self.expect_full_res(id);
-        let res = self.lower_res(res);
-        self.lower_path_extra(res, p, param_mode, None)
-    }
-
-    fn lower_path_segment(
-        &mut self,
-        path_span: Span,
-        segment: &PathSegment,
-        param_mode: ParamMode,
-        expected_lifetimes: usize,
-        parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext<'_, 'hir>,
-        explicit_owner: Option<NodeId>,
-    ) -> hir::PathSegment<'hir> {
-        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
-            match **generic_args {
-                GenericArgs::AngleBracketed(ref data) => {
-                    self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
-                }
-                GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
-                    ParenthesizedGenericArgs::Err => {
-                        let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
-                        err.span_label(data.span, "only `Fn` traits may use parentheses");
-                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
-                            // Do not suggest going from `Trait()` to `Trait<>`
-                            if data.inputs.len() > 0 {
-                                if let Some(split) = snippet.find('(') {
-                                    let trait_name = &snippet[0..split];
-                                    let args = &snippet[split + 1..snippet.len() - 1];
-                                    err.span_suggestion(
-                                        data.span,
-                                        "use angle brackets instead",
-                                        format!("{}<{}>", trait_name, args),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                            }
-                        };
-                        err.emit();
-                        (
-                            self.lower_angle_bracketed_parameter_data(
-                                &data.as_angle_bracketed_args(),
-                                param_mode,
-                                itctx,
-                            )
-                            .0,
-                            false,
-                        )
-                    }
-                },
-            }
-        } else {
-            self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode, itctx)
-        };
-
-        let has_lifetimes = generic_args.args.iter().any(|arg| match arg {
-            GenericArg::Lifetime(_) => true,
-            _ => false,
-        });
-        let first_generic_span = generic_args
-            .args
-            .iter()
-            .map(|a| a.span())
-            .chain(generic_args.bindings.iter().map(|b| b.span))
-            .next();
-        if !generic_args.parenthesized && !has_lifetimes {
-            generic_args.args = self
-                .elided_path_lifetimes(path_span, expected_lifetimes)
-                .map(|lt| GenericArg::Lifetime(lt))
-                .chain(generic_args.args.into_iter())
-                .collect();
-            if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {
-                let anon_lt_suggestion = vec!["'_"; expected_lifetimes].join(", ");
-                let no_non_lt_args = generic_args.args.len() == expected_lifetimes;
-                let no_bindings = generic_args.bindings.is_empty();
-                let (incl_angl_brckt, insertion_sp, suggestion) = if no_non_lt_args && no_bindings {
-                    // If there are no (non-implicit) generic args or associated type
-                    // bindings, our suggestion includes the angle brackets.
-                    (true, path_span.shrink_to_hi(), format!("<{}>", anon_lt_suggestion))
-                } else {
-                    // Otherwise (sorry, this is kind of gross) we need to infer the
-                    // place to splice in the `'_, ` from the generics that do exist.
-                    let first_generic_span = first_generic_span
-                        .expect("already checked that non-lifetime args or bindings exist");
-                    (false, first_generic_span.shrink_to_lo(), format!("{}, ", anon_lt_suggestion))
-                };
-                match self.anonymous_lifetime_mode {
-                    // In create-parameter mode we error here because we don't want to support
-                    // deprecated impl elision in new features like impl elision and `async fn`,
-                    // both of which work using the `CreateParameter` mode:
-                    //
-                    //     impl Foo for std::cell::Ref<u32> // note lack of '_
-                    //     async fn foo(_: std::cell::Ref<u32>) { ... }
-                    AnonymousLifetimeMode::CreateParameter => {
-                        let mut err = struct_span_err!(
-                            self.sess,
-                            path_span,
-                            E0726,
-                            "implicit elided lifetime not allowed here"
-                        );
-                        crate::lint::builtin::add_elided_lifetime_in_path_suggestion(
-                            &self.sess,
-                            &mut err,
-                            expected_lifetimes,
-                            path_span,
-                            incl_angl_brckt,
-                            insertion_sp,
-                            suggestion,
-                        );
-                        err.emit();
-                    }
-                    AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {
-                        self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                            ELIDED_LIFETIMES_IN_PATHS,
-                            CRATE_NODE_ID,
-                            path_span,
-                            "hidden lifetime parameters in types are deprecated",
-                            builtin::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                                expected_lifetimes,
-                                path_span,
-                                incl_angl_brckt,
-                                insertion_sp,
-                                suggestion,
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-
-        let res = self.expect_full_res(segment.id);
-        let id = if let Some(owner) = explicit_owner {
-            self.lower_node_id_with_owner(segment.id, owner)
-        } else {
-            self.lower_node_id(segment.id)
-        };
-        debug!(
-            "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
-            segment.ident, segment.id, id,
-        );
-
-        hir::PathSegment {
-            ident: segment.ident,
-            hir_id: Some(id),
-            res: Some(self.lower_res(res)),
-            infer_args,
-            args: if generic_args.is_empty() {
-                None
-            } else {
-                Some(self.arena.alloc(generic_args.into_generic_args(self.arena)))
-            },
-        }
-    }
-
-    fn lower_angle_bracketed_parameter_data(
-        &mut self,
-        data: &AngleBracketedArgs,
-        param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> (GenericArgsCtor<'hir>, bool) {
-        let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
-        let has_non_lt_args = args.iter().any(|arg| match arg {
-            ast::GenericArg::Lifetime(_) => false,
-            ast::GenericArg::Type(_) => true,
-            ast::GenericArg::Const(_) => true,
-        });
-        (
-            GenericArgsCtor {
-                args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-                bindings: self.arena.alloc_from_iter(
-                    constraints.iter().map(|b| self.lower_assoc_ty_constraint(b, itctx.reborrow())),
-                ),
-                parenthesized: false,
-            },
-            !has_non_lt_args && param_mode == ParamMode::Optional,
-        )
-    }
-
-    fn lower_parenthesized_parameter_data(
-        &mut self,
-        data: &ParenthesizedArgs,
-    ) -> (GenericArgsCtor<'hir>, bool) {
-        // Switch to `PassThrough` mode for anonymous lifetimes; this
-        // means that we permit things like `&Ref<T>`, where `Ref` has
-        // a hidden lifetime parameter. This is needed for backwards
-        // compatibility, even in contexts like an impl header where
-        // we generally don't permit such things (see #51008).
-        self.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
-            let &ParenthesizedArgs { ref inputs, ref output, span } = data;
-            let inputs = this.arena.alloc_from_iter(
-                inputs.iter().map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed())),
-            );
-            let output_ty = match output {
-                FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
-                FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
-            };
-            let args = smallvec![GenericArg::Type(this.ty_tup(span, inputs))];
-            let binding = hir::TypeBinding {
-                hir_id: this.next_id(),
-                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                span: output_ty.span,
-                kind: hir::TypeBindingKind::Equality { ty: output_ty },
-            };
-            (
-                GenericArgsCtor { args, bindings: arena_vec![this; binding], parenthesized: true },
-                false,
-            )
-        })
-    }
-
     fn lower_local(&mut self, l: &Local) -> (hir::Local<'hir>, SmallVec<[NodeId; 1]>) {
         let mut ids = SmallVec::<[NodeId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
@@ -2387,12 +1970,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // "<Output = T>"
         let future_params = self.arena.alloc(hir::GenericArgs {
             args: &[],
-            bindings: arena_vec![self; hir::TypeBinding {
-                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                kind: hir::TypeBindingKind::Equality { ty: output_ty },
-                hir_id: self.next_id(),
-                span,
-            }],
+            bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
             parenthesized: false,
         });
 
@@ -2579,6 +2157,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::PolyTraitRef<'hir> {
+        if p.trait_ref.constness.is_some() {
+            self.diagnostic().span_err(p.span, "`?const` on trait bounds is not yet implemented");
+        }
+
         let bound_generic_params = self.lower_generic_params(
             &p.bound_generic_params,
             &NodeMap::default(),
@@ -2648,250 +2230,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block, AttrVec::new())
     }
 
-    fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
-        let node = match p.kind {
-            PatKind::Wild => hir::PatKind::Wild,
-            PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
-                let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
-                node
-            }
-            PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-            PatKind::TupleStruct(ref path, ref pats) => {
-                let qpath = self.lower_qpath(
-                    p.id,
-                    &None,
-                    path,
-                    ParamMode::Optional,
-                    ImplTraitContext::disallowed(),
-                );
-                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
-                hir::PatKind::TupleStruct(qpath, pats, ddpos)
-            }
-            PatKind::Or(ref pats) => {
-                hir::PatKind::Or(self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat(x))))
-            }
-            PatKind::Path(ref qself, ref path) => {
-                let qpath = self.lower_qpath(
-                    p.id,
-                    qself,
-                    path,
-                    ParamMode::Optional,
-                    ImplTraitContext::disallowed(),
-                );
-                hir::PatKind::Path(qpath)
-            }
-            PatKind::Struct(ref path, ref fields, etc) => {
-                let qpath = self.lower_qpath(
-                    p.id,
-                    &None,
-                    path,
-                    ParamMode::Optional,
-                    ImplTraitContext::disallowed(),
-                );
-
-                let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
-                    hir_id: self.next_id(),
-                    ident: f.ident,
-                    pat: self.lower_pat(&f.pat),
-                    is_shorthand: f.is_shorthand,
-                    span: f.span,
-                }));
-                hir::PatKind::Struct(qpath, fs, etc)
-            }
-            PatKind::Tuple(ref pats) => {
-                let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
-                hir::PatKind::Tuple(pats, ddpos)
-            }
-            PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
-            PatKind::Ref(ref inner, mutbl) => hir::PatKind::Ref(self.lower_pat(inner), mutbl),
-            PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
-                self.lower_expr(e1),
-                self.lower_expr(e2),
-                self.lower_range_end(end),
-            ),
-            PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
-            PatKind::Rest => {
-                // If we reach here the `..` pattern is not semantically allowed.
-                self.ban_illegal_rest_pat(p.span)
-            }
-            PatKind::Paren(ref inner) => return self.lower_pat(inner),
-            PatKind::Mac(_) => panic!("Shouldn't exist here"),
-        };
-
-        self.pat_with_node_id_of(p, node)
-    }
-
-    fn lower_pat_tuple(
-        &mut self,
-        pats: &[AstP<Pat>],
-        ctx: &str,
-    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<usize>) {
-        let mut elems = Vec::with_capacity(pats.len());
-        let mut rest = None;
-
-        let mut iter = pats.iter().enumerate();
-        for (idx, pat) in iter.by_ref() {
-            // Interpret the first `..` pattern as a sub-tuple pattern.
-            // Note that unlike for slice patterns,
-            // where `xs @ ..` is a legal sub-slice pattern,
-            // it is not a legal sub-tuple pattern.
-            if pat.is_rest() {
-                rest = Some((idx, pat.span));
-                break;
-            }
-            // It was not a sub-tuple pattern so lower it normally.
-            elems.push(self.lower_pat(pat));
-        }
-
-        for (_, pat) in iter {
-            // There was a previous sub-tuple pattern; make sure we don't allow more...
-            if pat.is_rest() {
-                // ...but there was one again, so error.
-                self.ban_extra_rest_pat(pat.span, rest.unwrap().1, ctx);
-            } else {
-                elems.push(self.lower_pat(pat));
-            }
-        }
-
-        (self.arena.alloc_from_iter(elems), rest.map(|(ddpos, _)| ddpos))
-    }
-
-    /// Lower a slice pattern of form `[pat_0, ..., pat_n]` into
-    /// `hir::PatKind::Slice(before, slice, after)`.
-    ///
-    /// When encountering `($binding_mode $ident @)? ..` (`slice`),
-    /// this is interpreted as a sub-slice pattern semantically.
-    /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind<'hir> {
-        let mut before = Vec::new();
-        let mut after = Vec::new();
-        let mut slice = None;
-        let mut prev_rest_span = None;
-
-        let mut iter = pats.iter();
-        // Lower all the patterns until the first occurence of a sub-slice pattern.
-        for pat in iter.by_ref() {
-            match pat.kind {
-                // Found a sub-slice pattern `..`. Record, lower it to `_`, and stop here.
-                PatKind::Rest => {
-                    prev_rest_span = Some(pat.span);
-                    slice = Some(self.pat_wild_with_node_id_of(pat));
-                    break;
-                }
-                // Found a sub-slice pattern `$binding_mode $ident @ ..`.
-                // Record, lower it to `$binding_mode $ident @ _`, and stop here.
-                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
-                    prev_rest_span = Some(sub.span);
-                    let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
-                    let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
-                    slice = Some(self.pat_with_node_id_of(pat, node));
-                    break;
-                }
-                // It was not a subslice pattern so lower it normally.
-                _ => before.push(self.lower_pat(pat)),
-            }
-        }
-
-        // Lower all the patterns after the first sub-slice pattern.
-        for pat in iter {
-            // There was a previous subslice pattern; make sure we don't allow more.
-            let rest_span = match pat.kind {
-                PatKind::Rest => Some(pat.span),
-                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
-                    // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
-                    after.push(self.pat_wild_with_node_id_of(pat));
-                    Some(sub.span)
-                }
-                _ => None,
-            };
-            if let Some(rest_span) = rest_span {
-                // We have e.g., `[a, .., b, ..]`. That's no good, error!
-                self.ban_extra_rest_pat(rest_span, prev_rest_span.unwrap(), "slice");
-            } else {
-                // Lower the pattern normally.
-                after.push(self.lower_pat(pat));
-            }
-        }
-
-        hir::PatKind::Slice(
-            self.arena.alloc_from_iter(before),
-            slice,
-            self.arena.alloc_from_iter(after),
-        )
-    }
-
-    fn lower_pat_ident(
-        &mut self,
-        p: &Pat,
-        binding_mode: &BindingMode,
-        ident: Ident,
-        lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
-    ) -> hir::PatKind<'hir> {
-        match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
-            // `None` can occur in body-less function signatures
-            res @ None | res @ Some(Res::Local(_)) => {
-                let canonical_id = match res {
-                    Some(Res::Local(id)) => id,
-                    _ => p.id,
-                };
-
-                hir::PatKind::Binding(
-                    self.lower_binding_mode(binding_mode),
-                    self.lower_node_id(canonical_id),
-                    ident,
-                    lower_sub(self),
-                )
-            }
-            Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
-                None,
-                self.arena.alloc(hir::Path {
-                    span: ident.span,
-                    res: self.lower_res(res),
-                    segments: arena_vec![self; hir::PathSegment::from_ident(ident)],
-                }),
-            )),
-        }
-    }
-
-    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
-        self.pat_with_node_id_of(p, hir::PatKind::Wild)
-    }
-
-    /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
-    }
-
-    /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
-    fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
-        self.diagnostic()
-            .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
-            .span_label(sp, &format!("can only be used once per {} pattern", ctx))
-            .span_label(prev_sp, "previously used here")
-            .emit();
-    }
-
-    /// Used to ban the `..` pattern in places it shouldn't be semantically.
-    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind<'hir> {
-        self.diagnostic()
-            .struct_span_err(sp, "`..` patterns are not allowed here")
-            .note("only allowed in tuple, tuple struct, and slice patterns")
-            .emit();
-
-        // We're not in a list context so `..` can be reasonably treated
-        // as `_` because it should always be valid and roughly matches the
-        // intent of `..` (notice that the rest of a single slot is that slot).
-        hir::PatKind::Wild
-    }
-
-    fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
-        match *e {
-            RangeEnd::Included(_) => hir::RangeEnd::Included,
-            RangeEnd::Excluded => hir::RangeEnd::Excluded,
-        }
-    }
-
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
         self.with_new_scopes(|this| hir::AnonConst {
             hir_id: this.lower_node_id(c.id),
@@ -2948,15 +2286,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             BlockCheckMode::Unsafe(u) => {
                 hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
             }
-        }
-    }
-
-    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
-        match *b {
-            BindingMode::ByValue(Mutability::Not) => hir::BindingAnnotation::Unannotated,
-            BindingMode::ByRef(Mutability::Not) => hir::BindingAnnotation::Ref,
-            BindingMode::ByValue(Mutability::Mut) => hir::BindingAnnotation::Mutable,
-            BindingMode::ByRef(Mutability::Mut) => hir::BindingAnnotation::RefMut,
         }
     }
 

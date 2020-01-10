@@ -22,7 +22,7 @@ use Determinacy::*;
 
 use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::exports::ExportMap;
-use rustc::hir::map::Definitions;
+use rustc::hir::map::{DefKey, Definitions};
 use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
@@ -1027,8 +1027,12 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl rustc_ast_lowering::Resolver for Resolver<'_> {
-    fn cstore(&self) -> &dyn CrateStore {
-        self.cstore()
+    fn def_key(&mut self, id: DefId) -> DefKey {
+        if id.is_local() { self.definitions().def_key(id.index) } else { self.cstore().def_key(id) }
+    }
+
+    fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
+        self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
 
     fn resolve_str_path(

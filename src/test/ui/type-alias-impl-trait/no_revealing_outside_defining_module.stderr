@@ -1,6 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/no_revealing_outside_defining_module.rs:15:19
    |
+LL |     pub type Boo = impl ::std::fmt::Debug;
+   |     -------------------------------------- the found opaque type
+...
 LL |     let _: &str = bomp();
    |            ----   ^^^^^^ expected `&str`, found opaque type
    |            |
@@ -12,6 +15,9 @@ LL |     let _: &str = bomp();
 error[E0308]: mismatched types
   --> $DIR/no_revealing_outside_defining_module.rs:19:5
    |
+LL |     pub type Boo = impl ::std::fmt::Debug;
+   |     -------------------------------------- the expected opaque type
+...
 LL | fn bomp() -> boo::Boo {
    |              -------- expected `Boo` because of return type
 LL |     ""

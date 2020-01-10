@@ -544,6 +544,12 @@ declare_features! (
     /// For example, you can write `x @ Some(y)`.
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
+    /// Allows `impl const Trait for T` syntax.
+    (active, const_trait_impl, "1.42.0", Some(67792), None),
+
+    /// Allows `T: ?const Trait` syntax in bounds.
+    (active, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -559,4 +565,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::or_patterns,
     sym::let_chains,
     sym::raw_dylib,
+    sym::const_trait_impl,
+    sym::const_trait_bound_opt_out,
 ];

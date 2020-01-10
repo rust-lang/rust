@@ -20,7 +20,7 @@ pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one pla
 
 pub use self::eval_context::{Frame, InterpCx, LocalState, LocalValue, StackPopCleanup};
 
-pub use self::place::{MPlaceTy, MemPlace, Place, PlaceTy};
+pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
 
 pub use self::memory::{AllocCheck, FnVal, Memory, MemoryKind};
 

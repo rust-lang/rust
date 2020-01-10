@@ -193,7 +193,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
             {
                 // Validation has already errored on an invalid vtable pointer so we can safely not
                 // do anything if this is not a real pointer.
-                if let Scalar::Ptr(vtable) = mplace.meta.unwrap() {
+                if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
                     // Explicitly choose `Immutable` here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
                     self.intern_shallow(vtable.alloc_id, Mutability::Not, None)?;
@@ -226,7 +226,8 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                     | (InternMode::Const, hir::Mutability::Mut) => match referenced_ty.kind {
                         ty::Array(_, n)
                             if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
-                        ty::Slice(_) if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
+                        ty::Slice(_)
+                            if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)? == 0 => {}
                         _ => bug!("const qualif failed to prevent mutable references"),
                     },
                 }

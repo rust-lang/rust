@@ -5,8 +5,8 @@
 use crate::hir::map as hir_map;
 use crate::hir::map::definitions::{DefKey, DefPathTable};
 use crate::session::search_paths::PathKind;
-use crate::session::{CrateDisambiguator, Session};
-use crate::ty::{self, TyCtxt};
+use crate::session::CrateDisambiguator;
+use crate::ty::TyCtxt;
 
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
@@ -208,7 +208,6 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.

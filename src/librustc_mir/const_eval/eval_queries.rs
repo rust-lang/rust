@@ -115,28 +115,31 @@ pub(super) fn op_to_const<'tcx>(
         // by-val is if we are in const_field, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace()
+        op.try_as_mplace(ecx)
     };
-    let val = match immediate {
-        Ok(mplace) => {
-            let ptr = mplace.ptr.assert_ptr();
+
+    let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
+        Scalar::Ptr(ptr) => {
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
+        Scalar::Raw { data, .. } => {
+            assert!(mplace.layout.is_zst());
+            assert_eq!(
+                data,
+                mplace.layout.align.abi.bytes().into(),
+                "this MPlaceTy must come from `try_as_mplace` being used on a zst, so we know what
+                 value this integer address must have",
+            );
+            ConstValue::Scalar(Scalar::zst())
+        }
+    };
+    let val = match immediate {
+        Ok(mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
             ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-            ScalarMaybeUndef::Undef => {
-                // When coming out of "normal CTFE", we'll always have an `Indirect` operand as
-                // argument and we will not need this. The only way we can already have an
-                // `Immediate` is when we are called from `const_field`, and that `Immediate`
-                // comes from a constant so it can happen have `Undef`, because the indirect
-                // memory that was read had undefined bytes.
-                let mplace = op.assert_mem_place();
-                let ptr = mplace.ptr.assert_ptr();
-                let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef { alloc, offset: ptr.offset }
-            }
+            ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
             let (data, start) = match a.not_undef().unwrap() {

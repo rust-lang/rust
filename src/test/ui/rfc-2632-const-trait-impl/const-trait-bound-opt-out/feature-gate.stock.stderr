@@ -1,0 +1,18 @@
+error[E0658]: `?const` on trait bounds is experimental
+  --> $DIR/feature-gate.rs:11:29
+   |
+LL | const fn get_assoc_const<S: ?const T>() -> i32 { <S as T>::CONST }
+   |                             ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/67794
+   = help: add `#![feature(const_trait_bound_opt_out)]` to the crate attributes to enable
+
+error: `?const` on trait bounds is not yet implemented
+  --> $DIR/feature-gate.rs:11:29
+   |
+LL | const fn get_assoc_const<S: ?const T>() -> i32 { <S as T>::CONST }
+   |                             ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

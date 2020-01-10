@@ -1,0 +1,18 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/feature-gate.rs:9:6
+   |
+LL | impl const T for S {}
+   |      ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/67792
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error: const trait impls are not yet implemented
+  --> $DIR/feature-gate.rs:9:1
+   |
+LL | impl const T for S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
