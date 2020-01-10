@@ -343,6 +343,7 @@ symbols! {
         global_allocator,
         global_asm,
         globs,
+        half_open_range_patterns,
         hash,
         Hash,
         HashSet,

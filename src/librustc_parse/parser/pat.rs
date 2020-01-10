@@ -1,6 +1,6 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym};
 use syntax::ast::{self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax};
@@ -281,91 +281,73 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtPat, |x| x);
 
         let lo = self.token.span;
-        let pat = match self.token.kind {
-            token::BinOp(token::And) | token::AndAnd => self.parse_pat_deref(expected)?,
-            token::OpenDelim(token::Paren) => self.parse_pat_tuple_or_parens()?,
-            token::OpenDelim(token::Bracket) => {
-                // Parse `[pat, pat,...]` as a slice pattern.
-                let (pats, _) =
-                    self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat_with_or_inner())?;
-                PatKind::Slice(pats)
+
+        let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
+            self.parse_pat_deref(expected)?
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            self.parse_pat_tuple_or_parens()?
+        } else if self.check(&token::OpenDelim(token::Bracket)) {
+            // Parse `[pat, pat,...]` as a slice pattern.
+            let (pats, _) =
+                self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat_with_or_inner())?;
+            PatKind::Slice(pats)
+        } else if self.check(&token::DotDot) && !self.is_pat_range_end_start(1) {
+            // A rest pattern `..`.
+            self.bump(); // `..`
+            PatKind::Rest
+        } else if let Some(form) = self.parse_range_end() {
+            self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
+        } else if self.eat_keyword(kw::Underscore) {
+            // Parse _
+            PatKind::Wild
+        } else if self.eat_keyword(kw::Mut) {
+            self.parse_pat_ident_mut()?
+        } else if self.eat_keyword(kw::Ref) {
+            // Parse ref ident @ pat / ref mut ident @ pat
+            let mutbl = self.parse_mutability();
+            self.parse_pat_ident(BindingMode::ByRef(mutbl))?
+        } else if self.eat_keyword(kw::Box) {
+            // Parse `box pat`
+            let pat = self.parse_pat_with_range_pat(false, None)?;
+            self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
+            PatKind::Box(pat)
+        } else if self.can_be_ident_pat() {
+            // Parse `ident @ pat`
+            // This can give false positives and parse nullary enums,
+            // they are dealt with later in resolve.
+            self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
+        } else if self.is_start_of_pat_with_path() {
+            // Parse pattern starting with a path
+            let (qself, path) = if self.eat_lt() {
+                // Parse a qualified path
+                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                (Some(qself), path)
+            } else {
+                // Parse an unqualified path
+                (None, self.parse_path(PathStyle::Expr)?)
+            };
+            let span = lo.to(self.prev_span);
+
+            if qself.is_none() && self.check(&token::Not) {
+                self.parse_pat_mac_invoc(path)?
+            } else if let Some(form) = self.parse_range_end() {
+                let begin = self.mk_expr(span, ExprKind::Path(qself, path), AttrVec::new());
+                self.parse_pat_range_begin_with(begin, form)?
+            } else if self.check(&token::OpenDelim(token::Brace)) {
+                self.parse_pat_struct(qself, path)?
+            } else if self.check(&token::OpenDelim(token::Paren)) {
+                self.parse_pat_tuple_struct(qself, path)?
+            } else {
+                PatKind::Path(qself, path)
             }
-            token::DotDot => {
-                self.bump();
-                if self.is_pat_range_end_start() {
-                    // Parse `..42` for recovery.
-                    self.parse_pat_range_to(RangeEnd::Excluded, "..")?
-                } else {
-                    // A rest pattern `..`.
-                    PatKind::Rest
-                }
-            }
-            token::DotDotEq => {
-                // Parse `..=42` for recovery.
-                self.bump();
-                self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotEq), "..=")?
-            }
-            token::DotDotDot => {
-                // Parse `...42` for recovery.
-                self.bump();
-                self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?
-            }
-            // At this point, token != `&`, `&&`, `(`, `[`, `..`, `..=`, or `...`.
-            _ => {
-                if self.eat_keyword(kw::Underscore) {
-                    // Parse _
-                    PatKind::Wild
-                } else if self.eat_keyword(kw::Mut) {
-                    self.parse_pat_ident_mut()?
-                } else if self.eat_keyword(kw::Ref) {
-                    // Parse ref ident @ pat / ref mut ident @ pat
-                    let mutbl = self.parse_mutability();
-                    self.parse_pat_ident(BindingMode::ByRef(mutbl))?
-                } else if self.eat_keyword(kw::Box) {
-                    // Parse `box pat`
-                    let pat = self.parse_pat_with_range_pat(false, None)?;
-                    self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
-                    PatKind::Box(pat)
-                } else if self.can_be_ident_pat() {
-                    // Parse `ident @ pat`
-                    // This can give false positives and parse nullary enums,
-                    // they are dealt with later in resolve.
-                    self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
-                } else if self.is_start_of_pat_with_path() {
-                    // Parse pattern starting with a path
-                    let (qself, path) = if self.eat_lt() {
-                        // Parse a qualified path
-                        let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                        (Some(qself), path)
-                    } else {
-                        // Parse an unqualified path
-                        (None, self.parse_path(PathStyle::Expr)?)
-                    };
-                    match self.token.kind {
-                        token::Not if qself.is_none() => self.parse_pat_mac_invoc(path)?,
-                        token::DotDotDot | token::DotDotEq | token::DotDot => {
-                            self.parse_pat_range_starting_with_path(lo, qself, path)?
-                        }
-                        token::OpenDelim(token::Brace) => self.parse_pat_struct(qself, path)?,
-                        token::OpenDelim(token::Paren) => {
-                            self.parse_pat_tuple_struct(qself, path)?
-                        }
-                        _ => PatKind::Path(qself, path),
-                    }
-                } else {
-                    // Try to parse everything else as literal with optional minus
-                    match self.parse_literal_maybe_minus() {
-                        Ok(begin)
-                            if self.check(&token::DotDot)
-                                || self.check(&token::DotDotEq)
-                                || self.check(&token::DotDotDot) =>
-                        {
-                            self.parse_pat_range_starting_with_lit(begin)?
-                        }
-                        Ok(begin) => PatKind::Lit(begin),
-                        Err(err) => return self.fatal_unexpected_non_pat(err, expected),
-                    }
-                }
+        } else {
+            // Try to parse everything else as literal with optional minus
+            match self.parse_literal_maybe_minus() {
+                Ok(begin) => match self.parse_range_end() {
+                    Some(form) => self.parse_pat_range_begin_with(begin, form)?,
+                    None => PatKind::Lit(begin),
+                },
+                Err(err) => return self.fatal_unexpected_non_pat(err, expected),
             }
         };
 
@@ -374,7 +356,7 @@ impl<'a> Parser<'a> {
         let pat = self.recover_intersection_pat(pat)?;
 
         if !allow_range_pat {
-            self.ban_pat_range_if_ambiguous(&pat)?
+            self.ban_pat_range_if_ambiguous(&pat)
         }
 
         Ok(pat)
@@ -441,26 +423,25 @@ impl<'a> Parser<'a> {
     }
 
     /// Ban a range pattern if it has an ambiguous interpretation.
-    fn ban_pat_range_if_ambiguous(&self, pat: &Pat) -> PResult<'a, ()> {
+    fn ban_pat_range_if_ambiguous(&self, pat: &Pat) {
         match pat.kind {
             PatKind::Range(
                 ..,
                 Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. },
-            ) => return Ok(()),
+            ) => return,
             PatKind::Range(..) => {}
-            _ => return Ok(()),
+            _ => return,
         }
 
-        let mut err =
-            self.struct_span_err(pat.span, "the range pattern here has ambiguous interpretation");
-        err.span_suggestion(
-            pat.span,
-            "add parentheses to clarify the precedence",
-            format!("({})", pprust::pat_to_string(&pat)),
-            // "ambiguous interpretation" implies that we have to be guessing
-            Applicability::MaybeIncorrect,
-        );
-        Err(err)
+        self.struct_span_err(pat.span, "the range pattern here has ambiguous interpretation")
+            .span_suggestion(
+                pat.span,
+                "add parentheses to clarify the precedence",
+                format!("({})", pprust::pat_to_string(&pat)),
+                // "ambiguous interpretation" implies that we have to be guessing
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
     }
 
     /// Parse `&pat` / `&mut pat`.
@@ -618,51 +599,6 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Mac(mac))
     }
 
-    fn excluded_range_end(&self, span: Span) -> RangeEnd {
-        self.sess.gated_spans.gate(sym::exclusive_range_pattern, span);
-        RangeEnd::Excluded
-    }
-
-    /// Parse a range pattern `$path $form $end?` where `$form = ".." | "..." | "..=" ;`.
-    /// The `$path` has already been parsed and the next token is the `$form`.
-    fn parse_pat_range_starting_with_path(
-        &mut self,
-        lo: Span,
-        qself: Option<QSelf>,
-        path: Path,
-    ) -> PResult<'a, PatKind> {
-        let (end_kind, form) = match self.token.kind {
-            token::DotDot => (self.excluded_range_end(self.token.span), ".."),
-            token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
-            token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
-            _ => panic!("can only parse `..`/`...`/`..=` for ranges (checked above)"),
-        };
-        let op_span = self.token.span;
-        // Parse range
-        let span = lo.to(self.prev_span);
-        let begin = self.mk_expr(span, ExprKind::Path(qself, path), AttrVec::new());
-        self.bump();
-        let end = self.parse_pat_range_end_opt(&begin, form)?;
-        Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
-    }
-
-    /// Parse a range pattern `$literal $form $end?` where `$form = ".." | "..." | "..=" ;`.
-    /// The `$path` has already been parsed and the next token is the `$form`.
-    fn parse_pat_range_starting_with_lit(&mut self, begin: P<Expr>) -> PResult<'a, PatKind> {
-        let op_span = self.token.span;
-        let (end_kind, form) = if self.eat(&token::DotDotDot) {
-            (RangeEnd::Included(RangeSyntax::DotDotDot), "...")
-        } else if self.eat(&token::DotDotEq) {
-            (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
-        } else if self.eat(&token::DotDot) {
-            (self.excluded_range_end(op_span), "..")
-        } else {
-            panic!("impossible case: we already matched on a range-operator token")
-        };
-        let end = self.parse_pat_range_end_opt(&begin, form)?;
-        Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
-    }
-
     fn fatal_unexpected_non_pat(
         &mut self,
         mut err: DiagnosticBuilder<'a>,
@@ -684,57 +620,66 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    /// Is the current token suitable as the start of a range patterns end?
-    fn is_pat_range_end_start(&self) -> bool {
-        self.token.is_path_start() // e.g. `MY_CONST`;
-            || self.token == token::Dot // e.g. `.5` for recovery;
-            || self.token.can_begin_literal_or_bool() // e.g. `42`.
-            || self.token.is_whole_expr()
+    /// Parses the range pattern end form `".." | "..." | "..=" ;`.
+    fn parse_range_end(&mut self) -> Option<Spanned<RangeEnd>> {
+        let re = if self.eat(&token::DotDotDot) {
+            RangeEnd::Included(RangeSyntax::DotDotDot)
+        } else if self.eat(&token::DotDotEq) {
+            RangeEnd::Included(RangeSyntax::DotDotEq)
+        } else if self.eat(&token::DotDot) {
+            self.sess.gated_spans.gate(sym::exclusive_range_pattern, self.prev_span);
+            RangeEnd::Excluded
+        } else {
+            return None;
+        };
+        Some(respan(self.prev_span, re))
     }
 
-    /// Parse a range-to pattern, e.g. `..X` and `..=X` for recovery.
-    fn parse_pat_range_to(&mut self, re: RangeEnd, form: &str) -> PResult<'a, PatKind> {
-        let lo = self.prev_span;
-        let end = self.parse_pat_range_end()?;
-        let range_span = lo.to(end.span);
-        let begin = self.mk_expr(range_span, ExprKind::Err, AttrVec::new());
-
-        self.struct_span_err(range_span, &format!("`{}X` range patterns are not supported", form))
-            .span_suggestion(
-                range_span,
-                "try using the minimum value for the type",
-                format!("MIN{}{}", form, pprust::expr_to_string(&end)),
-                Applicability::HasPlaceholders,
-            )
-            .emit();
-
-        Ok(PatKind::Range(begin, end, respan(lo, re)))
-    }
-
-    /// Parse the end of a `X..Y`, `X..=Y`, or `X...Y` range pattern  or recover
-    /// if that end is missing treating it as `X..`, `X..=`, or `X...` respectively.
-    fn parse_pat_range_end_opt(&mut self, begin: &Expr, form: &str) -> PResult<'a, P<Expr>> {
-        if self.is_pat_range_end_start() {
+    /// Parse a range pattern `$begin $form $end?` where `$form = ".." | "..." | "..=" ;`.
+    /// `$begin $form` has already been parsed.
+    fn parse_pat_range_begin_with(
+        &mut self,
+        begin: P<Expr>,
+        re: Spanned<RangeEnd>,
+    ) -> PResult<'a, PatKind> {
+        let end = if self.is_pat_range_end_start(0) {
             // Parsing e.g. `X..=Y`.
-            self.parse_pat_range_end()
+            Some(self.parse_pat_range_end()?)
         } else {
             // Parsing e.g. `X..`.
-            let range_span = begin.span.to(self.prev_span);
+            self.sess.gated_spans.gate(sym::half_open_range_patterns, begin.span.to(re.span));
+            if let RangeEnd::Included(_) = re.node {
+                // FIXME(Centril): Consider semantic errors instead in `ast_validation`.
+                // Possibly also do this for `X..=` in *expression* contexts.
+                self.error_inclusive_range_with_no_end(re.span);
+            }
+            None
+        };
+        Ok(PatKind::Range(Some(begin), end, re))
+    }
 
-            self.struct_span_err(
-                range_span,
-                &format!("`X{}` range patterns are not supported", form),
-            )
-            .span_suggestion(
-                range_span,
-                "try using the maximum value for the type",
-                format!("{}{}MAX", pprust::expr_to_string(&begin), form),
-                Applicability::HasPlaceholders,
-            )
+    pub(super) fn error_inclusive_range_with_no_end(&self, span: Span) {
+        use rustc_error_codes::E0586;
+        struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
+            .help("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
             .emit();
+    }
 
-            Ok(self.mk_expr(range_span, ExprKind::Err, AttrVec::new()))
-        }
+    /// Parse a range-to pattern, e.g. `..X` and `..=X` where `X` remains to be parsed.
+    fn parse_pat_range_to(&mut self, re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
+        let end = self.parse_pat_range_end()?;
+        self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_span));
+        Ok(PatKind::Range(None, Some(end), re))
+    }
+
+    /// Is the token `dist` away from the current suitable as the start of a range patterns end?
+    fn is_pat_range_end_start(&self, dist: usize) -> bool {
+        self.look_ahead(dist, |t| {
+            t.is_path_start() // e.g. `MY_CONST`;
+                || t.kind == token::Dot // e.g. `.5` for recovery;
+                || t.can_begin_literal_or_bool() // e.g. `42`.
+                || t.is_whole_expr()
+        })
     }
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
