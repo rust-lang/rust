@@ -2,7 +2,7 @@ error[E0433]: failed to resolve: there are too many leading `super` keywords
   --> $DIR/impl-items-vis-unresolved.rs:21:13
    |
 LL |         pub(super) fn new() {}
-   |             ^^^^^ there are too many leading `super` keywords.
+   |             ^^^^^ there are too many leading `super` keywords
 
 error: aborting due to previous error
 
