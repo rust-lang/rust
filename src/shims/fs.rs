@@ -292,7 +292,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if src.is_dir() {
                 fs::symlink_dir(src, dst)
             } else {
-                fs::symlink(src, dst)
+                fs::symlink_file(src, dst)
             }
         }
 
