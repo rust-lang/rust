@@ -20,20 +20,26 @@
 // gdb-command: print btree_map
 // gdb-check:$2 = BTreeMap<i32, i32>(len: 15) = {[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5, [6] = 6, [7] = 7, [8] = 8, [9] = 9, [10] = 10, [11] = 11, [12] = 12, [13] = 13, [14] = 14}
 
+// gdb-command: print empty_btree_map
+// gdb-check:$3 = BTreeMap<(), ()>(len: 0)
+
+// gdb-command: print nasty_btree_map
+// gdb-check:$4 = BTreeMap<i32, pretty_std_collections::MyLeafNode>(len: 1) = {[1] = pretty_std_collections::MyLeafNode (11)}
+
 // gdb-command: print vec_deque
-// gdb-check:$3 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
+// gdb-check:$5 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
 
 // gdb-command: print vec_deque2
-// gdb-check:$4 = VecDeque<i32>(len: 7, cap: 8) = {2, 3, 4, 5, 6, 7, 8}
+// gdb-check:$6 = VecDeque<i32>(len: 7, cap: 8) = {2, 3, 4, 5, 6, 7, 8}
 
 #![allow(unused_variables)]
-use std::collections::BTreeSet;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
+struct MyLeafNode(i32); // helps to ensure we don't blindly replace substring "LeafNode"
 
 fn main() {
-
     // BTreeSet
     let mut btree_set = BTreeSet::new();
     for i in 0..15 {
@@ -45,6 +51,9 @@ fn main() {
     for i in 0..15 {
         btree_map.insert(i, i);
     }
+    let empty_btree_map: BTreeMap<(), ()> = BTreeMap::new();
+    let mut nasty_btree_map: BTreeMap<i32, MyLeafNode> = BTreeMap::new();
+    nasty_btree_map.insert(1, MyLeafNode(11));
 
     // VecDeque
     let mut vec_deque = VecDeque::new();
@@ -63,4 +72,6 @@ fn main() {
     zzz(); // #break
 }
 
-fn zzz() { () }
+fn zzz() {
+    ()
+}

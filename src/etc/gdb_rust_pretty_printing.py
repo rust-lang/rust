@@ -333,27 +333,31 @@ class RustStdVecDequePrinter(object):
 # Yield each key (and optionally value) from a BoxedNode.
 def children_of_node(boxed_node, height, want_values):
     node_ptr = boxed_node['ptr']['pointer']
-    if height > 0:
-        type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode')
-        node_type = gdb.lookup_type(type_name)
-        node_ptr = node_ptr.cast(node_type.pointer())
-        leaf = node_ptr['data']
-    else:
-        leaf = node_ptr.dereference()
-    keys = leaf['keys']
-    if want_values:
-        values = leaf['vals']
-    length = int(leaf['len'])
-    for i in xrange(0, length + 1):
+    head = node_ptr.dereference()
+    length = int(head['len'])
+    if length > 0:
         if height > 0:
-            child_ptr = node_ptr['edges'][i]['value']['value']
-            for child in children_of_node(child_ptr, height - 1, want_values):
-                yield child
-        if i < length:
-            if want_values:
-                yield (keys[i]['value']['value'], values[i]['value']['value'])
-            else:
-                yield keys[i]['value']['value']
+            type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode', 1)
+            node_type = gdb.lookup_type(type_name)
+            node_ptr = node_ptr.cast(node_type.pointer())
+            leaf = node_ptr['data']
+            edges = node_ptr['edges']
+        else:
+            leaf = node_ptr.dereference()
+            edges = None
+        keys = leaf['keys']
+        if want_values:
+            values = leaf['vals']
+        for i in xrange(0, length + 1):
+            if edges:
+                child_ptr = edges[i]['value']['value']
+                for child in children_of_node(child_ptr, height - 1, want_values):
+                    yield child
+            if i < length:
+                if want_values:
+                    yield (keys[i]['value']['value'], values[i]['value']['value'])
+                else:
+                    yield keys[i]['value']['value']
 
 class RustStdBTreeSetPrinter(object):
     def __init__(self, val):
