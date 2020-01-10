@@ -1489,7 +1489,7 @@ impl<'a> Parser<'a> {
                 }
             }
             _ => {
-                let sp = self.sess.source_map().next_point(self.prev_span);
+                let sp = self.prev_span.shrink_to_hi();
                 let mut err = self.struct_span_err(
                     sp,
                     &format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
