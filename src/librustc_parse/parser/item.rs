@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
                     self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
                 }
                 let ext = self.parse_extern()?;
-                self.bump(); // `fn`
+                self.expect_keyword(kw::Fn)?;
 
                 let header = FnHeader {
                     unsafety,
