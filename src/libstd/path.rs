@@ -2655,6 +2655,7 @@ impl AsRef<Path> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for str {
+    #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
