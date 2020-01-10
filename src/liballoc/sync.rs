@@ -553,10 +553,11 @@ impl<T: ?Sized> Arc<T> {
     /// Constructs an `Arc` from a raw pointer.
     ///
     /// The raw pointer must have been previously returned by a call to a
-    /// [`Arc::into_raw`][into_raw].
+    /// [`Arc::into_raw`][into_raw], using the same `T`.
     ///
-    /// This function is unsafe because improper use may lead to memory problems. For example, a
-    /// double-free may occur if the function is called twice on the same raw pointer.
+    /// This function is unsafe because improper use may lead to memory unsafety,
+    /// even if `T` is never accessed. For example, a double-free may occur if the function is
+    /// called twice on the same raw pointer.
     ///
     /// [into_raw]: struct.Arc.html#method.into_raw
     ///
