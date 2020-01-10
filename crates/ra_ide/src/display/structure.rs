@@ -151,10 +151,24 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 Some(node)
             },
             ast::MacroCall(it) => {
-                let first_token = it.syntax().first_token().unwrap();
-                if first_token.text().as_str() != "macro_rules" {
-                    return None;
+                let macro_name = it.syntax()
+                    .children()
+                    .find(|c|
+                        ![
+                            SyntaxKind::COMMENT,
+                            SyntaxKind::WHITESPACE,
+                            SyntaxKind::ATTR
+                        ].iter()
+                        .any(|&k| k == c.kind())
+                    );
+
+                match macro_name {
+                    None => return None,
+                    Some(n) => if n.first_token().unwrap().text().as_str() != "macro_rules" {
+                        return None;
+                    }
                 }
+
                 decl(it)
             },
             _ => None,
