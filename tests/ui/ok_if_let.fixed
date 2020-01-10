@@ -28,8 +28,7 @@ fn nested_some_no_else(x: &str) -> i32 {
 }
 
 fn main() {
-    let x = str_to_int("1");
-    let y = str_to_int_ok("2");
-    let z = nested_some_no_else("3");
-    println!("{}{}{}", x, y, z);
+    let _ = str_to_int("1");
+    let _ = str_to_int_ok("2");
+    let _ = nested_some_no_else("3");
 }

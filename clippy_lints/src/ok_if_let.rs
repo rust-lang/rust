@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::BytePos;
 
 declare_clippy_lint! {
     /// **What it does:*** Checks for unnecessary `ok()` in if let.
@@ -40,8 +41,8 @@ declare_lint_pass!(OkIfLet => [IF_LET_SOME_RESULT]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! { //begin checking variables
-            if let ExprKind::Match(ref op, ref body, ref source) = expr.kind; //test if expr is a match
-            if let MatchSource::IfLetDesugar { contains_else_clause } = *source; //test if it is an If Let
+            if let ExprKind::Match(ref op, ref body, source) = expr.kind; //test if expr is a match
+            if let MatchSource::IfLetDesugar { contains_else_clause } = source; //test if it is an If Let
             if let ExprKind::MethodCall(_, ok_span, ref result_types) = op.kind; //check is expr.ok() has type Result<T,E>.ok()
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
@@ -49,13 +50,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
             then {
                 let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
                 let mut applicability = Applicability::MachineApplicable;
+                let trimed_ok_span = op.span.until(op.span.with_lo(ok_span.lo() - BytePos(1)));
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
-                let trimmed_ok = snippet_with_applicability(cx, op.span.until(ok_span), "", &mut applicability);
+                let trimmed_ok = snippet_with_applicability(cx, trimed_ok_span, "", &mut applicability);
                 let mut sugg = format!(
                     "if let Ok({}) = {} {}",
                     some_expr_string,
-                    // FIXME(JohnTitor): this trimming is hacky, probably can improve it
-                    trimmed_ok.trim_matches('.'),
+                    trimmed_ok,
                     snippet(cx, body[0].span, ".."),
                 );
                 if contains_else_clause {
