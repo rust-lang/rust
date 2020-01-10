@@ -173,7 +173,7 @@ impl<'a, DB: HirDatabase> AstTransform<'a> for QualifyPaths<'a, DB> {
     }
 }
 
-fn path_to_ast(path: hir::ModPath) -> ast::Path {
+pub(crate) fn path_to_ast(path: hir::ModPath) -> ast::Path {
     let parse = ast::SourceFile::parse(&path.to_string());
     parse.tree().syntax().descendants().find_map(ast::Path::cast).unwrap()
 }
