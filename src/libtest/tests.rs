@@ -188,8 +188,8 @@ fn test_should_panic_bad_message() {
 
 #[test]
 fn test_should_panic_non_string_message_type() {
-    use std::any::TypeId;
     use crate::tests::TrFailedMsg;
+    use std::any::TypeId;
     fn f() {
         panic!(1i32);
     }
