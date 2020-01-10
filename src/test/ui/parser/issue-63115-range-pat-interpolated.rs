@@ -1,6 +1,7 @@
 // check-pass
 
 #![feature(exclusive_range_pattern)]
+#![feature(half_open_range_patterns)]
 
 #![allow(ellipsis_inclusive_range_patterns)]
 
@@ -10,6 +11,11 @@ fn main() {
             if let 2...$e = 3 {}
             if let 2..=$e = 3 {}
             if let 2..$e = 3 {}
+            if let ..$e = 3 {}
+            if let ..=$e = 3 {}
+            if let $e.. = 5 {}
+            if let $e..5 = 4 {}
+            if let $e..=5 = 4 {}
         }
     }
     mac_expr!(4);

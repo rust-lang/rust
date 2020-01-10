@@ -429,11 +429,84 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> (PatKind<'tcx>, Option<Ascription<'tcx>>) {
         match self.lower_lit(expr) {
-            PatKind::AscribeUserType {
-                ascription: lo_ascription,
-                subpattern: Pat { kind: box kind, .. },
-            } => (kind, Some(lo_ascription)),
+            PatKind::AscribeUserType { ascription, subpattern: Pat { kind: box kind, .. } } => {
+                (kind, Some(ascription))
+            }
             kind => (kind, None),
+        }
+    }
+
+    fn lower_pattern_range(
+        &mut self,
+        ty: Ty<'tcx>,
+        lo: &'tcx ty::Const<'tcx>,
+        hi: &'tcx ty::Const<'tcx>,
+        end: RangeEnd,
+        span: Span,
+    ) -> PatKind<'tcx> {
+        assert_eq!(lo.ty, ty);
+        assert_eq!(hi.ty, ty);
+        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
+        match (end, cmp) {
+            // `x..y` where `x < y`.
+            // Non-empty because the range includes at least `x`.
+            (RangeEnd::Excluded, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            // `x..y` where `x >= y`. The range is empty => error.
+            (RangeEnd::Excluded, _) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0579,
+                    "lower range bound must be less than upper"
+                )
+                .emit();
+                PatKind::Wild
+            }
+            // `x..=y` where `x == y`.
+            (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
+            // `x..=y` where `x < y`.
+            (RangeEnd::Included, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            // `x..=y` where `x > y` hence the range is empty => error.
+            (RangeEnd::Included, _) => {
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0030,
+                    "lower range bound must be less than or equal to upper"
+                );
+                err.span_label(span, "lower bound larger than upper bound");
+                if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                    err.note(
+                        "When matching against a range, the compiler \
+                              verifies that the range is non-empty. Range \
+                              patterns include both end-points, so this is \
+                              equivalent to requiring the start of the range \
+                              to be less than or equal to the end of the range.",
+                    );
+                }
+                err.emit();
+                PatKind::Wild
+            }
+        }
+    }
+
+    fn normalize_range_pattern_ends(
+        &self,
+        ty: Ty<'tcx>,
+        lo: Option<&PatKind<'tcx>>,
+        hi: Option<&PatKind<'tcx>>,
+    ) -> Option<(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>)> {
+        match (lo, hi) {
+            (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
+                Some((lo, hi))
+            }
+            (Some(PatKind::Constant { value: lo }), None) => {
+                Some((lo, ty.numeric_max_val(self.tcx)?))
+            }
+            (None, Some(PatKind::Constant { value: hi })) => {
+                Some((ty.numeric_min_val(self.tcx)?, hi))
+            }
+            _ => None,
         }
     }
 
@@ -451,65 +524,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Lit(ref value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
-                let (lo, lo_ascription) = self.lower_range_expr(lo_expr);
-                let (hi, hi_ascription) = self.lower_range_expr(hi_expr);
+                let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
+                let lo_span = lo_expr.map_or(pat.span, |e| e.span);
+                let lo = lo_expr.map(|e| self.lower_range_expr(e));
+                let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
-                let mut kind = match (lo, hi) {
-                    (PatKind::Constant { value: lo }, PatKind::Constant { value: hi }) => {
-                        assert_eq!(lo.ty, ty);
-                        assert_eq!(hi.ty, ty);
-                        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
-                        match (end, cmp) {
-                            (RangeEnd::Excluded, Some(Ordering::Less)) => {
-                                PatKind::Range(PatRange { lo, hi, end })
-                            }
-                            (RangeEnd::Excluded, _) => {
-                                struct_span_err!(
-                                    self.tcx.sess,
-                                    lo_expr.span,
-                                    E0579,
-                                    "lower range bound must be less than upper",
-                                )
-                                .emit();
-                                PatKind::Wild
-                            }
-                            (RangeEnd::Included, Some(Ordering::Equal)) => {
-                                PatKind::Constant { value: lo }
-                            }
-                            (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatKind::Range(PatRange { lo, hi, end })
-                            }
-                            (RangeEnd::Included, _) => {
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess,
-                                    lo_expr.span,
-                                    E0030,
-                                    "lower range bound must be less than or equal to upper"
-                                );
-                                err.span_label(lo_expr.span, "lower bound larger than upper bound");
-                                if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                    err.note(
-                                        "When matching against a range, the compiler \
-                                              verifies that the range is non-empty. Range \
-                                              patterns include both end-points, so this is \
-                                              equivalent to requiring the start of the range \
-                                              to be less than or equal to the end of the range.",
-                                    );
-                                }
-                                err.emit();
-                                PatKind::Wild
-                            }
-                        }
-                    }
-                    ref pats => {
-                        self.tcx.sess.delay_span_bug(
-                            pat.span,
-                            &format!(
-                                "found bad range pattern `{:?}` outside of error recovery",
-                                pats,
-                            ),
+                let (lp, hp) = (lo.as_ref().map(|x| &x.0), hi.as_ref().map(|x| &x.0));
+                let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
+                    Some((lc, hc)) => self.lower_pattern_range(ty, lc, hc, end, lo_span),
+                    None => {
+                        let msg = &format!(
+                            "found bad range pattern `{:?}` outside of error recovery",
+                            (&lo, &hi),
                         );
-
+                        self.tcx.sess.delay_span_bug(pat.span, msg);
                         PatKind::Wild
                     }
                 };
@@ -517,12 +545,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // If we are handling a range with associated constants (e.g.
                 // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
                 // constants somewhere. Have them on the range pattern.
-                for ascription in &[lo_ascription, hi_ascription] {
-                    if let Some(ascription) = ascription {
-                        kind = PatKind::AscribeUserType {
-                            ascription: *ascription,
-                            subpattern: Pat { span: pat.span, ty, kind: Box::new(kind) },
-                        };
+                for end in &[lo, hi] {
+                    if let Some((_, Some(ascription))) = end {
+                        let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
+                        kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
                     }
                 }
 

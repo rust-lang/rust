@@ -1,377 +1,241 @@
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:21:12
+  --> $DIR/recover-range-pats.rs:22:12
    |
 LL |     if let .0..Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:23:16
+  --> $DIR/recover-range-pats.rs:24:16
    |
 LL |     if let X.. .0 = 0 {}
    |                ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:34:12
+  --> $DIR/recover-range-pats.rs:35:12
    |
 LL |     if let .0..=Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:36:16
+  --> $DIR/recover-range-pats.rs:37:16
    |
 LL |     if let X..=.0 = 0 {}
    |                ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:49:12
+  --> $DIR/recover-range-pats.rs:50:12
    |
 LL |     if let .0...Y = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:52:17
+  --> $DIR/recover-range-pats.rs:53:17
    |
 LL |     if let X... .0 = 0 {}
    |                 ^^ help: must have an integer part: `0.0`
 
-error: `X..` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:58:12
-   |
-LL |     if let 0.. = 0 {}
-   |            ^^^ help: try using the maximum value for the type: `0..MAX`
-
-error: `X..` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:59:12
-   |
-LL |     if let X.. = 0 {}
-   |            ^^^ help: try using the maximum value for the type: `X..MAX`
-
-error: `X..` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:60:12
-   |
-LL |     if let true.. = 0 {}
-   |            ^^^^^^ help: try using the maximum value for the type: `true..MAX`
-
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:62:12
+  --> $DIR/recover-range-pats.rs:63:12
    |
 LL |     if let .0.. = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
-error: `X..` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:62:12
-   |
-LL |     if let .0.. = 0 {}
-   |            ^^^^ help: try using the maximum value for the type: `0.0..MAX`
-
-error: `X..=` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:68:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:69:13
    |
 LL |     if let 0..= = 0 {}
-   |            ^^^^ help: try using the maximum value for the type: `0..=MAX`
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X..=` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:69:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:70:13
    |
 LL |     if let X..= = 0 {}
-   |            ^^^^ help: try using the maximum value for the type: `X..=MAX`
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X..=` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:70:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:71:16
    |
 LL |     if let true..= = 0 {}
-   |            ^^^^^^^ help: try using the maximum value for the type: `true..=MAX`
+   |                ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:72:12
+  --> $DIR/recover-range-pats.rs:73:12
    |
 LL |     if let .0..= = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
-error: `X..=` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:72:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:73:14
    |
 LL |     if let .0..= = 0 {}
-   |            ^^^^^ help: try using the maximum value for the type: `0.0..=MAX`
+   |              ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X...` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:78:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:79:13
    |
 LL |     if let 0... = 0 {}
-   |            ^^^^ help: try using the maximum value for the type: `0...MAX`
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X...` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:80:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:80:13
    |
 LL |     if let X... = 0 {}
-   |            ^^^^ help: try using the maximum value for the type: `X...MAX`
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X...` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:82:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:81:16
    |
 LL |     if let true... = 0 {}
-   |            ^^^^^^^ help: try using the maximum value for the type: `true...MAX`
+   |                ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:85:12
+  --> $DIR/recover-range-pats.rs:83:12
    |
 LL |     if let .0... = 0 {}
    |            ^^ help: must have an integer part: `0.0`
 
-error: `X...` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:85:12
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:83:14
    |
 LL |     if let .0... = 0 {}
-   |            ^^^^^ help: try using the maximum value for the type: `0.0...MAX`
-
-error: `..X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:92:12
+   |              ^^^
    |
-LL |     if let ..0 = 0 {}
-   |            ^^^ help: try using the minimum value for the type: `MIN..0`
-
-error: `..X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:93:12
-   |
-LL |     if let ..Y = 0 {}
-   |            ^^^ help: try using the minimum value for the type: `MIN..Y`
-
-error: `..X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:94:12
-   |
-LL |     if let ..true = 0 {}
-   |            ^^^^^^ help: try using the minimum value for the type: `MIN..true`
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:96:15
+  --> $DIR/recover-range-pats.rs:93:15
    |
 LL |     if let .. .0 = 0 {}
    |               ^^ help: must have an integer part: `0.0`
 
-error: `..X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:96:12
-   |
-LL |     if let .. .0 = 0 {}
-   |            ^^^^^ help: try using the minimum value for the type: `MIN..0.0`
-
-error: `..=X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:102:12
-   |
-LL |     if let ..=3 = 0 {}
-   |            ^^^^ help: try using the minimum value for the type: `MIN..=3`
-
-error: `..=X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:103:12
-   |
-LL |     if let ..=Y = 0 {}
-   |            ^^^^ help: try using the minimum value for the type: `MIN..=Y`
-
-error: `..=X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:104:12
-   |
-LL |     if let ..=true = 0 {}
-   |            ^^^^^^^ help: try using the minimum value for the type: `MIN..=true`
-
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:106:15
+  --> $DIR/recover-range-pats.rs:103:15
    |
 LL |     if let ..=.0 = 0 {}
    |               ^^ help: must have an integer part: `0.0`
 
-error: `..=X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:106:12
-   |
-LL |     if let ..=.0 = 0 {}
-   |            ^^^^^ help: try using the minimum value for the type: `MIN..=0.0`
-
-error: `...X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:112:12
-   |
-LL |     if let ...3 = 0 {}
-   |            ^^^^ help: try using the minimum value for the type: `MIN...3`
-
-error: `...X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:114:12
-   |
-LL |     if let ...Y = 0 {}
-   |            ^^^^ help: try using the minimum value for the type: `MIN...Y`
-
-error: `...X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:116:12
-   |
-LL |     if let ...true = 0 {}
-   |            ^^^^^^^ help: try using the minimum value for the type: `MIN...true`
-
 error: float literals must have an integer part
-  --> $DIR/recover-range-pats.rs:119:15
+  --> $DIR/recover-range-pats.rs:116:15
    |
 LL |     if let ....3 = 0 {}
    |               ^^ help: must have an integer part: `0.3`
 
-error: `...X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:119:12
-   |
-LL |     if let ....3 = 0 {}
-   |            ^^^^^ help: try using the minimum value for the type: `MIN...0.3`
-
-error: `..X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:139:17
-   |
-LL |             let ..$e;
-   |                 ^^ help: try using the minimum value for the type: `MIN..0`
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
-
-error: `...X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:140:17
-   |
-LL |             let ...$e;
-   |                 ^^^ help: try using the minimum value for the type: `MIN...0`
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
-
-error: `..=X` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:142:17
-   |
-LL |             let ..=$e;
-   |                 ^^^ help: try using the minimum value for the type: `MIN..=0`
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
-
-error: `X..` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:143:19
-   |
-LL |             let $e..;
-   |                   ^^ help: try using the maximum value for the type: `0..MAX`
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
-
-error: `X...` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:144:19
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:141:19
    |
 LL |             let $e...;
-   |                   ^^^ help: try using the maximum value for the type: `0...MAX`
+   |                   ^^^
 ...
 LL |     mac!(0);
    |     -------- in this macro invocation
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: `X..=` range patterns are not supported
-  --> $DIR/recover-range-pats.rs:146:19
+error[E0586]: inclusive range with no end
+  --> $DIR/recover-range-pats.rs:142:19
    |
 LL |             let $e..=;
-   |                   ^^^ help: try using the maximum value for the type: `0..=MAX`
+   |                   ^^^
 ...
 LL |     mac!(0);
    |     -------- in this macro invocation
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:41:13
+  --> $DIR/recover-range-pats.rs:42:13
    |
 LL |     if let 0...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
 note: lint level defined here
-  --> $DIR/recover-range-pats.rs:7:9
+  --> $DIR/recover-range-pats.rs:8:9
    |
 LL | #![deny(ellipsis_inclusive_range_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:42:13
+  --> $DIR/recover-range-pats.rs:43:13
    |
 LL |     if let 0...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:43:13
+  --> $DIR/recover-range-pats.rs:44:13
    |
 LL |     if let X...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:44:13
+  --> $DIR/recover-range-pats.rs:45:13
    |
 LL |     if let X...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:45:16
+  --> $DIR/recover-range-pats.rs:46:16
    |
 LL |     if let true...Y = 0 {}
    |                ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:47:13
+  --> $DIR/recover-range-pats.rs:48:13
    |
 LL |     if let X...true = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:49:14
+  --> $DIR/recover-range-pats.rs:50:14
    |
 LL |     if let .0...Y = 0 {}
    |              ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:52:13
+  --> $DIR/recover-range-pats.rs:53:13
    |
 LL |     if let X... .0 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:78:13
-   |
-LL |     if let 0... = 0 {}
-   |             ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:80:13
-   |
-LL |     if let X... = 0 {}
-   |             ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:82:16
-   |
-LL |     if let true... = 0 {}
-   |                ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:85:14
-   |
-LL |     if let .0... = 0 {}
-   |              ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:112:12
+  --> $DIR/recover-range-pats.rs:109:12
    |
 LL |     if let ...3 = 0 {}
    |            ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:114:12
+  --> $DIR/recover-range-pats.rs:111:12
    |
 LL |     if let ...Y = 0 {}
    |            ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:116:12
+  --> $DIR/recover-range-pats.rs:113:12
    |
 LL |     if let ...true = 0 {}
    |            ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:119:12
+  --> $DIR/recover-range-pats.rs:116:12
    |
 LL |     if let ....3 = 0 {}
    |            ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:129:20
+  --> $DIR/recover-range-pats.rs:126:20
    |
 LL |             let $e1...$e2;
    |                    ^^^ help: use `..=` for an inclusive range
@@ -380,7 +244,7 @@ LL |     mac2!(0, 1);
    |     ------------ in this macro invocation
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:140:17
+  --> $DIR/recover-range-pats.rs:137:17
    |
 LL |             let ...$e;
    |                 ^^^ help: use `..=` for an inclusive range
@@ -388,17 +252,8 @@ LL |             let ...$e;
 LL |     mac!(0);
    |     -------- in this macro invocation
 
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:144:19
-   |
-LL |             let $e...;
-   |                   ^^^ help: use `..=` for an inclusive range
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
-
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:19:12
+  --> $DIR/recover-range-pats.rs:20:12
    |
 LL |     if let true..Y = 0 {}
    |            ^^^^  - this is of type `u8`
@@ -406,7 +261,7 @@ LL |     if let true..Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:20:15
+  --> $DIR/recover-range-pats.rs:21:15
    |
 LL |     if let X..true = 0 {}
    |            -  ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -414,7 +269,7 @@ LL |     if let X..true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:21:12
+  --> $DIR/recover-range-pats.rs:22:12
    |
 LL |     if let .0..Y = 0 {}
    |            ^^  - this is of type `u8`
@@ -422,7 +277,7 @@ LL |     if let .0..Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:23:16
+  --> $DIR/recover-range-pats.rs:24:16
    |
 LL |     if let X.. .0 = 0 {}
    |            -   ^^   - this expression has type `u8`
@@ -431,7 +286,7 @@ LL |     if let X.. .0 = 0 {}
    |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:32:12
+  --> $DIR/recover-range-pats.rs:33:12
    |
 LL |     if let true..=Y = 0 {}
    |            ^^^^   - this is of type `u8`
@@ -439,7 +294,7 @@ LL |     if let true..=Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:33:16
+  --> $DIR/recover-range-pats.rs:34:16
    |
 LL |     if let X..=true = 0 {}
    |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -447,7 +302,7 @@ LL |     if let X..=true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:34:12
+  --> $DIR/recover-range-pats.rs:35:12
    |
 LL |     if let .0..=Y = 0 {}
    |            ^^   - this is of type `u8`
@@ -455,7 +310,7 @@ LL |     if let .0..=Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:36:16
+  --> $DIR/recover-range-pats.rs:37:16
    |
 LL |     if let X..=.0 = 0 {}
    |            -   ^^   - this expression has type `u8`
@@ -464,7 +319,7 @@ LL |     if let X..=.0 = 0 {}
    |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:45:12
+  --> $DIR/recover-range-pats.rs:46:12
    |
 LL |     if let true...Y = 0 {}
    |            ^^^^   - this is of type `u8`
@@ -472,7 +327,7 @@ LL |     if let true...Y = 0 {}
    |            this is of type `bool` but it should be `char` or numeric
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:47:16
+  --> $DIR/recover-range-pats.rs:48:16
    |
 LL |     if let X...true = 0 {}
    |            -   ^^^^ this is of type `bool` but it should be `char` or numeric
@@ -480,7 +335,7 @@ LL |     if let X...true = 0 {}
    |            this is of type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:49:12
+  --> $DIR/recover-range-pats.rs:50:12
    |
 LL |     if let .0...Y = 0 {}
    |            ^^   - this is of type `u8`
@@ -488,7 +343,7 @@ LL |     if let .0...Y = 0 {}
    |            expected integer, found floating-point number
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:52:17
+  --> $DIR/recover-range-pats.rs:53:17
    |
 LL |     if let X... .0 = 0 {}
    |            -    ^^   - this expression has type `u8`
@@ -497,78 +352,78 @@ LL |     if let X... .0 = 0 {}
    |            this is of type `u8`
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:60:12
+  --> $DIR/recover-range-pats.rs:61:12
    |
 LL |     if let true.. = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:62:12
+  --> $DIR/recover-range-pats.rs:63:12
    |
 LL |     if let .0.. = 0 {}
    |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:70:12
+  --> $DIR/recover-range-pats.rs:71:12
    |
 LL |     if let true..= = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:72:12
+  --> $DIR/recover-range-pats.rs:73:12
    |
 LL |     if let .0..= = 0 {}
    |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:82:12
+  --> $DIR/recover-range-pats.rs:81:12
    |
 LL |     if let true... = 0 {}
    |            ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:85:12
+  --> $DIR/recover-range-pats.rs:83:12
    |
 LL |     if let .0... = 0 {}
    |            ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:94:14
+  --> $DIR/recover-range-pats.rs:91:14
    |
 LL |     if let ..true = 0 {}
    |              ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:96:15
+  --> $DIR/recover-range-pats.rs:93:15
    |
 LL |     if let .. .0 = 0 {}
    |               ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:104:15
+  --> $DIR/recover-range-pats.rs:101:15
    |
 LL |     if let ..=true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:106:15
+  --> $DIR/recover-range-pats.rs:103:15
    |
 LL |     if let ..=.0 = 0 {}
    |               ^^ expected integer, found floating-point number
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/recover-range-pats.rs:116:15
+  --> $DIR/recover-range-pats.rs:113:15
    |
 LL |     if let ...true = 0 {}
    |               ^^^^ this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/recover-range-pats.rs:119:15
+  --> $DIR/recover-range-pats.rs:116:15
    |
 LL |     if let ....3 = 0 {}
    |               ^^ expected integer, found floating-point number
 
-error: aborting due to 85 previous errors
+error: aborting due to 60 previous errors
 
-Some errors have detailed explanations: E0029, E0308.
+Some errors have detailed explanations: E0029, E0308, E0586.
 For more information about an error, try `rustc --explain E0029`.
