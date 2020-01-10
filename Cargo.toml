@@ -18,8 +18,8 @@ cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/", d
 cranelift-module = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-faerie = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/", optional = true }
-target-lexicon = "0.9.0"
-faerie = "0.12.0"
+target-lexicon = "0.10.0"
+faerie = "0.14.0"
 
 #goblin = "0.0.17"
 ar = "0.8.0"
@@ -28,7 +28,7 @@ libc = "0.2.53"
 indexmap = "1.0.2"
 
 [dependencies.object]
-version = "0.16.0"
+version = "0.17.0"
 default-features = false
 features = ["compression", "read", "std"] # We don't need WASM support
 
@@ -75,6 +75,3 @@ debug = false
 opt-level = 0
 debug = false
 
-[profile.dev.package.synstructure]
-opt-level = 0
-debug = false

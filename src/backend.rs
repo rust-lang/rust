@@ -7,7 +7,7 @@ use cranelift_module::{FuncId, Module};
 
 use faerie::*;
 #[cfg(feature = "backend_object")]
-use object::{SectionKind, RelocationKind, RelocationEncoding};
+use object::{SectionKind, SymbolFlags, RelocationKind, RelocationEncoding};
 #[cfg(feature = "backend_object")]
 use object::write::*;
 use cranelift_faerie::{FaerieBackend, FaerieBuilder, FaerieProduct, FaerieTrapCollection};
@@ -61,7 +61,8 @@ impl WriteMetadata for object::write::Object {
             kind: object::SymbolKind::Data,
             scope: object::SymbolScope::Dynamic,
             weak: false,
-            section: Some(section_id),
+            section: SymbolSection::Section(section_id),
+            flags: SymbolFlags::None,
         });
     }
 }
