@@ -1057,7 +1057,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("consider an outer attribute, `#[macro_use]` mod ...").emit();
+                    err.help("try an outer attribute: `#[macro_use]`").emit();
                 } else {
                     err.emit();
                 }

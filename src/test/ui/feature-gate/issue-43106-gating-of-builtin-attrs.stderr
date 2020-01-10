@@ -184,7 +184,7 @@ warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
 LL |     mod inner { #![macro_escape] }
    |                 ^^^^^^^^^^^^^^^^
    |
-   = help: consider an outer attribute, `#[macro_use]` mod ...
+   = help: try an outer attribute: `#[macro_use]`
 
 warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:221:17
