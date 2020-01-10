@@ -114,6 +114,7 @@ use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
     ToPredicate, Ty, TyCtxt, UserType,
 };
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -146,7 +147,6 @@ use crate::lint;
 use crate::require_c_abi_if_c_variadic;
 use crate::session::config::EntryFnType;
 use crate::session::Session;
-use crate::util::captures::Captures;
 use crate::util::common::{indenter, ErrorReported};
 use crate::TypeAndSubsts;
 

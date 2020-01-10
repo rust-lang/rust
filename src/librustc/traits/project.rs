@@ -17,7 +17,6 @@ use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
-use crate::util::common::FN_OUTPUT_NAME;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -1364,7 +1363,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         projection_ty: ty::ProjectionTy::from_ref_and_name(
             tcx,
             trait_ref,
-            Ident::with_dummy_span(FN_OUTPUT_NAME),
+            Ident::with_dummy_span(rustc_hir::FN_OUTPUT_NAME),
         ),
         ty: ret_type,
     });
