@@ -13,6 +13,8 @@ use errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -82,6 +84,19 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// for some compile-time benchmarks.
     #[inline(always)]
     pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
+        // Handling the `query_blocked_prof_timer` is a bit weird because of the
+        // control flow in this function: Blocking is implemented by
+        // awaiting a running job and, once that is done, entering the loop below
+        // again from the top. In that second iteration we will hit the
+        // cache which provides us with the information we need for
+        // finishing the "query-blocked" event.
+        //
+        // We thus allocate `query_blocked_prof_timer` outside the loop,
+        // initialize it during the first iteration and finish it during the
+        // second iteration.
+        #[cfg(parallel_compiler)]
+        let mut query_blocked_prof_timer: Option<TimingGuard<'_>> = None;
+
         let cache = Q::query_cache(tcx);
         loop {
             // We compute the key's hash once and then use it for both the
@@ -95,7 +110,17 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             if let Some((_, value)) =
                 lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
             {
-                tcx.prof.query_cache_hit(Q::NAME);
+                if unlikely!(tcx.prof.enabled()) {
+                    tcx.prof.query_cache_hit(value.index.into());
+
+                    #[cfg(parallel_compiler)]
+                    {
+                        if let Some(prof_timer) = query_blocked_prof_timer.take() {
+                            prof_timer.finish_with_query_invocation_id(value.index.into());
+                        }
+                    }
+                }
+
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
@@ -103,9 +128,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 }
                 return TryGetJob::JobCompleted(result);
             }
-
-            #[cfg(parallel_compiler)]
-            let query_blocked_prof_timer;
 
             let job = match lock.active.entry((*key).clone()) {
                 Entry::Occupied(entry) => {
@@ -116,7 +138,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             // self-profiler.
                             #[cfg(parallel_compiler)]
                             {
-                                query_blocked_prof_timer = tcx.prof.query_blocked(Q::NAME);
+                                query_blocked_prof_timer = Some(tcx.prof.query_blocked());
                             }
 
                             job.clone()
@@ -152,11 +174,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
-
-                // This `drop()` is not strictly necessary as the binding
-                // would go out of scope anyway. But it's good to have an
-                // explicit marker of how far the measurement goes.
-                drop(query_blocked_prof_timer);
 
                 if let Err(cycle) = result {
                     return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
@@ -347,7 +364,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(never)]
     pub(super) fn get_query<Q: QueryDescription<'tcx>>(self, span: Span, key: Q::Key) -> Q::Value {
-        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME.as_str(), key, span);
+        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
@@ -366,7 +383,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if Q::ANON {
-            let prof_timer = self.prof.query_provider(Q::NAME);
+            let prof_timer = self.prof.query_provider();
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -374,7 +391,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             });
 
-            drop(prof_timer);
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             self.dep_graph.read_index(dep_node_index);
 
@@ -436,8 +453,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = if Q::cache_on_disk(self, key.clone(), None)
             && self.sess.opts.debugging_opts.incremental_queries
         {
-            let _prof_timer = self.prof.incr_cache_loading(Q::NAME);
+            let prof_timer = self.prof.incr_cache_loading();
             let result = Q::try_load_from_disk(self, prev_dep_node_index);
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             // We always expect to find a cached result for things that
             // can be forced from `DepNode`.
@@ -457,10 +475,12 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
-            let _prof_timer = self.prof.query_provider(Q::NAME);
+            let prof_timer = self.prof.query_provider();
 
             // The dep-graph for this computation is already in-place.
             let result = self.dep_graph.with_ignore(|| Q::compute(self, key));
+
+            prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             result
         };
@@ -523,7 +543,7 @@ impl<'tcx> TyCtxt<'tcx> {
             dep_node
         );
 
-        let prof_timer = self.prof.query_provider(Q::NAME);
+        let prof_timer = self.prof.query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -541,7 +561,7 @@ impl<'tcx> TyCtxt<'tcx> {
             })
         });
 
-        drop(prof_timer);
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if unlikely!(!diagnostics.is_empty()) {
             if dep_node.kind != crate::dep_graph::DepKind::Null {
@@ -572,17 +592,19 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let dep_node = Q::to_dep_node(self, &key);
 
-        if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
-            // A None return from `try_mark_green_and_read` means that this is either
-            // a new dep node or that the dep node has already been marked red.
-            // Either way, we can't call `dep_graph.read()` as we don't have the
-            // DepNodeIndex. We must invoke the query itself. The performance cost
-            // this introduces should be negligible as we'll immediately hit the
-            // in-memory cache, or another query down the line will.
-
-            let _ = self.get_query::<Q>(DUMMY_SP, key);
-        } else {
-            self.prof.query_cache_hit(Q::NAME);
+        match self.dep_graph.try_mark_green_and_read(self, &dep_node) {
+            None => {
+                // A None return from `try_mark_green_and_read` means that this is either
+                // a new dep node or that the dep node has already been marked red.
+                // Either way, we can't call `dep_graph.read()` as we don't have the
+                // DepNodeIndex. We must invoke the query itself. The performance cost
+                // this introduces should be negligible as we'll immediately hit the
+                // in-memory cache, or another query down the line will.
+                let _ = self.get_query::<Q>(DUMMY_SP, key);
+            }
+            Some((_, dep_node_index)) => {
+                self.prof.query_cache_hit(dep_node_index.into());
+            }
         }
     }
 
@@ -814,36 +836,6 @@ macro_rules! define_queries_inner {
         }
 
         #[allow(nonstandard_style)]
-        #[derive(Clone, Copy)]
-        pub enum QueryName {
-            $($name),*
-        }
-
-        impl rustc_data_structures::profiling::QueryName for QueryName {
-            fn discriminant(self) -> std::mem::Discriminant<QueryName> {
-                std::mem::discriminant(&self)
-            }
-
-            fn as_str(self) -> &'static str {
-                QueryName::as_str(&self)
-            }
-        }
-
-        impl QueryName {
-            pub fn register_with_profiler(
-                profiler: &rustc_data_structures::profiling::SelfProfiler,
-            ) {
-                $(profiler.register_query_name(QueryName::$name);)*
-            }
-
-            pub fn as_str(&self) -> &'static str {
-                match self {
-                    $(QueryName::$name => stringify!($name),)*
-                }
-            }
-        }
-
-        #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
@@ -883,12 +875,6 @@ macro_rules! define_queries_inner {
                     $(Query::$name(key) => key.default_span(tcx),)*
                 }
             }
-
-            pub fn query_name(&self) -> QueryName {
-                match self {
-                    $(Query::$name(_) => QueryName::$name,)*
-                }
-            }
         }
 
         impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
@@ -923,7 +909,7 @@ macro_rules! define_queries_inner {
             type Key = $K;
             type Value = $V;
 
-            const NAME: QueryName = QueryName::$name;
+            const NAME: &'static str = stringify!($name);
             const CATEGORY: ProfileCategory = $category;
         }
 
@@ -1035,6 +1021,35 @@ macro_rules! define_queries_inner {
             pub fn $name(self, key: $K) -> $V {
                 self.at(DUMMY_SP).$name(key)
             })*
+
+            /// All self-profiling events generated by the query engine use
+            /// virtual `StringId`s for their `event_id`. This method makes all
+            /// those virtual `StringId`s point to actual strings.
+            ///
+            /// If we are recording only summary data, the ids will point to
+            /// just the query names. If we are recording query keys too, we
+            /// allocate the corresponding strings here.
+            pub fn alloc_self_profile_query_strings(self) {
+                use crate::ty::query::profiling_support::{
+                    alloc_self_profile_query_strings_for_query_cache,
+                    QueryKeyStringCache,
+                };
+
+                if !self.prof.enabled() {
+                    return;
+                }
+
+                let mut string_cache = QueryKeyStringCache::new();
+
+                $({
+                    alloc_self_profile_query_strings_for_query_cache(
+                        self,
+                        stringify!($name),
+                        &self.queries.$name,
+                        &mut string_cache,
+                    );
+                })*
+            }
         }
 
         impl TyCtxtAt<$tcx> {

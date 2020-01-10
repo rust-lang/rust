@@ -1995,9 +1995,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "0.5.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c420bbc064623934620b5ab2dc0cf96451b34163329e82f95e7fa1b7b99a6ac8"
+checksum = "fef709d3257013bba7cff14fc504e07e80631d3fe0f6d38ce63b8f6510ccb932"
 dependencies = [
  "byteorder",
  "memmap",
@@ -3079,6 +3079,7 @@ dependencies = [
  "graphviz",
  "jobserver",
  "log",
+ "measureme",
  "parking_lot",
  "polonius-engine",
  "rustc-rayon",
