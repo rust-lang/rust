@@ -78,6 +78,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     ) {
         unsafe {
             let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
+            super::__rust_drop_panic();
         }
     }
 }

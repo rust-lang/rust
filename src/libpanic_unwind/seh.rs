@@ -229,6 +229,7 @@ macro_rules! define_cleanup {
         unsafe extern $abi fn exception_cleanup(e: *mut [u64; 2]) {
             if (*e)[0] != 0 {
                 cleanup(*e);
+                super::__rust_drop_panic();
             }
         }
         #[unwind(allowed)]

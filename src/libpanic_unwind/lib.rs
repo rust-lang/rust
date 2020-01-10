@@ -61,6 +61,12 @@ cfg_if::cfg_if! {
     }
 }
 
+extern "C" {
+    /// Handler in libstd called when a panic object is dropped outside of
+    /// `catch_unwind`.
+    fn __rust_drop_panic() -> !;
+}
+
 mod dwarf;
 
 // Entry point for catching an exception, implemented using the `try` intrinsic

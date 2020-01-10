@@ -80,6 +80,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     extern "C" fn exception_cleanup(ptr: *mut libc::c_void) {
         unsafe {
             ptr::drop_in_place(ptr as *mut Exception);
+            super::__rust_drop_panic();
         }
     }
 }

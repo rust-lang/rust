@@ -19,8 +19,6 @@ impl<'a> Drop for DropCheck<'a> {
 extern "C" {
     fn throw_cxx_exception();
 
-    fn swallow_exception(cb: extern "C" fn());
-
     #[unwind(allowed)]
     fn cxx_catch_callback(cb: extern "C" fn(), ok: *mut bool);
 }
@@ -61,34 +59,7 @@ fn throw_rust_panic() {
     assert!(cxx_ok);
 }
 
-fn check_exception_drop() {
-    static mut DROP_COUNT: usize = 0;
-
-    struct CountDrop;
-    impl Drop for CountDrop {
-        fn drop(&mut self) {
-            println!("CountDrop::drop");
-            unsafe {
-                DROP_COUNT += 1;
-            }
-        }
-    }
-
-
-    #[unwind(allowed)]
-    extern "C" fn callback() {
-        println!("throwing rust panic #2");
-        panic!(CountDrop);
-    }
-
-    unsafe {
-        swallow_exception(callback);
-        assert_eq!(DROP_COUNT, 1);
-    }
-}
-
 fn main() {
     unsafe { throw_cxx_exception() };
     throw_rust_panic();
-    check_exception_drop();
 }
