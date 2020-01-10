@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{par_partition, Lrc};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
@@ -239,7 +239,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub worker: usize,
     // The incremental compilation session directory, or None if we are not
     // compiling incrementally
-    pub incr_comp_session_dir: Option<PathBuf>,
+    pub incr_comp_session_dir: Option<Arc<PathBuf>>,
     // Used to update CGU re-use information during the thinlto phase.
     pub cgu_reuse_tracker: CguReuseTracker,
     // Channel back to the main control thread to send messages to
@@ -473,32 +473,47 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
 ) -> FxHashMap<WorkProductId, WorkProduct> {
-    let mut work_products = FxHashMap::default();
-
     if sess.opts.incremental.is_none() {
-        return work_products;
+        return FxHashMap::default();
     }
 
-    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
+    let _timer = sess.timer("incr_comp_copy_all_cgu_workproducts");
 
-    for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let mut files = vec![];
+    let session_dir = sess.incr_comp_session_dir();
 
-        if let Some(ref path) = module.object {
-            files.push((WorkProductFileKind::Object, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode {
-            files.push((WorkProductFileKind::Bytecode, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode_compressed {
-            files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
-        }
+    // Split the modules into 3 parts, which limits usage to 3 threads.
+    // That seems to be all Windows' file system can handle.
+    let work_product_chunks = par_partition(&compiled_modules.modules, 3, |chunk| {
+        chunk
+            .iter()
+            .filter(|m| m.kind == ModuleKind::Regular)
+            .filter_map(|module| {
+                let mut files = vec![];
 
-        if let Some((id, product)) =
-            copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files)
-        {
-            work_products.insert(id, product);
-        }
+                if let Some(ref path) = module.object {
+                    files.push((WorkProductFileKind::Object, path.clone()));
+                }
+                if let Some(ref path) = module.bytecode {
+                    files.push((WorkProductFileKind::Bytecode, path.clone()));
+                }
+                if let Some(ref path) = module.bytecode_compressed {
+                    files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
+                }
+
+                copy_cgu_workproducts_to_incr_comp_cache_dir(
+                    sess,
+                    &session_dir,
+                    &module.name,
+                    &files,
+                )
+            })
+            .collect::<Vec<_>>()
+    });
+
+    let mut work_products = FxHashMap::default();
+
+    for (id, product) in work_product_chunks.into_iter().flat_map(|chunk| chunk.into_iter()) {
+        work_products.insert(id, product);
     }
 
     work_products
@@ -1029,7 +1044,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
-        incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
+        incr_comp_session_dir: sess.incr_comp_session_dir_opt(),
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
