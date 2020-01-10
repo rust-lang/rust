@@ -1,4 +1,4 @@
-error[E0152]: duplicate lang item found: `panic_impl`.
+error[E0152]: found duplicate lang item `panic_impl`
   --> $DIR/duplicate_entry_error.rs:10:1
    |
 LL | / fn panic_impl(info: &PanicInfo) -> ! {
@@ -7,7 +7,7 @@ LL | |     loop {}
 LL | | }
    | |_^
    |
-   = note: first defined in crate `std` (which `duplicate_entry_error` depends on).
+   = note: first defined in crate `std` (which `duplicate_entry_error` depends on)
 
 error: aborting due to previous error
 

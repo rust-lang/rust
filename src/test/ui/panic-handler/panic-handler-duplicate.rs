@@ -12,6 +12,6 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 #[lang = "panic_impl"]
-fn panic2(info: &PanicInfo) -> ! { //~ ERROR duplicate lang item found: `panic_impl`.
+fn panic2(info: &PanicInfo) -> ! { //~ ERROR found duplicate lang item `panic_impl`
     loop {}
 }
