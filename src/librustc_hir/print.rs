@@ -1767,13 +1767,17 @@ impl<'a> State<'a> {
             }
             PatKind::Lit(ref e) => self.print_expr(&e),
             PatKind::Range(ref begin, ref end, ref end_kind) => {
-                self.print_expr(&begin);
-                self.s.space();
+                if let Some(expr) = begin {
+                    self.print_expr(expr);
+                    self.s.space();
+                }
                 match *end_kind {
                     RangeEnd::Included => self.s.word("..."),
                     RangeEnd::Excluded => self.s.word(".."),
                 }
-                self.print_expr(&end);
+                if let Some(expr) = end {
+                    self.print_expr(expr);
+                }
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
                 self.s.word("[");

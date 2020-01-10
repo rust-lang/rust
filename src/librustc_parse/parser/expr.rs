@@ -1,4 +1,3 @@
-use super::diagnostics::Error;
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::{BlockMode, Parser, PathStyle, PrevTokenKind, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
@@ -1967,7 +1966,8 @@ impl<'a> Parser<'a> {
         limits: RangeLimits,
     ) -> PResult<'a, ExprKind> {
         if end.is_none() && limits == RangeLimits::Closed {
-            Err(self.span_fatal_err(self.token.span, Error::InclusiveRangeWithNoEnd))
+            self.error_inclusive_range_with_no_end(self.token.span);
+            Ok(ExprKind::Err)
         } else {
             Ok(ExprKind::Range(start, end, limits))
         }

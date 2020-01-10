@@ -1,0 +1,35 @@
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:10:13
+   |
+LL |     if let 0... = 1 {}
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:11:13
+   |
+LL |     if let 0..= = 1 {}
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:13:13
+   |
+LL |     if let X... = 1 {}
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-inclusive-no-end.rs:14:13
+   |
+LL |     if let X..= = 1 {}
+   |             ^^^
+   |
+   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

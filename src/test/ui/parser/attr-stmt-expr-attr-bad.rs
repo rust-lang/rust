@@ -1,3 +1,5 @@
+#![feature(half_open_range_patterns)]
+
 fn main() {}
 
 #[cfg(FALSE)] fn e() { let _ = box #![attr] 0; }
@@ -90,15 +92,15 @@ fn main() {}
 // note: requires parens in patterns to allow disambiguation
 
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
-//~^ ERROR `X..=` range patterns are not supported
+//~^ ERROR inclusive range with no end
 //~| ERROR expected one of `=>`, `if`, or `|`, found `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
-//~^ ERROR `X..=` range patterns are not supported
+//~^ ERROR inclusive range with no end
 //~| ERROR expected one of `=>`, `if`, or `|`, found `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=-#[attr] 10 => () } }
 //~^ ERROR unexpected token: `#`
 #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
-//~^ ERROR `X..=` range patterns are not supported
+//~^ ERROR inclusive range with no end
 //~| ERROR expected one of `=>`, `if`, or `|`, found `#`
 
 #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
