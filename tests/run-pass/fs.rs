@@ -22,8 +22,8 @@ fn main() {
     let symlink_path = tmp.join("miri_test_fs_symlink.txt");
     let bytes = b"Hello, World!\n";
     // Clean the paths for robustness.
-    remove_file(&path).unwrap_or(());
-    remove_file(&symlink_path).unwrap_or(());
+    remove_file(&path).ok();
+    remove_file(&symlink_path).ok();
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();

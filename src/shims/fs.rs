@@ -337,7 +337,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` shim is only available for `macos` targets.")
+            throw_unsup_format!("The `stat` and `lstat` shims are only available for `macos` targets.")
         }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
