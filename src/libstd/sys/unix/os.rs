@@ -480,11 +480,13 @@ pub fn env() -> Env {
         let _guard = env_lock();
         let mut environ = *environ();
         let mut result = Vec::new();
-        while environ != ptr::null() && *environ != ptr::null() {
-            if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
-                result.push(key_value);
+        if !environ.is_null() {
+            while !(*environ).is_null() {
+                if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
+                    result.push(key_value);
+                }
+                environ = environ.add(1);
             }
-            environ = environ.offset(1);
         }
         return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
     }
