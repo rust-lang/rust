@@ -1,5 +1,5 @@
 error: Matching on `Some` with `ok()` is redundant
-  --> $DIR/ok_if_let.rs:6:5
+  --> $DIR/if_let_some_result.rs:6:5
    |
 LL | /     if let Some(y) = x.parse().ok() {
 LL | |         y
@@ -19,7 +19,7 @@ LL |     }
    |
 
 error: Matching on `Some` with `ok()` is redundant
-  --> $DIR/ok_if_let.rs:23:9
+  --> $DIR/if_let_some_result.rs:23:9
    |
 LL | /         if let Some(y) = x.parse().ok() {
 LL | |             return y;

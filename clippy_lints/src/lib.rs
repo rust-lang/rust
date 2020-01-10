@@ -210,6 +210,7 @@ pub mod functions;
 pub mod get_last_with_len;
 pub mod identity_conversion;
 pub mod identity_op;
+pub mod if_let_some_result;
 pub mod if_not_else;
 pub mod implicit_return;
 pub mod indexing_slicing;
@@ -263,7 +264,6 @@ pub mod new_without_default;
 pub mod no_effect;
 pub mod non_copy_const;
 pub mod non_expressive_names;
-pub mod ok_if_let;
 pub mod open_options;
 pub mod overflow_check_conditional;
 pub mod panic_unimplemented;
@@ -703,7 +703,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &non_expressive_names::JUST_UNDERSCORES_AND_DIGITS,
         &non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         &non_expressive_names::SIMILAR_NAMES,
-        &ok_if_let::IF_LET_SOME_RESULT,
+        &if_let_some_result::IF_LET_SOME_RESULT,
         &open_options::NONSENSICAL_OPEN_OPTIONS,
         &overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         &panic_unimplemented::PANIC,
@@ -904,7 +904,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box eval_order_dependence::EvalOrderDependence);
     store.register_late_pass(|| box missing_doc::MissingDoc::new());
     store.register_late_pass(|| box missing_inline::MissingInline);
-    store.register_late_pass(|| box ok_if_let::OkIfLet);
+    store.register_late_pass(|| box if_let_some_result::OkIfLet);
     store.register_late_pass(|| box redundant_pattern_matching::RedundantPatternMatching);
     store.register_late_pass(|| box partialeq_ne_impl::PartialEqNeImpl);
     store.register_late_pass(|| box unused_io_amount::UnusedIoAmount);
@@ -1265,7 +1265,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(&non_expressive_names::MANY_SINGLE_CHAR_NAMES),
-        LintId::of(&ok_if_let::IF_LET_SOME_RESULT),
+        LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
         LintId::of(&panic_unimplemented::PANIC_PARAMS),
@@ -1413,7 +1413,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&new_without_default::NEW_WITHOUT_DEFAULT),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(&non_expressive_names::MANY_SINGLE_CHAR_NAMES),
-        LintId::of(&ok_if_let::IF_LET_SOME_RESULT),
+        LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&panic_unimplemented::PANIC_PARAMS),
         LintId::of(&ptr::CMP_NULL),
         LintId::of(&ptr::PTR_ARG),

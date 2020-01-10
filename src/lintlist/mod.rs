@@ -705,7 +705,7 @@ pub const ALL_LINTS: [Lint; 347] = [
         group: "style",
         desc: "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead",
         deprecation: None,
-        module: "ok_if_let",
+        module: "if_let_some_result",
     },
     Lint {
         name: "if_not_else",
