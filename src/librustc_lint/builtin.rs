@@ -657,7 +657,7 @@ impl EarlyLintPass for AnonymousParameters {
                                 )
                                 .span_suggestion(
                                     arg.pat.span,
-                                    "Try naming the parameter or explicitly \
+                                    "try naming the parameter or explicitly \
                                     ignoring it",
                                     format!("_: {}", ty_snip),
                                     appl,
@@ -1934,21 +1934,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             use rustc::ty::TyKind::*;
             match ty.kind {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some((format!("References must be non-null"), None)),
+                Ref(..) => Some((format!("references must be non-null"), None)),
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
-                FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
-                Never => Some((format!("The never type (`!`) has no valid value"), None)),
+                FnPtr(..) => Some((format!("function pointers must be non-null"), None)),
+                Never => Some((format!("the `!` type has no valid value"), None)),
                 RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some((format!("The vtable of a wide raw pointer must be non-null"), None))
+                    Some((format!("the vtable of a wide raw pointer must be non-null"), None))
                 }
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit => {
-                    Some((format!("Booleans must be `true` or `false`"), None))
+                    Some((format!("booleans must be either `true` or `false`"), None))
                 }
                 Char if init == InitKind::Uninit => {
-                    Some((format!("Characters must be a valid unicode codepoint"), None))
+                    Some((format!("characters must be a valid Unicode codepoint"), None))
                 }
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
