@@ -966,6 +966,7 @@ impl AsRef<OsStr> for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsString {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         self
     }
