@@ -25,7 +25,7 @@ LL |     fn two(self, _: isize, _: isize) -> Foo { self }
 LL |      .two(0);
    |       ^^^ expected 2 parameters
 
-error[E0599]: no method named `take` found for type `Foo` in the current scope
+error[E0599]: no method named `take` found for struct `Foo` in the current scope
   --> $DIR/method-call-err-msg.rs:18:7
    |
 LL | pub struct Foo;

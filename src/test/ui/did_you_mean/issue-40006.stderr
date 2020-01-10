@@ -56,7 +56,7 @@ error: missing `fn`, `type`, or `const` for associated-item declaration
 LL |     pub hello_method(&self) {
    |        ^ missing `fn`, `type`, or `const`
 
-error[E0599]: no method named `hello_method` found for type `S` in the current scope
+error[E0599]: no method named `hello_method` found for struct `S` in the current scope
   --> $DIR/issue-40006.rs:38:7
    |
 LL | struct S;

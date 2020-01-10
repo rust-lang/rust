@@ -9,7 +9,7 @@ help: possible better candidate is found in another module, you can import it in
 LL | use T;
    |
 
-error[E0599]: no function or associated item named `f` found for type `Foo` in the current scope
+error[E0599]: no function or associated item named `f` found for type parameter `Foo` in the current scope
   --> $DIR/lexical-scopes.rs:10:10
    |
 LL |     Foo::f();

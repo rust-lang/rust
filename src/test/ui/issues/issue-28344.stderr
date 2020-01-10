@@ -4,7 +4,7 @@ error[E0191]: the value of the associated type `Output` (from trait `std::ops::B
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                 ^^^^^^ help: specify the associated type: `BitXor<Output = Type>`
 
-error[E0599]: no function or associated item named `bitor` found for type `dyn std::ops::BitXor<_>` in the current scope
+error[E0599]: no function or associated item named `bitor` found for trait object `dyn std::ops::BitXor<_>` in the current scope
   --> $DIR/issue-28344.rs:4:25
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
@@ -19,7 +19,7 @@ error[E0191]: the value of the associated type `Output` (from trait `std::ops::B
 LL |     let g = BitXor::bitor;
    |             ^^^^^^ help: specify the associated type: `BitXor<Output = Type>`
 
-error[E0599]: no function or associated item named `bitor` found for type `dyn std::ops::BitXor<_>` in the current scope
+error[E0599]: no function or associated item named `bitor` found for trait object `dyn std::ops::BitXor<_>` in the current scope
   --> $DIR/issue-28344.rs:8:21
    |
 LL |     let g = BitXor::bitor;

@@ -1,4 +1,4 @@
-error[E0599]: no method named `as_deref_mut` found for type `std::result::Result<{integer}, _>` in the current scope
+error[E0599]: no method named `as_deref_mut` found for enum `std::result::Result<{integer}, _>` in the current scope
   --> $DIR/result-as_deref_mut.rs:4:31
    |
 LL |     let _result = &mut Ok(42).as_deref_mut();

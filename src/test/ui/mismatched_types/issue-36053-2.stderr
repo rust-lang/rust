@@ -1,4 +1,4 @@
-error[E0599]: no method named `count` found for type `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>` in the current scope
+error[E0599]: no method named `count` found for struct `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>` in the current scope
   --> $DIR/issue-36053-2.rs:7:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();

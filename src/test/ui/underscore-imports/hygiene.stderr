@@ -1,4 +1,4 @@
-error[E0599]: no method named `deref` found for type `&()` in the current scope
+error[E0599]: no method named `deref` found for reference `&()` in the current scope
   --> $DIR/hygiene.rs:38:11
    |
 LL |     (&()).deref();
@@ -10,7 +10,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use std::ops::Deref;
    |
 
-error[E0599]: no method named `deref_mut` found for type `&mut ()` in the current scope
+error[E0599]: no method named `deref_mut` found for mutable reference `&mut ()` in the current scope
   --> $DIR/hygiene.rs:39:15
    |
 LL |     (&mut ()).deref_mut();

@@ -12,13 +12,13 @@ trait GetString {
 
 trait UseString: std::fmt::Debug + GetString {
     fn use_string(&self) {
-        println!("{:?}", self.get_a()); //~ ERROR no method named `get_a` found for type `&Self`
+        println!("{:?}", self.get_a()); //~ ERROR no method named `get_a` found
     }
 }
 
 trait UseString2: GetString {
     fn use_string(&self) {
-        println!("{:?}", self.get_a()); //~ ERROR no method named `get_a` found for type `&Self`
+        println!("{:?}", self.get_a()); //~ ERROR no method named `get_a` found
     }
 }
 

@@ -1,4 +1,4 @@
-error[E0599]: no method named `as_deref_err` found for type `std::result::Result<_, {integer}>` in the current scope
+error[E0599]: no method named `as_deref_err` found for enum `std::result::Result<_, {integer}>` in the current scope
   --> $DIR/result-as_deref_err.rs:4:28
    |
 LL |     let _result = &Err(41).as_deref_err();

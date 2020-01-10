@@ -1,4 +1,4 @@
-error[E0599]: no method named `get_a` found for type `&Self` in the current scope
+error[E0599]: no method named `get_a` found for reference `&Self` in the current scope
   --> $DIR/constrain-trait.rs:15:31
    |
 LL |         println!("{:?}", self.get_a());
@@ -10,7 +10,7 @@ help: the following trait defines an item `get_a`, perhaps you need to add anoth
 LL | trait UseString: std::fmt::Debug + GetString {
    |                                  ^^^^^^^^^^^
 
-error[E0599]: no method named `get_a` found for type `&Self` in the current scope
+error[E0599]: no method named `get_a` found for reference `&Self` in the current scope
   --> $DIR/constrain-trait.rs:21:31
    |
 LL |         println!("{:?}", self.get_a());

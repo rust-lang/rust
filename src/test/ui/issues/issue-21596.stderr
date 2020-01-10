@@ -1,4 +1,4 @@
-error[E0599]: no method named `to_string` found for type `*const u8` in the current scope
+error[E0599]: no method named `to_string` found for raw pointer `*const u8` in the current scope
   --> $DIR/issue-21596.rs:4:22
    |
 LL |     println!("{}", z.to_string());

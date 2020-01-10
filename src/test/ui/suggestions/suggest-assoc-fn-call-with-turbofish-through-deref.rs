@@ -9,5 +9,5 @@ fn main() {
     let shared_state = RefCell::new(HasAssocMethod);
     let state = shared_state.borrow_mut();
     state.hello();
-    //~^ ERROR no method named `hello` found for type `std::cell::RefMut<'_, HasAssocMethod>`
+    //~^ ERROR no method named `hello` found
 }

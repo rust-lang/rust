@@ -1,4 +1,4 @@
-error[E0599]: no method named `deref` found for type `&()` in the current scope
+error[E0599]: no method named `deref` found for reference `&()` in the current scope
   --> $DIR/shadow.rs:19:11
    |
 LL |         x.deref();

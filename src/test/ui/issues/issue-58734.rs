@@ -18,5 +18,5 @@ fn main() {
     Trait::exists(());
     // no object safety error
     Trait::nonexistent(());
-    //~^ ERROR no function or associated item named `nonexistent` found for type `dyn Trait`
+    //~^ ERROR no function or associated item named `nonexistent` found
 }
