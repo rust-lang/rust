@@ -182,11 +182,17 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 }
                 let cond = trans_operand(fx, cond).load_scalar(fx);
                 let target = fx.get_ebb(*target);
+                let failure = fx.bcx.create_ebb();
                 if *expected {
-                    fx.bcx.ins().brnz(cond, target, &[]);
+                    fx.bcx.ins().brz(cond, failure, &[]);
                 } else {
-                    fx.bcx.ins().brz(cond, target, &[]);
+                    fx.bcx.ins().brnz(cond, failure, &[]);
                 };
+                fx.bcx.ins().jump(target, &[]);
+
+                // FIXME insert bb after all other bb's to reduce the amount of jumps in the common
+                // case and improve code locality.
+                fx.bcx.switch_to_block(failure);
                 trap_panic(
                     fx,
                     format!(
