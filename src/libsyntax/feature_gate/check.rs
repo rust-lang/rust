@@ -911,6 +911,7 @@ pub fn check_crate(
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
+    gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

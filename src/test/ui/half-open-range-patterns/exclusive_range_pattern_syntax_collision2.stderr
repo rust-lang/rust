@@ -1,17 +1,11 @@
-error: `X..` range patterns are not supported
-  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:13
-   |
-LL |         [_, 99..] => {},
-   |             ^^^^ help: try using the maximum value for the type: `99..MAX`
-
 error[E0527]: pattern requires 2 elements but array has 3
-  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:9
+  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:6:9
    |
 LL |         [_, 99..] => {},
    |         ^^^^^^^^^ expected 3 elements
 
 error[E0308]: mismatched types
-  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:13
+  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:6:13
    |
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
@@ -21,7 +15,7 @@ LL |         [_, 99..] => {},
    = note: expected struct `std::ops::Range<{integer}>`
                 found type `{integer}`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0308, E0527.
 For more information about an error, try `rustc --explain E0308`.

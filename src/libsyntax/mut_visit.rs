@@ -1075,8 +1075,8 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         PatKind::Box(inner) => vis.visit_pat(inner),
         PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
         PatKind::Range(e1, e2, Spanned { span: _, node: _ }) => {
-            vis.visit_expr(e1);
-            vis.visit_expr(e2);
+            visit_opt(e1, |e| vis.visit_expr(e));
+            visit_opt(e2, |e| vis.visit_expr(e));
             vis.visit_span(span);
         }
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
