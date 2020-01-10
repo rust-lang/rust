@@ -276,15 +276,68 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
+    fn symlink(
+        &mut self,
+        target_op: OpTy<'tcx, Tag>,
+        linkpath_op: OpTy<'tcx, Tag>
+    ) -> InterpResult<'tcx, i32> {
+        #[cfg(target_family = "unix")]
+        fn create_link(src: PathBuf, dst: PathBuf) -> std::io::Result<()> {
+            std::os::unix::fs::symlink(src, dst)
+        }
+
+        #[cfg(target_family = "windows")]
+        fn create_link(src: PathBuf, dst: PathBuf) -> std::io::Result<()> {
+            use std::os::windows::fs;
+            if src.is_dir() {
+                fs::symlink_dir(src, dst)
+            } else {
+                fs::symlink_file(src, dst)
+            }
+        }
+
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("symlink")?;
+
+        let target = this.read_os_str_from_c_str(this.read_scalar(target_op)?.not_undef()?)?.into();
+        let linkpath = this.read_os_str_from_c_str(this.read_scalar(linkpath_op)?.not_undef()?)?.into();
+
+        this.try_unwrap_io_result(create_link(target, linkpath).map(|_| 0))
+    }
+
     fn stat(
         &mut self,
         path_op: OpTy<'tcx, Tag>,
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        this.check_no_isolation("stat")?;
+        // `stat` always follows symlinks.
+        this.stat_or_lstat(true, path_op, buf_op)
+    }
+
+    // `lstat` is used to get symlink metadata.
+    fn lstat(
+        &mut self,
+        path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        this.check_no_isolation("lstat")?;
+        this.stat_or_lstat(false, path_op, buf_op)
+    }
+
+    fn stat_or_lstat(
+        &mut self,
+        follow_symlink: bool,
+        path_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
 
         if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` shim is only available for `macos` targets.")
+            throw_unsup_format!("The `stat` and `lstat` shims are only available for `macos` targets.")
         }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
@@ -292,8 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let buf = this.deref_operand(buf_op)?;
 
-        // `stat` always follows symlinks. `lstat` is used to get symlink metadata.
-        let metadata = match FileMetadata::new(this, path, true)? {
+        let metadata = match FileMetadata::new(this, path, follow_symlink)? {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
@@ -545,7 +597,6 @@ impl FileMetadata {
         let metadata = if follow_symlink {
             std::fs::metadata(path)
         } else {
-            // FIXME: metadata for symlinks need testing.
             std::fs::symlink_metadata(path)
         };
 

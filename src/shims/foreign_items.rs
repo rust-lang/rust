@@ -494,8 +494,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            "symlink" => {
+                let result = this.symlink(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             "stat$INODE64" => {
                 let result = this.stat(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "lstat$INODE64" => {
+                let result = this.lstat(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
