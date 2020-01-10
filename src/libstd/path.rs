@@ -2671,6 +2671,7 @@ impl AsRef<Path> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for PathBuf {
+    #[inline]
     fn as_ref(&self) -> &Path {
         self
     }
