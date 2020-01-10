@@ -50,6 +50,7 @@
 #![feature(thread_local)]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
+#![feature(vec_remove_item)]
 #![feature(stmt_expr_attributes)]
 #![feature(integer_atomics)]
 #![feature(test)]

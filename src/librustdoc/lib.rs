@@ -10,6 +10,7 @@
 #![feature(nll)]
 #![feature(set_stdio)]
 #![feature(test)]
+#![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
