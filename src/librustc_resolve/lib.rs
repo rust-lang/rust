@@ -20,7 +20,6 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::exports::ExportMap;
 use rustc::hir::map::{DefKey, Definitions};
 use rustc::lint;
@@ -32,6 +31,7 @@ use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PartialRes};

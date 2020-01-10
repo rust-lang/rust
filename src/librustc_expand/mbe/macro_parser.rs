@@ -85,7 +85,7 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
 
-use errors::{FatalError, PResult};
+use rustc_errors::{FatalError, PResult};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 

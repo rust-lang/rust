@@ -1,12 +1,10 @@
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-
-use errors::{Applicability, DiagnosticBuilder};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast;
-use syntax::errors::pluralize;
 
 use std::borrow::Cow;
 use std::fmt;

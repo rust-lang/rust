@@ -1,4 +1,4 @@
-use errors::DiagnosticBuilder;
+use rustc_errors::DiagnosticBuilder;
 use rustc_span::Span;
 use smallvec::SmallVec;
 

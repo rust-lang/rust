@@ -2,10 +2,10 @@ use Context::*;
 
 use rustc::session::Session;
 
-use errors::{struct_span_err, Applicability};
 use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};

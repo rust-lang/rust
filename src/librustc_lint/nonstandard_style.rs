@@ -2,6 +2,7 @@ use lint::{EarlyContext, LateContext, LintArray, LintContext};
 use lint::{EarlyLintPass, LateLintPass, LintPass};
 use rustc::lint;
 use rustc::ty;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
@@ -11,7 +12,6 @@ use rustc_span::{symbol::Ident, BytePos, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::errors::Applicability;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {

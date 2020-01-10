@@ -7,8 +7,8 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use errors::struct_span_err;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;

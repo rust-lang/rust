@@ -26,8 +26,8 @@ rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_errors = { path = "../librustc_errors" }
 rustc_index = { path = "../librustc_index" }
-errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

@@ -1,4 +1,3 @@
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc::hir::map::Map;
 use rustc::infer::{self, InferOk};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -7,6 +6,7 @@ use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::ExplicitSelf;
 use rustc::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;

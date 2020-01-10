@@ -1,9 +1,9 @@
-use errors::struct_span_err;
 use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::source_map::Span;

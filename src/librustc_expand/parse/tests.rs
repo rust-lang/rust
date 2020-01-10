@@ -1,6 +1,6 @@
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
-use errors::PResult;
+use rustc_errors::PResult;
 use rustc_parse::new_parser_from_source_str;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};

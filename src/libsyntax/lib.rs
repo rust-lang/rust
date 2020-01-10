@@ -18,7 +18,6 @@
 #![recursion_limit = "256"]
 
 use ast::AttrId;
-pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};

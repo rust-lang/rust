@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 #[cfg(test)]
 mod tests;
 
-pub use errors::ErrorReported;
+pub use rustc_errors::ErrorReported;
 
 pub fn to_readable_str(mut val: usize) -> String {
     let mut groups = vec![];
