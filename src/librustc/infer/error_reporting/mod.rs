@@ -68,9 +68,12 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 
-use errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use errors::{
+    pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString,
+};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_error_codes::*;
-use rustc_span::{Pos, Span};
+use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
 
@@ -1289,6 +1292,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
     ) {
+        let span = cause.span(self.tcx);
+
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         match terr {
@@ -1296,6 +1301,100 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values = None;
             }
             _ => {}
+        }
+
+        struct OpaqueTypesVisitor<'tcx> {
+            types: FxHashMap<TyCategory, FxHashSet<Span>>,
+            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
+            found: FxHashMap<TyCategory, FxHashSet<Span>>,
+            ignore_span: Span,
+            tcx: TyCtxt<'tcx>,
+        }
+
+        impl<'tcx> OpaqueTypesVisitor<'tcx> {
+            fn visit_expected_found(
+                tcx: TyCtxt<'tcx>,
+                expected: Ty<'tcx>,
+                found: Ty<'tcx>,
+                ignore_span: Span,
+            ) -> Self {
+                let mut types_visitor = OpaqueTypesVisitor {
+                    types: Default::default(),
+                    expected: Default::default(),
+                    found: Default::default(),
+                    ignore_span,
+                    tcx,
+                };
+                // The visitor puts all the relevant encountered types in `self.types`, but in
+                // here we want to visit two separate types with no relation to each other, so we
+                // move the results from `types` to `expected` or `found` as appropriate.
+                expected.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.expected, &mut types_visitor.types);
+                found.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.found, &mut types_visitor.types);
+                types_visitor
+            }
+
+            fn report(&self, err: &mut DiagnosticBuilder<'_>) {
+                self.add_labels_for_types(err, "expected", &self.expected);
+                self.add_labels_for_types(err, "found", &self.found);
+            }
+
+            fn add_labels_for_types(
+                &self,
+                err: &mut DiagnosticBuilder<'_>,
+                target: &str,
+                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
+            ) {
+                for (key, values) in types.iter() {
+                    let count = values.len();
+                    let kind = key.descr();
+                    for sp in values {
+                        err.span_label(
+                            *sp,
+                            format!(
+                                "{}{}{} {}{}",
+                                if sp.is_desugaring(DesugaringKind::Async) {
+                                    "the `Output` of this `async fn`'s "
+                                } else if count == 1 {
+                                    "the "
+                                } else {
+                                    ""
+                                },
+                                if count > 1 { "one of the " } else { "" },
+                                target,
+                                kind,
+                                pluralize!(count),
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                if let Some((kind, def_id)) = TyCategory::from_ty(t) {
+                    let span = self.tcx.def_span(def_id);
+                    // Avoid cluttering the output when the "found" and error span overlap:
+                    //
+                    // error[E0308]: mismatched types
+                    //   --> $DIR/issue-20862.rs:2:5
+                    //    |
+                    // LL |     |y| x + y
+                    //    |     ^^^^^^^^^
+                    //    |     |
+                    //    |     the found closure
+                    //    |     expected `()`, found closure
+                    //    |
+                    //    = note: expected unit type `()`
+                    //                 found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
+                    if !self.ignore_span.overlaps(span) {
+                        self.types.entry(kind).or_default().insert(span);
+                    }
+                }
+                t.super_visit_with(self)
+            }
         }
 
         debug!("note_type_err(diag={:?})", diag);
@@ -1306,6 +1405,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ValuePairs::Types(exp_found) => {
                         let is_simple_err =
                             exp_found.expected.is_simple_text() && exp_found.found.is_simple_text();
+                        OpaqueTypesVisitor::visit_expected_found(
+                            self.tcx,
+                            exp_found.expected,
+                            exp_found.found,
+                            span,
+                        )
+                        .report(diag);
 
                         (is_simple_err, Some(exp_found))
                     }
@@ -1323,8 +1429,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        let span = cause.span(self.tcx);
-
         // Ignore msg for object safe coercion
         // since E0038 message will be printed
         match terr {
@@ -1336,7 +1440,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         };
-
         if let Some((expected, found)) = expected_found {
             let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
             let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
@@ -1930,6 +2033,37 @@ impl<'tcx> ObligationCause<'tcx> {
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
+        }
+    }
+}
+
+/// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
+/// extra information about each type, but we only care about the category.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+crate enum TyCategory {
+    Closure,
+    Opaque,
+    Generator,
+    Foreign,
+}
+
+impl TyCategory {
+    fn descr(&self) -> &'static str {
+        match self {
+            Self::Closure => "closure",
+            Self::Opaque => "opaque type",
+            Self::Generator => "generator",
+            Self::Foreign => "foreign type",
+        }
+    }
+
+    pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+        match ty.kind {
+            ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
+            ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+            ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+            ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
+            _ => None,
         }
     }
 }

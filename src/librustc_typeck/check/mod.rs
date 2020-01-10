@@ -4746,14 +4746,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .join(", ");
                 }
                 Some(Node::Expr(hir::Expr {
-                    kind: ExprKind::Closure(_, _, body_id, closure_span, _),
+                    kind: ExprKind::Closure(_, _, body_id, _, _),
                     span: full_closure_span,
                     ..
                 })) => {
                     if *full_closure_span == expr.span {
                         return false;
                     }
-                    err.span_label(*closure_span, "closure defined here");
                     msg = "call this closure";
                     let body = hir.body(*body_id);
                     sugg_call = body
