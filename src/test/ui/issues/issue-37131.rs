@@ -4,7 +4,5 @@
 // compile-flags: --target=thumbv6m-none-eabi
 // ignore-arm
 
-// ignore-emscripten FIXME: debugging only, do not land
-
 // error-pattern:target may not be installed
 fn main() { }

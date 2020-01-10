@@ -1,6 +1,3 @@
-// FIXME: debugging only, do not land
-// ignore-emscripten
-
 // Checks if the correct annotation for the efiapi ABI is passed to llvm.
 
 // revisions:x86_64 i686 arm

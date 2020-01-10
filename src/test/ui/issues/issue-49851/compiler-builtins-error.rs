@@ -2,8 +2,6 @@
 // http://rust-lang.org/COPYRIGHT.
 //
 
-// ignore-emscripten FIXME: debugging only, do not land
-
 // compile-flags: --target thumbv7em-none-eabihf
 #![deny(unsafe_code)]
 #![deny(warnings)]
