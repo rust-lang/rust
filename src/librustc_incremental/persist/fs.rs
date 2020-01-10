@@ -310,7 +310,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
-    let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
+    let incr_comp_session_dir = sess.incr_comp_session_dir();
 
     if sess.has_errors_or_delayed_span_bugs() {
         // If there have been any errors during compilation, we don't want to

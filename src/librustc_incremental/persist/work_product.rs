@@ -5,10 +5,11 @@ use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::session::Session;
 use rustc_fs_util::link_or_copy;
 use std::fs as std_fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
+    session_dir: &Path,
     cgu_name: &str,
     files: &[(WorkProductFileKind, PathBuf)],
 ) -> Option<(WorkProductId, WorkProduct)> {
@@ -16,6 +17,8 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
     if sess.opts.incremental.is_none() {
         return None;
     }
+
+    let _timer = sess.prof.generic_activity("incr_comp_copy_cgu_workproducts");
 
     let saved_files = files
         .iter()
@@ -26,7 +29,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
                 WorkProductFileKind::BytecodeCompressed => "bc.z",
             };
             let file_name = format!("{}.{}", cgu_name, extension);
-            let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
+            let path_in_incr_dir = session_dir.join(&file_name);
             match link_or_copy(path, &path_in_incr_dir) {
                 Ok(_) => Some((kind, file_name)),
                 Err(err) => {

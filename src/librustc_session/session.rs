@@ -34,7 +34,7 @@ use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
 use std;
-use std::cell::{self, RefCell};
+use std::cell::RefCell;
 use std::env;
 use std::fmt;
 use std::io::Write;
@@ -94,7 +94,7 @@ pub struct Session {
     /// macro name and definition span in the source crate.
     pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
 
-    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
+    incr_comp_session: Lock<IncrCompSession>,
     /// Used for incremental compilation tests. Will only be populated if
     /// `-Zquery-dep-graph` is specified.
     pub cgu_reuse_tracker: CguReuseTracker,
@@ -599,41 +599,28 @@ impl Session {
         )
     }
 
-    pub fn set_incr_session_load_dep_graph(&self, load: bool) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { ref mut load_dep_graph, .. } = *incr_comp_session {
-            *load_dep_graph = load;
-        }
-    }
-
-    pub fn incr_session_load_dep_graph(&self) -> bool {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        match *incr_comp_session {
-            IncrCompSession::Active { load_dep_graph, .. } => load_dep_graph,
-            _ => false,
-        }
-    }
-
     pub fn init_incr_comp_session(
         &self,
         session_dir: PathBuf,
         lock_file: flock::Lock,
         load_dep_graph: bool,
     ) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
+        let mut incr_comp_session = self.incr_comp_session.lock();
 
         if let IncrCompSession::NotInitialized = *incr_comp_session {
         } else {
             panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
         }
 
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, lock_file, load_dep_graph };
+        *incr_comp_session = IncrCompSession::Active {
+            session_directory: Arc::new(session_dir),
+            lock_file,
+            load_dep_graph,
+        };
     }
 
     pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
+        let mut incr_comp_session = self.incr_comp_session.lock();
 
         if let IncrCompSession::Active { .. } = *incr_comp_session {
         } else {
@@ -641,11 +628,12 @@ impl Session {
         }
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
+        *incr_comp_session =
+            IncrCompSession::Finalized { session_directory: Arc::new(new_directory_path) };
     }
 
     pub fn mark_incr_comp_session_as_invalid(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
+        let mut incr_comp_session = self.incr_comp_session.lock();
 
         let session_directory = match *incr_comp_session {
             IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
@@ -657,22 +645,21 @@ impl Session {
         *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
     }
 
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
-            IncrCompSession::NotInitialized => panic!(
-                "trying to get session directory from `IncrCompSession`: {:?}",
-                *incr_comp_session,
-            ),
+    pub fn incr_comp_session_dir(&self) -> Arc<PathBuf> {
+        let session = self.incr_comp_session.lock();
+        match *session {
+            IncrCompSession::NotInitialized => {
+                panic!("trying to get session directory from `IncrCompSession`: {:?}", *session)
+            }
             IncrCompSession::Active { ref session_directory, .. }
             | IncrCompSession::Finalized { ref session_directory }
             | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
-                session_directory
+                session_directory.clone()
             }
-        })
+        }
     }
 
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
+    pub fn incr_comp_session_dir_opt(&self) -> Option<Arc<PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
@@ -1050,7 +1037,7 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
-        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
+        incr_comp_session: Lock::new(IncrCompSession::NotInitialized),
         cgu_reuse_tracker,
         prof,
         perf_stats: PerfStats {
@@ -1188,14 +1175,14 @@ pub enum IncrCompSession {
     NotInitialized,
     /// This is the state during which the session directory is private and can
     /// be modified.
-    Active { session_directory: PathBuf, lock_file: flock::Lock, load_dep_graph: bool },
+    Active { session_directory: Arc<PathBuf>, lock_file: flock::Lock, load_dep_graph: bool },
     /// This is the state after the session directory has been finalized. In this
     /// state, the contents of the directory must not be modified any more.
-    Finalized { session_directory: PathBuf },
+    Finalized { session_directory: Arc<PathBuf> },
     /// This is an error state that is reached when some compilation error has
     /// occurred. It indicates that the contents of the session directory must
     /// not be used, since they might be invalid.
-    InvalidBecauseOfErrors { session_directory: PathBuf },
+    InvalidBecauseOfErrors { session_directory: Arc<PathBuf> },
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
