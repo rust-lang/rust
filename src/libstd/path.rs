@@ -1475,6 +1475,7 @@ impl From<OsString> for PathBuf {
     /// Converts a `OsString` into a `PathBuf`
     ///
     /// This conversion does not allocate or copy memory.
+    #[inline]
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
     }
