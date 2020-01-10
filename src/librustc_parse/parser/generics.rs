@@ -156,7 +156,7 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             (params, span_lo.to(self.prev_span))
         } else {
-            (vec![], self.prev_span.between(self.token.span))
+            (vec![], self.prev_span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,
