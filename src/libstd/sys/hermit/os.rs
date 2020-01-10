@@ -77,13 +77,17 @@ pub fn init_environment(env: *const *const i8) {
     unsafe {
         ENV = Some(Mutex::new(HashMap::new()));
 
+        if env.is_null() {
+            return;
+        }
+
         let mut guard = ENV.as_ref().unwrap().lock().unwrap();
         let mut environ = env;
-        while environ != ptr::null() && *environ != ptr::null() {
+        while !(*environ).is_null() {
             if let Some((key, value)) = parse(CStr::from_ptr(*environ).to_bytes()) {
                 guard.insert(key, value);
             }
-            environ = environ.offset(1);
+            environ = environ.add(1);
         }
     }
 

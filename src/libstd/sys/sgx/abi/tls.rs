@@ -70,7 +70,7 @@ impl<'a> Drop for ActiveTls<'a> {
             any_non_null_dtor = false;
             for (value, dtor) in TLS_KEY_IN_USE.iter().filter_map(&value_with_destructor) {
                 let value = value.replace(ptr::null_mut());
-                if value != ptr::null_mut() {
+                if !value.is_null() {
                     any_non_null_dtor = true;
                     unsafe { dtor(value) }
                 }
