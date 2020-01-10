@@ -2,22 +2,24 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
+    expr_block, is_allowed, is_expn_of, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
     snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
+use rustc::hir::map::Map;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
+use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 use std::collections::Bound;
-use syntax::ast::LitKind;
+use syntax::ast::{self, LitKind};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -468,6 +470,41 @@ fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
     }
 }
 
+fn is_unused_underscored<'tcx>(patkind: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
+    match patkind {
+        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => {
+            let mut visitor = UsedVisitor {
+                var: ident.name,
+                used: false,
+            };
+            walk_expr(&mut visitor, body);
+            !visitor.used
+        },
+        _ => false,
+    }
+}
+
+struct UsedVisitor {
+    var: ast::Name, // var to look for
+    used: bool,     // has the var been used otherwise?
+}
+
+impl<'tcx> Visitor<'tcx> for UsedVisitor {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        if match_var(expr, self.var) {
+            self.used = true;
+        } else {
+            walk_expr(self, expr);
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
 fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
@@ -476,7 +513,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
                 if_chain! {
                     if path_str == "Err";
-                    if inner.iter().any(is_wild);
+                    if inner.iter().any(is_wild) || inner.iter().any(|pat| is_unused_underscored(&pat.kind, arm.body));
                     if let ExprKind::Block(ref block, _) = arm.body.kind;
                     if is_panic_block(block);
                     then {
