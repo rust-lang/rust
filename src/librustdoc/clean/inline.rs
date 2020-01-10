@@ -284,11 +284,9 @@ fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type>
 
 pub fn build_ty(cx: &DocContext, did: DefId) -> Option<clean::Type> {
     match cx.tcx.def_kind(did)? {
-        DefKind::Struct |
-        DefKind::Union |
-        DefKind::Enum |
-        DefKind::Const |
-        DefKind::Static => Some(cx.tcx.type_of(did).clean(cx)),
+        DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
+            Some(cx.tcx.type_of(did).clean(cx))
+        }
         DefKind::TyAlias => build_type_alias_type(cx, did),
         _ => None,
     }

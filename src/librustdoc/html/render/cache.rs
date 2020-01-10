@@ -574,7 +574,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // has since been learned.
     for &(did, ref item) in orphan_impl_items {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
-            if item.name.is_none() { // this is most likely from a typedef
+            if item.name.is_none() {
+                // this is most likely from a typedef
                 continue;
             }
             search_index.push(IndexItem {
@@ -596,22 +597,20 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 
     for item in search_index {
         item.parent_idx = match item.parent {
-            Some(nodeid) => {
-                Some(if nodeid_to_pathid.contains_key(&nodeid) {
-                    *nodeid_to_pathid.get(&nodeid).expect("no pathid")
-                } else {
-                    let pathid = lastpathid;
-                    nodeid_to_pathid.insert(nodeid, pathid);
-                    lastpathid += 1;
+            Some(nodeid) => Some(if nodeid_to_pathid.contains_key(&nodeid) {
+                *nodeid_to_pathid.get(&nodeid).expect("no pathid")
+            } else {
+                let pathid = lastpathid;
+                nodeid_to_pathid.insert(nodeid, pathid);
+                lastpathid += 1;
 
-                    if let Some(&(ref fqp, short)) = paths.get(&nodeid) {
-                        crate_paths.push((short, fqp.last().expect("no fqp").clone()));
-                    } else {
-                        continue
-                    }
-                    pathid
-                })
-            }
+                if let Some(&(ref fqp, short)) = paths.get(&nodeid) {
+                    crate_paths.push((short, fqp.last().expect("no fqp").clone()));
+                } else {
+                    continue;
+                }
+                pathid
+            }),
             None => None,
         };
 

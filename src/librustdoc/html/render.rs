@@ -3474,12 +3474,10 @@ fn render_deref_methods(
         .items
         .iter()
         .filter_map(|item| match item.inner {
-            clean::TypedefItem(ref t, true) => {
-                Some(match *t {
-                    clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
-                    _ => (&t.type_, &t.type_),
-                })
-            }
+            clean::TypedefItem(ref t, true) => Some(match *t {
+                clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
+                _ => (&t.type_, &t.type_),
+            }),
             _ => None,
         })
         .next()
@@ -4133,12 +4131,10 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     .items
                     .iter()
                     .filter_map(|item| match item.inner {
-                        clean::TypedefItem(ref t, true) => {
-                            Some(match *t {
-                                clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
-                                _ => (&t.type_, &t.type_),
-                            })
-                        }
+                        clean::TypedefItem(ref t, true) => Some(match *t {
+                            clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
+                            _ => (&t.type_, &t.type_),
+                        }),
                         _ => None,
                     })
                     .next()

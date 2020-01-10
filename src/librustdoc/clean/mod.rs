@@ -1124,14 +1124,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
             hir::ImplItemKind::TyAlias(ref ty) => {
                 let type_ = ty.clean(cx);
                 let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
-                TypedefItem(
-                    Typedef {
-                        type_,
-                        generics: Generics::default(),
-                        item_type,
-                    },
-                    true,
-                )
+                TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
             }
             hir::ImplItemKind::OpaqueTy(ref bounds) => OpaqueTyItem(
                 OpaqueTy { bounds: bounds.clean(cx), generics: Generics::default() },
@@ -2011,14 +2004,7 @@ impl Clean<Item> for doctree::Typedef<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id).clean(cx),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: TypedefItem(
-                Typedef {
-                    type_,
-                    generics: self.gen.clean(cx),
-                    item_type,
-                },
-                false,
-            ),
+            inner: TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
         }
     }
 }
