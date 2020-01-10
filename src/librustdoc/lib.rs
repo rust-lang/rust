@@ -24,6 +24,7 @@ extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_error_codes;
+extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
@@ -42,7 +43,6 @@ extern crate syntax;
 extern crate test as testing;
 #[macro_use]
 extern crate log;
-extern crate rustc_errors as errors;
 
 use std::default::Default;
 use std::env;
@@ -518,6 +518,6 @@ where
 
     match result {
         Ok(output) => output,
-        Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
+        Err(_) => panic::resume_unwind(Box::new(rustc_errors::FatalErrorMarker)),
     }
 }

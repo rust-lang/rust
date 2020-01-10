@@ -1,6 +1,6 @@
-use errors::Applicability;
 use rustc::lint;
 use rustc::ty;
+use rustc_errors::Applicability;
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;

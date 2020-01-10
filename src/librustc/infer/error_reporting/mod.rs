@@ -64,15 +64,13 @@ use crate::ty::{
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_error_codes::*;
+use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
-
-use errors::{
-    pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString,
-};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_error_codes::*;
 use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};

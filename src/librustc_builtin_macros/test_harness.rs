@@ -40,7 +40,7 @@ pub fn inject(
     resolver: &mut dyn Resolver,
     should_test: bool,
     krate: &mut ast::Crate,
-    span_diagnostic: &errors::Handler,
+    span_diagnostic: &rustc_errors::Handler,
     features: &Features,
     panic_strategy: PanicStrategy,
     platform_panic_strategy: PanicStrategy,
@@ -351,7 +351,7 @@ fn is_test_case(i: &ast::Item) -> bool {
     attr::contains_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
+fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {

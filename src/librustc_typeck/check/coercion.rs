@@ -51,7 +51,6 @@
 //! we may want to adjust precisely when coercions occur.
 
 use crate::check::{FnCtxt, Needs};
-use errors::{struct_span_err, DiagnosticBuilder};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
@@ -63,6 +62,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut};
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span;

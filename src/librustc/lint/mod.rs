@@ -23,8 +23,8 @@ pub use self::LintSource::*;
 
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::ty::TyCtxt;
-use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_data_structures::sync;
+use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_session::node_id::NodeMap;
 use rustc_session::{DiagnosticMessageId, Session};

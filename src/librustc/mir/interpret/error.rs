@@ -7,8 +7,8 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
-use errors::{struct_span_err, DiagnosticBuilder};
 use hir::GeneratorKind;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_span::symbol::Symbol;

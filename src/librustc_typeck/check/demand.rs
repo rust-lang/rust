@@ -2,9 +2,9 @@ use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause};
 
-use errors::{Applicability, DiagnosticBuilder};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, print, Node};
 use rustc_span::symbol::sym;

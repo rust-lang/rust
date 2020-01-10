@@ -4,10 +4,10 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use errors::{Applicability, DiagnosticBuilder};
-use log::debug;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_error_codes::*;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -18,7 +18,7 @@ use rustc_span::Span;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_error_codes::*;
+use log::debug;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -139,7 +139,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
-            err.code(errors::error_code!(E0411));
+            err.code(rustc_errors::error_code!(E0411));
             err.span_label(
                 span,
                 format!("`Self` is only available in impls, traits, and type definitions"),
@@ -149,7 +149,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_value(path, ns) {
             debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
 
-            err.code(errors::error_code!(E0424));
+            err.code(rustc_errors::error_code!(E0424));
             err.span_label(span, match source {
                 PathSource::Pat => format!(
                     "`self` value is a keyword and may not be bound to variables or shadowed",

@@ -9,8 +9,6 @@
 //! needs to read-after-write from a file, then it would be added to this
 //! abstraction.
 
-use errors;
-
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -42,7 +40,7 @@ impl ErrorStorage {
     }
 
     /// Prints all stored errors. Returns the number of printed errors.
-    pub fn write_errors(&mut self, diag: &errors::Handler) -> usize {
+    pub fn write_errors(&mut self, diag: &rustc_errors::Handler) -> usize {
         let mut printed = 0;
         // In order to drop the sender part of the channel.
         self.sender = None;

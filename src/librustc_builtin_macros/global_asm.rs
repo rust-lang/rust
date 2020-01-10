@@ -1,14 +1,14 @@
-/// Module-level assembly support.
-///
-/// The macro defined here allows you to specify "top-level",
-/// "file-scoped", or "module-level" assembly. These synonyms
-/// all correspond to LLVM's module-level inline assembly instruction.
-///
-/// For example, `global_asm!("some assembly here")` codegens to
-/// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
-/// therefore apply.
-use errors::DiagnosticBuilder;
+//! Module-level assembly support.
+//!
+//! The macro defined here allows you to specify "top-level",
+//! "file-scoped", or "module-level" assembly. These synonyms
+//! all correspond to LLVM's module-level inline assembly instruction.
+//!
+//! For example, `global_asm!("some assembly here")` codegens to
+//! LLVM's `module asm "some assembly here"`. All of LLVM's caveats
+//! therefore apply.
 
+use rustc_errors::DiagnosticBuilder;
 use rustc_expand::base::{self, *};
 use rustc_span::source_map::respan;
 use rustc_span::Span;

@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-use errors;
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
@@ -39,7 +38,7 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 pub fn render(
     input: PathBuf,
     options: RenderOptions,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
     edition: Edition,
 ) -> i32 {
     let mut output = options.output;
@@ -128,7 +127,7 @@ pub fn render(
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
+pub fn test(mut options: Options, diag: &rustc_errors::Handler) -> i32 {
     let input_str = match load_string(&options.input, diag) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,

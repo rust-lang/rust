@@ -6,7 +6,7 @@ use crate::feature_gate::feature_err;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
-use errors::{struct_span_err, Applicability, Handler};
+use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::Transparency;
