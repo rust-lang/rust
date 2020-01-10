@@ -57,10 +57,10 @@ impl Conv for ReferenceAccess {
     type Output = ::lsp_types::DocumentHighlightKind;
 
     fn conv(self) -> Self::Output {
-        use lsp_types::DocumentHighlightKind::*;
+        use lsp_types::DocumentHighlightKind;
         match self {
-            ReferenceAccess::Read => Read,
-            ReferenceAccess::Write => Write,
+            ReferenceAccess::Read => DocumentHighlightKind::Read,
+            ReferenceAccess::Write => DocumentHighlightKind::Write,
         }
     }
 }
