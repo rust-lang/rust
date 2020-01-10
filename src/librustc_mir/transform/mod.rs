@@ -36,6 +36,7 @@ pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
+pub mod unreachable_prop;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
@@ -299,6 +300,7 @@ fn run_optimization_passes<'tcx>(
             // From here on out, regions are gone.
             &erase_regions::EraseRegions,
             // Optimizations begin.
+            &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
             &inline::Inline,
