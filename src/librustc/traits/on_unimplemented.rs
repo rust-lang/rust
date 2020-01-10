@@ -3,8 +3,8 @@ use fmt_macros::{Parser, Piece, Position};
 use crate::ty::{self, GenericParamDefKind, TyCtxt};
 use crate::util::common::ErrorReported;
 
-use errors::struct_span_err;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;

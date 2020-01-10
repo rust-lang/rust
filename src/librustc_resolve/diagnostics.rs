@@ -1,11 +1,11 @@
 use std::cmp::Reverse;
 
-use errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};

@@ -15,8 +15,8 @@ arena = { path = "../libarena" }
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
-errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

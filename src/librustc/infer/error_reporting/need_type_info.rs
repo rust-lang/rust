@@ -3,7 +3,7 @@ use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
 use crate::ty::print::Print;
 use crate::ty::{self, DefIdTree, Infer, Ty, TyVar};
-use errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -151,12 +151,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> errors::DiagnosticId {
+impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
+    fn into(self) -> rustc_errors::DiagnosticId {
         match self {
-            Self::E0282 => errors::error_code!(E0282),
-            Self::E0283 => errors::error_code!(E0283),
-            Self::E0284 => errors::error_code!(E0284),
+            Self::E0282 => rustc_errors::error_code!(E0282),
+            Self::E0283 => rustc_errors::error_code!(E0283),
+            Self::E0284 => rustc_errors::error_code!(E0284),
         }
     }
 }

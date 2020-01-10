@@ -17,7 +17,6 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
@@ -28,6 +27,7 @@ use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;

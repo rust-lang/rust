@@ -20,7 +20,6 @@ use crate::constrained_generic_params as cgp;
 use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
-use errors::{struct_span_err, Applicability, StashKey};
 use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
@@ -34,6 +33,7 @@ use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -255,7 +255,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 fn bad_placeholder_type(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
-) -> errors::DiagnosticBuilder<'tcx> {
+) -> rustc_errors::DiagnosticBuilder<'tcx> {
     spans.sort();
     let mut err = struct_span_err!(
         tcx.sess,

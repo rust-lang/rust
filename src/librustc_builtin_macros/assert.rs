@@ -1,4 +1,4 @@
-use errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;

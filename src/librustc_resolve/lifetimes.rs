@@ -5,7 +5,6 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
@@ -13,6 +12,7 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};

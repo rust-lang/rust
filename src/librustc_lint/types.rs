@@ -9,6 +9,7 @@ use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
@@ -16,7 +17,6 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
-use syntax::errors::Applicability;
 use syntax::{ast, attr};
 
 use log::debug;

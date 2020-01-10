@@ -17,7 +17,7 @@ rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-errors = { path = "../librustc_errors", package = "rustc_errors" }
+rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_metadata = { path = "../librustc_metadata" }

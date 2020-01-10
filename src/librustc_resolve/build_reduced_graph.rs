@@ -20,18 +20,14 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
+use rustc_data_structures::sync::Lrc;
+use rustc_error_codes::*;
+use rustc_errors::{struct_span_err, Applicability};
+use rustc_expand::base::SyntaxExtension;
+use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_metadata::creader::LoadedMacro;
-
-use rustc_data_structures::sync::Lrc;
-use std::cell::Cell;
-use std::ptr;
-
-use errors::{struct_span_err, Applicability};
-
-use rustc_expand::base::SyntaxExtension;
-use rustc_expand::expand::AstFragment;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym};
@@ -44,8 +40,8 @@ use syntax::token::{self, Token};
 use syntax::visit::{self, Visitor};
 
 use log::debug;
-
-use rustc_error_codes::*;
+use std::cell::Cell;
+use std::ptr;
 
 type Res = def::Res<NodeId>;
 

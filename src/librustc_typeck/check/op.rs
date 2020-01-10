@@ -2,11 +2,11 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use errors::{self, struct_span_err, Applicability};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_errors::{self, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast::Ident;
@@ -279,7 +279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             lhs_expr.span,
                                             msg,
                                             format!("*{}", lstring),
-                                            errors::Applicability::MachineApplicable,
+                                            rustc_errors::Applicability::MachineApplicable,
                                         );
                                         suggested_deref = true;
                                     }
@@ -482,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest calling the function. Returns wether a suggestion was given.
     fn add_type_neq_err_label(
         &self,
-        err: &mut errors::DiagnosticBuilder<'_>,
+        err: &mut rustc_errors::DiagnosticBuilder<'_>,
         span: Span,
         ty: Ty<'tcx>,
         other_ty: Ty<'tcx>,
@@ -565,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut errors::DiagnosticBuilder<'_>,
+        err: &mut rustc_errors::DiagnosticBuilder<'_>,
         is_assign: bool,
         op: hir::BinOp,
     ) -> bool {

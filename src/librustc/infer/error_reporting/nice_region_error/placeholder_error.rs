@@ -7,7 +7,7 @@ use crate::ty::error::ExpectedFound;
 use crate::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, TyCtxt};
-use errors::DiagnosticBuilder;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 

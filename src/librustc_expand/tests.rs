@@ -6,9 +6,9 @@ use syntax::sess::ParseSess;
 use syntax::tokenstream::TokenStream;
 use syntax::with_default_globals;
 
-use errors::emitter::EmitterWriter;
-use errors::{Handler, PResult};
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::emitter::EmitterWriter;
+use rustc_errors::{Handler, PResult};
 
 use std::io;
 use std::io::prelude::*;

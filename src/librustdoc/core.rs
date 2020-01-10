@@ -15,8 +15,8 @@ use rustc_interface::interface;
 use rustc_lint;
 use rustc_resolve as resolve;
 
-use errors::emitter::{Emitter, EmitterWriter};
-use errors::json::JsonEmitter;
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::json::JsonEmitter;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
@@ -171,7 +171,7 @@ pub fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     debugging_opts: &DebuggingOptions,
-) -> errors::Handler {
+) -> rustc_errors::Handler {
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -198,7 +198,10 @@ pub fn new_handler(
         }
     };
 
-    errors::Handler::with_emitter_and_flags(emitter, debugging_opts.diagnostic_handler_flags(true))
+    rustc_errors::Handler::with_emitter_and_flags(
+        emitter,
+        debugging_opts.diagnostic_handler_flags(true),
+    )
 }
 
 pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
@@ -409,7 +412,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 let mut krate = clean::krate(&mut ctxt);
 
-                fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
+                fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
                     let mut msg = diag.struct_warn(&format!(
                         "the `#![doc({})]` attribute is \
                                                          considered deprecated",

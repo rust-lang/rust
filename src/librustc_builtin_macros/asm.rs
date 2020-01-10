@@ -2,7 +2,7 @@
 //
 use State::*;
 
-use errors::{struct_span_err, DiagnosticBuilder, PResult};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, PResult};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{kw, sym, Symbol};

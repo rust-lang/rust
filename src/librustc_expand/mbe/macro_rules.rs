@@ -8,6 +8,9 @@ use crate::mbe::macro_parser::{Error, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Applicability, DiagnosticBuilder, FatalError};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::Directory;
@@ -22,16 +25,10 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
 
-use errors::{DiagnosticBuilder, FatalError};
 use log::debug;
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
-
-use errors::Applicability;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \

@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use errors;
 use getopts;
 use rustc::lint::Level;
 use rustc::session;
@@ -566,7 +565,7 @@ impl Options {
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
+fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
     let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.iter() {
