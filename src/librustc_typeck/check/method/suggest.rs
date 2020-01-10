@@ -479,7 +479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     macro_rules! report_function {
                         ($span:expr, $name:expr) => {
                             err.note(&format!(
-                                "{} is a function, perhaps you wish to call it",
+                                "`{}` is a function, perhaps you wish to call it",
                                 $name
                             ));
                         };
