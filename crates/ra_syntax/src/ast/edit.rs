@@ -236,8 +236,8 @@ pub fn replace_descendants<N: AstNode, D: AstNode>(
 ) -> N {
     let map = replacement_map
         .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
-        .collect::<FxHashMap<_, _>>();
-    let new_syntax = algo::replace_descendants(parent.syntax(), &map);
+        .collect::<FxHashMap<SyntaxElement, _>>();
+    let new_syntax = algo::replace_descendants(parent.syntax(), &|n| map.get(n).cloned());
     N::cast(new_syntax).unwrap()
 }
 
@@ -292,7 +292,7 @@ impl IndentLevel {
                 )
             })
             .collect();
-        algo::replace_descendants(&node, &replacements)
+        algo::replace_descendants(&node, &|n| replacements.get(n).cloned())
     }
 
     pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
@@ -320,7 +320,7 @@ impl IndentLevel {
                 )
             })
             .collect();
-        algo::replace_descendants(&node, &replacements)
+        algo::replace_descendants(&node, &|n| replacements.get(n).cloned())
     }
 }
 

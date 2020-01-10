@@ -11,6 +11,7 @@ mod marks;
 mod doc_tests;
 #[cfg(test)]
 mod test_db;
+pub mod ast_transform;
 
 use hir::db::HirDatabase;
 use ra_db::FileRange;

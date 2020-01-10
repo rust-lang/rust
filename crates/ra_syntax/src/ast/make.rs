@@ -2,7 +2,7 @@
 //! of smaller pieces.
 use itertools::Itertools;
 
-use crate::{ast, AstNode, SourceFile};
+use crate::{algo, ast, AstNode, SourceFile};
 
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {};", text))
@@ -23,7 +23,14 @@ fn path_from_text(text: &str) -> ast::Path {
 }
 pub fn path_with_type_arg_list(path: ast::Path, args: Option<ast::TypeArgList>) -> ast::Path {
     if let Some(args) = args {
-        ast_from_text(&format!("const X: {}{}", path.syntax(), args.syntax()))
+        let syntax = path.syntax();
+        // FIXME: remove existing type args
+        let new_syntax = algo::insert_children(
+            syntax,
+            crate::algo::InsertPosition::Last,
+            &mut Some(args).into_iter().map(|n| n.syntax().clone().into()),
+        );
+        ast::Path::cast(new_syntax).unwrap()
     } else {
         path
     }

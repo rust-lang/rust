@@ -1,12 +1,13 @@
-use std::collections::HashMap;
-
-use hir::{db::HirDatabase, HasSource};
+use hir::{db::HirDatabase, HasSource, InFile};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{
+    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
+    Assist, AssistCtx, AssistId,
+};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -146,24 +147,11 @@ fn add_missing_impl_members_inner(
             None,
         )
         .module();
-        let substs = get_syntactic_substs(impl_node).unwrap_or_default();
-        let generic_def: hir::GenericDef = trait_.into();
-        let substs_by_param: HashMap<_, _> = generic_def
-            .params(db)
-            .into_iter()
-            // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
-            .skip(1)
-            .zip(substs.into_iter())
-            .collect();
+        let ast_transform = QualifyPaths::new(db, module)
+            .or(SubstituteTypeParams::for_trait_impl(db, trait_, impl_node));
         let items = missing_items
             .into_iter()
-            .map(|it| {
-                substitute_type_params(db, hir::InFile::new(trait_file_id, it), &substs_by_param)
-            })
-            .map(|it| match module {
-                Some(module) => qualify_paths(db, hir::InFile::new(trait_file_id, it), module),
-                None => it,
-            })
+            .map(|it| ast_transform::apply(&*ast_transform, InFile::new(trait_file_id, it)))
             .map(|it| match it {
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
                 _ => it,
@@ -185,99 +173,6 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
         fn_def.with_body(make::block_from_expr(make::expr_unimplemented()))
     } else {
         fn_def
-    }
-}
-
-// FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
-// trait ref, and then go from the types in the substs back to the syntax)
-// FIXME: This should be a general utility (not even just for assists)
-fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>> {
-    let target_trait = impl_block.target_trait()?;
-    let path_type = match target_trait {
-        ast::TypeRef::PathType(path) => path,
-        _ => return None,
-    };
-    let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
-    let mut result = Vec::new();
-    for type_arg in type_arg_list.type_args() {
-        let type_arg: ast::TypeArg = type_arg;
-        result.push(type_arg.type_ref()?);
-    }
-    Some(result)
-}
-
-// FIXME: This should be a general utility (not even just for assists)
-fn substitute_type_params<N: AstNode + Clone>(
-    db: &impl HirDatabase,
-    node: hir::InFile<N>,
-    substs: &HashMap<hir::TypeParam, ast::TypeRef>,
-) -> N {
-    let type_param_replacements = node
-        .clone()
-        .descendants::<ast::TypeRef>()
-        .filter_map(|n| {
-            let path = match &n.value {
-                ast::TypeRef::PathType(path_type) => path_type.path()?,
-                _ => return None,
-            };
-            let analyzer = hir::SourceAnalyzer::new(db, n.syntax(), None);
-            let resolution = analyzer.resolve_path(db, &path)?;
-            match resolution {
-                hir::PathResolution::TypeParam(tp) => Some((n.value, substs.get(&tp)?.clone())),
-                _ => None,
-            }
-        })
-        .collect::<Vec<_>>();
-
-    if type_param_replacements.is_empty() {
-        node.value
-    } else {
-        edit::replace_descendants(&node.value, type_param_replacements.into_iter())
-    }
-}
-
-use hir::PathResolution;
-
-// FIXME extract this to a general utility as well
-// FIXME handle value ns?
-// FIXME this doesn't 'commute' with `substitute_type_params`, since type params in newly generated type arg lists don't resolve. Currently we can avoid this problem, but it's worth thinking about a solution
-fn qualify_paths<N: AstNode>(db: &impl HirDatabase, node: hir::InFile<N>, from: hir::Module) -> N {
-    let path_replacements = node
-        .value
-        .syntax()
-        .descendants()
-        .filter_map(ast::Path::cast)
-        .filter_map(|p| {
-            if p.segment().and_then(|s| s.param_list()).is_some() {
-                // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
-                return None;
-            }
-            // FIXME check if some ancestor is already being replaced, if so skip this
-            let analyzer = hir::SourceAnalyzer::new(db, node.with_value(p.syntax()), None);
-            let resolution = analyzer.resolve_path(db, &p)?;
-            match resolution {
-                PathResolution::Def(def) => {
-                    let found_path = from.find_path(db, def)?;
-                    // TODO fix type arg replacements being qualified
-                    let args = p
-                        .segment()
-                        .and_then(|s| s.type_arg_list())
-                        .map(|arg_list| qualify_paths(db, node.with_value(arg_list), from));
-                    Some((p, make::path_with_type_arg_list(found_path.to_ast(), args)))
-                }
-                PathResolution::Local(_)
-                | PathResolution::TypeParam(_)
-                | PathResolution::SelfType(_) => None,
-                PathResolution::Macro(_) => None,
-                PathResolution::AssocItem(_) => None,
-            }
-        })
-        .collect::<Vec<_>>();
-
-    if path_replacements.is_empty() {
-        node.value
-    } else {
-        edit::replace_descendants(&node.value, path_replacements.into_iter())
     }
 }
 
