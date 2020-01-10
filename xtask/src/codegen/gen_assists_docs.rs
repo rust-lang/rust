@@ -102,7 +102,7 @@ r#####"
 
         buf.push_str(&test)
     }
-    let buf = codegen::reformat(buf)?;
+    let buf = crate::reformat(buf)?;
     codegen::update(&project_root().join(codegen::ASSISTS_TESTS), &buf, mode)
 }
 
