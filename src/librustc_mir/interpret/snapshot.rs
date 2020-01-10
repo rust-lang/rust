@@ -23,7 +23,9 @@ use rustc_span::source_map::Span;
 use syntax::ast::Mutability;
 
 use super::eval_context::{LocalState, StackPopCleanup};
-use super::{Frame, Immediate, LocalValue, MemPlace, Memory, Operand, Place, ScalarMaybeUndef};
+use super::{
+    Frame, Immediate, LocalValue, MemPlace, MemPlaceMeta, Memory, Operand, Place, ScalarMaybeUndef,
+};
 use crate::const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -202,6 +204,14 @@ impl_snapshot_for!(
     enum ScalarMaybeUndef {
         Scalar(s),
         Undef,
+    }
+);
+
+impl_snapshot_for!(
+    enum MemPlaceMeta {
+        Meta(s),
+        None,
+        Poison,
     }
 );
 

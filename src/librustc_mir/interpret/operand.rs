@@ -153,30 +153,6 @@ pub enum Operand<Tag = (), Id = AllocId> {
     Indirect(MemPlace<Tag, Id>),
 }
 
-impl<Tag> Operand<Tag> {
-    #[inline]
-    pub fn assert_mem_place(self) -> MemPlace<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Indirect(mplace) => mplace,
-            _ => bug!("assert_mem_place: expected Operand::Indirect, got {:?}", self),
-        }
-    }
-
-    #[inline]
-    pub fn assert_immediate(self) -> Immediate<Tag>
-    where
-        Tag: ::std::fmt::Debug,
-    {
-        match self {
-            Operand::Immediate(imm) => imm,
-            _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
@@ -267,7 +243,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        match op.try_as_mplace() {
+        match op.try_as_mplace(self) {
             Ok(mplace) => Ok(self.force_mplace_ptr(mplace)?.into()),
             Err(imm) => Ok(imm.into()), // Nothing to cast/force
         }
@@ -335,7 +311,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         src: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
-        Ok(match src.try_as_mplace() {
+        Ok(match src.try_as_mplace(self) {
             Ok(mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
                     Ok(val)
@@ -383,7 +359,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: OpTy<'tcx, M::PointerTag>,
         field: u64,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base = match op.try_as_mplace() {
+        let base = match op.try_as_mplace(self) {
             Ok(mplace) => {
                 // The easy case
                 let field = self.mplace_field(mplace, field)?;
@@ -420,7 +396,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        Ok(match op.try_as_mplace() {
+        Ok(match op.try_as_mplace(self) {
             Ok(mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
                 let layout = op.layout.for_variant(self, variant);
@@ -439,30 +415,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
-            ConstantIndex { .. } | Index(_) if base.layout.is_zst() => {
-                OpTy {
-                    op: Operand::Immediate(Scalar::zst().into()),
-                    // the actual index doesn't matter, so we just pick a convenient one like 0
-                    layout: base.layout.field(self, 0)?,
-                }
-            }
-            Subslice { from, to, from_end } if base.layout.is_zst() => {
-                let elem_ty = if let ty::Array(elem_ty, _) = base.layout.ty.kind {
-                    elem_ty
-                } else {
-                    bug!("slices shouldn't be zero-sized");
-                };
-                assert!(!from_end, "arrays shouldn't be subsliced from the end");
-
-                OpTy {
-                    op: Operand::Immediate(Scalar::zst().into()),
-                    layout: self.layout_of(self.tcx.mk_array(elem_ty, (to - from) as u64))?,
-                }
-            }
             Subslice { .. } | ConstantIndex { .. } | Index(_) => {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
-                let mplace = base.assert_mem_place();
+                let mplace = base.assert_mem_place(self);
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
         })
