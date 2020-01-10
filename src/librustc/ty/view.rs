@@ -1,8 +1,4 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-};
+use std::{fmt, marker::PhantomData};
 
 use syntax::ast;
 
@@ -17,33 +13,10 @@ pub use self::ViewKind::*;
 /// `View<'tcx, T>` contains a value of `T` but stores the `Ty<'tcx>` ptr that contains the `T`
 /// This allows for cheap access to the `Ty<'tcx>` without needing to ask the type interner or
 /// losing the `T` type.
-#[derive(TypeFoldable, Lift)]
+#[derive(TypeFoldable, Eq, PartialEq, Hash, Lift)]
 pub struct View<'tcx, T> {
     ty: Ty<'tcx>,
     _marker: PhantomData<T>,
-}
-
-impl<'tcx, T> PartialEq for View<'tcx, T>
-where
-    T: PartialEq + TyDeref<'tcx>,
-{
-    fn eq(&self, other: &Self) -> bool {
-        **self == **other
-    }
-}
-
-impl<'tcx, T> Eq for View<'tcx, T> where T: Eq + TyDeref<'tcx> {}
-
-impl<'tcx, T> Hash for View<'tcx, T>
-where
-    T: Hash + TyDeref<'tcx>,
-{
-    fn hash<H>(&self, hasher: &mut H)
-    where
-        H: Hasher,
-    {
-        (**self).hash(hasher)
-    }
 }
 
 impl<T> Copy for View<'_, T> {}
