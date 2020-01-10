@@ -1,10 +1,10 @@
-error[E0152]: duplicate lang item found: `arc`.
+error[E0152]: found duplicate lang item `arc`
   --> $DIR/E0152.rs:4:1
    |
 LL | struct Foo;
    | ^^^^^^^^^^^
    |
-   = note: first defined in crate `alloc` (which `std` depends on).
+   = note: first defined in crate `alloc` (which `std` depends on)
 
 error: aborting due to previous error
 
