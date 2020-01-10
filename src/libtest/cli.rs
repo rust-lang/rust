@@ -125,6 +125,8 @@ fn optgroups() -> getopts::Options {
             `RUST_TEST_TIME_DOCTEST` environment variables.
 
             Expected format of environment variable is `VARIABLE=WARN_TIME,CRITICAL_TIME`.
+            Durations must be specified in milliseconds, e.g. `500,2000` means that the warn time
+            is 0.5 seconds, and the critical time is 2 seconds.
 
             Not available for --format=terse",
             "plain|colored",
