@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{db::RootDatabase, expand::descend_into_macros, FileId, FileRange};
 use hir::db::AstDatabase;
-use itertools::Itertools;
+use std::iter::successors;
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let src = db.parse(frange.file_id).tree();
@@ -110,46 +110,28 @@ fn extend_tokens_from_range(
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {
-    // Find all non-whitespace tokens under MacroCall
-    let all_tokens: Vec<_> = macro_call
-        .syntax()
-        .descendants_with_tokens()
-        .filter_map(|n| {
-            let token = n.as_token()?;
-            if token.kind() == WHITESPACE {
-                None
-            } else {
-                Some(token.clone())
-            }
-        })
-        .sorted_by(|a, b| Ord::cmp(&a.text_range().start(), &b.text_range().start()))
-        .collect();
+    let src = find_covering_element(&macro_call.syntax(), original_range);
+    let (first_token, last_token) = match src {
+        NodeOrToken::Node(it) => (it.first_token()?, it.last_token()?),
+        NodeOrToken::Token(it) => (it.clone(), it),
+    };
 
-    // Get all indices which is in original range
-    let indices: Vec<_> =
-        all_tokens
-            .iter()
-            .enumerate()
-            .filter_map(|(i, token)| {
-                if token.text_range().is_subrange(&original_range) {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .collect();
+    let mut first_token = skip_whitespace(first_token, Direction::Next)?;
+    let mut last_token = skip_whitespace(last_token, Direction::Prev)?;
 
-    // The first and last token index in original_range
-    // Note that the indices is sorted
-    let first_idx = *indices.first()?;
-    let last_idx = *indices.last()?;
+    while !first_token.text_range().is_subrange(&original_range) {
+        first_token = skip_whitespace(first_token.next_token()?, Direction::Next)?;
+    }
+    while !last_token.text_range().is_subrange(&original_range) {
+        last_token = skip_whitespace(last_token.prev_token()?, Direction::Prev)?;
+    }
 
     // compute original mapped token range
     let expanded = {
-        let first_node = descend_into_macros(db, file_id, all_tokens[first_idx].clone());
+        let first_node = descend_into_macros(db, file_id, first_token.clone());
         let first_node = first_node.map(|it| it.text_range());
 
-        let last_node = descend_into_macros(db, file_id, all_tokens[last_idx].clone());
+        let last_node = descend_into_macros(db, file_id, last_token.clone());
         if last_node.file_id == file_id.into() || first_node.file_id != last_node.file_id {
             return None;
         }
@@ -160,25 +142,46 @@ fn extend_tokens_from_range(
     let src = db.parse_or_expand(expanded.file_id)?;
     let parent = shallowest_node(&find_covering_element(&src, expanded.value))?.parent()?;
 
-    let validate = |&idx: &usize| {
-        let token: &SyntaxToken = &all_tokens[idx];
+    let validate = |token: SyntaxToken| {
         let node = descend_into_macros(db, file_id, token.clone());
-
-        node.file_id == expanded.file_id
+        if node.file_id == expanded.file_id
             && node.value.text_range().is_subrange(&parent.text_range())
+        {
+            Some(token)
+        } else {
+            None
+        }
     };
 
     // Find the first and last text range under expanded parent
-    let first = (0..=first_idx).rev().take_while(validate).last()?;
-    let last = (last_idx..all_tokens.len()).take_while(validate).last()?;
+    let first = successors(Some(first_token), |token| {
+        validate(skip_whitespace(token.prev_token()?, Direction::Prev)?)
+    })
+    .last()?;
+    let last = successors(Some(last_token), |token| {
+        validate(skip_whitespace(token.next_token()?, Direction::Next)?)
+    })
+    .last()?;
 
-    let range = union_range(all_tokens[first].text_range(), all_tokens[last].text_range());
-
+    let range = union_range(first.text_range(), last.text_range());
     if original_range.is_subrange(&range) && original_range != range {
         Some(range)
     } else {
         None
     }
+}
+
+fn skip_whitespace(
+    mut token: SyntaxToken,
+    direction: Direction,
+) -> Option<SyntaxToken> {
+    while token.kind() == WHITESPACE {
+        token = match direction {
+            Direction::Next => token.next_token()?,
+            Direction::Prev =>  token.prev_token()?,
+        }
+    }
+    Some(token)
 }
 
 fn union_range(range: TextRange, r: TextRange) -> TextRange {
