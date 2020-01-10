@@ -1,26 +1,24 @@
 use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
+use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, is_allowed, is_expn_of, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
+    expr_block, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
     snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 use std::collections::Bound;
-use syntax::ast::{self, LitKind};
+use syntax::ast::LitKind;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -461,43 +459,6 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
                 );
             }
         }
-    }
-}
-
-fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
-    match pat.kind {
-        PatKind::Wild => true,
-        _ => false,
-    }
-}
-
-fn is_unused<'tcx>(ident: &'tcx Ident, body: &'tcx Expr<'_>) -> bool {
-    let mut visitor = UsedVisitor {
-        var: ident.name,
-        used: false,
-    };
-    walk_expr(&mut visitor, body);
-    !visitor.used
-}
-
-struct UsedVisitor {
-    var: ast::Name, // var to look for
-    used: bool,     // has the var been used otherwise?
-}
-
-impl<'tcx> Visitor<'tcx> for UsedVisitor {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if match_var(expr, self.var) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::None
     }
 }
 
