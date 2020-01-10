@@ -1,5 +1,5 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use hir::{db::HirDatabase, InFile, PathResolution};
 use ra_syntax::ast::{self, make, AstNode};
@@ -35,7 +35,7 @@ impl<'a> AstTransform<'a> for NullTransformer {
 
 pub struct SubstituteTypeParams<'a, DB: HirDatabase> {
     db: &'a DB,
-    substs: HashMap<hir::TypeParam, ast::TypeRef>,
+    substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
@@ -47,7 +47,7 @@ impl<'a, DB: HirDatabase> SubstituteTypeParams<'a, DB> {
     ) -> SubstituteTypeParams<'a, DB> {
         let substs = get_syntactic_substs(impl_block).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
-        let substs_by_param: HashMap<_, _> = generic_def
+        let substs_by_param: FxHashMap<_, _> = generic_def
             .params(db)
             .into_iter()
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
