@@ -107,13 +107,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     // Remove this query completely, in favor of `Attrs::docs` method
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
-
-    #[salsa::invoke(crate::find_path::importable_locations_in_crate_query)]
-    fn importable_locations_in_crate(
-        &self,
-        item: crate::item_scope::ItemInNs,
-        krate: CrateId,
-    ) -> Arc<[(ModuleId, hir_expand::name::Name, crate::visibility::Visibility)]>;
 }
 
 fn crate_def_map(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {

@@ -60,6 +60,8 @@ impl<'a, DB: HirDatabase> SubstituteTypeParams<'a, DB> {
             previous: Box::new(NullTransformer),
         };
 
+        // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
+        // trait ref, and then go from the types in the substs back to the syntax)
         fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>> {
             let target_trait = impl_block.target_trait()?;
             let path_type = match target_trait {
@@ -131,12 +133,12 @@ impl<'a, DB: HirDatabase> QualifyPaths<'a, DB> {
         let resolution = analyzer.resolve_path(self.db, &p)?;
         match resolution {
             PathResolution::Def(def) => {
-                let found_path = from.find_path(self.db, def)?;
+                let found_path = from.find_use_path(self.db, def)?;
                 let args = p
                     .segment()
                     .and_then(|s| s.type_arg_list())
                     .map(|arg_list| apply(self, node.with_value(arg_list)));
-                Some(make::path_with_type_arg_list(found_path.to_ast(), args).syntax().clone())
+                Some(make::path_with_type_arg_list(path_to_ast(found_path), args).syntax().clone())
             }
             PathResolution::Local(_)
             | PathResolution::TypeParam(_)
@@ -171,8 +173,7 @@ impl<'a, DB: HirDatabase> AstTransform<'a> for QualifyPaths<'a, DB> {
     }
 }
 
-// FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
-// trait ref, and then go from the types in the substs back to the syntax)
-// FIXME: This should be a general utility (not even just for assists)
-
-// FIXME: This should be a general utility (not even just for assists)
+fn path_to_ast(path: hir::ModPath) -> ast::Path {
+    let parse = ast::SourceFile::parse(&path.to_string());
+    parse.tree().syntax().descendants().find_map(ast::Path::cast).unwrap()
+}

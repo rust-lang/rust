@@ -1,7 +1,11 @@
 //! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
 mod lower;
 
-use std::{fmt::Display, iter, sync::Arc};
+use std::{
+    fmt::{self, Display},
+    iter,
+    sync::Arc,
+};
 
 use hir_expand::{
     hygiene::Hygiene,
@@ -77,12 +81,6 @@ impl ModPath {
             return None;
         }
         self.segments.first()
-    }
-
-    pub fn to_ast(&self) -> ast::Path {
-        use ast::AstNode;
-        let parse = ast::SourceFile::parse(&self.to_string());
-        parse.tree().syntax().descendants().find_map(ast::Path::cast).unwrap()
     }
 }
 
@@ -255,7 +253,7 @@ impl From<Name> for ModPath {
 }
 
 impl Display for ModPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first_segment = true;
         let mut add_segment = |s| {
             if !first_segment {

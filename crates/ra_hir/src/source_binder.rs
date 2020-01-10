@@ -206,7 +206,7 @@ impl SourceAnalyzer {
     }
 
     pub fn module(&self) -> Option<crate::code_model::Module> {
-        Some(crate::code_model::Module { id: self.resolver.module_id()? })
+        Some(crate::code_model::Module { id: self.resolver.module()? })
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {

@@ -128,7 +128,7 @@ impl Resolver {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> PerNs {
-        let (item_map, module) = match self.module() {
+        let (item_map, module) = match self.module_scope() {
             Some(it) => it,
             None => return PerNs::none(),
         };
@@ -239,7 +239,7 @@ impl Resolver {
     ) -> Option<Visibility> {
         match visibility {
             RawVisibility::Module(_) => {
-                let (item_map, module) = match self.module() {
+                let (item_map, module) = match self.module_scope() {
                     Some(it) => it,
                     None => return None,
                 };
@@ -379,7 +379,7 @@ impl Resolver {
         db: &impl DefDatabase,
         path: &ModPath,
     ) -> Option<MacroDefId> {
-        let (item_map, module) = self.module()?;
+        let (item_map, module) = self.module_scope()?;
         item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
     }
 
@@ -403,7 +403,7 @@ impl Resolver {
         traits
     }
 
-    fn module(&self) -> Option<(&CrateDefMap, LocalModuleId)> {
+    fn module_scope(&self) -> Option<(&CrateDefMap, LocalModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
@@ -411,13 +411,13 @@ impl Resolver {
         })
     }
 
-    pub fn module_id(&self) -> Option<ModuleId> {
-        let (def_map, local_id) = self.module()?;
+    pub fn module(&self) -> Option<ModuleId> {
+        let (def_map, local_id) = self.module_scope()?;
         Some(ModuleId { krate: def_map.krate, local_id })
     }
 
     pub fn krate(&self) -> Option<CrateId> {
-        self.module().map(|t| t.0.krate)
+        self.module_scope().map(|t| t.0.krate)
     }
 
     pub fn where_predicates_in_scope<'a>(

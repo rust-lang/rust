@@ -34,7 +34,7 @@ fn find_path_inner(
     // - if the item is already in scope, return the name under which it is
     let def_map = db.crate_def_map(from.krate);
     let from_scope: &crate::item_scope::ItemScope = &def_map.modules[from.local_id].scope;
-    if let Some((name, _)) = from_scope.reverse_get(item) {
+    if let Some((name, _)) = from_scope.name_of(item) {
         return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
     }
 
@@ -77,7 +77,7 @@ fn find_path_inner(
         let prelude_def_map = db.crate_def_map(prelude_module.krate);
         let prelude_scope: &crate::item_scope::ItemScope =
             &prelude_def_map.modules[prelude_module.local_id].scope;
-        if let Some((name, vis)) = prelude_scope.reverse_get(item) {
+        if let Some((name, vis)) = prelude_scope.name_of(item) {
             if vis.is_visible_from(db, from) {
                 return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
             }
@@ -146,7 +146,7 @@ fn find_importable_locations(
         .chain(crate_graph.dependencies(from.krate).map(|dep| dep.crate_id))
     {
         result.extend(
-            db.importable_locations_in_crate(item, krate)
+            importable_locations_in_crate(db, item, krate)
                 .iter()
                 .filter(|(_, _, vis)| vis.is_visible_from(db, from))
                 .map(|(m, n, _)| (*m, n.clone())),
@@ -160,17 +160,16 @@ fn find_importable_locations(
 /// non-private `use`s.
 ///
 /// Note that the crate doesn't need to be the one in which the item is defined;
-/// it might be re-exported in other crates. We cache this as a query since we
-/// need to walk the whole def map for it.
-pub(crate) fn importable_locations_in_crate_query(
+/// it might be re-exported in other crates.
+fn importable_locations_in_crate(
     db: &impl DefDatabase,
     item: ItemInNs,
     krate: CrateId,
-) -> std::sync::Arc<[(ModuleId, Name, Visibility)]> {
+) -> Vec<(ModuleId, Name, Visibility)> {
     let def_map = db.crate_def_map(krate);
     let mut result = Vec::new();
     for (local_id, data) in def_map.modules.iter() {
-        if let Some((name, vis)) = data.scope.reverse_get(item) {
+        if let Some((name, vis)) = data.scope.name_of(item) {
             let is_private = if let Visibility::Module(private_to) = vis {
                 private_to.local_id == local_id
             } else {
@@ -192,7 +191,7 @@ pub(crate) fn importable_locations_in_crate_query(
             result.push((ModuleId { krate, local_id }, name.clone(), vis));
         }
     }
-    result.into()
+    result
 }
 
 #[cfg(test)]

@@ -104,7 +104,7 @@ impl ItemScope {
         }
     }
 
-    pub(crate) fn reverse_get(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
+    pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
         for (name, per_ns) in &self.visible {
             if let Some(vis) = item.match_with(*per_ns) {
                 return Some((name, vis));
@@ -207,8 +207,7 @@ impl ItemInNs {
 
     pub fn as_module_def_id(self) -> Option<ModuleDefId> {
         match self {
-            ItemInNs::Types(t) => Some(t),
-            ItemInNs::Values(v) => Some(v),
+            ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
             ItemInNs::Macros(_) => None,
         }
     }
