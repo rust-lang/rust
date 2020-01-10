@@ -19,8 +19,9 @@ use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::find_node_at_offset, ast, match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode,
-    TextUnit, TokenAtOffset,
+    algo::find_node_at_offset,
+    ast::{self, NameOwner},
+    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
 };
 
 use crate::{
@@ -149,7 +150,13 @@ pub(crate) fn find_all_refs(
         }
     };
 
-    let declaration = Declaration { nav: declaration, kind: ReferenceKind::Other, access: None };
+    let decl_range = declaration.range();
+
+    let declaration = Declaration {
+        nav: declaration,
+        kind: ReferenceKind::Other,
+        access: decl_access(&def.kind, &name, &syntax, decl_range),
+    };
 
     let references = process_definition(db, def, name, search_scope)
         .into_iter()
@@ -218,12 +225,11 @@ fn process_definition(
                         } else {
                             ReferenceKind::Other
                         };
-                        let access = access_mode(d.kind, &name_ref);
 
                         refs.push(Reference {
                             file_range: FileRange { file_id, range },
                             kind,
-                            access,
+                            access: reference_access(&d.kind, &name_ref),
                         });
                     }
                 }
@@ -233,7 +239,34 @@ fn process_definition(
     refs
 }
 
-fn access_mode(kind: NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
+fn decl_access(
+    kind: &NameKind,
+    name: &str,
+    syntax: &SyntaxNode,
+    range: TextRange,
+) -> Option<ReferenceAccess> {
+    match kind {
+        NameKind::Local(_) | NameKind::Field(_) => {}
+        _ => return None,
+    };
+
+    let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
+    if let Some(_) = stmt.initializer() {
+        let pat = stmt.pat()?;
+        match pat {
+            ast::Pat::BindPat(it) => {
+                if it.name()?.text().as_str() == name {
+                    return Some(ReferenceAccess::Write);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn reference_access(kind: &NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
     match kind {
         NameKind::Local(_) | NameKind::Field(_) => {}
@@ -311,7 +344,7 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [33; 34) Other",
+            "i BIND_PAT FileId(1) [33; 34) Other Write",
             &[
                 "FileId(1) [67; 68) Other Write",
                 "FileId(1) [71; 72) Other Read",
@@ -569,7 +602,7 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [36; 37) Other",
+            "i BIND_PAT FileId(1) [36; 37) Other Write",
             &["FileId(1) [55; 56) Other Write", "FileId(1) [59; 60) Other Read"],
         );
     }
@@ -591,6 +624,22 @@ mod tests {
             refs,
             "f RECORD_FIELD_DEF FileId(1) [32; 38) [32; 33) Other",
             &["FileId(1) [96; 97) Other Read", "FileId(1) [117; 118) Other Write"],
+        );
+    }
+
+    #[test]
+    fn test_basic_highlight_decl_no_write() {
+        let code = r#"
+        fn foo() {
+            let i<|>;
+            i = 1;
+        }"#;
+
+        let refs = get_all_refs(code);
+        check_result(
+            refs,
+            "i BIND_PAT FileId(1) [36; 37) Other",
+            &["FileId(1) [51; 52) Other Write"],
         );
     }
 
