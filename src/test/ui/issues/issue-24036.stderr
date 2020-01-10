@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/issue-24036.rs:3:9
    |
+LL |     let mut x = |c| c + 1;
+   |                 --------- the expected closure
 LL |     x = |c| c + 1;
    |         ^^^^^^^^^ expected closure, found a different closure
    |

@@ -1,6 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:13:14
    |
+LL | async fn make_u32() -> u32 {
+   |                        --- the `Output` of this `async fn`'s found opaque type
+...
 LL |     take_u32(x)
    |              ^
    |              |
@@ -13,6 +16,9 @@ LL |     take_u32(x)
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:23:5
    |
+LL | async fn dummy() {}
+   |                  - the `Output` of this `async fn`'s found opaque type
+...
 LL |     dummy()
    |     ^^^^^^^ expected `()`, found opaque type
    |

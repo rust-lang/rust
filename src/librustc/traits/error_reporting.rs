@@ -6,7 +6,7 @@ use super::{
     TraitNotObjectSafe,
 };
 
-use crate::infer::error_reporting::TypeAnnotationNeeded as ErrorCode;
+use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt};
 use crate::mir::interpret::ErrorHandled;
@@ -446,7 +446,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 flags.push((sym::from_method, Some(method.to_string())));
             }
         }
-        if let Some(t) = self.get_parent_trait_ref(&obligation.cause.code) {
+        if let Some((t, _)) = self.get_parent_trait_ref(&obligation.cause.code) {
             flags.push((sym::parent_trait, Some(t)));
         }
 
@@ -665,13 +665,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Gets the parent trait chain start
-    fn get_parent_trait_ref(&self, code: &ObligationCauseCode<'tcx>) -> Option<String> {
+    fn get_parent_trait_ref(
+        &self,
+        code: &ObligationCauseCode<'tcx>,
+    ) -> Option<(String, Option<Span>)> {
         match code {
             &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
-                    None => Some(parent_trait_ref.skip_binder().self_ty().to_string()),
+                    None => {
+                        let ty = parent_trait_ref.skip_binder().self_ty();
+                        let span =
+                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
+                        Some((ty.to_string(), span))
+                    }
                 }
             }
             _ => None,
@@ -719,9 +727,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-                        let (post_message, pre_message) = self
+                        let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(&obligation.cause.code)
-                            .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                            .map(|(t, s)| {
+                                (
+                                    format!(" in `{}`", t),
+                                    format!("within `{}`, ", t),
+                                    s.map(|s| (format!("within this `{}`", t), s)),
+                                )
+                            })
                             .unwrap_or_default();
 
                         let OnUnimplementedNote { message, label, note, enclosing_scope } =
@@ -794,6 +808,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             err.help(&explanation);
                         } else {
                             err.span_label(span, explanation);
+                        }
+                        if let Some((msg, span)) = type_def {
+                            err.span_label(span, &msg);
                         }
                         if let Some(ref s) = note {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
