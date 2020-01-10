@@ -135,7 +135,7 @@ impl WorldState {
         let check_watcher = {
             let first_workspace = workspaces.first().unwrap();
             let cargo_project_root = match first_workspace {
-                ProjectWorkspace::Cargo { cargo, .. } => cargo.workspace_root.clone(),
+                ProjectWorkspace::Cargo { cargo, .. } => cargo.workspace_root().to_path_buf(),
                 ProjectWorkspace::Json { .. } => {
                     log::warn!(
                         "Cargo check watching only supported for cargo workspaces, disabling"
