@@ -1628,7 +1628,7 @@ impl<'a> Parser<'a> {
             // it's safe to peel off one character only when it has the close delim
             self.prev_span.with_lo(self.prev_span.hi() - BytePos(1))
         } else {
-            self.sess.source_map().next_point(self.prev_span)
+            self.prev_span.shrink_to_hi()
         };
 
         self.struct_span_err(
@@ -1644,7 +1644,7 @@ impl<'a> Parser<'a> {
             Applicability::MaybeIncorrect,
         )
         .span_suggestion(
-            self.sess.source_map().next_point(self.prev_span),
+            self.prev_span.shrink_to_hi(),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,

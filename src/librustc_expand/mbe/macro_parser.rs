@@ -696,7 +696,7 @@ pub(super) fn parse(
                         if parser.token.span.is_dummy() {
                             parser.token.span
                         } else {
-                            sess.source_map().next_point(parser.token.span)
+                            parser.token.span.shrink_to_hi()
                         },
                     ),
                     "missing tokens in macro arguments",
