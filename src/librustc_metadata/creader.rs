@@ -6,7 +6,7 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 use rustc::hir::map::Definitions;
 use rustc::middle::cstore::DepKind;
 use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::session::config::{self, Sanitizer};
+use rustc::session::config;
 use rustc::session::search_paths::PathKind;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::TyCtxt;
@@ -671,108 +671,6 @@ impl<'a> CrateLoader<'a> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
-    fn inject_sanitizer_runtime(&mut self) {
-        if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
-            // Sanitizers can only be used on some tested platforms with
-            // executables linked to `std`
-            const ASAN_SUPPORTED_TARGETS: &[&str] =
-                &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
-            const TSAN_SUPPORTED_TARGETS: &[&str] =
-                &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
-            const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
-            const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
-
-            let supported_targets = match *sanitizer {
-                Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
-                Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
-                Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
-                Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
-            };
-            if !supported_targets.contains(&&*self.sess.opts.target_triple.triple()) {
-                self.sess.err(&format!(
-                    "{:?}Sanitizer only works with the `{}` target",
-                    sanitizer,
-                    supported_targets.join("` or `")
-                ));
-                return;
-            }
-
-            // firstyear 2017 - during testing I was unable to access an OSX machine
-            // to make this work on different crate types. As a result, today I have
-            // only been able to test and support linux as a target.
-            if self.sess.opts.target_triple.triple() == "x86_64-unknown-linux-gnu" {
-                if !self.sess.crate_types.borrow().iter().all(|ct| {
-                    match *ct {
-                        // Link the runtime
-                        config::CrateType::Executable => true,
-                        // This crate will be compiled with the required
-                        // instrumentation pass
-                        config::CrateType::Staticlib
-                        | config::CrateType::Rlib
-                        | config::CrateType::Dylib
-                        | config::CrateType::Cdylib => false,
-                        _ => {
-                            self.sess.err(&format!(
-                                "Only executables, staticlibs, \
-                                cdylibs, dylibs and rlibs can be compiled with \
-                                `-Z sanitizer`"
-                            ));
-                            false
-                        }
-                    }
-                }) {
-                    return;
-                }
-            } else {
-                if !self.sess.crate_types.borrow().iter().all(|ct| {
-                    match *ct {
-                        // Link the runtime
-                        config::CrateType::Executable => true,
-                        // This crate will be compiled with the required
-                        // instrumentation pass
-                        config::CrateType::Rlib => false,
-                        _ => {
-                            self.sess.err(&format!(
-                                "Only executables and rlibs can be \
-                                                    compiled with `-Z sanitizer`"
-                            ));
-                            false
-                        }
-                    }
-                }) {
-                    return;
-                }
-            }
-
-            let mut uses_std = false;
-            self.cstore.iter_crate_data(|_, data| {
-                if data.name() == sym::std {
-                    uses_std = true;
-                }
-            });
-
-            if uses_std {
-                let name = Symbol::intern(match sanitizer {
-                    Sanitizer::Address => "rustc_asan",
-                    Sanitizer::Leak => "rustc_lsan",
-                    Sanitizer::Memory => "rustc_msan",
-                    Sanitizer::Thread => "rustc_tsan",
-                });
-                info!("loading sanitizer: {}", name);
-
-                let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Explicit, None);
-                let data = self.cstore.get_crate_data(cnum);
-
-                // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-                if !data.is_sanitizer_runtime() {
-                    self.sess.err(&format!("the crate `{}` is not a sanitizer runtime", name));
-                }
-            } else {
-                self.sess.err("Must link std to be compiled with `-Z sanitizer`");
-            }
-        }
-    }
-
     fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled() {
             info!("loading profiler");
@@ -924,7 +822,6 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
-        self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);

@@ -686,10 +686,6 @@ rustc_queries! {
             fatal_cycle
             desc { "checking if the crate has_panic_handler" }
         }
-        query is_sanitizer_runtime(_: CrateNum) -> bool {
-            fatal_cycle
-            desc { "query a crate is `#![sanitizer_runtime]`" }
-        }
         query is_profiler_runtime(_: CrateNum) -> bool {
             fatal_cycle
             desc { "query a crate is `#![profiler_runtime]`" }

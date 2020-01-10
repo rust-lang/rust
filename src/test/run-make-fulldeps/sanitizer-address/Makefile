@@ -23,7 +23,7 @@ endif
 endif
 
 all:
-	$(RUSTC) -g -Z sanitizer=address -Z print-link-args $(EXTRA_RUSTFLAG) overflow.rs | $(CGREP) librustc_asan
+	$(RUSTC) -g -Z sanitizer=address -Z print-link-args $(EXTRA_RUSTFLAG) overflow.rs | $(CGREP) rustc_rt.asan
 	# Verify that stack buffer overflow is detected:
 	$(TMPDIR)/overflow 2>&1 | $(CGREP) stack-buffer-overflow
 	# Verify that variable name is included in address sanitizer report:

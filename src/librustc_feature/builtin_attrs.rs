@@ -410,11 +410,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
-        sanitizer_runtime, Whitelisted, template!(Word),
-        "the `#[sanitizer_runtime]` attribute is used to identify crates that contain the runtime \
-        of a sanitizer and will never be stable",
-    ),
-    gated!(
         profiler_runtime, Whitelisted, template!(Word),
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
