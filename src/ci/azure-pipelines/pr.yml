@@ -18,6 +18,8 @@ jobs:
     - template: steps/run.yml
   strategy:
     matrix:
+      wasm32: {}
+      asmjs: {}
       x86_64-gnu-llvm-7: {}
       mingw-check: {}
       x86_64-gnu-tools:
