@@ -17,6 +17,7 @@ use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 use std::collections::Bound;
 use syntax::ast::{self, LitKind};
@@ -470,18 +471,13 @@ fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
     }
 }
 
-fn is_unused_underscored<'tcx>(patkind: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
-    match patkind {
-        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => {
-            let mut visitor = UsedVisitor {
-                var: ident.name,
-                used: false,
-            };
-            walk_expr(&mut visitor, body);
-            !visitor.used
-        },
-        _ => false,
-    }
+fn is_unused<'tcx>(ident: &'tcx Ident, body: &'tcx Expr<'_>) -> bool {
+    let mut visitor = UsedVisitor {
+        var: ident.name,
+        used: false,
+    };
+    walk_expr(&mut visitor, body);
+    !visitor.used
 }
 
 struct UsedVisitor {
@@ -511,20 +507,34 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
-                if_chain! {
-                    if path_str == "Err";
-                    if inner.iter().any(is_wild) || inner.iter().any(|pat| is_unused_underscored(&pat.kind, arm.body));
-                    if let ExprKind::Block(ref block, _) = arm.body.kind;
-                    if is_panic_block(block);
-                    then {
-                        // `Err(_)` arm with `panic!` found
-                        span_note_and_lint(cx,
-                                           MATCH_WILD_ERR_ARM,
-                                           arm.pat.span,
-                                           "`Err(_)` will match all errors, maybe not a good idea",
-                                           arm.pat.span,
-                                           "to remove this warning, match each error separately \
-                                            or use `unreachable!` macro");
+                if path_str == "Err" {
+                    let mut matching_wild = inner.iter().any(is_wild);
+                    let mut ident_bind_name = String::from("_");
+                    if !matching_wild {
+                        // Looking for unused bindings (i.e.: `_e`)
+                        inner.iter().for_each(|pat| {
+                            if let PatKind::Binding(.., ident, None) = &pat.kind {
+                                if ident.as_str().starts_with('_') && is_unused(ident, arm.body) {
+                                    ident_bind_name = (&ident.name.as_str()).to_string();
+                                    matching_wild = true;
+                                }
+                            }
+                        });
+                    }
+                    if_chain! {
+                        if matching_wild;
+                        if let ExprKind::Block(ref block, _) = arm.body.kind;
+                        if is_panic_block(block);
+                        then {
+                            // `Err(_)` or `Err(_e)` arm with `panic!` found
+                            span_note_and_lint(cx,
+                                            MATCH_WILD_ERR_ARM,
+                                            arm.pat.span,
+                                            &format!("`Err({})` will match all errors, maybe not a good idea", &ident_bind_name),
+                                            arm.pat.span,
+                                            "to remove this warning, match each error separately \
+                                                or use `unreachable!` macro");
+                        }
                     }
                 }
             }
