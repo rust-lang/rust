@@ -58,6 +58,7 @@ pub use hir_def::{
     type_ref::Mutability,
 };
 pub use hir_expand::{
-    name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
+    name::name, name::AsName, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId,
+    MacroFile, Origin,
 };
 pub use hir_ty::{display::HirDisplay, CallableDef};

@@ -2,6 +2,7 @@
 
 use crate::TextRange;
 
+use hir::{name, AsName, Path};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
@@ -151,25 +152,12 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 Some(node)
             },
             ast::MacroCall(it) => {
-                let macro_name = it.syntax()
-                    .children()
-                    .find(|c|
-                        ![
-                            SyntaxKind::COMMENT,
-                            SyntaxKind::WHITESPACE,
-                            SyntaxKind::ATTR
-                        ].iter()
-                        .any(|&k| k == c.kind())
-                    );
-
-                match macro_name {
-                    None => return None,
-                    Some(n) => if n.first_token().unwrap().text().as_str() != "macro_rules" {
-                        return None;
-                    }
+                match it.path().and_then(|p| Path::from_ast(p)) {
+                    Some(path) if path.mod_path().segments.as_slice() == [name![macro_rules]]
+                        && it.name().map(|n| n.as_name()).is_some()
+                    => decl(it),
+                    _ => None,
                 }
-
-                decl(it)
             },
             _ => None,
         }
@@ -213,6 +201,11 @@ macro_rules! mc {
 }
 
 #[macro_export]
+macro_rules! mcexp {
+    () => {}
+}
+
+/// Doc comment
 macro_rules! mcexp {
     () => {}
 }
@@ -402,9 +395,18 @@ fn very_obsolete() {}
             },
             StructureNode {
                 parent: None,
+                label: "mcexp",
+                navigation_range: [387; 392),
+                node_range: [358; 409),
+                kind: MACRO_CALL,
+                detail: None,
+                deprecated: false,
+            },
+            StructureNode {
+                parent: None,
                 label: "obsolete",
-                navigation_range: [375; 383),
-                node_range: [358; 388),
+                navigation_range: [428; 436),
+                node_range: [411; 441),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
@@ -414,8 +416,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "very_obsolete",
-                navigation_range: [428; 441),
-                node_range: [390; 446),
+                navigation_range: [481; 494),
+                node_range: [443; 499),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
