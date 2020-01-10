@@ -3,10 +3,8 @@ use Position::*;
 
 use fmt_macros as parse;
 
-use errors::pluralize;
-use errors::Applicability;
-use errors::DiagnosticBuilder;
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
@@ -15,7 +13,6 @@ use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 

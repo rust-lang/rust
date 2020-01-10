@@ -3,18 +3,18 @@
 use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
 use crate::mir::interpret::{sign_extend, truncate};
-use crate::ty::layout::{Integer, IntegerExt};
+use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable};
 use crate::util::common::ErrorReported;
+use rustc_apfloat::Float as _;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use std::{cmp, fmt};
@@ -43,26 +43,38 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     }
 }
 
+fn signed_min(size: Size) -> i128 {
+    sign_extend(1_u128 << (size.bits() - 1), size) as i128
+}
+
+fn signed_max(size: Size) -> i128 {
+    i128::max_value() >> (128 - size.bits())
+}
+
+fn unsigned_max(size: Size) -> u128 {
+    u128::max_value() >> (128 - size.bits())
+}
+
+fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
+    let (int, signed) = match ty.kind {
+        Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
+        Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
+        _ => bug!("non integer discriminant"),
+    };
+    (int.size(), signed)
+}
+
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
     pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
     pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
-        let (int, signed) = match self.ty.kind {
-            Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
-            Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
-            _ => bug!("non integer discriminant"),
-        };
-
-        let size = int.size();
-        let bit_size = int.size().bits();
-        let shift = 128 - bit_size;
-        if signed {
-            let sext = |u| sign_extend(u, size) as i128;
-            let min = sext(1_u128 << (bit_size - 1));
-            let max = i128::max_value() >> shift;
-            let val = sext(self.val);
+        let (size, signed) = int_size_and_signed(tcx, self.ty);
+        let (val, oflo) = if signed {
+            let min = signed_min(size);
+            let max = signed_max(size);
+            let val = sign_extend(self.val, size) as i128;
             assert!(n < (i128::max_value() as u128));
             let n = n as i128;
             let oflo = val > max - n;
@@ -70,14 +82,15 @@ impl<'tcx> Discr<'tcx> {
             // zero the upper bits
             let val = val as u128;
             let val = truncate(val, size);
-            (Self { val: val as u128, ty: self.ty }, oflo)
+            (val, oflo)
         } else {
-            let max = u128::max_value() >> shift;
+            let max = unsigned_max(size);
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo { n - (max - val) - 1 } else { val + n };
-            (Self { val: val, ty: self.ty }, oflo)
-        }
+            (val, oflo)
+        };
+        (Self { val, ty: self.ty }, oflo)
     }
 }
 
@@ -621,6 +634,44 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
+    /// Returns the maximum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
+                Some(val)
+            }
+            ty::Char => Some(std::char::MAX as u128),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => ::rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ast::FloatTy::F64 => ::rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
+    /// Returns the minimum value for the given numeric type (including `char`s)
+    /// or returns `None` if the type is not numeric.
+    pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+        let val = match self.kind {
+            ty::Int(_) | ty::Uint(_) => {
+                let (size, signed) = int_size_and_signed(tcx, self);
+                let val = if signed { truncate(signed_min(size) as u128, size) } else { 0 };
+                Some(val)
+            }
+            ty::Char => Some(0),
+            ty::Float(fty) => Some(match fty {
+                ast::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
+                ast::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+            }),
+            _ => None,
+        };
+        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+    }
+
     /// Checks whether values of this type `T` are *moved* or *copied*
     /// when referenced -- this amounts to a check for whether `T:
     /// Copy`, but note that we **don't** consider lifetimes when

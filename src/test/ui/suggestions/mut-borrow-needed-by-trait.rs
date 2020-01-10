@@ -19,5 +19,5 @@ fn main() {
     //~| ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
     //~| ERROR the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
 
-    writeln!(fp, "hello world").unwrap(); //~ ERROR no method named `write_fmt` found for type
+    writeln!(fp, "hello world").unwrap(); //~ ERROR no method named `write_fmt` found for struct
 }

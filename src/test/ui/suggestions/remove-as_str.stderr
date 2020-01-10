@@ -1,22 +1,22 @@
-error[E0599]: no method named `as_str` found for type `&str` in the current scope
+error[E0599]: no method named `as_str` found for reference `&str` in the current scope
   --> $DIR/remove-as_str.rs:2:7
    |
 LL |     s.as_str();
    |      -^^^^^^-- help: remove this method call
 
-error[E0599]: no method named `as_str` found for type `&'a str` in the current scope
+error[E0599]: no method named `as_str` found for reference `&'a str` in the current scope
   --> $DIR/remove-as_str.rs:7:7
    |
 LL |     s.as_str();
    |      -^^^^^^-- help: remove this method call
 
-error[E0599]: no method named `as_str` found for type `&mut str` in the current scope
+error[E0599]: no method named `as_str` found for mutable reference `&mut str` in the current scope
   --> $DIR/remove-as_str.rs:12:7
    |
 LL |     s.as_str();
    |      -^^^^^^-- help: remove this method call
 
-error[E0599]: no method named `as_str` found for type `&&str` in the current scope
+error[E0599]: no method named `as_str` found for reference `&&str` in the current scope
   --> $DIR/remove-as_str.rs:17:7
    |
 LL |     s.as_str();

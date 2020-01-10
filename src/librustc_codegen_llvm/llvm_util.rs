@@ -46,7 +46,7 @@ fn require_inited() {
 }
 
 unsafe fn configure_llvm(sess: &Session) {
-    let n_args = sess.opts.cg.llvm_args.len();
+    let n_args = sess.opts.cg.llvm_args.len() + sess.target.target.options.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
@@ -56,14 +56,11 @@ unsafe fn configure_llvm(sess: &Session) {
         full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")
     }
 
-    let user_specified_args: FxHashSet<_> = sess
-        .opts
-        .cg
-        .llvm_args
-        .iter()
-        .map(|s| llvm_arg_to_arg_name(s))
-        .filter(|s| s.len() > 0)
-        .collect();
+    let cg_opts = sess.opts.cg.llvm_args.iter();
+    let tg_opts = sess.target.target.options.llvm_args.iter();
+
+    let user_specified_args: FxHashSet<_> =
+        cg_opts.chain(tg_opts).map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true

@@ -2329,14 +2329,18 @@ impl<'a> State<'a> {
             }
             PatKind::Lit(ref e) => self.print_expr(&**e),
             PatKind::Range(ref begin, ref end, Spanned { node: ref end_kind, .. }) => {
-                self.print_expr(begin);
-                self.s.space();
+                if let Some(e) = begin {
+                    self.print_expr(e);
+                    self.s.space();
+                }
                 match *end_kind {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => self.s.word("..."),
                     RangeEnd::Included(RangeSyntax::DotDotEq) => self.s.word("..="),
                     RangeEnd::Excluded => self.s.word(".."),
                 }
-                self.print_expr(end);
+                if let Some(e) = end {
+                    self.print_expr(e);
+                }
             }
             PatKind::Slice(ref elts) => {
                 self.s.word("[");

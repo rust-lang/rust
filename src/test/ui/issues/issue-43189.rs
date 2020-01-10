@@ -8,5 +8,5 @@
 extern crate xcrate_issue_43189_b;
 fn main() {
     ().a();
-    //~^ ERROR no method named `a` found for type `()` in the current scope [E0599]
+    //~^ ERROR no method named `a` found
 }

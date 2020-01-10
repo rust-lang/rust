@@ -1,4 +1,4 @@
-error[E0599]: no method named `as_deref_mut` found for type `std::option::Option<{integer}>` in the current scope
+error[E0599]: no method named `as_deref_mut` found for enum `std::option::Option<{integer}>` in the current scope
   --> $DIR/option-as_deref_mut.rs:2:33
    |
 LL |     let _result = &mut Some(42).as_deref_mut();

@@ -4,9 +4,9 @@ use crate::attr;
 use crate::sess::ParseSess;
 use crate::visit::{self, FnKind, Visitor};
 
-use errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_error_codes::*;
+use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
 use rustc_feature::{find_feature_issue, GateIssue};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Feature, Features, State as FeatureState, UnstableFeatures};
@@ -911,6 +911,7 @@ pub fn check_crate(
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
+    gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

@@ -96,12 +96,12 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use errors::Applicability;
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             .sess
                             .struct_span_err(expr.span, "`break` to unknown label")
                             .emit();
-                        errors::FatalError.raise()
+                        rustc_errors::FatalError.raise()
                     }
                 }
             }

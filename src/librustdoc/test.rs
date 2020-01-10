@@ -389,8 +389,8 @@ pub fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         with_globals(edition, || {
-            use errors::emitter::EmitterWriter;
-            use errors::Handler;
+            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
             use rustc_span::source_map::FilePathMapping;
             use syntax::sess::ParseSess;

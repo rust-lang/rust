@@ -40,6 +40,8 @@
 #![feature(slice_from_raw_parts)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
+#![feature(never_type)]
+#![feature(unwrap_infallible)]
 
 extern crate test;
 

@@ -1,4 +1,4 @@
-error[E0599]: no associated item named `HOST_SIZE` found for type `Foo<A, B>` in the current scope
+error[E0599]: no associated item named `HOST_SIZE` found for struct `Foo<A, B>` in the current scope
   --> $DIR/too_generic_eval_ice.rs:7:19
    |
 LL | pub struct Foo<A, B>(A, B);

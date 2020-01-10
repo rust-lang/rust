@@ -1,11 +1,11 @@
 use crate::ty::{self, TyCtxt};
-use errors::Diagnostic;
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_errors::Diagnostic;
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;

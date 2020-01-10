@@ -5,7 +5,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::ty::{BoundRegion, FreeRegion, RegionKind};
 use crate::util::common::ErrorReported;
-use errors::Applicability;
+use rustc_errors::Applicability;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.

@@ -3,10 +3,9 @@
 use std::iter::once;
 use std::ops::Range;
 
+use rustc_errors::{Applicability, Handler};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
-
-use syntax::errors::{Applicability, Handler};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,

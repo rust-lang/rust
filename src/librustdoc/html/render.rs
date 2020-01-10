@@ -42,7 +42,6 @@ use std::rc::Rc;
 use std::str;
 use std::sync::Arc;
 
-use errors;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc_data_structures::flock;
@@ -394,7 +393,7 @@ pub fn run(
     mut krate: clean::Crate,
     options: RenderOptions,
     renderinfo: RenderInfo,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
     edition: Edition,
 ) -> Result<(), Error> {
     // need to save a copy of the options for rendering the index page
@@ -528,7 +527,7 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &errors::Handler,
+    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized

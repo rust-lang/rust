@@ -2,19 +2,17 @@ use crate::base::ExtCtxt;
 use crate::mbe;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::pluralize;
+use rustc_span::hygiene::{ExpnId, Transparency};
+use rustc_span::Span;
 use syntax::ast::{Ident, Mac};
 use syntax::mut_visit::{self, MutVisitor};
 use syntax::token::{self, NtTT, Token};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
-
-use errors::pluralize;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
-use rustc_span::hygiene::{ExpnId, Transparency};
-use rustc_span::Span;
-
 use std::mem;
 
 // A Marker adds the given mark to the syntax context.

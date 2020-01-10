@@ -1,4 +1,4 @@
-error[E0599]: no method named `kaname` found for type `Homura` in the current scope
+error[E0599]: no method named `kaname` found for struct `Homura` in the current scope
   --> $DIR/issue-19692.rs:4:40
    |
 LL | struct Homura;

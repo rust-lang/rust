@@ -9,7 +9,6 @@ use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
-use errors::{struct_span_err, Applicability, DiagnosticId};
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::traits::astconv_object_safety_violations;
@@ -19,6 +18,7 @@ use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -30,7 +30,6 @@ use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use syntax::ast;
-use syntax::errors::pluralize;
 use syntax::feature_gate::feature_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -2125,9 +2124,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
                     tcx.sess.span_err(span, &msg);
                 } else if qself_ty.is_enum() {
-                    let mut err = tcx.sess.struct_span_err(
+                    let mut err = struct_span_err!(
+                        tcx.sess,
                         assoc_ident.span,
-                        &format!("no variant `{}` in enum `{}`", assoc_ident, qself_ty),
+                        E0599,
+                        "no variant named `{}` found for enum `{}`",
+                        assoc_ident,
+                        qself_ty,
                     );
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");

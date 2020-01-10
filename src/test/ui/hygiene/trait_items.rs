@@ -14,7 +14,7 @@ mod bar {
 }
 
 mod baz {
-    pub macro m() { ().f() } //~ ERROR no method named `f` found for type `()` in the current scope
+    pub macro m() { ().f() } //~ ERROR no method named `f` found
     fn f() { ::bar::m!(); }
 }
 

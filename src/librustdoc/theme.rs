@@ -3,7 +3,7 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-use errors::Handler;
+use rustc_errors::Handler;
 
 #[cfg(test)]
 mod tests;

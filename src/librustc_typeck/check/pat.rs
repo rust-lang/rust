@@ -1,11 +1,11 @@
 use crate::check::FnCtxt;
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Pattern;
 use rustc::ty::subst::GenericArg;
 use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -135,12 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = match pat.kind {
             PatKind::Wild => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
-            PatKind::Range(begin, end, _) => {
-                match self.check_pat_range(pat.span, begin, end, expected, ti) {
-                    None => return,
-                    Some(ty) => ty,
-                }
-            }
+            PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
             PatKind::Binding(ba, var_id, _, sub) => {
                 self.check_pat_ident(pat, ba, var_id, sub, expected, def_bm, ti)
             }
@@ -395,39 +390,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_range(
         &self,
         span: Span,
-        lhs: &'tcx hir::Expr<'tcx>,
-        rhs: &'tcx hir::Expr<'tcx>,
+        lhs: Option<&'tcx hir::Expr<'tcx>>,
+        rhs: Option<&'tcx hir::Expr<'tcx>>,
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        let lhs_ty = self.check_expr(lhs);
-        let rhs_ty = self.check_expr(rhs);
+    ) -> Ty<'tcx> {
+        let calc_side = |opt_expr: Option<&'tcx hir::Expr<'tcx>>| match opt_expr {
+            None => (None, None),
+            Some(expr) => {
+                let ty = self.check_expr(expr);
+                // Check that the end-point is of numeric or char type.
+                let fail = !(ty.is_numeric() || ty.is_char() || ty.references_error());
+                (Some(ty), Some((fail, ty, expr.span)))
+            }
+        };
+        let (lhs_ty, lhs) = calc_side(lhs);
+        let (rhs_ty, rhs) = calc_side(rhs);
 
-        // Check that both end-points are of numeric or char type.
-        let numeric_or_char = |ty: Ty<'_>| ty.is_numeric() || ty.is_char() || ty.references_error();
-        let lhs_fail = !numeric_or_char(lhs_ty);
-        let rhs_fail = !numeric_or_char(rhs_ty);
-
-        if lhs_fail || rhs_fail {
-            self.emit_err_pat_range(span, lhs.span, rhs.span, lhs_fail, rhs_fail, lhs_ty, rhs_ty);
-            return None;
+        if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
+            // There exists a side that didn't meet our criteria that the end-point
+            // be of a numeric or char type, as checked in `calc_side` above.
+            self.emit_err_pat_range(span, lhs, rhs);
+            return self.tcx.types.err;
         }
 
-        // Now that we know the types can be unified we find the unified type and use
-        // it to type the entire expression.
-        let common_type = self.resolve_vars_if_possible(&lhs_ty);
+        // Now that we know the types can be unified we find the unified type
+        // and use it to type the entire expression.
+        let common_type = self.resolve_vars_if_possible(&lhs_ty.or(rhs_ty).unwrap_or(expected));
 
         // Subtyping doesn't matter here, as the value is some kind of scalar.
-        let demand_eqtype = |x_span, y_span, x_ty, y_ty| {
-            self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti).map(|mut err| {
-                self.endpoint_has_type(&mut err, y_span, y_ty);
-                err.emit();
-            });
+        let demand_eqtype = |x, y| {
+            if let Some((_, x_ty, x_span)) = x {
+                self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti).map(|mut err| {
+                    if let Some((_, y_ty, y_span)) = y {
+                        self.endpoint_has_type(&mut err, y_span, y_ty);
+                    }
+                    err.emit();
+                });
+            }
         };
-        demand_eqtype(lhs.span, rhs.span, lhs_ty, rhs_ty);
-        demand_eqtype(rhs.span, lhs.span, rhs_ty, lhs_ty);
+        demand_eqtype(lhs, rhs);
+        demand_eqtype(rhs, lhs);
 
-        Some(common_type)
+        common_type
     }
 
     fn endpoint_has_type(&self, err: &mut DiagnosticBuilder<'_>, span: Span, ty: Ty<'_>) {
@@ -439,21 +444,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn emit_err_pat_range(
         &self,
         span: Span,
-        begin_span: Span,
-        end_span: Span,
-        lhs_fail: bool,
-        rhs_fail: bool,
-        lhs_ty: Ty<'tcx>,
-        rhs_ty: Ty<'tcx>,
+        lhs: Option<(bool, Ty<'tcx>, Span)>,
+        rhs: Option<(bool, Ty<'tcx>, Span)>,
     ) {
-        let span = if lhs_fail && rhs_fail {
-            span
-        } else if lhs_fail {
-            begin_span
-        } else {
-            end_span
+        let span = match (lhs, rhs) {
+            (Some((true, ..)), Some((true, ..))) => span,
+            (Some((true, _, sp)), _) => sp,
+            (_, Some((true, _, sp))) => sp,
+            _ => span_bug!(span, "emit_err_pat_range: no side failed or exists but still error?"),
         };
-
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
@@ -461,17 +460,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "only char and numeric types are allowed in range patterns"
         );
         let msg = |ty| format!("this is of type `{}` but it should be `char` or numeric", ty);
-        let mut one_side_err = |first_span, first_ty, second_span, second_ty: Ty<'_>| {
+        let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
             err.span_label(first_span, &msg(first_ty));
-            self.endpoint_has_type(&mut err, second_span, second_ty);
+            if let Some((_, ty, sp)) = second {
+                self.endpoint_has_type(&mut err, sp, ty);
+            }
         };
-        if lhs_fail && rhs_fail {
-            err.span_label(begin_span, &msg(lhs_ty));
-            err.span_label(end_span, &msg(rhs_ty));
-        } else if lhs_fail {
-            one_side_err(begin_span, lhs_ty, end_span, rhs_ty);
-        } else {
-            one_side_err(end_span, rhs_ty, begin_span, lhs_ty);
+        match (lhs, rhs) {
+            (Some((true, lhs_ty, lhs_sp)), Some((true, rhs_ty, rhs_sp))) => {
+                err.span_label(lhs_sp, &msg(lhs_ty));
+                err.span_label(rhs_sp, &msg(rhs_ty));
+            }
+            (Some((true, lhs_ty, lhs_sp)), rhs) => one_side_err(lhs_sp, lhs_ty, rhs),
+            (lhs, Some((true, rhs_ty, rhs_sp))) => one_side_err(rhs_sp, rhs_ty, lhs),
+            _ => span_bug!(span, "Impossible, verified above."),
         }
         if self.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(

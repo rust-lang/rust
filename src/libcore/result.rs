@@ -1092,6 +1092,44 @@ impl<T: Default, E> Result<T, E> {
     }
 }
 
+#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+impl<T, E: Into<!>> Result<T, E> {
+    /// Unwraps a result that can never be an [`Err`], yielding the content of the [`Ok`].
+    ///
+    /// Unlike [`unwrap`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap` as a maintainability safeguard that will fail
+    /// to compile if the error type of the `Result` is later changed
+    /// to an error that can actually occur.
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    /// [`unwrap`]: enum.Result.html#method.unwrap
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_good_news() -> Result<String, !> {
+    ///     Ok("this is fine".into())
+    /// }
+    ///
+    /// let s: String = only_good_news().into_ok();
+    /// println!("{}", s);
+    /// ```
+    #[inline]
+    pub fn into_ok(self) -> T {
+        match self {
+            Ok(x) => x,
+            Err(e) => e.into(),
+        }
+    }
+}
+
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E>`.

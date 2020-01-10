@@ -20,7 +20,7 @@ LL |     x += 2;
    |
    = note: an implementation of `std::ops::AddAssign` might be missing for `&str`
 
-error[E0599]: no method named `z` found for type `&str` in the current scope
+error[E0599]: no method named `z` found for reference `&str` in the current scope
   --> $DIR/error-festival.rs:16:7
    |
 LL |     x.z();

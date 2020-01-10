@@ -184,6 +184,28 @@ pub fn test_unwrap_or_default() {
 }
 
 #[test]
+pub fn test_into_ok() {
+    fn infallible_op() -> Result<isize, !> {
+        Ok(666)
+    }
+
+    assert_eq!(infallible_op().into_ok(), 666);
+
+    enum MyNeverToken {}
+    impl From<MyNeverToken> for ! {
+        fn from(never: MyNeverToken) -> ! {
+            match never {}
+        }
+    }
+
+    fn infallible_op2() -> Result<isize, MyNeverToken> {
+        Ok(667)
+    }
+
+    assert_eq!(infallible_op2().into_ok(), 667);
+}
+
+#[test]
 fn test_try() {
     fn try_result_some() -> Option<u8> {
         let val = Ok(1)?;

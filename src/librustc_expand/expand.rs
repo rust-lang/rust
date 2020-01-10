@@ -5,6 +5,8 @@ use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::configure;
 use rustc_parse::parser::Parser;
@@ -26,10 +28,7 @@ use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::visit::{self, Visitor};
 
-use errors::{Applicability, FatalError, PResult};
 use smallvec::{smallvec, SmallVec};
-
-use rustc_data_structures::sync::Lrc;
 use std::io::ErrorKind;
 use std::ops::DerefMut;
 use std::path::PathBuf;

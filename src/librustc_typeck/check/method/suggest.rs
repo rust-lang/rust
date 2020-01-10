@@ -4,7 +4,6 @@
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
-use errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc::hir::map as hir_map;
 use rustc::hir::map::Map;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -12,6 +11,7 @@ use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -360,10 +360,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess,
                             span,
                             E0599,
-                            "no {} named `{}` found for type `{}` in the current scope",
+                            "no {} named `{}` found for {} `{}` in the current scope",
                             item_kind,
                             item_name,
-                            ty_str
+                            actual.prefix_string(),
+                            ty_str,
                         );
                         if let Some(span) =
                             tcx.sess.confused_type_with_std_module.borrow().get(&span)

@@ -5,14 +5,13 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use crate::hir::def_id::{DefId, LOCAL_CRATE};
-use crate::hir::HirId;
-use errors::struct_span_err;
 use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-
 use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::HirId;
 
 mod builtin;
 mod inherent_impls;

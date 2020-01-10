@@ -905,7 +905,7 @@ pub enum PatKind<'hir> {
     Lit(&'hir Expr<'hir>),
 
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(&'hir Expr<'hir>, &'hir Expr<'hir>, RangeEnd),
+    Range(Option<&'hir Expr<'hir>>, Option<&'hir Expr<'hir>>, RangeEnd),
 
     /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
     ///

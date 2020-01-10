@@ -2,7 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use errors::struct_span_err;
+use rustc_errors::struct_span_err;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;

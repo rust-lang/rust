@@ -12,25 +12,23 @@ use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_error_codes::*;
+use rustc_errors::struct_span_err;
+use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
-use rustc_target::spec::{PanicStrategy, TargetTriple};
-
-use std::path::Path;
-use std::{cmp, fs};
-
-use errors::struct_span_err;
-use log::{debug, info, log_enabled};
-use proc_macro::bridge::client::ProcMacro;
-use rustc_expand::base::SyntaxExtension;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::spec::{PanicStrategy, TargetTriple};
 use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
 
-use rustc_error_codes::*;
+use log::{debug, info, log_enabled};
+use proc_macro::bridge::client::ProcMacro;
+use std::path::Path;
+use std::{cmp, fs};
 
 #[derive(Clone)]
 pub struct CStore {

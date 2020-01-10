@@ -1,4 +1,4 @@
-error[E0599]: no method named `foo` found for type `&i32` in the current scope
+error[E0599]: no method named `foo` found for reference `&i32` in the current scope
   --> $DIR/trait-impl-1.rs:15:7
    |
 LL |     x.foo();

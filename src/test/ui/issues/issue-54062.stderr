@@ -4,7 +4,7 @@ error[E0616]: field `inner` of struct `std::sync::Mutex` is private
 LL |     let _ = test.comps.inner.lock().unwrap();
    |             ^^^^^^^^^^^^^^^^
 
-error[E0599]: no method named `unwrap` found for type `std::sys_common::mutex::MutexGuard<'_>` in the current scope
+error[E0599]: no method named `unwrap` found for struct `std::sys_common::mutex::MutexGuard<'_>` in the current scope
   --> $DIR/issue-54062.rs:10:37
    |
 LL |     let _ = test.comps.inner.lock().unwrap();

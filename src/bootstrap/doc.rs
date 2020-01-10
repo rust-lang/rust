@@ -49,7 +49,7 @@ macro_rules! book {
                 builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
-                    src: doc_src(builder),
+                    src: INTERNER.intern_path(builder.src.join($path)),
                 })
             }
         }
@@ -60,6 +60,7 @@ macro_rules! book {
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
+    CargoBook, "src/tools/cargo/src/doc", "cargo";
     EditionGuide, "src/doc/edition-guide", "edition-guide";
     EmbeddedBook, "src/doc/embedded-book", "embedded-book";
     Nomicon, "src/doc/nomicon", "nomicon";
@@ -68,10 +69,6 @@ book!(
     RustcBook, "src/doc/rustc", "rustc";
     RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
-
-fn doc_src(builder: &Builder<'_>) -> Interned<PathBuf> {
-    INTERNER.intern_path(builder.src.join("src/doc"))
-}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBook {
@@ -96,45 +93,8 @@ impl Step for UnstableBook {
         builder.ensure(RustbookSrc {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
-            src: builder.md_doc_out(self.target),
+            src: INTERNER.intern_path(builder.md_doc_out(self.target).join("unstable-book")),
         })
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CargoBook {
-    target: Interned<String>,
-    name: Interned<String>,
-}
-
-impl Step for CargoBook {
-    type Output = ();
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/cargo/src/doc/book").default_condition(builder.config.docs)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CargoBook { target: run.target, name: INTERNER.intern_str("cargo") });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let target = self.target;
-        let name = self.name;
-        let src = builder.src.join("src/tools/cargo/src/doc");
-
-        let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
-
-        let out = out.join(name);
-
-        builder.info(&format!("Cargo Book ({}) - {}", target, name));
-
-        let _ = fs::remove_dir_all(&out);
-
-        builder.run(builder.tool_cmd(Tool::Rustbook).arg("build").arg(&src).arg("-d").arg(out));
     }
 }
 
@@ -164,7 +124,6 @@ impl Step for RustbookSrc {
         t!(fs::create_dir_all(&out));
 
         let out = out.join(name);
-        let src = src.join(name);
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
@@ -182,7 +141,6 @@ impl Step for RustbookSrc {
 pub struct TheBook {
     compiler: Compiler,
     target: Interned<String>,
-    name: &'static str,
 }
 
 impl Step for TheBook {
@@ -198,7 +156,6 @@ impl Step for TheBook {
         run.builder.ensure(TheBook {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
-            name: "book",
         });
     }
 
@@ -206,45 +163,30 @@ impl Step for TheBook {
     ///
     /// We need to build:
     ///
-    /// * Book (first edition)
-    /// * Book (second edition)
+    /// * Book
+    /// * Older edition redirects
     /// * Version info and CSS
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
-        let name = self.name;
 
         // build book
         builder.ensure(RustbookSrc {
             target,
-            name: INTERNER.intern_string(name.to_string()),
-            src: doc_src(builder),
+            name: INTERNER.intern_str("book"),
+            src: INTERNER.intern_path(builder.src.join("src/doc/book")),
         });
 
         // building older edition redirects
-
-        let source_name = format!("{}/first-edition", name);
-        builder.ensure(RustbookSrc {
-            target,
-            name: INTERNER.intern_string(source_name),
-            src: doc_src(builder),
-        });
-
-        let source_name = format!("{}/second-edition", name);
-        builder.ensure(RustbookSrc {
-            target,
-            name: INTERNER.intern_string(source_name),
-            src: doc_src(builder),
-        });
-
-        let source_name = format!("{}/2018-edition", name);
-        builder.ensure(RustbookSrc {
-            target,
-            name: INTERNER.intern_string(source_name),
-            src: doc_src(builder),
-        });
+        for edition in &["first-edition", "second-edition", "2018-edition"] {
+            builder.ensure(RustbookSrc {
+                target,
+                name: INTERNER.intern_string(format!("book/{}", edition)),
+                src: INTERNER.intern_path(builder.src.join("src/doc/book").join(edition)),
+            });
+        }
 
         // build the version info page and CSS
         builder.ensure(Standalone { compiler, target });
@@ -531,7 +473,7 @@ impl Step for Rustc {
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        cargo.env("RUSTDOCFLAGS", "--document-private-items --passes strip-hidden");
+        cargo.env("RUSTDOCFLAGS", "--document-private-items");
         compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.

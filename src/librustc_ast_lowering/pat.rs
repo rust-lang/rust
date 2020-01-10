@@ -65,9 +65,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => hir::PatKind::Ref(self.lower_pat(inner), mutbl),
             PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
-                self.lower_expr(e1),
-                self.lower_expr(e2),
-                self.lower_range_end(end),
+                e1.as_deref().map(|e| self.lower_expr(e)),
+                e2.as_deref().map(|e| self.lower_expr(e)),
+                self.lower_range_end(end, e2.is_some()),
             ),
             PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
             PatKind::Rest => {
@@ -253,10 +253,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::PatKind::Wild
     }
 
-    fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
+    fn lower_range_end(&mut self, e: &RangeEnd, has_end: bool) -> hir::RangeEnd {
         match *e {
-            RangeEnd::Included(_) => hir::RangeEnd::Included,
-            RangeEnd::Excluded => hir::RangeEnd::Excluded,
+            RangeEnd::Excluded if has_end => hir::RangeEnd::Excluded,
+            // No end; so `X..` behaves like `RangeFrom`.
+            RangeEnd::Excluded | RangeEnd::Included(_) => hir::RangeEnd::Included,
         }
     }
 }

@@ -7,8 +7,8 @@ use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::{self, in_derive_expansion, Lint};
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
-use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -18,7 +18,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
 use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
-use syntax::errors::Applicability;
 use syntax::feature_gate::feature_err_issue;
 
 use std::num::NonZeroU32;

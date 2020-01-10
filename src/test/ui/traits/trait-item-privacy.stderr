@@ -1,4 +1,4 @@
-error[E0599]: no method named `a` found for type `S` in the current scope
+error[E0599]: no method named `a` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:67:7
    |
 LL | struct S;
@@ -11,7 +11,7 @@ LL |     S.a();
    = note: the following trait defines an item `a`, perhaps you need to implement it:
            candidate #1: `method::A`
 
-error[E0599]: no method named `b` found for type `S` in the current scope
+error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:68:7
    |
 LL | struct S;
@@ -39,7 +39,7 @@ error[E0624]: method `a` is private
 LL |     c.a();
    |       ^
 
-error[E0599]: no function or associated item named `a` found for type `S` in the current scope
+error[E0599]: no function or associated item named `a` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:78:8
    |
 LL | struct S;
@@ -52,7 +52,7 @@ LL |     S::a(&S);
    = note: the following trait defines an item `a`, perhaps you need to implement it:
            candidate #1: `method::A`
 
-error[E0599]: no function or associated item named `b` found for type `S` in the current scope
+error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:80:8
    |
 LL | struct S;
@@ -73,7 +73,7 @@ error[E0624]: method `a` is private
 LL |     C::a(&S);
    |     ^^^^
 
-error[E0599]: no associated item named `A` found for type `S` in the current scope
+error[E0599]: no associated item named `A` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:97:8
    |
 LL | struct S;
@@ -86,7 +86,7 @@ LL |     S::A;
    = note: the following trait defines an item `A`, perhaps you need to implement it:
            candidate #1: `assoc_const::A`
 
-error[E0599]: no associated item named `B` found for type `S` in the current scope
+error[E0599]: no associated item named `B` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:98:8
    |
 LL | struct S;

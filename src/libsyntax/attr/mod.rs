@@ -384,7 +384,7 @@ pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
 
 pub fn allow_internal_unstable<'a>(
     attrs: &[Attribute],
-    span_diagnostic: &'a errors::Handler,
+    span_diagnostic: &'a rustc_errors::Handler,
 ) -> Option<impl Iterator<Item = Symbol> + 'a> {
     find_by_name(attrs, sym::allow_internal_unstable).and_then(|attr| {
         attr.meta_item_list()

@@ -3654,6 +3654,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_feature",
  "rustc_hir",
  "rustc_index",

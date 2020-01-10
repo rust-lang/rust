@@ -9,7 +9,6 @@ use crate::ty::query::Query;
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
 
-use errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
@@ -18,6 +17,7 @@ use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;

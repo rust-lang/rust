@@ -6,10 +6,10 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
-use errors::{struct_span_err, Applicability, FatalError};
 use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
@@ -158,7 +158,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn err_handler(&self) -> &errors::Handler {
+    fn err_handler(&self) -> &rustc_errors::Handler {
         &self.session.diagnostic()
     }
 
@@ -409,7 +409,7 @@ enum GenericPosition {
 
 fn validate_generics_order<'a>(
     sess: &Session,
-    handler: &errors::Handler,
+    handler: &rustc_errors::Handler,
     generics: impl Iterator<Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>)>,
     pos: GenericPosition,
     span: Span,
@@ -920,8 +920,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_expr_within_pat(expr, false);
             }
             PatKind::Range(ref start, ref end, _) => {
-                self.check_expr_within_pat(start, true);
-                self.check_expr_within_pat(end, true);
+                if let Some(expr) = start {
+                    self.check_expr_within_pat(expr, true);
+                }
+                if let Some(expr) = end {
+                    self.check_expr_within_pat(expr, true);
+                }
             }
             _ => {}
         }
