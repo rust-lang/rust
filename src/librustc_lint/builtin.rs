@@ -1959,13 +1959,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
                         (Bound::Included(lo), _) if lo > 0 => {
-                            return Some((format!("{} must be non-null", ty), None));
+                            return Some((format!("`{}` must be non-null", ty), None));
                         }
                         (Bound::Included(_), _) | (_, Bound::Included(_))
                             if init == InitKind::Uninit =>
                         {
                             return Some((
-                                format!("{} must be initialized inside its custom valid range", ty),
+                                format!(
+                                    "`{}` must be initialized inside its custom valid range",
+                                    ty,
+                                ),
                                 None,
                             ));
                         }
@@ -1973,7 +1976,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     }
                     // Now, recurse.
                     match adt_def.variants.len() {
-                        0 => Some((format!("0-variant enums have no valid value"), None)),
+                        0 => Some((format!("enums with no variants have no valid value"), None)),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.
