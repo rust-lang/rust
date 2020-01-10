@@ -224,7 +224,10 @@ impl SelfProfilerRef {
     /// a measureme event, "verbose" generic activities also print a timing entry to
     /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
     #[inline(always)]
-    pub fn verbose_generic_activity<'a>(&'a self, event_id: &'a str) -> VerboseTimingGuard<'a> {
+    pub fn verbose_generic_activity<'a>(
+        &'a self,
+        event_id: &'static str,
+    ) -> VerboseTimingGuard<'a> {
         VerboseTimingGuard::start(
             event_id,
             self.print_verbose_generic_activities,
@@ -589,8 +592,8 @@ fn get_resident() -> Option<usize> {
             cb: DWORD,
         ) -> BOOL;
     }
-    let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { mem::zeroed() };
-    pmc.cb = mem::size_of_val(&pmc) as DWORD;
+    let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
+    pmc.cb = std::mem::size_of_val(&pmc) as DWORD;
     match unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut pmc, pmc.cb) } {
         0 => None,
         _ => Some(pmc.WorkingSetSize as usize),

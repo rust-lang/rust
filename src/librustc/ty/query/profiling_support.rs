@@ -1,4 +1,3 @@
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathData;
 use crate::ty::context::TyCtxt;
 use crate::ty::query::config::QueryConfig;
@@ -7,6 +6,7 @@ use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_data_structures::sharded::Sharded;
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use std::fmt::Debug;
 use std::io::Write;
 

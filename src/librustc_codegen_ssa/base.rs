@@ -334,11 +334,7 @@ pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
 ) -> Bx::Value {
-    if bx.cx().val_ty(val) == bx.cx().type_i1() {
-        bx.zext(val, bx.cx().type_i8())
-    } else {
-        val
-    }
+    if bx.cx().val_ty(val) == bx.cx().type_i1() { bx.zext(val, bx.cx().type_i8()) } else { val }
 }
 
 pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -887,11 +883,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state
-        if tcx.sess.lto() != Lto::No {
-            CguReuse::PreLto
-        } else {
-            CguReuse::PostLto
-        }
+        if tcx.sess.lto() != Lto::No { CguReuse::PreLto } else { CguReuse::PostLto }
     } else {
         CguReuse::No
     }

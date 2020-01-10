@@ -3079,6 +3079,7 @@ dependencies = [
  "graphviz",
  "jobserver",
  "log",
+ "measureme",
  "parking_lot",
  "polonius-engine",
  "rustc-rayon",
