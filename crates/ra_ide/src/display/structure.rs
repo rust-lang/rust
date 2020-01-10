@@ -212,6 +212,11 @@ macro_rules! mc {
     () => {}
 }
 
+#[macro_export]
+macro_rules! mcexp {
+    () => {}
+}
+
 #[deprecated]
 fn obsolete() {}
 
@@ -388,9 +393,18 @@ fn very_obsolete() {}
             },
             StructureNode {
                 parent: None,
+                label: "mcexp",
+                navigation_range: [334; 339),
+                node_range: [305; 356),
+                kind: MACRO_CALL,
+                detail: None,
+                deprecated: false,
+            },
+            StructureNode {
+                parent: None,
                 label: "obsolete",
-                navigation_range: [322; 330),
-                node_range: [305; 335),
+                navigation_range: [375; 383),
+                node_range: [358; 388),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
@@ -400,8 +414,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "very_obsolete",
-                navigation_range: [375; 388),
-                node_range: [337; 393),
+                navigation_range: [428; 441),
+                node_range: [390; 446),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
