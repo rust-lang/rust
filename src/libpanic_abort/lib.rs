@@ -18,17 +18,14 @@
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 
-// Rust's "try" function, but if we're aborting on panics we just call the
-// function as there's nothing else we need to do here.
+use core::any::Any;
+
+// We need the definition of TryPayload for __rust_panic_cleanup.
+include!("../libpanic_unwind/payload.rs");
+
 #[rustc_std_internal_symbol]
-pub unsafe extern "C" fn __rust_maybe_catch_panic(
-    f: fn(*mut u8),
-    data: *mut u8,
-    _data_ptr: *mut usize,
-    _vtable_ptr: *mut usize,
-) -> u32 {
-    f(data);
-    0
+pub unsafe extern "C" fn __rust_panic_cleanup(_: TryPayload) -> *mut (dyn Any + Send + 'static) {
+    unreachable!()
 }
 
 // "Leak" the payload and shim to the relevant abort on the platform in

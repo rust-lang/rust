@@ -12,9 +12,8 @@ use core::panic::{BoxMeUp, Location, PanicInfo};
 use crate::any::Any;
 use crate::fmt;
 use crate::intrinsics;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::process;
-use crate::raw;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace::{self, RustBacktrace};
@@ -29,6 +28,9 @@ use crate::io::set_panic;
 #[cfg(test)]
 use realstd::io::set_panic;
 
+// Include the definition of UnwindPayload from libpanic_unwind.
+include!("../libpanic_unwind/payload.rs");
+
 // Binary interface to the panic runtime that the standard library depends on.
 //
 // The standard library is tagged with `#![needs_panic_runtime]` (introduced in
@@ -41,12 +43,9 @@ use realstd::io::set_panic;
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 extern "C" {
-    fn __rust_maybe_catch_panic(
-        f: fn(*mut u8),
-        data: *mut u8,
-        data_ptr: *mut usize,
-        vtable_ptr: *mut usize,
-    ) -> u32;
+    /// The payload ptr here is actually the same as the payload ptr for the try
+    /// intrinsic (i.e., is really `*mut [u64; 2]` or `*mut *mut u8`).
+    fn __rust_panic_cleanup(payload: TryPayload) -> *mut (dyn Any + Send + 'static);
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -241,9 +240,9 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     }
 
     // We do some sketchy operations with ownership here for the sake of
-    // performance. We can only  pass pointers down to
-    // `__rust_maybe_catch_panic` (can't pass objects by value), so we do all
-    // the ownership tracking here manually using a union.
+    // performance. We can only pass pointers down to `do_call` (can't pass
+    // objects by value), so we do all the ownership tracking here manually
+    // using a union.
     //
     // We go through a transition where:
     //
@@ -254,7 +253,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // * If the closure successfully returns, we write the return value into the
     //   data's return slot. Note that `ptr::write` is used as it's overwriting
     //   uninitialized data.
-    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're
+    // * Finally, when we come back out of the `try` intrinsic we're
     //   in one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
@@ -265,28 +264,30 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.
-    let mut any_data = 0;
-    let mut any_vtable = 0;
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let r = __rust_maybe_catch_panic(
-        do_call::<F, R>,
-        &mut data as *mut _ as *mut u8,
-        &mut any_data,
-        &mut any_vtable,
-    );
+    let mut payload: MaybeUninit<TryPayload> = MaybeUninit::uninit();
 
-    return if r == 0 {
+    let data_ptr = &mut data as *mut _ as *mut u8;
+    let payload_ptr = payload.as_mut_ptr() as *mut _;
+    return if intrinsics::r#try(do_call::<F, R>, data_ptr, payload_ptr) == 0 {
         debug_assert!(update_panic_count(0) == 0);
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
+        Err(cleanup(payload.assume_init()))
+    };
+
+    // We consider unwinding to be rare, so mark this function as cold. However,
+    // do not mark it no-inline -- that decision is best to leave to the
+    // optimizer (in most cases this function is not inlined even as a normal,
+    // non-cold function, though, as of the writing of this comment).
+    #[cold]
+    unsafe fn cleanup(payload: TryPayload) -> Box<dyn Any + Send + 'static> {
+        let obj = Box::from_raw(__rust_panic_cleanup(payload));
         update_panic_count(-1);
         debug_assert!(update_panic_count(0) == 0);
-        Err(mem::transmute(raw::TraitObject {
-            data: any_data as *mut _,
-            vtable: any_vtable as *mut _,
-        }))
-    };
+        obj
+    }
 
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {
