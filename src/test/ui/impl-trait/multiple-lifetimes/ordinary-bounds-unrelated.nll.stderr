@@ -3,6 +3,8 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
    |                                                                          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: hidden type `Ordinary<'_>` captures lifetime '_#8r
 
 error: aborting due to previous error
 
