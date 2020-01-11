@@ -4,7 +4,7 @@ use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::{self, Span};
+use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_NODE_ID};
@@ -180,17 +180,17 @@ impl<'a> Parser<'a> {
             };
 
             let cur_op_span = self.token.span;
-            let restrictions = if op.is_assign_like() {
+            let restrictions = if op.node.is_assign_like() {
                 self.restrictions & Restrictions::NO_STRUCT_LITERAL
             } else {
                 self.restrictions
             };
-            let prec = op.precedence();
+            let prec = op.node.precedence();
             if prec < min_prec {
                 break;
             }
             // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op == AssocOp::DotDotEq {
+            if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
                 self.err_dotdotdot_syntax(self.token.span);
             }
 
@@ -199,11 +199,12 @@ impl<'a> Parser<'a> {
             }
 
             self.bump();
-            if op.is_comparison() {
+            if op.node.is_comparison() {
                 if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
                     return Ok(expr);
                 }
             }
+            let op = op.node;
             // Special cases:
             if op == AssocOp::As {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
@@ -297,7 +298,7 @@ impl<'a> Parser<'a> {
     }
 
     fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), self.check_assoc_op()) {
+        match (self.expr_is_complete(lhs), self.check_assoc_op().map(|op| op.node)) {
             // Semi-statement forms are odd:
             // See https://github.com/rust-lang/rust/issues/29071
             (true, None) => false,
@@ -342,19 +343,22 @@ impl<'a> Parser<'a> {
     /// The method does not advance the current token.
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
-    fn check_assoc_op(&self) -> Option<AssocOp> {
-        match (AssocOp::from_token(&self.token), &self.token.kind) {
-            (op @ Some(_), _) => op,
-            (None, token::Ident(sym::and, false)) => {
-                self.error_bad_logical_op("and", "&&", "conjunction");
-                Some(AssocOp::LAnd)
-            }
-            (None, token::Ident(sym::or, false)) => {
-                self.error_bad_logical_op("or", "||", "disjunction");
-                Some(AssocOp::LOr)
-            }
-            _ => None,
-        }
+    fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
+        Some(Spanned {
+            node: match (AssocOp::from_token(&self.token), &self.token.kind) {
+                (Some(op), _) => op,
+                (None, token::Ident(sym::and, false)) => {
+                    self.error_bad_logical_op("and", "&&", "conjunction");
+                    AssocOp::LAnd
+                }
+                (None, token::Ident(sym::or, false)) => {
+                    self.error_bad_logical_op("or", "||", "disjunction");
+                    AssocOp::LOr
+                }
+                _ => return None,
+            },
+            span: self.token.span,
+        })
     }
 
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
