@@ -10,12 +10,12 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
-use rustc_session::node_id::NodeMap;
 use rustc_session::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
+use syntax::node_id::NodeMap;
 
 use std::borrow::Borrow;
 use std::fmt::Write;
