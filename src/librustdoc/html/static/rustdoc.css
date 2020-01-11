@@ -542,11 +542,11 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .content .stability::before {
-	content: '˪';
-	font-size: 30px;
+	content: '⬑';
+	font-size: 25px;
 	position: absolute;
-	top: -9px;
-	left: -13px;
+	top: -6px;
+	left: -19px;
 }
 
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
