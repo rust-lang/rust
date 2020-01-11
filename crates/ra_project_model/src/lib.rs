@@ -333,7 +333,7 @@ impl ProjectWorkspace {
     pub fn workspace_root_for(&self, path: &Path) -> Option<&Path> {
         match self {
             ProjectWorkspace::Cargo { cargo, .. } => {
-                Some(cargo.workspace_root.as_ref()).filter(|root| path.starts_with(root))
+                Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
             }
             ProjectWorkspace::Json { project: JsonProject { roots, .. } } => roots
                 .iter()

@@ -132,8 +132,20 @@ impl WorldState {
         change.set_crate_graph(crate_graph);
 
         // FIXME: Figure out the multi-workspace situation
-        let check_watcher =
-            CheckWatcher::new(&options.cargo_watch, folder_roots.first().cloned().unwrap());
+        let check_watcher = workspaces
+            .iter()
+            .find_map(|w| match w {
+                ProjectWorkspace::Cargo { cargo, .. } => Some(cargo),
+                ProjectWorkspace::Json { .. } => None,
+            })
+            .map(|cargo| {
+                let cargo_project_root = cargo.workspace_root().to_path_buf();
+                CheckWatcher::new(&options.cargo_watch, cargo_project_root)
+            })
+            .unwrap_or_else(|| {
+                log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
+                CheckWatcher::dummy()
+            });
 
         let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);

@@ -21,7 +21,7 @@ use crate::Result;
 pub struct CargoWorkspace {
     packages: Arena<Package, PackageData>,
     targets: Arena<Target, TargetData>,
-    pub(crate) workspace_root: PathBuf,
+    workspace_root: PathBuf,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -224,5 +224,9 @@ impl CargoWorkspace {
 
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
         self.packages().filter_map(|pkg| pkg.targets(self).find(|it| it.root(self) == root)).next()
+    }
+
+    pub fn workspace_root(&self) -> &Path {
+        &self.workspace_root
     }
 }
