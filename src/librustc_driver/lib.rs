@@ -335,11 +335,13 @@ pub fn run_compiler(
             }
 
             {
-                let (_, lint_store) = &*queries.register_plugins()?.peek();
+                let peek = queries.register_plugins()?.peek();
+                let peek = peek.0.borrow();
+                let lint_store = &peek.1;
 
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
-                    describe_lints(&sess, &lint_store, true);
+                    describe_lints(&sess, lint_store, true);
                     return early_exit();
                 }
             }

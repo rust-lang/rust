@@ -21,12 +21,14 @@ use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
+use rustc_data_structures::sync::future::Future;
 use rustc_data_structures::sync::{join, par_for_each, Lrc, Once, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
+use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -150,12 +152,12 @@ impl BoxedResolver {
 }
 
 pub fn register_plugins<'a>(
-    sess: &'a Session,
+    sess: &'a Lrc<Session>,
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
-    crate_name: &str,
-) -> Result<(ast::Crate, Lrc<LintStore>)> {
+    crate_name: String,
+) -> (ast::Crate, Lrc<LintStore>, Future<'static, Option<DepGraphFuture>>) {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
@@ -178,19 +180,31 @@ pub fn register_plugins<'a>(
 
     let disambiguator = util::compute_crate_disambiguator(sess);
     sess.crate_disambiguator.set(disambiguator);
-    rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
-    if sess.opts.incremental.is_some() {
-        sess.time("incr_comp_garbage_collect_session_directories", || {
-            if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
-                warn!(
-                    "Error while trying to garbage collect incremental \
+    let sess_ = sess.clone();
+    let dep_graph_future = Future::spawn(move || {
+        let sess = &*sess_;
+        rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
+
+        if sess.opts.incremental.is_some() {
+            sess.time("incr_comp_garbage_collect_session_directories", || {
+                if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
+                    warn!(
+                        "Error while trying to garbage collect incremental \
                      compilation cache directory: {}",
-                    e
-                );
-            }
-        });
-    }
+                        e
+                    );
+                }
+            });
+        }
+
+        // Compute the dependency graph (in the background). We want to do
+        // this as early as possible, to give the DepGraph maximum time to
+        // load before dep_graph() is called, but it also can't happen
+        // until after rustc_incremental::prepare_session_directory() is
+        // called, which happens within passes::register_plugins().
+        sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess))
+    });
 
     sess.time("recursion_limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
@@ -211,7 +225,7 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, Lrc::new(lint_store)))
+    (krate, Lrc::new(lint_store), dep_graph_future)
 }
 
 fn configure_and_expand_inner<'a>(

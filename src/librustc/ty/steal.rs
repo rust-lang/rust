@@ -41,4 +41,8 @@ impl<T> Steal<T> {
         let value = value_ref.take();
         value.expect("attempt to read from stolen value")
     }
+
+    pub fn into_inner(self) -> Option<T> {
+        self.value.into_inner()
+    }
 }

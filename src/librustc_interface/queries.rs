@@ -10,7 +10,9 @@ use rustc::ty::steal::Steal;
 use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::sync::future::Future;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_data_structures::OnDrop;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
@@ -69,10 +71,12 @@ pub struct Queries<'tcx> {
     all_arenas: AllArenas,
     arena: WorkerLocal<Arena<'tcx>>,
 
-    dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
-    register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
+    register_plugins: Query<(
+        Steal<(ast::Crate, Lrc<LintStore>)>,
+        Steal<Future<'static, Option<DepGraphFuture>>>,
+    )>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(&'tcx map::Forest<'tcx>, Steal<ResolverOutputs>)>,
@@ -88,7 +92,6 @@ impl<'tcx> Queries<'tcx> {
             gcx: Once::new(),
             all_arenas: AllArenas::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
-            dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
@@ -108,16 +111,6 @@ impl<'tcx> Queries<'tcx> {
         &self.compiler.codegen_backend()
     }
 
-    pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
-        self.dep_graph_future.compute(|| {
-            Ok(self
-                .session()
-                .opts
-                .build_dep_graph()
-                .then(|| rustc_incremental::load_dep_graph(self.session())))
-        })
-    }
-
     pub fn parse(&self) -> Result<&Query<ast::Crate>> {
         self.parse.compute(|| {
             passes::parse(self.session(), &self.compiler.input).map_err(|mut parse_error| {
@@ -127,28 +120,27 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, Lrc<LintStore>)>> {
+    pub fn register_plugins(
+        &self,
+    ) -> Result<
+        &Query<(
+            Steal<(ast::Crate, Lrc<LintStore>)>,
+            Steal<Future<'static, Option<DepGraphFuture>>>,
+        )>,
+    > {
         self.register_plugins.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
             let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
-            let result = passes::register_plugins(
+            let (krate, lint_store, future) = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
                 self.compiler.register_lints.as_ref().map(|p| &**p).unwrap_or_else(|| empty),
                 krate,
-                &crate_name,
+                crate_name,
             );
-
-            // Compute the dependency graph (in the background). We want to do
-            // this as early as possible, to give the DepGraph maximum time to
-            // load before dep_graph() is called, but it also can't happen
-            // until after rustc_incremental::prepare_session_directory() is
-            // called, which happens within passes::register_plugins().
-            self.dep_graph_future().ok();
-
-            result
+            Ok((Steal::new((krate, lint_store)), Steal::new(future)))
         })
     }
 
@@ -174,7 +166,7 @@ impl<'tcx> Queries<'tcx> {
     ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let (krate, lint_store) = self.register_plugins()?.take();
+            let (krate, lint_store) = self.register_plugins()?.peek().0.steal();
             let _timer = self.session().timer("configure_and_expand");
             passes::configure_and_expand(
                 self.session().clone(),
@@ -191,7 +183,8 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
         self.dep_graph.compute(|| {
-            Ok(match self.dep_graph_future()?.take() {
+            let future = self.register_plugins()?.peek().1.steal().join();
+            Ok(match future {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
                     let (prev_graph, prev_work_products) =
@@ -336,6 +329,15 @@ impl Compiler {
     {
         let mut _timer = None;
         let queries = Queries::new(&self);
+
+        // Join the dep graph future if has started, but haven't been stolen yet.
+        let _join_dep_graph_future = OnDrop(|| {
+            let result = queries.register_plugins.result.borrow_mut().take();
+            result.map(|result| {
+                result.map(|result| result.1.into_inner().map(|future| future.join()))
+            });
+        });
+
         let ret = f(&queries);
 
         if self.session().opts.debugging_opts.query_stats {
