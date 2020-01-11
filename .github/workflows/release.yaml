@@ -18,7 +18,6 @@ jobs:
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
-      PROFILE: release
     steps:
 
       - name: Checkout repository
@@ -69,18 +68,18 @@ jobs:
 
       - name: Prepare cache 2
         if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/${{ env.PROFILE }}/xtask.exe
+        run: Remove-Item ./target/release/xtask.exe
 
       - name: Creat distribution dir
         run: mkdir ./dist
 
       - name: Copy binaries (non-win)
         if: matrix.os != 'windows-latest'
-        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server ./dist
+        run: cp ./target/release/ra_lsp_server ./dist
 
       - name: Copy binaries (win)
         if: matrix.os == 'windows-latest'
-        run: copy ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
+        run: copy ./target/release/ra_lsp_server.* ./dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v1

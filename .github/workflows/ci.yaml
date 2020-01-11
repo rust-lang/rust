@@ -20,7 +20,6 @@ jobs:
       RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
-      PROFILE: debug
     steps:
 
       - name: Checkout repository
@@ -76,7 +75,7 @@ jobs:
 
       - name: Prepare cache 2
         if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/${{ env.PROFILE }}/xtask.exe
+        run: Remove-Item ./target/debug/xtask.exe
 
   type-script:
     name: TypeScript
