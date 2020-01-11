@@ -9,7 +9,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Symbol};
@@ -780,8 +780,14 @@ impl<'a> Resolver<'a> {
                 suggestion.candidate.to_string(),
                 Applicability::MaybeIncorrect,
             );
-            let def_span =
-                suggestion.res.opt_def_id().and_then(|def_id| self.definitions.opt_span(def_id));
+            let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
+                LOCAL_CRATE => self.definitions.opt_span(def_id),
+                _ => Some(
+                    self.session
+                        .source_map()
+                        .def_span(self.cstore().get_span_untracked(def_id, self.session)),
+                ),
+            });
             if let Some(span) = def_span {
                 err.span_label(
                     span,

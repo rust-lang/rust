@@ -478,6 +478,10 @@ impl CStore {
         self.get_crate_data(cnum).source.clone()
     }
 
+    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
+        self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
+    }
+
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
     }

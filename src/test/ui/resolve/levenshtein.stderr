@@ -1,11 +1,11 @@
 error[E0412]: cannot find type `esize` in this scope
-  --> $DIR/levenshtein.rs:5:11
+  --> $DIR/levenshtein.rs:9:11
    |
 LL | fn foo(c: esize) {} // Misspelled primitive type name.
    |           ^^^^^ help: a builtin type with a similar name exists: `isize`
 
 error[E0412]: cannot find type `Baz` in this scope
-  --> $DIR/levenshtein.rs:10:10
+  --> $DIR/levenshtein.rs:14:10
    |
 LL | enum Bar { }
    | ------------ similarly named enum `Bar` defined here
@@ -14,19 +14,24 @@ LL | type A = Baz; // Misspelled type name.
    |          ^^^ help: an enum with a similar name exists: `Bar`
 
 error[E0412]: cannot find type `Opiton` in this scope
-  --> $DIR/levenshtein.rs:12:10
+  --> $DIR/levenshtein.rs:16:10
    |
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
    |          ^^^^^^ help: an enum with a similar name exists: `Option`
+   | 
+  ::: $SRC_DIR/libcore/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   | ------------------ similarly named enum `Option` defined here
 
 error[E0412]: cannot find type `Baz` in this scope
-  --> $DIR/levenshtein.rs:16:14
+  --> $DIR/levenshtein.rs:20:14
    |
 LL |     type A = Baz; // No suggestion here, Bar is not visible
    |              ^^^ not found in this scope
 
 error[E0425]: cannot find value `MAXITEM` in this scope
-  --> $DIR/levenshtein.rs:24:20
+  --> $DIR/levenshtein.rs:28:20
    |
 LL | const MAX_ITEM: usize = 10;
    | --------------------------- similarly named constant `MAX_ITEM` defined here
@@ -35,7 +40,7 @@ LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
    |                    ^^^^^^^ help: a constant with a similar name exists: `MAX_ITEM`
 
 error[E0425]: cannot find function `foobar` in this scope
-  --> $DIR/levenshtein.rs:26:5
+  --> $DIR/levenshtein.rs:30:5
    |
 LL | fn foo_bar() {}
    | --------------- similarly named function `foo_bar` defined here
@@ -44,7 +49,7 @@ LL |     foobar(); // Misspelled function name.
    |     ^^^^^^ help: a function with a similar name exists: `foo_bar`
 
 error[E0412]: cannot find type `first` in module `m`
-  --> $DIR/levenshtein.rs:28:15
+  --> $DIR/levenshtein.rs:32:15
    |
 LL |     pub struct First;
    |     ----------------- similarly named struct `First` defined here
@@ -53,7 +58,7 @@ LL |     let b: m::first = m::second; // Misspelled item in module.
    |               ^^^^^ help: a struct with a similar name exists (notice the capitalization): `First`
 
 error[E0425]: cannot find value `second` in module `m`
-  --> $DIR/levenshtein.rs:28:26
+  --> $DIR/levenshtein.rs:32:26
    |
 LL |     pub struct Second;
    |     ------------------ similarly named unit struct `Second` defined here
