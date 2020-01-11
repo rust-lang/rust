@@ -219,7 +219,11 @@ fn print(
     longer_than: Duration,
     total: Option<Duration>,
 ) {
-    let mut last = 0;
+    if msgs.is_empty() {
+        return;
+    }
+    // The index of the first element that will be included in the slice when we recurse.
+    let mut next_start = 0;
     let indent = repeat("    ").take(lvl).collect::<String>();
     // We output hierarchy for long calls, but sum up all short calls
     let mut short = Vec::new();
@@ -233,12 +237,12 @@ fn print(
             writeln!(out, "{}{:5}ms - {}", indent, duration.as_millis(), msg)
                 .expect("printing profiling info to stdout");
 
-            print(lvl + 1, &msgs[last..i], out, longer_than, Some(duration));
+            print(lvl + 1, &msgs[next_start..i], out, longer_than, Some(duration));
         } else {
             short.push((msg, duration))
         }
 
-        last = i;
+        next_start = i + 1;
     }
     short.sort_by_key(|(msg, _time)| *msg);
     for (msg, entires) in short.iter().group_by(|(msg, _time)| msg).into_iter() {
@@ -255,7 +259,7 @@ fn print(
     if let Some(total) = total {
         if let Some(unaccounted) = total.checked_sub(accounted_for) {
             let unaccounted_millis = unaccounted.as_millis();
-            if unaccounted_millis > longer_than.as_millis() && unaccounted_millis > 0 && last > 0 {
+            if unaccounted_millis > longer_than.as_millis() && unaccounted_millis > 0 {
                 writeln!(out, "{}{:5}ms - ???", indent, unaccounted_millis)
                     .expect("printing profiling info to stdout");
             }
@@ -375,6 +379,50 @@ mod tests {
         assert_eq!(
             std::str::from_utf8(&result).unwrap(),
             "    1ms - foo\n        0ms - bar (2 calls)\n"
+        );
+    }
+
+    #[test]
+    fn test_unaccounted_for_topmost() {
+        let mut result = vec![];
+        let msgs = vec![
+            Message { level: 1, duration: Duration::from_millis(2), message: "bar".to_owned() },
+            Message { level: 0, duration: Duration::from_millis(5), message: "foo".to_owned() },
+        ];
+        print(0, &msgs, &mut result, Duration::from_millis(0), Some(Duration::from_millis(1)));
+        assert_eq!(
+            std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
+            vec![
+                "    5ms - foo",
+                "        2ms - bar",
+                "        3ms - ???",
+                // Dummy comment to improve formatting
+            ]
+        );
+    }
+
+    #[test]
+    fn test_unaccounted_for_multiple_levels() {
+        let mut result = vec![];
+        let msgs = vec![
+            Message { level: 2, duration: Duration::from_millis(3), message: "baz".to_owned() },
+            Message { level: 1, duration: Duration::from_millis(5), message: "bar".to_owned() },
+            Message { level: 2, duration: Duration::from_millis(2), message: "baz".to_owned() },
+            Message { level: 1, duration: Duration::from_millis(4), message: "bar".to_owned() },
+            Message { level: 0, duration: Duration::from_millis(9), message: "foo".to_owned() },
+        ];
+        print(0, &msgs, &mut result, Duration::from_millis(0), None);
+        assert_eq!(
+            std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
+            vec![
+                "    9ms - foo",
+                "        5ms - bar",
+                "            3ms - baz",
+                "            2ms - ???",
+                "        4ms - bar",
+                "            2ms - baz",
+                "            2ms - ???",
+            ]
         );
     }
 }
