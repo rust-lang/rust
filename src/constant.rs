@@ -85,7 +85,10 @@ pub fn force_eval_const<'tcx>(
     match const_.val {
         ConstKind::Unevaluated(def_id, ref substs) => {
             let substs = fx.monomorphize(substs);
-            fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, None).unwrap()
+            fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, None).unwrap_or_else(|_| {
+                fx.tcx.sess.abort_if_errors();
+                unreachable!();
+            })
         }
         _ => fx.monomorphize(&const_),
     }
