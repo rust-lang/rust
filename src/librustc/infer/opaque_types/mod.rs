@@ -595,11 +595,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 pub fn unexpected_hidden_region_diagnostic(
     tcx: TyCtxt<'tcx>,
     region_scope_tree: Option<&region::ScopeTree>,
-    opaque_type_def_id: DefId,
+    span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
 ) -> DiagnosticBuilder<'tcx> {
-    let span = tcx.def_span(opaque_type_def_id);
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -851,7 +850,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
                         None,
-                        self.opaque_type_def_id,
+                        self.tcx.def_span(self.opaque_type_def_id),
                         hidden_ty,
                         r,
                     )

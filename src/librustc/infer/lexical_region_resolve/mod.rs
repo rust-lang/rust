@@ -18,7 +18,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
-use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::Span;
 use std::fmt;
@@ -95,13 +94,7 @@ pub enum RegionResolutionError<'tcx> {
     /// Indicates a failure of a `MemberConstraint`. These arise during
     /// impl trait processing explicitly -- basically, the impl trait's hidden type
     /// included some region that it was not supposed to.
-    MemberConstraintFailure {
-        span: Span,
-        opaque_type_def_id: DefId,
-        hidden_ty: Ty<'tcx>,
-        member_region: Region<'tcx>,
-        choice_regions: Vec<Region<'tcx>>,
-    },
+    MemberConstraintFailure { span: Span, hidden_ty: Ty<'tcx>, member_region: Region<'tcx> },
 }
 
 struct RegionAndOrigin<'tcx> {
@@ -656,10 +649,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
                 errors.push(RegionResolutionError::MemberConstraintFailure {
                     span,
-                    opaque_type_def_id: member_constraint.opaque_type_def_id,
                     hidden_ty: member_constraint.hidden_ty,
                     member_region,
-                    choice_regions: choice_regions.collect(),
                 });
             }
         }

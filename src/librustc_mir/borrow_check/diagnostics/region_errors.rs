@@ -6,7 +6,6 @@ use rustc::infer::{
 use rustc::mir::ConstraintCategory;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_hir::def_id::DefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 
@@ -58,8 +57,8 @@ crate enum RegionErrorKind<'tcx> {
 
     /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
-        /// The def id of the opaque type.
-        opaque_type_def_id: DefId,
+        /// The span for the member constraint.
+        span: Span,
         /// The hidden type.
         hidden_ty: Ty<'tcx>,
         /// The unexpected region.
@@ -194,18 +193,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::UnexpectedHiddenRegion {
-                    opaque_type_def_id,
-                    hidden_ty,
-                    member_region,
-                } => {
+                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
                     let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                    let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
+                    let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     opaque_types::unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         Some(region_scope_tree),
-                        opaque_type_def_id,
-                        hidden_ty,
-                        member_region,
+                        span,
+                        named_ty,
+                        named_region,
                     )
                     .buffer(&mut self.errors_buffer);
                 }
@@ -588,6 +585,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             {
                                 found = true;
                                 break;
+                            } else {
+                                // If there's already a lifetime bound, don't
+                                // suggest anything.
+                                return;
                             }
                         }
                     }

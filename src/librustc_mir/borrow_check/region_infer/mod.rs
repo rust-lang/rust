@@ -511,7 +511,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_universal_regions(body, outlives_requirements.as_mut(), &mut errors_buffer);
         }
 
-        self.check_member_constraints(infcx, &mut errors_buffer);
+        if errors_buffer.is_empty() {
+            self.check_member_constraints(infcx, &mut errors_buffer);
+        }
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -1604,7 +1606,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // If not, report an error.
             let member_region = infcx.tcx.mk_region(ty::ReVar(member_region_vid));
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
-                opaque_type_def_id: m_c.opaque_type_def_id,
+                span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,
                 member_region,
             });
