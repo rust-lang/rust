@@ -615,6 +615,7 @@ impl OsStr {
     /// assert!(!os_str.is_empty());
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.inner.is_empty()
     }
@@ -965,6 +966,7 @@ impl AsRef<OsStr> for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsString {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         self
     }
