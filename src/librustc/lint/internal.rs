@@ -1,13 +1,11 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::lint::{
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
-};
+use crate::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::{Ident, Item, ItemKind};
 

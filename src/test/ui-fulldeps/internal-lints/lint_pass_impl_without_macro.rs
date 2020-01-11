@@ -6,9 +6,8 @@
 extern crate rustc;
 extern crate rustc_session;
 
-use rustc::lint::{LintArray, LintPass};
-use rustc::{declare_lint_pass, impl_lint_pass};
-use rustc_session::declare_lint;
+use rustc_session::lint::{LintArray, LintPass};
+use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 
 declare_lint! {
     pub TEST_LINT,

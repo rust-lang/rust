@@ -2,9 +2,8 @@
 
 use super::{mark_used, MetaItemKind};
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::feature_gate::feature_err;
 use crate::print::pprust;
-use crate::sess::ParseSess;
+use crate::sess::{feature_err, ParseSess};
 
 use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};

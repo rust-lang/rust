@@ -1,8 +1,5 @@
 use log::info;
 use rustc::lint;
-use rustc::session::config::{ErrorOutputType, Input, OutputFilenames};
-use rustc::session::CrateDisambiguator;
-use rustc::session::{self, config, early_error, filesearch, DiagnosticOutput, Session};
 use rustc::ty;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -14,6 +11,11 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
+use rustc_session as session;
+use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::CrateDisambiguator;
+use rustc_session::{config, early_error, filesearch, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
@@ -420,7 +422,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
-pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut lint::LintBuffer) {
+pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut LintBuffer) {
     // Unconditionally collect crate types from attributes to make them used
     for a in attrs.iter() {
         if a.check_name(sym::crate_type) {
@@ -442,7 +444,7 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
                             ast::CRATE_NODE_ID,
                             span,
                             "invalid `crate_type` value",
-                            lint::builtin::BuiltinLintDiagnostics::UnknownCrateTypes(
+                            BuiltinLintDiagnostics::UnknownCrateTypes(
                                 span,
                                 "did you mean".to_string(),
                                 format!("\"{}\"", candidate),

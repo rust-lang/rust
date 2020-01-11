@@ -17,7 +17,6 @@ extern crate log;
 
 use rustc::ty::query::Providers;
 
-pub mod ast_validation;
 mod check_const;
 pub mod dead;
 mod diagnostic_items;

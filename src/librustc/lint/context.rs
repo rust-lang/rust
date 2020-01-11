@@ -17,20 +17,21 @@
 use self::TargetLint::*;
 
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::lint::{EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use crate::middle::privacy::AccessLevels;
+use crate::middle::stability;
 use crate::session::Session;
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_error_codes::*;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -62,17 +63,6 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
-}
-
-/// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated
-#[derive(PartialEq, Debug)]
-pub struct BufferedEarlyLint {
-    pub lint_id: LintId,
-    pub ast_id: ast::NodeId,
-    pub span: MultiSpan,
-    pub msg: String,
-    pub diagnostic: BuiltinLintDiagnostics,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -477,6 +467,48 @@ impl LintPassObject for EarlyLintPassObject {}
 
 impl LintPassObject for LateLintPassObject {}
 
+pub fn add_elided_lifetime_in_path_suggestion(
+    sess: &Session,
+    db: &mut DiagnosticBuilder<'_>,
+    n: usize,
+    path_span: Span,
+    incl_angl_brckt: bool,
+    insertion_span: Span,
+    anon_lts: String,
+) {
+    let (replace_span, suggestion) = if incl_angl_brckt {
+        (insertion_span, anon_lts)
+    } else {
+        // When possible, prefer a suggestion that replaces the whole
+        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+        // at a point (which makes for an ugly/confusing label)
+        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
+            // But our spans can get out of whack due to macros; if the place we think
+            // we want to insert `'_` isn't even within the path expression's span, we
+            // should bail out of making any suggestion rather than panicking on a
+            // subtract-with-overflow or string-slice-out-out-bounds (!)
+            // FIXME: can we do better?
+            if insertion_span.lo().0 < path_span.lo().0 {
+                return;
+            }
+            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+            if insertion_index > snippet.len() {
+                return;
+            }
+            let (before, after) = snippet.split_at(insertion_index);
+            (path_span, format!("{}{}{}", before, anon_lts, after))
+        } else {
+            (insertion_span, anon_lts)
+        }
+    };
+    db.span_suggestion(
+        replace_span,
+        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
+        suggestion,
+        Applicability::MachineApplicable,
+    );
+}
+
 pub trait LintContext: Sized {
     type PassObject: LintPassObject;
 
@@ -495,7 +527,85 @@ pub trait LintContext: Sized {
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let mut db = self.lookup(lint, span, msg);
-        diagnostic.run(self.sess(), &mut db);
+
+        let sess = self.sess();
+        match diagnostic {
+            BuiltinLintDiagnostics::Normal => (),
+            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                    Ok(s) if is_global => {
+                        (format!("dyn ({})", s), Applicability::MachineApplicable)
+                    }
+                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
+                };
+                db.span_suggestion(span, "use `dyn`", sugg, app);
+            }
+            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                    Ok(ref s) => {
+                        // FIXME(Manishearth) ideally the emitting code
+                        // can tell us whether or not this is global
+                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
+
+                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                    }
+                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
+                };
+                db.span_suggestion(span, "use `crate`", sugg, app);
+            }
+            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+                db.span_label(
+                    span,
+                    "names from parent modules are not accessible without an explicit import",
+                );
+            }
+            BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+                db.span_note(span_def, "the macro is defined here");
+            }
+            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                n,
+                path_span,
+                incl_angl_brckt,
+                insertion_span,
+                anon_lts,
+            ) => {
+                add_elided_lifetime_in_path_suggestion(
+                    sess,
+                    &mut db,
+                    n,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_span,
+                    anon_lts,
+                );
+            }
+            BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+                db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+            }
+            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                if !replaces.is_empty() {
+                    db.tool_only_multipart_suggestion(
+                        &message,
+                        replaces,
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+            BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+                for (span, is_imported) in spans {
+                    let introduced = if is_imported { "imported" } else { "defined" };
+                    db.span_label(
+                        span,
+                        format!("the item `{}` is already {} here", ident, introduced),
+                    );
+                }
+            }
+            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+                stability::deprecation_suggestion(&mut db, suggestion, span)
+            }
+        }
+
         db.emit();
     }
 

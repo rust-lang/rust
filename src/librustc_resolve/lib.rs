@@ -24,7 +24,6 @@ use rustc::hir::exports::ExportMap;
 use rustc::hir::map::{DefKey, Definitions};
 use rustc::lint;
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
-use rustc::session::Session;
 use rustc::span_bug;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
@@ -39,7 +38,9 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::node_id::{NodeMap, NodeSet};
+use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
@@ -960,7 +961,7 @@ pub struct Resolver<'a> {
     /// when visiting the correspondent variants.
     variant_vis: DefIdMap<ty::Visibility>,
 
-    lint_buffer: lint::LintBuffer,
+    lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
 }
@@ -1082,7 +1083,7 @@ impl rustc_ast_lowering::Resolver for Resolver<'_> {
         &mut self.definitions
     }
 
-    fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+    fn lint_buffer(&mut self) -> &mut LintBuffer {
         &mut self.lint_buffer
     }
 
@@ -1241,7 +1242,7 @@ impl<'a> Resolver<'a> {
                 .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                 .collect(),
             variant_vis: Default::default(),
-            lint_buffer: lint::LintBuffer::default(),
+            lint_buffer: LintBuffer::default(),
             next_node_id: NodeId::from_u32(1),
         }
     }
@@ -1256,7 +1257,7 @@ impl<'a> Resolver<'a> {
         self.next_node_id
     }
 
-    pub fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+    pub fn lint_buffer(&mut self) -> &mut LintBuffer {
         &mut self.lint_buffer
     }
 
@@ -1713,10 +1714,10 @@ impl<'a> Resolver<'a> {
                     if let Some(node_id) = poisoned {
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-                            node_id, ident.span,
+                            node_id,
+                            ident.span,
                             &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
-                            lint::builtin::BuiltinLintDiagnostics::
-                                ProcMacroDeriveResolutionFallback(ident.span),
+                            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(ident.span),
                         );
                     }
                     return Some(LexicalScopeBinding::Item(binding));
@@ -2267,7 +2268,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let diag = lint::builtin::BuiltinLintDiagnostics::AbsPathWithModule(diag_span);
+        let diag = BuiltinLintDiagnostics::AbsPathWithModule(diag_span);
         self.lint_buffer.buffer_lint_with_diagnostic(
             lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             diag_id,
@@ -2562,9 +2563,10 @@ impl<'a> Resolver<'a> {
                        cannot be referred to by absolute paths";
             self.lint_buffer.buffer_lint_with_diagnostic(
                 lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-                CRATE_NODE_ID, span_use, msg,
-                lint::builtin::BuiltinLintDiagnostics::
-                    MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
+                CRATE_NODE_ID,
+                span_use,
+                msg,
+                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
             );
         }
 
