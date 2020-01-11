@@ -53,6 +53,51 @@ fn nested_module_resolution() {
 }
 
 #[test]
+fn nested_module_resolution_2() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod prelude;
+        mod iter;
+
+        //- /prelude.rs
+        pub use crate::iter::Iterator;
+
+        //- /iter.rs
+        pub use self::traits::Iterator;
+        mod traits;
+
+        //- /iter/traits.rs
+        pub use self::iterator::Iterator;
+        mod iterator;
+
+        //- /iter/traits/iterator.rs
+        pub trait Iterator;
+        ",
+    );
+
+    assert_snapshot!(map, @r###"
+    crate
+    iter: t
+    prelude: t
+    
+    crate::iter
+    Iterator: t
+    traits: t
+    
+    crate::iter::traits
+    Iterator: t
+    iterator: t
+    
+    crate::iter::traits::iterator
+    Iterator: t
+    
+    crate::prelude
+    Iterator: t
+    "###);
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let map = def_map(
         "

@@ -2,6 +2,8 @@ use insta::assert_snapshot;
 use test_utils::covers;
 
 use super::infer;
+use crate::test_db::TestDB;
+use ra_db::fixture::WithFixture;
 
 #[test]
 fn bug_484() {
@@ -398,4 +400,56 @@ fn test() {
     [32; 51) '<Trait...:foo()': ()
     "###
     );
+}
+
+#[test]
+fn issue_2683_chars_impl() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    let chars: std::str::Chars<'_>;
+    (chars.next(), chars.nth(1))<|>;
+}
+
+//- /std.rs crate:std
+#[prelude_import]
+use prelude::*;
+
+pub mod prelude {
+    pub use crate::iter::Iterator;
+    pub use crate::option::Option;
+}
+
+pub mod iter {
+    pub use self::traits::Iterator;
+    pub mod traits {
+        pub use self::iterator::Iterator;
+
+        pub mod iterator {
+            pub trait Iterator {
+                type Item;
+                fn next(&mut self) -> Option<Self::Item>;
+                fn nth(&mut self, n: usize) -> Option<Self::Item> {}
+            }
+        }
+    }
+}
+
+pub mod option {
+    pub enum Option<T> {}
+}
+
+pub mod str {
+    pub struct Chars<'a> {}
+    impl<'a> Iterator for Chars<'a> {
+        type Item = char;
+        fn next(&mut self) -> Option<char> {}
+    }
+}
+"#,
+    );
+
+    // should be Option<char>, but currently not because of Chalk ambiguity problem
+    assert_eq!("(Option<{unknown}>, Option<{unknown}>)", super::type_at_pos(&db, pos));
 }

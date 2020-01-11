@@ -328,7 +328,7 @@ where
             );
 
             let def = res.resolved_def;
-            if res.reached_fixedpoint == ReachedFixedPoint::No {
+            if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
                 return PartialResolvedImport::Unresolved;
             }
 
