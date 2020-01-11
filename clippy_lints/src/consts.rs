@@ -334,7 +334,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(self.param_env, def_id, substs, None)
+                    .const_eval_resolve(self.param_env, def_id, substs, None, None)
                     .ok()?;
                 let result = miri_to_const(&result);
                 if result.is_some() {
