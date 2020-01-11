@@ -1,9 +1,8 @@
 use crate::utils::{in_macro, snippet, span_help_and_lint, SpanlessHash};
-use rustc::impl_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 #[derive(Copy, Clone)]
 pub struct TraitBounds;

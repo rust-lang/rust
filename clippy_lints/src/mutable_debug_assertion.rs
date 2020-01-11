@@ -2,11 +2,11 @@ use crate::utils::{is_direct_expn_of, span_lint};
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, ty};
+use rustc::lint::{LateContext, LateLintPass};
+use rustc::ty;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {

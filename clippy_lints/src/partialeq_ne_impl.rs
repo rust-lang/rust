@@ -1,9 +1,8 @@
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.

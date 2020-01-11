@@ -1,7 +1,6 @@
 use crate::utils::{span_lint, span_lint_and_then};
-use rustc::impl_lint_pass;
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc_session::declare_tool_lint;
+use rustc::lint::{EarlyContext, EarlyLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;
 use std::cmp::Ordering;

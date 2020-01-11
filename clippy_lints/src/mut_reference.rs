@@ -1,10 +1,9 @@
 use crate::utils::span_lint;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Detects giving a mutable reference to a function that only

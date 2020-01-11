@@ -1,14 +1,13 @@
 use crate::reexport::*;
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc::declare_lint_pass;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
 use rustc::middle::region;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;

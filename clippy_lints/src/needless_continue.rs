@@ -33,9 +33,8 @@
 //! ```
 //!
 //! This lint is **warn** by default.
-use rustc::declare_lint_pass;
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc_session::declare_tool_lint;
+use rustc::lint::{EarlyContext, EarlyLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 use syntax::ast;

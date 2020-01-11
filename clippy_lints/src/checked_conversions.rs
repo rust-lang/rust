@@ -1,11 +1,10 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
 use rustc_errors::Applicability;
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
 
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};

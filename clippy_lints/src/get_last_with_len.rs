@@ -2,11 +2,10 @@
 
 use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use syntax::ast::LitKind;

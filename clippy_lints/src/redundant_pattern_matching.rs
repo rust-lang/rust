@@ -1,9 +1,8 @@
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_errors::Applicability;
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
 
 declare_clippy_lint! {

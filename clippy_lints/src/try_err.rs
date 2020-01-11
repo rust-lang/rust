@@ -1,11 +1,10 @@
 use crate::utils::{match_qpath, paths, snippet, snippet_with_macro_callsite, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass};
 use rustc::ty::Ty;
 use rustc_errors::Applicability;
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usages of `Err(x)?`.

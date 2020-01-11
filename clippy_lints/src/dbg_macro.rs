@@ -1,8 +1,7 @@
 use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
-use rustc::declare_lint_pass;
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass};
 use rustc_errors::Applicability;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use syntax::ast;
 use syntax::tokenstream::TokenStream;

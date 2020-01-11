@@ -4,13 +4,12 @@
 
 use crate::utils::{snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::impl_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, HirId, Item, Mutability, Pat, PatKind};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for address of operations (`&`) that are going to

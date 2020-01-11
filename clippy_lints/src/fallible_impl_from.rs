@@ -1,12 +1,11 @@
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty::{self, Ty};
 use rustc_hir as hir;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {

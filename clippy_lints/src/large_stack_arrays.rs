@@ -1,9 +1,8 @@
-use rustc::impl_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, ConstKind};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 use if_chain::if_chain;
 

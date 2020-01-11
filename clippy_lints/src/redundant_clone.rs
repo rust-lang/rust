@@ -4,8 +4,7 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::mir::{
     self, traversal,
     visit::{MutatingUseContext, PlaceContext, Visitor as _},
@@ -19,7 +18,7 @@ use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_mir::dataflow::{
     do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
 };
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 

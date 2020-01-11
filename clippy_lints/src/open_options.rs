@@ -1,8 +1,7 @@
 use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::{Expr, ExprKind};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{Span, Spanned};
 use syntax::ast::LitKind;
 
