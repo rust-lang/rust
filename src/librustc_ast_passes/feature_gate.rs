@@ -1,13 +1,13 @@
 use rustc_errors::{struct_span_err, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
+use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use syntax::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
 use syntax::attr;
-use syntax::sess::{feature_err, feature_err_issue, ParseSess};
 use syntax::visit::{self, FnKind, Visitor};
 
 use log::debug;

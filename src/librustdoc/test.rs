@@ -395,8 +395,8 @@ pub fn make_test(
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
-            use syntax::sess::ParseSess;
 
             let filename = FileName::anon_source_code(s);
             let source = crates + &everything_else;

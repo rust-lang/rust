@@ -12,10 +12,10 @@ use std::io;
 use std::io::prelude::*;
 
 use rustc_parse::lexer;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{FileName, Span};
-use syntax::sess::ParseSess;
 use syntax::token::{self, Token};
 
 /// Highlights `src`, returning the HTML output.

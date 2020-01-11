@@ -3606,7 +3606,6 @@ dependencies = [
  "rustc_errors",
  "rustc_index",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "serialize",
@@ -3917,6 +3916,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serialize",
+ "syntax",
 ]
 
 [[package]]
@@ -4513,11 +4513,9 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_feature",
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "scoped-tls",
  "serialize",
