@@ -902,7 +902,7 @@ pub enum Message<B: WriteBackendMethods> {
         worker_id: usize,
     },
     Done {
-        result: Result<CompiledModule, ()>,
+        result: Result<CompiledModule, Option<WorkerFatalError>>,
         worker_id: usize,
     },
     CodegenDone {
@@ -1474,8 +1474,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
                 // If the thread failed that means it panicked, so we abort immediately.
-                Message::Done { result: Err(()), worker_id: _ } => {
+                Message::Done { result: Err(None), worker_id: _ } => {
                     bug!("worker thread panicked");
+                }
+                Message::Done { result: Err(Some(WorkerFatalError)), worker_id: _ } => {
+                    return Err(());
                 }
                 Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
@@ -1520,29 +1523,36 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
 pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
 
+/// `FatalError` is explicitly not `Send`.
+#[must_use]
+pub struct WorkerFatalError;
+
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
     thread::spawn(move || {
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb<B: ExtraBackendMethods> {
             coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<WorkItemResult<B>>,
+            result: Option<Result<WorkItemResult<B>, FatalError>>,
             worker_id: usize,
         }
         impl<B: ExtraBackendMethods> Drop for Bomb<B> {
             fn drop(&mut self) {
                 let worker_id = self.worker_id;
                 let msg = match self.result.take() {
-                    Some(WorkItemResult::Compiled(m)) => {
+                    Some(Ok(WorkItemResult::Compiled(m))) => {
                         Message::Done::<B> { result: Ok(m), worker_id }
                     }
-                    Some(WorkItemResult::NeedsFatLTO(m)) => {
+                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
                         Message::NeedsFatLTO::<B> { result: m, worker_id }
                     }
-                    Some(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
                         Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
                     }
-                    None => Message::Done::<B> { result: Err(()), worker_id },
+                    Some(Err(FatalError)) => {
+                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                    }
+                    None => Message::Done::<B> { result: Err(None), worker_id },
                 };
                 drop(self.coordinator_send.send(Box::new(msg)));
             }
@@ -1562,7 +1572,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // surface that there was an error in this worker.
         bomb.result = {
             let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
-            execute_work_item(&cgcx, work).ok()
+            Some(execute_work_item(&cgcx, work))
         };
     });
 }
