@@ -41,6 +41,144 @@
 #include "TBAA.h"
 
 
+        //TODO keep type information that is striated
+        // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
+        // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
+        // Todo handle {double}** to double** where there is a 0 removed
+        ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const {
+            auto fromsize = dl.getTypeSizeInBits(from) / 8;
+            assert(fromsize > 0);
+            auto tosize = dl.getTypeSizeInBits(to) / 8;
+            assert(tosize > 0);
+
+            ValueData vd;
+
+            for(auto &pair : mapping) {
+
+
+                if (pair.first.size() == 0) {
+                    vd.insert(pair.first, pair.second);
+                    continue;
+                }
+
+
+                //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "\n";
+
+
+                llvm::Type *Int32Ty = llvm::Type::getInt32Ty(from->getContext());
+                std::vector<Value*> vals;
+
+                for(auto a : pair.first) {
+                    int z = a;
+                    if (z == -1) z = 0;
+                    vals.push_back(ConstantInt::get(Int32Ty, a));
+                }
+
+                int64_t fromoffset = 0;
+
+                if (pair.first[0] != -1) {
+                    fromoffset = pair.first[0] * fromsize;
+                } else {
+                    fromoffset = 0;
+                }
+
+                //We can only transfer type information, either if the underlying type sizes are the same 
+                bool packinglegal = false;
+                // If the sizes are the same, this is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to
+                if (fromsize == tosize) {
+                    packinglegal = true;
+                } else if (fromsize > tosize) {
+                    if (fromsize % tosize == 0) packinglegal = true;
+                } else if (fromsize < tosize) {
+                    if (tosize % fromsize == 0) packinglegal = true;
+                }
+                //llvm::errs() << "packinglegal: " << packinglegal << " fromoffset: " << fromoffset << " tosize: " << tosize << " fromsize: " << fromsize << "\n";
+                if (!packinglegal && fromoffset > tosize) continue;
+
+                llvm::Type* curfrom = from;
+                llvm::Type* curto = to;
+
+                std::vector<int> futureidx;
+                
+                bool legal = true;
+
+                for(unsigned i=1; i<pair.first.size(); i++) {
+                    auto idx = pair.first[i];
+                    if (idx == -1) idx = 0;
+
+                    if (auto st = dyn_cast<llvm::StructType>(curfrom)) {
+                        auto sl = dl.getStructLayout(st);
+                        if (idx >= st->getNumElements()) {
+                            llvm::errs() << "pair.first: " << to_string(pair.first) << "\n";
+                            llvm::errs() << "pair.first[i]" << i << " st:" << st->getNumElements() << ":" << *st << "\n";
+                        }
+                        assert(idx < st->getNumElements());
+                        curfrom = st->getElementType(idx);
+                        fromoffset += sl->getElementOffset(idx);
+                        continue;
+                    } else if (auto at = dyn_cast<llvm::ArrayType>(curfrom)) {
+                        auto elsize = dl.getTypeSizeInBits(at->getElementType()) / 8;
+                        assert(elsize > 0);
+                        curfrom = at->getElementType();
+                        fromoffset += idx * elsize;
+                        continue;
+                    } else if (auto pt = dyn_cast<llvm::PointerType>(curfrom)) {
+                        //TODO if pointer
+                        curfrom = pt->getElementType();
+                        if (!curfrom->isFPOrFPVectorTy() || !curfrom->isIntOrIntVectorTy()) {
+                            legal = false;
+                            break;
+                        }
+                    }
+
+                        for(unsigned j=i; j<pair.first.size(); j++) {
+                            futureidx.push_back(pair.first[j]);
+                        }
+                        break;
+                }
+
+                if (!legal) continue;
+
+                std::vector<int> nextpair;
+                nextpair.push_back( fromoffset / tosize );
+                fromoffset %= tosize;
+
+                while(1) {
+                    if (auto st = dyn_cast<llvm::StructType>(curto)) {
+                        auto sl = dl.getStructLayout(st);
+                        auto idx = sl->getElementContainingOffset(fromoffset);
+                        nextpair.push_back(idx);
+                        curto = st->getElementType(idx);
+                        fromoffset -= sl->getElementOffset(idx);
+                    } else if (auto at = dyn_cast<llvm::ArrayType>(curto)) {
+                        auto elsize = dl.getTypeSizeInBits(at->getElementType()) / 8;
+                        assert(elsize > 0);
+                        nextpair.push_back( fromoffset / elsize );
+                        fromoffset %= elsize;
+                        curto = at->getElementType();
+                    } else {
+                        break;
+                    }
+                }
+                if (fromoffset != 0) {
+                    //llvm::errs() << "fromoffset: " << fromoffset << "\n";
+                    continue;
+                }
+
+                for(auto a: futureidx) {
+                    nextpair.push_back(a);
+                }
+
+                ValueData vd2;
+
+                //llvm::errs() << " casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " toidx: " << to_string(nextpair) << " dt:" << pair.second.str() << "\n";
+                vd2.insert(nextpair, pair.second);
+                vd |= vd2;
+            }
+            return vd;
+        }
+
+
 cl::opt<bool> printtype(
             "enzyme_printtype", cl::init(false), cl::Hidden,
             cl::desc("Print type detection algorithm"));
@@ -135,6 +273,16 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 		llvm::errs() << "\n";
 	}
 
+    if (isa<GetElementPtrInst>(val) && data[{}] == IntType::Integer) {
+        llvm::errs () << "illegal gep update\n";
+        assert(0 && "illegal gep update");
+    }
+
+    if (val->getType()->isPointerTy() && data[{}] == IntType::Integer) {
+        llvm::errs () << "illegal gep update\n";
+        assert(0 && "illegal gep update");
+    }
+
     if (analysis[val] |= data) {
     	//Add val so it can explicitly propagate this new info, if able to
     	if (val != origin)
@@ -177,14 +325,23 @@ void TypeAnalyzer::considerTBAA() {
 
             if (auto call = dyn_cast<CallInst>(&inst)) {
                 if (call->getCalledFunction() && (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy || call->getCalledFunction()->getIntrinsicID() == Intrinsic::memmove)) {
-                    updateAnalysis(call->getOperand(0), ValueData(dt), call);
-                    updateAnalysis(call->getOperand(1), ValueData(dt), call);
+                    if (auto ci = dyn_cast<ConstantInt>(call->getOperand(2))) {
+                        for(unsigned i=0; i<ci->getLimitedValue(); i++) {
+                            updateAnalysis(call->getOperand(0), ValueData(dt).Only({i}), call);
+                            updateAnalysis(call->getOperand(1), ValueData(dt).Only({i}), call);
+                        }
+                        continue;
+                    }
+                    updateAnalysis(call->getOperand(0), ValueData(dt).Only({0}), call);
+                    updateAnalysis(call->getOperand(1), ValueData(dt).Only({0}), call);
                 } else if (call->getType()->isPointerTy()) {
                     updateAnalysis(call, ValueData(dt).Only({-1}), call);
                 } else {
                     assert(0 && "unknown tbaa call instruction user");
                 }
             } else if (auto si = dyn_cast<StoreInst>(&inst)) {
+                //TODO why?
+                if (dt == IntType::Pointer) continue;
                 updateAnalysis(si->getPointerOperand(), ValueData(dt).Only({0}), si);
                 updateAnalysis(si->getValueOperand(), ValueData(dt), si);
             } else if (auto li = dyn_cast<LoadInst>(&inst)) {
@@ -256,19 +413,30 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         updateAnalysis(ind, IntType::Integer, &gep);
     }
     
-    std::vector<int> idnext;
+    auto tosize = dl.getTypeSizeInBits(to) / 8;
+    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(gep.getContext());
+    std::vector<Value*> idnext;
 
     for(auto& a : gep.indices()) {
         if (auto ci = dyn_cast<ConstantInt>(a)) {
             idnext.push_back((int)ci->getLimitedValue());
         } else {
-            idnext.push_back(-1);
+            idnext.push_back(ConstantInt::get(Int32Ty, a));
         }
     }
 
+    auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), idnext);
+    APInt ai;
+    g2->accumulateConstantOffset(function->getParent().getDataLayout(), ai);
+    g2->eraseFromParent();
+
+    int off = ai->getLimitedValue();
+
 	//TODO GEP
-    //updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(idnext), &gep);
-    auto merged = getAnalysis(&gep).MergeIndices(idnext);
+    updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(gep.getPointerOperand()->getType(), off), &gep);
+
+    auto merged = getAnalysis(&gep).MergeIndices(off);
+
     //llvm::errs() << "GEP: " << gep << " analysis: " << getAnalysis(&gep).str() << " merged: " << merged.str() << "\n";
     updateAnalysis(gep.getPointerOperand(), merged, &gep);
 }
@@ -340,8 +508,11 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
   }
 
   if (I.getType()->isPointerTy() && I.getOperand(0)->getType()->isPointerTy()) {
-	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepFirst(), &I);
-	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepFirst(), &I);
+    Type* et1 = cast<PointerType>(I.getType())->getElementType();
+    Type* et2 = cast<PointerType>(I.getOperand(0)->getType())->getElementType();
+    
+	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1), &I);
+	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepForCast(function->getParent()->getDataLayout(), et1, et2), &I);
   }
 }
 
@@ -425,6 +596,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         updateAnalysis(I.getOperand(1), dt, &I);
         updateAnalysis(&I, dt, &I);
     } else if (I.getOpcode() != BinaryOperator::And && I.getOpcode() != BinaryOperator::Or) {
+
 		updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 		updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
@@ -435,6 +607,15 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 	} else {
 		ValueData vd = getAnalysis(I.getOperand(0)).JustInt();
 		vd &= getAnalysis(I.getOperand(1)).JustInt();
+
+        if (I.getOpcode() == BinaryOperator::And) {
+            for(int i=0; i<2; i++)
+            if (auto ci = dyn_cast<ConstantInt>(I.getOperand(i))) {
+                if (ci->getLimitedValue() <= 16 && ci->getLimitedValue() >= 0) {
+                    vd |= ValueData(IntType::Integer);
+                }
+            }
+        }
 
 		updateAnalysis(&I, vd, &I);
 	}
@@ -454,8 +635,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 			updateAnalysis(call.getArgOperand(0), IntType::Integer, &call);
 		}
 
-		//If memcpy / memmove of pointer, we can propagate type information from src to dst and vice versa
+		//If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
 		if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
+            //TODO length enforcement
 			ValueData res = getAnalysis(call.getArgOperand(0));
 			res |= getAnalysis(call.getArgOperand(1));
 
@@ -597,21 +779,6 @@ NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 	NewFnTypeInfo res;
 	for(auto &arg : function->args()) {
 		res.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
-	}
-	return res;
-}
-
-FnTypeInfo TypeResults::getAnalyzedTypeInfoSimple() {
-	FnTypeInfo res;
-	for(auto &arg : function->args()) {
-        DataType dt(IntType::Unknown);
-
-        if (auto pt = dyn_cast<PointerType>(arg.getType())) {
-            dt = analysis.firstPointer(&arg, info, /*errifnotfound*/false);
-        } else if (arg.getType()->isIntOrIntVectorTy()) {
-            dt = analysis.intType(&arg, info, /*errifnotfound*/false);
-        }
-		res.insert(std::pair<Argument*, DataType>(&arg, dt));
 	}
 	return res;
 }

@@ -234,6 +234,17 @@ static inline std::string to_string(const DataType dt) {
 	return dt.str();
 }
 
+
+static inline std::string to_string(const std::vector<int> x) {
+    std::string out = "[";
+    for(unsigned i=0; i<x.size(); i++) {
+        if (i != 0) out +=",";
+        out += std::to_string(x[i]); 
+    }
+    out +="]";
+    return out;
+}
+
 class ValueData {
     private:
         //mapping of known indices to type if one exists
@@ -291,18 +302,10 @@ public:
 			return vd;
 		}
         
-		//needed for handling casts
-		ValueData KeepFirst() const {
-			ValueData vd;
-			if (mapping.find({0}) != mapping.end()) {
-				vd.insert({0}, mapping.find({0})->second);
-			}
-			if (mapping.find({-1}) != mapping.end()) {
-                vd.insert({-1}, mapping.find({-1})->second);
-			}
-
-			return vd;
-		}
+        //TODO keep type information that is striated
+        // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
+        // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
+        ValueData KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const;
 
         static std::vector<int> appendIndices(std::vector<int> first, const std::vector<int> &second) {
             for(unsigned i=0; i<second.size(); i++)
@@ -350,29 +353,95 @@ public:
             return dat;
         }
         
-        static std::vector<int> mergeIndices(std::vector<int> first, const std::vector<int> &second) {
-            assert(first.size() > 0);
+        static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
             assert(second.size() > 0);
-
+            
+            std::vector<int> next(second);
             //-1 represents all elements in that range
             if (first.back() != -1) {
-                if (second[0] == -1) {
-                    first[first.size()-1] = -1;
+                if (offset == -1) {
+                    next[first.size()-1] = -1;
                 } else {
-                    first[first.size()-1] += second[0];
+                    next[first.size()-1] += second[0];
                 }
             }
 
-            for(unsigned i=1; i<second.size(); i++)
-                first.push_back(second[i]);
-            return first;
+            assert(next.size() > 0);
+            return next;
         }
-        ValueData MergeIndices(std::vector<int> indices) const {
+
+        ValueData MergeIndices(int offset) const {
             ValueData dat;
 
             for(const auto &pair : mapping) {
                 ValueData dat2;
-                dat2.insert(mergeIndices(indices, pair.first), pair.second);
+
+                if (pair.first.size() == 0) {
+                    if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
+
+                    llvm::errs() << "could not merge test  " << str() << "\n";
+                }
+                dat2.insert(mergeIndices(offset, pair.first), pair.second);
+                dat |= dat2;
+            }
+
+            return dat;
+        }
+
+        static llvm::Type* indexIntoType(llvm::Type* ty, int idx) {
+            if (ty == nullptr) return nullptr;
+            if (idx == -1) idx = 0;
+            if (auto st = llvm::dyn_cast<llvm::StructType>(ty)) {
+                return st->getElementType(idx);
+            }
+            if (auto at = llvm::dyn_cast<llvm::ArrayType>(ty)) {
+                return at->getElementType();
+            }
+            return nullptr;
+        }
+
+        // given previous [0, 1, 2], index[0, 1] we should get back [0, 2]
+        // we should also have type dependent [2], index[1], if index.type[1] cast to index.type[2] permits
+        static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous) {
+            assert(next.size() == 0);
+
+            assert(previous.size() > 0);
+
+            next.insert(previous.begin(), previous.end());
+
+            if (previous.back() == -1) {
+                return true;
+            }
+
+            if (previous.back() < offset) {
+                return false;
+            }
+
+            next.back() -= offset;
+            return true;
+        }
+
+        //We want all the data from this value, given that we are indexing with indices
+        // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
+        ValueData UnmergeIndices(int offset) const {
+            assert(indices.size() > 0);
+            ValueData dat;
+
+            for(const auto &pair : mapping) {
+                ValueData dat2;
+                std::vector<int> next;
+
+                if (pair.first.size() == 0) {
+                    if (pair.second == IntType::Pointer) continue;
+
+                    llvm::errs() << "could not unmerge " << str() << "\n";
+                }
+                assert(pair.first.size() > 0);
+
+                if (unmergeIndices(next, offset, pair.first)) {
+                    //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
+                    dat2.insert(next, pair.second);
+                }
                 dat |= dat2;
             }
 
@@ -413,10 +482,20 @@ public:
             
             
             bool changed = false;
+
+            if (v[{-1}] != IntType::Unknown) {
+                for(auto &pair : mapping) {
+                    if (pair.first.size() == 1 && pair.first[0] != -1) {
+                        pair.second |= v[{-1}];
+                        //if (pair.second == ) // NOTE DELETE the non -1 
+                    }
+                }
+            }
             
             for(auto &pair : v.mapping) {
                 assert(pair.second != IntType::Unknown);
                 DataType dt = operator[](pair.first);
+                //llvm::errs() << "merging @ " << to_string(pair.first) << " old " << dt.str() << pair.second.str() << "\n";
                 changed |= (dt |= pair.second);
                 insert(pair.first, dt);
             }
@@ -506,7 +585,6 @@ public:
 	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
 	DataType intType(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
-    FnTypeInfo getAnalyzedTypeInfoSimple();
 };
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
