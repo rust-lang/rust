@@ -342,9 +342,9 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:94:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
-   |                                   ^^^
+   |                                   ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:94:38
@@ -356,9 +356,9 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:97:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
-   |                                   ^^^
+   |                                   ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:97:38
@@ -376,9 +376,9 @@ error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:102:35
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
-   |                                   ^^^
+   |                                   ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:102:38

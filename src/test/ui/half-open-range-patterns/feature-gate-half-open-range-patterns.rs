@@ -8,6 +8,7 @@ fn foo() {
     //~^ ERROR half-open range patterns are unstable
     if let ...5 = 0 {}
     //~^ ERROR half-open range patterns are unstable
+    //~| ERROR range-to patterns with `...` are not allowed
     if let ..5 = 0 {}
     //~^ ERROR half-open range patterns are unstable
     if let 5.. = 0 {}

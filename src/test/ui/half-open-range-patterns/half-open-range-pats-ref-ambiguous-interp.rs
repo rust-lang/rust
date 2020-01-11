@@ -20,5 +20,7 @@ fn syntax() {
         &..=0 | _ => {}
         //~^ ERROR the range pattern here has ambiguous interpretation
         &...0 | _ => {}
+        //~^ ERROR the range pattern here has ambiguous interpretation
+        //~| ERROR range-to patterns with `...` are not allowed
     }
 }

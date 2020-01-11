@@ -661,14 +661,34 @@ impl<'a> Parser<'a> {
     pub(super) fn error_inclusive_range_with_no_end(&self, span: Span) {
         use rustc_error_codes::E0586;
         struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
-            .help("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
+            .span_suggestion_short(
+                span,
+                "use `..` instead",
+                "..".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")
             .emit();
     }
 
-    /// Parse a range-to pattern, e.g. `..X` and `..=X` where `X` remains to be parsed.
-    fn parse_pat_range_to(&mut self, re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
+    /// Parse a range-to pattern, `..X` or `..=X` where `X` remains to be parsed.
+    ///
+    /// The form `...X` is prohibited to reduce confusion with the potential
+    /// expression syntax `...expr` for splatting in expressions.
+    fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
         self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_span));
+        if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
+            *syn = RangeSyntax::DotDotEq;
+            self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")
+                .span_suggestion_short(
+                    re.span,
+                    "use `..=` instead",
+                    "..=".to_string(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
         Ok(PatKind::Range(None, Some(end), re))
     }
 

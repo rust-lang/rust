@@ -1,10 +1,10 @@
 error[E0586]: inclusive range with no end
-  --> $DIR/range_inclusive.rs:4:19
+  --> $DIR/range_inclusive.rs:4:15
    |
 LL |     for _ in 1..= {}
-   |                   ^
+   |               ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: aborting due to previous error
 
