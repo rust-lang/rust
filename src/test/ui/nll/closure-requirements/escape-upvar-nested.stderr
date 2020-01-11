@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/escape-upvar-nested.rs:21:32
    |
 LL |             let mut closure1 = || p = &y;
@@ -13,7 +13,7 @@ LL |             let mut closure1 = || p = &y;
    = note: number of external vids: 4
    = note: where '_#1r: '_#3r
 
-note: External requirements
+note: external requirements
   --> $DIR/escape-upvar-nested.rs:20:27
    |
 LL |           let mut closure = || {
@@ -32,7 +32,7 @@ LL | |         };
    = note: number of external vids: 4
    = note: where '_#1r: '_#3r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-upvar-nested.rs:13:1
    |
 LL | / fn test() {

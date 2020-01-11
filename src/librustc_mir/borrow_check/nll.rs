@@ -360,7 +360,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // better.
 
     if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "External requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -379,7 +379,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
 
         err.buffer(errors_buffer);
     } else {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "No external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err.buffer(errors_buffer);

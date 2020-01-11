@@ -44,7 +44,7 @@
 // Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
 // this, both the generated test artifact and the linked libtest (which
 // transitively includes libcore) will both define the same set of lang items,
-// and this will cause the E0152 "duplicate lang item found" error. See
+// and this will cause the E0152 "found duplicate lang item" error. See
 // discussion in #50466 for details.
 //
 // This cfg won't affect doc tests.
