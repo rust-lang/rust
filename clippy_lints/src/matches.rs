@@ -713,16 +713,18 @@ fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm<'_>]) -> Ve
             } = *arm
             {
                 if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.kind {
-                    let lhs = constant(cx, cx.tables, lhs)?.0;
-                    let rhs = constant(cx, cx.tables, rhs)?.0;
-                    let rhs = match *range_end {
-                        RangeEnd::Included => Bound::Included(rhs),
-                        RangeEnd::Excluded => Bound::Excluded(rhs),
-                    };
-                    return Some(SpannedRange {
-                        span: pat.span,
-                        node: (lhs, rhs),
-                    });
+                    if let (Some(l), Some(r)) = (lhs, rhs) {
+                        let lhs = constant(cx, cx.tables, l)?.0;
+                        let rhs = constant(cx, cx.tables, r)?.0;
+                        let rhs = match *range_end {
+                            RangeEnd::Included => Bound::Included(rhs),
+                            RangeEnd::Excluded => Bound::Excluded(rhs),
+                        };
+                        return Some(SpannedRange {
+                            span: pat.span,
+                            node: (lhs, rhs),
+                        });
+                    }
                 }
 
                 if let PatKind::Lit(ref value) = pat.kind {

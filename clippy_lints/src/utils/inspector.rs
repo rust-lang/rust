@@ -483,8 +483,12 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
         },
         hir::PatKind::Range(ref l, ref r, ref range_end) => {
             println!("{}Range", ind);
-            print_expr(cx, l, indent + 1);
-            print_expr(cx, r, indent + 1);
+            if let Some(expr) = l {
+                print_expr(cx, expr, indent + 1);
+            }
+            if let Some(expr) = r {
+                print_expr(cx, expr, indent + 1);
+            }
             match *range_end {
                 hir::RangeEnd::Included => println!("{} end included", ind),
                 hir::RangeEnd::Excluded => println!("{} end excluded", ind),

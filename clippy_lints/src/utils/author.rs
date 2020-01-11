@@ -617,9 +617,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     start_pat, end_pat, end_kind, current
                 );
                 self.current = start_pat;
-                self.visit_expr(start);
+                if let Some(expr) = start {
+                    self.visit_expr(expr);
+                }
                 self.current = end_pat;
-                self.visit_expr(end);
+                if let Some(expr) = end {
+                    self.visit_expr(expr);
+                }
             },
             PatKind::Slice(ref start, ref middle, ref end) => {
                 let start_pat = self.next("start");
