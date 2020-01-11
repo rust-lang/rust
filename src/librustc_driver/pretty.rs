@@ -392,14 +392,16 @@ pub fn print_after_parsing(
         call_with_pp_support(&s, sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
+            let parse = &sess.parse_sess;
             *out = pprust::print_crate(
                 sess.source_map(),
-                &sess.parse_sess,
                 krate,
                 src_name,
                 src,
                 annotation.pp_ann(),
                 false,
+                parse.edition,
+                &parse.injected_crate_name,
             )
         })
     } else {
@@ -432,14 +434,16 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
+                let parse = &sess.parse_sess;
                 *out = pprust::print_crate(
                     sess.source_map(),
-                    &sess.parse_sess,
                     krate,
                     src_name,
                     src,
                     annotation.pp_ann(),
                     true,
+                    parse.edition,
+                    &parse.injected_crate_name,
                 )
             })
         }
@@ -449,14 +453,8 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                *out = pprust_hir::print_crate(
-                    sess.source_map(),
-                    &sess.parse_sess,
-                    krate,
-                    src_name,
-                    src,
-                    annotation.pp_ann(),
-                )
+                let cm = sess.source_map();
+                *out = pprust_hir::print_crate(cm, krate, src_name, src, annotation.pp_ann())
             })
         }
 
