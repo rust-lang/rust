@@ -68,7 +68,7 @@
       (rust-analyzer--goto-lsp-loc position))))
 
 (defun rust-analyzer--apply-source-change-command (p)
-  (let ((data (-> p (ht-get "arguments") (seq-first))))
+  (let ((data (-> p (ht-get "arguments") (lsp-seq-first))))
     (rust-analyzer--apply-source-change data)))
 
 (lsp-register-client
