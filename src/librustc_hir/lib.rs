@@ -3,7 +3,7 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![feature(const_fn)]
+#![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(in_band_lifetimes)]
 #![feature(specialization)]
 #![recursion_limit = "256"]

@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
