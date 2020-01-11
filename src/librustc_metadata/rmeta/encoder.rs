@@ -1726,10 +1726,15 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         || {
             // Prefetch some queries used by metadata encoding
             tcx.dep_graph.with_ignore(|| {
-                par_for_each_in(tcx.mir_keys(LOCAL_CRATE), |&def_id| {
-                    tcx.optimized_mir(def_id);
-                    tcx.promoted_mir(def_id);
-                });
+                join(
+                    || {
+                        par_for_each_in(tcx.mir_keys(LOCAL_CRATE), |&def_id| {
+                            tcx.optimized_mir(def_id);
+                            tcx.promoted_mir(def_id);
+                        })
+                    },
+                    || tcx.exported_symbols(LOCAL_CRATE),
+                );
             })
         },
     )
