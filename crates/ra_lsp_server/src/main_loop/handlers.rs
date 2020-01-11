@@ -3,6 +3,7 @@
 
 use std::{fmt::Write as _, io::Write as _};
 
+use itertools::Either;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -698,18 +699,25 @@ pub fn handle_code_action(
 
     for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
         let title = assist.label.clone();
-        let edit = assist.change.try_conv_with(&world)?;
-        let alternative_edits = assist
-            .alternative_changes
-            .into_iter()
-            .map(|change| change.try_conv_with(&world))
-            .collect::<Result<Vec<_>>>()?;
 
-        let command = Command {
-            title,
-            command: "rust-analyzer.applySourceChange".to_string(),
-            arguments: Some(vec![to_value(edit).unwrap(), to_value(alternative_edits).unwrap()]),
+        let command = match assist.change_data {
+            Either::Left(change) => Command {
+                title,
+                command: "rust-analyzer.applySourceChange".to_string(),
+                arguments: Some(vec![to_value(change.try_conv_with(&world)?)?]),
+            },
+            Either::Right(changes) => Command {
+                title,
+                command: "rust-analyzer.selectAndApplySourceChange".to_string(),
+                arguments: Some(vec![to_value(
+                    changes
+                        .into_iter()
+                        .map(|change| change.try_conv_with(&world))
+                        .collect::<Result<Vec<_>>>()?,
+                )?]),
+            },
         };
+
         let action = CodeAction {
             title: command.title.clone(),
             kind: match assist.id {

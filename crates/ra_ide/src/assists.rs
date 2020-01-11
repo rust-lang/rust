@@ -4,30 +4,37 @@ use ra_db::{FilePosition, FileRange};
 
 use crate::{db::RootDatabase, FileId, SourceChange, SourceFileEdit};
 
+use itertools::Either;
 pub use ra_assists::AssistId;
 use ra_assists::{AssistAction, AssistLabel};
 
 #[derive(Debug)]
 pub struct Assist {
     pub id: AssistId,
-    pub change: SourceChange,
     pub label: String,
-    pub alternative_changes: Vec<SourceChange>,
+    pub change_data: Either<SourceChange, Vec<SourceChange>>,
 }
 
 pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<Assist> {
     ra_assists::assists(db, frange)
         .into_iter()
-        .map(|(assist_label, action, alternative_actions)| {
+        .map(|assist| {
             let file_id = frange.file_id;
+            let assist_label = &assist.label;
             Assist {
                 id: assist_label.id,
                 label: assist_label.label.clone(),
-                change: action_to_edit(action, file_id, &assist_label),
-                alternative_changes: alternative_actions
-                    .into_iter()
-                    .map(|action| action_to_edit(action, file_id, &assist_label))
-                    .collect(),
+                change_data: match assist.action_data {
+                    Either::Left(action) => {
+                        Either::Left(action_to_edit(action, file_id, assist_label))
+                    }
+                    Either::Right(actions) => Either::Right(
+                        actions
+                            .into_iter()
+                            .map(|action| action_to_edit(action, file_id, assist_label))
+                            .collect(),
+                    ),
+                },
             }
         })
         .collect()

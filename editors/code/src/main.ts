@@ -26,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('runSingle', commands.runSingle);
     ctx.registerCommand('showReferences', commands.showReferences);
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
+    ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
 
     if (ctx.config.enableEnhancedTyping) {
         ctx.overrideCommand('type', commands.onEnter);

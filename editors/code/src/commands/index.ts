@@ -34,8 +34,20 @@ function showReferences(ctx: Ctx): Cmd {
 }
 
 function applySourceChange(ctx: Ctx): Cmd {
-    return async (change: sourceChange.SourceChange, alternativeChanges: sourceChange.SourceChange[] | undefined) => {
-        sourceChange.applySourceChange(ctx, change, alternativeChanges);
+    return async (change: sourceChange.SourceChange) => {
+        sourceChange.applySourceChange(ctx, change);
+    };
+}
+
+function selectAndApplySourceChange(ctx: Ctx): Cmd {
+    return async (changes: sourceChange.SourceChange[]) => {
+        if (changes.length === 1) {
+            await sourceChange.applySourceChange(ctx, changes[0]);
+        } else if (changes.length > 0) {
+            const selectedChange = await vscode.window.showQuickPick(changes);
+            if (!selectedChange) return;
+            await sourceChange.applySourceChange(ctx, selectedChange);
+        }
     };
 }
 
@@ -59,5 +71,6 @@ export {
     runSingle,
     showReferences,
     applySourceChange,
+    selectAndApplySourceChange,
     reload
 };

@@ -1,5 +1,6 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 use hir::{db::HirDatabase, InFile, SourceAnalyzer};
+use itertools::Either;
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_syntax::{
@@ -9,12 +10,12 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistId, AssistLabel};
+use crate::{AssistAction, AssistId, AssistLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Assist {
     Unresolved { label: AssistLabel },
-    Resolved { label: AssistLabel, action: AssistAction, alternative_actions: Vec<AssistAction> },
+    Resolved { assist: ResolvedAssist },
 }
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
@@ -92,7 +93,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { label, action, alternative_actions: Vec::default() }
+            Assist::Resolved { assist: ResolvedAssist { label, action_data: Either::Left(action) } }
         } else {
             Assist::Unresolved { label }
         };
@@ -105,18 +106,20 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         self,
         id: AssistId,
         label: impl Into<String>,
-        f: impl FnOnce() -> (ActionBuilder, Vec<ActionBuilder>),
+        f: impl FnOnce() -> Vec<ActionBuilder>,
     ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
         let assist = if self.should_compute_edit {
-            let (action, alternative_actions) = f();
+            let actions = f();
+            assert!(!actions.is_empty(), "Assist cannot have no");
+
             Assist::Resolved {
-                label,
-                action: action.build(),
-                alternative_actions: alternative_actions
-                    .into_iter()
-                    .map(ActionBuilder::build)
-                    .collect(),
+                assist: ResolvedAssist {
+                    label,
+                    action_data: Either::Right(
+                        actions.into_iter().map(ActionBuilder::build).collect(),
+                    ),
+                },
             }
         } else {
             Assist::Unresolved { label }
