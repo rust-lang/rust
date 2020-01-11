@@ -1,12 +1,12 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use rustc::session::config::nightly_options;
+use rustc::session::parse::feature_err;
 use rustc::ty::TyCtxt;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use syntax::feature_gate::feature_err;
 
 use super::{ConstKind, Item};
 

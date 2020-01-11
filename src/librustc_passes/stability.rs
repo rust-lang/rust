@@ -5,6 +5,7 @@ use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability::{DeprecationEntry, Index};
+use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::query::Providers;
@@ -20,7 +21,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::Attribute;
 use syntax::attr::{self, Stability};
-use syntax::feature_gate::feature_err;
 
 use std::cmp::Ordering;
 use std::mem::replace;

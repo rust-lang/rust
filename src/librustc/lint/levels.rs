@@ -13,8 +13,8 @@ use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate;
 use syntax::print::pprust;
+use syntax::sess::feature_err;
 
 use rustc_error_codes::*;
 
@@ -223,7 +223,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
-                                    feature_gate::feature_err(
+                                    feature_err(
                                         &self.sess.parse_sess,
                                         sym::lint_reasons,
                                         item.span,

@@ -6,11 +6,12 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
-use rustc::lint;
-use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
+use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
+use rustc_session::lint::LintBuffer;
+use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
@@ -65,7 +66,7 @@ struct AstValidator<'a> {
     /// certain positions.
     is_assoc_ty_bound_banned: bool,
 
-    lint_buffer: &'a mut lint::LintBuffer,
+    lint_buffer: &'a mut LintBuffer,
 }
 
 impl<'a> AstValidator<'a> {
@@ -906,7 +907,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
 
-                Some(Constness::Const) => bug!("Parser should reject bare `const` on bounds"),
+                Some(Constness::Const) => panic!("Parser should reject bare `const` on bounds"),
                 None => {}
             }
         }
@@ -992,7 +993,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
                     if mut_ident {
                         self.lint_buffer.buffer_lint(
-                            lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                            PATTERNS_IN_FNS_WITHOUT_BODY,
                             ti.id,
                             span,
                             "patterns aren't allowed in methods without bodies",
@@ -1021,7 +1022,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate, lints: &mut lint::LintBuffer) -> bool {
+pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,

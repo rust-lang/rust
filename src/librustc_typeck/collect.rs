@@ -23,6 +23,7 @@ use crate::middle::weak_lang_items;
 use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::mir::mono::Linkage;
+use rustc::session::parse::feature_err;
 use rustc::traits;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::GenericArgKind;
@@ -45,7 +46,6 @@ use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
-use syntax::feature_gate;
 
 use rustc_error_codes::*;
 
@@ -1537,7 +1537,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         _ => None,
                     };
                     if let Some(unsupported_type) = err {
-                        feature_gate::feature_err(
+                        feature_err(
                             &tcx.sess.parse_sess,
                             sym::const_compare_raw_pointers,
                             hir_ty.span,
@@ -2633,7 +2633,7 @@ fn from_target_feature(
                 None => true,
             };
             if !allowed && id.is_local() {
-                feature_gate::feature_err(
+                feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),

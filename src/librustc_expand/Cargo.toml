@@ -14,10 +14,12 @@ doctest = false
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 log = "0.4"
 rustc_span = { path = "../librustc_span" }
+rustc_ast_passes = { path = "../librustc_ast_passes" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_parse = { path = "../librustc_parse" }
+rustc_session = { path = "../librustc_session" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

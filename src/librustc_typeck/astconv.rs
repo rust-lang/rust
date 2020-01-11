@@ -10,6 +10,7 @@ use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc::session::parse::feature_err;
 use rustc::traits;
 use rustc::traits::astconv_object_safety_violations;
 use rustc::traits::error_reporting::report_object_safety_error;
@@ -30,7 +31,6 @@ use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use syntax::ast;
-use syntax::feature_gate::feature_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::collections::BTreeSet;

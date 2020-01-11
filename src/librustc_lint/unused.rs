@@ -1,7 +1,5 @@
-use lint::{EarlyContext, LateContext, LintArray, LintContext};
-use lint::{EarlyLintPass, LateLintPass, LintPass};
-use rustc::lint;
 use rustc::lint::builtin::UNUSED_ATTRIBUTES;
+use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty::adjustment;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashMap;

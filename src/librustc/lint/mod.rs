@@ -21,12 +21,11 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
-use rustc_session::node_id::NodeMap;
+use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
@@ -35,48 +34,13 @@ use rustc_span::Span;
 use syntax::ast;
 
 pub use crate::lint::context::{
-    BufferedEarlyLint, CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore,
+    add_elided_lifetime_in_path_suggestion, CheckLintNameResult, EarlyContext, LateContext,
+    LintContext, LintStore,
 };
 
-pub use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintId};
-
-/// Declares a static `LintArray` and return it as an expression.
-#[macro_export]
-macro_rules! lint_array {
-    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
-    ($( $lint:expr ),*) => {{
-        vec![$($lint),*]
-    }}
-}
-
-pub type LintArray = Vec<&'static Lint>;
-
-pub trait LintPass {
-    fn name(&self) -> &'static str;
-}
-
-/// Implements `LintPass for $name` with the given list of `Lint` statics.
-#[macro_export]
-macro_rules! impl_lint_pass {
-    ($name:ident => [$($lint:expr),* $(,)?]) => {
-        impl LintPass for $name {
-            fn name(&self) -> &'static str { stringify!($name) }
-        }
-        impl $name {
-            pub fn get_lints() -> LintArray { $crate::lint_array!($($lint),*) }
-        }
-    };
-}
-
-/// Declares a type named `$name` which implements `LintPass`.
-/// To the right of `=>` a comma separated list of `Lint` statics is given.
-#[macro_export]
-macro_rules! declare_lint_pass {
-    ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
-        $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
-        $crate::impl_lint_pass!($name => [$($lint),*]);
-    };
-}
+pub use rustc_session::lint::builtin;
+pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
+pub use rustc_session::lint::{LintArray, LintPass};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -167,6 +131,8 @@ macro_rules! declare_late_lint_pass {
 }
 
 late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
+
+impl LateLintPass<'_, '_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
@@ -366,65 +332,11 @@ pub enum LintSource {
 
 pub type LevelSource = (Level, LintSource);
 
-pub mod builtin;
 mod context;
 pub mod internal;
 mod levels;
 
 pub use self::levels::{LintLevelMap, LintLevelSets, LintLevelsBuilder};
-
-#[derive(Default)]
-pub struct LintBuffer {
-    pub map: NodeMap<Vec<BufferedEarlyLint>>,
-}
-
-impl LintBuffer {
-    pub fn add_lint(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: MultiSpan,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        let early_lint = BufferedEarlyLint {
-            lint_id: LintId::of(lint),
-            ast_id: id,
-            span: sp,
-            msg: msg.to_string(),
-            diagnostic,
-        };
-        let arr = self.map.entry(id).or_default();
-        if !arr.contains(&early_lint) {
-            arr.push(early_lint);
-        }
-    }
-
-    pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or_default()
-    }
-
-    pub fn buffer_lint<S: Into<MultiSpan>>(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-    ) {
-        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
-        &mut self,
-        lint: &'static Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        self.add_lint(lint, id, sp.into(), msg, diagnostic)
-    }
-}
 
 pub fn struct_lint_level<'a>(
     sess: &'a Session,

@@ -7,6 +7,7 @@ use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc::middle::stability;
+use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::{lint, span_bug, ty};
 use rustc_data_structures::fx::FxHashSet;
@@ -23,7 +24,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, Ident, NodeId};
 use syntax::attr::{self, StabilityLevel};
-use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
 
 use rustc_data_structures::sync::Lrc;

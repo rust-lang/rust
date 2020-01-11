@@ -1,4 +1,4 @@
-use crate::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_errors::Applicability;
 use syntax::ast::{ExprKind, Stmt, StmtKind};
 
