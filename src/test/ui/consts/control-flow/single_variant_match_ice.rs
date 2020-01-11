@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(const_if_match, const_fn)]
+#![feature(const_if_match)]
 
 enum Foo {
     Prob,

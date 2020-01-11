@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/feature-gate-const-if-match.rs:109:1
+  --> $DIR/feature-gate-const-if-match.rs:108:1
    |
 LL | / fn main() {
 LL | |     let _ = [0; {
