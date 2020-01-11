@@ -8,37 +8,25 @@ use rustc_span::Span;
 use syntax::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use syntax::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
 use syntax::attr;
-use syntax::sess::{feature_err, leveled_feature_err, GateStrength, ParseSess};
+use syntax::sess::{feature_err, feature_err_issue, ParseSess};
 use syntax::visit::{self, FnKind, Visitor};
 
 use log::debug;
 
 macro_rules! gate_feature_fn {
-    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
-        let (cx, has_feature, span, name, explain, level) =
-            (&*$cx, $has_feature, $span, $name, $explain, $level);
+    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
+        let (cx, has_feature, span, name, explain) = (&*$cx, $has_feature, $span, $name, $explain);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
-            leveled_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain, level)
-                .emit();
+            feature_err_issue(cx.parse_sess, name, span, GateIssue::Language, explain).emit();
         }
     }};
 }
 
-macro_rules! gate_feature {
+macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!(
-            $cx,
-            |x: &Features| x.$feature,
-            $span,
-            sym::$feature,
-            $explain,
-            GateStrength::Hard
-        )
-    };
-    ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {
-        gate_feature_fn!($cx, |x: &Features| x.$feature, $span, sym::$feature, $explain, $level)
+        gate_feature_fn!($cx, |x: &Features| x.$feature, $span, sym::$feature, $explain)
     };
 }
 
@@ -49,21 +37,6 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
 struct PostExpansionVisitor<'a> {
     parse_sess: &'a ParseSess,
     features: &'a Features,
-}
-
-macro_rules! gate_feature_post {
-    ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
-        let (cx, span) = ($cx, $span);
-        if !span.allows_unstable(sym::$feature) {
-            gate_feature!(cx, $feature, span, $explain)
-        }
-    }};
-    ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {{
-        let (cx, span) = ($cx, $span);
-        if !span.allows_unstable(sym::$feature) {
-            gate_feature!(cx, $feature, span, $explain, $level)
-        }
-    }};
 }
 
 impl<'a> PostExpansionVisitor<'a> {
@@ -257,7 +230,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
         // Check feature gates for built-in attributes.
         if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
-            gate_feature_fn!(self, has_feature, attr.span, name, descr, GateStrength::Hard);
+            gate_feature_fn!(self, has_feature, attr.span, name, descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.check_name(sym::doc) {
@@ -265,7 +238,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
                     $(if nested_meta.check_name(sym::$name) {
                         let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
-                        gate_feature!(self, $feature, attr.span, msg);
+                        gate_feature_post!(self, $feature, attr.span, msg);
                     })*
                 }}
 
@@ -666,7 +639,7 @@ pub fn check_crate(
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => {
             for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
-                gate_feature!(&visitor, $gate, *span, $msg);
+                gate_feature_post!(&visitor, $gate, *span, $msg);
             }
         };
     }
@@ -688,7 +661,7 @@ pub fn check_crate(
             // disabling these uses of early feature-gatings.
             if false {
                 for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
-                    gate_feature!(&visitor, $gate, *span, $msg);
+                    gate_feature_post!(&visitor, $gate, *span, $msg);
                 }
             }
         };

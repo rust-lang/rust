@@ -62,16 +62,6 @@ impl GatedSpans {
     }
 }
 
-/// The strenght of a feature gate.
-/// Either it is a `Hard` error, or only a `Soft` warning.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum GateStrength {
-    /// A hard error. (Most feature gates should use this.)
-    Hard,
-    /// Only a warning. (Use this only as backwards-compatibility demands.)
-    Soft,
-}
-
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
 pub fn feature_err<'a>(
@@ -94,26 +84,7 @@ pub fn feature_err_issue<'a>(
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
-    leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
-}
-
-/// Construct a diagnostic for a feature gate error / warning.
-///
-/// You should typically just use `feature_err` instead.
-pub fn leveled_feature_err<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    issue: GateIssue,
-    explain: &str,
-    level: GateStrength,
-) -> DiagnosticBuilder<'a> {
-    let diag = &sess.span_diagnostic;
-
-    let mut err = match level {
-        GateStrength::Hard => diag.struct_span_err_with_code(span, explain, error_code!(E0658)),
-        GateStrength::Soft => diag.struct_span_warn(span, explain),
-    };
+    let mut err = sess.span_diagnostic.struct_span_err_with_code(span, explain, error_code!(E0658));
 
     if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
@@ -125,13 +96,6 @@ pub fn leveled_feature_err<'a>(
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.unstable_features.is_nightly_build() {
         err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
-    }
-
-    // If we're on stable and only emitting a "soft" warning, add a note to
-    // clarify that the feature isn't "on" (rather than being on but
-    // warning-worthy).
-    if !sess.unstable_features.is_nightly_build() && level == GateStrength::Soft {
-        err.help("a nightly build of the compiler is required to enable this feature");
     }
 
     err
