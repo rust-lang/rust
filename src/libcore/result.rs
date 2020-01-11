@@ -1136,7 +1136,7 @@ impl<T: Deref, E> Result<T, E> {
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a reference to the
     /// `Ok` type's `Deref::Target` type.
-    pub fn as_deref_ok(&self) -> Result<&T::Target, &E> {
+    pub fn as_deref(&self) -> Result<&T::Target, &E> {
         self.as_ref().map(|t| t.deref())
     }
 }
@@ -1153,23 +1153,12 @@ impl<T, E: Deref> Result<T, E> {
 }
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
-impl<T: Deref, E: Deref> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E::Target>`.
-    ///
-    /// Leaves the original `Result` in-place, creating a new one containing a reference to both
-    /// the `Ok` and `Err` types' `Deref::Target` types.
-    pub fn as_deref(&self) -> Result<&T::Target, &E::Target> {
-        self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
-    }
-}
-
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: DerefMut, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T::Target, &mut E>`.
     ///
     /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
     /// the `Ok` type's `Deref::Target` type.
-    pub fn as_deref_mut_ok(&mut self) -> Result<&mut T::Target, &mut E> {
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
         self.as_mut().map(|t| t.deref_mut())
     }
 }
@@ -1182,18 +1171,6 @@ impl<T, E: DerefMut> Result<T, E> {
     /// the `Err` type's `Deref::Target` type.
     pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target> {
         self.as_mut().map_err(|e| e.deref_mut())
-    }
-}
-
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
-impl<T: DerefMut, E: DerefMut> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to
-    /// `Result<&mut T::Target, &mut E::Target>`.
-    ///
-    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
-    /// both the `Ok` and `Err` types' `Deref::Target` types.
-    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E::Target> {
-        self.as_mut().map(|t| t.deref_mut()).map_err(|e| e.deref_mut())
     }
 }
 
