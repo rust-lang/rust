@@ -6,11 +6,11 @@
 extern crate syntax;
 
 // Load rustc as a plugin to get macros
-#[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
+#[macro_use] extern crate rustc_lint;
+#[macro_use] extern crate rustc_session;
 
-use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass, LintArray};
+use rustc_lint::{EarlyContext, LintContext, LintPass, EarlyLintPass, LintArray};
 use rustc_driver::plugin::Registry;
 use syntax::ast;
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");

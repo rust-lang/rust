@@ -3,14 +3,14 @@
 #![feature(plugin_registrar, rustc_private)]
 #![feature(box_syntax)]
 
-#[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 extern crate rustc_hir;
+#[macro_use] extern crate rustc_lint;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_span;
 extern crate syntax;
 
-use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LintArray};
+use rustc_lint::{LateContext, LintContext, LintPass, LateLintPass, LintArray};
 use rustc_driver::plugin::Registry;
 use rustc_span::symbol::Symbol;
 use syntax::attr;

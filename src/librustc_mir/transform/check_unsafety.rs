@@ -637,17 +637,17 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
                     tcx.unsafe_derive_on_repr_packed(impl_def_id);
                 } else {
-                    tcx.lint_node_note(
+                    tcx.struct_span_lint_hir(
                         SAFE_PACKED_BORROWS,
                         lint_hir_id,
                         source_info.span,
                         &format!(
-                            "{} is unsafe and requires unsafe function or block \
-                                            (error E0133)",
+                            "{} is unsafe and requires unsafe function or block (error E0133)",
                             description
                         ),
-                        &details.as_str(),
-                    );
+                    )
+                    .note(&details.as_str())
+                    .emit();
                 }
             }
         }

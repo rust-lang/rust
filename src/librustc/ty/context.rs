@@ -8,7 +8,7 @@ use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::{self, Lint};
+use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
@@ -20,9 +20,6 @@ use crate::mir::interpret::{Allocation, ConstValue, Scalar};
 use crate::mir::{
     interpret, BodyAndCache, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
-use crate::session::config::CrateType;
-use crate::session::config::{BorrowckMode, OutputFilenames};
-use crate::session::Session;
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
 use crate::ty::free_region_map::FreeRegionMap;
@@ -44,11 +41,15 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
+use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
+use rustc_session::config::CrateType;
+use rustc_session::config::{BorrowckMode, OutputFilenames};
+use rustc_session::Session;
 
 use arena::SyncDroplessArena;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -61,6 +62,7 @@ use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_session::lint::{Level, Lint};
 use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -946,7 +948,11 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-    pub lint_store: Lrc<lint::LintStore>,
+    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
+    ///
+    /// FIXME(Centril): consider `dyn LintStoreMarker` once
+    /// we can upcast to `Any` for some additional type safety.
+    pub lint_store: Lrc<dyn Any + sync::Sync + sync::Send>,
 
     pub dep_graph: DepGraph,
 
@@ -1115,7 +1121,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<lint::LintStore>,
+        lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
@@ -2551,57 +2557,29 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 
-    pub fn lint_hir<S: Into<MultiSpan>>(
+    pub fn lint_hir(
         self,
         lint: &'static Lint,
         hir_id: HirId,
-        span: S,
+        span: impl Into<MultiSpan>,
         msg: &str,
     ) {
         self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
     }
 
-    pub fn lint_hir_note<S: Into<MultiSpan>>(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: S,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
-    pub fn lint_node_note<S: Into<MultiSpan>>(
-        self,
-        lint: &'static Lint,
-        id: hir::HirId,
-        span: S,
-        msg: &str,
-        note: &str,
-    ) {
-        let mut err = self.struct_span_lint_hir(lint, id, span.into(), msg);
-        err.note(note);
-        err.emit()
-    }
-
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
-    pub fn maybe_lint_level_root_bounded(
-        self,
-        mut id: hir::HirId,
-        bound: hir::HirId,
-    ) -> hir::HirId {
+    pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
+        let hir = self.hir();
         loop {
             if id == bound {
                 return bound;
             }
-            if lint::maybe_lint_level_root(self, id) {
+
+            if hir.attrs(id).iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some()) {
                 return id;
             }
-            let next = self.hir().get_parent_node(id);
+            let next = hir.get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
@@ -2613,7 +2591,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         mut id: hir::HirId,
-    ) -> (lint::Level, lint::LintSource) {
+    ) -> (Level, LintSource) {
         let sets = self.lint_levels(LOCAL_CRATE);
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
@@ -2627,15 +2605,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn struct_span_lint_hir<S: Into<MultiSpan>>(
+    pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,
         hir_id: HirId,
-        span: S,
+        span: impl Into<MultiSpan>,
         msg: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
     pub fn struct_lint_node(
@@ -2645,7 +2623,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let (level, src) = self.lint_level_at_node(lint, id);
-        lint::struct_lint_level(self.sess, lint, level, src, None, msg)
+        struct_lint_level(self.sess, lint, level, src, None, msg)
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {
