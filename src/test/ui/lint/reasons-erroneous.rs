@@ -4,6 +4,8 @@
 //~^ ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
@@ -11,6 +13,8 @@
 //~^ ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
 //~| NOTE reason must be a string literal
@@ -21,6 +25,10 @@
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE bad attribute argument
+//~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
@@ -34,6 +42,10 @@
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE bad attribute argument
+//~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
@@ -47,6 +59,10 @@
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE bad attribute argument
+//~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
 //~| NOTE bad attribute argument
@@ -57,6 +73,8 @@
 //~^ ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last
@@ -64,6 +82,8 @@
 //~^ ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
 //~| ERROR malformed lint attribute
+//~| ERROR malformed lint attribute
+//~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last
 //~| NOTE reason in lint attribute must come last

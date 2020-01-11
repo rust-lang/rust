@@ -25,6 +25,15 @@ LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 
-error: aborting due to 3 previous errors
+error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
+  --> $DIR/E0453.rs:3:9
+   |
+LL | #![forbid(non_snake_case)]
+   |           -------------- `forbid` level set here
+LL | 
+LL | #[allow(non_snake_case)]
+   |         ^^^^^^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0453`.

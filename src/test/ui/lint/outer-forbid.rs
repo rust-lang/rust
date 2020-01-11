@@ -9,14 +9,17 @@
 #[allow(unused_variables)] //~ ERROR overruled
                            //~| ERROR overruled
                            //~| ERROR overruled
+                           //~| ERROR overruled
 fn foo() {}
 
 #[allow(unused)] //~ ERROR overruled
                  //~| ERROR overruled
                  //~| ERROR overruled
+                 //~| ERROR overruled
 fn bar() {}
 
 #[allow(nonstandard_style)] //~ ERROR overruled
+                            //~| ERROR overruled
                             //~| ERROR overruled
                             //~| ERROR overruled
 fn main() {

@@ -8,7 +8,7 @@ LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(unused) overruled by outer forbid(unused)
-  --> $DIR/outer-forbid.rs:14:9
+  --> $DIR/outer-forbid.rs:15:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
@@ -17,7 +17,7 @@ LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
-  --> $DIR/outer-forbid.rs:19:9
+  --> $DIR/outer-forbid.rs:21:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |                   -------------- `forbid` level set here
@@ -35,7 +35,7 @@ LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(unused) overruled by outer forbid(unused)
-  --> $DIR/outer-forbid.rs:14:9
+  --> $DIR/outer-forbid.rs:15:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
@@ -44,7 +44,7 @@ LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
-  --> $DIR/outer-forbid.rs:19:9
+  --> $DIR/outer-forbid.rs:21:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |                   -------------- `forbid` level set here
@@ -62,7 +62,7 @@ LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(unused) overruled by outer forbid(unused)
-  --> $DIR/outer-forbid.rs:14:9
+  --> $DIR/outer-forbid.rs:15:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
@@ -71,7 +71,7 @@ LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
-  --> $DIR/outer-forbid.rs:19:9
+  --> $DIR/outer-forbid.rs:21:9
    |
 LL | #![forbid(unused, non_snake_case)]
    |                   -------------- `forbid` level set here
@@ -79,6 +79,33 @@ LL | #![forbid(unused, non_snake_case)]
 LL | #[allow(nonstandard_style)]
    |         ^^^^^^^^^^^^^^^^^ overruled by previous forbid
 
-error: aborting due to 9 previous errors
+error[E0453]: allow(unused_variables) overruled by outer forbid(unused)
+  --> $DIR/outer-forbid.rs:9:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+LL | 
+LL | #[allow(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
+
+error[E0453]: allow(unused) overruled by outer forbid(unused)
+  --> $DIR/outer-forbid.rs:15:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |           ------ `forbid` level set here
+...
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+
+error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
+  --> $DIR/outer-forbid.rs:21:9
+   |
+LL | #![forbid(unused, non_snake_case)]
+   |                   -------------- `forbid` level set here
+...
+LL | #[allow(nonstandard_style)]
+   |         ^^^^^^^^^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0453`.
