@@ -50,8 +50,8 @@ use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::nightly_options;
-use rustc_session::lint::{builtin, BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::node_id::NodeMap;
+use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
@@ -60,8 +60,8 @@ use rustc_span::Span;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::node_id::NodeMap;
 use syntax::print::pprust;
-use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::{self, Visitor};
@@ -2614,7 +2614,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .unwrap_or(true);
         if !is_macro_callsite {
             self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                builtin::BARE_TRAIT_OBJECTS,
+                BARE_TRAIT_OBJECTS,
                 id,
                 span,
                 "trait objects without an explicit `dyn` are deprecated",

@@ -14,6 +14,7 @@ use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{config, early_error, filesearch, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
@@ -40,7 +41,7 @@ use syntax::{self, ast};
 /// This is performed by checking whether a whitelisted set of
 /// features is available on the target machine, by querying LLVM.
 pub fn add_configuration(
-    cfg: &mut ast::CrateConfig,
+    cfg: &mut CrateConfig,
     sess: &Session,
     codegen_backend: &dyn CodegenBackend,
 ) {

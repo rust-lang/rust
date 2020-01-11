@@ -4,6 +4,7 @@ use log::debug;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
@@ -15,7 +16,6 @@ use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax::mut_visit::{ExpectOne, *};
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 
 use std::{iter, mem};
 

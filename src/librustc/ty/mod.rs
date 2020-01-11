@@ -39,11 +39,13 @@ use rustc_hir::{GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
-use rustc_session::node_id::{NodeMap, NodeSet};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
+use syntax::ast::{self, Ident, Name, NodeId};
+use syntax::node_id::{NodeMap, NodeSet};
+
 use smallvec;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
@@ -53,7 +55,6 @@ use std::ops::Deref;
 use std::ops::Range;
 use std::slice;
 use std::{mem, ptr};
-use syntax::ast::{self, Ident, Name, NodeId};
 
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
