@@ -44,25 +44,25 @@ error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:69:13
    |
 LL |     if let 0..= = 0 {}
-   |             ^^^
+   |             ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:70:13
    |
 LL |     if let X..= = 0 {}
-   |             ^^^
+   |             ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:71:16
    |
 LL |     if let true..= = 0 {}
-   |                ^^^
+   |                ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:73:12
@@ -74,33 +74,33 @@ error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:73:14
    |
 LL |     if let .0..= = 0 {}
-   |              ^^^
+   |              ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:79:13
    |
 LL |     if let 0... = 0 {}
-   |             ^^^
+   |             ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:80:13
    |
 LL |     if let X... = 0 {}
-   |             ^^^
+   |             ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:81:16
    |
 LL |     if let true... = 0 {}
-   |                ^^^
+   |                ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:83:12
@@ -112,9 +112,9 @@ error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:83:14
    |
 LL |     if let .0... = 0 {}
-   |              ^^^
+   |              ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:93:15
@@ -128,33 +128,66 @@ error: float literals must have an integer part
 LL |     if let ..=.0 = 0 {}
    |               ^^ help: must have an integer part: `0.0`
 
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:109:12
+   |
+LL |     if let ...3 = 0 {}
+   |            ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:111:12
+   |
+LL |     if let ...Y = 0 {}
+   |            ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:113:12
+   |
+LL |     if let ...true = 0 {}
+   |            ^^^ help: use `..=` instead
+
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:116:15
    |
 LL |     if let ....3 = 0 {}
    |               ^^ help: must have an integer part: `0.3`
 
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:116:12
+   |
+LL |     if let ....3 = 0 {}
+   |            ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/recover-range-pats.rs:137:17
+   |
+LL |             let ...$e;
+   |                 ^^^ help: use `..=` instead
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:141:19
    |
 LL |             let $e...;
-   |                   ^^^
+   |                   ^^^ help: use `..` instead
 ...
 LL |     mac!(0);
    |     -------- in this macro invocation
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:142:19
    |
 LL |             let $e..=;
-   |                   ^^^
+   |                   ^^^ help: use `..` instead
 ...
 LL |     mac!(0);
    |     -------- in this macro invocation
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:42:13
@@ -211,30 +244,6 @@ LL |     if let X... .0 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:109:12
-   |
-LL |     if let ...3 = 0 {}
-   |            ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:111:12
-   |
-LL |     if let ...Y = 0 {}
-   |            ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:113:12
-   |
-LL |     if let ...true = 0 {}
-   |            ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:116:12
-   |
-LL |     if let ....3 = 0 {}
-   |            ^^^ help: use `..=` for an inclusive range
-
-error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:126:20
    |
 LL |             let $e1...$e2;
@@ -242,15 +251,6 @@ LL |             let $e1...$e2;
 ...
 LL |     mac2!(0, 1);
    |     ------------ in this macro invocation
-
-error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:137:17
-   |
-LL |             let ...$e;
-   |                 ^^^ help: use `..=` for an inclusive range
-...
-LL |     mac!(0);
-   |     -------- in this macro invocation
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:20:12

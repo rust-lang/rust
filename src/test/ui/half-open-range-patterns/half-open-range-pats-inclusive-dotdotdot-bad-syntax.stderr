@@ -1,0 +1,35 @@
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:17:9
+   |
+LL |         ...X => {}
+   |         ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:18:9
+   |
+LL |         ...0 => {}
+   |         ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:19:9
+   |
+LL |         ...'a' => {}
+   |         ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:20:9
+   |
+LL |         ...0.0f32 => {}
+   |         ^^^ help: use `..=` instead
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:27:17
+   |
+LL |             let ...$e;
+   |                 ^^^ help: use `..=` instead
+...
+LL |     mac!(0);
+   |     -------- in this macro invocation
+
+error: aborting due to 5 previous errors
+

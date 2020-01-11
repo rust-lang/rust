@@ -107,15 +107,15 @@ fn inclusive_to() {
 
 fn inclusive2_to() {
     if let ...3 = 0 {}
-    //~^ ERROR `...` range patterns are deprecated
+    //~^ ERROR range-to patterns with `...` are not allowed
     if let ...Y = 0 {}
-    //~^ ERROR `...` range patterns are deprecated
+    //~^ ERROR range-to patterns with `...` are not allowed
     if let ...true = 0 {}
-    //~^ ERROR `...` range patterns are deprecated
+    //~^ ERROR range-to patterns with `...` are not allowed
     //~| ERROR only char and numeric types
     if let ....3 = 0 {}
     //~^ ERROR float literals must have an integer part
-    //~| ERROR `...` range patterns are deprecated
+    //~| ERROR range-to patterns with `...` are not allowed
     //~| ERROR mismatched types
 }
 
@@ -135,7 +135,7 @@ fn with_macro_expr_var() {
         ($e:expr) => {
             let ..$e;
             let ...$e;
-            //~^ ERROR `...` range patterns are deprecated
+            //~^ ERROR range-to patterns with `...` are not allowed
             let ..=$e;
             let $e..;
             let $e...; //~ ERROR inclusive range with no end

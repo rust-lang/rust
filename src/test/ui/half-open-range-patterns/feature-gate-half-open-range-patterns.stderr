@@ -1,18 +1,24 @@
-error[E0586]: inclusive range with no end
-  --> $DIR/feature-gate-half-open-range-patterns.rs:15:13
+error: range-to patterns with `...` are not allowed
+  --> $DIR/feature-gate-half-open-range-patterns.rs:9:12
    |
-LL |     if let 5..= = 0 {}
-   |             ^^^
-   |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+LL |     if let ...5 = 0 {}
+   |            ^^^ help: use `..=` instead
 
 error[E0586]: inclusive range with no end
-  --> $DIR/feature-gate-half-open-range-patterns.rs:18:13
+  --> $DIR/feature-gate-half-open-range-patterns.rs:16:13
+   |
+LL |     if let 5..= = 0 {}
+   |             ^^^ help: use `..` instead
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+
+error[E0586]: inclusive range with no end
+  --> $DIR/feature-gate-half-open-range-patterns.rs:19:13
    |
 LL |     if let 5... = 0 {}
-   |             ^^^
+   |             ^^^ help: use `..` instead
    |
-   = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0658]: half-open range patterns are unstable
   --> $DIR/feature-gate-half-open-range-patterns.rs:7:12
@@ -33,7 +39,7 @@ LL |     if let ...5 = 0 {}
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
-  --> $DIR/feature-gate-half-open-range-patterns.rs:11:12
+  --> $DIR/feature-gate-half-open-range-patterns.rs:12:12
    |
 LL |     if let ..5 = 0 {}
    |            ^^^
@@ -42,7 +48,7 @@ LL |     if let ..5 = 0 {}
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
-  --> $DIR/feature-gate-half-open-range-patterns.rs:13:12
+  --> $DIR/feature-gate-half-open-range-patterns.rs:14:12
    |
 LL |     if let 5.. = 0 {}
    |            ^^^
@@ -51,7 +57,7 @@ LL |     if let 5.. = 0 {}
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
-  --> $DIR/feature-gate-half-open-range-patterns.rs:15:12
+  --> $DIR/feature-gate-half-open-range-patterns.rs:16:12
    |
 LL |     if let 5..= = 0 {}
    |            ^^^^
@@ -60,7 +66,7 @@ LL |     if let 5..= = 0 {}
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
 error[E0658]: half-open range patterns are unstable
-  --> $DIR/feature-gate-half-open-range-patterns.rs:18:12
+  --> $DIR/feature-gate-half-open-range-patterns.rs:19:12
    |
 LL |     if let 5... = 0 {}
    |            ^^^^
@@ -68,7 +74,7 @@ LL |     if let 5... = 0 {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/67264
    = help: add `#![feature(half_open_range_patterns)]` to the crate attributes to enable
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0586, E0658.
 For more information about an error, try `rustc --explain E0586`.
