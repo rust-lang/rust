@@ -17,6 +17,7 @@ libc = "0.2"
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc-demangle = "0.1"
+rustc_attr = { path = "../librustc_attr" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_data_structures = { path = "../librustc_data_structures" }

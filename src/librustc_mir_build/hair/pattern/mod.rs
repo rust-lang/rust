@@ -1036,7 +1036,7 @@ crate fn compare_const_vals<'tcx>(
             }
             ty::Int(ity) => {
                 use rustc::ty::layout::{Integer, IntegerExt};
-                use syntax::attr::SignedInt;
+                use rustc_attr::SignedInt;
                 let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
                 let a = sign_extend(a, size);
                 let b = sign_extend(b, size);

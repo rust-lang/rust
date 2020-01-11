@@ -24,6 +24,7 @@ syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_data_structures = { path = "../librustc_data_structures"}
 rustc_errors = { path = "../librustc_errors" }

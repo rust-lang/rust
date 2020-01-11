@@ -51,6 +51,7 @@ use rustc_session::config::CrateType;
 use rustc_session::config::{BorrowckMode, OutputFilenames};
 use rustc_session::Session;
 
+use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -79,7 +80,6 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 use syntax::ast;
-use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
 
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;

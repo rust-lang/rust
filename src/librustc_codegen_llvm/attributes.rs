@@ -21,7 +21,7 @@ use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
 use crate::llvm_util;
-pub use syntax::attr::{self, InlineAttr, OptimizeAttr};
+pub use rustc_attr::{self as attr, InlineAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;

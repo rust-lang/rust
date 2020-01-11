@@ -37,6 +37,7 @@ use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
+use rustc_attr as attr;
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
@@ -46,7 +47,6 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_span::Span;
-use syntax::attr;
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
