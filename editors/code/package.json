@@ -217,7 +217,10 @@
                     "description": "Trace requests to the ra_lsp_server"
                 },
                 "rust-analyzer.lruCapacity": {
-                    "type": "number",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
                     "default": null,
                     "description": "Number of syntax trees rust-analyzer keeps in memory"
                 },
