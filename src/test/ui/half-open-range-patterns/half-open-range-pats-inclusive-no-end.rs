@@ -13,3 +13,14 @@ fn foo() {
     if let X... = 1 {} //~ ERROR inclusive range with no end
     if let X..= = 1 {} //~ ERROR inclusive range with no end
 }
+
+fn bar() {
+    macro_rules! mac {
+        ($e:expr) => {
+            let $e...; //~ ERROR inclusive range with no end
+            let $e..=; //~ ERROR inclusive range with no end
+        }
+    }
+
+    mac!(0);
+}
