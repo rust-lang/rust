@@ -45,7 +45,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
-            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, ref place }] =
+            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
                 *match_pairs
             {
                 candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
@@ -78,12 +78,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         pats: &'pat [Pat<'tcx>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
             .map(|pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
+                let mut candidate = Candidate::new(place, pat, candidate.has_guard);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })

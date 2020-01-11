@@ -93,7 +93,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
+        let mut arm_candidates = self.create_match_candidates(scrutinee_place, &arms);
 
         let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
         let mut candidates =
@@ -103,7 +103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.lower_match_tree(block, scrutinee_span, match_has_guard, &mut candidates);
 
         self.lower_match_arms(
-            &destination,
+            destination,
             scrutinee_place,
             scrutinee_span,
             arm_candidates,
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // check safety.
         let cause_matched_place = FakeReadCause::ForMatchedPlace;
         let source_info = self.source_info(scrutinee_span);
-        self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place.clone());
+        self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
 
         block.and(scrutinee_place)
     }
@@ -145,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Create the initial `Candidate`s for a `match` expression.
     fn create_match_candidates<'pat>(
         &mut self,
-        scrutinee: &Place<'tcx>,
+        scrutinee: Place<'tcx>,
         arms: &'pat [Arm<'tcx>],
     ) -> Vec<(&'pat Arm<'tcx>, Candidate<'pat, 'tcx>)> {
         // Assemble a list of candidates: there is one candidate per pattern,
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         arms.iter()
             .map(|arm| {
                 let arm_has_guard = arm.guard.is_some();
-                let arm_candidate = Candidate::new(*scrutinee, &arm.pattern, arm_has_guard);
+                let arm_candidate = Candidate::new(scrutinee, &arm.pattern, arm_has_guard);
                 (arm, arm_candidate)
             })
             .collect()
@@ -391,7 +391,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
                 let cause_let = FakeReadCause::ForLet;
-                self.cfg.push_fake_read(block, pattern_source_info, cause_let, place.clone());
+                self.cfg.push_fake_read(block, pattern_source_info, cause_let, place);
 
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = pat_ascription_ty.user_ty(
@@ -430,7 +430,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             _ => {
                 let place = unpack!(block = self.as_place(block, initializer));
-                self.place_into_pattern(block, irrefutable_pat, &place, true)
+                self.place_into_pattern(block, irrefutable_pat, place, true)
             }
         }
     }
@@ -439,10 +439,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         irrefutable_pat: Pat<'tcx>,
-        initializer: &Place<'tcx>,
+        initializer: Place<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let mut candidate = Candidate::new(*initializer, &irrefutable_pat, false);
+        let mut candidate = Candidate::new(initializer, &irrefutable_pat, false);
 
         let fake_borrow_temps =
             self.lower_match_tree(block, irrefutable_pat.span, false, &mut [&mut candidate]);
@@ -461,7 +461,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
                     ))) = self.local_decls[local].local_info
                     {
-                        *match_place = Some(*initializer);
+                        *match_place = Some(initializer);
                     } else {
                         bug!("Let binding to non-user variable.")
                     }
@@ -897,7 +897,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         start_block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
-        candidates: &mut [&mut Candidate<_, 'tcx>],
+        candidates: &mut [&mut Candidate<'_, 'tcx>],
         fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
     ) {
         // The candidates are sorted by priority. Check to see whether the
@@ -1121,7 +1121,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for match_pair in match_pairs {
             if let PatKind::Or { ref pats } = *match_pair.pattern.kind {
                 let or_span = match_pair.pattern.span;
-                let place = &match_pair.place;
+                let place = match_pair.place;
 
                 first_candidate.visit_leaves(|leaf_candidate| {
                     self.test_or_pattern(
@@ -1155,14 +1155,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise: &mut Option<BasicBlock>,
         pats: &'pat [Pat<'tcx>],
         or_span: Span,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
     ) {
         debug!("test_or_pattern:\ncandidate={:#?}\npats={:#?}", candidate, pats);
-        let mut or_candidates: Vec<_> = pats
-            .iter()
-            .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard))
-            .collect();
+        let mut or_candidates: Vec<_> =
+            pats.iter().map(|pat| Candidate::new(place, pat, candidate.has_guard)).collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
         let otherwise = if candidate.otherwise_block.is_some() {
             &mut candidate.otherwise_block
@@ -1368,7 +1366,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Insert a Shallow borrow of any places that is switched on.
-        fake_borrows.as_mut().map(|fb| fb.insert(match_place.clone()));
+        fake_borrows.as_mut().map(|fb| fb.insert(match_place));
 
         // perform the test, branching to one of N blocks. For each of
         // those N possible outcomes, create a (initially empty)
@@ -1448,7 +1446,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target_blocks
         };
 
-        self.perform_test(block, &match_place, &test, make_target_blocks);
+        self.perform_test(block, match_place, &test, make_target_blocks);
     }
 
     /// Determine the fake borrows that are needed from a set of places that
@@ -1669,9 +1667,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
-            for (place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, *place);
-                self.cfg.push_assign(block, scrutinee_source_info, &Place::from(*temp), borrow);
+            for &(place, temp) in fake_borrows {
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place);
+                self.cfg.push_assign(block, scrutinee_source_info, &Place::from(temp), borrow);
             }
 
             // the block to branch to if the guard fails; if there is no
