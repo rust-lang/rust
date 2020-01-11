@@ -1,11 +1,12 @@
 use rustc::mir::*;
 use rustc::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
+use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::{ast, attr};
+use syntax::ast;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
