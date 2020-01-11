@@ -58,6 +58,12 @@ impl CheckWatcher {
         CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), shared }
     }
 
+    /// Returns a CheckWatcher that doesn't actually do anything
+    pub fn dummy() -> CheckWatcher {
+        let shared = Arc::new(RwLock::new(CheckWatcherSharedState::new()));
+        CheckWatcher { task_recv: never(), cmd_send: None, handle: None, shared }
+    }
+
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
         if let Some(cmd_send) = &self.cmd_send {
