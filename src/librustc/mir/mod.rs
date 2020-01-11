@@ -166,6 +166,16 @@ pub struct Body<'tcx> {
 
     /// A span representing this MIR, for error reporting.
     pub span: Span,
+
+    /// The user may be writing e.g. &[(SOME_CELL, 42)][i].1 and this would get promoted, because
+    /// we'd statically know that no thing with interior mutability will ever be available to the
+    /// user without some serious unsafe code.  Now this means that our promoted is actually
+    /// &[(SOME_CELL, 42)] and the MIR using it will do the &promoted[i].1 projection because the
+    /// index may be a runtime value. Such a promoted value is illegal because it has reachable
+    /// interior mutability. This flag just makes this situation very obvious where the previous
+    /// implementation without the flag hid this situation silently.
+    /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
+    pub ignore_interior_mut_in_const_validation: bool,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -202,6 +212,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
+            ignore_interior_mut_in_const_validation: false,
             control_flow_destroyed,
         }
     }
@@ -1642,67 +1653,15 @@ impl Debug for Statement<'_> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable)]
 pub struct Place<'tcx> {
-    pub base: PlaceBase<'tcx>,
+    pub local: Local,
 
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for Place<'tcx> {}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub enum PlaceBase<'tcx> {
-    /// local variable
-    Local(Local),
-
-    /// static or static mut variable
-    Static(Box<Static<'tcx>>),
-}
-
-/// We store the normalized type to avoid requiring normalization when reading MIR
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
-pub struct Static<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub kind: StaticKind<'tcx>,
-    /// The `DefId` of the item this static was declared in. For promoted values, usually, this is
-    /// the same as the `DefId` of the `mir::Body` containing the `Place` this promoted appears in.
-    /// However, after inlining, that might no longer be the case as inlined `Place`s are copied
-    /// into the calling frame.
-    pub def_id: DefId,
-}
-
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable,
-    RustcEncodable,
-    RustcDecodable
-)]
-pub enum StaticKind<'tcx> {
-    /// Promoted references consist of an id (`Promoted`) and the substs necessary to monomorphize
-    /// it. Usually, these substs are just the identity substs for the item. However, the inliner
-    /// will adjust these substs when it inlines a function based on the substs at the callsite.
-    Promoted(Promoted, SubstsRef<'tcx>),
-    Static,
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
@@ -1791,14 +1750,14 @@ rustc_index::newtype_index! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
-    pub base: &'a PlaceBase<'tcx>,
+    pub local: &'a Local,
     pub projection: &'a [PlaceElem<'tcx>],
 }
 
 impl<'tcx> Place<'tcx> {
     // FIXME change this to a const fn by also making List::empty a const fn.
     pub fn return_place() -> Place<'tcx> {
-        Place { base: PlaceBase::Local(RETURN_PLACE), projection: List::empty() }
+        Place { local: RETURN_PLACE, projection: List::empty() }
     }
 
     /// Returns `true` if this `Place` contains a `Deref` projection.
@@ -1815,10 +1774,8 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
-            PlaceRef { base: &PlaceBase::Local(local), projection: &[] }
-            | PlaceRef { base: &PlaceBase::Local(local), projection: &[ProjectionElem::Deref] } => {
-                Some(local)
-            }
+            PlaceRef { local, projection: &[] }
+            | PlaceRef { local, projection: &[ProjectionElem::Deref] } => Some(*local),
             _ => None,
         }
     }
@@ -1830,19 +1787,13 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
-        PlaceRef { base: &self.base, projection: &self.projection }
+        PlaceRef { local: &self.local, projection: &self.projection }
     }
 }
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place { base: local.into(), projection: List::empty() }
-    }
-}
-
-impl From<Local> for PlaceBase<'_> {
-    fn from(local: Local) -> Self {
-        PlaceBase::Local(local)
+        Place { local, projection: List::empty() }
     }
 }
 
@@ -1853,10 +1804,8 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
-            PlaceRef { base: PlaceBase::Local(local), projection: [] }
-            | PlaceRef { base: PlaceBase::Local(local), projection: [ProjectionElem::Deref] } => {
-                Some(*local)
-            }
+            PlaceRef { local, projection: [] }
+            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(**local),
             _ => None,
         }
     }
@@ -1865,7 +1814,7 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     /// projections, return `Some(_X)`.
     pub fn as_local(&self) -> Option<Local> {
         match self {
-            PlaceRef { base: PlaceBase::Local(l), projection: [] } => Some(*l),
+            PlaceRef { local, projection: [] } => Some(**local),
             _ => None,
         }
     }
@@ -1887,7 +1836,7 @@ impl Debug for Place<'_> {
             }
         }
 
-        write!(fmt, "{:?}", self.base)?;
+        write!(fmt, "{:?}", self.local)?;
 
         for elem in self.projection.iter() {
             match elem {
@@ -1928,22 +1877,6 @@ impl Debug for Place<'_> {
         }
 
         Ok(())
-    }
-}
-
-impl Debug for PlaceBase<'_> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match *self {
-            PlaceBase::Local(id) => write!(fmt, "{:?}", id),
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static, def_id }) => {
-                write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
-            }
-            PlaceBase::Static(box self::Static {
-                ty,
-                kind: StaticKind::Promoted(promoted, _),
-                def_id: _,
-            }) => write!(fmt, "({:?}: {:?})", promoted, ty),
-        }
     }
 }
 
@@ -3007,27 +2940,11 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        Place { base: self.base.fold_with(folder), projection: self.projection.fold_with(folder) }
+        Place { local: self.local.fold_with(folder), projection: self.projection.fold_with(folder) }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.base.visit_with(visitor) || self.projection.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            PlaceBase::Local(local) => PlaceBase::Local(local.fold_with(folder)),
-            PlaceBase::Static(static_) => PlaceBase::Static(static_.fold_with(folder)),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match self {
-            PlaceBase::Local(local) => local.visit_with(visitor),
-            PlaceBase::Static(static_) => (**static_).visit_with(visitor),
-        }
+        self.local.visit_with(visitor) || self.projection.visit_with(visitor)
     }
 }
 
@@ -3039,42 +2956,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        Static {
-            ty: self.ty.fold_with(folder),
-            kind: self.kind.fold_with(folder),
-            def_id: self.def_id,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        let Static { ty, kind, def_id: _ } = self;
-
-        ty.visit_with(visitor) || kind.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for StaticKind<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            StaticKind::Promoted(promoted, substs) => {
-                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder))
-            }
-            StaticKind::Static => StaticKind::Static,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match self {
-            StaticKind::Promoted(promoted, substs) => {
-                promoted.visit_with(visitor) || substs.visit_with(visitor)
-            }
-            StaticKind::Static => false,
-        }
     }
 }
 

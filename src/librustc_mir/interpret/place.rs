@@ -10,14 +10,13 @@ use rustc::mir::interpret::truncate;
 use rustc::ty::layout::{
     self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
 };
-use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty};
 use rustc_macros::HashStable;
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, GlobalId, ImmTy, Immediate, InterpCx,
-    InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic,
-    RawConst, Scalar, ScalarMaybeUndef,
+    AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
+    LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic, RawConst, Scalar,
+    ScalarMaybeUndef,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -619,64 +618,14 @@ where
         })
     }
 
-    /// Evaluate statics and promoteds to an `MPlace`. Used to share some code between
-    /// `eval_place` and `eval_place_to_op`.
-    pub(super) fn eval_static_to_mplace(
-        &self,
-        place_static: &mir::Static<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::StaticKind;
-
-        Ok(match place_static.kind {
-            StaticKind::Promoted(promoted, promoted_substs) => {
-                let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
-                let instance = ty::Instance::new(place_static.def_id, substs);
-
-                // Even after getting `substs` from the frame, this instance may still be
-                // polymorphic because `ConstProp` will try to promote polymorphic MIR.
-                if instance.needs_subst() {
-                    throw_inval!(TooGeneric);
-                }
-
-                self.const_eval_raw(GlobalId { instance, promoted: Some(promoted) })?
-            }
-
-            StaticKind::Static => {
-                let ty = place_static.ty;
-                assert!(!ty.needs_subst());
-                let layout = self.layout_of(ty)?;
-                // Just create a lazy reference, so we can support recursive statics.
-                // tcx takes care of assigning every static one and only one unique AllocId.
-                // When the data here is ever actually used, memory will notice,
-                // and it knows how to deal with alloc_id that are present in the
-                // global table but not in its local memory: It calls back into tcx through
-                // a query, triggering the CTFE machinery to actually turn this lazy reference
-                // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
-                // this InterpCx uses another Machine (e.g., in miri).  This is what we
-                // want!  This way, computing statics works consistently between codegen
-                // and miri: They use the same query to eventually obtain a `ty::Const`
-                // and use that for further computation.
-                //
-                // Notice that statics have *two* AllocIds: the lazy one, and the resolved
-                // one.  Here we make sure that the interpreted program never sees the
-                // resolved ID.  Also see the doc comment of `Memory::get_static_alloc`.
-                let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(place_static.def_id);
-                let ptr = self.tag_static_base_pointer(Pointer::from(alloc_id));
-                MPlaceTy::from_aligned_ptr(ptr, layout)
-            }
-        })
-    }
-
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
     pub fn eval_place(
         &mut self,
         place: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::PlaceBase;
-
-        let mut place_ty = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => {
+        let mut place_ty = match place.local {
+            mir::RETURN_PLACE => {
                 // `return_place` has the *caller* layout, but we want to use our
                 // `layout to verify our assumption. The caller will validate
                 // their layout on return.
@@ -697,12 +646,11 @@ where
                     ))?,
                 }
             }
-            PlaceBase::Local(local) => PlaceTy {
+            local => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.cur_frame(), local: *local },
-                layout: self.layout_of_local(self.frame(), *local, None)?,
+                place: Place::Local { frame: self.cur_frame(), local: local },
+                layout: self.layout_of_local(self.frame(), local, None)?,
             },
-            PlaceBase::Static(place_static) => self.eval_static_to_mplace(&place_static)?.into(),
         };
 
         for elem in place.projection.iter() {

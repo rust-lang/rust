@@ -1,4 +1,4 @@
-error: attempt to subtract with overflow
+warning: attempt to subtract with overflow
   --> $DIR/promoted_errors2.rs:7:20
    |
 LL |     println!("{}", 0u32 - 1);
@@ -7,50 +7,60 @@ LL |     println!("{}", 0u32 - 1);
 note: lint level defined here
   --> $DIR/promoted_errors2.rs:4:9
    |
-LL | #![deny(const_err)]
+LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-error: attempt to subtract with overflow
+warning: attempt to subtract with overflow
   --> $DIR/promoted_errors2.rs:9:14
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^
 
-error: attempt to divide by zero
+warning: attempt to divide by zero
   --> $DIR/promoted_errors2.rs:11:20
    |
-LL |     println!("{}", 1/(1-1));
-   |                    ^^^^^^^
+LL |     println!("{}", 1 / (1 - 1));
+   |                    ^^^^^^^^^^^
 
-error: reaching this expression at runtime will panic or abort
+warning: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors2.rs:11:20
    |
-LL |     println!("{}", 1/(1-1));
-   |                    ^^^^^^^ dividing by zero
+LL |     println!("{}", 1 / (1 - 1));
+   |                    ^^^^^^^^^^^ dividing by zero
 
-error: attempt to divide by zero
-  --> $DIR/promoted_errors2.rs:14:14
+warning: erroneous constant used
+  --> $DIR/promoted_errors2.rs:11:20
    |
-LL |     let _x = 1/(1-1);
-   |              ^^^^^^^
+LL |     println!("{}", 1 / (1 - 1));
+   |                    ^^^^^^^^^^^ referenced constant has errors
 
-error: attempt to divide by zero
-  --> $DIR/promoted_errors2.rs:16:20
+warning: attempt to divide by zero
+  --> $DIR/promoted_errors2.rs:15:14
    |
-LL |     println!("{}", 1/(false as u32));
-   |                    ^^^^^^^^^^^^^^^^
+LL |     let _x = 1 / (1 - 1);
+   |              ^^^^^^^^^^^
 
-error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors2.rs:16:20
+warning: attempt to divide by zero
+  --> $DIR/promoted_errors2.rs:17:20
    |
-LL |     println!("{}", 1/(false as u32));
-   |                    ^^^^^^^^^^^^^^^^ dividing by zero
+LL |     println!("{}", 1 / (false as u32));
+   |                    ^^^^^^^^^^^^^^^^^^
 
-error: attempt to divide by zero
-  --> $DIR/promoted_errors2.rs:19:14
+warning: reaching this expression at runtime will panic or abort
+  --> $DIR/promoted_errors2.rs:17:20
    |
-LL |     let _x = 1/(false as u32);
-   |              ^^^^^^^^^^^^^^^^
+LL |     println!("{}", 1 / (false as u32));
+   |                    ^^^^^^^^^^^^^^^^^^ dividing by zero
 
-error: aborting due to 8 previous errors
+warning: erroneous constant used
+  --> $DIR/promoted_errors2.rs:17:20
+   |
+LL |     println!("{}", 1 / (false as u32));
+   |                    ^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
+warning: attempt to divide by zero
+  --> $DIR/promoted_errors2.rs:21:14
+   |
+LL |     let _x = 1 / (false as u32);
+   |              ^^^^^^^^^^^^^^^^^^
 

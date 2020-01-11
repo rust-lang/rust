@@ -1286,9 +1286,9 @@ fn generator_layout_and_saved_local_names(
     let generator_layout = body.generator_layout.as_ref().unwrap();
     let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
 
-    let state_arg = mir::PlaceBase::Local(mir::Local::new(1));
+    let state_arg = mir::Local::new(1);
     for var in &body.var_debug_info {
-        if var.place.base != state_arg {
+        if var.place.local != state_arg {
             continue;
         }
         match var.place.projection[..] {

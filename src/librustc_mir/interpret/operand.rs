@@ -462,19 +462,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::PlaceBase;
-
-        let base_op = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => throw_unsup!(ReadFromReturnPointer),
-            PlaceBase::Local(local) => {
+        let base_op = match place.local {
+            mir::RETURN_PLACE => throw_unsup!(ReadFromReturnPointer),
+            local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.
-                // FIXME use place_projection.is_empty() when is available
                 let layout = if place.projection.is_empty() { layout } else { None };
 
-                self.access_local(self.frame(), *local, layout)?
+                self.access_local(self.frame(), local, layout)?
             }
-            PlaceBase::Static(place_static) => self.eval_static_to_mplace(&place_static)?.into(),
         };
 
         let op = place
@@ -532,7 +528,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Early-return cases.
         let val_val = match val.val {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
-            ty::ConstKind::Unevaluated(def_id, substs) => {
+            ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
                 let instance = self.resolve(def_id, substs)?;
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
                 // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
@@ -540,9 +536,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
-                // FIXME(oli-obk): eliminate all the `const_eval_raw` usages when we get rid of
-                // `StaticKind` once and for all.
-                return self.const_eval(GlobalId { instance, promoted: None });
+                return Ok(OpTy::from(self.const_eval(GlobalId { instance, promoted })?));
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)

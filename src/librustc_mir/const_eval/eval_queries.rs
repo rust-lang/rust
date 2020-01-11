@@ -56,7 +56,12 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    intern_const_alloc_recursive(ecx, tcx.static_mutability(cid.instance.def_id()), ret)?;
+    intern_const_alloc_recursive(
+        ecx,
+        tcx.static_mutability(cid.instance.def_id()),
+        ret,
+        body.ignore_interior_mut_in_const_validation,
+    )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -171,9 +176,14 @@ fn validate_and_turn_into_const<'tcx>(
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
-        let mut ref_tracking = RefTracking::new(mplace);
-        while let Some((mplace, path)) = ref_tracking.todo.pop() {
-            ecx.validate_operand(mplace.into(), path, Some(&mut ref_tracking))?;
+
+        // FIXME do not validate promoteds until a decision on
+        // https://github.com/rust-lang/rust/issues/67465 is made
+        if cid.promoted.is_none() {
+            let mut ref_tracking = RefTracking::new(mplace);
+            while let Some((mplace, path)) = ref_tracking.todo.pop() {
+                ecx.validate_operand(mplace.into(), path, Some(&mut ref_tracking))?;
+            }
         }
         // Now that we validated, turn this into a proper constant.
         // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides

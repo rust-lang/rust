@@ -1,5 +1,5 @@
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place, PlaceBase, Statement, StatementKind, TerminatorKind};
+use rustc::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -57,9 +57,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
         // be those that were never initialized - we will consider those as being used as
         // they will either have been removed by unreachable code optimizations; or linted
         // as unused variables.
-        if let PlaceBase::Local(local) = into.base {
-            let _ = self.never_initialized_mut_locals.remove(&local);
-        }
+        self.never_initialized_mut_locals.remove(&into.local);
     }
 }
 
@@ -80,13 +78,11 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
         match &statement.kind {
             StatementKind::Assign(box (into, _)) => {
-                if let PlaceBase::Local(local) = into.base {
-                    debug!(
-                        "visit_statement: statement={:?} local={:?} \
-                         never_initialized_mut_locals={:?}",
-                        statement, local, self.never_initialized_mut_locals
-                    );
-                }
+                debug!(
+                    "visit_statement: statement={:?} local={:?} \
+                    never_initialized_mut_locals={:?}",
+                    statement, into.local, self.never_initialized_mut_locals
+                );
                 self.remove_never_initialized_mut_locals(into);
             }
             _ => {}

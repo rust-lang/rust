@@ -757,13 +757,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let val = if self.tcx.is_static(gid.instance.def_id()) {
-            self.tcx.const_eval_poly(gid.instance.def_id())?
-        } else if let Some(promoted) = gid.promoted {
-            self.tcx.const_eval_promoted(gid.instance, promoted)?
+        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
+        // and thus don't care about the parameter environment. While we could just use
+        // `self.param_env`, that would mean we invoke the query to evaluate the static
+        // with different parameter environments, thus causing the static to be evaluated
+        // multiple times.
+        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
+            ty::ParamEnv::reveal_all()
         } else {
-            self.tcx.const_eval_instance(self.param_env, gid.instance, Some(self.tcx.span))?
+            self.param_env
         };
+        let val = if let Some(promoted) = gid.promoted {
+            self.tcx.const_eval_promoted(param_env, gid.instance, promoted)?
+        } else {
+            self.tcx.const_eval_instance(param_env, gid.instance, Some(self.tcx.span))?
+        };
+
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
         // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call

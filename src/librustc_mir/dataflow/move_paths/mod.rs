@@ -246,10 +246,7 @@ impl MovePathLookup {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: PlaceRef<'_, '_>) -> LookupResult {
-        let mut result = match place.base {
-            PlaceBase::Local(local) => self.locals[*local],
-            PlaceBase::Static(..) => return LookupResult::Parent(None),
-        };
+        let mut result = self.locals[*place.local];
 
         for elem in place.projection.iter() {
             if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
@@ -281,9 +278,6 @@ pub struct IllegalMoveOrigin<'tcx> {
 
 #[derive(Debug)]
 pub(crate) enum IllegalMoveOriginKind<'tcx> {
-    /// Illegal move due to attempt to move from `static` variable.
-    Static,
-
     /// Illegal move due to attempt to move from behind a reference.
     BorrowedContent {
         /// The place the reference refers to: if erroneous code was trying to

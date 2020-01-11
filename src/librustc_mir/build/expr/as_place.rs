@@ -20,13 +20,13 @@ use rustc_index::vec::Idx;
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone)]
 struct PlaceBuilder<'tcx> {
-    base: PlaceBase<'tcx>,
+    local: Local,
     projection: Vec<PlaceElem<'tcx>>,
 }
 
 impl PlaceBuilder<'tcx> {
     fn into_place(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        Place { base: self.base, projection: tcx.intern_place_elems(&self.projection) }
+        Place { local: self.local, projection: tcx.intern_place_elems(&self.projection) }
     }
 
     fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
@@ -49,13 +49,7 @@ impl PlaceBuilder<'tcx> {
 
 impl From<Local> for PlaceBuilder<'tcx> {
     fn from(local: Local) -> Self {
-        Self { base: local.into(), projection: Vec::new() }
-    }
-}
-
-impl From<PlaceBase<'tcx>> for PlaceBuilder<'tcx> {
-    fn from(base: PlaceBase<'tcx>) -> Self {
-        Self { base, projection: Vec::new() }
+        Self { local, projection: Vec::new() }
     }
 }
 
@@ -370,7 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.hir.tcx();
         let place_ty =
-            Place::ty_from(&base_place.base, &base_place.projection, &self.local_decls, tcx);
+            Place::ty_from(&base_place.local, &base_place.projection, &self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
@@ -380,7 +374,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let fake_borrow_deref_ty = Place::ty_from(
-                            &base_place.base,
+                            &base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
@@ -398,14 +392,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,
-                                Place { base: base_place.base.clone(), projection },
+                                Place { local: base_place.local.clone(), projection },
                             ),
                         );
                         fake_borrow_temps.push(fake_borrow_temp);
                     }
                     ProjectionElem::Index(_) => {
                         let index_ty = Place::ty_from(
-                            &base_place.base,
+                            &base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
