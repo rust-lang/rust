@@ -1,4 +1,4 @@
-use rustc::lint::{EarlyContext, EarlyLintPass, LintContext};
+use crate::{EarlyContext, EarlyLintPass, LintContext};
 use syntax::ast;
 
 declare_lint! {

@@ -1,17 +1,17 @@
 #![feature(box_syntax, plugin, plugin_registrar, rustc_private)]
 #![crate_type = "dylib"]
 
-#[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 extern crate rustc_hir;
+#[macro_use] extern crate rustc_lint;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_span;
 extern crate syntax;
 
 use rustc_hir::intravisit;
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc_driver::plugin::Registry;
 use rustc_span::source_map;
 use syntax::print::pprust;

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use rustc::lint::{LateContext, LateLintPass, LintContext};
+use crate::{LateContext, LateLintPass, LintContext};
 use rustc::mir::interpret::{sign_extend, truncate};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
 use rustc::ty::subst::SubstsRef;

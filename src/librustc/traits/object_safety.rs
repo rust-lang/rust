@@ -10,17 +10,18 @@
 
 use super::elaborate_predicates;
 
-use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use syntax::ast;
+
 use std::borrow::Cow;
 use std::iter::{self};
-use syntax::ast::{self};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
@@ -178,16 +179,17 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                tcx.lint_node_note(
-                    lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY,
+                tcx.struct_span_lint_hir(
+                    WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
                     &format!(
                         "the trait `{}` cannot be made into an object",
                         tcx.def_path_str(trait_def_id)
                     ),
-                    &violation.error_msg(),
-                );
+                )
+                .note(&violation.error_msg())
+                .emit();
                 false
             } else {
                 true

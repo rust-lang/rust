@@ -12,6 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
+use rustc_lint::LintStore;
 use rustc_parse::new_parser_from_source_str;
 use rustc_span::edition;
 use rustc_span::source_map::{FileLoader, FileName, SourceMap};
@@ -36,7 +37,7 @@ pub struct Compiler {
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
     pub(crate) crate_name: Option<String>,
-    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
+    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
 }
@@ -136,7 +137,7 @@ pub struct Config {
     ///
     /// Note that if you find a Some here you probably want to call that function in the new
     /// function being registered.
-    pub register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
+    pub register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
 
     /// This is a callback from the driver that is called just after we have populated
     /// the list of queries.

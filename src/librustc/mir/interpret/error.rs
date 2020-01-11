@@ -154,7 +154,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 .next()
                 .unwrap_or(lint_root);
             tcx.struct_span_lint_hir(
-                crate::rustc::lint::builtin::CONST_ERR,
+                rustc_session::lint::builtin::CONST_ERR,
                 hir_id,
                 tcx.span,
                 message,
