@@ -37,6 +37,7 @@ pub mod src;
 pub mod child_by_source;
 
 pub mod visibility;
+pub mod find_path;
 
 #[cfg(test)]
 mod test_db;

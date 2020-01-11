@@ -1,12 +1,13 @@
-use std::collections::HashMap;
-
-use hir::{db::HirDatabase, HasSource};
+use hir::{db::HirDatabase, HasSource, InFile};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{
+    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
+    Assist, AssistCtx, AssistId,
+};
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -134,25 +135,23 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    let file_id = ctx.frange.file_id;
     let db = ctx.db;
+    let file_id = ctx.frange.file_id;
+    let trait_file_id = trait_.source(db).file_id;
 
     ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let substs = get_syntactic_substs(impl_node).unwrap_or_default();
-        let generic_def: hir::GenericDef = trait_.into();
-        let substs_by_param: HashMap<_, _> = generic_def
-            .params(db)
-            .into_iter()
-            // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
-            .skip(1)
-            .zip(substs.into_iter())
-            .collect();
+        let module = hir::SourceAnalyzer::new(
+            db,
+            hir::InFile::new(file_id.into(), impl_node.syntax()),
+            None,
+        )
+        .module();
+        let ast_transform = QualifyPaths::new(db, module)
+            .or(SubstituteTypeParams::for_trait_impl(db, trait_, impl_node));
         let items = missing_items
             .into_iter()
-            .map(|it| {
-                substitute_type_params(db, hir::InFile::new(file_id.into(), it), &substs_by_param)
-            })
+            .map(|it| ast_transform::apply(&*ast_transform, InFile::new(trait_file_id, it)))
             .map(|it| match it {
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
                 _ => it,
@@ -174,56 +173,6 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
         fn_def.with_body(make::block_from_expr(make::expr_unimplemented()))
     } else {
         fn_def
-    }
-}
-
-// FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
-// trait ref, and then go from the types in the substs back to the syntax)
-// FIXME: This should be a general utility (not even just for assists)
-fn get_syntactic_substs(impl_block: ast::ImplBlock) -> Option<Vec<ast::TypeRef>> {
-    let target_trait = impl_block.target_trait()?;
-    let path_type = match target_trait {
-        ast::TypeRef::PathType(path) => path,
-        _ => return None,
-    };
-    let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
-    let mut result = Vec::new();
-    for type_arg in type_arg_list.type_args() {
-        let type_arg: ast::TypeArg = type_arg;
-        result.push(type_arg.type_ref()?);
-    }
-    Some(result)
-}
-
-// FIXME: This should be a general utility (not even just for assists)
-fn substitute_type_params<N: AstNode>(
-    db: &impl HirDatabase,
-    node: hir::InFile<N>,
-    substs: &HashMap<hir::TypeParam, ast::TypeRef>,
-) -> N {
-    let type_param_replacements = node
-        .value
-        .syntax()
-        .descendants()
-        .filter_map(ast::TypeRef::cast)
-        .filter_map(|n| {
-            let path = match &n {
-                ast::TypeRef::PathType(path_type) => path_type.path()?,
-                _ => return None,
-            };
-            let analyzer = hir::SourceAnalyzer::new(db, node.with_value(n.syntax()), None);
-            let resolution = analyzer.resolve_path(db, &path)?;
-            match resolution {
-                hir::PathResolution::TypeParam(tp) => Some((n, substs.get(&tp)?.clone())),
-                _ => None,
-            }
-        })
-        .collect::<Vec<_>>();
-
-    if type_param_replacements.is_empty() {
-        node.value
-    } else {
-        edit::replace_descendants(&node.value, type_param_replacements.into_iter())
     }
 }
 
@@ -398,6 +347,174 @@ impl Foo for S {
     <|>fn foo(&self) { unimplemented!() }
 }",
         )
+    }
+
+    #[test]
+    fn test_qualify_path_1() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar;
+    trait Foo { fn foo(&self, bar: Bar); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar;
+    trait Foo { fn foo(&self, bar: Bar); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_generic() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo { fn foo(&self, bar: Bar<u32>); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo { fn foo(&self, bar: Bar<u32>); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_and_substitute_param() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+}
+struct S;
+impl foo::Foo<u32> for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    trait Foo<T> { fn foo(&self, bar: Bar<T>); }
+}
+struct S;
+impl foo::Foo<u32> for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_substitute_param_no_qualify() {
+        // when substituting params, the substituted param should not be qualified!
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    trait Foo<T> { fn foo(&self, bar: T); }
+    pub struct Param;
+}
+struct Param;
+struct S;
+impl foo::Foo<Param> for S { <|> }",
+            "
+mod foo {
+    trait Foo<T> { fn foo(&self, bar: T); }
+    pub struct Param;
+}
+struct Param;
+struct S;
+impl foo::Foo<Param> for S {
+    <|>fn foo(&self, bar: Param) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_associated_item() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    impl Bar<T> { type Assoc = u32; }
+    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    impl Bar<T> { type Assoc = u32; }
+    trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_nested() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub struct Bar<T>;
+    pub struct Baz;
+    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub struct Bar<T>;
+    pub struct Baz;
+    trait Foo { fn foo(&self, bar: Bar<Baz>); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) { unimplemented!() }
+}",
+        );
+    }
+
+    #[test]
+    fn test_qualify_path_fn_trait_notation() {
+        check_assist(
+            add_missing_impl_members,
+            "
+mod foo {
+    pub trait Fn<Args> { type Output; }
+    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+}
+struct S;
+impl foo::Foo for S { <|> }",
+            "
+mod foo {
+    pub trait Fn<Args> { type Output; }
+    trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
+}
+struct S;
+impl foo::Foo for S {
+    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) { unimplemented!() }
+}",
+        );
     }
 
     #[test]

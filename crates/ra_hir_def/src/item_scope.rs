@@ -104,6 +104,15 @@ impl ItemScope {
         }
     }
 
+    pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
+        for (name, per_ns) in &self.visible {
+            if let Some(vis) = item.match_with(*per_ns) {
+                return Some((name, vis));
+            }
+        }
+        None
+    }
+
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
         self.visible.values().filter_map(|def| match def.take_types() {
             Some(ModuleDefId::TraitId(t)) => Some(t),
@@ -170,6 +179,36 @@ impl PerNs {
             ModuleDefId::TraitId(_) => PerNs::types(def, v),
             ModuleDefId::TypeAliasId(_) => PerNs::types(def, v),
             ModuleDefId::BuiltinType(_) => PerNs::types(def, v),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum ItemInNs {
+    Types(ModuleDefId),
+    Values(ModuleDefId),
+    Macros(MacroDefId),
+}
+
+impl ItemInNs {
+    fn match_with(self, per_ns: PerNs) -> Option<Visibility> {
+        match self {
+            ItemInNs::Types(def) => {
+                per_ns.types.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
+            }
+            ItemInNs::Values(def) => {
+                per_ns.values.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
+            }
+            ItemInNs::Macros(def) => {
+                per_ns.macros.filter(|(other_def, _)| *other_def == def).map(|(_, vis)| vis)
+            }
+        }
+    }
+
+    pub fn as_module_def_id(self) -> Option<ModuleDefId> {
+        match self {
+            ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
+            ItemInNs::Macros(_) => None,
         }
     }
 }

@@ -7,8 +7,7 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     algo::{find_node_at_offset, replace_descendants},
-    ast::{self},
-    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent, T,
+    ast, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, WalkEvent, T,
 };
 
 pub struct ExpandedMacro {
@@ -43,7 +42,7 @@ fn expand_macro_recur(
     let mut expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
-    let mut replaces = FxHashMap::default();
+    let mut replaces: FxHashMap<SyntaxElement, SyntaxElement> = FxHashMap::default();
 
     for child in children.into_iter() {
         let node = hir::InFile::new(macro_file_id, &child);
@@ -59,7 +58,7 @@ fn expand_macro_recur(
         }
     }
 
-    Some(replace_descendants(&expanded, &replaces))
+    Some(replace_descendants(&expanded, &|n| replaces.get(n).cloned()))
 }
 
 // FIXME: It would also be cool to share logic here and in the mbe tests,

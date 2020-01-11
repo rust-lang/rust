@@ -184,17 +184,17 @@ pub fn replace_children(
 /// to create a type-safe abstraction on top of it instead.
 pub fn replace_descendants(
     parent: &SyntaxNode,
-    map: &FxHashMap<SyntaxElement, SyntaxElement>,
+    map: &impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
 ) -> SyntaxNode {
     //  FIXME: this could be made much faster.
     let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Vec<_>>();
     return with_children(parent, new_children);
 
     fn go(
-        map: &FxHashMap<SyntaxElement, SyntaxElement>,
+        map: &impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
         element: SyntaxElement,
     ) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
-        if let Some(replacement) = map.get(&element) {
+        if let Some(replacement) = map(&element) {
             return match replacement {
                 NodeOrToken::Node(it) => NodeOrToken::Node(it.green().clone()),
                 NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),

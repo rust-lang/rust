@@ -205,6 +205,10 @@ impl SourceAnalyzer {
         }
     }
 
+    pub fn module(&self) -> Option<crate::code_model::Module> {
+        Some(crate::code_model::Module { id: self.resolver.module()? })
+    }
+
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
         let src = InFile { file_id: self.file_id, value: expr };
         self.body_source_map.as_ref()?.node_expr(src)

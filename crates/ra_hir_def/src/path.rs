@@ -1,7 +1,11 @@
 //! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
 mod lower;
 
-use std::{iter, sync::Arc};
+use std::{
+    fmt::{self, Display},
+    iter,
+    sync::Arc,
+};
 
 use hir_expand::{
     hygiene::Hygiene,
@@ -245,6 +249,42 @@ impl From<Name> for Path {
 impl From<Name> for ModPath {
     fn from(name: Name) -> ModPath {
         ModPath::from_simple_segments(PathKind::Plain, iter::once(name))
+    }
+}
+
+impl Display for ModPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first_segment = true;
+        let mut add_segment = |s| {
+            if !first_segment {
+                f.write_str("::")?;
+            }
+            first_segment = false;
+            f.write_str(s)?;
+            Ok(())
+        };
+        match self.kind {
+            PathKind::Plain => {}
+            PathKind::Super(n) => {
+                if n == 0 {
+                    add_segment("self")?;
+                }
+                for _ in 0..n {
+                    add_segment("super")?;
+                }
+            }
+            PathKind::Crate => add_segment("crate")?,
+            PathKind::Abs => add_segment("")?,
+            PathKind::DollarCrate(_) => add_segment("$crate")?,
+        }
+        for segment in &self.segments {
+            if !first_segment {
+                f.write_str("::")?;
+            }
+            first_segment = false;
+            write!(f, "{}", segment)?;
+        }
+        Ok(())
     }
 }
 
