@@ -194,7 +194,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_index::bit_set::GrowableBitSet;
-
+use smallvec::SmallVec;
 use std::iter;
 
 #[derive(PartialEq)]
@@ -227,12 +227,7 @@ impl<'tcx> InliningMap<'tcx> {
         }
     }
 
-    fn record_accesses<I>(&mut self, source: MonoItem<'tcx>, new_targets: I)
-    where
-        I: Iterator<Item = (MonoItem<'tcx>, bool)> + ExactSizeIterator,
-    {
-        assert!(!self.index.contains_key(&source));
-
+    fn record_accesses(&mut self, source: MonoItem<'tcx>, new_targets: &[(MonoItem<'tcx>, bool)]) {
         let start_index = self.targets.len();
         let new_items_count = new_targets.len();
         let new_items_count_total = new_items_count + self.targets.len();
@@ -240,15 +235,15 @@ impl<'tcx> InliningMap<'tcx> {
         self.targets.reserve(new_items_count);
         self.inlines.ensure(new_items_count_total);
 
-        for (i, (target, inline)) in new_targets.enumerate() {
-            self.targets.push(target);
-            if inline {
+        for (i, (target, inline)) in new_targets.iter().enumerate() {
+            self.targets.push(*target);
+            if *inline {
                 self.inlines.insert(i + start_index);
             }
         }
 
         let end_index = self.targets.len();
-        self.index.insert(source, (start_index, end_index));
+        assert!(self.index.insert(source, (start_index, end_index)).is_none());
     }
 
     // Internally iterate over all items referenced by `source` which will be
@@ -403,10 +398,15 @@ fn record_accesses<'tcx>(
         mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
-    let accesses =
-        callees.into_iter().map(|mono_item| (*mono_item, is_inlining_candidate(mono_item)));
+    // We collect this into a `SmallVec` to avoid calling `is_inlining_candidate` in the lock.
+    // FIXME: Call `is_inlining_candidate` when pushing to `neighbors` in `collect_items_rec`
+    // instead to avoid creating this `SmallVec`.
+    let accesses: SmallVec<[_; 128]> = callees
+        .into_iter()
+        .map(|mono_item| (*mono_item, is_inlining_candidate(mono_item)))
+        .collect();
 
-    inlining_map.lock_mut().record_accesses(caller, accesses);
+    inlining_map.lock_mut().record_accesses(caller, &accesses);
 }
 
 fn check_recursion_limit<'tcx>(
