@@ -32,6 +32,12 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     // Predefine ebb's
     let start_ebb = bcx.create_ebb();
     let ebb_map: IndexVec<BasicBlock, Ebb> = (0..mir.basic_blocks().len()).map(|_| bcx.create_ebb()).collect();
+    let mut cold_ebbs = EntitySet::new();
+    for (bb, &ebb) in ebb_map.iter_enumerated() {
+        if mir.basic_blocks()[bb].is_cleanup {
+            cold_ebbs.insert(ebb);
+        }
+    }
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
@@ -49,6 +55,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         ebb_map,
         local_map: HashMap::new(),
         caller_location: None, // set by `codegen_fn_prelude`
+        cold_ebbs,
 
         clif_comments,
         constants_cx: &mut cx.constants_cx,
@@ -73,6 +80,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
+    let cold_ebbs = fx.cold_ebbs;
 
     #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &context.func, &clif_comments, None);
@@ -82,7 +90,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
+        crate::optimize::optimize_function(tcx, instance, context, &cold_ebbs, &mut clif_comments);
     });
 
     // Define function
@@ -191,8 +199,11 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     }
                 }
                 let cond = trans_operand(fx, cond).load_scalar(fx);
+
                 let target = fx.get_ebb(*target);
                 let failure = fx.bcx.create_ebb();
+                fx.cold_ebbs.insert(failure);
+
                 if *expected {
                     fx.bcx.ins().brz(cond, failure, &[]);
                 } else {
@@ -200,8 +211,6 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 };
                 fx.bcx.ins().jump(target, &[]);
 
-                // FIXME insert bb after all other bb's to reduce the amount of jumps in the common
-                // case and improve code locality.
                 fx.bcx.switch_to_block(failure);
                 trap_panic(
                     fx,

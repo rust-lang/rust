@@ -95,6 +95,7 @@ mod prelude {
     pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
 
     pub use cranelift_codegen::Context;
+    pub use cranelift_codegen::entity::EntitySet;
     pub use cranelift_codegen::ir::{AbiParam, Ebb, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
     pub use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub use cranelift_codegen::ir::function::Function;

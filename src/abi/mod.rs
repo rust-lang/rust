@@ -506,6 +506,7 @@ fn codegen_call_inner<'tcx>(
     args: Vec<CValue<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
 ) {
+    // FIXME mark the current ebb as cold when calling a `#[cold]` function.
     let fn_sig = fx
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));

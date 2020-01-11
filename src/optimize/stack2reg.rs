@@ -13,7 +13,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::ops::Not;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
-use cranelift_codegen::entity::EntitySet;
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 use cranelift_codegen::ir::immediates::Offset32;
 
