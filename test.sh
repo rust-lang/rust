@@ -60,6 +60,10 @@ echo "[AOT] std_example"
 $RUSTC example/std_example.rs --crate-type bin
 ./target/out/std_example
 
+echo "[AOT] subslice-patterns-const-eval"
+$RUSTC example/subslice-patterns-const-eval.rs --crate-type bin -Cpanic=abort
+./target/out/subslice-patterns-const-eval
+
 echo "[BUILD] mod_bench"
 $RUSTC example/mod_bench.rs --crate-type bin
 

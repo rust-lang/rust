@@ -688,7 +688,7 @@ pub fn trans_place<'tcx>(
                             .eval_usize(fx.tcx, ParamEnv::reveal_all());
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
-                            fx.layout_of(fx.tcx.mk_array(elem_ty, len - from as u64 - to as u64)),
+                            fx.layout_of(fx.tcx.mk_array(elem_ty, to as u64 - from as u64)),
                         );
                     }
                     ty::Slice(elem_ty) => {
