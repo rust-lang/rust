@@ -12,7 +12,6 @@
 #![feature(test)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
-#![feature(const_fn)]
 #![feature(drain_filter)]
 #![feature(never_type)]
 #![feature(unicode_internals)]

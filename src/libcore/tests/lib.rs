@@ -31,7 +31,6 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(int_error_matching)]
-#![feature(const_fn)]
 #![feature(array_value_iter)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
