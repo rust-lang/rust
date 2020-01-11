@@ -1441,17 +1441,8 @@ pub struct MacroDef {
     pub legacy: bool,
 }
 
-#[derive(
-    Clone,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Copy,
-    Hash,
-    Eq,
-    PartialEq,
-    HashStable_Generic
-)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -1501,17 +1492,8 @@ impl StrLit {
 }
 
 /// Type of the integer literal based on provided suffix.
-#[derive(
-    Clone,
-    Copy,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Hash,
-    Eq,
-    PartialEq,
-    HashStable_Generic
-)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -1522,17 +1504,8 @@ pub enum LitIntType {
 }
 
 /// Type of the float literal based on provided suffix.
-#[derive(
-    Clone,
-    Copy,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Hash,
-    Eq,
-    PartialEq,
-    HashStable_Generic
-)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),

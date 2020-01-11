@@ -148,18 +148,18 @@ pub struct GlobalId<'tcx> {
     pub promoted: Option<mir::Promoted>,
 }
 
-/// Input argument for `tcx.lit_to_const`
+/// Input argument for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
 pub struct LitToConstInput<'tcx> {
-    /// The absolute value of the resultant constant
+    /// The absolute value of the resultant constant.
     pub lit: &'tcx LitKind,
-    /// The type of the constant
+    /// The type of the constant.
     pub ty: Ty<'tcx>,
-    /// If the constant is negative
+    /// If the constant is negative.
     pub neg: bool,
 }
 
-/// Error type for `tcx.lit_to_const`
+/// Error type for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
     UnparseableFloat,

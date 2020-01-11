@@ -8,9 +8,8 @@ pub(crate) use self::check_match::check_match;
 
 use crate::hair::util::UserAnnotatedTyHelpers;
 
-use rustc::mir::interpret::{
-    get_slice_bytes, sign_extend, ConstValue, ErrorHandled, LitToConstError, LitToConstInput,
-};
+use rustc::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
+use rustc::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc::mir::UserTypeProjection;
 use rustc::mir::{BorrowKind, Field, Mutability};
 use rustc::ty::layout::VariantIdx;

@@ -1,4 +1,4 @@
-// ignore-tidy-filelength FIXME(#67418) Split up this file
+// ignore-tidy-filelength FIXME(#67418) Split up this file.
 //! Conversion from AST representation of types to the `ty.rs` representation.
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
@@ -2716,7 +2716,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if let Some(lit_input) = lit_input {
             // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir
+            // mir.
             if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
                 return c;
             }
