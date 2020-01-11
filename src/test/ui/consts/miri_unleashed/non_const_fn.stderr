@@ -24,6 +24,12 @@ error[E0080]: evaluation of constant expression failed
 LL |     println!("{:?}", C);
    |                      ^ referenced constant has errors
 
+warning: erroneous constant used
+  --> $DIR/non_const_fn.rs:14:22
+   |
+LL |     println!("{:?}", C);
+   |                      ^ referenced constant has errors
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

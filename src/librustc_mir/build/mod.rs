@@ -834,7 +834,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: tcx_hir.span(var_id),
                         },
                         place: Place {
-                            base: closure_env_arg.into(),
+                            local: closure_env_arg.into(),
                             projection: tcx.intern_place_elems(&projs),
                         },
                     });

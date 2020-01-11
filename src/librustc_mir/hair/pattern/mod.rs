@@ -775,6 +775,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     self.param_env.with_reveal_all(),
                     def_id,
                     substs,
+                    None,
                     Some(span),
                 ) {
                     Ok(value) => {

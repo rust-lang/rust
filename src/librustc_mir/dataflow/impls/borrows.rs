@@ -1,6 +1,6 @@
-use rustc::mir::{self, Body, Location, Place, PlaceBase};
+use rustc::mir::{self, Body, Location, Place};
 use rustc::ty::RegionVid;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -30,7 +30,6 @@ rustc_index::newtype_index! {
 pub struct Borrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
@@ -134,7 +133,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         borrow_set: &Rc<BorrowSet<'tcx>>,
     ) -> Self {
@@ -156,7 +154,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         Borrows {
             tcx,
             body,
-            param_env,
             borrow_set: borrow_set.clone(),
             borrows_out_of_scope_at_location,
             _nonlexical_regioncx: nonlexical_regioncx,
@@ -198,37 +195,34 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     fn kill_borrows_on_place(&self, trans: &mut GenKillSet<BorrowIndex>, place: &Place<'tcx>) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
-        if let PlaceBase::Local(local) = place.base {
-            let other_borrows_of_local =
-                self.borrow_set.local_map.get(&local).into_iter().flat_map(|bs| bs.into_iter());
+        let other_borrows_of_local =
+            self.borrow_set.local_map.get(&place.local).into_iter().flat_map(|bs| bs.into_iter());
 
-            // If the borrowed place is a local with no projections, all other borrows of this
-            // local must conflict. This is purely an optimization so we don't have to call
-            // `places_conflict` for every borrow.
-            if place.projection.is_empty() {
-                if !self.body.local_decls[local].is_ref_to_static() {
-                    trans.kill_all(other_borrows_of_local);
-                }
-                return;
+        // If the borrowed place is a local with no projections, all other borrows of this
+        // local must conflict. This is purely an optimization so we don't have to call
+        // `places_conflict` for every borrow.
+        if place.projection.is_empty() {
+            if !self.body.local_decls[place.local].is_ref_to_static() {
+                trans.kill_all(other_borrows_of_local);
             }
-
-            // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
-            // pair of array indices are unequal, so that when `places_conflict` returns true, we
-            // will be assured that two places being compared definitely denotes the same sets of
-            // locations.
-            let definitely_conflicting_borrows = other_borrows_of_local.filter(|&&i| {
-                places_conflict(
-                    self.tcx,
-                    self.param_env,
-                    self.body,
-                    &self.borrow_set.borrows[i].borrowed_place,
-                    place,
-                    PlaceConflictBias::NoOverlap,
-                )
-            });
-
-            trans.kill_all(definitely_conflicting_borrows);
+            return;
         }
+
+        // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
+        // pair of array indices are unequal, so that when `places_conflict` returns true, we
+        // will be assured that two places being compared definitely denotes the same sets of
+        // locations.
+        let definitely_conflicting_borrows = other_borrows_of_local.filter(|&&i| {
+            places_conflict(
+                self.tcx,
+                self.body,
+                &self.borrow_set.borrows[i].borrowed_place,
+                place,
+                PlaceConflictBias::NoOverlap,
+            )
+        });
+
+        trans.kill_all(definitely_conflicting_borrows);
     }
 }
 

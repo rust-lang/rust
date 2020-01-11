@@ -48,7 +48,8 @@ fn main() {}
 // START rustc.BAR.PromoteTemps.after.mir
 // bb0: {
 // ...
-//     _2 = &(promoted[0]: [&'static i32; 1]);
+//     _6 = const BAR::promoted[0];
+//     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
 //     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
@@ -60,7 +61,8 @@ fn main() {}
 // START rustc.FOO.PromoteTemps.after.mir
 // bb0: {
 // ...
-//     _2 = &(promoted[0]: [&'static i32; 1]);
+//     _6 = const FOO::promoted[0];
+//     _2 = &(*_6);
 //     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
 //     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }

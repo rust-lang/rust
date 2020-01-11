@@ -10,4 +10,5 @@ const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
 fn main() {
     println!("{}", FOO);
     //~^ ERROR
+    //~| WARN erroneous constant used [const_err]
 }

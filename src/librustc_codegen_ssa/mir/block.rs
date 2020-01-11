@@ -10,8 +10,8 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc::middle::lang_items;
+use rustc::mir;
 use rustc::mir::interpret::PanicInfo;
-use rustc::mir::{self, PlaceBase, Static, StaticKind};
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
@@ -609,53 +609,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // checked by const-qualification, which also
                     // promotes any complex rvalues to constants.
                     if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
-                        match arg {
-                            // The shuffle array argument is usually not an explicit constant,
-                            // but specified directly in the code. This means it gets promoted
-                            // and we can then extract the value by evaluating the promoted.
-                            mir::Operand::Copy(place) | mir::Operand::Move(place) => {
-                                if let mir::PlaceRef {
-                                    base:
-                                        &PlaceBase::Static(box Static {
-                                            kind: StaticKind::Promoted(promoted, substs),
-                                            ty,
-                                            def_id,
-                                        }),
-                                    projection: &[],
-                                } = place.as_ref()
-                                {
-                                    let c = bx.tcx().const_eval_promoted(
-                                        Instance::new(def_id, self.monomorphize(&substs)),
-                                        promoted,
-                                    );
-                                    let (llval, ty) = self.simd_shuffle_indices(
-                                        &bx,
-                                        terminator.source_info.span,
-                                        ty,
-                                        c,
-                                    );
-                                    return OperandRef {
-                                        val: Immediate(llval),
-                                        layout: bx.layout_of(ty),
-                                    };
-                                } else {
-                                    span_bug!(span, "shuffle indices must be constant");
-                                }
-                            }
-
-                            mir::Operand::Constant(constant) => {
-                                let c = self.eval_mir_constant(constant);
-                                let (llval, ty) = self.simd_shuffle_indices(
-                                    &bx,
-                                    constant.span,
-                                    constant.literal.ty,
-                                    c,
-                                );
-                                return OperandRef {
-                                    val: Immediate(llval),
-                                    layout: bx.layout_of(ty),
-                                };
-                            }
+                        if let mir::Operand::Constant(constant) = arg {
+                            let c = self.eval_mir_constant(constant);
+                            let (llval, ty) = self.simd_shuffle_indices(
+                                &bx,
+                                constant.span,
+                                constant.literal.ty,
+                                c,
+                            );
+                            return OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) };
+                        } else {
+                            span_bug!(span, "shuffle indices must be constant");
                         }
                     }
 
@@ -1147,7 +1111,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             self.codegen_place(
                 bx,
-                &mir::PlaceRef { base: &dest.base, projection: &dest.projection },
+                &mir::PlaceRef { local: &dest.local, projection: &dest.projection },
             )
         };
         if fn_ret.is_indirect() {

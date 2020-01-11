@@ -1,8 +1,8 @@
 warning: any use of this value will cause an error
   --> $DIR/issue-43197.rs:10:20
    |
-LL |     const X: u32 = 0-1;
-   |     ---------------^^^-
+LL |     const X: u32 = 0 - 1;
+   |     ---------------^^^^^-
    |                    |
    |                    attempt to subtract with overflow
    |
@@ -15,8 +15,8 @@ LL | #![warn(const_err)]
 warning: any use of this value will cause an error
   --> $DIR/issue-43197.rs:12:24
    |
-LL |     const Y: u32 = foo(0-1);
-   |     -------------------^^^--
+LL |     const Y: u32 = foo(0 - 1);
+   |     -------------------^^^^^--
    |                        |
    |                        attempt to subtract with overflow
 
@@ -26,7 +26,19 @@ error[E0080]: evaluation of constant expression failed
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
+warning: erroneous constant used
+  --> $DIR/issue-43197.rs:14:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^ referenced constant has errors
+
 error[E0080]: evaluation of constant expression failed
+  --> $DIR/issue-43197.rs:14:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^ referenced constant has errors
+
+warning: erroneous constant used
   --> $DIR/issue-43197.rs:14:26
    |
 LL |     println!("{} {}", X, Y);

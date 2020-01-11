@@ -47,15 +47,15 @@ where
         debug_assert!(!place.is_indirect());
 
         match (value, place.as_ref()) {
-            (true, mir::PlaceRef { base: &mir::PlaceBase::Local(local), .. }) => {
-                self.qualifs_per_local.insert(local);
+            (true, mir::PlaceRef { local, .. }) => {
+                self.qualifs_per_local.insert(*local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
             // an unqualified rvalue (e.g. `y = 5`). This is to be consistent
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
-            (false, mir::PlaceRef { base: &mir::PlaceBase::Local(_local), projection: &[] }) => {
+            (false, mir::PlaceRef { local: _, projection: &[] }) => {
                 // self.qualifs_per_local.remove(*local);
             }
 

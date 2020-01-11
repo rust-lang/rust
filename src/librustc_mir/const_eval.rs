@@ -52,7 +52,7 @@ pub(crate) fn const_caller_location<'tcx>(
 
     let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
-    intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
+    intern_const_alloc_recursive(&mut ecx, None, loc_place, false).unwrap();
     let loc_const = ty::Const {
         ty: loc_ty,
         val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),

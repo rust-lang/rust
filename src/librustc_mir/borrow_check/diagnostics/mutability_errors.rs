@@ -1,5 +1,5 @@
 use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyAndCache};
-use rustc::mir::{Mutability, Place, PlaceBase, PlaceRef, ProjectionElem};
+use rustc::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -42,7 +42,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
-            PlaceRef { base: PlaceBase::Local(local), projection: [] } => {
+            PlaceRef { local, projection: [] } => {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
                 if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
@@ -53,11 +53,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef {
-                base: _,
+                local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(&the_place_err.base, proj_base, *self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
@@ -69,21 +69,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            PlaceRef { base: &PlaceBase::Local(local), projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_for_guard() =>
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
+                if self.body.local_decls[*local].is_ref_for_guard() =>
             {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
                 reason = ", as it is immutable for the pattern guard".to_string();
             }
-            PlaceRef { base: &PlaceBase::Local(local), projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_to_static() =>
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
+                if self.body.local_decls[*local].is_ref_to_static() =>
             {
                 if access_place.projection.len() == 1 {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
                     reason = String::new();
                 } else {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    let local_info = &self.body.local_decls[local].local_info;
+                    let local_info = &self.body.local_decls[*local].local_info;
                     if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
                         reason = format!(", as `{}` is an immutable static item", static_name);
@@ -92,8 +92,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
             }
-            PlaceRef { base: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if the_place_err.base == &PlaceBase::Local(Local::new(1))
+            PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
+                if *the_place_err.local == Local::new(1)
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
@@ -101,7 +101,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
-                            the_place_err.base,
+                            the_place_err.local,
                             the_place_err.projection,
                             *self.body,
                             self.infcx.tcx
@@ -116,7 +116,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 } else {
                     let source = self.borrowed_content_source(PlaceRef {
-                        base: the_place_err.base,
+                        local: the_place_err.local,
                         projection: proj_base,
                     });
                     let pointer_type = source.describe_for_immutable_place();
@@ -136,11 +136,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            PlaceRef { base: PlaceBase::Static(_), .. }
-            | PlaceRef { base: _, projection: [.., ProjectionElem::Index(_)] }
-            | PlaceRef { base: _, projection: [.., ProjectionElem::ConstantIndex { .. }] }
-            | PlaceRef { base: _, projection: [.., ProjectionElem::Subslice { .. }] }
-            | PlaceRef { base: _, projection: [.., ProjectionElem::Downcast(..)] } => {
+            PlaceRef { local: _, projection: [.., ProjectionElem::Index(_)] }
+            | PlaceRef { local: _, projection: [.., ProjectionElem::ConstantIndex { .. }] }
+            | PlaceRef { local: _, projection: [.., ProjectionElem::Subslice { .. }] }
+            | PlaceRef { local: _, projection: [.., ProjectionElem::Downcast(..)] } => {
                 bug!("Unexpected immutable place.")
             }
         }
@@ -188,7 +187,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // struct we've got a field access of (it must be a reference since there's a deref
             // after the field access).
             PlaceRef {
-                base,
+                local,
                 projection:
                     [proj_base @ .., ProjectionElem::Deref, ProjectionElem::Field(field, _), ProjectionElem::Deref],
             } => {
@@ -196,7 +195,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    Place::ty_from(base, proj_base, *self.body, self.infcx.tcx).ty,
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty,
                     field,
                 ) {
                     err.span_suggestion(
@@ -209,7 +208,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             // Suggest removing a `&mut` from the use of a mutable reference.
-            PlaceRef { base: PlaceBase::Local(local), projection: [] }
+            PlaceRef { local, projection: [] }
                 if {
                     self.body
                         .local_decls
@@ -247,7 +246,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
-            PlaceRef { base: PlaceBase::Local(local), projection: [] }
+            PlaceRef { local, projection: [] }
                 if self.body.local_decls[*local].can_be_made_mutable() =>
             {
                 // ... but it doesn't make sense to suggest it on
@@ -268,11 +267,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             // Also suggest adding mut for upvars
             PlaceRef {
-                base,
+                local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(base, proj_base, *self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -299,7 +298,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // complete hack to approximate old AST-borrowck
             // diagnostic: if the span starts with a mutable borrow of
             // a local variable, then just suggest the user remove it.
-            PlaceRef { base: PlaceBase::Local(_), projection: [] }
+            PlaceRef { local: _, projection: [] }
                 if {
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         snippet.starts_with("&mut ")
@@ -312,7 +311,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_label(span, "try removing `&mut` here");
             }
 
-            PlaceRef { base: PlaceBase::Local(local), projection: [ProjectionElem::Deref] }
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[*local].is_ref_for_guard() =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -326,7 +325,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             //
             // FIXME: can this case be generalized to work for an
             // arbitrary base for the projection?
-            PlaceRef { base: PlaceBase::Local(local), projection: [ProjectionElem::Deref] }
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[*local].is_user_variable() =>
             {
                 let local_decl = &self.body.local_decls[*local];
@@ -409,10 +408,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef {
-                base,
+                local,
                 projection: [ProjectionElem::Deref],
                 // FIXME document what is this 1 magic number about
-            } if *base == PlaceBase::Local(Local::new(1)) && !self.upvars.is_empty() => {
+            } if *local == Local::new(1) && !self.upvars.is_empty() => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_help(
                     self.body.span,
@@ -420,7 +419,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 );
             }
 
-            PlaceRef { base: _, projection: [.., ProjectionElem::Deref] } => {
+            PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
                 match opt_source {

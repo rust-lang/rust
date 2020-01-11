@@ -190,18 +190,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        match place.base {
-            PlaceBase::Local(..) => {
-                // Locals are safe.
-            }
-            PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => {
-                bug!("unsafety checking should happen before promotion");
-            }
-            PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
-                bug!("StaticKind::Static should not exist");
-            }
-        }
-
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
 
@@ -229,7 +217,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
             let is_borrow_of_interior_mut = context.is_borrow()
-                && !Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty.is_freeze(
+                && !Place::ty_from(&place.local, proj_base, self.body, self.tcx).ty.is_freeze(
                     self.tcx,
                     self.param_env,
                     self.source_info.span,
@@ -244,7 +232,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 self.check_mut_borrowing_layout_constrained_field(place, context.is_mutating_use());
             }
             let old_source_info = self.source_info;
-            if let (PlaceBase::Local(local), []) = (&place.base, proj_base) {
+            if let (local, []) = (&place.local, proj_base) {
                 let decl = &self.body.local_decls[*local];
                 if decl.internal {
                     // Internal locals are used in the `move_val_init` desugaring.
@@ -272,7 +260,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     }
                 }
             }
-            let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
+            let base_ty = Place::ty_from(&place.local, proj_base, self.body, self.tcx).ty;
             match base_ty.kind {
                 ty::RawPtr(..) => self.require_unsafe(
                     "dereference of raw pointer",
@@ -426,7 +414,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Field(..) => {
                     let ty =
-                        Place::ty_from(&place.base, proj_base, &self.body.local_decls, self.tcx).ty;
+                        Place::ty_from(&place.local, proj_base, &self.body.local_decls, self.tcx)
+                            .ty;
                     match ty.kind {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {}

@@ -10,15 +10,15 @@ use rustc::mir::visit::{
 };
 use rustc::mir::{
     read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, ReadOnlyBodyAndCache, Rvalue,
+    Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
 use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -33,7 +33,6 @@ use crate::interpret::{
     LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
     ScalarMaybeUndef, StackPopCleanup,
 };
-use crate::rustc::ty::subst::Subst;
 use crate::transform::{MirPass, MirSource};
 
 /// The maximum number of bytes that we'll allocate space for a return value.
@@ -432,12 +431,25 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = c.span;
+
+        // FIXME we need to revisit this for #67176
+        if c.needs_subst() {
+            return None;
+        }
+
         match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
                 let err = error_to_const_error(&self.ecx, error);
-                match self.lint_root(source_info) {
-                    Some(lint_root) if c.literal.needs_subst() => {
+                if let Some(lint_root) = self.lint_root(source_info) {
+                    let lint_only = match c.literal.val {
+                        // Promoteds must lint and not error as the user didn't ask for them
+                        ConstKind::Unevaluated(_, _, Some(_)) => true,
+                        // Out of backwards compatibility we cannot report hard errors in unused
+                        // generic functions using associated constants of the generic parameters.
+                        _ => c.literal.needs_subst(),
+                    };
+                    if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
                         err.report_as_lint(
@@ -446,10 +458,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             lint_root,
                             Some(c.span),
                         );
-                    }
-                    _ => {
+                    } else {
                         err.report_as_error(self.ecx.tcx, "erroneous constant used");
                     }
+                } else {
+                    err.report_as_error(self.ecx.tcx, "erroneous constant used");
                 }
                 None
             }
@@ -549,6 +562,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         // #66397: Don't try to eval into large places as that can cause an OOM
         if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
+            return None;
+        }
+
+        // FIXME we need to revisit this for #67176
+        if rvalue.needs_subst() {
             return None;
         }
 
@@ -708,7 +726,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             )) => l.is_bits() && r.is_bits(),
             interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
                 let mplace = op.assert_mem_place(&self.ecx);
-                intern_const_alloc_recursive(&mut self.ecx, None, mplace)
+                intern_const_alloc_recursive(&mut self.ecx, None, mplace, false)
                     .expect("failed to intern alloc");
                 true
             }
@@ -866,9 +884,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                if let PlaceBase::Local(local) = place.base {
-                                    self.remove_const(local);
-                                }
+                                self.remove_const(place.local);
                             }
                             Operand::Constant(_) => {}
                         }
