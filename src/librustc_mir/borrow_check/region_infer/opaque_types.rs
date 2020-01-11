@@ -1,5 +1,5 @@
 use rustc::infer::InferCtxt;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
@@ -118,5 +118,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 )
             })
             .collect()
+    }
+
+    /// Map the regions in the type to named regions. This is similar to what
+    /// `infer_opaque_types` does, but can infer any universal region, not only
+    /// ones from the substs for the opaque type. It also doesn't double check
+    /// that the regions produced are in fact equal to the named region they are
+    /// replaced with. This is fine because this function is only to improve the
+    /// region names in error messages.
+    pub(in crate::borrow_check) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        tcx.fold_regions(&ty, &mut false, |region, _| match *region {
+            ty::ReVar(vid) => {
+                let upper_bound = self.universal_upper_bound(vid);
+                self.definitions[upper_bound].external_name.unwrap_or(region)
+            }
+            _ => region,
+        })
     }
 }
