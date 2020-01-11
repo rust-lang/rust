@@ -93,6 +93,18 @@ pub struct OpaqueTypeDecl<'tcx> {
     pub origin: hir::OpaqueTyOrigin,
 }
 
+/// Whether member constraints should be generated for all opaque types
+pub enum GenerateMemberConstraints {
+    /// The default, used by typeck
+    WhenRequired,
+    /// The borrow checker needs member constraints in any case where we don't
+    /// have a `'static` bound. This is because the borrow checker has more
+    /// flexibility in the values of regions. For example, given `f<'a, 'b>`
+    /// the borrow checker can have an inference variable outlive `'a` and `'b`,
+    /// but not be equal to `'static`.
+    IfNoStaticBound,
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Replaces all opaque types in `value` with fresh inference variables
     /// and creates appropriate obligations. For example, given the input:
@@ -315,7 +327,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("constrain_opaque_types()");
 
         for (&def_id, opaque_defn) in opaque_types {
-            self.constrain_opaque_type(def_id, opaque_defn, free_region_relations);
+            self.constrain_opaque_type(
+                def_id,
+                opaque_defn,
+                GenerateMemberConstraints::WhenRequired,
+                free_region_relations,
+            );
         }
     }
 
@@ -324,6 +341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         def_id: DefId,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
+        mode: GenerateMemberConstraints,
         free_region_relations: &FRR,
     ) {
         debug!("constrain_opaque_type()");
@@ -357,6 +375,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     tcx: self.tcx,
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
+            }
+            if let GenerateMemberConstraints::IfNoStaticBound = mode {
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_type_generics,
+                    opaque_defn,
+                    def_id,
+                );
             }
             return;
         }
@@ -398,13 +424,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // we will create a "in bound" like `'r in
                         // ['a, 'b, 'c]`, where `'a..'c` are the
                         // regions that appear in the impl trait.
+
+                        // For now, enforce a feature gate outside of async functions.
+                        self.member_constraint_feature_gate(opaque_defn, def_id, lr, subst_arg);
+
                         return self.generate_member_constraint(
                             concrete_ty,
                             opaque_type_generics,
                             opaque_defn,
                             def_id,
-                            lr,
-                            subst_arg,
                         );
                     }
                 }
@@ -414,6 +442,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
+        if let GenerateMemberConstraints::IfNoStaticBound = mode {
+            if least_region != tcx.lifetimes.re_static {
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_type_generics,
+                    opaque_defn,
+                    def_id,
+                );
+            }
+        }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
@@ -434,19 +472,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         opaque_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
-        conflict1: ty::Region<'tcx>,
-        conflict2: ty::Region<'tcx>,
     ) {
-        // For now, enforce a feature gate outside of async functions.
-        if self.member_constraint_feature_gate(
-            opaque_defn,
-            opaque_type_def_id,
-            conflict1,
-            conflict2,
-        ) {
-            return;
-        }
-
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.

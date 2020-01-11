@@ -6,6 +6,7 @@ use std::{fmt, iter, mem};
 use either::Either;
 
 use rustc::infer::canonical::QueryRegionConstraints;
+use rustc::infer::opaque_types::GenerateMemberConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
@@ -1357,6 +1358,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             infcx.constrain_opaque_type(
                                 opaque_def_id,
                                 &opaque_decl,
+                                GenerateMemberConstraints::IfNoStaticBound,
                                 universal_region_relations,
                             );
                             Ok(InferOk { value: (), obligations: vec![] })
