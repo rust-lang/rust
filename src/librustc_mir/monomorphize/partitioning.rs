@@ -216,10 +216,7 @@ fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I) -> PreInlini
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
-    let mut roots = FxHashSet::default();
-    let mut codegen_units = FxHashMap::default();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
-    let mut internalization_candidates = FxHashSet::default();
 
     // Determine if monomorphizations instantiated in this crate will be made
     // available to downstream crates. This depends on whether we are in
@@ -227,52 +224,77 @@ where
     // downstream crates.
     let export_generics = tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics();
 
-    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-    let cgu_name_cache = &mut FxHashMap::default();
+    let mono_items: Vec<_> = mono_items.collect();
 
-    for mono_item in mono_items {
-        match mono_item.instantiation_mode(tcx) {
-            InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => continue,
-        }
+    let _prof_timer = tcx.prof.generic_activity("place_root_mono_items_par");
 
-        let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
-        let is_volatile = is_incremental_build && mono_item.is_generic_fn();
+    let chunks = sync::par_partition(&mono_items, 2, |chunk| {
+        let mut roots = Vec::new();
+        let mut codegen_units = FxHashMap::default();
+        let mut internalization_candidates = Vec::new();
 
-        let codegen_unit_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+        let cgu_name_cache = &mut FxHashMap::default();
+
+        for &mono_item in chunk {
+            match mono_item.instantiation_mode(tcx) {
+                InstantiationMode::GloballyShared { .. } => {}
+                InstantiationMode::LocalCopy => continue,
+            }
+
+            let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
+            let is_volatile = is_incremental_build && mono_item.is_generic_fn();
+
+            let codegen_unit_name = match characteristic_def_id {
+                Some(def_id) => compute_codegen_unit_name(
+                    tcx,
+                    cgu_name_builder,
+                    def_id,
+                    is_volatile,
+                    cgu_name_cache,
+                ),
+                None => fallback_cgu_name(cgu_name_builder),
+            };
+
+            let codegen_unit = codegen_units.entry(codegen_unit_name).or_insert_with(|| Vec::new());
+
+            let mut can_be_internalized = true;
+            let (linkage, visibility) = mono_item_linkage_and_visibility(
                 tcx,
-                cgu_name_builder,
-                def_id,
-                is_volatile,
-                cgu_name_cache,
-            ),
-            None => fallback_cgu_name(cgu_name_builder),
-        };
+                &mono_item,
+                &mut can_be_internalized,
+                export_generics,
+            );
+            if visibility == Visibility::Hidden && can_be_internalized {
+                internalization_candidates.push(mono_item);
+            }
 
-        let codegen_unit = codegen_units
-            .entry(codegen_unit_name)
-            .or_insert_with(|| CodegenUnit::new(codegen_unit_name));
-
-        let mut can_be_internalized = true;
-        let (linkage, visibility) = mono_item_linkage_and_visibility(
-            tcx,
-            &mono_item,
-            &mut can_be_internalized,
-            export_generics,
-        );
-        if visibility == Visibility::Hidden && can_be_internalized {
-            internalization_candidates.insert(mono_item);
+            codegen_unit.push((mono_item, (linkage, visibility)));
+            roots.push(mono_item);
         }
 
-        codegen_unit.items_mut().insert(mono_item, (linkage, visibility));
-        roots.insert(mono_item);
+        (roots, codegen_units, internalization_candidates)
+    });
+
+    let _prof_timer = tcx.prof.generic_activity("place_root_mono_items_merge");
+
+    let mut roots = FxHashSet::default();
+    let mut codegen_units: FxHashMap<Symbol, CodegenUnit<'tcx>> = FxHashMap::default();
+    let mut internalization_candidates = FxHashSet::default();
+
+    for (chunk_roots, chunk_codegen_units, chunk_internalization_candidates) in chunks {
+        roots.extend(chunk_roots);
+        internalization_candidates.extend(chunk_internalization_candidates);
+        for (name, items) in chunk_codegen_units {
+            let codegen_unit = codegen_units.entry(name).or_insert_with(|| CodegenUnit::new(name));
+            codegen_unit.items_mut().extend(items);
+        }
     }
 
     // Always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU.
     if codegen_units.is_empty() {
-        let codegen_unit_name = fallback_cgu_name(cgu_name_builder);
+        let codegen_unit_name = fallback_cgu_name(&mut CodegenUnitNameBuilder::new(tcx));
         codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
     }
 
