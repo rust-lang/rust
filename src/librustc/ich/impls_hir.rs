@@ -3,12 +3,12 @@
 
 use crate::hir::map::DefPathHash;
 use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use std::mem;
-use syntax::attr;
 
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     #[inline]

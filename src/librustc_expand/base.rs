@@ -1,5 +1,6 @@
 use crate::expand::{self, AstFragment, Invocation};
 
+use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
@@ -11,7 +12,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, MultiSpan, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use syntax::ast::{self, Attribute, Name, NodeId, PatKind};
-use syntax::attr::{self, Deprecation, HasAttrs, Stability};
 use syntax::mut_visit::{self, MutVisitor};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;

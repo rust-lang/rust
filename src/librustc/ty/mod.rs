@@ -26,6 +26,7 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
+use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
@@ -53,7 +54,6 @@ use std::ops::Range;
 use std::slice;
 use std::{mem, ptr};
 use syntax::ast::{self, Ident, Name, NodeId};
-use syntax::attr;
 
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;

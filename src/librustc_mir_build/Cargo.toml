@@ -15,6 +15,7 @@ itertools = "0.8"
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
 rustc_errors = { path = "../librustc_errors" }

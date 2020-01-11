@@ -32,7 +32,7 @@ use syntax::ast::{AttrVec, BlockCheckMode};
 use syntax::mut_visit::{visit_clobber, MutVisitor, *};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::{self, ast, attr};
+use syntax::{self, ast};
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -547,7 +547,7 @@ pub fn build_output_filenames(
                 .opts
                 .crate_name
                 .clone()
-                .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
+                .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()))
                 .unwrap_or_else(|| input.filestem().to_owned());
 
             OutputFilenames {

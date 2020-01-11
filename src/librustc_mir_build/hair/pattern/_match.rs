@@ -245,8 +245,8 @@ use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
 
+use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::attr::{SignedInt, UnsignedInt};
 
 use arena::TypedArena;
 

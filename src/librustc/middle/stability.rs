@@ -5,6 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
+use rustc_attr::{self as attr, ConstStability, Deprecation, RustcDeprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
@@ -16,7 +17,6 @@ use rustc_session::lint::{self, BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
-use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
 use syntax::sess::feature_err_issue;
 
 use std::num::NonZeroU32;
