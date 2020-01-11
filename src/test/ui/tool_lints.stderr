@@ -16,5 +16,11 @@ error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
 LL | #[warn(foo::bar)]
    |        ^^^
 
-error: aborting due to 3 previous errors
+error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
+  --> $DIR/tool_lints.rs:1:8
+   |
+LL | #[warn(foo::bar)]
+   |        ^^^
+
+error: aborting due to 4 previous errors
 

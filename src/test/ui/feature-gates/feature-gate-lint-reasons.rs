@@ -2,5 +2,6 @@
 //~^ ERROR lint reasons are experimental
 //~| ERROR lint reasons are experimental
 //~| ERROR lint reasons are experimental
+//~| ERROR lint reasons are experimental
 
 fn main() {}
