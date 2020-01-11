@@ -25,6 +25,7 @@ use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::span_bug;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
@@ -47,7 +48,6 @@ use syntax::ast::{Crate, CRATE_NODE_ID};
 use syntax::ast::{ItemKind, Path};
 use syntax::attr;
 use syntax::node_id::{NodeMap, NodeSet};
-use syntax::print::pprust;
 use syntax::unwrap_or;
 use syntax::visit::{self, Visitor};
 

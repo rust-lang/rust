@@ -2,6 +2,7 @@
 
 use super::{find_by_name, mark_used};
 
+use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
@@ -10,7 +11,6 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
 use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem};
-use syntax::print::pprust;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()

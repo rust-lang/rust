@@ -6,6 +6,7 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
@@ -19,7 +20,6 @@ use std::mem;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
 

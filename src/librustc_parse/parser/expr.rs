@@ -3,6 +3,7 @@ use super::{BlockMode, Parser, PathStyle, PrevTokenKind, Restrictions, TokenType
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -12,7 +13,6 @@ use syntax::ast::{
     AnonConst, BinOp, BinOpKind, FnDecl, FunctionRetTy, Mac, Param, Ty, TyKind, UnOp,
 };
 use syntax::ast::{Arm, BlockCheckMode, Expr, ExprKind, IsAsync, Label, Movability, RangeLimits};
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::classify;

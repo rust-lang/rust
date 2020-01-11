@@ -1,10 +1,10 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc::hir::map::Map;
-use rustc::lint::struct_lint_level;
-use rustc::lint::{LintLevelMap, LintLevelSets, LintSet, LintSource};
+use rustc::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -17,7 +17,6 @@ use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 use syntax::unwrap_or;
 
 use std::cmp;

@@ -3,6 +3,7 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
+use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
 use rustc_span::source_map::{self, respan, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -13,7 +14,6 @@ use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter,
 use syntax::ast::{Constness, Defaultness, Extern, IsAsync, IsAuto, PathSegment, StrLit, Unsafety};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
 use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};

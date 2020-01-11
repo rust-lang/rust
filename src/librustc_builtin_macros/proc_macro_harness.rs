@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::parse::ParseSess;
@@ -10,7 +11,6 @@ use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 
