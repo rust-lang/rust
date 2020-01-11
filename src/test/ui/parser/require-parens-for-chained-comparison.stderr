@@ -1,16 +1,16 @@
-error: chained comparison operators require parentheses
+error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:5:11
    |
 LL |     false == false == false;
    |           ^^^^^^^^^^^
 
-error: chained comparison operators require parentheses
+error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:8:11
    |
 LL |     false == 0 < 2;
    |           ^^^^^^
 
-error: chained comparison operators require parentheses
+error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:13:6
    |
 LL |     f<X>();
@@ -21,19 +21,27 @@ help: use `::<...>` instead of `<...>` to specify type arguments
 LL |     f::<X>();
    |      ^^
 
-error: chained comparison operators require parentheses
+error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:17:6
    |
 LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^^^^^^^
    |
+help: split the comparison into two...
+   |
+LL |     f < Result && Result <Option<X>, Option<Option<X>>>(1, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (f < Result) <Option<X>, Option<Option<X>>>(1, 2);
+   |     ^^^^^^^^^^^^^^
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^
 
-error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:22:21
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:24:21
    |
 LL |     let _ = identity<u8>;
    |                     ^^^^
