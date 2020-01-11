@@ -1,6 +1,6 @@
 use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
 use crate::mir;
-use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -517,6 +517,13 @@ rustc_queries! {
         query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }
+        }
+
+        query lit_to_const(
+            key: LitToConstInput<'tcx>
+        ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+            no_force
+            desc { "converting literal to const" }
         }
     }
 

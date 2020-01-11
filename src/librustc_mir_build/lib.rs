@@ -22,5 +22,6 @@ use rustc::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.check_match = hair::pattern::check_match;
+    providers.lit_to_const = hair::constant::lit_to_const;
     providers.mir_built = build::mir_built;
 }

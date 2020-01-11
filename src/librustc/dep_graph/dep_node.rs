@@ -52,7 +52,7 @@
 use crate::hir::map::DefPathHash;
 use crate::ich::{Fingerprint, StableHashingContext};
 use crate::mir;
-use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
