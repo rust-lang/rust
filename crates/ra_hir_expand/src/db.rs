@@ -190,7 +190,6 @@ fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> Fragmen
         TUPLE_EXPR => FragmentKind::Expr,
         PAREN_EXPR => FragmentKind::Expr,
 
-        // FIXME: Add tests for following cases in hir_ty
         FOR_EXPR => FragmentKind::Expr,
         PATH_EXPR => FragmentKind::Expr,
         LAMBDA_EXPR => FragmentKind::Expr,

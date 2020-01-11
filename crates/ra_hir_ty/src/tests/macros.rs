@@ -136,6 +136,87 @@ fn main() {
 }
 
 #[test]
+fn expr_macro_expanded_in_various_places() {
+    assert_snapshot!(
+        infer(r#"
+macro_rules! spam {
+    () => (1isize);
+}
+
+fn spam() {
+    spam!();
+    (spam!());
+    spam!().spam(spam!());
+    for _ in spam!() {}
+    || spam!();
+    while spam!() {}
+    break spam!();
+    return spam!();
+    match spam!() {
+        _ if spam!() => spam!(),
+    }
+    spam!()(spam!());
+    Spam { spam: spam!() };
+    spam!()[spam!()];
+    await spam!();
+    spam!() as usize;
+    &spam!();
+    -spam!();
+    spam!()..spam!();
+    spam!() + spam!();
+}
+"#),
+        @r###"
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    ![0; 6) '1isize': isize
+    [54; 457) '{     ...!(); }': !
+    [88; 109) 'spam!(...am!())': {unknown}
+    [115; 134) 'for _ ...!() {}': ()
+    [119; 120) '_': {unknown}
+    [132; 134) '{}': ()
+    [139; 149) '|| spam!()': || -> isize
+    [155; 171) 'while ...!() {}': ()
+    [169; 171) '{}': ()
+    [176; 189) 'break spam!()': !
+    [195; 209) 'return spam!()': !
+    [215; 269) 'match ...     }': isize
+    [239; 240) '_': isize
+    [274; 290) 'spam!(...am!())': {unknown}
+    [296; 318) 'Spam {...m!() }': {unknown}
+    [324; 340) 'spam!(...am!()]': {unknown}
+    [365; 381) 'spam!(... usize': usize
+    [387; 395) '&spam!()': &isize
+    [401; 409) '-spam!()': isize
+    [415; 431) 'spam!(...pam!()': {unknown}
+    [437; 454) 'spam!(...pam!()': isize
+    "###
+    );
+}
+
+#[test]
 fn infer_type_value_macro_having_same_name() {
     assert_snapshot!(
         infer(r#"
