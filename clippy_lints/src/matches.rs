@@ -716,41 +716,22 @@ fn all_ranges<'a, 'tcx>(
             } = *arm
             {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
-                    match (lhs, rhs) {
-                        (Some(lhs), Some(rhs)) => {
-                            let lhs = constant(cx, cx.tables, lhs)?.0;
-                            let rhs = constant(cx, cx.tables, rhs)?.0;
-                            let rhs = match range_end {
-                                RangeEnd::Included => Bound::Included(rhs),
-                                RangeEnd::Excluded => Bound::Excluded(rhs),
-                            };
-                            return Some(SpannedRange {
-                                span: pat.span,
-                                node: (lhs, rhs),
-                            });
-                        },
-                        (None, Some(rhs)) => {
-                            let lhs = miri_to_const(ty.numeric_min_val(cx.tcx)?)?;
-                            let rhs = constant(cx, cx.tables, rhs)?.0;
-                            let rhs = match range_end {
-                                RangeEnd::Included => Bound::Included(rhs),
-                                RangeEnd::Excluded => Bound::Excluded(rhs),
-                            };
-                            return Some(SpannedRange {
-                                span: pat.span,
-                                node: (lhs, rhs),
-                            });
-                        },
-                        (Some(lhs), None) => {
-                            let lhs = constant(cx, cx.tables, lhs)?.0;
-                            let rhs = miri_to_const(ty.numeric_max_val(cx.tcx)?)?;
-                            return Some(SpannedRange {
-                                span: pat.span,
-                                node: (lhs, Bound::Excluded(rhs)),
-                            });
-                        },
-                        _ => return None,
-                    }
+                    let lhs = match lhs {
+                        Some(lhs) => constant(cx, cx.tables, lhs)?.0,
+                        None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
+                    };
+                    let rhs = match rhs {
+                        Some(rhs) => constant(cx, cx.tables, rhs)?.0,
+                        None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
+                    };
+                    let rhs = match range_end {
+                        RangeEnd::Included => Bound::Included(rhs),
+                        RangeEnd::Excluded => Bound::Excluded(rhs),
+                    };
+                    return Some(SpannedRange {
+                        span: pat.span,
+                        node: (lhs, rhs),
+                    });
                 }
 
                 if let PatKind::Lit(ref value) = pat.kind {
