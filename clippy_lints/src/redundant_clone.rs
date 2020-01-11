@@ -297,11 +297,11 @@ fn find_stmt_assigns_to<'tcx>(
 
     match (by_ref, &*rvalue) {
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
-            base_local_and_movability(cx, mir, place)
+            base_local_and_movability(cx, mir, *place)
         },
         (false, mir::Rvalue::Ref(_, _, place)) => {
             if let [mir::ProjectionElem::Deref] = place.as_ref().projection {
-                base_local_and_movability(cx, mir, place)
+                base_local_and_movability(cx, mir, *place)
             } else {
                 None
             }
@@ -317,7 +317,7 @@ fn find_stmt_assigns_to<'tcx>(
 fn base_local_and_movability<'tcx>(
     cx: &LateContext<'_, 'tcx>,
     mir: &mir::Body<'tcx>,
-    place: &mir::Place<'tcx>,
+    place: mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     use rustc::mir::PlaceRef;
 
