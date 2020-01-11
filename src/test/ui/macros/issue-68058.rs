@@ -1,15 +1,14 @@
 // check-pass
 
-macro_rules! def_target {
-    ($target: expr) => {
-        #[target_feature(enable=$target)]
-        unsafe fn f() {
-            #[target_feature(enable=$target)]
+macro_rules! foo {
+    ($doc: expr) => {
+        fn f() {
+            #[doc = $doc]
             ()
         }
     };
 }
 
-def_target!("avx2");
+foo!("doc");
 
 fn main() {}
