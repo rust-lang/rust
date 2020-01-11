@@ -14,27 +14,34 @@ pub fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
 pub fn add_arg_comment<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     kind: &str,
-    local: mir::Local,
+    local: Option<mir::Local>,
     local_field: Option<usize>,
     params: EmptySinglePair<Value>,
     pass_mode: PassMode,
     ty: Ty<'tcx>,
 ) {
+    let local = if let Some(local) = local {
+        Cow::Owned(format!("{:?}", local))
+    } else {
+        Cow::Borrowed("???")
+    };
     let local_field = if let Some(local_field) = local_field {
         Cow::Owned(format!(".{}", local_field))
     } else {
         Cow::Borrowed("")
     };
+
     let params = match params {
         Empty => Cow::Borrowed("-"),
         Single(param) => Cow::Owned(format!("= {:?}", param)),
         Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
     };
+
     let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
         "{kind:5}{local:>3}{local_field:<5} {params:10} {pass_mode:36} {ty:?}",
         kind = kind,
-        local = format!("{:?}", local),
+        local = local,
         local_field = local_field,
         params = params,
         pass_mode = pass_mode,

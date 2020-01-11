@@ -80,6 +80,7 @@ fn clif_sig_from_fn_sig<'tcx>(
     triple: &target_lexicon::Triple,
     sig: FnSig<'tcx>,
     is_vtable_fn: bool,
+    requires_caller_location: bool,
 ) -> Signature {
     let abi = match sig.abi {
         Abi::System => {
@@ -125,7 +126,7 @@ fn clif_sig_from_fn_sig<'tcx>(
         })
         .flatten();
 
-    let (params, returns) = match get_pass_mode(
+    let (mut params, returns): (Vec<_>, Vec<_>) = match get_pass_mode(
         tcx,
         tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
     ) {
@@ -150,6 +151,10 @@ fn clif_sig_from_fn_sig<'tcx>(
         }
     };
 
+    if requires_caller_location {
+        params.push(AbiParam::new(pointer_ty(tcx)));
+    }
+
     Signature {
         params,
         returns,
@@ -169,7 +174,7 @@ pub fn get_function_name_and_sig<'tcx>(
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
-    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, false);
+    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, false, inst.def.requires_caller_location(tcx));
     (tcx.symbol_name(inst).name.as_str().to_string(), sig)
 }
 
@@ -316,17 +321,23 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
                 let mut params = Vec::new();
                 for (i, arg_ty) in tupled_arg_tys.types().enumerate() {
-                    let param = cvalue_for_param(fx, start_ebb, local, Some(i), arg_ty);
+                    let param = cvalue_for_param(fx, start_ebb, Some(local), Some(i), arg_ty);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let param = cvalue_for_param(fx, start_ebb, local, None, arg_ty);
+                let param = cvalue_for_param(fx, start_ebb, Some(local), None, arg_ty);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
         .collect::<Vec<(Local, ArgKind, Ty)>>();
+
+    assert!(fx.caller_location.is_none());
+    if fx.instance.def.requires_caller_location(fx.tcx) {
+        // Store caller location for `#[track_caller]`.
+        fx.caller_location = Some(cvalue_for_param(fx, start_ebb, None, None, fx.tcx.caller_location_ty()).unwrap());
+    }
 
     fx.bcx.switch_to_block(start_ebb);
     fx.bcx.ins().nop();
@@ -403,10 +414,10 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
 pub fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    span: Span,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
-    span: Span,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = fx
@@ -472,6 +483,7 @@ pub fn codegen_terminator_call<'tcx>(
 
     codegen_call_inner(
         fx,
+        span,
         Some(func),
         fn_ty,
         args,
@@ -488,6 +500,7 @@ pub fn codegen_terminator_call<'tcx>(
 
 fn codegen_call_inner<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    span: Span,
     func: Option<&Operand<'tcx>>,
     fn_ty: Ty<'tcx>,
     args: Vec<CValue<'tcx>>,
@@ -558,7 +571,7 @@ fn codegen_call_inner<'tcx>(
 
     let (call_inst, call_args) =
         self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
-            let call_args: Vec<Value> = return_ptr
+            let mut call_args: Vec<Value> = return_ptr
                 .into_iter()
                 .chain(first_arg.into_iter())
                 .chain(
@@ -569,9 +582,20 @@ fn codegen_call_inner<'tcx>(
                 )
                 .collect::<Vec<_>>();
 
+            if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
+                // Pass the caller location for `#[track_caller]`.
+                let caller_location = fx.get_caller_location(span);
+                call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
+            }
+
             let call_inst = if let Some(func_ref) = func_ref {
-                let sig =
-                    clif_sig_from_fn_sig(fx.tcx, fx.triple(), fn_sig, is_virtual_call);
+                let sig = clif_sig_from_fn_sig(
+                    fx.tcx,
+                    fx.triple(),
+                    fn_sig,
+                    is_virtual_call,
+                    false, // calls through function pointers never pass the caller location
+                );
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
             } else {
@@ -604,7 +628,11 @@ fn codegen_call_inner<'tcx>(
     }
 }
 
-pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_place: CPlace<'tcx>) {
+pub fn codegen_drop<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    span: Span,
+    drop_place: CPlace<'tcx>,
+) {
     let ty = drop_place.layout().ty;
     let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
 
@@ -625,7 +653,13 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
 
                 assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
-                let sig = clif_sig_from_fn_sig(fx.tcx, fx.triple(), fn_sig, true);
+                let sig = clif_sig_from_fn_sig(
+                    fx.tcx,
+                    fx.triple(),
+                    fn_sig,
+                    true,
+                    false, // `drop_in_place` is never `#[track_caller]`
+                );
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
@@ -642,7 +676,7 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
                 );
                 drop_place.write_place_ref(fx, arg_place);
                 let arg_value = arg_place.to_cvalue(fx);
-                codegen_call_inner(fx, None, drop_fn_ty, vec![arg_value], None);
+                codegen_call_inner(fx, span, None, drop_fn_ty, vec![arg_value], None);
             }
         }
     }

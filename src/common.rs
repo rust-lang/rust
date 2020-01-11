@@ -267,6 +267,9 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub ebb_map: IndexVec<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 
+    /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
+    pub caller_location: Option<CValue<'tcx>>,
+
     pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants_cx: &'clif mut crate::constant::ConstantCx,
     pub vtables: &'clif mut HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
@@ -355,6 +358,11 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
+        if let Some(loc) = self.caller_location {
+            // `#[track_caller]` is used; return caller location instead of current location.
+            return loc;
+        }
+
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         let const_loc = self.tcx.const_caller_location((

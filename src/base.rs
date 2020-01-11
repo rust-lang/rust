@@ -48,6 +48,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         bcx,
         ebb_map,
         local_map: HashMap::new(),
+        caller_location: None, // set by `codegen_fn_prelude`
 
         clif_comments,
         constants_cx: &mut cx.constants_cx,
@@ -236,10 +237,10 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             } => {
                 fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
                     fx,
+                    bb_data.terminator().source_info.span,
                     func,
                     args,
                     destination,
-                    bb_data.terminator().source_info.span,
                 ));
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
@@ -261,7 +262,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 unwind: _,
             } => {
                 let drop_place = trans_place(fx, location);
-                crate::abi::codegen_drop(fx, drop_place);
+                crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
                 let target_ebb = fx.get_ebb(*target);
                 fx.bcx.ins().jump(target_ebb, &[]);
@@ -370,7 +371,7 @@ fn trans_stmt<'tcx>(
                     match from_ty.kind {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
-                                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
+                                Instance::resolve_for_fn_ptr(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
                                     .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);

@@ -46,7 +46,7 @@ pub fn codegen_return_param(
     crate::abi::comments::add_arg_comment(
         fx,
         "ret",
-        RETURN_PLACE,
+        Some(RETURN_PLACE),
         None,
         ret_param,
         ret_pass_mode,

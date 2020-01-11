@@ -64,6 +64,10 @@ echo "[AOT] subslice-patterns-const-eval"
 $RUSTC example/subslice-patterns-const-eval.rs --crate-type bin -Cpanic=abort
 ./target/out/subslice-patterns-const-eval
 
+echo "[AOT] track-caller-attribute"
+$RUSTC example/track-caller-attribute.rs --crate-type bin -Cpanic=abort
+./target/out/track-caller-attribute
+
 echo "[BUILD] mod_bench"
 $RUSTC example/mod_bench.rs --crate-type bin
 

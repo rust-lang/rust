@@ -126,7 +126,7 @@ pub fn adjust_arg_for_abi<'tcx>(
 pub fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_ebb: Ebb,
-    local: mir::Local,
+    local: Option<mir::Local>,
     local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
