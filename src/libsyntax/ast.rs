@@ -1405,7 +1405,7 @@ pub enum MacDelimiter {
 }
 
 impl MacDelimiter {
-    crate fn to_token(self) -> DelimToken {
+    pub fn to_token(self) -> DelimToken {
         match self {
             MacDelimiter::Parenthesis => DelimToken::Paren,
             MacDelimiter::Bracket => DelimToken::Bracket,
@@ -1468,7 +1468,7 @@ pub struct StrLit {
 }
 
 impl StrLit {
-    crate fn as_lit(&self) -> Lit {
+    pub fn as_lit(&self) -> Lit {
         let token_kind = match self.style {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),

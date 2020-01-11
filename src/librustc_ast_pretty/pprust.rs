@@ -1,21 +1,20 @@
-use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use crate::ast::{Attribute, GenericArg, MacArgs};
-use crate::ast::{GenericBound, SelfKind, TraitBoundModifier};
-use crate::attr;
-use crate::print::pp::Breaks::{Consistent, Inconsistent};
-use crate::print::pp::{self, Breaks};
-use crate::ptr::P;
-use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use crate::tokenstream::{self, TokenStream, TokenTree};
-use crate::util::classify;
-use crate::util::comments;
-use crate::util::parser::{self, AssocOp, Fixity};
+use crate::pp::Breaks::{Consistent, Inconsistent};
+use crate::pp::{self, Breaks};
 
 use rustc_data_structures::sync::Once;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{dummy_spanned, SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Span};
+use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use syntax::ast::{Attribute, GenericArg, MacArgs};
+use syntax::ast::{GenericBound, SelfKind, TraitBoundModifier};
+use syntax::attr;
+use syntax::ptr::P;
+use syntax::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use syntax::tokenstream::{self, TokenStream, TokenTree};
+use syntax::util::parser::{self, AssocOp, Fixity};
+use syntax::util::{classify, comments};
 
 use std::borrow::Cow;
 

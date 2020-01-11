@@ -1,11 +1,11 @@
+use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
+use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::{self, Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::kw;
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pp::{self, Breaks};
-use syntax::print::pprust::{self, Comments, PrintState};
 use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;

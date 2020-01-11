@@ -47,12 +47,6 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
-pub mod print {
-    mod helpers;
-    pub mod pp;
-    pub mod pprust;
-}
-
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
