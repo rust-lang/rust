@@ -281,8 +281,22 @@ fn check_place(
     Ok(())
 }
 
-/// Returns whether `allow_internal_unstable(..., <feature_gate>, ...)` is present.
+/// Returns `true` if the given feature gate is allowed within the function with the given `DefId`.
 fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
+    // All features require that the corresponding gate be enabled,
+    // even if the function has `#[allow_internal_unstable(the_gate)]`.
+    if !tcx.features().enabled(feature_gate) {
+        return false;
+    }
+
+    // If this crate is not using stability attributes, or this function is not claiming to be a
+    // stable `const fn`, that is all that is required.
+    if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
+        return true;
+    }
+
+    // However, we cannot allow stable `const fn`s to use unstable features without an explicit
+    // opt-in via `allow_internal_unstable`.
     attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
         .map_or(false, |mut features| features.any(|name| name == feature_gate))
 }

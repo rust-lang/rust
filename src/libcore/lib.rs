@@ -70,7 +70,6 @@
 #![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
-#![feature(const_fn)]
 #![feature(const_if_match)]
 #![feature(const_panic)]
 #![feature(const_fn_union)]
