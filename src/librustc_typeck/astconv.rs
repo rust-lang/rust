@@ -2700,7 +2700,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let def_id = tcx.hir().local_def_id(ast_const.hir_id);
 
         let mut const_ = ty::Const {
-            val: ty::ConstKind::Unevaluated(def_id, InternalSubsts::identity_for_item(tcx, def_id)),
+            val: ty::ConstKind::Unevaluated(
+                def_id,
+                InternalSubsts::identity_for_item(tcx, def_id),
+                None,
+            ),
             ty,
         };
 

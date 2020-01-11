@@ -1,13 +1,13 @@
 fn main() {
-    *(&4);
+    *(&(4, 5).1);
 }
 
 // END RUST SOURCE
 // START rustc.main.PromoteTemps.before.mir
 // bb0: {
 //     ...
-//     _3 = const 4i32;
-//     _2 = &_3;
+//     _3 = (const 4i32, const 5i32);
+//     _2 = &(_3.1: i32);
 //     _1 = (*_2);
 //     ...
 //}
@@ -16,7 +16,7 @@ fn main() {
 // bb0: {
 //     ...
 //     _4 = const main::promoted[0];
-//     _2 = &(*_4);
+//     _2 = &((*_4).1: i32);
 //     _1 = (*_2);
 //     ...
 //}
@@ -25,7 +25,7 @@ fn main() {
 // bb0: {
 //     ...
 //     _4 = const main::promoted[0];
-//     _2 = _4;
+//     _2 = &((*_4).1: i32);
 //     _1 = (*_2);
 //     ...
 //}
@@ -34,8 +34,8 @@ fn main() {
 // bb0: {
 //     ...
 //     _4 = const main::promoted[0];
-//     _2 = _4;
-//     _1 = const 4i32;
+//     _2 = &((*_4).1: i32);
+//     _1 = const 5i32;
 //     ...
 // }
 // END rustc.main.ConstProp.after.mir

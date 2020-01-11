@@ -515,6 +515,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             obligation.param_env,
                             def_id,
                             substs,
+                            None,
                             Some(obligation.cause.span),
                         ) {
                             Ok(_) => ProcessResult::Changed(vec![]),

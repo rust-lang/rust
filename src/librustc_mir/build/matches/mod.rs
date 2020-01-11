@@ -890,7 +890,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let proj_base = &source.projection[..i];
 
                     fake_borrows.insert(Place {
-                        base: source.base.clone(),
+                        local: source.local.clone(),
                         projection: self.hir.tcx().intern_place_elems(proj_base),
                     });
                 }
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
-                    all_fake_borrows.push(PlaceRef { base: &place.base, projection: proj_base });
+                    all_fake_borrows.push(PlaceRef { local: &place.local, projection: proj_base });
                 }
             }
 
@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .into_iter()
             .map(|matched_place_ref| {
                 let matched_place = Place {
-                    base: matched_place_ref.base.clone(),
+                    local: matched_place_ref.local.clone(),
                     projection: tcx.intern_place_elems(matched_place_ref.projection),
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;

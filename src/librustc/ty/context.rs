@@ -2434,7 +2434,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut projection = place.projection.to_vec();
         projection.push(elem);
 
-        Place { base: place.base, projection: self.intern_place_elems(&projection) }
+        Place { local: place.local, projection: self.intern_place_elems(&projection) }
     }
 
     pub fn intern_existential_predicates(

@@ -1,18 +1,26 @@
-error: index out of bounds: the len is 3 but the index is 4
-  --> $DIR/array-literal-index-oob.rs:4:7
+warning: index out of bounds: the len is 3 but the index is 4
+  --> $DIR/array-literal-index-oob.rs:6:8
    |
-LL |     &{[1, 2, 3][4]};
-   |       ^^^^^^^^^^^^
+LL |     &{ [1, 2, 3][4] };
+   |        ^^^^^^^^^^^^
    |
-   = note: `#[deny(const_err)]` on by default
+note: lint level defined here
+  --> $DIR/array-literal-index-oob.rs:3:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
-error: reaching this expression at runtime will panic or abort
-  --> $DIR/array-literal-index-oob.rs:4:7
+warning: reaching this expression at runtime will panic or abort
+  --> $DIR/array-literal-index-oob.rs:6:8
    |
-LL |     &{[1, 2, 3][4]};
-   |     --^^^^^^^^^^^^-
-   |       |
-   |       indexing out of bounds: the len is 3 but the index is 4
+LL |     &{ [1, 2, 3][4] };
+   |     ---^^^^^^^^^^^^--
+   |        |
+   |        indexing out of bounds: the len is 3 but the index is 4
 
-error: aborting due to 2 previous errors
+warning: erroneous constant used
+  --> $DIR/array-literal-index-oob.rs:6:5
+   |
+LL |     &{ [1, 2, 3][4] };
+   |     ^^^^^^^^^^^^^^^^^ referenced constant has errors
 

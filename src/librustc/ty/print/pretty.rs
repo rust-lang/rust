@@ -841,23 +841,31 @@ pub trait PrettyPrinter<'tcx>:
 
         match (ct.val, &ct.ty.kind) {
             (_, ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
-            (ty::ConstKind::Unevaluated(did, substs), _) => match self.tcx().def_kind(did) {
-                Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {
-                    p!(print_value_path(did, substs))
-                }
-                _ => {
-                    if did.is_local() {
-                        let span = self.tcx().def_span(did);
-                        if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
-                            p!(write("{}", snip))
-                        } else {
-                            p!(write("_: "), print(ct.ty))
+            (ty::ConstKind::Unevaluated(did, substs, promoted), _) => {
+                if let Some(promoted) = promoted {
+                    p!(print_value_path(did, substs));
+                    p!(write("::{:?}", promoted));
+                } else {
+                    match self.tcx().def_kind(did) {
+                        Some(DefKind::Static)
+                        | Some(DefKind::Const)
+                        | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
+                        _ => {
+                            if did.is_local() {
+                                let span = self.tcx().def_span(did);
+                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
+                                {
+                                    p!(write("{}", snip))
+                                } else {
+                                    p!(write("_: "), print(ct.ty))
+                                }
+                            } else {
+                                p!(write("_: "), print(ct.ty))
+                            }
                         }
-                    } else {
-                        p!(write("_: "), print(ct.ty))
                     }
                 }
-            },
+            }
             (ty::ConstKind::Infer(..), _) => p!(write("_: "), print(ct.ty)),
             (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
             (ty::ConstKind::Value(value), _) => return self.pretty_print_const_value(value, ct.ty),

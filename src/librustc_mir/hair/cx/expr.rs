@@ -411,15 +411,18 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let def_id = cx.tcx.hir().local_def_id(count.hir_id);
             let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
             let span = cx.tcx.def_span(def_id);
-            let count = match cx.tcx.const_eval_resolve(cx.param_env, def_id, substs, Some(span)) {
-                Ok(cv) => cv.eval_usize(cx.tcx, cx.param_env),
-                Err(ErrorHandled::Reported) => 0,
-                Err(ErrorHandled::TooGeneric) => {
-                    let span = cx.tcx.def_span(def_id);
-                    cx.tcx.sess.span_err(span, "array lengths can't depend on generic parameters");
-                    0
-                }
-            };
+            let count =
+                match cx.tcx.const_eval_resolve(cx.param_env, def_id, substs, None, Some(span)) {
+                    Ok(cv) => cv.eval_usize(cx.tcx, cx.param_env),
+                    Err(ErrorHandled::Reported) => 0,
+                    Err(ErrorHandled::TooGeneric) => {
+                        let span = cx.tcx.def_span(def_id);
+                        cx.tcx
+                            .sess
+                            .span_err(span, "array lengths can't depend on generic parameters");
+                        0
+                    }
+                };
 
             ExprKind::Repeat { value: v.to_ref(), count }
         }
@@ -523,7 +526,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(cx.tcx().mk_const(ty::Const {
-                                val: ty::ConstKind::Unevaluated(did, substs),
+                                val: ty::ConstKind::Unevaluated(did, substs, None),
                                 ty: var_ty,
                             }));
                             let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
@@ -719,7 +722,7 @@ fn convert_path_expr<'a, 'tcx>(
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
-                    val: ty::ConstKind::Unevaluated(def_id, substs),
+                    val: ty::ConstKind::Unevaluated(def_id, substs, None),
                     ty: cx.tables().node_type(expr.hir_id),
                 }),
                 user_ty,

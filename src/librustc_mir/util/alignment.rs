@@ -46,7 +46,7 @@ where
             // encountered a Deref, which is ABI-aligned
             ProjectionElem::Deref => break,
             ProjectionElem::Field(..) => {
-                let ty = Place::ty_from(&place.base, proj_base, local_decls, tcx).ty;
+                let ty = Place::ty_from(&place.local, proj_base, local_decls, tcx).ty;
                 match ty.kind {
                     ty::Adt(def, _) if def.repr.packed() => return true,
                     _ => {}

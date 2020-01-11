@@ -9,6 +9,7 @@ use crate::infer::canonical::Canonical;
 use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::Scalar;
+use crate::mir::Promoted;
 use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
@@ -2375,7 +2376,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs| {
+        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs, promoted| {
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
             // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
@@ -2387,11 +2388,11 @@ impl<'tcx> Const<'tcx> {
 
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            tcx.const_eval_resolve(param_env, did, substs, None).ok()
+            tcx.const_eval_resolve(param_env, did, substs, promoted, None).ok()
         };
 
         match self.val {
-            ConstKind::Unevaluated(did, substs) => {
+            ConstKind::Unevaluated(did, substs, promoted) => {
                 // HACK(eddyb) when substs contain e.g. inference variables,
                 // attempt using identity substs instead, that will succeed
                 // when the expression doesn't depend on any parameters.
@@ -2401,12 +2402,12 @@ impl<'tcx> Const<'tcx> {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, did);
                     // The `ParamEnv` needs to match the `identity_substs`.
                     let identity_param_env = tcx.param_env(did);
-                    match try_const_eval(did, identity_param_env, identity_substs) {
+                    match try_const_eval(did, identity_param_env, identity_substs, promoted) {
                         Some(ct) => ct.subst(tcx, substs),
                         None => self,
                     }
                 } else {
-                    try_const_eval(did, param_env, substs).unwrap_or(self)
+                    try_const_eval(did, param_env, substs, promoted).unwrap_or(self)
                 }
             }
             _ => self,
@@ -2470,7 +2471,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(DefId, SubstsRef<'tcx>),
+    Unevaluated(DefId, SubstsRef<'tcx>, Option<Promoted>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),

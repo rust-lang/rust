@@ -41,6 +41,11 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// despite the nested mutable reference!
     /// The field gets updated when an `UnsafeCell` is encountered.
     mutability: Mutability,
+
+    /// This flag is to avoid triggering UnsafeCells are not allowed behind references in constants
+    /// for promoteds.
+    /// It's a copy of `mir::Body`'s ignore_interior_mut_in_const_validation field
+    ignore_interior_mut_in_const_validation: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -164,14 +169,16 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.
                 let old = std::mem::replace(&mut self.mutability, Mutability::Mut);
-                assert_ne!(
-                    self.mode,
-                    InternMode::Const,
-                    "UnsafeCells are not allowed behind references in constants. This should have \
-                    been prevented statically by const qualification. If this were allowed one \
-                    would be able to change a constant at one use site and other use sites could \
-                    observe that mutation.",
-                );
+                if !self.ignore_interior_mut_in_const_validation {
+                    assert_ne!(
+                        self.mode,
+                        InternMode::Const,
+                        "UnsafeCells are not allowed behind references in constants. This should \
+                        have been prevented statically by const qualification. If this were \
+                        allowed one would be able to change a constant at one use site and other \
+                        use sites could observe that mutation.",
+                    );
+                }
                 let walked = self.walk_aggregate(mplace, fields);
                 self.mutability = old;
                 return walked;
@@ -266,6 +273,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     // The `mutability` of the place, ignoring the type.
     place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
+    ignore_interior_mut_in_const_validation: bool,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
     let (base_mutability, base_intern_mode) = match place_mut {
@@ -302,6 +310,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             mode,
             leftover_allocations,
             mutability,
+            ignore_interior_mut_in_const_validation,
         }
         .visit_value(mplace);
         if let Err(error) = interned {

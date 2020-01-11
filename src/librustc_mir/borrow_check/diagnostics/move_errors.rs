@@ -243,9 +243,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             );
             (
                 match kind {
-                    IllegalMoveOriginKind::Static => {
-                        unreachable!();
-                    }
                     IllegalMoveOriginKind::BorrowedContent { target_place } => self
                         .report_cannot_move_from_borrowed_content(
                             original_path,
@@ -276,7 +273,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let base_static = PlaceRef { base: &place.base, projection: &[ProjectionElem::Deref] };
+            let base_static =
+                PlaceRef { local: &place.local, projection: &[ProjectionElem::Deref] };
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
@@ -305,12 +303,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let deref_base = match deref_target_place.projection.as_ref() {
             &[ref proj_base @ .., ProjectionElem::Deref] => {
-                PlaceRef { base: &deref_target_place.base, projection: &proj_base }
+                PlaceRef { local: &deref_target_place.local, projection: &proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
-        if let PlaceRef { base: PlaceBase::Local(local), projection: [] } = deref_base {
+        if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[*local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(

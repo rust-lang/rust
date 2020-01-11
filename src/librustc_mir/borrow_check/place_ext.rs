@@ -1,6 +1,6 @@
 use crate::borrow_check::borrow_set::LocalsStateAtExit;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Body, Mutability, Place, PlaceBase};
+use rustc::mir::{Body, Mutability, Place};
 use rustc::ty::{self, TyCtxt};
 use rustc_hir as hir;
 
@@ -25,41 +25,35 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {
-        let local = match self.base {
-            // If a local variable is immutable, then we only need to track borrows to guard
-            // against two kinds of errors:
-            // * The variable being dropped while still borrowed (e.g., because the fn returns
-            //   a reference to a local variable)
-            // * The variable being moved while still borrowed
-            //
-            // In particular, the variable cannot be mutated -- the "access checks" will fail --
-            // so we don't have to worry about mutation while borrowed.
-            PlaceBase::Local(local) => match locals_state_at_exit {
-                LocalsStateAtExit::AllAreInvalidated => local,
-                LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
-                    let ignore = !has_storage_dead_or_moved.contains(local)
-                        && body.local_decls[local].mutability == Mutability::Not;
-                    debug!("ignore_borrow: local {:?} => {:?}", local, ignore);
-                    if ignore {
-                        return true;
-                    } else {
-                        local
-                    }
-                }
-            },
-            PlaceBase::Static(_) => return true,
-        };
+        // If a local variable is immutable, then we only need to track borrows to guard
+        // against two kinds of errors:
+        // * The variable being dropped while still borrowed (e.g., because the fn returns
+        //   a reference to a local variable)
+        // * The variable being moved while still borrowed
+        //
+        // In particular, the variable cannot be mutated -- the "access checks" will fail --
+        // so we don't have to worry about mutation while borrowed.
+        if let LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } =
+            locals_state_at_exit
+        {
+            let ignore = !has_storage_dead_or_moved.contains(self.local)
+                && body.local_decls[self.local].mutability == Mutability::Not;
+            debug!("ignore_borrow: local {:?} => {:?}", self.local, ignore);
+            if ignore {
+                return true;
+            }
+        }
 
         for (i, elem) in self.projection.iter().enumerate() {
             let proj_base = &self.projection[..i];
 
             if *elem == ProjectionElem::Deref {
-                let ty = Place::ty_from(&self.base, proj_base, body, tcx).ty;
+                let ty = Place::ty_from(&self.local, proj_base, body, tcx).ty;
                 match ty.kind {
                     ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {
                         // For references to thread-local statics, we do need
                         // to track the borrow.
-                        if body.local_decls[local].is_ref_to_thread_local() {
+                        if body.local_decls[self.local].is_ref_to_thread_local() {
                             continue;
                         }
                         return true;
