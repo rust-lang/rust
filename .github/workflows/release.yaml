@@ -1,9 +1,8 @@
 name: CI-Release
 on:
-  pull_request:
   push:
     branches:
-      - master
+      - release
 
 jobs:
   rust:
@@ -15,10 +14,8 @@ jobs:
     env:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
-      RUN_SLOW_TESTS: 1
       RUSTUP_MAX_RETRIES: 10
       CARGO_NET_RETRY: 10
-      PROFILE: release
     steps:
 
       - name: Checkout repository
@@ -40,47 +37,26 @@ jobs:
           override: true
           components: rustfmt, rust-src
 
-      - name: Cache cargo registry
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo target dir
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Compile and Test
+      - name: Build
         uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --release --all-targets
+          command: build
+          args: --release --package ra_lsp_server --bin ra_lsp_server
 
-      - name: Prepare cache
-        run: cargo xtask pre-cache
+      - name: Strip symbols
+        if: matrix.os == 'ubuntu-latest'
+        run: strip ./target/release/ra_lsp_server
 
-      - name: Prepare cache 2
-        if: matrix.os == 'windows-latest'
-        run: Remove-Item ./target/${{ env.PROFILE }}/xtask.exe
-
-      - name: Creat distribution dir
+      - name: Create distribution dir
         run: mkdir ./dist
 
-      - name: Copy binaries (non-win)
+      - name: Copy binaries (unix)
         if: matrix.os != 'windows-latest'
-        run: cp ./target/${{ env.PROFILE }}/ra_lsp_server ./dist
+        run: cp ./target/release/ra_lsp_server ./dist
 
       - name: Copy binaries (win)
         if: matrix.os == 'windows-latest'
-        run: copy ./target/${{ env.PROFILE }}/ra_lsp_server.* ./dist
+        run: copy ./target/release/ra_lsp_server.exe ./dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
@@ -91,9 +67,6 @@ jobs:
   type-script:
     name: TypeScript
     runs-on: ubuntu-latest
-    env:
-      CXX: g++-4.9
-      CC: gcc-4.9
     steps:
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -105,14 +78,12 @@ jobs:
 
       - run: npm ci
         working-directory: ./editors/code
+
       - run: npm run package --scripts-prepend-node-path
         working-directory: ./editors/code
 
-      - name: Create distribution directory
-        run: mkdir ./dist
-
       - name: Copy vscode extension
-        run: mkdir ./dist/code && cp ./editors/code/*.vsix ./dist/code/
+        run: mkdir -p ./dist/code && cp ./editors/code/*.vsix ./dist/code/
 
       - name: Copy emacs mode
         run: cp -R ./editors/emacs ./dist/
@@ -120,5 +91,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: editors
+          name: editor-plugins
           path: ./dist
