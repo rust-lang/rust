@@ -363,7 +363,7 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
     }
 }
 
-fn time<R>(sess: &Session, name: &str, f: impl FnOnce() -> R) -> R {
+fn time<R>(sess: &Session, name: &'static str, f: impl FnOnce() -> R) -> R {
     println!("[{}] start", name);
     let before = std::time::Instant::now();
     let res = sess.time(name, f);
