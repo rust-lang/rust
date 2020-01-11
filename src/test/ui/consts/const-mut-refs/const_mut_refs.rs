@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(const_mut_refs)]
-#![feature(const_fn)]
 
 struct Foo {
     x: usize
