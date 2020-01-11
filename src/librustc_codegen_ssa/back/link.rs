@@ -53,6 +53,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     crate_name: &str,
     target_cpu: &str,
 ) {
+    let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
@@ -71,9 +72,11 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             );
         }
 
-        for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-            check_file_is_writeable(obj, sess);
-        }
+        sess.time("link_binary_check_files_are_writeable", || {
+            for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                check_file_is_writeable(obj, sess);
+            }
+        });
 
         let tmpdir = TempFileBuilder::new()
             .prefix("rustc")
@@ -84,6 +87,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             let out_filename = out_filename(sess, crate_type, outputs, crate_name);
             match crate_type {
                 config::CrateType::Rlib => {
+                    let _timer = sess.timer("link_rlib");
                     link_rlib::<B>(
                         sess,
                         codegen_results,
@@ -118,29 +122,34 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
-    if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_codegen() && !preserve_objects_for_their_debuginfo(sess) {
-            for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+    sess.time("link_binary_remove_temps", || {
+        if !sess.opts.cg.save_temps {
+            if sess.opts.output_types.should_codegen()
+                && !preserve_objects_for_their_debuginfo(sess)
+            {
+                for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                    remove(sess, obj);
+                }
+            }
+            for obj in codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref())
+            {
                 remove(sess, obj);
             }
-        }
-        for obj in codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
-            remove(sess, obj);
-        }
-        if let Some(ref metadata_module) = codegen_results.metadata_module {
-            if let Some(ref obj) = metadata_module.object {
-                remove(sess, obj);
+            if let Some(ref metadata_module) = codegen_results.metadata_module {
+                if let Some(ref obj) = metadata_module.object {
+                    remove(sess, obj);
+                }
+            }
+            if let Some(ref allocator_module) = codegen_results.allocator_module {
+                if let Some(ref obj) = allocator_module.object {
+                    remove(sess, obj);
+                }
+                if let Some(ref bc) = allocator_module.bytecode_compressed {
+                    remove(sess, bc);
+                }
             }
         }
-        if let Some(ref allocator_module) = codegen_results.allocator_module {
-            if let Some(ref obj) = allocator_module.object {
-                remove(sess, obj);
-            }
-            if let Some(ref bc) = allocator_module.bytecode_compressed {
-                remove(sess, bc);
-            }
-        }
-    }
+    });
 }
 
 // The third parameter is for env vars, used on windows to set up the
