@@ -1,12 +1,5 @@
 //! Functions dealing with attributes and meta items.
 
-mod builtin;
-
-pub use builtin::*;
-pub use IntType::*;
-pub use ReprAttr::*;
-pub use StabilityLevel::*;
-
 use crate::ast;
 use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};

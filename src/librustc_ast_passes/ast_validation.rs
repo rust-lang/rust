@@ -331,7 +331,7 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
                 let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
-                !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {

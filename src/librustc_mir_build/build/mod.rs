@@ -7,6 +7,7 @@ use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_attr::{self as attr, UnwindAttr};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
@@ -16,7 +17,6 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 use std::u32;
-use syntax::attr::{self, UnwindAttr};
 
 use super::lints;
 
