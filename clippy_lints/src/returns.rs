@@ -1,8 +1,7 @@
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintContext};
 use rustc_errors::Applicability;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 use syntax::ast;

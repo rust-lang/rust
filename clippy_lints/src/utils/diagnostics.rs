@@ -1,11 +1,10 @@
 //! Clippy wrappers around rustc's diagnostic functions.
 
 use rustc::lint::{LateContext, Lint, LintContext};
-use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
+use rustc_errors::{Applicability, CodeSuggestion, DiagnosticBuilder, Substitution, SubstitutionPart, SuggestionStyle};
 use rustc_hir::HirId;
 use rustc_span::source_map::{MultiSpan, Span};
 use std::env;
-use syntax::errors::DiagnosticBuilder;
 
 /// Wrapper around `DiagnosticBuilder` that adds a link to Clippy documentation for the emitted lint
 struct DiagnosticWrapper<'a>(DiagnosticBuilder<'a>);

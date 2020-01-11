@@ -1,11 +1,10 @@
 use crate::utils::*;
 use matches::matches;
-use rustc::declare_lint_pass;
 use rustc::hir::map::Map;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `if` conditions that use blocks to contain an

@@ -6,22 +6,20 @@ use std::collections::BTreeMap;
 
 use if_chain::if_chain;
 use rustc::hir::map::Map;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
-use rustc::{declare_lint_pass, impl_lint_pass};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
-use syntax::errors::DiagnosticBuilder;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;

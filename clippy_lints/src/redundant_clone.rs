@@ -4,8 +4,7 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::mir::{
     self, traversal,
     visit::{MutatingUseContext, PlaceContext, Visitor as _},
@@ -19,7 +18,7 @@ use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_mir::dataflow::{
     do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
 };
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 
@@ -158,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 let pred_arg = if_chain! {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
-                    if res.base == mir::PlaceBase::Local(cloned);
+                    if res.local == cloned;
                     if match_def_path(cx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
                     if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
                         || match_type(cx, pred_arg_ty, &paths::OS_STRING);
@@ -265,7 +264,7 @@ fn is_call_with_ref_arg<'tcx>(
     if_chain! {
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
-        if let mir::Operand::Move(mir::Place { base: mir::PlaceBase::Local(local), .. }) = &args[0];
+        if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
         if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).kind;
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
@@ -289,14 +288,7 @@ fn find_stmt_assigns_to<'tcx>(
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     let rvalue = mir.basic_blocks()[bb].statements.iter().rev().find_map(|stmt| {
-        if let mir::StatementKind::Assign(box (
-            mir::Place {
-                base: mir::PlaceBase::Local(local),
-                ..
-            },
-            v,
-        )) = &stmt.kind
-        {
+        if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }
 
@@ -305,11 +297,11 @@ fn find_stmt_assigns_to<'tcx>(
 
     match (by_ref, &*rvalue) {
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
-            base_local_and_movability(cx, mir, place)
+            base_local_and_movability(cx, mir, *place)
         },
         (false, mir::Rvalue::Ref(_, _, place)) => {
             if let [mir::ProjectionElem::Deref] = place.as_ref().projection {
-                base_local_and_movability(cx, mir, place)
+                base_local_and_movability(cx, mir, *place)
             } else {
                 None
             }
@@ -325,7 +317,7 @@ fn find_stmt_assigns_to<'tcx>(
 fn base_local_and_movability<'tcx>(
     cx: &LateContext<'_, 'tcx>,
     mir: &mir::Body<'tcx>,
-    place: &mir::Place<'tcx>,
+    place: mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     use rustc::mir::PlaceRef;
 
@@ -334,25 +326,15 @@ fn base_local_and_movability<'tcx>(
     // Accessing a field of an ADT that has `Drop`. Moving the field out will cause E0509.
     let mut field = false;
 
-    let PlaceRef {
-        base: place_base,
-        mut projection,
-    } = place.as_ref();
-    if let mir::PlaceBase::Local(local) = place_base {
-        while let [base @ .., elem] = projection {
-            projection = base;
-            deref |= matches!(elem, mir::ProjectionElem::Deref);
-            field |= matches!(elem, mir::ProjectionElem::Field(..))
-                && has_drop(
-                    cx,
-                    mir::Place::ty_from(place_base, projection, &mir.local_decls, cx.tcx).ty,
-                );
-        }
-
-        Some((*local, deref || field))
-    } else {
-        None
+    let PlaceRef { local, mut projection } = place.as_ref();
+    while let [base @ .., elem] = projection {
+        projection = base;
+        deref |= matches!(elem, mir::ProjectionElem::Deref);
+        field |= matches!(elem, mir::ProjectionElem::Field(..))
+            && has_drop(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
     }
+
+    Some((*local, deref || field))
 }
 
 struct LocalUseVisitor {
@@ -503,38 +485,28 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
-        if let mir::PlaceBase::Local(lhs) = place.base {
-            match rvalue {
-                mir::Rvalue::Ref(_, _, borrowed) => {
-                    if let mir::PlaceBase::Local(borrowed_local) = borrowed.base {
-                        self.possible_borrower.add(borrowed_local, lhs);
+        let lhs = place.local;
+        match rvalue {
+            mir::Rvalue::Ref(_, _, borrowed) => {
+                self.possible_borrower.add(borrowed.local, lhs);
+            },
+            other => {
+                if !ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty) {
+                    return;
+                }
+                rvalue_locals(other, |rhs| {
+                    if lhs != rhs {
+                        self.possible_borrower.add(rhs, lhs);
                     }
-                },
-                other => {
-                    if !ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty) {
-                        return;
-                    }
-                    rvalue_locals(other, |rhs| {
-                        if lhs != rhs {
-                            self.possible_borrower.add(rhs, lhs);
-                        }
-                    });
-                },
-            }
+                });
+            },
         }
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
         if let mir::TerminatorKind::Call {
             args,
-            destination:
-                Some((
-                    mir::Place {
-                        base: mir::PlaceBase::Local(dest),
-                        ..
-                    },
-                    _,
-                )),
+            destination: Some((mir::Place { local: dest, .. }, _)),
             ..
         } = &terminator.kind
         {
@@ -548,9 +520,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             for op in args {
                 match op {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => {
-                        if let mir::PlaceBase::Local(arg) = p.base {
-                            self.possible_borrower.add(arg, *dest);
-                        }
+                        self.possible_borrower.add(p.local, *dest);
                     },
                     _ => (),
                 }
@@ -571,11 +541,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
     use rustc::mir::Rvalue::*;
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
-        mir::Operand::Copy(p) | mir::Operand::Move(p) => {
-            if let mir::PlaceBase::Local(l) = p.base {
-                visit(l)
-            }
-        },
+        mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),
         _ => (),
     };
 

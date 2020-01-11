@@ -2,16 +2,16 @@
 //! to generate a clippy lint detecting said code automatically.
 
 use crate::utils::{get_attr, higher};
-use rustc::declare_lint_pass;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintContext};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::{Attribute, LitFloatType, LitKind};
+use syntax::walk_list;
 
 declare_clippy_lint! {
     /// **What it does:** Generates clippy code that detects the offending pattern
@@ -617,9 +617,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     start_pat, end_pat, end_kind, current
                 );
                 self.current = start_pat;
-                self.visit_expr(start);
+                walk_list!(self, visit_expr, start);
                 self.current = end_pat;
-                self.visit_expr(end);
+                walk_list!(self, visit_expr, end);
             },
             PatKind::Slice(ref start, ref middle, ref end) => {
                 let start_pat = self.next("start");

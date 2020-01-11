@@ -1,14 +1,13 @@
 use crate::utils::{higher, qpath_res, snippet, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit;
 use rustc_hir::BindingAnnotation;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for variable declarations immediately followed by a

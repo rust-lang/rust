@@ -3,12 +3,11 @@
 #![deny(clippy::internal)]
 #![feature(rustc_private)]
 
-#[macro_use]
 extern crate rustc;
 extern crate rustc_hir;
 #[macro_use]
 extern crate rustc_session;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::Expr;
 
 declare_lint! {

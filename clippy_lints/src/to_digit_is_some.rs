@@ -1,11 +1,10 @@
 use crate::utils::{match_def_path, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.to_digit(..).is_some()` on `char`s.

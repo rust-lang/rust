@@ -1,11 +1,10 @@
 use crate::consts::{constant, Constant};
 use crate::utils::{sext, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty::{self};
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::fmt::Display;
 
 declare_clippy_lint! {

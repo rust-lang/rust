@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
@@ -7,13 +7,12 @@ use crate::utils::{
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::declare_lint_pass;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::*;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 use std::collections::Bound;
@@ -444,7 +443,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 
 fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms);
+        let ranges = all_ranges(cx, arms, cx.tables.expr_ty(ex));
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
@@ -705,17 +704,27 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm<'_>]) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arms: &'tcx [Arm<'_>],
+    ty: Ty<'tcx>,
+) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
                 ref pat, guard: None, ..
             } = *arm
             {
-                if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.kind {
-                    let lhs = constant(cx, cx.tables, lhs)?.0;
-                    let rhs = constant(cx, cx.tables, rhs)?.0;
-                    let rhs = match *range_end {
+                if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
+                    let lhs = match lhs {
+                        Some(lhs) => constant(cx, cx.tables, lhs)?.0,
+                        None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
+                    };
+                    let rhs = match rhs {
+                        Some(rhs) => constant(cx, cx.tables, rhs)?.0,
+                        None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
+                    };
+                    let rhs = match range_end {
                         RangeEnd::Included => Bound::Included(rhs),
                         RangeEnd::Excluded => Bound::Excluded(rhs),
                     };

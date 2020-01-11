@@ -1,12 +1,11 @@
 //! checks for attributes
 
 use crate::utils::get_attr;
-use rustc::declare_lint_pass;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintContext};
 use rustc::session::Session;
 use rustc_hir as hir;
 use rustc_hir::print;
-use rustc_session::declare_tool_lint;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::Attribute;
 
 declare_clippy_lint! {
@@ -483,8 +482,12 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
         },
         hir::PatKind::Range(ref l, ref r, ref range_end) => {
             println!("{}Range", ind);
-            print_expr(cx, l, indent + 1);
-            print_expr(cx, r, indent + 1);
+            if let Some(expr) = l {
+                print_expr(cx, expr, indent + 1);
+            }
+            if let Some(expr) = r {
+                print_expr(cx, expr, indent + 1);
+            }
             match *range_end {
                 hir::RangeEnd::Included => println!("{} end included", ind),
                 hir::RangeEnd::Excluded => println!("{} end excluded", ind),

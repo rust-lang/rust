@@ -1,4 +1,5 @@
 #![feature(exclusive_range_pattern)]
+#![feature(half_open_range_patterns)]
 #![warn(clippy::match_overlapping_arm)]
 #![allow(clippy::redundant_pattern_matching)]
 
@@ -55,6 +56,21 @@ fn overlapping() {
         0..=11 => println!("0 ... 11"),
         _ => (),
     }
+
+    /*
+    // FIXME(JohnTitor): uncomment this once rustfmt knows half-open patterns
+    match 42 {
+        0.. => println!("0 .. 42"),
+        3.. => println!("3 .. 42"),
+        _ => (),
+    }
+
+    match 42 {
+        ..=23 => println!("0 ... 23"),
+        ..26 => println!("0 .. 26"),
+        _ => (),
+    }
+    */
 
     if let None = Some(42) {
         // nothing
