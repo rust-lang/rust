@@ -1,8 +1,8 @@
-// run-pass
+// check-pass
+// compile-flags: --emit=mir
 // Force mir to be emitted, to ensure that const
 // propagation doesn't ICE on a function
 // with an 'impossible' body. See issue #67696
-// compile-flags: --emit=mir,link
 // Inconsistent bounds with trait implementations
 
 #![feature(trivial_bounds)]
