@@ -74,7 +74,7 @@ impl WorldState {
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         watch: Watch,
-        mut options: Options,
+        options: Options,
         feature_flags: FeatureFlags,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
