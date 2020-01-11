@@ -1,4 +1,4 @@
-note: No external requirements
+note: no external requirements
   --> $DIR/return-wrong-bound-region.rs:11:16
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
@@ -18,7 +18,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |                 |  has type `&'1 i32`
    |                 has type `&'2 i32`
 
-note: No external requirements
+note: no external requirements
   --> $DIR/return-wrong-bound-region.rs:10:1
    |
 LL | / fn test() {

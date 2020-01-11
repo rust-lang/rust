@@ -4,7 +4,7 @@ error[E0733]: recursion in an `async fn` requires boxing
 LL | async fn recursive_async_function() -> () {
    |                                        ^^ recursive `async fn`
    |
-   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`.
+   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
 
 error: aborting due to previous error
 

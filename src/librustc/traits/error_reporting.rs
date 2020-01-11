@@ -1156,7 +1156,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_help(impl_span, "trait impl with same name found");
                 let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
                 let crate_msg = format!(
-                    "Perhaps two different versions of crate `{}` are being used?",
+                    "perhaps two different versions of crate `{}` are being used?",
                     trait_crate
                 );
                 err.note(&crate_msg);
