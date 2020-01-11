@@ -202,7 +202,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: e.span, attrs: e.attrs.clone() }
+        hir::Expr {
+            hir_id: self.lower_node_id(e.id),
+            kind,
+            span: e.span,
+            attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
+        }
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
