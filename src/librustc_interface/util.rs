@@ -146,7 +146,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     crate::callbacks::setup_callbacks();
 
     scoped_thread(cfg, || {
-        syntax::with_globals(edition, || {
+        syntax::attr::with_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
                     io::set_panic(Some(box Sink(stderr.clone())));

@@ -2,22 +2,24 @@
 
 mod builtin;
 
-pub use crate::ast::Attribute;
 pub use builtin::*;
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;
 
 use crate::ast;
-use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Ident, Name, Path, PathSegment};
+use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
+use crate::ast::{Ident, Name, Path, PathSegment};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
-use crate::GLOBALS;
 
+use rustc_data_structures::sync::Lock;
+use rustc_index::bit_set::GrowableBitSet;
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::source_map::{BytePos, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -25,6 +27,35 @@ use rustc_span::Span;
 use log::debug;
 use std::iter;
 use std::ops::DerefMut;
+
+pub struct Globals {
+    used_attrs: Lock<GrowableBitSet<AttrId>>,
+    known_attrs: Lock<GrowableBitSet<AttrId>>,
+    rustc_span_globals: rustc_span::Globals,
+}
+
+impl Globals {
+    fn new(edition: Edition) -> Globals {
+        Globals {
+            // We have no idea how many attributes there will be, so just
+            // initiate the vectors with 0 bits. We'll grow them as necessary.
+            used_attrs: Lock::new(GrowableBitSet::new_empty()),
+            known_attrs: Lock::new(GrowableBitSet::new_empty()),
+            rustc_span_globals: rustc_span::Globals::new(edition),
+        }
+    }
+}
+
+pub fn with_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
+    let globals = Globals::new(edition);
+    GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
+}
+
+pub fn with_default_globals<R>(f: impl FnOnce() -> R) -> R {
+    with_globals(DEFAULT_EDITION, f)
+}
+
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 pub fn mark_used(attr: &Attribute) {
     debug!("marking {:?} as used", attr);

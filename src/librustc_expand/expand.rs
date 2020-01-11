@@ -1664,7 +1664,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
-            *at = attr::Attribute {
+            *at = ast::Attribute {
                 kind: ast::AttrKind::Normal(AttrItem {
                     path: meta.path,
                     args: meta.kind.mac_args(meta.span),

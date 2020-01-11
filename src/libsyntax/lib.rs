@@ -17,11 +17,6 @@
 #![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
-use ast::AttrId;
-use rustc_data_structures::sync::Lock;
-use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::edition::{Edition, DEFAULT_EDITION};
-
 #[macro_export]
 macro_rules! unwrap_or {
     ($opt:expr, $default:expr) => {
@@ -31,35 +26,6 @@ macro_rules! unwrap_or {
         }
     };
 }
-
-pub struct Globals {
-    used_attrs: Lock<GrowableBitSet<AttrId>>,
-    known_attrs: Lock<GrowableBitSet<AttrId>>,
-    rustc_span_globals: rustc_span::Globals,
-}
-
-impl Globals {
-    fn new(edition: Edition) -> Globals {
-        Globals {
-            // We have no idea how many attributes there will be, so just
-            // initiate the vectors with 0 bits. We'll grow them as necessary.
-            used_attrs: Lock::new(GrowableBitSet::new_empty()),
-            known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            rustc_span_globals: rustc_span::Globals::new(edition),
-        }
-    }
-}
-
-pub fn with_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
-    let globals = Globals::new(edition);
-    GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
-}
-
-pub fn with_default_globals<R>(f: impl FnOnce() -> R) -> R {
-    with_globals(DEFAULT_EDITION, f)
-}
-
-scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 pub mod util {
     pub mod classify;
