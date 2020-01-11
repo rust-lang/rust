@@ -11,7 +11,7 @@ use rustc::traits;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::*;
 use rustc_session::declare_tool_lint;
@@ -20,7 +20,6 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 use syntax::ast::Attribute;
-use syntax::errors::DiagnosticBuilder;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions taking arguments by value, but not
