@@ -62,8 +62,13 @@ register_builtin! {
 }
 
 fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
-    // FIXME: Use expansion info
     let file_id = file.original_file(db);
+
+    // FIXME: if the file is coming from macro, we return a dummy value for now.
+    if file.call_node(db).map(|it| it.file_id != file_id.into()).unwrap_or(true) {
+        return 0;
+    }
+
     let text = db.file_text(file_id);
     let mut line_num = 1;
 
@@ -150,8 +155,11 @@ fn option_env_expand(
 }
 
 fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
-    // FIXME: Use expansion info
     let file_id = file.original_file(db);
+    // FIXME: if the file is coming from macro, we return a dummy value for now.
+    if file.call_node(db).map(|it| it.file_id != file_id.into()).unwrap_or(true) {
+        return 0;
+    }
     let text = db.file_text(file_id);
 
     let pos = pos.to_usize();
