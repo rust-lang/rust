@@ -283,7 +283,8 @@ fn check_place(
 
 /// Returns `true` if the given feature gate is allowed within the function with the given `DefId`.
 fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
-    // All features require that the corresponding gate be enabled.
+    // All features require that the corresponding gate be enabled,
+    // even if the function has `#[allow_internal_unstable(the_gate)]`.
     if !tcx.features().enabled(feature_gate) {
         return false;
     }
