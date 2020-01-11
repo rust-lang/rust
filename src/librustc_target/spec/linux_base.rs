@@ -6,6 +6,8 @@ pub fn opts() -> TargetOptions {
     args.insert(
         LinkerFlavor::Gcc,
         vec![
+            // Enable threads support
+            "-pthread".to_string(),
             // We want to be able to strip as much executable code as possible
             // from the linker command line, and this flag indicates to the
             // linker that it can avoid linking in dynamic libraries that don't
