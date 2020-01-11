@@ -104,7 +104,7 @@ use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, join};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
@@ -132,17 +132,20 @@ pub fn partition<'tcx, I>(
     inlining_map: &InliningMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
 where
-    I: Iterator<Item = MonoItem<'tcx>>,
+    I: Iterator<Item = MonoItem<'tcx>> + sync::Send,
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = {
-        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        place_root_mono_items(tcx, mono_items)
-    };
+    let (mut initial_partitioning, accessor_map) = join(
+        || {
+            let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
+            place_root_mono_items(tcx, mono_items)
+        },
+        || accessor_map(tcx, inlining_map),
+    );
 
     initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
@@ -173,7 +176,7 @@ where
     // more freedom to optimize.
     if !tcx.sess.opts.cg.link_dead_code {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
-        internalize_symbols(tcx, &mut post_inlining, inlining_map);
+        internalize_symbols(tcx, &mut post_inlining, &accessor_map);
     }
 
     // Finally, sort by codegen unit name, so that we get deterministic results.
@@ -592,10 +595,27 @@ fn place_inlined_mono_items<'tcx>(
     }
 }
 
+// Build a map from every monomorphization to all the monomorphizations that
+// reference it.
+fn accessor_map<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    inlining_map: &InliningMap<'tcx>,
+) -> FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> {
+    let _prof_timer = tcx.prof.generic_activity("build_accessor_map");
+
+    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
+    inlining_map.iter_accesses(|accessor, accessees| {
+        for accessee in accessees {
+            accessor_map.entry(*accessee).or_default().push(accessor);
+        }
+    });
+    accessor_map
+}
+
 fn internalize_symbols<'tcx>(
     _tcx: TyCtxt<'tcx>,
     partitioning: &mut PostInliningPartitioning<'tcx>,
-    inlining_map: &InliningMap<'tcx>,
+    accessor_map: &FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 ) {
     if partitioning.codegen_units.len() == 1 {
         // Fast path for when there is only one codegen unit. In this case we
@@ -609,15 +629,6 @@ fn internalize_symbols<'tcx>(
 
         return;
     }
-
-    // Build a map from every monomorphization to all the monomorphizations that
-    // reference it.
-    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
-    inlining_map.iter_accesses(|accessor, accessees| {
-        for accessee in accessees {
-            accessor_map.entry(*accessee).or_default().push(accessor);
-        }
-    });
 
     let mono_item_placements = &partitioning.mono_item_placements;
 
