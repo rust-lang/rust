@@ -1,5 +1,6 @@
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
@@ -10,7 +11,6 @@ use syntax::ast::{
     self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
 };
 use syntax::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, token_can_begin_expr, TokenKind};
 use syntax::util::parser::AssocOp;

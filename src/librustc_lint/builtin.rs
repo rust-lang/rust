@@ -25,6 +25,7 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc::hir::map::Map;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
+use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Stability;
@@ -41,7 +42,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
 use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
-use syntax::print::pprust::{self, expr_to_string};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::FnKind;
 

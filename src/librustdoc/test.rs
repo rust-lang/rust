@@ -141,7 +141,7 @@ pub fn run(options: Options) -> i32 {
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
-    use syntax::print::pprust;
+    use rustc_ast_pretty::pprust;
 
     let mut opts =
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };

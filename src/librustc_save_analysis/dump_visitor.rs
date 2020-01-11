@@ -16,21 +16,20 @@
 use rustc::session::config::Input;
 use rustc::span_bug;
 use rustc::ty::{self, DefIdTree, TyCtxt};
+use rustc_ast_pretty::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::DefId;
-
-use std::env;
-use std::path::Path;
-
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::*;
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::print::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
+
+use std::env;
+use std::path::Path;
 
 use crate::dumper::{Access, Dumper};
 use crate::sig;
