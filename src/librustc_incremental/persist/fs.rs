@@ -190,6 +190,8 @@ pub fn prepare_session_directory(
         return;
     }
 
+    let _timer = sess.timer("incr_comp_prepare_session_directory");
+
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
@@ -305,6 +307,8 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     if sess.opts.incremental.is_none() {
         return;
     }
+
+    let _timer = sess.timer("incr_comp_finalize_session_directory");
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
 

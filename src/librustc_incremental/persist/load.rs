@@ -102,6 +102,8 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
         return MaybeAsync::Sync(LoadResult::Ok { data: Default::default() });
     }
 
+    let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
+
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
     let path = dep_graph_path_from(&sess.incr_comp_session_dir());

@@ -177,11 +177,17 @@ pub fn run_compiler_in_existing_thread_pool<R>(
         override_queries: config.override_queries,
     };
 
-    let _sess_abort_error = OnDrop(|| {
-        compiler.sess.diagnostic().print_error_count(registry);
-    });
+    let r = {
+        let _sess_abort_error = OnDrop(|| {
+            compiler.sess.diagnostic().print_error_count(registry);
+        });
 
-    f(&compiler)
+        f(&compiler)
+    };
+
+    let prof = compiler.sess.prof.clone();
+    prof.generic_activity("drop_compiler").run(move || drop(compiler));
+    r
 }
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {

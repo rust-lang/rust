@@ -610,6 +610,8 @@ pub fn prepare_outputs(
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
+    let _timer = sess.timer("prepare_outputs");
+
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(
         &compiler.input,
@@ -733,20 +735,22 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let gcx = global_ctxt.init_locking(|| {
-        TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &all_arenas,
-            arena,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs,
-        )
+    let gcx = sess.time("setup_global_ctxt", || {
+        global_ctxt.init_locking(|| {
+            TyCtxt::create_global_ctxt(
+                sess,
+                lint_store,
+                local_providers,
+                extern_providers,
+                &all_arenas,
+                arena,
+                resolver_outputs,
+                hir_map,
+                query_result_on_disk_cache,
+                &crate_name,
+                &outputs,
+            )
+        })
     });
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.
