@@ -62,7 +62,7 @@ impl HasAttrs for Annotatable {
         }
     }
 
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         match self {
             Annotatable::Item(item) => item.visit_attrs(f),
             Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
