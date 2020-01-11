@@ -19,6 +19,7 @@
 #![feature(link_args)]
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
+#![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
 use rustc_span::symbol::Symbol;
@@ -108,9 +109,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        tx: &std::sync::mpsc::Sender<Box<dyn Any + Send>>,
-    ) {
-        base::compile_codegen_unit(tcx, cgu_name, tx);
+    ) -> (ModuleCodegen<ModuleLlvm>, u64) {
+        base::compile_codegen_unit(tcx, cgu_name)
     }
     fn target_machine_factory(
         &self,
