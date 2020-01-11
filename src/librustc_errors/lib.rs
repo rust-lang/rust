@@ -182,7 +182,7 @@ impl CodeSuggestion {
 
                 // Find the bounding span.
                 let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-                let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+                let hi = substitution.parts.iter().map(|part| part.span.hi()).max().unwrap();
                 let bounding_span = Span::with_root_ctxt(lo, hi);
                 let lines = cm.span_to_lines(bounding_span).unwrap();
                 assert!(!lines.lines.is_empty());

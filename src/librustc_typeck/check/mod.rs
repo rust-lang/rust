@@ -4952,9 +4952,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Loop(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..) => {
-                    let sp = self.tcx.sess.source_map().next_point(cause_span);
                     err.span_suggestion(
-                        sp,
+                        cause_span.shrink_to_hi(),
                         "try adding a semicolon",
                         ";".to_string(),
                         Applicability::MachineApplicable,
