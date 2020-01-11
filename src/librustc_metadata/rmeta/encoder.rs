@@ -467,12 +467,6 @@ impl<'tcx> EncodeContext<'tcx> {
         let impls = self.encode_impls();
         let impl_bytes = self.position() - i;
 
-        // Encode exported symbols info.
-        i = self.position();
-        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
-        let exported_symbols = self.encode_exported_symbols(&exported_symbols);
-        let exported_symbols_bytes = self.position() - i;
-
         let tcx = self.tcx;
 
         // Encode the items.
@@ -512,6 +506,12 @@ impl<'tcx> EncodeContext<'tcx> {
         i = self.position();
         let proc_macro_data = self.encode_proc_macros();
         let proc_macro_data_bytes = self.position() - i;
+
+        // Encode exported symbols info.
+        i = self.position();
+        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
+        let exported_symbols = self.encode_exported_symbols(&exported_symbols);
+        let exported_symbols_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
