@@ -12,6 +12,7 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_session::declare_tool_lint;
 use syntax::ast::{Attribute, LitFloatType, LitKind};
+use syntax::walk_list;
 
 declare_clippy_lint! {
     /// **What it does:** Generates clippy code that detects the offending pattern
@@ -617,13 +618,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     start_pat, end_pat, end_kind, current
                 );
                 self.current = start_pat;
-                if let Some(expr) = start {
-                    self.visit_expr(expr);
-                }
+                walk_list!(self, visit_expr, start);
                 self.current = end_pat;
-                if let Some(expr) = end {
-                    self.visit_expr(expr);
-                }
+                walk_list!(self, visit_expr, end);
             },
             PatKind::Slice(ref start, ref middle, ref end) => {
                 let start_pat = self.next("start");

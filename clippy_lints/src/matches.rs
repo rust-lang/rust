@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
@@ -444,7 +444,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 
 fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms);
+        let ranges = all_ranges(cx, arms, cx.tables.expr_ty(ex));
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
@@ -705,25 +705,52 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm<'_>]) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arms: &'tcx [Arm<'_>],
+    ty: Ty<'tcx>,
+) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
                 ref pat, guard: None, ..
             } = *arm
             {
-                if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.kind {
-                    if let (Some(l), Some(r)) = (lhs, rhs) {
-                        let lhs = constant(cx, cx.tables, l)?.0;
-                        let rhs = constant(cx, cx.tables, r)?.0;
-                        let rhs = match *range_end {
-                            RangeEnd::Included => Bound::Included(rhs),
-                            RangeEnd::Excluded => Bound::Excluded(rhs),
-                        };
-                        return Some(SpannedRange {
-                            span: pat.span,
-                            node: (lhs, rhs),
-                        });
+                if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
+                    match (lhs, rhs) {
+                        (Some(lhs), Some(rhs)) => {
+                            let lhs = constant(cx, cx.tables, lhs)?.0;
+                            let rhs = constant(cx, cx.tables, rhs)?.0;
+                            let rhs = match range_end {
+                                RangeEnd::Included => Bound::Included(rhs),
+                                RangeEnd::Excluded => Bound::Excluded(rhs),
+                            };
+                            return Some(SpannedRange {
+                                span: pat.span,
+                                node: (lhs, rhs),
+                            });
+                        },
+                        (None, Some(rhs)) => {
+                            let lhs = miri_to_const(ty.numeric_min_val(cx.tcx)?)?;
+                            let rhs = constant(cx, cx.tables, rhs)?.0;
+                            let rhs = match range_end {
+                                RangeEnd::Included => Bound::Included(rhs),
+                                RangeEnd::Excluded => Bound::Excluded(rhs),
+                            };
+                            return Some(SpannedRange {
+                                span: pat.span,
+                                node: (lhs, rhs),
+                            });
+                        },
+                        (Some(lhs), None) => {
+                            let lhs = constant(cx, cx.tables, lhs)?.0;
+                            let rhs = miri_to_const(ty.numeric_max_val(cx.tcx)?)?;
+                            return Some(SpannedRange {
+                                span: pat.span,
+                                node: (lhs, Bound::Excluded(rhs)),
+                            });
+                        },
+                        _ => return None,
                     }
                 }
 

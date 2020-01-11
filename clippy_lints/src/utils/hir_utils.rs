@@ -194,11 +194,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&PatKind::Tuple(ref l, ls), &PatKind::Tuple(ref r, rs)) => {
                 ls == rs && over(l, r, |l, r| self.eq_pat(l, r))
             },
-            (&PatKind::Range(ref ls, ref le, ref li), &PatKind::Range(ref rs, ref re, ref ri)) => {
-                if let (Some(ls), Some(rs), Some(le), Some(re)) = (ls, rs, le, re) {
-                    return self.eq_expr(ls, rs) && self.eq_expr(le, re) && (*li == *ri);
-                }
-                false
+            (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
+                both(ls, rs, |a, b| self.eq_expr(a, b)) && both(le, re, |a, b| self.eq_expr(a, b)) && (li == ri)
             },
             (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => lm == rm && self.eq_pat(le, re),
             (&PatKind::Slice(ref ls, ref li, ref le), &PatKind::Slice(ref rs, ref ri, ref re)) => {
