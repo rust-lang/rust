@@ -7,17 +7,21 @@ LL | const C1: &'static mut [usize] = &mut [];
    = note: for more information, see https://github.com/rust-lang/rust/issues/57349
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0013]: constants cannot refer to statics, use a constant instead
+error[E0013]: constants cannot refer to statics
   --> $DIR/issue-17718-const-bad-values.rs:5:46
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
 
-error[E0013]: constants cannot refer to statics, use a constant instead
+error[E0013]: constants cannot refer to statics
   --> $DIR/issue-17718-const-bad-values.rs:5:46
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
+   |
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
 
 error[E0658]: references in constants may only refer to immutable values
   --> $DIR/issue-17718-const-bad-values.rs:5:41
