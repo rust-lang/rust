@@ -652,6 +652,9 @@ impl EmbargoVisitor<'tcx> {
             if let Some(item) = module
                 .res
                 .and_then(|res| res.mod_def_id())
+                // If the module is `self`, i.e. the current crate,
+                // there will be no corresponding item.
+                .filter(|def_id| def_id.index != CRATE_DEF_INDEX || def_id.krate != LOCAL_CRATE)
                 .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {

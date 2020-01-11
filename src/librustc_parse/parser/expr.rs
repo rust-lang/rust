@@ -1645,7 +1645,7 @@ impl<'a> Parser<'a> {
                             //   |      |
                             //   |      parsed until here as `"y" & X`
                             err.span_suggestion_short(
-                                cm.next_point(arm_start_span),
+                                arm_start_span.shrink_to_hi(),
                                 "missing a comma here to end this `match` arm",
                                 ",".to_owned(),
                                 Applicability::MachineApplicable,

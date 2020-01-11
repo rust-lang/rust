@@ -16,7 +16,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_index = { path = "../librustc_index" }
-rustc_parse = { path = "../librustc_parse" }
+rustc_session = { path = "../librustc_session" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

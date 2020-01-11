@@ -3,7 +3,6 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::{self, in_derive_expansion, Lint};
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
@@ -14,11 +13,12 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
+use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
 use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
-use syntax::feature_gate::feature_err_issue;
+use syntax::sess::feature_err_issue;
 
 use std::num::NonZeroU32;
 
@@ -195,7 +195,7 @@ pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String
 }
 
 pub fn early_report_deprecation(
-    lint_buffer: &'a mut lint::LintBuffer,
+    lint_buffer: &'a mut LintBuffer,
     message: &str,
     suggestion: Option<Symbol>,
     lint: &'static Lint,

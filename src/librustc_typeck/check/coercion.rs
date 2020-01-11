@@ -53,6 +53,7 @@
 use crate::check::{FnCtxt, Needs};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
+use rustc::session::parse::feature_err;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -62,6 +63,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut};
+use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -70,9 +72,6 @@ use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
-use syntax::feature_gate;
-
-use rustc_error_codes::*;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -627,7 +626,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
-            feature_gate::feature_err(
+            feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::unsized_tuple_coercion,
                 self.cause.span,

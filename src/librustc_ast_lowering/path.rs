@@ -1,7 +1,7 @@
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
-use rustc::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
+use rustc::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc::span_bug;
 use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability};
@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::Span;
 use syntax::ast::{self, *};
 
@@ -304,7 +305,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             E0726,
                             "implicit elided lifetime not allowed here"
                         );
-                        crate::lint::builtin::add_elided_lifetime_in_path_suggestion(
+                        rustc::lint::add_elided_lifetime_in_path_suggestion(
                             &self.sess,
                             &mut err,
                             expected_lifetimes,
@@ -321,7 +322,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             CRATE_NODE_ID,
                             path_span,
                             "hidden lifetime parameters in types are deprecated",
-                            builtin::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
                                 expected_lifetimes,
                                 path_span,
                                 incl_angl_brckt,

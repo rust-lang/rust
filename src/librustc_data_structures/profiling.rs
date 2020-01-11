@@ -495,6 +495,12 @@ impl<'a> TimingGuard<'a> {
     pub fn none() -> TimingGuard<'a> {
         TimingGuard(None)
     }
+
+    #[inline(always)]
+    pub fn run<R>(self, f: impl FnOnce() -> R) -> R {
+        let _timer = self;
+        f()
+    }
 }
 
 #[must_use]

@@ -240,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = (parent_node, callee_node)
         {
             let start = sp.shrink_to_lo();
-            let end = self.tcx.sess.source_map().next_point(callee_span);
+            let end = callee_span.shrink_to_hi();
             err.multipart_suggestion(
                 "if you meant to create this closure and immediately call it, surround the \
                 closure with parenthesis",
@@ -317,9 +317,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let call_is_multiline =
                                 self.tcx.sess.source_map().is_multiline(call_expr.span);
                             if call_is_multiline {
-                                let span = self.tcx.sess.source_map().next_point(callee.span);
                                 err.span_suggestion(
-                                    span,
+                                    callee.span.shrink_to_hi(),
                                     "try adding a semicolon",
                                     ";".to_owned(),
                                     Applicability::MaybeIncorrect,

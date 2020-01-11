@@ -1,22 +1,15 @@
-use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
-use crate::attr;
-use crate::sess::ParseSess;
-use crate::visit::{self, FnKind, Visitor};
-
-use rustc_data_structures::fx::FxHashMap;
 use rustc_error_codes::*;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Handler};
-use rustc_feature::{find_feature_issue, GateIssue};
+use rustc_errors::{struct_span_err, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
-use rustc_feature::{Feature, Features, State as FeatureState, UnstableFeatures};
-use rustc_feature::{
-    ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
-};
-use rustc_span::edition::{Edition, ALL_EDITIONS};
+use rustc_feature::{Features, GateIssue, UnstableFeatures};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
+use syntax::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use syntax::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use syntax::attr;
+use syntax::sess::{feature_err, leveled_feature_err, GateStrength, ParseSess};
+use syntax::visit::{self, FnKind, Visitor};
 
 use log::debug;
 
@@ -51,70 +44,6 @@ macro_rules! gate_feature {
 
 pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum GateStrength {
-    /// A hard error. (Most feature gates should use this.)
-    Hard,
-    /// Only a warning. (Use this only as backwards-compatibility demands.)
-    Soft,
-}
-
-pub fn feature_err<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    explain: &str,
-) -> DiagnosticBuilder<'a> {
-    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
-}
-
-pub fn feature_err_issue<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    issue: GateIssue,
-    explain: &str,
-) -> DiagnosticBuilder<'a> {
-    leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
-}
-
-fn leveled_feature_err<'a>(
-    sess: &'a ParseSess,
-    feature: Symbol,
-    span: impl Into<MultiSpan>,
-    issue: GateIssue,
-    explain: &str,
-    level: GateStrength,
-) -> DiagnosticBuilder<'a> {
-    let diag = &sess.span_diagnostic;
-
-    let mut err = match level {
-        GateStrength::Hard => diag.struct_span_err_with_code(span, explain, error_code!(E0658)),
-        GateStrength::Soft => diag.struct_span_warn(span, explain),
-    };
-
-    if let Some(n) = find_feature_issue(feature, issue) {
-        err.note(&format!(
-            "for more information, see https://github.com/rust-lang/rust/issues/{}",
-            n,
-        ));
-    }
-
-    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.unstable_features.is_nightly_build() {
-        err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
-    }
-
-    // If we're on stable and only emitting a "soft" warning, add a note to
-    // clarify that the feature isn't "on" (rather than being on but
-    // warning-worthy).
-    if !sess.unstable_features.is_nightly_build() && level == GateStrength::Soft {
-        err.help("a nightly build of the compiler is required to enable this feature");
-    }
-
-    err
 }
 
 struct PostExpansionVisitor<'a> {
@@ -722,168 +651,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         visit::walk_vis(self, vis)
     }
-}
-
-pub fn get_features(
-    span_handler: &Handler,
-    krate_attrs: &[ast::Attribute],
-    crate_edition: Edition,
-    allow_features: &Option<Vec<String>>,
-) -> Features {
-    fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
-        let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
-        err.span_label(span, "feature has been removed");
-        if let Some(reason) = reason {
-            err.note(reason);
-        }
-        err.emit();
-    }
-
-    let mut features = Features::default();
-    let mut edition_enabled_features = FxHashMap::default();
-
-    for &edition in ALL_EDITIONS {
-        if edition <= crate_edition {
-            // The `crate_edition` implies its respective umbrella feature-gate
-            // (i.e., `#![feature(rust_20XX_preview)]` isn't needed on edition 20XX).
-            edition_enabled_features.insert(edition.feature_name(), edition);
-        }
-    }
-
-    for feature in active_features_up_to(crate_edition) {
-        feature.set(&mut features, DUMMY_SP);
-        edition_enabled_features.insert(feature.name, crate_edition);
-    }
-
-    // Process the edition umbrella feature-gates first, to ensure
-    // `edition_enabled_features` is completed before it's queried.
-    for attr in krate_attrs {
-        if !attr.check_name(sym::feature) {
-            continue;
-        }
-
-        let list = match attr.meta_item_list() {
-            Some(list) => list,
-            None => continue,
-        };
-
-        for mi in list {
-            if !mi.is_word() {
-                continue;
-            }
-
-            let name = mi.name_or_empty();
-
-            let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
-            if let Some(edition) = edition {
-                if edition <= crate_edition {
-                    continue;
-                }
-
-                for feature in active_features_up_to(edition) {
-                    // FIXME(Manishearth) there is currently no way to set
-                    // lib features by edition
-                    feature.set(&mut features, DUMMY_SP);
-                    edition_enabled_features.insert(feature.name, edition);
-                }
-            }
-        }
-    }
-
-    for attr in krate_attrs {
-        if !attr.check_name(sym::feature) {
-            continue;
-        }
-
-        let list = match attr.meta_item_list() {
-            Some(list) => list,
-            None => continue,
-        };
-
-        let bad_input = |span| {
-            struct_span_err!(span_handler, span, E0556, "malformed `feature` attribute input")
-        };
-
-        for mi in list {
-            let name = match mi.ident() {
-                Some(ident) if mi.is_word() => ident.name,
-                Some(ident) => {
-                    bad_input(mi.span())
-                        .span_suggestion(
-                            mi.span(),
-                            "expected just one word",
-                            format!("{}", ident.name),
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
-                    continue;
-                }
-                None => {
-                    bad_input(mi.span()).span_label(mi.span(), "expected just one word").emit();
-                    continue;
-                }
-            };
-
-            if let Some(edition) = edition_enabled_features.get(&name) {
-                let msg =
-                    &format!("the feature `{}` is included in the Rust {} edition", name, edition);
-                span_handler.struct_span_warn_with_code(mi.span(), msg, error_code!(E0705)).emit();
-                continue;
-            }
-
-            if ALL_EDITIONS.iter().any(|e| name == e.feature_name()) {
-                // Handled in the separate loop above.
-                continue;
-            }
-
-            let removed = REMOVED_FEATURES.iter().find(|f| name == f.name);
-            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.name);
-            if let Some(Feature { state, .. }) = removed.or(stable_removed) {
-                if let FeatureState::Removed { reason } | FeatureState::Stabilized { reason } =
-                    state
-                {
-                    feature_removed(span_handler, mi.span(), *reason);
-                    continue;
-                }
-            }
-
-            if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
-                let since = Some(Symbol::intern(since));
-                features.declared_lang_features.push((name, mi.span(), since));
-                continue;
-            }
-
-            if let Some(allowed) = allow_features.as_ref() {
-                if allowed.iter().find(|&f| name.as_str() == *f).is_none() {
-                    struct_span_err!(
-                        span_handler,
-                        mi.span(),
-                        E0725,
-                        "the feature `{}` is not in the list of allowed features",
-                        name
-                    )
-                    .emit();
-                    continue;
-                }
-            }
-
-            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
-                f.set(&mut features, mi.span());
-                features.declared_lang_features.push((name, mi.span(), None));
-                continue;
-            }
-
-            features.declared_lib_features.push((name, mi.span()));
-        }
-    }
-
-    features
-}
-
-fn active_features_up_to(edition: Edition) -> impl Iterator<Item = &'static Feature> {
-    ACTIVE_FEATURES.iter().filter(move |feature| {
-        if let Some(feature_edition) = feature.edition { feature_edition <= edition } else { false }
-    })
 }
 
 pub fn check_crate(

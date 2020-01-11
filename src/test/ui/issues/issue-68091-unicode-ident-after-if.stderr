@@ -1,0 +1,18 @@
+error: missing condition for `if` expression
+  --> $DIR/issue-68091-unicode-ident-after-if.rs:3:14
+   |
+LL |         $($c)ö* {}
+   |              ^ expected if condition here
+
+error[E0308]: mismatched types
+  --> $DIR/issue-68091-unicode-ident-after-if.rs:3:17
+   |
+LL |         $($c)ö* {}
+   |                 ^^ expected `bool`, found `()`
+...
+LL |     x!(if);
+   |     ------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

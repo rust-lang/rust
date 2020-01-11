@@ -29,7 +29,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
-use rustc_passes::{self, ast_validation, hir_stats, layout_test};
+use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
@@ -37,7 +37,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::mut_visit::MutVisitor;
 use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
@@ -71,7 +70,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
-        syntax::show_span::run(sess.diagnostic(), s, &krate);
+        rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
     }
 
     if sess.opts.debugging_opts.hir_stats {
@@ -345,7 +344,7 @@ fn configure_and_expand_inner<'a>(
     }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
-        ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
+        rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
     let crate_types = sess.crate_types.borrow();
@@ -400,7 +399,7 @@ fn configure_and_expand_inner<'a>(
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
-        syntax::feature_gate::check_crate(
+        rustc_ast_passes::feature_gate::check_crate(
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),
@@ -411,8 +410,8 @@ fn configure_and_expand_inner<'a>(
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint { id, span, msg, lint_id } in buffered_lints.drain(..) {
-            resolver.lint_buffer().buffer_lint(lint_id, id, span, &msg);
+        for early_lint in buffered_lints.drain(..) {
+            resolver.lint_buffer().add_early_lint(early_lint);
         }
     });
 
@@ -611,6 +610,8 @@ pub fn prepare_outputs(
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
+    let _timer = sess.timer("prepare_outputs");
+
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(
         &compiler.input,
@@ -734,20 +735,22 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let gcx = global_ctxt.init_locking(|| {
-        TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &all_arenas,
-            arena,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs,
-        )
+    let gcx = sess.time("setup_global_ctxt", || {
+        global_ctxt.init_locking(|| {
+            TyCtxt::create_global_ctxt(
+                sess,
+                lint_store,
+                local_providers,
+                extern_providers,
+                &all_arenas,
+                arena,
+                resolver_outputs,
+                hir_map,
+                query_result_on_disk_cache,
+                &crate_name,
+                &outputs,
+            )
+        })
     });
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.

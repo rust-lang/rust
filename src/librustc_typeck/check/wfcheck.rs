@@ -3,6 +3,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
+use rustc::session::parse::feature_err;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -13,7 +14,6 @@ use rustc_hir::ItemKind;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
-use syntax::feature_gate;
 
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
@@ -821,7 +821,7 @@ fn check_method_receiver<'fcx, 'tcx>(
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
             if receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
                 // Report error; would have worked with `arbitrary_self_types`.
-                feature_gate::feature_err(
+                feature_err(
                     &fcx.tcx.sess.parse_sess,
                     sym::arbitrary_self_types,
                     span,

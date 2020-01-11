@@ -5,9 +5,9 @@
 
 use std::str::FromStr;
 
-use crate::ast;
-use crate::visit;
-use crate::visit::Visitor;
+use syntax::ast;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 enum Mode {
     Expression,

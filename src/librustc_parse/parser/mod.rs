@@ -765,7 +765,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut expect_err) => {
-                            let sp = self.sess.source_map().next_point(self.prev_span);
+                            let sp = self.prev_span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
                             // Attempt to keep parsing if it was a similar separator.

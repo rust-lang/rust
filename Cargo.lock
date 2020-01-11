@@ -3364,6 +3364,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_ast_passes"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc_data_structures",
+ "rustc_error_codes",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_parse",
+ "rustc_session",
+ "rustc_span",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_builtin_macros"
 version = "0.0.0"
 dependencies = [
@@ -3375,6 +3390,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_parse",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
@@ -3528,11 +3544,13 @@ name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast_passes",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
  "rustc_parse",
+ "rustc_session",
  "rustc_span",
  "serialize",
  "smallvec 1.0.0",
@@ -3602,6 +3620,7 @@ dependencies = [
  "rustc",
  "rustc-rayon",
  "rustc_ast_lowering",
+ "rustc_ast_passes",
  "rustc_builtin_macros",
  "rustc_codegen_llvm",
  "rustc_codegen_ssa",
@@ -3619,6 +3638,7 @@ dependencies = [
  "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_resolve",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_traits",
@@ -3735,6 +3755,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
+ "rustc_session",
  "rustc_span",
  "smallvec 1.0.0",
  "syntax",
@@ -3753,7 +3774,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
- "rustc_parse",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "syntax",
@@ -3833,6 +3854,7 @@ dependencies = [
  "log",
  "num_cpus",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_feature",
  "rustc_fs_util",

@@ -710,7 +710,7 @@ impl SourceMap {
     pub fn next_point(&self, sp: Span) -> Span {
         let start_of_next_point = sp.hi().0;
 
-        let width = self.find_width_of_character_at_span(sp, true);
+        let width = self.find_width_of_character_at_span(sp.shrink_to_hi(), true);
         // If the width is 1, then the next span should point to the same `lo` and `hi`. However,
         // in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.

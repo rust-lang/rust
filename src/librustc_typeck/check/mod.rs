@@ -99,6 +99,7 @@ use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::middle::region;
 use rustc::mir::interpret::ConstValue;
+use rustc::session::parse::feature_err;
 use rustc::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::adjustment::{
@@ -130,7 +131,6 @@ use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate::feature_err;
 use syntax::util::parser::ExprPrecedence;
 
 use rustc_error_codes::*;
@@ -4952,9 +4952,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Loop(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..) => {
-                    let sp = self.tcx.sess.source_map().next_point(cause_span);
                     err.span_suggestion(
-                        sp,
+                        cause_span.shrink_to_hi(),
                         "try adding a semicolon",
                         ";".to_string(),
                         Applicability::MachineApplicable,

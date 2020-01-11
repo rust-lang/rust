@@ -4,16 +4,31 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::lint::{FutureIncompatibleInfo, LateLintPass, LintArray, LintPass};
-use crate::middle::stability;
-use crate::session::Session;
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
-use rustc_session::declare_lint;
+use crate::lint::FutureIncompatibleInfo;
+use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
-use syntax::ast;
-use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
+
+declare_lint! {
+    pub ILL_FORMED_ATTRIBUTE_INPUT,
+    Deny,
+    "ill-formed attribute inputs that were previously accepted and used in practice",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    pub META_VARIABLE_MISUSE,
+    Allow,
+    "possible meta-variable misuse at macro definition"
+}
+
+declare_lint! {
+    pub INCOMPLETE_INCLUDE,
+    Deny,
+    "trailing content in included file"
+}
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -513,145 +528,3 @@ declare_lint_pass! {
         SOFT_UNSTABLE,
     ]
 }
-
-// this could be a closure, but then implementing derive traits
-// becomes hacky (and it gets allocated)
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
-pub enum BuiltinLintDiagnostics {
-    Normal,
-    BareTraitObject(Span, /* is_global */ bool),
-    AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback(Span),
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
-    UnknownCrateTypes(Span, String, String),
-    UnusedImports(String, Vec<(Span, String)>),
-    RedundantImport(Vec<(Span, bool)>, ast::Ident),
-    DeprecatedMacro(Option<Symbol>, Span),
-}
-
-pub fn add_elided_lifetime_in_path_suggestion(
-    sess: &Session,
-    db: &mut DiagnosticBuilder<'_>,
-    n: usize,
-    path_span: Span,
-    incl_angl_brckt: bool,
-    insertion_span: Span,
-    anon_lts: String,
-) {
-    let (replace_span, suggestion) = if incl_angl_brckt {
-        (insertion_span, anon_lts)
-    } else {
-        // When possible, prefer a suggestion that replaces the whole
-        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
-        // at a point (which makes for an ugly/confusing label)
-        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
-            // But our spans can get out of whack due to macros; if the place we think
-            // we want to insert `'_` isn't even within the path expression's span, we
-            // should bail out of making any suggestion rather than panicking on a
-            // subtract-with-overflow or string-slice-out-out-bounds (!)
-            // FIXME: can we do better?
-            if insertion_span.lo().0 < path_span.lo().0 {
-                return;
-            }
-            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
-            if insertion_index > snippet.len() {
-                return;
-            }
-            let (before, after) = snippet.split_at(insertion_index);
-            (path_span, format!("{}{}{}", before, anon_lts, after))
-        } else {
-            (insertion_span, anon_lts)
-        }
-    };
-    db.span_suggestion(
-        replace_span,
-        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
-        suggestion,
-        Applicability::MachineApplicable,
-    );
-}
-
-impl BuiltinLintDiagnostics {
-    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder<'_>) {
-        match self {
-            BuiltinLintDiagnostics::Normal => (),
-            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) if is_global => {
-                        (format!("dyn ({})", s), Applicability::MachineApplicable)
-                    }
-                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `dyn`", sugg, app);
-            }
-            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) => {
-                        // FIXME(Manishearth) ideally the emitting code
-                        // can tell us whether or not this is global
-                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
-                    }
-                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `crate`", sugg, app);
-            }
-            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
-                db.span_label(
-                    span,
-                    "names from parent modules are not \
-                                     accessible without an explicit import",
-                );
-            }
-            BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-                db.span_note(span_def, "the macro is defined here");
-            }
-            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                n,
-                path_span,
-                incl_angl_brckt,
-                insertion_span,
-                anon_lts,
-            ) => {
-                add_elided_lifetime_in_path_suggestion(
-                    sess,
-                    db,
-                    n,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_span,
-                    anon_lts,
-                );
-            }
-            BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
-            }
-            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
-                if !replaces.is_empty() {
-                    db.tool_only_multipart_suggestion(
-                        &message,
-                        replaces,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
-                for (span, is_imported) in spans {
-                    let introduced = if is_imported { "imported" } else { "defined" };
-                    db.span_label(
-                        span,
-                        format!("the item `{}` is already {} here", ident, introduced),
-                    );
-                }
-            }
-            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
-                stability::deprecation_suggestion(db, suggestion, span)
-            }
-        }
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HardwiredLints {}

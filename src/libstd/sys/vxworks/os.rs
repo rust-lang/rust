@@ -7,7 +7,6 @@ use crate::marker::PhantomData;
 use crate::mem;
 use crate::memchr;
 use crate::path::{self, Path, PathBuf};
-use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys::cvt;
@@ -226,15 +225,15 @@ pub fn env() -> Env {
     unsafe {
         let _guard = env_lock();
         let mut environ = *environ();
-        if environ == ptr::null() {
+        if environ.is_null() {
             panic!("os::env() failure getting env string from OS: {}", io::Error::last_os_error());
         }
         let mut result = Vec::new();
-        while *environ != ptr::null() {
+        while !(*environ).is_null() {
             if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
                 result.push(key_value);
             }
-            environ = environ.offset(1);
+            environ = environ.add(1);
         }
         return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
     }
