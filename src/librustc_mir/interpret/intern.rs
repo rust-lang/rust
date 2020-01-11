@@ -347,16 +347,10 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
             match intern_kind {
-                // Mutable statics may contain mutable allocations even behind relocations
-                InternKind::Static(hir::Mutability::Mut) => {}
-                // Once we get heap allocations we need to revisit whether immutable statics can
-                // refer to mutable (e.g. via interior mutability) allocations.
-                // Note: this is never the base value of the static, we can only get here for
-                // pointers encountered inside the base allocation, and then only for ones not at
-                // reference type, as that is checked by the type based main interner.
-                InternKind::Static(hir::Mutability::Not) => {
-                    alloc.mutability = Mutability::Not;
-                }
+                // Statics may contain mutable allocations even behind relocations.
+                // Even for immutable statics it would be ok to have mutable allocations behind
+                // raw pointers, e.g. for `static FOO: *const AtomicUsize = &AtomicUsize::new(42)`.
+                InternKind::Static(_) => {}
                 // Raw pointers in promoteds may only point to immutable things so we mark
                 // everything as immutable.
                 // It is UB to mutate through a raw pointer obtained via an immutable reference.
