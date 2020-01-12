@@ -505,6 +505,15 @@ rustc_queries! {
             desc { "extract field of const" }
         }
 
+        /// Destructure a constant ADT or array into its variant indent and its
+        /// field values.
+        query destructure_const(
+            key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        ) -> mir::DestructuredConst<'tcx> {
+            no_force
+            desc { "destructure constant" }
+        }
+
         query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
             no_force
             desc { "get a &core::panic::Location referring to a span" }

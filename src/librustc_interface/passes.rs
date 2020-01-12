@@ -29,6 +29,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
+use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
@@ -671,6 +672,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     plugin::build::provide(providers);
     rustc::hir::provide(providers);
     mir::provide(providers);
+    mir_build::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);

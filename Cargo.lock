@@ -3633,6 +3633,7 @@ dependencies = [
  "rustc_lint",
  "rustc_metadata",
  "rustc_mir",
+ "rustc_mir_build",
  "rustc_parse",
  "rustc_passes",
  "rustc_plugin_impl",
@@ -3722,7 +3723,6 @@ dependencies = [
 name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
- "arena",
  "either",
  "graphviz",
  "itertools 0.8.0",
@@ -3737,6 +3737,28 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_lexer",
+ "rustc_macros",
+ "rustc_span",
+ "rustc_target",
+ "serialize",
+ "smallvec 1.0.0",
+ "syntax",
+]
+
+[[package]]
+name = "rustc_mir_build"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "itertools 0.8.0",
+ "log",
+ "rustc",
+ "rustc_apfloat",
+ "rustc_data_structures",
+ "rustc_error_codes",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
  "rustc_macros",
  "rustc_span",
  "rustc_target",
