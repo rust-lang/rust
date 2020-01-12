@@ -10,25 +10,25 @@ note: consider marking `foo` as `pub` in the imported module
 LL |         pub use super::foo;
    |                 ^^^^^^^^^^
 
-error[E0603]: module `foo` is private
+error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:33:15
    |
 LL |     use b::a::foo::S;
-   |               ^^^ this module is private
+   |               ^^^ this module import is private
    |
-note: the module `foo` is defined here
+note: the module import `foo` is defined here
   --> $DIR/reexports.rs:21:17
    |
 LL |         pub use super::foo; // This is OK since the value `foo` is visible enough.
    |                 ^^^^^^^^^^
 
-error[E0603]: module `foo` is private
+error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:34:15
    |
 LL |     use b::b::foo::S as T;
-   |               ^^^ this module is private
+   |               ^^^ this module import is private
    |
-note: the module `foo` is defined here
+note: the module import `foo` is defined here
   --> $DIR/reexports.rs:26:17
    |
 LL |         pub use super::*; // This is also OK since the value `foo` is visible enough.
