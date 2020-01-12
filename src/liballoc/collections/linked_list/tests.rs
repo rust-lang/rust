@@ -313,15 +313,18 @@ fn test_cursor_move_peek() {
     assert_eq!(cursor.current(), Some(&1));
     assert_eq!(cursor.peek_next(), Some(&2));
     assert_eq!(cursor.peek_prev(), None);
+    assert_eq!(cursor.index(), Some(0));
     cursor.move_prev();
     assert_eq!(cursor.current(), None);
     assert_eq!(cursor.peek_next(), Some(&1));
     assert_eq!(cursor.peek_prev(), Some(&6));
+    assert_eq!(cursor.index(), None);
     cursor.move_next();
     cursor.move_next();
     assert_eq!(cursor.current(), Some(&2));
     assert_eq!(cursor.peek_next(), Some(&3));
     assert_eq!(cursor.peek_prev(), Some(&1));
+    assert_eq!(cursor.index(), Some(1));
 
     let mut m: LinkedList<u32> = LinkedList::new();
     m.extend(&[1, 2, 3, 4, 5, 6]);
@@ -329,20 +332,26 @@ fn test_cursor_move_peek() {
     assert_eq!(cursor.current(), Some(&mut 1));
     assert_eq!(cursor.peek_next(), Some(&mut 2));
     assert_eq!(cursor.peek_prev(), None);
+    assert_eq!(cursor.index(), Some(0));
     cursor.move_prev();
     assert_eq!(cursor.current(), None);
     assert_eq!(cursor.peek_next(), Some(&mut 1));
     assert_eq!(cursor.peek_prev(), Some(&mut 6));
+    assert_eq!(cursor.index(), None);
     cursor.move_next();
     cursor.move_next();
     assert_eq!(cursor.current(), Some(&mut 2));
     assert_eq!(cursor.peek_next(), Some(&mut 3));
     assert_eq!(cursor.peek_prev(), Some(&mut 1));
+    assert_eq!(cursor.index(), Some(1));
     let mut cursor2 = cursor.as_cursor();
     assert_eq!(cursor2.current(), Some(&2));
+    assert_eq!(cursor2.index(), Some(1));
     cursor2.move_next();
     assert_eq!(cursor2.current(), Some(&3));
+    assert_eq!(cursor2.index(), Some(2));
     assert_eq!(cursor.current(), Some(&mut 2));
+    assert_eq!(cursor.index(), Some(1));
 }
 
 #[test]

@@ -1132,7 +1132,7 @@ pub struct Cursor<'a, T: 'a> {
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for Cursor<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Cursor").field(&self.list).field(&self.index).finish()
+        f.debug_tuple("Cursor").field(&self.list).field(&self.index()).finish()
     }
 }
 
@@ -1158,11 +1158,21 @@ pub struct CursorMut<'a, T: 'a> {
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for CursorMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("CursorMut").field(&self.list).field(&self.index).finish()
+        f.debug_tuple("CursorMut").field(&self.list).field(&self.index()).finish()
     }
 }
 
 impl<'a, T> Cursor<'a, T> {
+    /// Returns the cursor position index within the `LinkedList`.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn index(&self) -> Option<usize> {
+        let _ = self.current?;
+        Some(self.index)
+    }
+
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
@@ -1250,6 +1260,16 @@ impl<'a, T> Cursor<'a, T> {
 }
 
 impl<'a, T> CursorMut<'a, T> {
+    /// Returns the cursor position index within the `LinkedList`.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn index(&self) -> Option<usize> {
+        let _ = self.current?;
+        Some(self.index)
+    }
+
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
@@ -1456,6 +1476,7 @@ impl<'a, T> CursorMut<'a, T> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_after(self) -> LinkedList<T> {
         let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
+        // no need to update `self.index` because the cursor is consumed.
         unsafe { self.list.split_off_after_node(self.current, split_off_idx) }
     }
 
@@ -1468,6 +1489,7 @@ impl<'a, T> CursorMut<'a, T> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_before(self) -> LinkedList<T> {
         let split_off_idx = self.index;
+        // no need to update `self.index` because the cursor is consumed.
         unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
     }
 }
