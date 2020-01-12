@@ -102,7 +102,7 @@ use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility}
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
-use rustc::ty::{self, DefIdTree, InstanceDef, TyCtxt};
+use rustc::ty::{self, DefIdTree, InstanceDef, SymbolName, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, join};
 use rustc_hir::def::DefKind;
@@ -125,15 +125,12 @@ fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
-pub fn partition<'tcx, I>(
+pub fn partition<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mono_items: I,
+    mono_items: &[MonoItem<'tcx>],
     strategy: PartitioningStrategy,
     inlining_map: &InliningMap<'tcx>,
-) -> Vec<CodegenUnit<'tcx>>
-where
-    I: Iterator<Item = MonoItem<'tcx>> + sync::Send,
-{
+) -> Vec<CodegenUnit<'tcx>> {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     // In the first step, we place all regular monomorphizations into their
@@ -210,10 +207,10 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I) -> PreInliningPartitioning<'tcx>
-where
-    I: Iterator<Item = MonoItem<'tcx>>,
-{
+fn place_root_mono_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mono_items: &[MonoItem<'tcx>],
+) -> PreInliningPartitioning<'tcx> {
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
 
     // Determine if monomorphizations instantiated in this crate will be made
@@ -221,8 +218,6 @@ where
     // share-generics mode and whether the current crate can even have
     // downstream crates.
     let export_generics = tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics();
-
-    let mono_items: Vec<_> = mono_items.collect();
 
     let chunks = tcx.prof.generic_activity("place_root_mono_items_par").run(|| {
         sync::par_partition(&mono_items, 2, |chunk| {
@@ -827,17 +822,23 @@ where
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
-where
-    I: Iterator<Item = &'a MonoItem<'tcx>>,
-    'tcx: 'a,
-{
+fn assert_symbols_are_distinct<'tcx>(tcx: TyCtxt<'tcx>, mono_items: &[MonoItem<'tcx>]) {
     let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
 
-    let mut symbols: Vec<_> =
-        mono_items.map(|mono_item| (mono_item, mono_item.symbol_name(tcx))).collect();
+    let mut symbols: Vec<(&MonoItem<'tcx>, SymbolName)> =
+        sync::par_partition(mono_items, 2, |chunk| {
+            chunk
+                .iter()
+                .map(|mono_item| (mono_item, mono_item.symbol_name(tcx)))
+                .collect::<Vec<_>>()
+        })
+        .into_iter()
+        .flatten()
+        .collect();
 
-    symbols.sort_by_key(|sym| sym.1);
+    tcx.prof
+        .generic_activity("assert_symbols_are_distinct_sort")
+        .run(|| symbols.sort_by_key(|sym| sym.1));
 
     for pair in symbols.windows(2) {
         let sym1 = &pair[0].1;
@@ -907,6 +908,8 @@ fn collect_and_partition_mono_items(
 
     tcx.sess.abort_if_errors();
 
+    let items: Vec<_> = items.iter().copied().collect();
+
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
@@ -916,12 +919,12 @@ fn collect_and_partition_mono_items(
                     PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
                 };
 
-                partition(tcx, items.iter().cloned(), strategy, &inlining_map)
+                partition(tcx, &items, strategy, &inlining_map)
                     .into_iter()
                     .map(Arc::new)
                     .collect::<Vec<_>>()
             },
-            || assert_symbols_are_distinct(tcx, items.iter()),
+            || assert_symbols_are_distinct(tcx, &items),
         )
     });
 
