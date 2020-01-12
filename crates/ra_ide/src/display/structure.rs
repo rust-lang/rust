@@ -151,11 +151,11 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 Some(node)
             },
             ast::MacroCall(it) => {
-                let first_token = it.syntax().first_token().unwrap();
-                if first_token.text().as_str() != "macro_rules" {
-                    return None;
+                match it.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
+                    Some(path_segment) if path_segment.text() == "macro_rules"
+                    => decl(it),
+                    _ => None,
                 }
-                decl(it)
             },
             _ => None,
         }
@@ -195,6 +195,16 @@ impl E {}
 impl fmt::Debug for E {}
 
 macro_rules! mc {
+    () => {}
+}
+
+#[macro_export]
+macro_rules! mcexp {
+    () => {}
+}
+
+/// Doc comment
+macro_rules! mcexp {
     () => {}
 }
 
@@ -374,9 +384,27 @@ fn very_obsolete() {}
             },
             StructureNode {
                 parent: None,
+                label: "mcexp",
+                navigation_range: [334; 339),
+                node_range: [305; 356),
+                kind: MACRO_CALL,
+                detail: None,
+                deprecated: false,
+            },
+            StructureNode {
+                parent: None,
+                label: "mcexp",
+                navigation_range: [387; 392),
+                node_range: [358; 409),
+                kind: MACRO_CALL,
+                detail: None,
+                deprecated: false,
+            },
+            StructureNode {
+                parent: None,
                 label: "obsolete",
-                navigation_range: [322; 330),
-                node_range: [305; 335),
+                navigation_range: [428; 436),
+                node_range: [411; 441),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
@@ -386,8 +414,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "very_obsolete",
-                navigation_range: [375; 388),
-                node_range: [337; 393),
+                navigation_range: [481; 494),
+                node_range: [443; 499),
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
