@@ -145,7 +145,7 @@ use crate::hint::spin_loop;
 /// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
 /// [`std::thread::sleep`]: ../../../std/thread/fn.sleep.html
 /// [`std::sync::Mutex`]: ../../../std/sync/struct.Mutex.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
     spin_loop()
@@ -323,7 +323,7 @@ impl AtomicBool {
     /// let atomic_true  = AtomicBool::new(true);
     /// let atomic_false = AtomicBool::new(false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
     pub const fn new(v: bool) -> AtomicBool {
@@ -347,7 +347,7 @@ impl AtomicBool {
     /// *some_bool.get_mut() = false;
     /// assert_eq!(some_bool.load(Ordering::SeqCst), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut bool {
         unsafe { &mut *(self.v.get() as *mut bool) }
@@ -366,7 +366,7 @@ impl AtomicBool {
     /// let some_bool = AtomicBool::new(true);
     /// assert_eq!(some_bool.into_inner(), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> bool {
         self.v.into_inner() != 0
@@ -397,7 +397,7 @@ impl AtomicBool {
     ///
     /// assert_eq!(some_bool.load(Ordering::Relaxed), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> bool {
         unsafe { atomic_load(self.v.get(), order) != 0 }
@@ -429,7 +429,7 @@ impl AtomicBool {
     /// some_bool.store(false, Ordering::Relaxed);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: bool, order: Ordering) {
         unsafe {
@@ -459,7 +459,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool.swap(false, Ordering::Relaxed), true);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
@@ -497,7 +497,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool.compare_and_swap(true, true, Ordering::Relaxed), false);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
@@ -548,7 +548,7 @@ impl AtomicBool {
     ///            Err(false));
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_exchange(
@@ -605,7 +605,7 @@ impl AtomicBool {
     ///     }
     /// }
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_exchange_weak(
@@ -657,7 +657,7 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_and(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
@@ -699,7 +699,7 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_nand(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_nand(&self, val: bool, order: Ordering) -> bool {
@@ -752,7 +752,7 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
@@ -793,7 +793,7 @@ impl AtomicBool {
     /// assert_eq!(foo.fetch_xor(false, Ordering::SeqCst), false);
     /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
@@ -829,7 +829,7 @@ impl AtomicBool {
     /// }
     /// # }
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
     pub fn as_mut_ptr(&self) -> *mut bool {
         self.v.get() as *mut bool
@@ -848,7 +848,7 @@ impl<T> AtomicPtr<T> {
     /// let ptr = &mut 5;
     /// let atomic_ptr  = AtomicPtr::new(ptr);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
@@ -869,7 +869,7 @@ impl<T> AtomicPtr<T> {
     /// *atomic_ptr.get_mut() = &mut 5;
     /// assert_eq!(unsafe { *atomic_ptr.load(Ordering::SeqCst) }, 5);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut *mut T {
         unsafe { &mut *self.p.get() }
@@ -888,7 +888,7 @@ impl<T> AtomicPtr<T> {
     /// let atomic_ptr = AtomicPtr::new(&mut 5);
     /// assert_eq!(unsafe { *atomic_ptr.into_inner() }, 5);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn into_inner(self) -> *mut T {
         self.p.into_inner()
@@ -920,7 +920,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// let value = some_ptr.load(Ordering::Relaxed);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe { atomic_load(self.p.get() as *mut usize, order) as *mut T }
@@ -954,7 +954,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// some_ptr.store(other_ptr, Ordering::Relaxed);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
         unsafe {
@@ -986,7 +986,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// let value = some_ptr.swap(other_ptr, Ordering::Relaxed);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
@@ -1022,7 +1022,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
@@ -1064,7 +1064,7 @@ impl<T> AtomicPtr<T> {
     /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_exchange(
@@ -1127,7 +1127,7 @@ impl<T> AtomicPtr<T> {
     ///     }
     /// }
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_exchange_weak(
@@ -1165,7 +1165,7 @@ impl From<bool> for AtomicBool {
     /// let atomic_bool = AtomicBool::from(true);
     /// assert_eq!(format!("{:?}", atomic_bool), "true")
     /// ```
-    #[inline]
+    #[inline(always)]
     fn from(b: bool) -> Self {
         Self::new(b)
     }
@@ -1174,7 +1174,7 @@ impl From<bool> for AtomicBool {
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
-    #[inline]
+    #[inline(always)]
     fn from(p: *mut T) -> Self {
         Self::new(p)
     }
@@ -1236,7 +1236,7 @@ macro_rules! atomic_int {
             doc_comment! {
                 concat!(
 "Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`."),
-                #[inline]
+                #[inline(always)]
                 fn from(v: $int_type) -> Self { Self::new(v) }
             }
         }
@@ -1263,7 +1263,7 @@ macro_rules! atomic_int {
 
 let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$const_stable]
                 pub const fn new(v: $int_type) -> Self {
@@ -1287,7 +1287,7 @@ assert_eq!(*some_var.get_mut(), 10);
 *some_var.get_mut() = 5;
 assert_eq!(some_var.load(Ordering::SeqCst), 5);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable_access]
                 pub fn get_mut(&mut self) -> &mut $int_type {
                     unsafe { &mut *self.v.get() }
@@ -1308,7 +1308,7 @@ concurrently accessing the atomic data.
 let some_var = ", stringify!($atomic_type), "::new(5);
 assert_eq!(some_var.into_inner(), 5);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable_access]
                 pub fn into_inner(self) -> $int_type {
                     self.v.into_inner()
@@ -1341,7 +1341,7 @@ let some_var = ", stringify!($atomic_type), "::new(5);
 
 assert_eq!(some_var.load(Ordering::Relaxed), 5);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 pub fn load(&self, order: Ordering) -> $int_type {
                     unsafe { atomic_load(self.v.get(), order) }
@@ -1375,7 +1375,7 @@ let some_var = ", stringify!($atomic_type), "::new(5);
 some_var.store(10, Ordering::Relaxed);
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 pub fn store(&self, val: $int_type, order: Ordering) {
                     unsafe { atomic_store(self.v.get(), val, order); }
@@ -1404,7 +1404,7 @@ let some_var = ", stringify!($atomic_type), "::new(5);
 
 assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1444,7 +1444,7 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
 assert_eq!(some_var.compare_and_swap(6, 12, Ordering::Relaxed), 10);
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn compare_and_swap(&self,
@@ -1502,7 +1502,7 @@ assert_eq!(some_var.compare_exchange(6, 12,
            Err(10));
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable_cxchg]
                 #[$cfg_cas]
                 pub fn compare_exchange(&self,
@@ -1554,7 +1554,7 @@ loop {
     }
 }
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable_cxchg]
                 #[$cfg_cas]
                 pub fn compare_exchange_weak(&self,
@@ -1592,7 +1592,7 @@ let foo = ", stringify!($atomic_type), "::new(0);
 assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
 assert_eq!(foo.load(Ordering::SeqCst), 10);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1624,7 +1624,7 @@ let foo = ", stringify!($atomic_type), "::new(20);
 assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
 assert_eq!(foo.load(Ordering::SeqCst), 10);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1659,7 +1659,7 @@ let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1695,7 +1695,7 @@ let foo = ", stringify!($atomic_type), "::new(0x13);
 assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
 assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable_nand]
                 #[$cfg_cas]
                 pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1730,7 +1730,7 @@ let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1765,7 +1765,7 @@ let foo = ", stringify!($atomic_type), "::new(0b101101);
 assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
 assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[$stable]
                 #[$cfg_cas]
                 pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
@@ -1813,7 +1813,7 @@ assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), 
 assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(8));
 assert_eq!(x.load(Ordering::SeqCst), 9);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[unstable(feature = "no_more_cas",
                        reason = "no more CAS loops in user code",
                        issue = "48655")]
@@ -1874,7 +1874,7 @@ let bar = 42;
 let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
 assert!(max_foo == 42);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[unstable(feature = "atomic_min_max",
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
@@ -1926,7 +1926,7 @@ let bar = 12;
 let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
 assert_eq!(min_foo, 12);
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[unstable(feature = "atomic_min_max",
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
@@ -1965,7 +1965,7 @@ unsafe {
 }
 # }
 ```"),
-                #[inline]
+                #[inline(always)]
                 #[unstable(feature = "atomic_mut_ptr",
                        reason = "recently added",
                        issue = "66893")]
@@ -2215,7 +2215,7 @@ atomic_int! {
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 fn strongest_failure_ordering(order: Ordering) -> Ordering {
     match order {
@@ -2227,7 +2227,7 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
     }
 }
 
-#[inline]
+#[inline(always)]
 unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
@@ -2238,7 +2238,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
     }
 }
 
-#[inline]
+#[inline(always)]
 unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
@@ -2249,7 +2249,7 @@ unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
     }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2262,7 +2262,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// Returns the previous value (like __sync_fetch_and_add).
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2275,7 +2275,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// Returns the previous value (like __sync_fetch_and_sub).
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2287,7 +2287,7 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_compare_exchange<T>(
     dst: *mut T,
@@ -2313,7 +2313,7 @@ unsafe fn atomic_compare_exchange<T>(
     if ok { Ok(val) } else { Err(val) }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_compare_exchange_weak<T>(
     dst: *mut T,
@@ -2339,7 +2339,7 @@ unsafe fn atomic_compare_exchange_weak<T>(
     if ok { Ok(val) } else { Err(val) }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2351,7 +2351,7 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2363,7 +2363,7 @@ unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2375,7 +2375,7 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2388,7 +2388,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// returns the max value (signed comparison)
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2401,7 +2401,7 @@ unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// returns the min value (signed comparison)
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2414,7 +2414,7 @@ unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// returns the max value (signed comparison)
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2427,7 +2427,7 @@ unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 /// returns the min value (signed comparison)
-#[inline]
+#[inline(always)]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -2515,7 +2515,7 @@ unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// [`Release`]: enum.Ordering.html#variant.Release
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
 pub fn fence(order: Ordering) {
@@ -2610,7 +2610,7 @@ pub fn fence(order: Ordering) {
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
-#[inline]
+#[inline(always)]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 pub fn compiler_fence(order: Ordering) {
     unsafe {
