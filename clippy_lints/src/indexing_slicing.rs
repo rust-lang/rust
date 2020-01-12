@@ -4,9 +4,9 @@ use crate::consts::{constant, Constant};
 use crate::utils;
 use crate::utils::higher;
 use crate::utils::higher::Range;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty;
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::RangeLimits;
 

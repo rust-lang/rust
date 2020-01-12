@@ -4,7 +4,6 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc::mir::{
     self, traversal,
     visit::{MutatingUseContext, PlaceContext, Visitor as _},
@@ -15,6 +14,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, HirId};
 use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_mir::dataflow::{
     do_dataflow, BitDenotation, BottomValue, DataflowResults, DataflowResultsCursor, DebugFormatted, GenKillSet,
 };

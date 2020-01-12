@@ -1,11 +1,11 @@
 use crate::utils::{differing_macro_contexts, paths, snippet_with_applicability, span_lint_and_then};
 use crate::utils::{is_copy, match_type};
 use rustc::hir::map::Map;
-use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc_hir::{self, *};
+use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 

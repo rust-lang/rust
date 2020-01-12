@@ -1,8 +1,9 @@
 use crate::utils::{match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass};
+use rustc::lint::in_external_macro;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, MultiSpan, Span};
 use rustc_span::Pos;

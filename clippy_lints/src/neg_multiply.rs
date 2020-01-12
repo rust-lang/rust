@@ -1,6 +1,6 @@
 use if_chain::if_chain;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

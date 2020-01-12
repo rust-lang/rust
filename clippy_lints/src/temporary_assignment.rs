@@ -1,8 +1,8 @@
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

@@ -5,10 +5,11 @@
 
 extern crate rustc;
 extern crate rustc_hir;
+extern crate rustc_lint;
 #[macro_use]
 extern crate rustc_session;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::Expr;
+use rustc_lint::{LateContext, LateLintPass};
 
 declare_lint! {
     pub TEST_LINT,

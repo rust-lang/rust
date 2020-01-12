@@ -1,6 +1,6 @@
 use crate::utils::{get_trait_def_id, paths, span_lint};
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

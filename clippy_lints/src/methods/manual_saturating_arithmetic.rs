@@ -1,8 +1,8 @@
 use crate::utils::{match_qpath, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::lint::LateContext;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 use syntax::ast;
 

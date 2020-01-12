@@ -32,6 +32,8 @@ extern crate rustc_index;
 #[allow(unused_extern_crates)]
 extern crate rustc_lexer;
 #[allow(unused_extern_crates)]
+extern crate rustc_lint;
+#[allow(unused_extern_crates)]
 extern crate rustc_mir;
 #[allow(unused_extern_crates)]
 extern crate rustc_parse;
@@ -46,9 +48,9 @@ extern crate rustc_typeck;
 #[allow(unused_extern_crates)]
 extern crate syntax;
 
-use rustc::lint::{self, LintId};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_lint::LintId;
 
 use std::path::Path;
 
@@ -322,7 +324,7 @@ mod reexport {
 /// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
 ///
 /// Used in `./src/driver.rs`.
-pub fn register_pre_expansion_lints(store: &mut rustc::lint::LintStore, conf: &Conf) {
+pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Conf) {
     store.register_pre_expansion_pass(|| box write::Write);
     store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
@@ -392,7 +394,7 @@ pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
 /// Used in `./src/driver.rs`.
 #[allow(clippy::too_many_lines)]
 #[rustfmt::skip]
-pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf) {
+pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
     register_removed_non_tool_lints(store);
 
     // begin deprecated lints, do not remove this comment, it’s used in `update_lints`
@@ -1622,7 +1624,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
 }
 
 #[rustfmt::skip]
-fn register_removed_non_tool_lints(store: &mut rustc::lint::LintStore) {
+fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "should_assert_eq",
         "`assert!()` will be more flexible with RFC 2011",
@@ -1672,7 +1674,7 @@ fn register_removed_non_tool_lints(store: &mut rustc::lint::LintStore) {
 /// Register renamed lints.
 ///
 /// Used in `./src/driver.rs`.
-pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
+pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");

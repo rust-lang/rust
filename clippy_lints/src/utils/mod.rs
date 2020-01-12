@@ -26,7 +26,6 @@ use std::mem;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::traits;
 use rustc::traits::predicate_for_trait_def;
 use rustc::ty::{
@@ -42,6 +41,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::*;
+use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::ExpnKind;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};

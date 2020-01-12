@@ -1,5 +1,5 @@
 use crate::utils::{span_lint, span_lint_and_then};
-use rustc::lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::SymbolStr;

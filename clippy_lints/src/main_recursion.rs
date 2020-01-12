@@ -1,5 +1,5 @@
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::{Crate, Expr, ExprKind, QPath};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use syntax::ast::AttrKind;

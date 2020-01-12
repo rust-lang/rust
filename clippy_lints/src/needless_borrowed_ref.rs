@@ -4,9 +4,9 @@
 
 use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, Mutability, Node, Pat, PatKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

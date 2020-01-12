@@ -3,12 +3,12 @@
 
 use crate::utils::{get_attr, higher};
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass, LintContext};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::{Attribute, LitFloatType, LitKind};
 use syntax::walk_list;
