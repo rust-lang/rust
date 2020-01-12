@@ -1,3 +1,8 @@
+// Elided lifetimes within the type of a const generic parameters is disallowed. This matches the
+// behaviour of trait bounds where `fn foo<T: Ord<&u8>>() {}` is illegal. Though we could change
+// elided lifetimes within the type of a const generic parameters to be 'static, like elided
+// lifetimes within const/static items.
+
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
