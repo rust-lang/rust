@@ -2,13 +2,25 @@ error[E0603]: module `bar` is private
   --> $DIR/shadowed-use-visibility.rs:9:14
    |
 LL |     use foo::bar::f as g;
-   |              ^^^
+   |              ^^^ this module is private
+   |
+note: the module `bar` is defined here
+  --> $DIR/shadowed-use-visibility.rs:4:9
+   |
+LL |     use foo as bar;
+   |         ^^^^^^^^^^
 
 error[E0603]: module `f` is private
   --> $DIR/shadowed-use-visibility.rs:15:10
    |
 LL | use bar::f::f;
-   |          ^
+   |          ^ this module is private
+   |
+note: the module `f` is defined here
+  --> $DIR/shadowed-use-visibility.rs:11:9
+   |
+LL |     use foo as f;
+   |         ^^^^^^^^
 
 error: aborting due to 2 previous errors
 

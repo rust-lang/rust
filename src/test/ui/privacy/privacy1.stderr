@@ -2,79 +2,157 @@ error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:132:18
    |
 LL |         use bar::baz::{foo, bar};
-   |                  ^^^
+   |                  ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:132:18
    |
 LL |         use bar::baz::{foo, bar};
-   |                  ^^^
+   |                  ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:141:18
    |
 LL |         use bar::baz;
-   |                  ^^^
+   |                  ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `i` is private
   --> $DIR/privacy1.rs:165:20
    |
 LL |     use self::foo::i::A;
-   |                    ^
+   |                    ^ this module is private
+   |
+note: the module `i` is defined here
+  --> $DIR/privacy1.rs:170:9
+   |
+LL |         mod i {
+   |         ^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:104:16
    |
 LL |         ::bar::baz::A::foo();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:105:16
    |
 LL |         ::bar::baz::A::bar();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:107:16
    |
 LL |         ::bar::baz::A.foo2();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:108:16
    |
 LL |         ::bar::baz::A.bar2();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:112:16
    |
 LL |         ::bar::B::foo();
-   |                ^
+   |                ^ this trait is private
+   |
+note: the trait `B` is defined here
+  --> $DIR/privacy1.rs:40:5
+   |
+LL |     trait B {
+   |     ^^^^^^^
 
 error[E0603]: function `epriv` is private
   --> $DIR/privacy1.rs:118:20
    |
 LL |             ::bar::epriv();
-   |                    ^^^^^
+   |                    ^^^^^ this function is private
+   |
+note: the function `epriv` is defined here
+  --> $DIR/privacy1.rs:65:9
+   |
+LL |         fn epriv();
+   |         ^^^^^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:127:16
    |
 LL |         ::bar::baz::foo();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:128:16
    |
 LL |         ::bar::baz::bar();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:157:17
    |
 LL |     impl ::bar::B for f32 { fn foo() -> f32 { 1.0 } }
-   |                 ^
+   |                 ^ this trait is private
+   |
+note: the trait `B` is defined here
+  --> $DIR/privacy1.rs:40:5
+   |
+LL |     trait B {
+   |     ^^^^^^^
 
 error[E0624]: method `bar` is private
   --> $DIR/privacy1.rs:77:9

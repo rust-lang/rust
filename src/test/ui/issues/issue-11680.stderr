@@ -2,13 +2,25 @@ error[E0603]: enum `Foo` is private
   --> $DIR/issue-11680.rs:6:21
    |
 LL |     let _b = other::Foo::Bar(1);
-   |                     ^^^
+   |                     ^^^ this enum is private
+   |
+note: the enum `Foo` is defined here
+  --> $DIR/auxiliary/issue-11680.rs:1:1
+   |
+LL | enum Foo {
+   | ^^^^^^^^
 
 error[E0603]: enum `Foo` is private
   --> $DIR/issue-11680.rs:9:27
    |
 LL |     let _b = other::test::Foo::Bar(1);
-   |                           ^^^
+   |                           ^^^ this enum is private
+   |
+note: the enum `Foo` is defined here
+  --> $DIR/auxiliary/issue-11680.rs:6:5
+   |
+LL |     enum Foo {
+   |     ^^^^^^^^
 
 error: aborting due to 2 previous errors
 

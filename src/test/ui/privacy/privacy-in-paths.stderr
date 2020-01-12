@@ -2,19 +2,37 @@ error[E0603]: module `bar` is private
   --> $DIR/privacy-in-paths.rs:24:16
    |
 LL |         ::foo::bar::baz::f();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `bar` is defined here
+  --> $DIR/privacy-in-paths.rs:3:5
+   |
+LL |     mod bar {
+   |     ^^^^^^^
 
 error[E0603]: module `bar` is private
   --> $DIR/privacy-in-paths.rs:25:16
    |
 LL |         ::foo::bar::S::f();
-   |                ^^^
+   |                ^^^ this module is private
+   |
+note: the module `bar` is defined here
+  --> $DIR/privacy-in-paths.rs:3:5
+   |
+LL |     mod bar {
+   |     ^^^^^^^
 
 error[E0603]: trait `T` is private
   --> $DIR/privacy-in-paths.rs:26:23
    |
 LL |         <() as ::foo::T>::Assoc::f();
-   |                       ^
+   |                       ^ this trait is private
+   |
+note: the trait `T` is defined here
+  --> $DIR/privacy-in-paths.rs:8:5
+   |
+LL |     trait T {
+   |     ^^^^^^^
 
 error: aborting due to 3 previous errors
 

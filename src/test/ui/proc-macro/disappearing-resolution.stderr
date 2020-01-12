@@ -8,7 +8,13 @@ error[E0603]: derive macro `Empty` is private
   --> $DIR/disappearing-resolution.rs:11:8
    |
 LL | use m::Empty;
-   |        ^^^^^
+   |        ^^^^^ this derive macro is private
+   |
+note: the derive macro `Empty` is defined here
+  --> $DIR/disappearing-resolution.rs:9:9
+   |
+LL |     use test_macros::Empty;
+   |         ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

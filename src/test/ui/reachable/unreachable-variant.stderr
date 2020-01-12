@@ -2,7 +2,13 @@ error[E0603]: module `super_sekrit` is private
   --> $DIR/unreachable-variant.rs:6:21
    |
 LL |     let _x = other::super_sekrit::sooper_sekrit::baz;
-   |                     ^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^ this module is private
+   |
+note: the module `super_sekrit` is defined here
+  --> $DIR/auxiliary/unreachable_variant.rs:1:1
+   |
+LL | mod super_sekrit {
+   | ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

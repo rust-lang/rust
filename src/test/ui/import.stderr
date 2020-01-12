@@ -17,7 +17,13 @@ error[E0603]: unresolved item `foo` is private
   --> $DIR/import.rs:15:10
    |
 LL |     zed::foo();
-   |          ^^^
+   |          ^^^ this unresolved item is private
+   |
+note: the unresolved item `foo` is defined here
+  --> $DIR/import.rs:10:9
+   |
+LL |     use foo;
+   |         ^^^
 
 error: aborting due to 3 previous errors
 
