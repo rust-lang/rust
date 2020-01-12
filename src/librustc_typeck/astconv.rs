@@ -705,6 +705,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Some(arg.id()),
                             arg.span(),
                             false,
+                            |_, _| (),
                         );
                     }
 

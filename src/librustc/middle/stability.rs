@@ -393,7 +393,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
-        self.check_stability_internal(def_id, id, span, true)
+        self.check_stability_internal(def_id, id, span, true, |span, def_id| {
+            // The API could be uncallable for other reasons, for example when a private module
+            // was referenced.
+            self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
+        })
     }
 
     /// Checks if an item is stable or error out.
@@ -409,6 +413,7 @@ impl<'tcx> TyCtxt<'tcx> {
         id: Option<HirId>,
         span: Span,
         inherit_dep: bool,
+        unmarked: impl FnOnce(Span, DefId) -> (),
     ) {
         let soft_handler =
             |lint, span, msg: &_| self.lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg);
@@ -417,11 +422,7 @@ impl<'tcx> TyCtxt<'tcx> {
             EvalResult::Deny { feature, reason, issue, is_soft } => {
                 report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler)
             }
-            EvalResult::Unmarked => {
-                // The API could be uncallable for other reasons, for example when a private module
-                // was referenced.
-                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
-            }
+            EvalResult::Unmarked => unmarked(span, def_id),
         }
     }
 
