@@ -142,16 +142,27 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 pub fn check_coherence(tcx: TyCtxt<'_>) {
-    par_for_each(&tcx.hir().krate().trait_impls, |(&trait_def_id, _)| {
-        tcx.ensure().coherent_trait(trait_def_id);
-    });
-
-    tcx.sess.time("unsafety_checking", || unsafety::check(tcx));
-    tcx.sess.time("orphan_checking", || orphan::check(tcx));
-
-    // these queries are executed for side-effects (error reporting):
-    tcx.ensure().crate_inherent_impls(LOCAL_CRATE);
-    tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
+    parallel!(
+        {
+            par_for_each(&tcx.hir().krate().trait_impls, |(&trait_def_id, _)| {
+                tcx.ensure().coherent_trait(trait_def_id);
+            });
+        },
+        {
+            tcx.sess.time("unsafety_checking", || unsafety::check(tcx));
+        },
+        {
+            tcx.sess.time("orphan_checking", || orphan::check(tcx));
+        },
+        {
+            // This query is executed for side-effects (error reporting)
+            tcx.ensure().crate_inherent_impls(LOCAL_CRATE);
+        },
+        {
+            // This query is executed for side-effects (error reporting)
+            tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
+        }
+    );
 }
 
 /// Overlap: no two impls for the same trait are implemented for the

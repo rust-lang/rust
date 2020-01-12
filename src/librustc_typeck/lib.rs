@@ -75,6 +75,9 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 
+#[macro_use]
+extern crate rustc_data_structures;
+
 // This is used by Clippy.
 pub mod expr_use_visitor;
 
