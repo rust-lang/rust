@@ -2,12 +2,9 @@
 //!
 //! Module structure of the crate is built here.
 //! Paths in macros, imports, expressions, types, patterns are resolved here.
-//! Label names are resolved here as well.
+//! Label and lifetime names are resolved here as well.
 //!
 //! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
-//! Lifetime names are resolved in `librustc/middle/resolve_lifetime.rs`.
-
-// ignore-tidy-filelength
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
@@ -33,7 +30,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
+use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
@@ -604,7 +601,11 @@ impl<'a> NameBindingKind<'a> {
     }
 }
 
-struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
+struct PrivacyError<'a> {
+    ident: Ident,
+    binding: &'a NameBinding<'a>,
+    dedup_span: Span,
+}
 
 struct UseError<'a> {
     err: DiagnosticBuilder<'a>,
@@ -2446,115 +2447,6 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
-        let res = b.res();
-        if b.span.is_dummy() {
-            let add_built_in = match b.res() {
-                // These already contain the "built-in" prefix or look bad with it.
-                Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod => false,
-                _ => true,
-            };
-            let (built_in, from) = if from_prelude {
-                ("", " from prelude")
-            } else if b.is_extern_crate()
-                && !b.is_import()
-                && self.session.opts.externs.get(&ident.as_str()).is_some()
-            {
-                ("", " passed with `--extern`")
-            } else if add_built_in {
-                (" built-in", "")
-            } else {
-                ("", "")
-            };
-
-            let article = if built_in.is_empty() { res.article() } else { "a" };
-            format!(
-                "{a}{built_in} {thing}{from}",
-                a = article,
-                thing = res.descr(),
-                built_in = built_in,
-                from = from
-            )
-        } else {
-            let introduced = if b.is_import() { "imported" } else { "defined" };
-            format!("the {thing} {introduced} here", thing = res.descr(), introduced = introduced)
-        }
-    }
-
-    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
-        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
-        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
-            // We have to print the span-less alternative first, otherwise formatting looks bad.
-            (b2, b1, misc2, misc1, true)
-        } else {
-            (b1, b2, misc1, misc2, false)
-        };
-
-        let mut err = struct_span_err!(
-            self.session,
-            ident.span,
-            E0659,
-            "`{ident}` is ambiguous ({why})",
-            ident = ident,
-            why = kind.descr()
-        );
-        err.span_label(ident.span, "ambiguous name");
-
-        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
-            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
-            let note_msg = format!(
-                "`{ident}` could{also} refer to {what}",
-                ident = ident,
-                also = also,
-                what = what
-            );
-
-            let thing = b.res().descr();
-            let mut help_msgs = Vec::new();
-            if b.is_glob_import()
-                && (kind == AmbiguityKind::GlobVsGlob
-                    || kind == AmbiguityKind::GlobVsExpanded
-                    || kind == AmbiguityKind::GlobVsOuter && swapped != also.is_empty())
-            {
-                help_msgs.push(format!(
-                    "consider adding an explicit import of \
-                     `{ident}` to disambiguate",
-                    ident = ident
-                ))
-            }
-            if b.is_extern_crate() && ident.span.rust_2018() {
-                help_msgs.push(format!(
-                    "use `::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
-            }
-            if misc == AmbiguityErrorMisc::SuggestCrate {
-                help_msgs.push(format!(
-                    "use `crate::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
-            } else if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs.push(format!(
-                    "use `self::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
-            }
-
-            err.span_note(b.span, &note_msg);
-            for (i, help_msg) in help_msgs.iter().enumerate() {
-                let or = if i == 0 { "" } else { "or " };
-                err.help(&format!("{}{}", or, help_msg));
-            }
-        };
-
-        could_refer_to(b1, misc1, "");
-        could_refer_to(b2, misc2, " also");
-        err.emit();
-    }
-
     fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
 
@@ -2575,43 +2467,9 @@ impl<'a> Resolver<'a> {
         }
 
         let mut reported_spans = FxHashSet::default();
-        for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
-            if reported_spans.insert(dedup_span) {
-                let session = &self.session;
-                let mk_struct_span_error = |is_constructor| {
-                    struct_span_err!(
-                        session,
-                        ident.span,
-                        E0603,
-                        "{}{} `{}` is private",
-                        binding.res().descr(),
-                        if is_constructor { " constructor" } else { "" },
-                        ident.name,
-                    )
-                };
-
-                let mut err = if let NameBindingKind::Res(
-                    Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
-                    _,
-                ) = binding.kind
-                {
-                    let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
-                    if let Some(fields) = self.field_names.get(&def_id) {
-                        let mut err = mk_struct_span_error(true);
-                        let first_field = fields.first().expect("empty field list in the map");
-                        err.span_label(
-                            fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                            "a constructor is private if any of the fields is private",
-                        );
-                        err
-                    } else {
-                        mk_struct_span_error(false)
-                    }
-                } else {
-                    mk_struct_span_error(false)
-                };
-
-                err.emit();
+        for error in &self.privacy_errors {
+            if reported_spans.insert(error.dedup_span) {
+                self.report_privacy_error(error);
             }
         }
     }

@@ -319,7 +319,11 @@ impl<'a> Resolver<'a> {
                        // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                        !(self.last_import_segment && binding.is_extern_crate())
                         {
-                            self.privacy_errors.push(PrivacyError(path_span, ident, binding));
+                            self.privacy_errors.push(PrivacyError {
+                                ident,
+                                binding,
+                                dedup_span: path_span,
+                            });
                         }
 
                         Ok(binding)
