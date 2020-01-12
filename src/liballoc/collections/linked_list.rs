@@ -251,8 +251,8 @@ impl<T> LinkedList<T> {
         &mut self,
         existing_prev: Option<NonNull<Node<T>>>,
         existing_next: Option<NonNull<Node<T>>>,
-        splice_start: NonNull<Node<T>>,
-        splice_end: NonNull<Node<T>>,
+        mut splice_start: NonNull<Node<T>>,
+        mut splice_end: NonNull<Node<T>>,
         splice_length: usize,
     ) {
         // This method takes care not to create multiple mutable references to whole nodes at the same time,
@@ -267,9 +267,7 @@ impl<T> LinkedList<T> {
         } else {
             self.tail = Some(splice_end);
         }
-        let mut splice_start = splice_start;
         splice_start.as_mut().prev = existing_prev;
-        let mut splice_end = splice_end;
         splice_end.as_mut().next = existing_next;
 
         self.len += splice_length;
@@ -286,6 +284,41 @@ impl<T> LinkedList<T> {
             Some((head, tail, len))
         } else {
             None
+        }
+    }
+
+    #[inline]
+    unsafe fn split_off_before_node(
+        &mut self,
+        split_node: Option<NonNull<Node<T>>>,
+        at: usize,
+    ) -> Self {
+        // The split node is the new head node of the second part
+        if let Some(mut split_node) = split_node {
+            let first_part_head;
+            let first_part_tail;
+            first_part_tail = split_node.as_mut().prev.take();
+            if let Some(mut tail) = first_part_tail {
+                tail.as_mut().next = None;
+                first_part_head = self.head;
+            } else {
+                first_part_head = None;
+            }
+
+            let first_part = LinkedList {
+                head: first_part_head,
+                tail: first_part_tail,
+                len: at,
+                marker: PhantomData,
+            };
+
+            // Fix the head ptr of the second part
+            self.head = Some(split_node);
+            self.len = self.len - at;
+
+            first_part
+        } else {
+            mem::replace(self, LinkedList::new())
         }
     }
 
@@ -1082,16 +1115,13 @@ impl<T> IterMut<'_, T> {
 
 /// A cursor over a `LinkedList`.
 ///
-/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth, and can
-/// safely mutate the list during iteration. This is because the lifetime of its yielded
-/// references is tied to its own lifetime, instead of just the underlying list. This means
-/// cursors cannot yield multiple elements at once.
+/// A `Cursor` is like an iterator, except that it can freely seek back-and-forth.
 ///
 /// Cursors always rest between two elements in the list, and index in a logically circular way.
 /// To accommodate this, there is a "ghost" non-element that yields `None` between the head and
 /// tail of the list.
 ///
-/// When created, cursors start at the front of the list, or the ghost element if the list is empty.
+/// When created, cursors start at the front of the list, or the "ghost" non-element if the list is empty.
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct Cursor<'a, T: 'a> {
     index: usize,
@@ -1117,7 +1147,7 @@ impl<T: fmt::Debug> fmt::Debug for Cursor<'_, T> {
 /// To accommodate this, there is a "ghost" non-element that yields `None` between the head and
 /// tail of the list.
 ///
-/// When created, cursors start at the front of the list, or the ghost element if the list is empty.
+/// When created, cursors start at the front of the list, or the "ghost" non-element if the list is empty.
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct CursorMut<'a, T: 'a> {
     index: usize,
@@ -1133,8 +1163,11 @@ impl<T: fmt::Debug> fmt::Debug for CursorMut<'_, T> {
 }
 
 impl<'a, T> Cursor<'a, T> {
-    /// Move to the subsequent element of the list if it exists or the empty
-    /// element
+    /// Moves the cursor to the next element of the `LinkedList`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the first element of the `LinkedList`. If it is pointing to the last
+    /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_next(&mut self) {
         match self.current.take() {
@@ -1152,7 +1185,11 @@ impl<'a, T> Cursor<'a, T> {
         }
     }
 
-    /// Move to the previous element of the list
+    /// Moves the cursor to the previous element of the `LinkedList`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the last element of the `LinkedList`. If it is pointing to the first
+    /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_prev(&mut self) {
         match self.current.take() {
@@ -1169,13 +1206,21 @@ impl<'a, T> Cursor<'a, T> {
         }
     }
 
-    /// Get the current element
+    /// Returns a reference to the element that the cursor is currently
+    /// pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&self) -> Option<&'a T> {
         unsafe { self.current.map(|current| &(*current.as_ptr()).element) }
     }
 
-    /// Get the next element
+    /// Returns a reference to the next element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the first element of the `LinkedList`. If it is pointing to the last
+    /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&self) -> Option<&'a T> {
         unsafe {
@@ -1187,7 +1232,11 @@ impl<'a, T> Cursor<'a, T> {
         }
     }
 
-    /// Get the previous element
+    /// Returns a reference to the previous element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the last element of the `LinkedList`. If it is pointing to the first
+    /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&self) -> Option<&'a T> {
         unsafe {
@@ -1201,8 +1250,11 @@ impl<'a, T> Cursor<'a, T> {
 }
 
 impl<'a, T> CursorMut<'a, T> {
-    /// Move to the subsequent element of the list if it exists or the empty
-    /// element
+    /// Moves the cursor to the next element of the `LinkedList`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the first element of the `LinkedList`. If it is pointing to the last
+    /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_next(&mut self) {
         match self.current.take() {
@@ -1220,7 +1272,11 @@ impl<'a, T> CursorMut<'a, T> {
         }
     }
 
-    /// Move to the previous element of the list
+    /// Moves the cursor to the previous element of the `LinkedList`.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this will move it to
+    /// the last element of the `LinkedList`. If it is pointing to the first
+    /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_prev(&mut self) {
         match self.current.take() {
@@ -1237,13 +1293,21 @@ impl<'a, T> CursorMut<'a, T> {
         }
     }
 
-    /// Get the current element
+    /// Returns a reference to the element that the cursor is currently
+    /// pointing to.
+    ///
+    /// This returns `None` if the cursor is currently pointing to the
+    /// "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&mut self) -> Option<&mut T> {
         unsafe { self.current.map(|current| &mut (*current.as_ptr()).element) }
     }
 
-    /// Get the next element
+    /// Returns a reference to the next element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the first element of the `LinkedList`. If it is pointing to the last
+    /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&mut self) -> Option<&mut T> {
         unsafe {
@@ -1255,7 +1319,11 @@ impl<'a, T> CursorMut<'a, T> {
         }
     }
 
-    /// Get the previous element
+    /// Returns a reference to the previous element.
+    ///
+    /// If the cursor is pointing to the "ghost" non-element then this returns
+    /// the last element of the `LinkedList`. If it is pointing to the first
+    /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&mut self) -> Option<&mut T> {
         unsafe {
@@ -1267,7 +1335,11 @@ impl<'a, T> CursorMut<'a, T> {
         }
     }
 
-    /// Get an immutable cursor at the current element
+    /// Returns a read-only cursor pointing to the current element.
+    ///
+    /// The lifetime of the returned `Cursor` is bound to that of the
+    /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
+    /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn as_cursor<'cm>(&'cm self) -> Cursor<'cm, T> {
         Cursor { list: self.list, current: self.current, index: self.index }
@@ -1277,56 +1349,65 @@ impl<'a, T> CursorMut<'a, T> {
 // Now the list editing operations
 
 impl<'a, T> CursorMut<'a, T> {
-    /// Insert `item` after the cursor
+    /// Inserts a new element into the `LinkedList` after the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the front of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
         unsafe {
             let spliced_node = Box::into_raw_non_null(Box::new(Node::new(item)));
-            let (node, node_next) = match self.current {
-                None => (None, self.list.head),
-                Some(node) => {
-                    let node_next = node.as_ref().next;
-                    (Some(node), node_next)
-                }
+            let node_next = match self.current {
+                None => self.list.head,
+                Some(node) => node.as_ref().next,
             };
-            self.list.splice_nodes(node, node_next, spliced_node, spliced_node, 1);
+            self.list.splice_nodes(self.current, node_next, spliced_node, spliced_node, 1);
             if self.current.is_none() {
-                // The ghost element's index has increased by 1.
-                self.index += 1;
+                // The "ghost" non-element's index has changed.
+                self.index = self.list.len;
             }
         }
     }
 
-    /// Insert `item` before the cursor
+    /// Inserts a new element into the `LinkedList` before the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new element is
+    /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
         unsafe {
             let spliced_node = Box::into_raw_non_null(Box::new(Node::new(item)));
-            let (node_prev, node) = match self.current {
-                None => (self.list.tail, None),
-                Some(node) => {
-                    let node_prev = node.as_ref().prev;
-                    (node_prev, Some(node))
-                }
+            let node_prev = match self.current {
+                None => self.list.tail,
+                Some(node) => node.as_ref().prev,
             };
-            self.list.splice_nodes(node_prev, node, spliced_node, spliced_node, 1);
+            self.list.splice_nodes(node_prev, self.current, spliced_node, spliced_node, 1);
             self.index += 1;
         }
     }
 
-    /// Remove and return the current item, moving the cursor to the next item
+    /// Removes the current element from the `LinkedList`.
+    ///
+    /// The element that was removed is returned, and the cursor is
+    /// moved to point to the next element in the `LinkedList`.
+    ///
+    /// If the cursor is currently pointing to the "ghost" non-element then no element
+    /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn remove(&mut self) -> Option<T> {
+    pub fn remove_current(&mut self) -> Option<T> {
         let unlinked_node = self.current?;
         unsafe {
             self.current = unlinked_node.as_ref().next;
             self.list.unlink_node(unlinked_node);
             let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
-            Some((*unlinked_node).element)
+            Some(unlinked_node.element)
         }
     }
 
-    /// Insert `list` between the current element and the next
+    /// Inserts the elements from the given `LinkedList` after the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new elements are
+    /// inserted at the start of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_after(&mut self, list: LinkedList<T>) {
         unsafe {
@@ -1334,22 +1415,22 @@ impl<'a, T> CursorMut<'a, T> {
                 Some(parts) => parts,
                 _ => return,
             };
-            let (node, node_next) = match self.current {
-                None => (None, self.list.head),
-                Some(node) => {
-                    let node_next = node.as_ref().next;
-                    (Some(node), node_next)
-                }
+            let node_next = match self.current {
+                None => self.list.head,
+                Some(node) => node.as_ref().next,
             };
-            self.list.splice_nodes(node, node_next, splice_head, splice_tail, splice_len);
+            self.list.splice_nodes(self.current, node_next, splice_head, splice_tail, splice_len);
             if self.current.is_none() {
-                // The ghost element's index has increased by `splice_len`.
-                self.index += splice_len;
+                // The "ghost" non-element's index has changed.
+                self.index = self.list.len;
             }
         }
     }
 
-    /// Insert `list` between the previous element and current
+    /// Inserts the elements from the given `LinkedList` before the current one.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the new elements are
+    /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_before(&mut self, list: LinkedList<T>) {
         unsafe {
@@ -1357,41 +1438,37 @@ impl<'a, T> CursorMut<'a, T> {
                 Some(parts) => parts,
                 _ => return,
             };
-            let (node_prev, node) = match self.current {
-                None => (self.list.tail, None),
-                Some(node) => {
-                    let node_prev = node.as_ref().prev;
-                    (node_prev, Some(node))
-                }
+            let node_prev = match self.current {
+                None => self.list.tail,
+                Some(node) => node.as_ref().prev,
             };
-            self.list.splice_nodes(node_prev, node, splice_head, splice_tail, splice_len);
+            self.list.splice_nodes(node_prev, self.current, splice_head, splice_tail, splice_len);
             self.index += splice_len;
         }
     }
 
-    /// Split the list in two after the current element
-    /// The returned list consists of all elements following the current one.
-    // note: consuming the cursor is not necessary here, but it makes sense
-    // given the interface
+    /// Splits the list into two after the current element. This will return a
+    /// new list consisting of everything after the cursor, with the original
+    /// list retaining everything before.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the entire contents
+    /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_after(self) -> LinkedList<T> {
         let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
-        unsafe {
-            let split_off_node = self.current;
-            self.list.split_off_after_node(split_off_node, split_off_idx)
-        }
+        unsafe { self.list.split_off_after_node(self.current, split_off_idx) }
     }
-    /// Split the list in two before the current element
+
+    /// Splits the list into two before the current element. This will return a
+    /// new list consisting of everything before the cursor, with the original
+    /// list retaining everything after.
+    ///
+    /// If the cursor is pointing at the "ghost" non-element then the entire contents
+    /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_before(self) -> LinkedList<T> {
         let split_off_idx = self.index;
-        unsafe {
-            let split_off_node = match self.current {
-                Some(node) => node.as_ref().prev,
-                None => self.list.tail,
-            };
-            self.list.split_off_after_node(split_off_node, split_off_idx)
-        }
+        unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
     }
 }
 
