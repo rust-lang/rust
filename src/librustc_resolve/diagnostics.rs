@@ -921,6 +921,9 @@ impl<'a> Resolver<'a> {
             if is_constructor {
                 descr += " constructor";
             }
+            if binding.is_import() {
+                descr += " import";
+            }
 
             let mut err =
                 struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
