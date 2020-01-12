@@ -2,7 +2,13 @@ error[E0603]: struct `ParseOptions` is private
   --> $DIR/issue-55884-2.rs:12:17
    |
 LL | pub use parser::ParseOptions;
-   |                 ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^ this struct is private
+   |
+note: the struct `ParseOptions` is defined here
+  --> $DIR/issue-55884-2.rs:9:9
+   |
+LL |     use ParseOptions;
+   |         ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -253,25 +253,49 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:57:22
    |
 LL |     let _: Z = m::n::Z;
-   |                      ^
+   |                      ^ this enum is private
+   |
+note: the enum `Z` is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:61:22
    |
 LL |     let _: Z = m::n::Z::Fn;
-   |                      ^
+   |                      ^ this enum is private
+   |
+note: the enum `Z` is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:64:22
    |
 LL |     let _: Z = m::n::Z::Struct;
-   |                      ^
+   |                      ^ this enum is private
+   |
+note: the enum `Z` is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:68:22
    |
 LL |     let _: Z = m::n::Z::Unit {};
-   |                      ^
+   |                      ^ this enum is private
+   |
+note: the enum `Z` is defined here
+  --> $DIR/privacy-enum-ctor.rs:11:9
+   |
+LL |         pub(in m) enum Z {
+   |         ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:27:20

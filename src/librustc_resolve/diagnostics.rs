@@ -917,15 +917,21 @@ impl<'a> Resolver<'a> {
         let PrivacyError { ident, binding, .. } = *privacy_error;
         let session = &self.session;
         let mk_struct_span_error = |is_constructor| {
-            struct_span_err!(
-                session,
-                ident.span,
-                E0603,
-                "{}{} `{}` is private",
-                binding.res().descr(),
-                if is_constructor { " constructor" } else { "" },
-                ident.name,
-            )
+            let mut descr = binding.res().descr().to_string();
+            if is_constructor {
+                descr += " constructor";
+            }
+
+            let mut err =
+                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
+
+            err.span_label(ident.span, &format!("this {} is private", descr));
+            err.span_note(
+                session.source_map().def_span(binding.span),
+                &format!("the {} `{}` is defined here", descr, ident),
+            );
+
+            err
         };
 
         let mut err = if let NameBindingKind::Res(
