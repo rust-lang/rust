@@ -1,4 +1,3 @@
-use rustc::lint;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::ErrorOutputType;
@@ -14,6 +13,7 @@ use rustc_hir::HirId;
 use rustc_interface::interface;
 use rustc_lint;
 use rustc_resolve as resolve;
+use rustc_session::lint;
 
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;

@@ -12,7 +12,6 @@
 pub mod specialization_graph;
 
 use crate::infer::{InferCtxt, InferOk};
-use crate::lint;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
@@ -20,6 +19,7 @@ use crate::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::DUMMY_SP;
 
 use super::util::impl_trait_ref_and_oblig;
@@ -342,7 +342,7 @@ pub(super) fn specialization_graph_provider(
                                 unreachable!("converted to hard error above")
                             }
                             FutureCompatOverlapErrorKind::Issue33140 => {
-                                lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS
+                                ORDER_DEPENDENT_TRAIT_OBJECTS
                             }
                         };
                         tcx.struct_span_lint_hir(

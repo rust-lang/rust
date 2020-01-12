@@ -1,7 +1,7 @@
 use crate::dep_graph::{self, DepNode};
 use crate::hir::exports::Export;
 use crate::infer::canonical::{self, Canonical};
-use crate::lint;
+use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
 use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};

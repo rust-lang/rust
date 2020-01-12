@@ -14,9 +14,8 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
+use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc::hir::map::Map;
-use rustc::lint::LateContext;
-use rustc::lint::{LateLintPass, LateLintPassObject};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
@@ -29,7 +28,15 @@ use syntax::ast;
 use syntax::walk_list;
 
 use log::debug;
+use std::any::Any;
 use std::slice;
+
+/// Extract the `LintStore` from the query context.
+/// This function exists because we've erased `LintStore` as `dyn Any` in the context.
+crate fn unerased_lint_store<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx LintStore {
+    let store: &dyn Any = &*tcx.lint_store;
+    store.downcast_ref().unwrap()
+}
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
@@ -342,7 +349,7 @@ macro_rules! late_lint_pass_impl {
     )
 }
 
-late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
+crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
 fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx>,
@@ -356,7 +363,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: &tcx.lint_store,
+        lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
         generics: None,
         only_module: true,
@@ -386,7 +393,7 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
     let mut passes: Vec<_> =
-        tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
+        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
@@ -403,7 +410,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: &tcx.lint_store,
+        lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
@@ -424,7 +431,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
 }
 
 fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = tcx.lint_store.late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
+    let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
         if !passes.is_empty() {
@@ -443,7 +450,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
         }
 
         let mut passes: Vec<_> =
-            tcx.lint_store.late_module_passes.iter().map(|pass| (pass)()).collect();
+            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
             tcx.sess

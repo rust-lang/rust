@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_error_codes::*;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 use syntax::ast::{
@@ -491,6 +492,58 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
+    /// e.g. `1 < x <= 3`. If so, suggest either splitting the comparison into two, or
+    /// parenthesising the leftmost comparison.
+    fn attempt_chained_comparison_suggestion(
+        &mut self,
+        err: &mut DiagnosticBuilder<'_>,
+        inner_op: &Expr,
+        outer_op: &Spanned<AssocOp>,
+    ) {
+        if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
+            match (op.node, &outer_op.node) {
+                // `x < y < z` and friends.
+                (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
+                (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
+                // `x > y > z` and friends.
+                (BinOpKind::Gt, AssocOp::Greater) | (BinOpKind::Gt, AssocOp::GreaterEqual) |
+                (BinOpKind::Ge, AssocOp::GreaterEqual) | (BinOpKind::Ge, AssocOp::Greater) => {
+                    let expr_to_str = |e: &Expr| {
+                        self.span_to_snippet(e.span)
+                            .unwrap_or_else(|_| pprust::expr_to_string(&e))
+                    };
+                    err.span_suggestion(
+                        inner_op.span.to(outer_op.span),
+                        "split the comparison into two...",
+                        format!(
+                            "{} {} {} && {} {}",
+                            expr_to_str(&l1),
+                            op.node.to_string(),
+                            expr_to_str(&r1),
+                            expr_to_str(&r1),
+                            outer_op.node.to_ast_binop().unwrap().to_string(),
+                        ),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.span_suggestion(
+                        inner_op.span.to(outer_op.span),
+                        "...or parenthesize one of the comparisons",
+                        format!(
+                            "({} {} {}) {}",
+                            expr_to_str(&l1),
+                            op.node.to_string(),
+                            expr_to_str(&r1),
+                            outer_op.node.to_ast_binop().unwrap().to_string(),
+                        ),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Produces an error if comparison operators are chained (RFC #558).
     /// We only need to check the LHS, not the RHS, because all comparison ops have same
     /// precedence (see `fn precedence`) and are left-associative (see `fn fixity`).
@@ -506,27 +559,31 @@ impl<'a> Parser<'a> {
     ///           /   \
     ///     inner_op   r2
     ///        /  \
-    ///     l1    r1
+    ///      l1    r1
     pub(super) fn check_no_chained_comparison(
         &mut self,
-        lhs: &Expr,
-        outer_op: &AssocOp,
+        inner_op: &Expr,
+        outer_op: &Spanned<AssocOp>,
     ) -> PResult<'a, Option<P<Expr>>> {
         debug_assert!(
-            outer_op.is_comparison(),
+            outer_op.node.is_comparison(),
             "check_no_chained_comparison: {:?} is not comparison",
-            outer_op,
+            outer_op.node,
         );
 
         let mk_err_expr =
             |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
 
-        match lhs.kind {
+        match inner_op.kind {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // Respan to include both operators.
                 let op_span = op.span.to(self.prev_span);
-                let mut err = self
-                    .struct_span_err(op_span, "chained comparison operators require parentheses");
+                let mut err =
+                    self.struct_span_err(op_span, "comparison operators cannot be chained");
+
+                // If it looks like a genuine attempt to chain operators (as opposed to a
+                // misformatted turbofish, for instance), suggest a correct form.
+                self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
 
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
                     err.span_suggestion_verbose(
@@ -538,12 +595,12 @@ impl<'a> Parser<'a> {
                 };
 
                 if op.node == BinOpKind::Lt &&
-                    *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
-                    *outer_op == AssocOp::Greater
+                    outer_op.node == AssocOp::Less ||  // Include `<` to provide this recommendation
+                    outer_op.node == AssocOp::Greater
                 // even in a case like the following:
                 {
                     //     Foo<Bar<Baz<Qux, ()>>>
-                    if *outer_op == AssocOp::Less {
+                    if outer_op.node == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
@@ -575,7 +632,7 @@ impl<'a> Parser<'a> {
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_span))
                             }
                             Err(mut expr_err) => {
                                 expr_err.cancel();
@@ -597,7 +654,7 @@ impl<'a> Parser<'a> {
                                 // FIXME: actually check that the two expressions in the binop are
                                 // paths and resynthesize new fn call expression instead of using
                                 // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, lhs.span.to(self.prev_span))
+                                mk_err_expr(self, inner_op.span.to(self.prev_span))
                             }
                         }
                     } else {

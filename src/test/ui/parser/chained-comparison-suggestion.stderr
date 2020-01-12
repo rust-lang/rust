@@ -1,0 +1,159 @@
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:4:7
+   |
+LL |     1 < 2 <= 3;
+   |       ^^^^^^
+   |
+help: split the comparison into two...
+   |
+LL |     1 < 2 && 2 <= 3;
+   |     ^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 < 2) <= 3;
+   |     ^^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:9:7
+   |
+LL |     1 < 2 < 3;
+   |       ^^^^^
+   |
+   = help: use `::<...>` instead of `<...>` to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+help: split the comparison into two...
+   |
+LL |     1 < 2 && 2 < 3;
+   |     ^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 < 2) < 3;
+   |     ^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:13:7
+   |
+LL |     1 <= 2 < 3;
+   |       ^^^^^^
+   |
+help: split the comparison into two...
+   |
+LL |     1 <= 2 && 2 < 3;
+   |     ^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 <= 2) < 3;
+   |     ^^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:18:7
+   |
+LL |     1 <= 2 <= 3;
+   |       ^^^^^^^
+   |
+help: split the comparison into two...
+   |
+LL |     1 <= 2 && 2 <= 3;
+   |     ^^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 <= 2) <= 3;
+   |     ^^^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:23:7
+   |
+LL |     1 > 2 >= 3;
+   |       ^^^^^^
+   |
+help: split the comparison into two...
+   |
+LL |     1 > 2 && 2 >= 3;
+   |     ^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 > 2) >= 3;
+   |     ^^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:28:7
+   |
+LL |     1 > 2 > 3;
+   |       ^^^^^
+   |
+   = help: use `::<...>` instead of `<...>` to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+help: split the comparison into two...
+   |
+LL |     1 > 2 && 2 > 3;
+   |     ^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 > 2) > 3;
+   |     ^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:32:7
+   |
+LL |     1 >= 2 > 3;
+   |       ^^^^^^
+   |
+   = help: use `::<...>` instead of `<...>` to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+help: split the comparison into two...
+   |
+LL |     1 >= 2 && 2 > 3;
+   |     ^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 >= 2) > 3;
+   |     ^^^^^^^^^^
+
+error: comparison operators cannot be chained
+  --> $DIR/chained-comparison-suggestion.rs:36:7
+   |
+LL |     1 >= 2 >= 3;
+   |       ^^^^^^^
+   |
+help: split the comparison into two...
+   |
+LL |     1 >= 2 && 2 >= 3;
+   |     ^^^^^^^^^^^^^^
+help: ...or parenthesize one of the comparisons
+   |
+LL |     (1 >= 2) >= 3;
+   |     ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/chained-comparison-suggestion.rs:4:14
+   |
+LL |     1 < 2 <= 3;
+   |              ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/chained-comparison-suggestion.rs:13:14
+   |
+LL |     1 <= 2 < 3;
+   |              ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/chained-comparison-suggestion.rs:18:15
+   |
+LL |     1 <= 2 <= 3;
+   |               ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/chained-comparison-suggestion.rs:23:14
+   |
+LL |     1 > 2 >= 3;
+   |              ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/chained-comparison-suggestion.rs:36:15
+   |
+LL |     1 >= 2 >= 3;
+   |               ^ expected `bool`, found integer
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

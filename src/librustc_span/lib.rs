@@ -308,6 +308,11 @@ impl Span {
         self.ctxt() != SyntaxContext::root()
     }
 
+    /// Returns `true` if `span` originates in a derive-macro's expansion.
+    pub fn in_derive_expansion(self) -> bool {
+        matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+    }
+
     #[inline]
     pub fn with_root_ctxt(lo: BytePos, hi: BytePos) -> Span {
         Span::new(lo, hi, SyntaxContext::root())

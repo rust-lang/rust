@@ -10,6 +10,7 @@
 #![feature(nll)]
 #![feature(set_stdio)]
 #![feature(test)]
+#![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
@@ -35,6 +36,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
+extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;

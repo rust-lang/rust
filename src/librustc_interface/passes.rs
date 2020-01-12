@@ -27,6 +27,7 @@ use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental;
+use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -100,7 +101,7 @@ declare_box_region_type!(
 /// Returns `None` if we're aborting after handling -W help.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
-    lint_store: Lrc<lint::LintStore>,
+    lint_store: Lrc<LintStore>,
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: ast::Crate,
     crate_name: &str,
@@ -150,10 +151,10 @@ impl BoxedResolver {
 pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
-    register_lints: impl Fn(&Session, &mut lint::LintStore),
+    register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, Lrc<lint::LintStore>)> {
+) -> Result<(ast::Crate, Lrc<LintStore>)> {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
@@ -214,7 +215,7 @@ pub fn register_plugins<'a>(
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
-    lint_store: &'a lint::LintStore,
+    lint_store: &'a LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
@@ -420,7 +421,7 @@ fn configure_and_expand_inner<'a>(
 
 pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
-    lint_store: &lint::LintStore,
+    lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
     dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
@@ -705,7 +706,7 @@ impl<'tcx> QueryContext<'tcx> {
 
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
-    lint_store: Lrc<lint::LintStore>,
+    lint_store: Lrc<LintStore>,
     hir_forest: &'tcx map::Forest<'tcx>,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
