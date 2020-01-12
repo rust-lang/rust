@@ -125,7 +125,7 @@ a new unstable feature:
 2. Pick a name for the feature gate (for RFCs, use the name
    in the RFC).
 
-3. Add a feature gate declaration to `libsyntax/feature_gate/active.rs`
+3. Add a feature gate declaration to `librustc_feature/active.rs`
    in the active `declare_features` block:
 
    ```rust,ignore
@@ -158,7 +158,8 @@ a new unstable feature:
 
    For features introducing new syntax, pre-expansion gating should be used instead.
    To do so, extend the [`GatedSpans`] struct, add spans to it during parsing,
-   and then finally feature-gate all the spans in [`feature_gate::check::check_crate`].
+   and then finally feature-gate all the spans in
+   [`rustc_ast_passes::feature_gate::check_crate`].
 
 5. Add a test to ensure the feature cannot be used without
    a feature gate, by creating `feature-gate-$feature_name.rs`
@@ -175,7 +176,7 @@ a new unstable feature:
    implemented a feature in Rust!
 
 [`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.GatedSpans.html
-[`feature_gate::check::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/check/fn.check_crate.html
+[`rustc_ast_passes::feature_gate::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
 [here]: ./stabilization_guide.md
