@@ -61,6 +61,16 @@ enum TooManyVariants { //~ ERROR transparent enum needs exactly one variant, but
 }
 
 #[repr(transparent)]
+enum NontrivialAlignZstEnum {
+    Foo(u32, [u16; 0]), //~ ERROR alignment larger than 1
+}
+
+#[repr(transparent)]
+enum GenericAlignEnum<T> {
+    Foo { bar: ZstAlign32<T>, baz: u32 } //~ ERROR alignment larger than 1
+}
+
+#[repr(transparent)]
 union UnitUnion { //~ ERROR transparent union needs exactly one non-zero-sized field, but has 0
     u: (),
 }
