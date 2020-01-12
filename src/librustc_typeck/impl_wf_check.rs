@@ -12,10 +12,11 @@ use crate::constrained_generic_params as cgp;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::par_for_each;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_span::Span;
@@ -56,13 +57,13 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    for &module in tcx.hir().krate().modules.keys() {
+    par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
         tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
-    }
+    });
 }
 
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx });
+    tcx.hir().par_visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx });
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -73,8 +74,8 @@ struct ImplWfCheck<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+impl ParItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
+    fn visit_item(&self, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_item_refs);
@@ -82,9 +83,9 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {}
+    fn visit_trait_item(&self, _trait_item: &'tcx hir::TraitItem<'tcx>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_impl_item(&self, _impl_item: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 fn enforce_impl_params_are_constrained(
