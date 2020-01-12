@@ -1164,6 +1164,13 @@ fn typeck_tables_of_with_fallback<'tcx>(
 
                 if inhabited {
                     debug!("All arguments are inhabited!");
+                    fcx.tcx()
+                        .sess
+                        .struct_span_warn(
+                            path.span,
+                            "Fallback to `!` may introduce undefined behavior",
+                        )
+                        .emit();
                 }
             }
         }
