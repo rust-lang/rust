@@ -234,7 +234,7 @@ pub struct CodegenUnit<'tcx> {
     /// as well as the crate name and disambiguator.
     name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
-    size_estimate: Option<usize>,
+    size_estimate: usize,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -261,7 +261,7 @@ pub enum Visibility {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name: name, items: Default::default(), size_estimate: None }
+        CodegenUnit { name: name, items: Default::default(), size_estimate: 0 }
     }
 
     pub fn name(&self) -> Symbol {
@@ -293,19 +293,15 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
-        self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
+        self.size_estimate = self.items.keys().map(|mi| mi.size_estimate(tcx)).sum();
     }
 
     pub fn size_estimate(&self) -> usize {
-        // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
-        assert!(self.size_estimate.is_some());
-        if let Some(size_estimate) = self.size_estimate {
-            self.size_estimate = Some(size_estimate + delta);
-        }
+        self.size_estimate += delta;
     }
 
     pub fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {

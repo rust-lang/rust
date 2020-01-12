@@ -147,8 +147,6 @@ where
         || accessor_map(tcx, inlining_map),
     );
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
-
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
@@ -226,54 +224,57 @@ where
 
     let mono_items: Vec<_> = mono_items.collect();
 
-    let _prof_timer = tcx.prof.generic_activity("place_root_mono_items_par");
+    let chunks = tcx.prof.generic_activity("place_root_mono_items_par").run(|| {
+        sync::par_partition(&mono_items, 2, |chunk| {
+            let mut roots = Vec::new();
+            let mut codegen_units = FxHashMap::default();
+            let mut internalization_candidates = Vec::new();
 
-    let chunks = sync::par_partition(&mono_items, 2, |chunk| {
-        let mut roots = Vec::new();
-        let mut codegen_units = FxHashMap::default();
-        let mut internalization_candidates = Vec::new();
+            let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+            let cgu_name_cache = &mut FxHashMap::default();
 
-        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-        let cgu_name_cache = &mut FxHashMap::default();
+            for &mono_item in chunk {
+                match mono_item.instantiation_mode(tcx) {
+                    InstantiationMode::GloballyShared { .. } => {}
+                    InstantiationMode::LocalCopy => continue,
+                }
 
-        for &mono_item in chunk {
-            match mono_item.instantiation_mode(tcx) {
-                InstantiationMode::GloballyShared { .. } => {}
-                InstantiationMode::LocalCopy => continue,
-            }
+                let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
+                let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
-            let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
-            let is_volatile = is_incremental_build && mono_item.is_generic_fn();
+                let codegen_unit_name = match characteristic_def_id {
+                    Some(def_id) => compute_codegen_unit_name(
+                        tcx,
+                        cgu_name_builder,
+                        def_id,
+                        is_volatile,
+                        cgu_name_cache,
+                    ),
+                    None => fallback_cgu_name(cgu_name_builder),
+                };
 
-            let codegen_unit_name = match characteristic_def_id {
-                Some(def_id) => compute_codegen_unit_name(
+                let codegen_unit =
+                    codegen_units.entry(codegen_unit_name).or_insert_with(|| (Vec::new(), 0));
+
+                let mut can_be_internalized = true;
+                let (linkage, visibility) = mono_item_linkage_and_visibility(
                     tcx,
-                    cgu_name_builder,
-                    def_id,
-                    is_volatile,
-                    cgu_name_cache,
-                ),
-                None => fallback_cgu_name(cgu_name_builder),
-            };
+                    &mono_item,
+                    &mut can_be_internalized,
+                    export_generics,
+                );
+                if visibility == Visibility::Hidden && can_be_internalized {
+                    internalization_candidates.push(mono_item);
+                }
 
-            let codegen_unit = codegen_units.entry(codegen_unit_name).or_insert_with(|| Vec::new());
+                codegen_unit.0.push((mono_item, (linkage, visibility)));
+                codegen_unit.1 += mono_item.size_estimate(tcx);
 
-            let mut can_be_internalized = true;
-            let (linkage, visibility) = mono_item_linkage_and_visibility(
-                tcx,
-                &mono_item,
-                &mut can_be_internalized,
-                export_generics,
-            );
-            if visibility == Visibility::Hidden && can_be_internalized {
-                internalization_candidates.push(mono_item);
+                roots.push(mono_item);
             }
 
-            codegen_unit.push((mono_item, (linkage, visibility)));
-            roots.push(mono_item);
-        }
-
-        (roots, codegen_units, internalization_candidates)
+            (roots, codegen_units, internalization_candidates)
+        })
     });
 
     let _prof_timer = tcx.prof.generic_activity("place_root_mono_items_merge");
@@ -285,8 +286,9 @@ where
     for (chunk_roots, chunk_codegen_units, chunk_internalization_candidates) in chunks {
         roots.extend(chunk_roots);
         internalization_candidates.extend(chunk_internalization_candidates);
-        for (name, items) in chunk_codegen_units {
+        for (name, (items, cost)) in chunk_codegen_units {
             let codegen_unit = codegen_units.entry(name).or_insert_with(|| CodegenUnit::new(name));
+            codegen_unit.modify_size_estimate(cost);
             codegen_unit.items_mut().extend(items);
         }
     }
