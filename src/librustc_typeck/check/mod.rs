@@ -1149,21 +1149,34 @@ fn typeck_tables_of_with_fallback<'tcx>(
 
             if let ty::FnDef(_, substs) = ty.kind {
                 debug!("Got substs: {:?}", substs);
-                let mut inhabited = true;
+                let mut args_inhabited = true;
+                let mut substs_inhabited = true;
+
                 for arg in &*path.args.unwrap() {
                     let resolved_arg = fcx.infcx.resolve_vars_if_possible(arg);
 
                     if resolved_arg.conservative_is_privately_uninhabited(tcx) {
                         debug!("Arg is uninhabited: {:?}", resolved_arg);
-                        inhabited = false;
+                        args_inhabited = false;
                         break;
                     } else {
                         debug!("Arg is inhabited: {:?}", resolved_arg);
                     }
                 }
 
-                if inhabited {
-                    debug!("All arguments are inhabited!");
+                for subst_ty in substs.types() {
+                    let resolved_subst = fcx.infcx.resolve_vars_if_possible(&subst_ty);
+                    if resolved_subst.conservative_is_privately_uninhabited(tcx) {
+                        debug!("Subst is uninhabited: {:?}", resolved_subst);
+                        substs_inhabited = false;
+                        break;
+                    } else {
+                        debug!("Subst is inhabited: {:?}", resolved_subst);
+                    }
+                }
+
+                if args_inhabited && !substs_inhabited {
+                    debug!("All arguments are inhabited, at least one subst is not inhabited!");
                     fcx.tcx()
                         .sess
                         .struct_span_warn(
