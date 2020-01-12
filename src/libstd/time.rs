@@ -67,7 +67,7 @@ pub use core::time::Duration;
 /// |:---------:|:--------------------------------------------------------------------:|
 /// | Cloud ABI | [clock_time_get (Monotonic Clock)]                                   |
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
-/// | UNIX      | [clock_time_get (Monotonic Clock)]                                   |
+/// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
 /// | Darwin    | [mach_absolute_time]                                                 |
 /// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
