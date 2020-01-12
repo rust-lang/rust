@@ -807,6 +807,10 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 tcx.visible_parent_map(LOCAL_CRATE);
             },
             {
+                // Prefetch mir_keys
+                tcx.mir_keys(LOCAL_CRATE);
+            },
+            {
                 // This is used by `check_mod_unstable_api_usage`.
                 // Make sure it is complete before we fan out.
                 tcx.stability_index(LOCAL_CRATE);
