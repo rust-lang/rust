@@ -12,6 +12,7 @@ use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc_data_structures::sync::par_for_each;
 use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -19,9 +20,16 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
+    if Some(trait_def_id) == tcx.lang_items().copy_trait() {
+        // Checking `Copy` impls can be expensive. Do it in parallel.
+        let _timer = tcx.prof.generic_activity("check_implementations_of_copy");
+        par_for_each(tcx.hir().trait_impls(trait_def_id), |&impl_id| {
+            visit_implementation_of_copy(tcx, tcx.hir().local_def_id(impl_id));
+        });
+    }
+
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
-        .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
         .check(tcx.lang_items().coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
         .check(
             tcx.lang_items().dispatch_from_dyn_trait(),
