@@ -16,22 +16,23 @@
 
 use self::TargetLint::*;
 
-use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
-use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
-use crate::lint::{EarlyLintPassObject, LateLintPassObject};
-use crate::middle::privacy::AccessLevels;
-use crate::middle::stability;
-use crate::session::Session;
-use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
-use crate::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
+use crate::levels::LintLevelsBuilder;
+use crate::passes::{EarlyLintPassObject, LateLintPassObject};
+use rustc::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc::lint::add_elided_lifetime_in_path_suggestion;
+use rustc::middle::privacy::AccessLevels;
+use rustc::middle::stability;
+use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
+use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_error_codes::*;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
+use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -467,48 +468,6 @@ impl LintPassObject for EarlyLintPassObject {}
 
 impl LintPassObject for LateLintPassObject {}
 
-pub fn add_elided_lifetime_in_path_suggestion(
-    sess: &Session,
-    db: &mut DiagnosticBuilder<'_>,
-    n: usize,
-    path_span: Span,
-    incl_angl_brckt: bool,
-    insertion_span: Span,
-    anon_lts: String,
-) {
-    let (replace_span, suggestion) = if incl_angl_brckt {
-        (insertion_span, anon_lts)
-    } else {
-        // When possible, prefer a suggestion that replaces the whole
-        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
-        // at a point (which makes for an ugly/confusing label)
-        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
-            // But our spans can get out of whack due to macros; if the place we think
-            // we want to insert `'_` isn't even within the path expression's span, we
-            // should bail out of making any suggestion rather than panicking on a
-            // subtract-with-overflow or string-slice-out-out-bounds (!)
-            // FIXME: can we do better?
-            if insertion_span.lo().0 < path_span.lo().0 {
-                return;
-            }
-            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
-            if insertion_index > snippet.len() {
-                return;
-            }
-            let (before, after) = snippet.split_at(insertion_index);
-            (path_span, format!("{}{}{}", before, anon_lts, after))
-        } else {
-            (insertion_span, anon_lts)
-        }
-    };
-    db.span_suggestion(
-        replace_span,
-        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
-        suggestion,
-        Applicability::MachineApplicable,
-    );
-}
-
 pub trait LintContext: Sized {
     type PassObject: LintPassObject;
 
@@ -674,7 +633,7 @@ impl<'a> EarlyContext<'a> {
             sess,
             krate,
             lint_store,
-            builder: LintLevelSets::builder(sess, warn_about_weird_lints, lint_store),
+            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store),
             buffered,
         }
     }

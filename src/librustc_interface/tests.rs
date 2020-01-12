@@ -2,7 +2,7 @@ extern crate getopts;
 
 use crate::interface::parse_cfgspecs;
 
-use rustc::lint;
+use rustc::lint::Level;
 use rustc::middle::cstore;
 use rustc::session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc::session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
@@ -186,24 +186,24 @@ fn test_lints_tracking_hash_different_values() {
     let mut v3 = Options::default();
 
     v1.lint_opts = vec![
-        (String::from("a"), lint::Allow),
-        (String::from("b"), lint::Warn),
-        (String::from("c"), lint::Deny),
-        (String::from("d"), lint::Forbid),
+        (String::from("a"), Level::Allow),
+        (String::from("b"), Level::Warn),
+        (String::from("c"), Level::Deny),
+        (String::from("d"), Level::Forbid),
     ];
 
     v2.lint_opts = vec![
-        (String::from("a"), lint::Allow),
-        (String::from("b"), lint::Warn),
-        (String::from("X"), lint::Deny),
-        (String::from("d"), lint::Forbid),
+        (String::from("a"), Level::Allow),
+        (String::from("b"), Level::Warn),
+        (String::from("X"), Level::Deny),
+        (String::from("d"), Level::Forbid),
     ];
 
     v3.lint_opts = vec![
-        (String::from("a"), lint::Allow),
-        (String::from("b"), lint::Warn),
-        (String::from("c"), lint::Forbid),
-        (String::from("d"), lint::Deny),
+        (String::from("a"), Level::Allow),
+        (String::from("b"), Level::Warn),
+        (String::from("c"), Level::Forbid),
+        (String::from("d"), Level::Deny),
     ];
 
     assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
@@ -222,17 +222,17 @@ fn test_lints_tracking_hash_different_construction_order() {
     let mut v2 = Options::default();
 
     v1.lint_opts = vec![
-        (String::from("a"), lint::Allow),
-        (String::from("b"), lint::Warn),
-        (String::from("c"), lint::Deny),
-        (String::from("d"), lint::Forbid),
+        (String::from("a"), Level::Allow),
+        (String::from("b"), Level::Warn),
+        (String::from("c"), Level::Deny),
+        (String::from("d"), Level::Forbid),
     ];
 
     v2.lint_opts = vec![
-        (String::from("a"), lint::Allow),
-        (String::from("c"), lint::Deny),
-        (String::from("b"), lint::Warn),
-        (String::from("d"), lint::Forbid),
+        (String::from("a"), Level::Allow),
+        (String::from("c"), Level::Deny),
+        (String::from("b"), Level::Warn),
+        (String::from("d"), Level::Forbid),
     ];
 
     assert_eq!(v1.dep_tracking_hash(), v2.dep_tracking_hash());

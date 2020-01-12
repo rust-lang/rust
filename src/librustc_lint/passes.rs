@@ -1,46 +1,11 @@
-//! Lints, aka compiler warnings.
-//!
-//! A 'lint' check is a kind of miscellaneous constraint that a user _might_
-//! want to enforce, but might reasonably want to permit as well, on a
-//! module-by-module basis. They contrast with static constraints enforced by
-//! other phases of the compiler, which are generally required to hold in order
-//! to compile the program at all.
-//!
-//! Most lints can be written as `LintPass` instances. These run after
-//! all other analyses. The `LintPass`es built into rustc are defined
-//! within `builtin.rs`, which has further comments on how to add such a lint.
-//! rustc can also load user-defined lint plugins via the plugin mechanism.
-//!
-//! Some of rustc's lints are defined elsewhere in the compiler and work by
-//! calling `add_lint()` on the overall `Session` object. This works when
-//! it happens before the main lint pass, which emits the lints stored by
-//! `add_lint()`. To emit lints after the main lint pass (from codegen, for
-//! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
-//! in `context.rs`.
+use crate::context::{EarlyContext, LateContext};
 
-pub use self::Level::*;
-pub use self::LintSource::*;
-
-use crate::ty::TyCtxt;
 use rustc_data_structures::sync;
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
-use rustc_session::{DiagnosticMessageId, Session};
-use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
-use rustc_span::symbol::Symbol;
+use rustc_session::lint::LintPass;
 use rustc_span::Span;
 use syntax::ast;
-
-pub use crate::lint::context::{
-    add_elided_lifetime_in_path_suggestion, CheckLintNameResult, EarlyContext, LateContext,
-    LintContext, LintStore,
-};
-
-pub use rustc_session::lint::builtin;
-pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Level, Lint, LintId};
-pub use rustc_session::lint::{LintArray, LintPass};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -176,6 +141,7 @@ macro_rules! declare_combined_late_lint_pass {
             expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
         }
 
+        #[allow(rustc::lint_pass_impl_without_macro)]
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
@@ -303,6 +269,7 @@ macro_rules! declare_combined_early_lint_pass {
             expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
         }
 
+        #[allow(rustc::lint_pass_impl_without_macro)]
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
@@ -315,190 +282,3 @@ macro_rules! declare_combined_early_lint_pass {
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject =
     Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send + sync::Sync + 'static>;
-
-/// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
-pub enum LintSource {
-    /// Lint is at the default level as declared
-    /// in rustc or a plugin.
-    Default,
-
-    /// Lint level was set by an attribute.
-    Node(ast::Name, Span, Option<Symbol> /* RFC 2383 reason */),
-
-    /// Lint level was set by a command-line flag.
-    CommandLine(Symbol),
-}
-
-pub type LevelSource = (Level, LintSource);
-
-mod context;
-pub mod internal;
-mod levels;
-
-pub use self::levels::{LintLevelMap, LintLevelSets, LintLevelsBuilder};
-
-pub fn struct_lint_level<'a>(
-    sess: &'a Session,
-    lint: &'static Lint,
-    level: Level,
-    src: LintSource,
-    span: Option<MultiSpan>,
-    msg: &str,
-) -> DiagnosticBuilder<'a> {
-    let mut err = match (level, span) {
-        (Level::Allow, _) => return sess.diagnostic().struct_dummy(),
-        (Level::Warn, Some(span)) => sess.struct_span_warn(span, msg),
-        (Level::Warn, None) => sess.struct_warn(msg),
-        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, msg),
-        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(msg),
-    };
-
-    // Check for future incompatibility lints and issue a stronger warning.
-    let lint_id = LintId::of(lint);
-    let future_incompatible = lint.future_incompatible;
-
-    // If this code originates in a foreign macro, aka something that this crate
-    // did not itself author, then it's likely that there's nothing this crate
-    // can do about it. We probably want to skip the lint entirely.
-    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
-        // Any suggestions made here are likely to be incorrect, so anything we
-        // emit shouldn't be automatically fixed by rustfix.
-        err.allow_suggestions(false);
-
-        // If this is a future incompatible lint it'll become a hard error, so
-        // we have to emit *something*. Also allow lints to whitelist themselves
-        // on a case-by-case basis for emission in a foreign macro.
-        if future_incompatible.is_none() && !lint.report_in_external_macro {
-            err.cancel();
-            // Don't continue further, since we don't want to have
-            // `diag_span_note_once` called for a diagnostic that isn't emitted.
-            return err;
-        }
-    }
-
-    let name = lint.name_lower();
-    match src {
-        LintSource::Default => {
-            sess.diag_note_once(
-                &mut err,
-                DiagnosticMessageId::from(lint),
-                &format!("`#[{}({})]` on by default", level.as_str(), name),
-            );
-        }
-        LintSource::CommandLine(lint_flag_val) => {
-            let flag = match level {
-                Level::Warn => "-W",
-                Level::Deny => "-D",
-                Level::Forbid => "-F",
-                Level::Allow => panic!(),
-            };
-            let hyphen_case_lint_name = name.replace("_", "-");
-            if lint_flag_val.as_str() == name {
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!(
-                        "requested on the command line with `{} {}`",
-                        flag, hyphen_case_lint_name
-                    ),
-                );
-            } else {
-                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!(
-                        "`{} {}` implied by `{} {}`",
-                        flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
-                    ),
-                );
-            }
-        }
-        LintSource::Node(lint_attr_name, src, reason) => {
-            if let Some(rationale) = reason {
-                err.note(&rationale.as_str());
-            }
-            sess.diag_span_note_once(
-                &mut err,
-                DiagnosticMessageId::from(lint),
-                src,
-                "lint level defined here",
-            );
-            if lint_attr_name.as_str() != name {
-                let level_str = level.as_str();
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!(
-                        "`#[{}({})]` implied by `#[{}({})]`",
-                        level_str, name, level_str, lint_attr_name
-                    ),
-                );
-            }
-        }
-    }
-
-    err.code(DiagnosticId::Lint(name));
-
-    if let Some(future_incompatible) = future_incompatible {
-        const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
-             it will become a hard error";
-
-        let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-            "once this method is added to the standard library, \
-             the ambiguity may cause an error or change in behavior!"
-                .to_owned()
-        } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-            "this borrowing pattern was not meant to be accepted, \
-             and may become a hard error in the future"
-                .to_owned()
-        } else if let Some(edition) = future_incompatible.edition {
-            format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
-        } else {
-            format!("{} in a future release!", STANDARD_MESSAGE)
-        };
-        let citation = format!("for more information, see {}", future_incompatible.reference);
-        err.warn(&explanation);
-        err.note(&citation);
-    }
-
-    return err;
-}
-
-pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    let attrs = tcx.hir().attrs(id);
-    attrs.iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some())
-}
-
-/// Returns whether `span` originates in a foreign crate's external macro.
-///
-/// This is used to test whether a lint should not even begin to figure out whether it should
-/// be reported on the current node.
-pub fn in_external_macro(sess: &Session, span: Span) -> bool {
-    let expn_data = span.ctxt().outer_expn_data();
-    match expn_data.kind {
-        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
-        ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::Macro(MacroKind::Bang, _) => {
-            if expn_data.def_site.is_dummy() {
-                // Dummy span for the `def_site` means it's an external macro.
-                return true;
-            }
-            match sess.source_map().span_to_snippet(expn_data.def_site) {
-                Ok(code) => !code.starts_with("macro_rules"),
-                // No snippet means external macro or compiler-builtin expansion.
-                Err(_) => true,
-            }
-        }
-        ExpnKind::Macro(..) => true, // definitely a plugin
-    }
-}
-
-/// Returns `true` if `span` originates in a derive-macro's expansion.
-pub fn in_derive_expansion(span: Span) -> bool {
-    if let ExpnKind::Macro(MacroKind::Derive, _) = span.ctxt().outer_expn_data().kind {
-        return true;
-    }
-    false
-}

@@ -14,6 +14,7 @@ doctest = false
 rustc = { path = "../librustc" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }

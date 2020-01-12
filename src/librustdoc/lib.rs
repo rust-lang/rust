@@ -35,6 +35,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
+extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
 extern crate rustc_typeck;
