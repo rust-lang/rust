@@ -42,6 +42,7 @@ impl Conv for SyntaxKind {
             SyntaxKind::ENUM_DEF => SymbolKind::Enum,
             SyntaxKind::ENUM_VARIANT => SymbolKind::EnumMember,
             SyntaxKind::TRAIT_DEF => SymbolKind::Interface,
+            SyntaxKind::MACRO_CALL => SymbolKind::Function,
             SyntaxKind::MODULE => SymbolKind::Module,
             SyntaxKind::TYPE_ALIAS_DEF => SymbolKind::TypeParameter,
             SyntaxKind::RECORD_FIELD_DEF => SymbolKind::Field,
