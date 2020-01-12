@@ -203,4 +203,16 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn goto_implementation_to_builtin_derive() {
+        check_goto(
+            "
+            //- /lib.rs
+            #[derive(Copy)]
+            struct Foo<|>;            
+            ",
+            &["impl IMPL_BLOCK FileId(1) [0; 15)"],
+        );
+    }
 }
