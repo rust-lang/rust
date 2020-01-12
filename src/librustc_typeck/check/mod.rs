@@ -135,6 +135,7 @@ use syntax::util::parser::ExprPrecedence;
 
 use rustc_error_codes::*;
 
+use std::borrow::Cow;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::cmp;
 use std::collections::hash_map::Entry;
@@ -253,6 +254,8 @@ pub struct Inherited<'a, 'tcx> {
     /// environment is for an item or something where the "callee" is
     /// not clear.
     implicit_region_bound: Option<ty::Region<'tcx>>,
+
+    inferred_paths: RefCell<FxHashMap<hir::HirId, InferredPath<'tcx>>>,
 
     body_id: Option<hir::BodyId>,
 }
@@ -619,6 +622,13 @@ pub struct FnCtxt<'a, 'tcx> {
     inh: &'a Inherited<'a, 'tcx>,
 }
 
+#[derive(Clone, Debug)]
+struct InferredPath<'tcx> {
+    span: Span,
+    ty: Option<Ty<'tcx>>,
+    args: Option<Cow<'tcx, [Ty<'tcx>]>>,
+}
+
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     type Target = Inherited<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
@@ -685,6 +695,7 @@ impl Inherited<'a, 'tcx> {
             opaque_types: RefCell::new(Default::default()),
             opaque_types_vars: RefCell::new(Default::default()),
             implicit_region_bound,
+            inferred_paths: RefCell::new(Default::default()),
             body_id,
         }
     }
@@ -1053,6 +1064,32 @@ fn typeck_tables_of_with_fallback<'tcx>(
         // All type checking constraints were added, try to fallback unsolved variables.
         fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
+        let unresolved_paths: FxHashMap<hir::HirId, InferredPath<'tcx>> = fcx
+            .inferred_paths
+            .borrow()
+            .iter()
+            .map(|(id, path)| (*id, path.clone()))
+            .filter(|(hir_id, path)| {
+                debug!(
+                    "typeck_tables_of_with_fallback: inspecting path ({:?}, {:?})",
+                    hir_id, path
+                );
+                let debug_resolved = fcx.infcx.resolve_vars_if_possible(&path.ty);
+                if fcx.infcx.unresolved_type_vars(&path.ty).is_some() {
+                    debug!(
+                        "typeck_tables_of_with_fallback: unresolved vars in ty: {:?}",
+                        debug_resolved
+                    );
+                    true
+                } else {
+                    debug!(
+                        "typeck_tables_of_with_fallback: all vars resolved in ty: {:?}",
+                        debug_resolved
+                    );
+                    false
+                }
+            })
+            .collect();
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -1094,6 +1131,42 @@ fn typeck_tables_of_with_fallback<'tcx>(
 
         // See if we can make any more progress.
         fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+
+        for (call_id, path) in unresolved_paths {
+            debug!(
+                "Resolved ty: {:?} at span {:?} : expr={:?} parent={:?} path={:?}",
+                path.span,
+                path.ty,
+                tcx.hir().get(call_id),
+                tcx.hir().get(tcx.hir().get_parent_node(call_id)),
+                path
+            );
+
+            let ty = fcx.infcx.resolve_vars_if_possible(&path.ty);
+            debug!("Fully resolved ty: {:?}", ty);
+
+            let ty = ty.unwrap_or_else(|| bug!("Missing ty in path: {:?}", path));
+
+            if let ty::FnDef(_, substs) = ty.kind {
+                debug!("Got substs: {:?}", substs);
+                let mut inhabited = true;
+                for arg in &*path.args.unwrap() {
+                    let resolved_arg = fcx.infcx.resolve_vars_if_possible(arg);
+
+                    if resolved_arg.conservative_is_privately_uninhabited(tcx) {
+                        debug!("Arg is uninhabited: {:?}", resolved_arg);
+                        inhabited = false;
+                        break;
+                    } else {
+                        debug!("Arg is inhabited: {:?}", resolved_arg);
+                    }
+                }
+
+                if inhabited {
+                    debug!("All arguments are inhabited!");
+                }
+            }
+        }
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -3624,7 +3697,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_argument_types(
                 sp,
                 expr,
-                &err_inputs[..],
+                err_inputs,
                 &[],
                 args_no_rcvr,
                 false,
@@ -3732,13 +3805,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         sp: Span,
         expr: &'tcx hir::Expr<'tcx>,
-        fn_inputs: &[Ty<'tcx>],
+        fn_inputs: impl Into<Cow<'tcx, [Ty<'tcx>]>>,
         expected_arg_tys: &[Ty<'tcx>],
         args: &'tcx [hir::Expr<'tcx>],
         c_variadic: bool,
         tuple_arguments: TupleArgumentsFlag,
         def_span: Option<Span>,
     ) {
+        let fn_inputs = fn_inputs.into();
+        debug!("check_argument_types: storing arguments for expr {:?}", expr);
+        match self.inferred_paths.borrow_mut().entry(expr.hir_id) {
+            Entry::Vacant(e) => {
+                debug!("check_argument_types: making new entry for types {:?}", fn_inputs);
+                e.insert(InferredPath { span: sp, ty: None, args: Some(fn_inputs.clone()) });
+            }
+            Entry::Occupied(mut e) => {
+                debug!(
+                    "check_argument_types: modifiying exsting entry {:?} with types {:?}",
+                    e.get(),
+                    fn_inputs
+                );
+                e.get_mut().args = Some(fn_inputs.clone());
+            }
+        }
+
         let tcx = self.tcx;
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
@@ -5424,6 +5514,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Substitute the values for the type parameters into the type of
         // the referenced item.
         let ty_substituted = self.instantiate_type_scheme(span, &substs, &ty);
+
+        if ty_substituted.has_infer_types() {
+            debug!(
+                "instantiate_value_path: saving path with infer: ({:?}, {:?})",
+                span, ty_substituted
+            );
+            let parent_id = tcx.hir().get_parent_node(hir_id);
+            let parent = tcx.hir().get(parent_id);
+            match parent {
+                Node::Expr(hir::Expr { span: p_span, kind: ExprKind::Call(..), .. })
+                | Node::Expr(hir::Expr { span: p_span, kind: ExprKind::MethodCall(..), .. }) => {
+                    match self.inferred_paths.borrow_mut().entry(parent_id) {
+                        Entry::Vacant(e) => {
+                            debug!("instantiate_value_path: inserting new path");
+                            e.insert(InferredPath {
+                                span: *p_span,
+                                ty: Some(ty_substituted),
+                                args: None,
+                            });
+                        }
+                        Entry::Occupied(mut e) => {
+                            debug!("instantiate_value_path: updating existing path {:?}", e.get());
+                            e.get_mut().ty = Some(ty_substituted);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
