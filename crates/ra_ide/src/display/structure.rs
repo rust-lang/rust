@@ -2,7 +2,6 @@
 
 use crate::TextRange;
 
-use hir::{name, AsName, Path};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
@@ -152,9 +151,8 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 Some(node)
             },
             ast::MacroCall(it) => {
-                match it.path().and_then(|p| Path::from_ast(p)) {
-                    Some(path) if path.mod_path().segments.as_slice() == [name![macro_rules]]
-                        && it.name().map(|n| n.as_name()).is_some()
+                match it.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
+                    Some(path_segment) if path_segment.text() == "macro_rules"
                     => decl(it),
                     _ => None,
                 }
