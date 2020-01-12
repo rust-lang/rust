@@ -466,6 +466,12 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
+#[unstable(
+    feature = "std_lazy",
+    issue = "99",
+)]
+pub mod lazy;
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
