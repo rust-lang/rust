@@ -4,20 +4,27 @@ use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, AstNode, AstToken},
-    Direction, NodeOrToken,
+    Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
-use crate::{db::RootDatabase, FileRange};
+use crate::{db::RootDatabase, expand::descend_into_macros, FileId, FileRange};
+use hir::db::AstDatabase;
+use std::iter::successors;
 
-// FIXME: restore macro support
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
-    let parse = db.parse(frange.file_id);
-    try_extend_selection(parse.tree().syntax(), frange.range).unwrap_or(frange.range)
+    let src = db.parse(frange.file_id).tree();
+    try_extend_selection(db, src.syntax(), frange).unwrap_or(frange.range)
 }
 
-fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
+fn try_extend_selection(
+    db: &RootDatabase,
+    root: &SyntaxNode,
+    frange: FileRange,
+) -> Option<TextRange> {
+    let range = frange.range;
+
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     let list_kinds = [
         RECORD_FIELD_PAT_LIST,
@@ -72,12 +79,21 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         }
         NodeOrToken::Node(node) => node,
     };
+
+    // if we are in single token_tree, we maybe live in macro or attr
+    if node.kind() == TOKEN_TREE {
+        if let Some(macro_call) = node.ancestors().find_map(ast::MacroCall::cast) {
+            if let Some(range) = extend_tokens_from_range(db, frange.file_id, macro_call, range) {
+                return Some(range);
+            }
+        }
+    }
+
     if node.text_range() != range {
         return Some(node.text_range());
     }
 
-    // Using shallowest node with same range allows us to traverse siblings.
-    let node = node.ancestors().take_while(|n| n.text_range() == node.text_range()).last().unwrap();
+    let node = shallowest_node(&node.into()).unwrap();
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
         if let Some(range) = extend_list_item(&node) {
@@ -86,6 +102,94 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
     }
 
     node.parent().map(|it| it.text_range())
+}
+
+fn extend_tokens_from_range(
+    db: &RootDatabase,
+    file_id: FileId,
+    macro_call: ast::MacroCall,
+    original_range: TextRange,
+) -> Option<TextRange> {
+    let src = find_covering_element(&macro_call.syntax(), original_range);
+    let (first_token, last_token) = match src {
+        NodeOrToken::Node(it) => (it.first_token()?, it.last_token()?),
+        NodeOrToken::Token(it) => (it.clone(), it),
+    };
+
+    let mut first_token = skip_whitespace(first_token, Direction::Next)?;
+    let mut last_token = skip_whitespace(last_token, Direction::Prev)?;
+
+    while !first_token.text_range().is_subrange(&original_range) {
+        first_token = skip_whitespace(first_token.next_token()?, Direction::Next)?;
+    }
+    while !last_token.text_range().is_subrange(&original_range) {
+        last_token = skip_whitespace(last_token.prev_token()?, Direction::Prev)?;
+    }
+
+    // compute original mapped token range
+    let expanded = {
+        let first_node = descend_into_macros(db, file_id, first_token.clone());
+        let first_node = first_node.map(|it| it.text_range());
+
+        let last_node = descend_into_macros(db, file_id, last_token.clone());
+        if last_node.file_id == file_id.into() || first_node.file_id != last_node.file_id {
+            return None;
+        }
+        first_node.map(|it| union_range(it, last_node.value.text_range()))
+    };
+
+    // Compute parent node range
+    let src = db.parse_or_expand(expanded.file_id)?;
+    let parent = shallowest_node(&find_covering_element(&src, expanded.value))?.parent()?;
+
+    let validate = |token: SyntaxToken| {
+        let node = descend_into_macros(db, file_id, token.clone());
+        if node.file_id == expanded.file_id
+            && node.value.text_range().is_subrange(&parent.text_range())
+        {
+            Some(token)
+        } else {
+            None
+        }
+    };
+
+    // Find the first and last text range under expanded parent
+    let first = successors(Some(first_token), |token| {
+        validate(skip_whitespace(token.prev_token()?, Direction::Prev)?)
+    })
+    .last()?;
+    let last = successors(Some(last_token), |token| {
+        validate(skip_whitespace(token.next_token()?, Direction::Next)?)
+    })
+    .last()?;
+
+    let range = union_range(first.text_range(), last.text_range());
+    if original_range.is_subrange(&range) && original_range != range {
+        Some(range)
+    } else {
+        None
+    }
+}
+
+fn skip_whitespace(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
+    while token.kind() == WHITESPACE {
+        token = match direction {
+            Direction::Next => token.next_token()?,
+            Direction::Prev => token.prev_token()?,
+        }
+    }
+    Some(token)
+}
+
+fn union_range(range: TextRange, r: TextRange) -> TextRange {
+    let start = range.start().min(r.start());
+    let end = range.end().max(r.end());
+    TextRange::from_to(start, end)
+}
+
+/// Find the shallowest node with same range, which allows us to traverse siblings.
+fn shallowest_node(node: &SyntaxElement) -> Option<SyntaxNode> {
+    node.ancestors().take_while(|n| n.text_range() == node.text_range()).last()
 }
 
 fn extend_single_word_in_comment_or_string(
@@ -227,18 +331,19 @@ fn adj_comments(comment: &ast::Comment, dir: Direction) -> ast::Comment {
 
 #[cfg(test)]
 mod tests {
-    use ra_syntax::{AstNode, SourceFile};
-    use test_utils::extract_offset;
-
     use super::*;
+    use crate::mock_analysis::single_file;
+    use test_utils::extract_offset;
 
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);
-        let parse = SourceFile::parse(&before);
-        let mut range = TextRange::offset_len(cursor, 0.into());
+        let (analysis, file_id) = single_file(&before);
+        let range = TextRange::offset_len(cursor, 0.into());
+        let mut frange = FileRange { file_id: file_id, range };
+
         for &after in afters {
-            range = try_extend_selection(parse.tree().syntax(), range).unwrap();
-            let actual = &before[range];
+            frange.range = analysis.extend_selection(frange).unwrap();
+            let actual = &before[frange.range];
             assert_eq!(after, actual);
         }
     }
@@ -500,6 +605,39 @@ fn main() { let var = (
                 "_crate_def_map",
                 "_crate_def_map,",
                 "(\n    krate,\n    _crate_def_map,\n    module_id\n)",
+            ],
+        );
+    }
+
+    #[test]
+    fn extend_selection_inside_macros() {
+        do_check(
+            r#"macro_rules! foo { ($item:item) => {$item} }
+                foo!{fn hello(na<|>me:usize){}}"#,
+            &[
+                "name",
+                "name:usize",
+                "(name:usize)",
+                "fn hello(name:usize){}",
+                "{fn hello(name:usize){}}",
+                "foo!{fn hello(name:usize){}}",
+            ],
+        );
+    }
+
+    #[test]
+    fn extend_selection_inside_recur_macros() {
+        do_check(
+            r#" macro_rules! foo2 { ($item:item) => {$item} }
+                macro_rules! foo { ($item:item) => {foo2!($item);} }
+                foo!{fn hello(na<|>me:usize){}}"#,
+            &[
+                "name",
+                "name:usize",
+                "(name:usize)",
+                "fn hello(name:usize){}",
+                "{fn hello(name:usize){}}",
+                "foo!{fn hello(name:usize){}}",
             ],
         );
     }
