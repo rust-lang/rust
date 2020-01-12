@@ -251,7 +251,11 @@ impl ToNav for hir::Module {
 impl ToNav for hir::ImplBlock {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let frange = original_range(db, src.as_ref().map(|it| it.syntax()));
+        let frange = if let Some(item) = self.is_builtin_derive(db) {
+            original_range(db, item.syntax())
+        } else {
+            original_range(db, src.as_ref().map(|it| it.syntax()))
+        };
 
         NavigationTarget::from_syntax(
             frange.file_id,

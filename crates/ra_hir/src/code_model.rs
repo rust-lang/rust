@@ -26,10 +26,11 @@ use hir_ty::{
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
-use ra_syntax::ast;
+use ra_syntax::ast::{self, AttrsOwner};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
+    has_source::HasSource,
     CallableDef, HirDisplay, InFile, Name,
 };
 
@@ -804,6 +805,27 @@ impl ImplBlock {
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
         Crate { id: self.module(db).id.krate }
+    }
+
+    pub fn is_builtin_derive(&self, db: &impl DefDatabase) -> Option<InFile<ast::Attr>> {
+        let src = self.source(db);
+        let item = src.file_id.is_builtin_derive(db)?;
+        let hygenic = hir_expand::hygiene::Hygiene::new(db, item.file_id);
+
+        let attr = item
+            .value
+            .attrs()
+            .filter_map(|it| {
+                let path = hir_def::path::ModPath::from_src(it.path()?, &hygenic)?;
+                if path.as_ident()?.to_string() == "derive" {
+                    Some(it)
+                } else {
+                    None
+                }
+            })
+            .last()?;
+
+        Some(item.with_value(attr))
     }
 }
 
