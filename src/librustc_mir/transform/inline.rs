@@ -8,6 +8,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
+use rustc::session::config::Sanitizer;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 
@@ -226,6 +227,28 @@ impl Inliner<'tcx> {
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
             debug!("`#[track_caller]` present - not inlining");
             return false;
+        }
+
+        // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
+        // since instrumentation might be enabled and performed on the caller.
+        match self.tcx.sess.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Memory) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Thread) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Leak) => {}
+            None => {}
         }
 
         let hinted = match codegen_fn_attrs.inline {

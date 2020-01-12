@@ -19,7 +19,6 @@ use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
 use log::debug;
-use rustc::session::config::Sanitizer;
 use rustc::ty::Ty;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -45,21 +44,6 @@ fn declare_raw_fn(
 
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.target.options.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
-    }
-
-    if let Some(ref sanitizer) = cx.tcx.sess.opts.debugging_opts.sanitizer {
-        match *sanitizer {
-            Sanitizer::Address => {
-                llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
-            }
-            Sanitizer::Memory => {
-                llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
-            }
-            Sanitizer::Thread => {
-                llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
-            }
-            _ => {}
-        }
     }
 
     attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
