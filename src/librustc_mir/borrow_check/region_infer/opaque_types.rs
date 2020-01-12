@@ -13,8 +13,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// For example consider `fn f<'a>(x: &'a i32) -> impl Sized + 'a { x }`.
     /// This is lowered to give HIR something like
     ///
-    /// type _Return<'_a> = impl Sized + '_a;
-    /// fn f<'a>(x: &'a i32) -> _Return<'a> { x }
+    /// type f<'a>::_Return<'_a> = impl Sized + '_a;
+    /// fn f<'a>(x: &'a i32) -> f<'static>::_Return<'a> { x }
     ///
     /// When checking the return type record the type from the return and the
     /// type used in the return value. In this case they might be `_Return<'1>`
@@ -34,9 +34,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `fn f<'a: 'b, 'b: 'a>(x: *mut &'b i32) -> impl Sized + 'a { x }`
     ///
     /// Then we map the regions in both the type and the subst to their
-    /// `external_name` giving `concrete_type = &'a i32, substs = ['a]`. This
-    /// will then allow `infer_opaque_definition_from_instantiation` to
-    /// determine that `_Return<'_a> = &'_a i32`.
+    /// `external_name` giving `concrete_type = &'a i32`,
+    /// `substs = ['static, 'a]`. This will then allow
+    /// `infer_opaque_definition_from_instantiation` to determine that
+    /// `_Return<'_a> = &'_a i32`.
     ///
     /// There's a slight complication around closures. Given
     /// `fn f<'a: 'a>() { || {} }` the closure's type is something like
@@ -72,6 +73,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                                 infcx.tcx.lifetimes.re_static
                             })
                         }
+                        // We don't fold regions in the predicates of opaque
+                        // types to `ReVar`s. This means that in a case like
+                        //
+                        // fn f<'a: 'a>() -> impl Iterator<Item = impl Sized>
+                        //
+                        // The inner opaque type has `'static` in its substs.
+                        ty::ReStatic => region,
                         _ => {
                             infcx.tcx.sess.delay_span_bug(
                                 span,
