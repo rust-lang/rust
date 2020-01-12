@@ -46,19 +46,24 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     };
 
     let expr = match_expr.expr()?;
-    let enum_def = {
+    let (enum_def, module) = {
         let analyzer = ctx.source_analyzer(expr.syntax(), None);
-        resolve_enum_def(ctx.db, &analyzer, &expr)?
+        (resolve_enum_def(ctx.db, &analyzer, &expr)?, analyzer.module()?)
     };
-    let variant_list = enum_def.variant_list()?;
+    let variants = enum_def.variants(ctx.db);
+    if variants.is_empty() {
+        return None;
+    }
+
+    let db = ctx.db;
 
     ctx.add_assist(AssistId("fill_match_arms"), "fill match arms", |edit| {
         let indent_level = IndentLevel::from_node(match_arm_list.syntax());
 
         let new_arm_list = {
-            let variants = variant_list.variants();
             let arms = variants
-                .filter_map(build_pat)
+                .into_iter()
+                .filter_map(|variant| build_pat(db, module, variant))
                 .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()));
             indent_level.increase_indent(make::match_arm_list(arms))
         };
@@ -80,23 +85,25 @@ fn resolve_enum_def(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     expr: &ast::Expr,
-) -> Option<ast::EnumDef> {
+) -> Option<hir::Enum> {
     let expr_ty = analyzer.type_of(db, &expr)?;
 
-    let res = expr_ty.autoderef(db).find_map(|ty| match ty.as_adt() {
-        Some(Adt::Enum(e)) => Some(e.source(db).value),
+    let result = expr_ty.autoderef(db).find_map(|ty| match ty.as_adt() {
+        Some(Adt::Enum(e)) => Some(e),
         _ => None,
     });
-    res
+    result
 }
 
-fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
-    let path = make::path_qualified(
-        make::path_from_name_ref(make::name_ref(&var.parent_enum().name()?.syntax().to_string())),
-        make::name_ref(&var.name()?.syntax().to_string()),
-    );
+fn build_pat(
+    db: &impl HirDatabase,
+    module: hir::Module,
+    var: hir::EnumVariant,
+) -> Option<ast::Pat> {
+    let path = crate::ast_transform::path_to_ast(module.find_use_path(db, var.into())?);
 
-    let pat: ast::Pat = match var.kind() {
+    // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
+    let pat: ast::Pat = match var.source(db).value.kind() {
         ast::StructKind::Tuple(field_list) => {
             let pats =
                 iter::repeat(make::placeholder_pat().into()).take(field_list.fields().count());
@@ -106,7 +113,7 @@ fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
             let pats = field_list.fields().map(|f| make::bind_pat(f.name().unwrap()).into());
             make::record_pat(path, pats).into()
         }
-        ast::StructKind::Unit => make::path_pat(path).into(),
+        ast::StructKind::Unit => make::path_pat(path),
     };
 
     Some(pat)
@@ -247,6 +254,34 @@ mod tests {
                 match <|>E::X {
                     E::X => (),
                     E::Y => (),
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_qualifies_path() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            mod foo { pub enum E { X, Y } }
+            use foo::E::X;
+
+            fn main() {
+                match X {
+                    <|>
+                }
+            }
+            "#,
+            r#"
+            mod foo { pub enum E { X, Y } }
+            use foo::E::X;
+
+            fn main() {
+                match <|>X {
+                    X => (),
+                    foo::E::Y => (),
                 }
             }
             "#,

@@ -117,10 +117,11 @@ pub fn record_pat(path: ast::Path, pats: impl IntoIterator<Item = ast::Pat>) -> 
     }
 }
 
-pub fn path_pat(path: ast::Path) -> ast::PathPat {
+/// Returns a `BindPat` if the path has just one segment, a `PathPat` otherwise.
+pub fn path_pat(path: ast::Path) -> ast::Pat {
     let path_str = path.syntax().text().to_string();
     return from_text(path_str.as_str());
-    fn from_text(text: &str) -> ast::PathPat {
+    fn from_text(text: &str) -> ast::Pat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }
