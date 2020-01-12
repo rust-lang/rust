@@ -541,6 +541,9 @@ declare_features! (
     /// Allows `T: ?const Trait` syntax in bounds.
     (active, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
 
+    /// Allows the use of `no_sanitize` attribute.
+    (active, no_sanitize, "1.42.0", Some(39699), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
