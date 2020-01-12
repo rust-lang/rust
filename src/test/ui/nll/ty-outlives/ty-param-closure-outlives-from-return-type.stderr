@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23
    |
 LL |     with_signature(x, |y| y)
@@ -11,7 +11,7 @@ LL |     with_signature(x, |y| y)
    = note: number of external vids: 3
    = note: where T: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:15:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>

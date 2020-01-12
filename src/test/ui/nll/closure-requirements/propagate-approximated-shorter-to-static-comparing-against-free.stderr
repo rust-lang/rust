@@ -1,4 +1,4 @@
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:21:15
    |
 LL |       foo(cell, |cell_a, cell_x| {
@@ -23,7 +23,7 @@ LL |     foo(cell, |cell_a, cell_x| {
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ `cell_x` escapes the closure body here
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
    |
 LL | / fn case1() {
@@ -37,7 +37,7 @@ LL | | }
    |
    = note: defining type: case1
 
-note: External requirements
+note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15
    |
 LL |       foo(cell, |cell_a, cell_x| {
@@ -53,7 +53,7 @@ LL | |     })
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
    |
 LL | / fn case2() {
