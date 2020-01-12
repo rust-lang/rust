@@ -116,8 +116,15 @@ pub struct Ipv6Addr {
 
 /// Scope of an IPv6 address as defined in [section 2 of IETF RFC 7346]
 ///
+/// # Stability guarantees
+///
+/// This enum may [may by subject to changes][changes] in the
+/// future, as new RFCs are published.
+///
+/// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
 /// [section 2 of IETF RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+#[non_exhaustive]
 #[stable(feature = "ip", since = "1.42.0")]
 pub enum Ipv6MulticastScope {
     /// Interface-Local scope. See [RFC 4291] and [RFC 7346]
@@ -168,6 +175,20 @@ pub enum Ipv6MulticastScope {
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
     #[stable(feature = "ip", since = "1.42.0")]
     Global,
+
+    /// Reserved scope. See [RFC 4291] and [RFC 7346]
+    ///
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
+    /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
+    #[stable(feature = "ip", since = "1.42.0")]
+    Reserved,
+
+    /// Un-assigned scope. See [RFC 4291] and [RFC 7346]
+    ///
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
+    /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
+    #[stable(feature = "ip", since = "1.42.0")]
+    Unassigned,
 }
 
 impl IpAddr {
@@ -1640,7 +1661,7 @@ impl Ipv6Addr {
             && !self.is_documentation()
     }
 
-    /// Returns the address's multicast scope if the address is multicast.
+    /// Return the address's multicast scope if the address is multicast.
     ///
     /// # Examples
     ///
@@ -1662,17 +1683,19 @@ impl Ipv6Addr {
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.42.0")]
     pub fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
+        use Ipv6MulticastScope::*;
         if self.is_multicast() {
-            match self.segments()[0] & 0x000f {
-                1 => Some(Ipv6MulticastScope::InterfaceLocal),
-                2 => Some(Ipv6MulticastScope::LinkLocal),
-                3 => Some(Ipv6MulticastScope::RealmLocal),
-                4 => Some(Ipv6MulticastScope::AdminLocal),
-                5 => Some(Ipv6MulticastScope::SiteLocal),
-                8 => Some(Ipv6MulticastScope::OrganizationLocal),
-                14 => Some(Ipv6MulticastScope::Global),
-                _ => None,
-            }
+            Some(match self.segments()[0] & 0x000f {
+                0 | 15 => Reserved,
+                1 => InterfaceLocal,
+                2 => LinkLocal,
+                3 => RealmLocal,
+                4 => AdminLocal,
+                5 => SiteLocal,
+                8 => OrganizationLocal,
+                14 => Global,
+                _ => Unassigned,
+            })
         } else {
             None
         }
@@ -2551,29 +2574,33 @@ mod tests {
                 assert_eq!(&ip!($s).octets(), octets);
                 assert_eq!(Ipv6Addr::from(*octets), ip!($s));
 
-                let unspecified: u16 = 1 << 0;
-                let loopback: u16 = 1 << 1;
-                let unique_local: u16 = 1 << 2;
-                let global: u16 = 1 << 3;
-                let unicast_link_local: u16 = 1 << 4;
-                let unicast_link_local_strict: u16 = 1 << 5;
-                let unicast_site_local: u16 = 1 << 6;
-                let unicast_global: u16 = 1 << 7;
-                let documentation: u16 = 1 << 8;
-                let multicast_interface_local: u16 = 1 << 9;
-                let multicast_link_local: u16 = 1 << 10;
-                let multicast_realm_local: u16 = 1 << 11;
-                let multicast_admin_local: u16 = 1 << 12;
-                let multicast_site_local: u16 = 1 << 13;
-                let multicast_organization_local: u16 = 1 << 14;
-                let multicast_global: u16 = 1 << 15;
-                let multicast: u16 = multicast_interface_local
+                let unspecified: u32 = 1 << 0;
+                let loopback: u32 = 1 << 1;
+                let unique_local: u32 = 1 << 2;
+                let global: u32 = 1 << 3;
+                let unicast_link_local: u32 = 1 << 4;
+                let unicast_link_local_strict: u32 = 1 << 5;
+                let unicast_site_local: u32 = 1 << 6;
+                let unicast_global: u32 = 1 << 7;
+                let documentation: u32 = 1 << 8;
+                let multicast_interface_local: u32 = 1 << 9;
+                let multicast_link_local: u32 = 1 << 10;
+                let multicast_realm_local: u32 = 1 << 11;
+                let multicast_admin_local: u32 = 1 << 12;
+                let multicast_site_local: u32 = 1 << 13;
+                let multicast_organization_local: u32 = 1 << 14;
+                let multicast_global: u32 = 1 << 15;
+                let multicast_reserved: u32 = 1 << 16;
+                let multicast_unassigned: u32 = 1 << 17;
+                let multicast: u32 = multicast_interface_local
                     | multicast_admin_local
                     | multicast_global
                     | multicast_link_local
                     | multicast_realm_local
                     | multicast_site_local
-                    | multicast_organization_local;
+                    | multicast_organization_local
+                    | multicast_reserved
+                    | multicast_unassigned;
 
                 if ($mask & unspecified) == unspecified {
                     assert!(ip!($s).is_unspecified());
@@ -2655,25 +2682,35 @@ mod tests {
                     assert_eq!(ip!($s).multicast_scope().unwrap(),
                                Ipv6MulticastScope::Global);
                 }
+                if ($mask & multicast_reserved) == multicast_reserved {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Reserved);
+                }
+                if ($mask & multicast_unassigned) == multicast_unassigned {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Unassigned);
+                }
             }
         }
 
-        let unspecified: u16 = 1 << 0;
-        let loopback: u16 = 1 << 1;
-        let unique_local: u16 = 1 << 2;
-        let global: u16 = 1 << 3;
-        let unicast_link_local: u16 = 1 << 4;
-        let unicast_link_local_strict: u16 = 1 << 5;
-        let unicast_site_local: u16 = 1 << 6;
-        let unicast_global: u16 = 1 << 7;
-        let documentation: u16 = 1 << 8;
-        let multicast_interface_local: u16 = 1 << 9;
-        let multicast_link_local: u16 = 1 << 10;
-        let multicast_realm_local: u16 = 1 << 11;
-        let multicast_admin_local: u16 = 1 << 12;
-        let multicast_site_local: u16 = 1 << 13;
-        let multicast_organization_local: u16 = 1 << 14;
-        let multicast_global: u16 = 1 << 15;
+        let unspecified: u32 = 1 << 0;
+        let loopback: u32 = 1 << 1;
+        let unique_local: u32 = 1 << 2;
+        let global: u32 = 1 << 3;
+        let unicast_link_local: u32 = 1 << 4;
+        let unicast_link_local_strict: u32 = 1 << 5;
+        let unicast_site_local: u32 = 1 << 6;
+        let unicast_global: u32 = 1 << 7;
+        let documentation: u32 = 1 << 8;
+        let multicast_interface_local: u32 = 1 << 9;
+        let multicast_link_local: u32 = 1 << 10;
+        let multicast_realm_local: u32 = 1 << 11;
+        let multicast_admin_local: u32 = 1 << 12;
+        let multicast_site_local: u32 = 1 << 13;
+        let multicast_organization_local: u32 = 1 << 14;
+        let multicast_global: u32 = 1 << 15;
+        let multicast_reserved: u32 = 1 << 16;
+        let multicast_unassigned: u32 = 1 << 17;
 
         check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
 
@@ -2749,6 +2786,8 @@ mod tests {
             unicast_site_local | unicast_global | global
         );
 
+        check!("ff00::", &[0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_reserved);
+
         check!(
             "ff01::",
             &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -2780,15 +2819,33 @@ mod tests {
         );
 
         check!(
+            "ff06::",
+            &[0xff, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            multicast_unassigned
+        );
+
+        check!(
             "ff08::",
             &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             multicast_organization_local
         );
 
         check!(
+            "ff0a::",
+            &[0xff, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            multicast_unassigned
+        );
+
+        check!(
             "ff0e::",
             &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             multicast_global | global
+        );
+
+        check!(
+            "ff0f::",
+            &[0xff, 0xf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            multicast_reserved
         );
 
         check!(
