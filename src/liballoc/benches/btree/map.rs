@@ -146,6 +146,36 @@ pub fn iter_100000(b: &mut Bencher) {
     bench_iter(b, 100000);
 }
 
+fn bench_iter_mut(b: &mut Bencher, size: i32) {
+    let mut map = BTreeMap::<i32, i32>::new();
+    let mut rng = thread_rng();
+
+    for _ in 0..size {
+        map.insert(rng.gen(), rng.gen());
+    }
+
+    b.iter(|| {
+        for kv in map.iter_mut() {
+            black_box(kv);
+        }
+    });
+}
+
+#[bench]
+pub fn iter_mut_20(b: &mut Bencher) {
+    bench_iter_mut(b, 20);
+}
+
+#[bench]
+pub fn iter_mut_1000(b: &mut Bencher) {
+    bench_iter_mut(b, 1000);
+}
+
+#[bench]
+pub fn iter_mut_100000(b: &mut Bencher) {
+    bench_iter_mut(b, 100000);
+}
+
 fn bench_first_and_last(b: &mut Bencher, size: i32) {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
     b.iter(|| {
