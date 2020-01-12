@@ -1,8 +1,8 @@
-warning: macro_escape is a deprecated synonym for macro_use
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
   --> $DIR/issue-43106-gating-of-macro_escape.rs:8:1
    |
 LL | #![macro_escape]
    | ^^^^^^^^^^^^^^^^
    |
-   = help: consider an outer attribute, `#[macro_use]` mod ...
+   = help: try an outer attribute: `#[macro_use]`
 

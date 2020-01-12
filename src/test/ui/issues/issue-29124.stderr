@@ -4,7 +4,7 @@ error[E0599]: no method named `x` found for fn item `fn() -> Ret {Obj::func}` in
 LL |     Obj::func.x();
    |               ^ method not found in `fn() -> Ret {Obj::func}`
    |
-   = note: Obj::func is a function, perhaps you wish to call it
+   = note: `Obj::func` is a function, perhaps you wish to call it
 
 error[E0599]: no method named `x` found for fn item `fn() -> Ret {func}` in the current scope
   --> $DIR/issue-29124.rs:17:10
@@ -12,7 +12,7 @@ error[E0599]: no method named `x` found for fn item `fn() -> Ret {func}` in the 
 LL |     func.x();
    |          ^ method not found in `fn() -> Ret {func}`
    |
-   = note: func is a function, perhaps you wish to call it
+   = note: `func` is a function, perhaps you wish to call it
 
 error: aborting due to 2 previous errors
 

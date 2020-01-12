@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/projection-no-regions-closure.rs:25:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
@@ -11,7 +11,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:21:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
@@ -33,7 +33,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
-note: External requirements
+note: external requirements
   --> $DIR/projection-no-regions-closure.rs:34:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
@@ -46,7 +46,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:30:1
    |
 LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
@@ -59,7 +59,7 @@ LL | | }
    |
    = note: defining type: correct_region::<'_#1r, T>
 
-note: External requirements
+note: external requirements
   --> $DIR/projection-no-regions-closure.rs:42:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
@@ -72,7 +72,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:38:1
    |
 LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
@@ -94,7 +94,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
-note: External requirements
+note: external requirements
   --> $DIR/projection-no-regions-closure.rs:52:23
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
@@ -107,7 +107,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/projection-no-regions-closure.rs:47:1
    |
 LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>

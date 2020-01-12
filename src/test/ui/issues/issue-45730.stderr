@@ -6,7 +6,7 @@ LL |     let x: *const _ = 0 as _;
    |                            |
    |                            help: consider giving more type information
    |
-   = note: The type information given here is insufficient to check whether the pointer cast is valid
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
   --> $DIR/issue-45730.rs:5:23
@@ -16,7 +16,7 @@ LL |     let x: *const _ = 0 as *const _;
    |                            |
    |                            help: consider giving more type information
    |
-   = note: The type information given here is insufficient to check whether the pointer cast is valid
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
   --> $DIR/issue-45730.rs:8:13
@@ -26,7 +26,7 @@ LL |     let x = 0 as *const i32 as *const _ as *mut _;
    |                                            |
    |                                            help: consider giving more type information
    |
-   = note: The type information given here is insufficient to check whether the pointer cast is valid
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error: aborting due to 3 previous errors
 
