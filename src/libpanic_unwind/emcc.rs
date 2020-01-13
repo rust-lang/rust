@@ -88,8 +88,12 @@ cfg_if::cfg_if! {
 }
 extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> DestructorRet {
     unsafe {
-        ptr::drop_in_place(ptr as *mut Exception);
-        super::__rust_drop_panic();
+        if let Some(b) = (ptr as *mut Exception).read().data {
+            drop(b);
+            super::__rust_drop_panic();
+        }
+        #[cfg(any(target_arch = "arm", target_arch = "wasm32"))]
+        ptr
     }
 }
 
