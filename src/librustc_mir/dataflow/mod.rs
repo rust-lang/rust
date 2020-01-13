@@ -668,6 +668,26 @@ pub trait BottomValue {
     const BOTTOM_VALUE: bool;
 
     /// Merges `in_set` into `inout_set`, returning `true` if `inout_set` changed.
+    ///
+    /// It is almost certainly wrong to override this, since it automatically applies
+    /// * `inout_set & in_set` if `BOTTOM_VALUE == true`
+    /// * `inout_set | in_set` if `BOTTOM_VALUE == false`
+    ///
+    /// This means that if a bit is not `BOTTOM_VALUE`, it is propagated into all target blocks.
+    /// For clarity, the above statement again from a different perspective:
+    /// A bit in the block's entry set is `!BOTTOM_VALUE` if *any* predecessor block's bit value is
+    /// `!BOTTOM_VALUE`.
+    ///
+    /// There are situations where you want the opposite behaviour: propagate only if *all*
+    /// predecessor blocks's value is `!BOTTOM_VALUE`.
+    /// E.g. if you want to know whether a bit is *definitely* set at a specific location. This
+    /// means that all code paths leading to the location must have set the bit, instead of any
+    /// code path leading there.
+    ///
+    /// If you want this kind of "definitely set" analysis, you need to
+    /// 1. Invert `BOTTOM_VALUE`
+    /// 2. Reset the `entry_set` in `start_block_effect` to `!BOTTOM_VALUE`
+    /// 3. Override `join` to do the opposite from what it's doing now.
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         if Self::BOTTOM_VALUE == false {
@@ -685,7 +705,9 @@ pub trait BottomValue {
 /// for each block individually. The entry set for all other basic blocks is
 /// initialized to `Self::BOTTOM_VALUE`. The dataflow analysis then
 /// iteratively modifies the various entry sets (but leaves the the transfer
-/// function unchanged).
+/// function unchanged). `BottomValue::join` is used to merge the bitsets from
+/// two blocks (e.g. when two blocks' terminator jumps to a single block, that
+/// target block's state is the merged state of both incoming blocks).
 pub trait BitDenotation<'tcx>: BottomValue {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;

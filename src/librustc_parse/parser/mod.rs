@@ -2,6 +2,7 @@ pub mod attr;
 mod expr;
 mod item;
 mod module;
+pub use module::{ModulePath, ModulePathSuccess};
 mod pat;
 mod path;
 mod ty;
@@ -117,7 +118,8 @@ pub struct Parser<'a> {
     /// Used to determine the path to externally loaded source files.
     pub(super) directory: Directory<'a>,
     /// `true` to parse sub-modules in other files.
-    pub(super) recurse_into_file_modules: bool,
+    // Public for rustfmt usage.
+    pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -126,7 +128,8 @@ pub struct Parser<'a> {
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// `true` we should configure out of line modules as we parse.
-    cfg_mods: bool,
+    // Public for rustfmt usage.
+    pub cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -483,7 +486,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    // Public for rustfmt usage.
+    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
         self.parse_ident_common(true)
     }
 
@@ -540,7 +544,8 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    fn eat_keyword(&mut self, kw: Symbol) -> bool {
+    // Public for rustfmt usage.
+    pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
             true
