@@ -1171,6 +1171,17 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
+impl<'tcx> ObligationCauseCode<'tcx> {
+    pub fn peel_derives(&self) -> &Self {
+        match self {
+            BuiltinDerivedObligation(cause) | ImplDerivedObligation(cause) => {
+                cause.parent_code.peel_derives()
+            }
+            _ => self,
+        }
+    }
+}
+
 impl<'tcx, N> Vtable<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {

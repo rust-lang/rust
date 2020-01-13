@@ -1,0 +1,62 @@
+error[E0308]: mismatched types
+  --> $DIR/E0746.rs:6:25
+   |
+LL | fn foo() -> dyn Trait { Struct }
+   |             ---------   ^^^^^^ expected trait `Trait`, found struct `Struct`
+   |             |
+   |             expected `(dyn Trait + 'static)` because of return type
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                    found struct `Struct`
+
+error[E0746]: return type cannot have a bare trait because it must be `Sized`
+  --> $DIR/E0746.rs:6:13
+   |
+LL | fn foo() -> dyn Trait { Struct }
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+help: you can use the `impl Trait` feature in the return type because all the return paths are of type `Struct`, which implements `dyn Trait`
+   |
+LL | fn foo() -> impl Trait { Struct }
+   |             ^^^^^^^^^^
+
+error[E0746]: return type cannot have a bare trait because it must be `Sized`
+  --> $DIR/E0746.rs:10:13
+   |
+LL | fn bar() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+help: you can use the `impl Trait` feature in the return type because all the return paths are of type `{integer}`, which implements `dyn Trait`
+   |
+LL | fn bar() -> impl Trait {
+   |             ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/E0746.rs:12:16
+   |
+LL | fn bar() -> dyn Trait {
+   |             --------- expected `(dyn Trait + 'static)` because of return type
+LL |     if true {
+LL |         return 0;
+   |                ^ expected trait `Trait`, found integer
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/E0746.rs:14:5
+   |
+LL | fn bar() -> dyn Trait {
+   |             --------- expected `(dyn Trait + 'static)` because of return type
+...
+LL |     42
+   |     ^^ expected trait `Trait`, found integer
+   |
+   = note: expected trait object `(dyn Trait + 'static)`
+                      found type `{integer}`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -608,4 +608,5 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0739, // invalid track_caller application/syntax
+    E0746, // `dyn Trait` return type
 }
