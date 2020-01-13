@@ -1,46 +1,6 @@
-#![warn(clippy::nonminimal_bool, clippy::logic_bug)]
+#![allow(unused, clippy::many_single_char_names)]
+#![warn(clippy::nonminimal_bool)]
 
-#[allow(unused, clippy::many_single_char_names)]
-fn main() {
-    let a: bool = unimplemented!();
-    let b: bool = unimplemented!();
-    let c: bool = unimplemented!();
-    let d: bool = unimplemented!();
-    let e: bool = unimplemented!();
-    let _ = a && b || a;
-    let _ = !(a && b);
-    let _ = !true;
-    let _ = !false;
-    let _ = !!a;
-    let _ = false && a;
-    let _ = false || a;
-    // don't lint on cfgs
-    let _ = cfg!(you_shall_not_not_pass) && a;
-    let _ = a || !b || !c || !d || !e;
-    let _ = !(a && b || c);
-    let _ = !(!a && b);
-    let _ = !(!a || b);
-}
-
-#[allow(unused, clippy::many_single_char_names)]
-fn equality_stuff() {
-    let a: i32 = unimplemented!();
-    let b: i32 = unimplemented!();
-    let c: i32 = unimplemented!();
-    let d: i32 = unimplemented!();
-    let e: i32 = unimplemented!();
-    let _ = a == b && a != b;
-    let _ = a == b && c == 5 && a == b;
-    let _ = a == b || c == 5 || a == b;
-    let _ = a == b && c == 5 && b == a;
-    let _ = a < b && a >= b;
-    let _ = a > b && a <= b;
-    let _ = a > b && a == b;
-    let _ = a != b || !(a != b || c == d);
-    let _ = a != b && !(a != b && c == d);
-}
-
-#[allow(unused, clippy::many_single_char_names)]
 fn methods_with_negation() {
     let a: Option<i32> = unimplemented!();
     let b: Result<i32, i32> = unimplemented!();
@@ -147,22 +107,4 @@ fn dont_warn_for_negated_partial_ord_comparison() {
     let _ = !(a >= b);
 }
 
-fn issue3847(a: u32, b: u32) -> bool {
-    const THRESHOLD: u32 = 1_000;
-
-    if a < THRESHOLD && b >= THRESHOLD || a >= THRESHOLD && b < THRESHOLD {
-        return false;
-    }
-    true
-}
-
-fn issue4548() {
-    fn f(_i: u32, _j: u32) -> u32 {
-        unimplemented!();
-    }
-
-    let i = 0;
-    let j = 0;
-
-    if i != j && f(i, j) != 0 || i == j && f(i, j) != 1 {}
-}
+fn main() {}
