@@ -159,14 +159,14 @@ pub static stringnames: &[&str] = &[ "cbt", "_", "cr", "csr", "tbc", "clear",
 
 fn read_le_u16(r: &mut dyn io::Read) -> io::Result<u16> {
     let mut b = [0; 2];
-    let mut amt = 0;
-    while amt < b.len() {
-        match r.read(&mut b[amt..])? {
-            0 => return Err(io::Error::new(io::ErrorKind::Other, "end of file")),
-            n => amt += n,
-        }
-    }
+    r.read_exact(&mut b)?;
     Ok((b[0] as u16) | ((b[1] as u16) << 8))
+}
+
+fn read_le_u32(r: &mut dyn io::Read) -> io::Result<u32> {
+    let mut b = [0; 4];
+    r.read_exact(&mut b)?;
+    Ok((b[0] as u32) | ((b[1] as u32) << 8) | ((b[2] as u32) << 16) | ((b[3] as u32) << 24))
 }
 
 fn read_byte(r: &mut dyn io::Read) -> io::Result<u8> {
@@ -194,9 +194,12 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
 
     // Check magic number
     let magic = t!(read_le_u16(file));
-    if magic != 0x011A {
-        return Err(format!("invalid magic number: expected {:x}, found {:x}", 0x011A, magic));
-    }
+
+    let extended = match magic {
+        0o0432 => false,
+        0o01036 => true,
+        _ => return Err(format!("invalid magic number, found {:o}", magic)),
+    };
 
     // According to the spec, these fields must be >= -1 where -1 means that the feature is not
     // supported. Using 0 instead of -1 works because we skip sections with length 0.
@@ -258,11 +261,15 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
         t!(read_byte(file)); // compensate for padding
     }
 
-    let numbers_map: HashMap<String, u16> = t! {
-        (0..numbers_count).filter_map(|i| match read_le_u16(file) {
-            Ok(0xFFFF) => None,
-            Ok(n) => Some(Ok((nnames[i].to_string(), n))),
-            Err(e) => Some(Err(e))
+    let numbers_map: HashMap<String, u32> = t! {
+        (0..numbers_count).filter_map(|i| {
+            let number = if extended { read_le_u32(file) } else { read_le_u16(file).map(Into::into) };
+
+            match number {
+                Ok(0xFFFF) => None,
+                Ok(n) => Some(Ok((nnames[i].to_string(), n))),
+                Err(e) => Some(Err(e))
+            }
         }).collect()
     };
 
@@ -318,7 +325,7 @@ pub fn msys_terminfo() -> TermInfo {
     strings.insert("setab".to_string(), b"\x1B[4%p1%dm".to_vec());
 
     let mut numbers = HashMap::new();
-    numbers.insert("colors".to_string(), 8u16);
+    numbers.insert("colors".to_string(), 8);
 
     TermInfo {
         names: vec!["cygwin".to_string()], // msys is a fork of an older cygwin version
