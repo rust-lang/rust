@@ -36,6 +36,7 @@ fn ${1:feature}() {
     .lookup_by("tfn")
     .add_to(acc);
 
+    snippet(ctx, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}").add_to(acc);
     snippet(ctx, "pub(crate)", "pub(crate) $0").add_to(acc);
 }
 
@@ -105,6 +106,13 @@ mod tests {
                 insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
                 kind: Snippet,
                 lookup: "tfn",
+            },
+            CompletionItem {
+                label: "macro_rules",
+                source_range: [78; 78),
+                delete: [78; 78),
+                insert: "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}",
+                kind: Snippet,
             },
             CompletionItem {
                 label: "pub(crate)",
