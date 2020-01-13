@@ -1348,6 +1348,34 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 "...is found to be `{}` here",
                 fcx.resolve_vars_with_obligations(expected),
             ));
+            err.note(
+                "`impl Trait` as a return type requires that all the returned values must have \
+                 the same type",
+            );
+            let snippet = fcx
+                .tcx
+                .sess
+                .source_map()
+                .span_to_snippet(return_sp)
+                .unwrap_or_else(|_| "dyn Trait".to_string());
+            let mut snippet_iter = snippet.split_whitespace();
+            let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
+            if has_impl {
+                err.help(&format!(
+                    "you can instead return a trait object using `Box<dyn {}>`",
+                    &snippet[5..]
+                ));
+            }
+            let impl_trait_msg = "for information on `impl Trait`, see \
+                <https://doc.rust-lang.org/book/ch10-02-traits.html\
+                #returning-types-that-implement-traits>";
+            let trait_obj_msg = "for information on trait objects, see \
+                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
+                #using-trait-objects-that-allow-for-values-of-different-types>";
+            err.note(impl_trait_msg);
+            if has_impl {
+                err.note(trait_obj_msg);
+            }
         }
         err
     }

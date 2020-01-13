@@ -9,6 +9,11 @@ LL |         return 1_i32;
 LL |     }
 LL |     0_u32
    |     ^^^^^ expected `i32`, found `u32`
+   |
+   = note: `impl Trait` as a return type requires that all the returned values must have the same type
+   = help: you can instead return a trait object using `Box<dyn Foo>`
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11
