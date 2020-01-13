@@ -183,7 +183,6 @@ pub fn run(
     println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     if memory_usage {
-        drop(db);
         for (name, bytes) in host.per_query_memory_usage() {
             println!("{:>8} {}", bytes, name)
         }
