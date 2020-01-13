@@ -19,6 +19,7 @@ fn main() {
     let _ = a || !b || !c || !d || !e;
     let _ = !(a && b || c);
     let _ = !(!a && b);
+    let _ = !(!a || b);
 }
 
 #[allow(unused, clippy::many_single_char_names)]
@@ -30,11 +31,13 @@ fn equality_stuff() {
     let e: i32 = unimplemented!();
     let _ = a == b && a != b;
     let _ = a == b && c == 5 && a == b;
+    let _ = a == b || c == 5 || a == b;
     let _ = a == b && c == 5 && b == a;
     let _ = a < b && a >= b;
     let _ = a > b && a <= b;
     let _ = a > b && a == b;
     let _ = a != b || !(a != b || c == d);
+    let _ = a != b && !(a != b && c == d);
 }
 
 #[allow(unused, clippy::many_single_char_names)]
@@ -51,6 +54,7 @@ fn methods_with_negation() {
     let _ = !b.is_ok();
     let c = false;
     let _ = !(a.is_some() && !c);
+    let _ = !(a.is_some() || !c);
     let _ = !(!c ^ c) || !a.is_some();
     let _ = (!c ^ c) || !a.is_some();
     let _ = !c ^ c || !a.is_some();
