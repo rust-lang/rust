@@ -31,7 +31,6 @@ pub mod loops;
 mod reachable;
 mod region;
 pub mod stability;
-mod ty;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_const::provide(providers);
@@ -44,5 +43,4 @@ pub fn provide(providers: &mut Providers<'_>) {
     reachable::provide(providers);
     region::provide(providers);
     stability::provide(providers);
-    ty::provide(providers);
 }

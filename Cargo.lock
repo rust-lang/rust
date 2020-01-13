@@ -3642,6 +3642,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_traits",
+ "rustc_ty",
  "rustc_typeck",
  "serialize",
  "smallvec 1.0.0",
@@ -3916,6 +3917,17 @@ dependencies = [
  "rustc_target",
  "smallvec 1.0.0",
  "syntax",
+]
+
+[[package]]
+name = "rustc_ty"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc",
+ "rustc_data_structures",
+ "rustc_hir",
+ "rustc_span",
 ]
 
 [[package]]
