@@ -1,7 +1,7 @@
 use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::lint::{EarlyContext, EarlyLintPass};
 use rustc_errors::Applicability;
+use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::{Expr, ExprKind, UnOp};
 

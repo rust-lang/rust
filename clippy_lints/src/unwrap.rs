@@ -1,9 +1,9 @@
 use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use if_chain::if_chain;
 use rustc::hir::map::Map;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_hir::intravisit::*;
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

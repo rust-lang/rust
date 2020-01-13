@@ -1,10 +1,10 @@
 use crate::utils::paths;
 use crate::utils::{iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

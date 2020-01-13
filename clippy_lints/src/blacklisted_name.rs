@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {

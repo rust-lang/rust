@@ -1,9 +1,10 @@
 use crate::utils::{higher, span_lint};
 use rustc::hir::map::Map;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
+use rustc::lint::in_external_macro;
 use rustc::ty;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

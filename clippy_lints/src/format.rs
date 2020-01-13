@@ -4,9 +4,9 @@ use crate::utils::{
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use rustc::lint::{LateContext, LateLintPass, LintContext};
 use rustc_errors::Applicability;
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use syntax::ast::LitKind;

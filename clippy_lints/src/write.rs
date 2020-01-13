@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
-use rustc::lint::{EarlyContext, EarlyLintPass};
 use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
+use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;

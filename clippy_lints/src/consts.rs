@@ -2,13 +2,13 @@
 
 use crate::utils::{clip, higher, sext, unsext};
 use if_chain::if_chain;
-use rustc::lint::LateContext;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::*;
+use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;

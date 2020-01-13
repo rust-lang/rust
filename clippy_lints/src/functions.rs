@@ -5,13 +5,14 @@ use crate::utils::{
 };
 use matches::matches;
 use rustc::hir::map::Map;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintContext};
+use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{def::Res, def_id::DefId};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;

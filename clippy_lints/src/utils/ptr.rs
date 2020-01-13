@@ -1,8 +1,8 @@
 use crate::utils::{get_pat_name, match_var, snippet};
 use rustc::hir::map::Map;
-use rustc::lint::LateContext;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
+use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use std::borrow::Cow;
 use syntax::ast::Name;

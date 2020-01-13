@@ -1,6 +1,6 @@
 use crate::utils::span_lint;
-use rustc::lint::{self, LateContext, LateLintPass, LintContext};
 use rustc_hir as hir;
+use rustc_lint::{self, LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use syntax::ast;
@@ -81,7 +81,7 @@ declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item<'_>) {
-        if lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
+        if rustc::lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
             return;
         }
 
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         use rustc::ty::{ImplContainer, TraitContainer};
-        if lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
+        if rustc::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
             return;
         }
 

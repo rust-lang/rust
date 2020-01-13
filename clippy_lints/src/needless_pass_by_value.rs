@@ -5,7 +5,6 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
-use rustc::lint::{LateContext, LateLintPass};
 use rustc::traits;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, RegionKind, TypeFoldable};
@@ -13,6 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
