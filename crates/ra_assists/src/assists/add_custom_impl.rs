@@ -10,7 +10,7 @@ use ra_syntax::{
     TextRange, TextUnit,
 };
 
-const DERIVE_TRAIT: &'static str = "derive";
+const DERIVE_TRAIT: &str = "derive";
 
 // Assist: add_custom_impl
 //

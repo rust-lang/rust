@@ -121,7 +121,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                     Some(macro_def.to_nav(db))
                 }
             } {
-                Some((func_target.clone(), name_ref.value.text_range()))
+                Some((func_target, name_ref.value.text_range()))
             } else {
                 None
             }

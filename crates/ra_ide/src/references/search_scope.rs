@@ -82,8 +82,7 @@ impl NameDefinition {
             return SearchScope::new(res);
         }
 
-        let vis =
-            self.visibility.as_ref().map(|v| v.syntax().to_string()).unwrap_or("".to_string());
+        let vis = self.visibility.as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
 
         if vis.as_str() == "pub(super)" {
             if let Some(parent_module) = self.container.parent(db) {
