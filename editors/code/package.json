@@ -1,10 +1,11 @@
 {
-    "name": "ra-lsp",
-    "displayName": "ra-lsp",
+    "name": "rust-analyzer",
+    "displayName": "rust-analyzer",
     "description": "An alternative rust language server to the RLS",
     "preview": true,
     "private": true,
-    "version": "0.0.1",
+    "icon": "icon.png",
+    "version": "0.1.0",
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/matklad/rust-analyzer/"

@@ -44,7 +44,7 @@ $ cargo xtask install
 The automatic installation is expected to *just work* for common cases, if it
 doesn't, report bugs!
 
-**Note** [#1831](https://github.com/rust-analyzer/rust-analyzer/issues/1831): If you are using the popular 
+**Note** [#1831](https://github.com/rust-analyzer/rust-analyzer/issues/1831): If you are using the popular
 [Vim emulation plugin](https://github.com/VSCodeVim/Vim), you will likely
 need to turn off the `rust-analyzer.enableEnhancedTyping` setting.
 
@@ -58,7 +58,7 @@ $ cargo install --path ./crates/ra_lsp_server/ --force --locked
 $ cd ./editors/code
 $ npm install
 $ ./node_modules/vsce/out/vsce package
-$ code --install-extension ./ra-lsp-0.0.1.vsix
+$ code --install-extension ./rust-analyzer-0.1.0.vsix
 ```
 
 It's better to remove existing Rust plugins to avoid interference.
@@ -83,7 +83,7 @@ manually install the `.vsix` package:
 3. Open the Extensions View (`View > Extensions`, keyboard shortcut: `Ctrl+Shift+X`).
 4. From the top-right kebab menu (`···`) select `Install from VSIX...`
 5. Inside the `rust-analyzer` directory find the `editors/code` subdirectory and choose
-   the `ra-lsp-0.0.1.vsix` file.
+   the `rust-analyzer-0.1.0.vsix` file.
 6. Restart Visual Studio Code and re-establish the connection to the remote host.
 
 In case of errors please make sure that `~/.cargo/bin` is in your `PATH` on the remote
