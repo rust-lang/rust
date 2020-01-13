@@ -14,13 +14,15 @@ use syntax::token::{self, TokenKind};
 use std::path::{self, Path, PathBuf};
 
 /// Information about the path to a module.
-pub(super) struct ModulePath {
+// Public for rustfmt usage.
+pub struct ModulePath {
     name: String,
     path_exists: bool,
     pub result: Result<ModulePathSuccess, Error>,
 }
 
-pub(super) struct ModulePathSuccess {
+// Public for rustfmt usage.
+pub struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
 }
@@ -177,7 +179,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
+    // Public for rustfmt usage.
+    pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
         if let Some(s) = attr::first_attr_value_str_by_name(attrs, sym::path) {
             let s = s.as_str();
 
@@ -194,7 +197,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns a path to a module.
-    pub(super) fn default_submod_path(
+    // Public for rustfmt usage.
+    pub fn default_submod_path(
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
