@@ -30,7 +30,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{self, par_for_each, Lrc};
+use rustc_data_structures::sync::{self, balance_par_for_each, Lrc};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -2642,7 +2642,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn par_body_owners<F: Fn(DefId) + sync::Sync + sync::Send>(self, f: F) {
-        par_for_each(&self.hir().krate().body_ids, |&body_id| {
+        balance_par_for_each(&self.hir().krate().body_ids, |&body_id| {
             f(self.hir().body_owner_def_id(body_id))
         });
     }

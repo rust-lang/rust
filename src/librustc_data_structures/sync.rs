@@ -227,6 +227,13 @@ cfg_if! {
             resume(panic);
             }
 
+        pub fn balance_par_for_each<T: IntoIterator>(
+            t: T,
+            for_each: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item),
+        ) {
+            par_for_each(t, for_each)
+        }
+
         pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
             t: T,
             mut map: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item) -> R,
@@ -405,7 +412,9 @@ cfg_if! {
 
         pub use rayon_core::WorkerLocal;
 
-        use rayon::iter::{ParallelIterator, FromParallelIterator, IntoParallelIterator};
+        use rayon::iter::{
+            ParallelIterator, IndexedParallelIterator, FromParallelIterator, IntoParallelIterator
+        };
 
         pub fn par_for_each<T: IntoParallelIterator>(
             t: T,
@@ -416,6 +425,25 @@ cfg_if! {
             // We catch panics here ensuring that all the loop iterations execute.
             let panic = Lock::new(None);
             t.into_par_iter().for_each(|i| {
+                catch(&panic, || for_each(i));
+            });
+            resume(panic);
+        }
+
+        /// This does the same as `par_for_each`,
+        /// but each loop iteration is stealable by other threads.
+        pub fn balance_par_for_each<T: IntoParallelIterator>(
+            t: T,
+            for_each: impl Fn(
+                <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
+            ) + Sync + Send
+        )
+        where
+            <T as IntoParallelIterator>::Iter: IndexedParallelIterator
+        {
+            // We catch panics here ensuring that all the loop iterations execute.
+            let panic = Lock::new(None);
+            t.into_par_iter().with_max_len(1).for_each(|i| {
                 catch(&panic, || for_each(i));
             });
             resume(panic);
