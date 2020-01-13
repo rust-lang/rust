@@ -26,7 +26,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     }
                     if let ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
-                            if &name_ref.syntax().text() == name.to_string().as_str() {
+                            if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);
                                 continue;

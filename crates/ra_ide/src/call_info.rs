@@ -1,10 +1,10 @@
 //! FIXME: write short doc here
-
 use hir::db::AstDatabase;
 use ra_syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode,
 };
+
 use test_utils::tested_by;
 
 use crate::{
@@ -51,36 +51,39 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
 
-    if num_params == 1 {
-        if !has_self {
-            call_info.active_parameter = Some(0);
+    match num_params {
+        0 => (),
+        1 => {
+            if !has_self {
+                call_info.active_parameter = Some(0);
+            }
         }
-    } else if num_params > 1 {
-        // Count how many parameters into the call we are.
-        if let Some(arg_list) = calling_node.arg_list() {
-            // Number of arguments specified at the call site
-            let num_args_at_callsite = arg_list.args().count();
+        _ => {
+            if let Some(arg_list) = calling_node.arg_list() {
+                // Number of arguments specified at the call site
+                let num_args_at_callsite = arg_list.args().count();
 
-            let arg_list_range = arg_list.syntax().text_range();
-            if !arg_list_range.contains_inclusive(position.offset) {
-                tested_by!(call_info_bad_offset);
-                return None;
+                let arg_list_range = arg_list.syntax().text_range();
+                if !arg_list_range.contains_inclusive(position.offset) {
+                    tested_by!(call_info_bad_offset);
+                    return None;
+                }
+
+                let mut param = std::cmp::min(
+                    num_args_at_callsite,
+                    arg_list
+                        .args()
+                        .take_while(|arg| arg.syntax().text_range().end() < position.offset)
+                        .count(),
+                );
+
+                // If we are in a method account for `self`
+                if has_self {
+                    param += 1;
+                }
+
+                call_info.active_parameter = Some(param);
             }
-
-            let mut param = std::cmp::min(
-                num_args_at_callsite,
-                arg_list
-                    .args()
-                    .take_while(|arg| arg.syntax().text_range().end() < position.offset)
-                    .count(),
-            );
-
-            // If we are in a method account for `self`
-            if has_self {
-                param += 1;
-            }
-
-            call_info.active_parameter = Some(param);
         }
     }
 

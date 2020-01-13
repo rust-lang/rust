@@ -22,7 +22,7 @@ pub enum Verbosity {
 }
 
 impl Verbosity {
-    fn is_verbose(&self) -> bool {
+    fn is_verbose(self) -> bool {
         match self {
             Verbosity::Verbose => true,
             _ => false,

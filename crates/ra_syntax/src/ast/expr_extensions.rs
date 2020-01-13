@@ -127,8 +127,8 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    pub fn is_assignment(&self) -> bool {
-        match *self {
+    pub fn is_assignment(self) -> bool {
+        match self {
             BinOp::Assignment
             | BinOp::AddAssign
             | BinOp::DivAssign

@@ -166,7 +166,7 @@ pub(crate) fn find_all_refs(
     Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
 }
 
-fn find_name<'a>(
+fn find_name(
     db: &RootDatabase,
     syntax: &SyntaxNode,
     position: FilePosition,
@@ -253,13 +253,10 @@ fn decl_access(
     let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
     if let Some(_) = stmt.initializer() {
         let pat = stmt.pat()?;
-        match pat {
-            ast::Pat::BindPat(it) => {
-                if it.name()?.text().as_str() == name {
-                    return Some(ReferenceAccess::Write);
-                }
+        if let ast::Pat::BindPat(it) = pat {
+            if it.name()?.text().as_str() == name {
+                return Some(ReferenceAccess::Write);
             }
-            _ => {}
         }
     }
 
@@ -286,7 +283,7 @@ fn reference_access(kind: &NameKind, name_ref: &ast::NameRef) -> Option<Referenc
                             }
                         }
                     }
-                    return Some(ReferenceAccess::Read);
+                    Some(ReferenceAccess::Read)
                 },
                 _ => {None}
             }

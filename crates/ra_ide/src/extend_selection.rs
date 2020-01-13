@@ -339,7 +339,7 @@ mod tests {
         let (cursor, before) = extract_offset(before);
         let (analysis, file_id) = single_file(&before);
         let range = TextRange::offset_len(cursor, 0.into());
-        let mut frange = FileRange { file_id: file_id, range };
+        let mut frange = FileRange { file_id, range };
 
         for &after in afters {
             frange.range = analysis.extend_selection(frange).unwrap();
