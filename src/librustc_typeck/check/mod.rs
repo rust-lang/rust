@@ -80,6 +80,7 @@ mod expr;
 mod generator_interior;
 pub mod intrinsic;
 pub mod method;
+mod never_compat;
 mod op;
 mod pat;
 mod regionck;
@@ -1065,76 +1066,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
         // All type checking constraints were added, try to fallback unsolved variables.
         fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
-        let unresolved_paths: FxHashMap<hir::HirId, InferredPath<'tcx>> = fcx
-            .inferred_paths
-            .borrow()
-            .iter()
-            .map(|(id, path)| (*id, path.clone()))
-            .filter_map(|(hir_id, mut path)| {
-                debug!(
-                    "typeck_tables_of_with_fallback: inspecting path ({:?}, {:?})",
-                    hir_id, path
-                );
-
-                let ty_resolved = fcx.infcx.resolve_vars_if_possible(&path.ty);
-
-                let fn_substs = match ty_resolved {
-                    Some(ty::TyS { kind: ty::FnDef(_, substs), .. }) => substs,
-                    _ => {
-                        debug!(
-                            "typeck_tables_of_with_fallback: non-fn ty {:?}, skipping",
-                            ty_resolved
-                        );
-                        return None;
-                    }
-                };
-
-                if fcx.infcx.unresolved_type_vars(fn_substs).is_some() {
-                    struct TyVarFinder<'a, 'tcx> {
-                        infcx: &'a InferCtxt<'a, 'tcx>,
-                        vars: Vec<Ty<'tcx>>,
-                    }
-                    impl<'a, 'tcx> TypeFolder<'tcx> for TyVarFinder<'a, 'tcx> {
-                        fn tcx(&self) -> TyCtxt<'tcx> {
-                            self.infcx.tcx
-                        }
-
-                        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                            if let ty::Infer(ty::InferTy::TyVar(_)) = t.kind {
-                                self.vars.push(t);
-                            }
-                            t.super_fold_with(self)
-                        }
-                    }
-
-                    for subst in fn_substs.types() {
-                        let mut finder = TyVarFinder { infcx: &fcx.infcx, vars: vec![] };
-                        path.ty.fold_with(&mut finder);
-                        path.unresolved_vars.push(finder.vars);
-                    }
-
-                    debug!(
-                        "typeck_tables_of_with_fallback: unresolved vars in ty {:?} : {:?}",
-                        ty_resolved, path.unresolved_vars
-                    );
-
-                    Some((hir_id, path))
-                } else {
-                    debug!(
-                        "typeck_tables_of_with_fallback: all vars resolved in ty: {:?}",
-                        ty_resolved
-                    );
-                    None
-                }
-            })
-            .collect();
-
-        let unconstrained_diverging: Vec<_> = fcx
-            .unsolved_variables()
-            .iter()
-            .cloned()
-            .filter(|ty| fcx.infcx.type_var_diverges(ty))
-            .collect();
+        let never_compat = never_compat::NeverCompatHandler::pre_fallback(&fcx);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -1177,131 +1109,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
         // See if we can make any more progress.
         fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
-        for (call_id, path) in unresolved_paths {
-            debug!(
-                "Resolved ty: {:?} at span {:?} : expr={:?} parent={:?} path={:?}",
-                path.span,
-                path.ty,
-                tcx.hir().get(call_id),
-                tcx.hir().get(tcx.hir().get_parent_node(call_id)),
-                path
-            );
-
-            let ty = fcx.infcx.resolve_vars_if_possible(&path.ty);
-            debug!("Fully resolved ty: {:?}", ty);
-
-            let ty = ty.unwrap_or_else(|| bug!("Missing ty in path: {:?}", path));
-
-            if let ty::FnDef(_, substs) = ty.kind {
-                debug!("Got substs: {:?}", substs);
-                let mut args_inhabited = true;
-                let mut uninhabited_subst = None;
-
-                for arg in &*path.args.unwrap() {
-                    let resolved_arg = fcx.infcx.resolve_vars_if_possible(arg);
-
-                    if resolved_arg.conservative_is_privately_uninhabited(tcx) {
-                        debug!("Arg is uninhabited: {:?}", resolved_arg);
-                        args_inhabited = false;
-                        break;
-                    } else {
-                        debug!("Arg is inhabited: {:?}", resolved_arg);
-                    }
-                }
-
-                for (subst_ty, vars) in substs.types().zip(path.unresolved_vars.into_iter()) {
-                    let resolved_subst = fcx.infcx.resolve_vars_if_possible(&subst_ty);
-                    if resolved_subst.conservative_is_privately_uninhabited(tcx) {
-                        debug!("Subst is uninhabited: {:?}", resolved_subst);
-                        if !vars.is_empty() {
-                            debug!("Found fallback vars: {:?}", vars);
-                            uninhabited_subst = Some((resolved_subst, vars));
-                            break;
-                        } else {
-                            debug!("No fallback vars")
-                        }
-                    } else {
-                        debug!("Subst is inhabited: {:?}", resolved_subst);
-                    }
-                }
-
-                if let (true, Some((subst, vars))) = (args_inhabited, uninhabited_subst) {
-                    debug!("All arguments are inhabited, at least one subst is not inhabited!");
-
-                    let mut best_diverging_var = None;
-                    let mut best_var = None;
-
-                    for var in vars {
-                        for diverging_var in &unconstrained_diverging {
-                            match (&var.kind, &diverging_var.kind) {
-                                (
-                                    ty::Infer(ty::InferTy::TyVar(vid1)),
-                                    ty::Infer(ty::InferTy::TyVar(vid2)),
-                                ) => {
-                                    if fcx
-                                        .infcx
-                                        .type_variables
-                                        .borrow_mut()
-                                        .sub_unified(*vid1, *vid2)
-                                    {
-                                        debug!(
-                                            "Type variable {:?} is equal to diverging var {:?}",
-                                            var, diverging_var
-                                        );
-
-                                        debug!(
-                                            "Var origin: {:?}",
-                                            fcx.infcx.type_variables.borrow().var_origin(*vid1)
-                                        );
-                                        best_var = Some(vid1);
-                                        best_diverging_var = Some(vid2);
-                                    }
-                                }
-                                _ => bug!(
-                                    "Unexpected types: var={:?} diverging_var={:?}",
-                                    var,
-                                    diverging_var
-                                ),
-                            }
-                        }
-                    }
-
-                    let var_origin =
-                        *fcx.infcx.type_variables.borrow().var_origin(*best_var.unwrap());
-                    let diverging_var_span = fcx
-                        .infcx
-                        .type_variables
-                        .borrow()
-                        .var_origin(*best_diverging_var.unwrap())
-                        .span;
-
-                    let mut err = fcx.tcx().sess.struct_span_warn(
-                        path.span,
-                        "Fallback to `!` may introduce undefined behavior",
-                    );
-
-                    match var_origin.kind {
-                        TypeVariableOriginKind::TypeParameterDefinition(name, did) => {
-                            err.span_note(
-                                var_origin.span,
-                                &format!("the type parameter {} here was inferred to `!`", name),
-                            );
-                            if let Some(did) = did {
-                                err.span_note(
-                                    fcx.tcx.def_span(did),
-                                    "(type parameter defined here)",
-                                );
-                            }
-                        }
-                        _ => {
-                            err.span_note(var_origin.span, "the type here was inferred to `!`");
-                        }
-                    }
-
-                    err.span_note(diverging_var_span, "... due to this expression").emit();
-                }
-            }
-        }
+        never_compat.post_fallback(&fcx);
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
