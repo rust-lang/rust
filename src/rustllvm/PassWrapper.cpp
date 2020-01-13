@@ -8,6 +8,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -532,6 +533,18 @@ enum class LLVMRustFileType {
   ObjectFile,
 };
 
+#if LLVM_VERSION_GE(10, 0)
+static CodeGenFileType fromRust(LLVMRustFileType Type) {
+  switch (Type) {
+  case LLVMRustFileType::AssemblyFile:
+    return CGFT_AssemblyFile;
+  case LLVMRustFileType::ObjectFile:
+    return CGFT_ObjectFile;
+  default:
+    report_fatal_error("Bad FileType.");
+  }
+}
+#else
 static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
   case LLVMRustFileType::AssemblyFile:
@@ -542,6 +555,7 @@ static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
     report_fatal_error("Bad FileType.");
   }
 }
+#endif
 
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
@@ -849,7 +863,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                           int num_modules,
                           const char **preserved_symbols,
                           int num_symbols) {
+#if LLVM_VERSION_GE(10, 0)
+  auto Ret = std::make_unique<LLVMRustThinLTOData>();
+#else
   auto Ret = llvm::make_unique<LLVMRustThinLTOData>();
+#endif
 
   // Load each module's summary and merge it into one combined index
   for (int i = 0; i < num_modules; i++) {
@@ -944,6 +962,15 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
         ExportedGUIDs.insert(GUID);
     }
   }
+#if LLVM_VERSION_GE(10, 0)
+  auto isExported = [&](StringRef ModuleIdentifier, ValueInfo VI) {
+    const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
+    return (ExportList != Ret->ExportLists.end() &&
+      ExportList->second.count(VI)) ||
+      ExportedGUIDs.count(VI.getGUID());
+  };
+  thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported, isPrevailing);
+#else
   auto isExported = [&](StringRef ModuleIdentifier, GlobalValue::GUID GUID) {
     const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
     return (ExportList != Ret->ExportLists.end() &&
@@ -951,6 +978,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
       ExportedGUIDs.count(GUID);
   };
   thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported);
+#endif
 
   return Ret.release();
 }
@@ -1081,7 +1109,11 @@ struct LLVMRustThinLTOBuffer {
 
 extern "C" LLVMRustThinLTOBuffer*
 LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(10, 0)
+  auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
+#else
   auto Ret = llvm::make_unique<LLVMRustThinLTOBuffer>();
+#endif
   {
     raw_string_ostream OS(Ret->data);
     {

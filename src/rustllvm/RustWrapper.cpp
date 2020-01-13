@@ -496,9 +496,11 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagAppleBlock)) {
     Result |= DINode::DIFlags::FlagAppleBlock;
   }
+#if LLVM_VERSION_LT(10, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagBlockByrefStruct)) {
     Result |= DINode::DIFlags::FlagBlockByrefStruct;
   }
+#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagVirtual)) {
     Result |= DINode::DIFlags::FlagVirtual;
   }
@@ -825,6 +827,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
+#if LLVM_VERSION_GE(10, 0)
+      /* isDefined */ true,
+#endif
       InitExpr, unwrapDIPtr<MDNode>(Decl),
 #if LLVM_VERSION_GE(8, 0)
       /* templateParams */ nullptr,
@@ -998,11 +1003,19 @@ inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
 
 extern "C" size_t LLVMRustGetSectionName(LLVMSectionIteratorRef SI,
                                          const char **Ptr) {
+#if LLVM_VERSION_GE(10, 0)
+  auto NameOrErr = (*unwrap(SI))->getName();
+  if (!NameOrErr)
+    report_fatal_error(NameOrErr.takeError());
+  *Ptr = NameOrErr->data();
+  return NameOrErr->size();
+#else
   StringRef Ret;
   if (std::error_code EC = (*unwrap(SI))->getName(Ret))
     report_fatal_error(EC.message());
   *Ptr = Ret.data();
   return Ret.size();
+#endif
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount
@@ -1253,20 +1266,34 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
+  return wrap(unwrap(B)->CreateMemCpy(
+      unwrap(Dst), MaybeAlign(DstAlign),
+      unwrap(Src), MaybeAlign(SrcAlign),
+      unwrap(Size), IsVolatile));
+#else
   return wrap(unwrap(B)->CreateMemCpy(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
                                              LLVMValueRef Dst, unsigned DstAlign,
                                              LLVMValueRef Src, unsigned SrcAlign,
                                              LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
+  return wrap(unwrap(B)->CreateMemMove(
+      unwrap(Dst), MaybeAlign(DstAlign),
+      unwrap(Src), MaybeAlign(SrcAlign),
+      unwrap(Size), IsVolatile));
+#else
   return wrap(unwrap(B)->CreateMemMove(
       unwrap(Dst), DstAlign,
       unwrap(Src), SrcAlign,
       unwrap(Size), IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef
@@ -1450,7 +1477,11 @@ struct LLVMRustModuleBuffer {
 
 extern "C" LLVMRustModuleBuffer*
 LLVMRustModuleBufferCreate(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(10, 0)
+  auto Ret = std::make_unique<LLVMRustModuleBuffer>();
+#else
   auto Ret = llvm::make_unique<LLVMRustModuleBuffer>();
+#endif
   {
     raw_string_ostream OS(Ret->data);
     {

@@ -21,7 +21,6 @@ fn main() {
         "InstrProfilingPlatformLinux.c",
         "InstrProfilingPlatformOther.c",
         "InstrProfilingPlatformWindows.c",
-        "InstrProfilingRuntime.cc",
         "InstrProfilingUtil.c",
         "InstrProfilingValue.c",
         "InstrProfilingWriter.c",
@@ -68,10 +67,17 @@ fn main() {
     let root = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
     let root = Path::new(&root);
 
+    let src_root = root.join("lib").join("profile");
     for src in profile_sources {
-        cfg.file(root.join("lib").join("profile").join(src));
+        cfg.file(src_root.join(src));
     }
 
+    // The file was renamed in LLVM 10.
+    let old_runtime_path = src_root.join("InstrProfilingRuntime.cc");
+    let new_runtime_path = src_root.join("InstrProfilingRuntime.cpp");
+    cfg.file(if old_runtime_path.exists() { old_runtime_path } else { new_runtime_path });
+
+    cfg.include(root.join("include"));
     cfg.warnings(false);
     cfg.compile("profiler-rt");
 }
