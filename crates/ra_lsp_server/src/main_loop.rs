@@ -416,8 +416,8 @@ fn loop_turn(
         if world_state.feature_flags().get("notifications.workspace-loaded") {
             let msg = format!("workspace loaded, {} rust packages", n_packages);
             show_message(req::MessageType::Info, msg, &connection.sender);
-            world_state.check_watcher.update();
         }
+        world_state.check_watcher.update();
     }
 
     if state_changed {
