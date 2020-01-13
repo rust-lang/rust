@@ -1061,6 +1061,11 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
     }
 }
 
+// Does the equivalent of
+// ```
+// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+// folder.tcx().intern_*(&v)
+// ```
 fn fold_list<'tcx, F, T>(
     list: &'tcx ty::List<T>,
     folder: &mut F,
