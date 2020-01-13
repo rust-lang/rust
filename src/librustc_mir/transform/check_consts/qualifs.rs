@@ -2,7 +2,6 @@
 
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
-use rustc::hir::def_id::DefId;
 use syntax_pos::DUMMY_SP;
 
 use super::Item as ConstCx;
