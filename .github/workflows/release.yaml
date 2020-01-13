@@ -34,13 +34,14 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
+          target: x86_64-unknown-linux-musl
           override: true
 
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --package ra_lsp_server --bin ra_lsp_server --release
+          args: --package ra_lsp_server --bin ra_lsp_server --target x86_64-unknown-linux-musl --release
 
       - name: Strip symbols
         if: matrix.os == 'ubuntu-latest'
