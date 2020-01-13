@@ -932,14 +932,7 @@ impl f64 {
     #[inline]
     pub fn clamp(self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
-        }
-        if x > max {
-            x = max;
-        }
-        x
+        self.min(max).max(min)
     }
 
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
