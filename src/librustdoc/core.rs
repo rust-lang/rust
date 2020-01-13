@@ -307,8 +307,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         cg: codegen_options,
         externs,
         target_triple: target,
-        // Ensure that rustdoc works even if rustc is feature-staged
-        unstable_features: UnstableFeatures::Allow,
+        unstable_features: UnstableFeatures::from_environment(),
         actually_rustdoc: true,
         debugging_opts: debugging_options,
         error_format,
