@@ -40,7 +40,7 @@ use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
-use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
+use rustc_data_structures::sync::{par_map, Lock};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
@@ -631,15 +631,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     .collect();
 
                 // Compile the found CGUs in parallel.
-                par_iter(cgus)
-                    .map(|(i, _)| {
-                        let start_time = Instant::now();
-                        let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                        let mut time = total_codegen_time.lock();
-                        *time += start_time.elapsed();
-                        (i, module)
-                    })
-                    .collect()
+                par_map(cgus, |(i, _)| {
+                    let start_time = Instant::now();
+                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                    let mut time = total_codegen_time.lock();
+                    *time += start_time.elapsed();
+                    (i, module)
+                })
             })
         } else {
             FxHashMap::default()

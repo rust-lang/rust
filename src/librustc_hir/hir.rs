@@ -9,7 +9,7 @@ crate use FunctionRetTy::*;
 crate use UnsafeSource::*;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each, Send, Sync};
 use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
 use rustc_session::node_id::NodeMap;
@@ -669,17 +669,17 @@ impl Crate<'_> {
     {
         parallel!(
             {
-                par_for_each_in(&self.items, |(_, item)| {
+                par_for_each(&self.items, |(_, item)| {
                     visitor.visit_item(item);
                 });
             },
             {
-                par_for_each_in(&self.trait_items, |(_, trait_item)| {
+                par_for_each(&self.trait_items, |(_, trait_item)| {
                     visitor.visit_trait_item(trait_item);
                 });
             },
             {
-                par_for_each_in(&self.impl_items, |(_, impl_item)| {
+                par_for_each(&self.impl_items, |(_, impl_item)| {
                     visitor.visit_impl_item(impl_item);
                 });
             }
