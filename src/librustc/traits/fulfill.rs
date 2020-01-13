@@ -16,6 +16,7 @@ use super::CodeSelectionError;
 use super::{ConstEvalFailure, Unimplemented};
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
+use crate::traits::TraitQueryMode;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     type Predicate = ty::Predicate<'tcx>;
@@ -62,6 +63,9 @@ pub struct FulfillmentContext<'tcx> {
     // a snapshot (they don't *straddle* a snapshot, so there
     // is no trouble there).
     usable_in_snapshot: bool,
+
+    // The `TraitQueryMode` used when constructing a `SelectionContext`
+    query_mode: TraitQueryMode,
 }
 
 #[derive(Clone, Debug)]
@@ -75,12 +79,26 @@ pub struct PendingPredicateObligation<'tcx> {
 static_assert_size!(PendingPredicateObligation<'_>, 136);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
-    /// Creates a new fulfillment context.
+    /// Creates a new fulfillment context with `TraitQueryMode::Standard`
+    /// You almost always want to use this instead of `with_query_mode`
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: false,
+            query_mode: TraitQueryMode::Standard,
+        }
+    }
+
+    /// Creates a new fulfillment context with the specified query mode.
+    /// This should only be used when you want to ignore overflow,
+    /// rather than reporting it as an error.
+    pub fn with_query_mode(query_mode: TraitQueryMode) -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            register_region_obligations: true,
+            usable_in_snapshot: false,
+            query_mode,
         }
     }
 
@@ -89,6 +107,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: true,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -97,6 +116,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: false,
             usable_in_snapshot: false,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -217,7 +237,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        let mut selcx = SelectionContext::new(infcx);
+        let mut selcx = SelectionContext::with_query_mode(infcx, self.query_mode);
         self.select(&mut selcx)
     }
 
