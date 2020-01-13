@@ -46,133 +46,68 @@
         // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
         // Todo handle {double}** to double** where there is a 0 removed
         ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const {
-            auto fromsize = dl.getTypeSizeInBits(from) / 8;
-            assert(fromsize > 0);
-            auto tosize = dl.getTypeSizeInBits(to) / 8;
-            assert(tosize > 0);
 
             ValueData vd;
 
             for(auto &pair : mapping) {
 
+                ValueData vd2;
+                
+                //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << " fromsize: " << fromsize << " tosize: " << tosize << "\n";
 
                 if (pair.first.size() == 0) {
-                    vd.insert(pair.first, pair.second);
-                    continue;
+                    vd2.insert(pair.first, pair.second);
+                    goto add;
+                }
+                {
+                uint64_t fromsize = dl.getTypeSizeInBits(from) / 8;
+                assert(fromsize > 0);
+                uint64_t tosize = dl.getTypeSizeInBits(to) / 8;
+                assert(tosize > 0);
+
+                // If the sizes are the same, whatever the original one is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to
+                if (fromsize == tosize) {
+                    vd2.insert(pair.first, pair.second);
+                    goto add;
                 }
 
-
-                //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "\n";
-
-
-                llvm::Type *Int32Ty = llvm::Type::getInt32Ty(from->getContext());
-                std::vector<Value*> vals;
-
-                for(auto a : pair.first) {
-                    int z = a;
-                    if (z == -1) z = 0;
-                    vals.push_back(ConstantInt::get(Int32Ty, a));
+                // If the offset doesn't leak into a later element, we're fine to include
+                if (pair.first[0] != -1 && pair.first[0] < tosize) {
+                    vd2.insert(pair.first, pair.second);
+                    goto add;
                 }
-
-                int64_t fromoffset = 0;
 
                 if (pair.first[0] != -1) {
-                    fromoffset = pair.first[0] * fromsize;
+                    vd.insert(pair.first, pair.second);
+                    goto add;
                 } else {
-                    fromoffset = 0;
-                }
-
-                //We can only transfer type information, either if the underlying type sizes are the same 
-                bool packinglegal = false;
-                // If the sizes are the same, this is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to
-                if (fromsize == tosize) {
-                    packinglegal = true;
-                } else if (fromsize > tosize) {
-                    if (fromsize % tosize == 0) packinglegal = true;
-                } else if (fromsize < tosize) {
-                    if (tosize % fromsize == 0) packinglegal = true;
-                }
-                //llvm::errs() << "packinglegal: " << packinglegal << " fromoffset: " << fromoffset << " tosize: " << tosize << " fromsize: " << fromsize << "\n";
-                if (!packinglegal && fromoffset > tosize) continue;
-
-                llvm::Type* curfrom = from;
-                llvm::Type* curto = to;
-
-                std::vector<int> futureidx;
+                    //pair.first[0] == -1
                 
-                bool legal = true;
-
-                for(unsigned i=1; i<pair.first.size(); i++) {
-                    auto idx = pair.first[i];
-                    if (idx == -1) idx = 0;
-
-                    if (auto st = dyn_cast<llvm::StructType>(curfrom)) {
-                        auto sl = dl.getStructLayout(st);
-                        if (idx >= st->getNumElements()) {
-                            llvm::errs() << "pair.first: " << to_string(pair.first) << "\n";
-                            llvm::errs() << "pair.first[i]" << i << " st:" << st->getNumElements() << ":" << *st << "\n";
+                    if (fromsize < tosize) {
+                        if (tosize % fromsize == 0) {
+                            //TODO should really be at each offset do a -1
+                            vd.insert(pair.first, pair.second);
+                            goto add;
+                        } else {
+                            auto tmp(pair.first);
+                            tmp[0] = 0;
+                            vd.insert(tmp, pair.second);
+                            goto add;
                         }
-                        assert(idx < st->getNumElements());
-                        curfrom = st->getElementType(idx);
-                        fromoffset += sl->getElementOffset(idx);
-                        continue;
-                    } else if (auto at = dyn_cast<llvm::ArrayType>(curfrom)) {
-                        auto elsize = dl.getTypeSizeInBits(at->getElementType()) / 8;
-                        assert(elsize > 0);
-                        curfrom = at->getElementType();
-                        fromoffset += idx * elsize;
-                        continue;
-                    } else if (auto pt = dyn_cast<llvm::PointerType>(curfrom)) {
-                        //TODO if pointer
-                        curfrom = pt->getElementType();
-                        if (!curfrom->isFPOrFPVectorTy() || !curfrom->isIntOrIntVectorTy()) {
-                            legal = false;
-                            break;
-                        }
-                    }
-
-                        for(unsigned j=i; j<pair.first.size(); j++) {
-                            futureidx.push_back(pair.first[j]);
-                        }
-                        break;
-                }
-
-                if (!legal) continue;
-
-                std::vector<int> nextpair;
-                nextpair.push_back( fromoffset / tosize );
-                fromoffset %= tosize;
-
-                while(1) {
-                    if (auto st = dyn_cast<llvm::StructType>(curto)) {
-                        auto sl = dl.getStructLayout(st);
-                        auto idx = sl->getElementContainingOffset(fromoffset);
-                        nextpair.push_back(idx);
-                        curto = st->getElementType(idx);
-                        fromoffset -= sl->getElementOffset(idx);
-                    } else if (auto at = dyn_cast<llvm::ArrayType>(curto)) {
-                        auto elsize = dl.getTypeSizeInBits(at->getElementType()) / 8;
-                        assert(elsize > 0);
-                        nextpair.push_back( fromoffset / elsize );
-                        fromoffset %= elsize;
-                        curto = at->getElementType();
                     } else {
-                        break;
+                        //fromsize > tosize
+                        // TODO should really insert all indices which are multiples of fromsize
+                        auto tmp(pair.first);
+                        tmp[0] = 0;
+                        vd.insert(tmp, pair.second);
+                        goto add;
                     }
                 }
-                if (fromoffset != 0) {
-                    //llvm::errs() << "fromoffset: " << fromoffset << "\n";
-                    continue;
                 }
 
-                for(auto a: futureidx) {
-                    nextpair.push_back(a);
-                }
-
-                ValueData vd2;
-
-                //llvm::errs() << " casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " toidx: " << to_string(nextpair) << " dt:" << pair.second.str() << "\n";
-                vd2.insert(nextpair, pair.second);
+                continue;
+                add:;
+                //llvm::errs() << " casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " toidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "\n";
                 vd |= vd2;
             }
             return vd;
@@ -214,15 +149,25 @@ TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnal
 	        workList.push_back(&inst);
         }
     }
+    for(auto &BB: *function) {
+        for(auto &inst : BB) {
+            for(auto& op : inst.operands()) {
+                addToWorkList(op);
+            }
+        }
+    }
 }
 
 ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	if (val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1) return ValueData(DataType(IntType::Integer));
-    if (isa<Constant>(val)) {
+    if (isa<ConstantData>(val)) {
 		if (auto ci = dyn_cast<ConstantInt>(val)) {	
 			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
 				return ValueData(DataType(IntType::Integer));
 			}
+            if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
+				return ValueData(DataType(IntType::Integer));
+            }
 		}
 		return ValueData(DataType(IntType::Anything));
 	}
@@ -250,7 +195,7 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	}
     */
 
-    if (isa<Argument>(val) || isa<Instruction>(val)) return analysis[val];
+    if (isa<Argument>(val) || isa<Instruction>(val) || isa<ConstantExpr>(val)) return analysis[val];
     //TODO consider other things like globals perhaps?
     return ValueData();
 }
@@ -260,13 +205,16 @@ void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
 }
 
 void TypeAnalyzer::addToWorkList(Value* val) {
-	if (!isa<Instruction>(val) || isa<Argument>(val)) return;
+	if (!isa<Instruction>(val) && !isa<Argument>(val) && !isa<ConstantExpr>(val)) return;
     if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
 	workList.push_back(val);
 }
 
 void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
-    if (isa<Constant>(val)) return;
+    if (isa<ConstantData>(val)) {
+        return;
+    }
+
     if (printtype) {
 		llvm::errs() << "updating analysis of val: " << *val << " current: " << analysis[val].str() << " new " << data.str();
 		if (origin) llvm::errs() << " from " << *origin;
@@ -306,7 +254,7 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 }
 
 void TypeAnalyzer::prepareArgs() {
-    for(auto &pair: fntypeinfo) {
+    for(auto &pair: fntypeinfo.first) {
         assert(pair.first->getParent() == function);
         updateAnalysis(pair.first, pair.second, nullptr);
     }
@@ -314,6 +262,17 @@ void TypeAnalyzer::prepareArgs() {
     for(auto &arg : function->args()) {
     	//Get type and other information about argument
         updateAnalysis(&arg, getAnalysis(&arg), &arg);
+    }
+    
+    //Propagate return value type information
+    for(auto &BB: *function) {
+        for(auto &inst : BB) {
+            if (auto ri = dyn_cast<ReturnInst>(&inst)) {
+                if (auto rv = ri->getReturnValue()) {
+                    updateAnalysis(rv, fntypeinfo.second, nullptr);
+                }
+            }
+        }
     }
 }
 
@@ -326,7 +285,7 @@ void TypeAnalyzer::considerTBAA() {
             if (auto call = dyn_cast<CallInst>(&inst)) {
                 if (call->getCalledFunction() && (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy || call->getCalledFunction()->getIntrinsicID() == Intrinsic::memmove)) {
                     if (auto ci = dyn_cast<ConstantInt>(call->getOperand(2))) {
-                        for(unsigned i=0; i<ci->getLimitedValue(); i++) {
+                        for(int i=0; i<(int)ci->getLimitedValue(); i++) {
                             updateAnalysis(call->getOperand(0), ValueData(dt).Only({i}), call);
                             updateAnalysis(call->getOperand(1), ValueData(dt).Only({i}), call);
                         }
@@ -382,7 +341,26 @@ void TypeAnalyzer::run() {
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
-    if (isa<Constant>(&val)) return;
+    if (isa<ConstantData>(&val)) {
+        return;
+    }
+
+    if (auto ce = dyn_cast<ConstantExpr>(&val)) {
+        auto ae = ce->getAsInstruction();
+        ae->insertBefore(function->getEntryBlock().getTerminator());
+        analysis[ae] = getAnalysis(ce);
+        visit(*ae);
+        for(auto& a : workList) {
+            if (a == ae) {
+                a = ce;
+            }
+        }
+        updateAnalysis(ce, analysis[ae], ce);
+        analysis.erase(ae);
+        ae->eraseFromParent();
+        return;
+    }
+
     if (!isa<Argument>(&val) && !isa<Instruction>(&val)) return;
 
     //TODO add no users integral here
@@ -413,27 +391,26 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         updateAnalysis(ind, IntType::Integer, &gep);
     }
     
-    auto tosize = dl.getTypeSizeInBits(to) / 8;
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(gep.getContext());
     std::vector<Value*> idnext;
 
     for(auto& a : gep.indices()) {
         if (auto ci = dyn_cast<ConstantInt>(a)) {
-            idnext.push_back((int)ci->getLimitedValue());
+            idnext.push_back(ci);//(int)ci->getLimitedValue());
         } else {
-            idnext.push_back(ConstantInt::get(Int32Ty, a));
+            idnext.push_back(ConstantInt::get(Int32Ty, 0));
         }
     }
 
     auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), idnext);
-    APInt ai;
-    g2->accumulateConstantOffset(function->getParent().getDataLayout(), ai);
-    g2->eraseFromParent();
+    APInt ai(function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
+    g2->accumulateConstantOffset(function->getParent()->getDataLayout(), ai);
+    delete g2;//->eraseFromParent();
 
-    int off = ai->getLimitedValue();
+    int off = (int)ai.getLimitedValue();
 
 	//TODO GEP
-    updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(gep.getPointerOperand()->getType(), off), &gep);
+    updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(off), &gep);
 
     auto merged = getAnalysis(&gep).MergeIndices(off);
 
@@ -449,7 +426,9 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
     assert(phi.getNumIncomingValues() > 0);
 	//TODO phi needs reconsidering here 
     ValueData vd = getAnalysis(phi.getIncomingValue(0));
+    //llvm::errs() << "phi: " << phi << "\n";
     for(auto& op : phi.incoming_values()) {
+        //llvm::errs() << " + " << vd.str() << " ga: " << getAnalysis(op).str() << "\n";
         vd &= getAnalysis(op);
     }
 
@@ -501,7 +480,7 @@ void TypeAnalyzer::visitIntToPtrInst(IntToPtrInst &I) {
 }
 
 void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
-  if (I.getType()->isIntOrIntVectorTy()) {
+  if (I.getType()->isIntOrIntVectorTy() || I.getType()->isFPOrFPVectorTy()) {
 	updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
 	updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 	return;
@@ -638,8 +617,15 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 		//If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
 		if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
             //TODO length enforcement
-			ValueData res = getAnalysis(call.getArgOperand(0));
-			res |= getAnalysis(call.getArgOperand(1));
+            int sz = 1;
+            if (auto ci = dyn_cast<ConstantInt>(call.getArgOperand(2))) {
+                sz = (int)ci->getLimitedValue();
+            }
+
+			ValueData res = getAnalysis(call.getArgOperand(0)).AtMost(sz);
+            ValueData res2 = getAnalysis(call.getArgOperand(1)).AtMost(sz);
+            //llvm::errs() << " memcpy: " << call << " res1: " << res.str() << " res2: " << res2.str() << "\n";
+            res |= res2;
 
 			updateAnalysis(call.getArgOperand(0), res, &call);
 			updateAnalysis(call.getArgOperand(1), res, &call);
@@ -656,18 +642,39 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 	}
 
 }
-	
-void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
-        
 
+ValueData TypeAnalyzer::getReturnAnalysis() {
+    bool set = false;
+    ValueData vd;
+    for(auto &BB: *function) {
+        for(auto &inst : BB) {
+		    if (auto ri = dyn_cast<ReturnInst>(&inst)) {
+			    if (auto rv = ri->getReturnValue()) {
+                    if (set == false) {
+                        set = true;
+                        vd = getAnalysis(rv);
+                        continue;
+                    }
+                    vd &= getAnalysis(rv);
+                }
+            }
+        }
+    }
+    return vd;
+}
+
+void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 	NewFnTypeInfo typeInfo;
 
     int argnum = 0;
 	for(auto &arg : fn.args()) {
 		auto dt = getAnalysis(call.getArgOperand(argnum));
-		typeInfo.insert(std::pair<Argument*, ValueData>(&arg, dt));
+		typeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, dt));
 		argnum++;
 	}
+
+    typeInfo.second = getAnalysis(&call);
+
                         
 	auto a = fn.arg_begin();
 	for(size_t i=0; i<call.getNumArgOperands(); i++) {
@@ -676,20 +683,7 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 		a++;
 	}
     
-	bool set = false;
-	ValueData vd;
-    
-	for (llvm::inst_iterator I = llvm::inst_begin(&fn), E = llvm::inst_end(&fn); I != E; ++I) {
-		if (auto ri = dyn_cast<ReturnInst>(&*I)) {
-			auto rv = ri->getReturnValue();
-			if (rv) {
-				auto here = interprocedural.query(rv, typeInfo);
-				if (set) vd &= here;
-				else vd = here;
-			}
-		}
-	}
-
+	ValueData vd = interprocedural.getReturnAnalysis(typeInfo, &fn);
 	updateAnalysis(&call, vd, &call);
 }
 
@@ -701,9 +695,10 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* fun
 
 	if (printtype) {
 	    llvm::errs() << "analyzing function " << function->getName() << "\n";
-	    for(auto &pair : fn) {
+	    for(auto &pair : fn.first) {
 	        llvm::errs() << " + knowndata: " << *pair.first << " : " << pair.second.str() << "\n";
 	    }
+        llvm::errs() << " + retdata: " << fn.second.str() << "\n";
 	}
 
     analysis.prepareArgs();
@@ -721,6 +716,9 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
 			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
 				return ValueData(DataType(IntType::Integer));
 			}
+            if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
+				return ValueData(DataType(IntType::Integer));
+            }
 		}
 		return ValueData(DataType(IntType::Anything));
 	}
@@ -738,7 +736,9 @@ DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNo
     assert(val);
     assert(val->getType());
     assert(val->getType()->isIntOrIntVectorTy());
-	auto dt = query(val, fn)[{}];
+    auto q = query(val, fn);
+    auto dt = q[{}];
+    //llvm::errs() << " intType for val: " << *val << " q: " << q.str() << " dt: " << dt.str() << "\n";
 	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
@@ -778,11 +778,16 @@ TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, Functi
 NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 	NewFnTypeInfo res;
 	for(auto &arg : function->args()) {
-		res.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
+		res.first.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
 	}
+    res.second = getReturnAnalysis();
 	return res;
 }
 
 DataType TypeResults::intType(Value* val) {
 	return analysis.intType(val, info);
+}
+    
+ValueData TypeResults::getReturnAnalysis() {
+    return analysis.getReturnAnalysis(info, function);
 }

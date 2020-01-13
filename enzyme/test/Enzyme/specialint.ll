@@ -1,5 +1,4 @@
-; ModuleID = 'inp.ll'
-source_filename = "inp.ll"
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
 
 %Type = type { float, i64 }
 
@@ -50,3 +49,31 @@ attributes #3 = { readnone }
 !3 = !{!4, i64 8, !"long"}
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
+
+; CHECK: define internal {} @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'") {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"dims'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
+; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
+; CHECK-NEXT:   %call_augmented = call { {}, i64 } @augmented_total(i64* nonnull %dims, i64* nonnull %"dims'ipge")
+; CHECK-NEXT:   %0 = extractvalue { {}, i64 } %call_augmented, 1
+; CHECK-NEXT:   %flt = uitofp i64 %0 to float
+; CHECK-NEXT:   %"data'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
+; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
+; CHECK-NEXT:   store float %flt, float* %data, align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %"data'ipge", align 4
+; CHECK-NEXT:   %1 = call {} @diffetotal(i64* nonnull %dims, i64* nonnull %"dims'ipge", {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { {}, i64 } @augmented_total(i64* %this, i64* %"this'") {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %loaded = load i64, i64* %this, align 4
+; CHECK-NEXT:   %mcall = tail call i64 @meta(i64 %loaded)
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, i64 } undef, i64 %mcall, 1
+; CHECK-NEXT:   ret { {}, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffetotal(i64* %this, i64* %"this'", {} %tapeArg) {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }

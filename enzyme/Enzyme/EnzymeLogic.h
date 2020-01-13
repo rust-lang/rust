@@ -32,6 +32,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "ActiveVariable.h"
+#include "TypeAnalysis.h"
 
 extern llvm::cl::opt<bool> enzyme_print;
 
@@ -62,9 +63,9 @@ public:
 };
 
 const AugmentedReturn& CreateAugmentedPrimal  (llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, TypeAnalysis& TA, llvm::AAResults &global_AA,
-                                               bool differentialReturn, bool returnUsed, const std::map<llvm::Argument*, ValueData> typeInfo, const std::map<llvm::Argument*, bool> _uncacheable_args, bool forceAnonymousTape);
+                                               bool differentialReturn, bool returnUsed, const NewFnTypeInfo& typeInfo, const std::map<llvm::Argument*, bool> _uncacheable_args, bool forceAnonymousTape);
 
        llvm::Function* CreatePrimalAndGradient(llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, TypeAnalysis& TA, llvm::AAResults &global_AA,
-                                               bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, const std::map<llvm::Argument*, ValueData> typeInfo, const std::map<llvm::Argument*, bool> _uncacheable_args, const AugmentedReturn* augmented);
+                                               bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, const NewFnTypeInfo& typeInfo, const std::map<llvm::Argument*, bool> _uncacheable_args, const AugmentedReturn* augmented);
 
 #endif

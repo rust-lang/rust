@@ -528,18 +528,18 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
+void handleAugmentedCallInst(TypeAnalysis &TA, const NewFnTypeInfo& typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA, 
-                                             bool differentialReturn, bool returnUsed, const std::map<Argument*, ValueData> oldTypeInfo,
+                                             bool differentialReturn, bool returnUsed, const NewFnTypeInfo& oldTypeInfo,
                                              const std::map<Argument*, bool> _uncacheable_args, bool forceAnonymousTape) {
   if (returnUsed) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
   if (differentialReturn) assert(!todiff->getReturnType()->isEmptyTy() && !todiff->getReturnType()->isVoidTy());
 
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>>, AugmentedReturn> cachedfunctions;
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>>, bool> cachedfinished;
-  std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const std::map<Argument*, ValueData>> tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed, oldTypeInfo);
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const NewFnTypeInfo>, AugmentedReturn> cachedfunctions;
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const NewFnTypeInfo>, bool> cachedfinished;
+  std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/, const NewFnTypeInfo> tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed, oldTypeInfo);
   auto found = cachedfunctions.find(tup);
   //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << " found==" << (found != cachedfunctions.end()) << "\n";
   if (found != cachedfunctions.end()) {
@@ -622,15 +622,16 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
     }
   }
   
-  std::map<Argument*, ValueData> typeInfo;
+  NewFnTypeInfo typeInfo;
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
-        auto fd = oldTypeInfo.find(toarg);
-        assert(fd != oldTypeInfo.end());
-        typeInfo.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
+        auto fd = oldTypeInfo.first.find(toarg);
+        assert(fd != oldTypeInfo.first.end());
+        typeInfo.first.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
     }
+    typeInfo.second = oldTypeInfo.second;
   }
 
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
@@ -1355,7 +1356,7 @@ bool shouldAugmentCall(CallInst* op, GradientUtils* gutils) {
   return modifyPrimal;
 }
 
-void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+void handleAugmentedCallInst(TypeAnalysis &TA, const NewFnTypeInfo& typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -1467,13 +1468,14 @@ void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueDa
 
 
       if (called) {
-        std::map<Argument*, ValueData> nextTypeInfo;
+        NewFnTypeInfo nextTypeInfo;
         int argnum = 0;
 
         for(auto &arg : called->args()) {
-            nextTypeInfo.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
+            nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
             argnum++;
         }
+        nextTypeInfo.second = TA.query(gutils->getOriginal(op), typeInfo);
 
         const AugmentedReturn& augmentation = CreateAugmentedPrimal(called, subconstant_args, TLI, TA, AA, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, nextTypeInfo, uncacheable_args, false);
         subaugmentations.insert_or_assign(cast<CallInst>(gutils->getOriginal(op)), &augmentation);
@@ -1581,7 +1583,7 @@ void handleAugmentedCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueDa
         gutils->erase(op);
 }
 
-void handleGradientCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueData> typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+void handleGradientCallInst(TypeAnalysis &TA, const NewFnTypeInfo& typeInfo, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2035,14 +2037,15 @@ void handleGradientCallInst(TypeAnalysis &TA, const std::map<Argument*, ValueDat
 
   bool constval = gutils->isConstantValue(op);
                 
-  std::map<Argument*, ValueData> nextTypeInfo;
+  std::pair<std::map<Argument*, ValueData>, ValueData> nextTypeInfo;
   int argnum = 0;
 
   if (called) {
       for(auto &arg : called->args()) {
-        nextTypeInfo.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
+        nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TA.query(gutils->getOriginal(op->getArgOperand(argnum)), typeInfo))); 
         argnum++;
       }
+      nextTypeInfo.second = TA.query(gutils->getOriginal(op), typeInfo);
   }
 
   //TODO consider what to do if called == nullptr for augmentation
@@ -2437,7 +2440,7 @@ badfn:;
 
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI,
                                   TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg,
-                                  const std::map<Argument*, ValueData> oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
+                                  const NewFnTypeInfo& oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
                                   const AugmentedReturn* augmenteddata) {
   //if (additionalArg && !additionalArg->isStructTy()) {
   //    llvm::errs() << *todiff << "\n";
@@ -2445,7 +2448,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   //}
   if (additionalArg) assert(additionalArg->isStructTy() || (additionalArg == Type::getInt8PtrTy(additionalArg->getContext()) )  );
   if (differentialReturn) assert(!todiff->getReturnType()->isVoidTy());
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*, const std::map<Argument*, ValueData>>, Function*> cachedfunctions;
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*, const NewFnTypeInfo>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), returnUsed, differentialReturn, dretPtr, topLevel, additionalArg, oldTypeInfo);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
@@ -2567,15 +2570,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     }
   }
   
-  std::map<Argument*, ValueData> typeInfo;
+  NewFnTypeInfo typeInfo;
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
-        auto fd = oldTypeInfo.find(toarg);
-        assert(fd != oldTypeInfo.end());
-        typeInfo.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
+        auto fd = oldTypeInfo.first.find(toarg);
+        assert(fd != oldTypeInfo.first.end());
+        typeInfo.first.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
     }
+    typeInfo.second = oldTypeInfo.second;
   }
   TypeResults TR = TA.analyzeFunction(typeInfo, gutils->oldFunc);
 

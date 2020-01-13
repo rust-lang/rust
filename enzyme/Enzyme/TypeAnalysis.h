@@ -190,7 +190,8 @@ public:
         }
 
 		if (dt.typeEnum != typeEnum) {
-			llvm::errs() << "typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+			llvm::errs() << "&= typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+            return *this = IntType::Unknown;
 		}
         assert(dt.typeEnum == typeEnum);
 		if (dt.type != type) {
@@ -261,6 +262,20 @@ public:
         }
 
         void insert(const std::vector<int> v, DataType d) {
+            if (v.size() > 0) {
+                std::vector<int> tmp(v.begin(), v.end()-1);
+                auto found = mapping.find(tmp);
+                if (found != mapping.end()) {
+                    if (!(found->second == IntType::Pointer || found->second== IntType::Anything)) {
+                        llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    }
+                    assert(found->second == IntType::Pointer || found->second== IntType::Anything);
+                }
+            }
+            if (v.size() > 6) {
+                llvm::errs() << "not handling more than 6 pointer lookups deep dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                return;
+            }
             mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
         }
 
@@ -282,7 +297,10 @@ public:
                 if (s == IntType::Unknown) continue;
                 return s.isFloat();
             }
-            llvm::errs() << " could not find known for value " << *val << "\n";
+            if (auto inst = llvm::dyn_cast<llvm::Instruction>(val)) {
+                llvm::errs() << *inst->getParent()->getParent() << "\n";
+            }
+            llvm::errs() << " could not find known for value " << *val << " dt: " << str() << "\n";
             assert(0 && "could not find known for value");
             exit(1);
         }
@@ -358,12 +376,10 @@ public:
             
             std::vector<int> next(second);
             //-1 represents all elements in that range
-            if (first.back() != -1) {
-                if (offset == -1) {
-                    next[first.size()-1] = -1;
-                } else {
-                    next[first.size()-1] += second[0];
-                }
+            if (offset == -1 || next[0] == -1) {
+                next[0] = -1;
+            } else {
+                next[0] += offset;
             }
 
             assert(next.size() > 0);
@@ -407,24 +423,23 @@ public:
 
             assert(previous.size() > 0);
 
-            next.insert(previous.begin(), previous.end());
+            next.assign(previous.begin(), previous.end());
 
-            if (previous.back() == -1) {
+            if (next[0] == -1) {
                 return true;
             }
 
-            if (previous.back() < offset) {
+            if (next[0] < offset) {
                 return false;
             }
 
-            next.back() -= offset;
+            next[0] -= offset;
             return true;
         }
 
         //We want all the data from this value, given that we are indexing with indices
         // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
         ValueData UnmergeIndices(int offset) const {
-            assert(indices.size() > 0);
             ValueData dat;
 
             for(const auto &pair : mapping) {
@@ -454,6 +469,17 @@ public:
             for(const auto &pair : mapping) {
                 if (pair.second == DataType(IntType::Anything)) continue;
                 dat.insert(pair.first, pair.second);
+            }
+            return dat;
+        }
+
+        ValueData AtMost(int max) const {
+            assert(max > 0);
+            ValueData dat;
+            for(const auto &pair : mapping) {
+                if (pair.first.size() == 0 || pair.first[0] == -1 || pair.first[0] < max) {
+                    dat.insert(pair.first, pair.second);
+                }
             }
             return dat;
         }
@@ -572,7 +598,8 @@ public:
 
 typedef std::map<llvm::Argument*, DataType> FnTypeInfo; 
 
-typedef std::map<llvm::Argument*, ValueData> NewFnTypeInfo;
+//First is arguments, then return type
+typedef std::pair<std::map<llvm::Argument*, ValueData>, ValueData> NewFnTypeInfo;
 
 class TypeAnalyzer;
 class TypeAnalysis;
@@ -585,6 +612,7 @@ public:
 	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
 	DataType intType(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
+    ValueData getReturnAnalysis();
 };
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
@@ -668,6 +696,8 @@ public:
 	void visitIPOCall(llvm::CallInst& call, llvm::Function& fn);
 
     void visitCallInst(llvm::CallInst &call);
+
+    ValueData getReturnAnalysis();
 };
 
 
@@ -682,32 +712,14 @@ public:
 
     DataType intType(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
     DataType firstPointer(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
-
-
-    inline TypeResults analyzeFunction(const FnTypeInfo& fn, llvm::Function* function) {
-        NewFnTypeInfo nti;
-        for(auto &pair : fn) {
-            nti[pair.first] = ValueData::Argument(pair.second, pair.first);
-        }
-        return analyzeFunction(nti, function);
-    }
-    inline DataType intType(llvm::Value* val, const FnTypeInfo& fn, bool errIfNotFound=true) {
-        NewFnTypeInfo nti;
-        for(auto &pair : fn) {
-            nti[pair.first] = ValueData::Argument(pair.second, pair.first);
-        }
-        return intType(val, nti, errIfNotFound);
-    }
-    inline DataType firstPointer(llvm::Value* val, const FnTypeInfo& fn, bool errIfNotFound=true) {
-        NewFnTypeInfo nti;
-        for(auto &pair : fn) {
-            nti[pair.first] = ValueData::Argument(pair.second, pair.first);
-        }
-        return firstPointer(val, nti, errIfNotFound);
-    }
+    
     //err if not known; if found float anywhere return the type
     inline llvm::Type* getKnownFloat(llvm::Value* val, const NewFnTypeInfo &fn) {
         return query(val, fn).getKnownFloat(val);
+    }
+    inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn, llvm::Function* function) {
+        analyzeFunction(fn, function);
+        return analyzedFunctions.find(fn)->second.getReturnAnalysis();
     }
 };
 

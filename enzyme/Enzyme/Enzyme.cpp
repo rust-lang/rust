@@ -163,7 +163,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
   std::map<Argument*, bool> volatile_args;
-  std::map<Argument*, ValueData> type_args;
+  std::pair<std::map<Argument*, ValueData>, ValueData> type_args;
   for(auto &a : cast<Function>(fn)->args()) {
     volatile_args[&a] = false;
     ValueData dt;
@@ -177,7 +177,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
             dt = ValueData(DataType(IntType::Pointer)).Only({-1});
         }
     }
-    type_args.insert(std::pair<Argument*, ValueData>(&a, dt));
+    type_args.first.insert(std::pair<Argument*, ValueData>(&a, dt));
   }
 
   TypeAnalysis TA;
