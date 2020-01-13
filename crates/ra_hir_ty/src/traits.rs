@@ -1,10 +1,12 @@
 //! Trait solving using Chalk.
-use std::sync::{Arc, Mutex};
+use std::{
+    panic,
+    sync::{Arc, Mutex},
+};
 
 use chalk_ir::cast::Cast;
 use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
-use log::debug;
-use ra_db::{impl_intern_key, salsa, CrateId};
+use ra_db::{impl_intern_key, salsa, Canceled, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
@@ -39,7 +41,7 @@ impl TraitSolver {
         goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<TypeFamily>>>,
     ) -> Option<chalk_solve::Solution<TypeFamily>> {
         let context = ChalkContext { db, krate: self.krate };
-        debug!("solve goal: {:?}", goal);
+        log::debug!("solve goal: {:?}", goal);
         let mut solver = match self.inner.lock() {
             Ok(it) => it,
             // Our cancellation works via unwinding, but, as chalk is not
@@ -47,8 +49,28 @@ impl TraitSolver {
             // Ideally, we should also make chalk panic-safe.
             Err(_) => ra_db::Canceled::throw(),
         };
-        let solution = solver.solve(&context, goal);
-        debug!("solve({:?}) => {:?}", goal, solution);
+
+        let solution = panic::catch_unwind({
+            let solver = panic::AssertUnwindSafe(&mut solver);
+            let context = panic::AssertUnwindSafe(&context);
+            move || solver.0.solve(context.0, goal)
+        });
+
+        let solution = match solution {
+            Ok(it) => it,
+            Err(err) => {
+                if err.downcast_ref::<Canceled>().is_some() {
+                    panic::resume_unwind(err)
+                } else {
+                    log::error!("chalk panicked :-(");
+                    // Reset the solver, as it is not panic-safe.
+                    *solver = create_chalk_solver();
+                    None
+                }
+            }
+        };
+
+        log::debug!("solve({:?}) => {:?}", goal, solution);
         solution
     }
 }
@@ -70,9 +92,13 @@ pub(crate) fn trait_solver_query(
 ) -> TraitSolver {
     db.salsa_runtime().report_untracked_read();
     // krate parameter is just so we cache a unique solver per crate
+    log::debug!("Creating new solver for crate {:?}", krate);
+    TraitSolver { krate, inner: Arc::new(Mutex::new(create_chalk_solver())) }
+}
+
+fn create_chalk_solver() -> chalk_solve::Solver<TypeFamily> {
     let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
-    debug!("Creating new solver for crate {:?}", krate);
-    TraitSolver { krate, inner: Arc::new(Mutex::new(solver_choice.into_solver())) }
+    solver_choice.into_solver()
 }
 
 /// Collects impls for the given trait in the whole dependency tree of `krate`.
@@ -181,7 +207,7 @@ pub(crate) fn trait_solve_query(
     goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
     let _p = profile("trait_solve_query");
-    debug!("trait_solve_query({})", goal.value.value.display(db));
+    log::debug!("trait_solve_query({})", goal.value.value.display(db));
 
     if let Obligation::Projection(pred) = &goal.value.value {
         if let Ty::Bound(_) = &pred.projection_ty.parameters[0] {
