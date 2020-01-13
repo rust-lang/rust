@@ -38,21 +38,27 @@ jobs:
           override: true
 
       - name: Build
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions-rs/cargo@v1
+        env:
+          CC: clang
+        with:
+          command: build
+          args: --package ra_lsp_server --bin ra_lsp_server --release --target x86_64-unknown-linux-musl
+
+      - name: Build
+        if: matrix.os != 'ubuntu-latest'
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --package ra_lsp_server --bin ra_lsp_server --target x86_64-unknown-linux-musl --release
-
-      - name: Strip symbols
-        if: matrix.os == 'ubuntu-latest'
-        run: strip ./target/release/ra_lsp_server
+          args: --package ra_lsp_server --bin ra_lsp_server --release
 
       - name: Create distribution dir
         run: mkdir ./dist
 
       - name: Copy binary
         if: matrix.os == 'ubuntu-latest'
-        run: cp ./target/release/ra_lsp_server ./dist/ra_lsp_server-linux
+        run: cp ./target/x86_64-unknown-linux-musl/release/ra_lsp_server ./dist/ra_lsp_server-linux && strip ./dist/ra_lsp_server-linux
 
       - name: Copy binary
         if: matrix.os == 'macos-latest'
