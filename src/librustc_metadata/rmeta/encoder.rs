@@ -18,12 +18,13 @@ use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
+use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
@@ -1697,6 +1698,66 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
     }
 }
 
+/// Used to prefetch queries which will be needed later by metadata encoding.
+struct PrefetchVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    mir_keys: &'tcx DefIdSet,
+}
+
+impl<'tcx> PrefetchVisitor<'tcx> {
+    fn prefetch_mir(&self, def_id: DefId) {
+        if self.mir_keys.contains(&def_id) {
+            self.tcx.optimized_mir(def_id);
+            self.tcx.promoted_mir(def_id);
+        }
+    }
+}
+
+impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
+    fn visit_item(&self, item: &hir::Item<'_>) {
+        let tcx = self.tcx;
+        match item.kind {
+            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
+                self.prefetch_mir(tcx.hir().local_def_id(item.hir_id))
+            }
+            hir::ItemKind::Fn(ref sig, ..) => {
+                let def_id = tcx.hir().local_def_id(item.hir_id);
+                let generics = tcx.generics_of(def_id);
+                let needs_inline = generics.requires_monomorphization(tcx)
+                    || tcx.codegen_fn_attrs(def_id).requests_inline();
+                if needs_inline || sig.header.constness == hir::Constness::Const {
+                    self.prefetch_mir(def_id)
+                }
+            }
+            _ => (),
+        }
+    }
+
+    fn visit_trait_item(&self, trait_item: &'v hir::TraitItem<'v>) {
+        self.prefetch_mir(self.tcx.hir().local_def_id(trait_item.hir_id));
+    }
+
+    fn visit_impl_item(&self, impl_item: &'v hir::ImplItem<'v>) {
+        let tcx = self.tcx;
+        match impl_item.kind {
+            hir::ImplItemKind::Const(..) => {
+                self.prefetch_mir(tcx.hir().local_def_id(impl_item.hir_id))
+            }
+            hir::ImplItemKind::Fn(ref sig, _) => {
+                let def_id = tcx.hir().local_def_id(impl_item.hir_id);
+                let generics = tcx.generics_of(def_id);
+                let needs_inline = generics.requires_monomorphization(tcx)
+                    || tcx.codegen_fn_attrs(def_id).requests_inline();
+                let is_const_fn = sig.header.constness == hir::Constness::Const;
+                if needs_inline || is_const_fn {
+                    self.prefetch_mir(def_id)
+                }
+            }
+            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => (),
+        }
+    }
+}
+
 // NOTE(eddyb) The following comment was preserved for posterity, even
 // though it's no longer relevant as EBML (which uses nested & tagged
 // "documents") was replaced with a scheme that can't go out of bounds.
@@ -1724,14 +1785,21 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     join(
         || encode_metadata_impl(tcx),
         || {
-            // Prefetch some queries used by metadata encoding
+            if tcx.sess.threads() == 1 {
+                return;
+            }
+            // Prefetch some queries used by metadata encoding.
             tcx.dep_graph.with_ignore(|| {
                 join(
                     || {
-                        par_for_each_in(tcx.mir_keys(LOCAL_CRATE), |&def_id| {
-                            tcx.optimized_mir(def_id);
-                            tcx.promoted_mir(def_id);
-                        })
+                        if !tcx.sess.opts.output_types.should_codegen() {
+                            // We won't emit MIR, so don't prefetch it.
+                            return;
+                        }
+                        tcx.hir().krate().par_visit_all_item_likes(&PrefetchVisitor {
+                            tcx,
+                            mir_keys: tcx.mir_keys(LOCAL_CRATE),
+                        });
                     },
                     || tcx.exported_symbols(LOCAL_CRATE),
                 );
