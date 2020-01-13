@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::*;
 use crate::callee::get_fn;
 use rustc::bug;
 use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{self, DebugInfo};
+use rustc::session::config::{self, CFGuard, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{
     FnAbiExt, HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
@@ -225,6 +225,16 @@ pub unsafe fn create_module(
     if !sess.needs_plt() {
         let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
+    }
+
+    // Set module flags to enable Windows Control Flow Guard (/guard:cf) metadata
+    // only (`cfguard=1`) or metadata and checks (`cfguard=2`).
+    match sess.opts.debugging_opts.control_flow_guard {
+        CFGuard::Disabled => {}
+        CFGuard::NoChecks => {
+            llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+        }
+        CFGuard::Checks => llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2),
     }
 
     llmod
