@@ -786,16 +786,28 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
             },
             {
+                let _timer = tcx.sess.timer("check_const_bodies");
+                par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
+                    let local_def_id = tcx.hir().local_def_id(module);
+                    tcx.ensure().check_mod_const_bodies(local_def_id);
+                });
+            },
+            {
+                let _timer = tcx.sess.timer("check_loops");
+                par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
+                    let local_def_id = tcx.hir().local_def_id(module);
+                    tcx.ensure().check_mod_loops(local_def_id);
+                });
+            },
+            {
                 // This is used by the loop below.
                 // Make sure it is complete before we fan out.
                 tcx.get_lang_items(LOCAL_CRATE);
 
-                let _timer = tcx.sess.timer("misc_module_passes");
+                let _timer = tcx.sess.timer("check_attrs");
                 par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                     let local_def_id = tcx.hir().local_def_id(module);
-                    tcx.ensure().check_mod_loops(local_def_id);
                     tcx.ensure().check_mod_attrs(local_def_id);
-                    tcx.ensure().check_mod_const_bodies(local_def_id);
                 });
             },
             {
