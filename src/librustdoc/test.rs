@@ -300,7 +300,6 @@ fn run_test(
             eprint!("{}", self.0);
         }
     }
-
     let out = str::from_utf8(&output.stderr).unwrap();
     let _bomb = Bomb(&out);
     match (output.status.success(), compile_fail) {
@@ -310,7 +309,7 @@ fn run_test(
         (true, false) => {}
         (false, true) => {
             if !error_codes.is_empty() {
-                error_codes.retain(|err| !out.contains(err));
+                error_codes.retain(|err| !out.contains(&format!("error[{}]: ", err)));
 
                 if !error_codes.is_empty() {
                     return Err(TestFailure::MissingErrorCodes(error_codes));
