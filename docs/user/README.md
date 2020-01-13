@@ -137,7 +137,7 @@ Prerequisites:
 Installation:
 
 * add
-[ra-emacs-lsp.el](../../editors/emacs/ra-emacs-lsp.el)
+[rust-analyzer.el](../../editors/emacs/rust-analyzer.el)
 to load path and require it in `init.el`
 * run `lsp` in a rust buffer
 * (Optionally) bind commands like `rust-analyzer-join-lines`, `rust-analyzer-extend-selection` and `rust-analyzer-expand-macro` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints

@@ -1,4 +1,4 @@
-;;; ra-emacs-lsp.el --- Rust analyzer emacs bindings for emacs-lsp -*- lexical-binding: t; -*-
+;;; rust-analyzer.el --- Rust analyzer emacs bindings for emacs-lsp -*- lexical-binding: t; -*-
 ;;; Code:
 
 (require 'lsp)
@@ -275,5 +275,5 @@
             (message "No macro found at point, or it could not be expanded")))))))
 
 
-(provide 'ra-emacs-lsp)
-;;; ra-emacs-lsp.el ends here
+(provide 'rust-analyzer)
+;;; rust-analyzer.el ends here
