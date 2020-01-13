@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 346] = [
+pub const ALL_LINTS: [Lint; 347] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -559,6 +559,13 @@ pub const ALL_LINTS: [Lint; 346] = [
         desc: "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`",
         deprecation: None,
         module: "fallible_impl_from",
+    },
+    Lint {
+        name: "filetype_is_file",
+        group: "restriction",
+        desc: "`FileType::is_file` is not recommended to test for readable file type",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "filter_map",

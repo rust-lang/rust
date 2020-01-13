@@ -1131,6 +1131,40 @@ declare_clippy_lint! {
     "Check for offset calculations on raw pointers to zero-sized types"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `FileType::is_file()`.
+    ///
+    /// **Why is this bad?** When people testing a file type with `FileType::is_file`
+    /// they are testing whether a path is something they can get bytes from. But
+    /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
+    /// symlink in windows. Using `!FileType::is_dir()` is a better way to that intention.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// let metadata = std::fs::metadata("foo.txt")?;
+    /// let filetype = metadata.file_type();
+    ///
+    /// if filetype.is_file() {
+    ///     // read file
+    /// }
+    /// ```
+    ///
+    /// should be written as:
+    ///
+    /// ```rust,ignore
+    /// let metadata = std::fs::metadata("foo.txt")?;
+    /// let filetype = metadata.file_type();
+    ///
+    /// if !filetype.is_dir() {
+    ///     // read file
+    /// }
+    /// ```
+    pub FILETYPE_IS_FILE,
+    restriction,
+    "`FileType::is_file` is not recommended to test for readable file type"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -1178,6 +1212,7 @@ declare_lint_pass!(Methods => [
     UNINIT_ASSUMED_INIT,
     MANUAL_SATURATING_ARITHMETIC,
     ZST_OFFSET,
+    FILETYPE_IS_FILE,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -1241,6 +1276,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["add"] | ["offset"] | ["sub"] | ["wrapping_offset"] | ["wrapping_add"] | ["wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
+            ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
             _ => {},
         }
 
@@ -3224,4 +3260,36 @@ fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[
             span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
         }
     }
+}
+
+fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let ty = cx.tables.expr_ty(&args[0]);
+
+    if !match_type(cx, ty, &paths::FILE_TYPE) {
+        return;
+    }
+
+    let span: Span;
+    let verb: &str;
+    let lint_unary: &str;
+    let help_unary: &str;
+    if_chain! {
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let hir::ExprKind::Unary(op, _) = parent.kind;
+        if op == hir::UnOp::UnNot;
+        then {
+            lint_unary = "!";
+            verb = "denies";
+            help_unary = "";
+            span = parent.span;
+        } else {
+            lint_unary = "";
+            verb = "covers";
+            help_unary = "!";
+            span = expr.span;
+        }
+    }
+    let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
+    let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
+    span_help_and_lint(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
 }

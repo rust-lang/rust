@@ -121,7 +121,7 @@ fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDesc
         for file in fs::read_dir(&dir_path)? {
             let file = file?;
             let file_path = file.path();
-            if !file.file_type()?.is_file() {
+            if file.file_type()?.is_dir() {
                 continue;
             }
             if file_path.extension() != Some(OsStr::new("rs")) {
