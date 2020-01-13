@@ -95,7 +95,7 @@ New lints being added likely want to join one of the existing declarations like
 `late_lint_mod_passes` in `librustc_lint/lib.rs`, which would then
 auto-propagate into the other.
 
-[`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.LintStore.html#method.register_lints
+[`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_lints
 [`rustc_interface::register_plugins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.register_plugins.html
 [`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 [`rustc_lint::register_internals`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_internals.html

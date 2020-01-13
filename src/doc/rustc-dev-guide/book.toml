@@ -15,6 +15,6 @@ level = 1
 
 [output.linkcheck]
 follow-web-links = true
-exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "youtu\\.be", "dl\\.acm\\.org" ]
+exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "youtu\\.be", "dl\\.acm\\.org", "cs\\.bgu\\.ac\\.il" ]
 cache-timeout = 172800
 warning-policy = "error"

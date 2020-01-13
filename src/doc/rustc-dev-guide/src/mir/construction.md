@@ -152,7 +152,7 @@ case of `enum`s.
 
 [MIR]: ./index.html
 [HIR]: ../hir.html
-[HAIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/index.html
+[HAIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/hair/index.html
 
 [rustc_mir::hair::cx::expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/cx/expr/index.html
-[`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.mir_built.html
+[`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/build/fn.mir_built.html
