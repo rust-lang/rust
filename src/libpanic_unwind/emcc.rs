@@ -76,12 +76,20 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     }
     ptr::write(exception, Exception { data: Some(data) });
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
+}
 
-    extern "C" fn exception_cleanup(ptr: *mut libc::c_void) {
-        unsafe {
-            ptr::drop_in_place(ptr as *mut Exception);
-            super::__rust_drop_panic();
-        }
+// On WASM and ARM, the destructor returns the pointer to the object.
+cfg_if::cfg_if! {
+    if #[cfg(any(target_arch = "arm", target_arch = "wasm32"))] {
+        type DestructorRet = *mut libc::c_void;
+    } else {
+        type DestructorRet = ();
+    }
+}
+extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> DestructorRet {
+    unsafe {
+        ptr::drop_in_place(ptr as *mut Exception);
+        super::__rust_drop_panic();
     }
 }
 
@@ -104,7 +112,7 @@ extern "C" {
     fn __cxa_throw(
         thrown_exception: *mut libc::c_void,
         tinfo: *const TypeInfo,
-        dest: extern "C" fn(*mut libc::c_void),
+        dest: extern "C" fn(*mut libc::c_void) -> DestructorRet,
     ) -> !;
     fn __gxx_personality_v0(
         version: c_int,
