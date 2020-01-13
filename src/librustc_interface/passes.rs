@@ -21,7 +21,7 @@ use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
-use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
+use rustc_data_structures::sync::{par_for_each, Lrc, Once, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
@@ -783,7 +783,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
             },
             {
-                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                     let local_def_id = tcx.hir().local_def_id(module);
                     tcx.ensure().check_mod_loops(local_def_id);
                     tcx.ensure().check_mod_attrs(local_def_id);
@@ -808,7 +808,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             },
             {
                 sess.time("liveness_and_intrinsic_checking", || {
-                    par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
                         //
@@ -876,7 +876,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             },
             {
                 sess.time("privacy_checking_modules", || {
-                    par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    par_for_each(&tcx.hir().krate().modules, |(&module, _)| {
                         tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
                     });
                 });

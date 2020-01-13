@@ -18,13 +18,32 @@
 //! depending on the value of cfg!(parallel_compiler).
 
 use crate::owning_ref::{Erased, OwningRef};
+use std::any::Any;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
+
+pub fn catch<R>(
+    store: &Lock<Option<Box<dyn Any + std::marker::Send + 'static>>>,
+    f: impl FnOnce() -> R,
+) -> Option<R> {
+    catch_unwind(AssertUnwindSafe(f))
+        .map_err(|err| {
+            *store.lock() = Some(err);
+        })
+        .ok()
+}
+
+pub fn resume(store: Lock<Option<Box<dyn Any + std::marker::Send + 'static>>>) {
+    if let Some(panic) = store.into_inner() {
+        resume_unwind(panic);
+    }
+}
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
@@ -42,7 +61,6 @@ cfg_if! {
         }
 
         use std::ops::Add;
-        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         /// This is a single threaded variant of AtomicCell provided by crossbeam.
         /// Unlike `Atomic` this is intended for all `Copy` types,
@@ -181,46 +199,40 @@ cfg_if! {
             ($($blocks:tt),*) => {
                 // We catch panics here ensuring that all the blocks execute.
                 // This makes behavior consistent with the parallel compiler.
-                let mut panic = None;
+                let panic = ::rustc_data_structures::sync::Lock::new(None);
                 $(
-                    if let Err(p) = ::std::panic::catch_unwind(
-                        ::std::panic::AssertUnwindSafe(|| $blocks)
-                    ) {
-                        if panic.is_none() {
-                            panic = Some(p);
-                        }
-                    }
+                    ::rustc_data_structures::sync::catch(&panic, || $blocks);
                 )*
-                if let Some(panic) = panic {
-                    ::std::panic::resume_unwind(panic);
-                }
+                ::rustc_data_structures::sync::resume(panic);
             }
         }
 
-        pub use std::iter::Iterator as ParallelIterator;
+        use std::iter::{Iterator, IntoIterator, FromIterator};
 
-        pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
-            t.into_iter()
-        }
-
-        pub fn par_for_each_in<T: IntoIterator>(
+        pub fn par_for_each<T: IntoIterator>(
             t: T,
-            for_each:
-                impl Fn(<<T as IntoIterator>::IntoIter as Iterator>::Item) + Sync + Send
+            mut for_each: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item),
         ) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
-            let mut panic = None;
+            let panic = Lock::new(None);
             t.into_iter().for_each(|i| {
-                if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
-                    if panic.is_none() {
-                        panic = Some(p);
-                    }
-                }
+                catch(&panic, || for_each(i));
             });
-            if let Some(panic) = panic {
-                resume_unwind(panic);
-            }
+            resume(panic);
+        }
+
+        pub fn par_map<T: IntoIterator, R, C: FromIterator<R>>(
+            t: T,
+            mut map: impl FnMut(<<T as IntoIterator>::IntoIter as Iterator>::Item) -> R,
+        ) -> C {
+            // We catch panics here ensuring that all the loop iterations execute.
+            let panic = Lock::new(None);
+            let r = t.into_iter().filter_map(|i| {
+                catch(&panic, || map(i))
+            }).collect();
+            resume(panic);
+            r
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
@@ -388,20 +400,39 @@ cfg_if! {
 
         pub use rayon_core::WorkerLocal;
 
-        pub use rayon::iter::ParallelIterator;
-        use rayon::iter::IntoParallelIterator;
+        use rayon::iter::{ParallelIterator, FromParallelIterator, IntoParallelIterator};
 
-        pub fn par_iter<T: IntoParallelIterator>(t: T) -> T::Iter {
-            t.into_par_iter()
-        }
-
-        pub fn par_for_each_in<T: IntoParallelIterator>(
+        pub fn par_for_each<T: IntoParallelIterator>(
             t: T,
             for_each: impl Fn(
                 <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
             ) + Sync + Send
         ) {
-            t.into_par_iter().for_each(for_each)
+            // We catch panics here ensuring that all the loop iterations execute.
+            let panic = Lock::new(None);
+            t.into_par_iter().for_each(|i| {
+                catch(&panic, || for_each(i));
+            });
+            resume(panic);
+        }
+
+        pub fn par_map<
+            T: IntoParallelIterator,
+            R: Send,
+            C: FromParallelIterator<R>
+        >(
+            t: T,
+            map: impl Fn(
+                <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
+            ) -> R + Sync + Send
+        ) -> C {
+            // We catch panics here ensuring that all the loop iterations execute.
+            let panic = Lock::new(None);
+            let r = t.into_par_iter().filter_map(|i| {
+                catch(&panic, || map(i))
+            }).collect();
+            resume(panic);
+            r
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;

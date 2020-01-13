@@ -1,6 +1,6 @@
 use crate::hir::map::Map;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
+use rustc_data_structures::sync::{par_for_each, Lock};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
@@ -12,7 +12,7 @@ pub fn check_crate(hir_map: &Map<'_>) {
 
     let errors = Lock::new(Vec::new());
 
-    par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
+    par_for_each(&hir_map.krate().modules, |(module_id, _)| {
         let local_def_id = hir_map.local_def_id(*module_id);
         hir_map.visit_item_likes_in_module(
             local_def_id,

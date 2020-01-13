@@ -189,7 +189,7 @@ use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
+use rustc_data_structures::sync::{par_for_each, MTLock, MTRef};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -291,7 +291,7 @@ pub fn collect_crate_mono_items(
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_iter(roots).for_each(|root| {
+            par_for_each(roots, |root| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(tcx, root, visited, &mut recursion_depths, inlining_map);
             });
