@@ -1958,11 +1958,8 @@ impl<'test> TestCx<'test> {
             rustc.arg("-Ctarget-feature=-crt-static");
         }
 
-        match allow_unused {
-            AllowUnused::Yes => {
-                rustc.args(&["-A", "unused"]);
-            }
-            AllowUnused::No => {}
+        if let AllowUnused::Yes = allow_unused {
+            rustc.args(&["-A", "unused"]);
         }
 
         rustc.args(&self.props.compile_flags);
