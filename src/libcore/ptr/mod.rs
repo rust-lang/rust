@@ -281,6 +281,29 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
 }
 
+/// Get the length of a raw pointer to a slice without manifesting a reference.
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(raw_slice_len)]
+/// use std::ptr;
+///
+/// let slice_ptr = 1_usize as *const [(); 64] as *const [()] as *const [u64];
+///
+/// // This is unsound, as slice_ptr is not a pointer to a valid slice:
+/// // assert_eq!((&*slice_ptr).len(), 64);
+///
+/// // This is sound, as it does not create a reference:
+/// assert_eq!(ptr::slice_len(slice_ptr), 64);
+/// ```
+#[inline]
+#[unstable(feature = "raw_slice_len", reason = "recently added", issue = "none")]
+#[rustc_const_unstable(feature = "const_raw_slice_len", issue = "none")]
+pub const fn slice_len<T>(data: *const [T]) -> usize {
+    unsafe { Repr { rust: data }.raw.len }
+}
+
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
