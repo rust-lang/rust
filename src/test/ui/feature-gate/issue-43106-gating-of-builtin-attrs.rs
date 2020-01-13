@@ -12,7 +12,7 @@
 // the change when it happens.
 //
 // At the time of authoring, the attributes here are listed in the
-// order that they occur in libsyntax/feature_gate.rs.
+// order that they occur in `librustc_feature`.
 //
 // Any builtin attributes that:
 //

@@ -1812,7 +1812,7 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `feature_gate.rs`.
+    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `librustc_feature/active.rs`.
     IncompleteFeatures => [INCOMPLETE_FEATURES]
 );
 
