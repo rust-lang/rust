@@ -184,8 +184,13 @@ impl CheckWatcherState {
         workspace_root: PathBuf,
         shared: Arc<RwLock<CheckWatcherSharedState>>,
     ) -> CheckWatcherState {
-        let watcher = WatchThread::new(&options, &workspace_root);
-        CheckWatcherState { options, workspace_root, watcher, last_update_req: None, shared }
+        CheckWatcherState {
+            options,
+            workspace_root,
+            watcher: WatchThread::dummy(),
+            last_update_req: None,
+            shared,
+        }
     }
 
     fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
@@ -313,6 +318,10 @@ enum CheckEvent {
 }
 
 impl WatchThread {
+    fn dummy() -> WatchThread {
+        WatchThread { handle: None, message_recv: never() }
+    }
+
     fn new(options: &CheckOptions, workspace_root: &PathBuf) -> WatchThread {
         let mut args: Vec<String> = vec![
             options.command.clone(),
