@@ -23,7 +23,7 @@ pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind
             match &stmt.kind {
                 Assign(place_and_rval) => match &place_and_rval.1 {
                     Rvalue::Ref(_, _, place) => {
-                        analyze_non_ssa_place(&mut flag_map, place);
+                        not_ssa(&mut flag_map, place.local)
                     }
                     _ => {}
                 },
@@ -36,7 +36,7 @@ pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind
                 if let Some((dest_place, _dest_bb)) = destination {
                     let dest_layout = fx.layout_of(fx.monomorphize(&dest_place.ty(&fx.mir.local_decls, fx.tcx).ty));
                     if !crate::abi::can_return_to_ssa_var(fx.tcx, dest_layout) {
-                        analyze_non_ssa_place(&mut flag_map, dest_place);
+                        not_ssa(&mut flag_map, dest_place.local)
                     }
                 }
             }
@@ -45,13 +45,6 @@ pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind
     }
 
     flag_map
-}
-
-fn analyze_non_ssa_place(flag_map: &mut IndexVec<Local, SsaKind>, place: &Place) {
-    match place.base {
-        PlaceBase::Local(local) => not_ssa(flag_map, local),
-        _ => {}
-    }
 }
 
 fn not_ssa(flag_map: &mut IndexVec<Local, SsaKind>, local: Local) {

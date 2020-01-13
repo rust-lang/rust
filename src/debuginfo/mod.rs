@@ -283,7 +283,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     &local_map,
                     &value_labels_ranges,
                     Place {
-                        base: PlaceBase::Local(local),
+                        local,
                         projection: ty::List::empty(),
                     },
                 );
@@ -305,12 +305,8 @@ fn place_location<'a, 'tcx>(
     place: Place<'tcx>,
 ) -> AttributeValue {
     assert!(place.projection.is_empty()); // FIXME implement them
-    let cplace = match place.base {
-        PlaceBase::Local(local) => local_map[&local],
-        PlaceBase::Static(_) => bug!("Unenforced invariant that the place is based on a Local violated: {:?}", place),
-    };
 
-    match cplace.inner() {
+    match local_map[&place.local].inner() {
         CPlaceInner::Var(local) => {
             let value_label = cranelift_codegen::ir::ValueLabel::from_u32(local.as_u32());
             if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {

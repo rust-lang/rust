@@ -292,7 +292,7 @@ fn trans_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(debug_assertions)]
+    #[cfg(false_debug_assertions)]
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
@@ -646,20 +646,7 @@ pub fn trans_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: &Place<'tcx>,
 ) -> CPlace<'tcx> {
-    let mut cplace = match &place.base {
-        PlaceBase::Local(local) => fx.get_local_place(*local),
-        PlaceBase::Static(static_) => match static_.kind {
-            StaticKind::Static => {
-                // Statics can't be generic, so `static_.ty` doesn't need to be monomorphized.
-                crate::constant::codegen_static_ref(fx, static_.def_id, static_.ty)
-            }
-            StaticKind::Promoted(promoted, substs) => {
-                let instance = Instance::new(static_.def_id, fx.monomorphize(&substs));
-                let ty = fx.monomorphize(&static_.ty);
-                crate::constant::trans_promoted(fx, instance, promoted, ty)
-            }
-        },
-    };
+    let mut cplace = fx.get_local_place(place.local);
 
     for elem in &*place.projection {
         match *elem {

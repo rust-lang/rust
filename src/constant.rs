@@ -40,7 +40,7 @@ pub fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
     constants_cx.todo.insert(TodoItem::Static(def_id));
 }
 
-pub fn codegen_static_ref<'tcx>(
+fn codegen_static_ref<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
     ty: Ty<'tcx>,
@@ -50,31 +50,37 @@ pub fn codegen_static_ref<'tcx>(
     cplace_for_dataid(fx, ty, data_id)
 }
 
-pub fn trans_promoted<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    instance: Instance<'tcx>,
-    promoted: Promoted,
-    dest_ty: Ty<'tcx>,
-) -> CPlace<'tcx> {
-    match fx.tcx.const_eval_promoted(instance, promoted) {
-        Ok(const_) => {
-            let cplace = trans_const_place(fx, const_);
-            debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
-            cplace
-        }
-        Err(_) => crate::trap::trap_unreachable_ret_place(
-            fx,
-            fx.layout_of(dest_ty),
-            "[panic] Tried to get value of promoted value with errored during const eval.",
-        ),
-    }
-}
-
 pub fn trans_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = force_eval_const(fx, &constant.literal);
+    let const_ = match constant.literal.val {
+        ConstKind::Unevaluated(def_id, ref substs, promoted) if fx.tcx.is_static(def_id) => {
+            assert!(substs.is_empty());
+            assert!(promoted.is_none());
+
+            return codegen_static_ref(
+                fx,
+                def_id,
+                fx.monomorphize(&constant.literal.ty),
+            ).to_cvalue(fx);
+        }
+        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
+            let substs = fx.monomorphize(substs);
+            fx.tcx.const_eval_resolve(
+                ParamEnv::reveal_all(),
+                def_id,
+                substs,
+                promoted,
+                None, // FIXME use correct span
+            ).unwrap_or_else(|_| {
+                fx.tcx.sess.abort_if_errors();
+                unreachable!();
+            })
+        }
+        _ => fx.monomorphize(&constant.literal),
+    };
+
     trans_const_value(fx, const_)
 }
 
@@ -83,9 +89,15 @@ pub fn force_eval_const<'tcx>(
     const_: &'tcx Const,
 ) -> &'tcx Const<'tcx> {
     match const_.val {
-        ConstKind::Unevaluated(def_id, ref substs) => {
+        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
             let substs = fx.monomorphize(substs);
-            fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, None).unwrap_or_else(|_| {
+            fx.tcx.const_eval_resolve(
+                ParamEnv::reveal_all(),
+                def_id,
+                substs,
+                promoted,
+                None, // FIXME pass correct span
+            ).unwrap_or_else(|_| {
                 fx.tcx.sess.abort_if_errors();
                 unreachable!();
             })
@@ -100,38 +112,78 @@ pub fn trans_const_value<'tcx>(
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
-    match ty.kind {
-        ty::Bool | ty::Uint(_) => {
-            let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(fx, ty, bits)
+
+    if layout.is_zst() {
+        return CValue::by_ref(
+            crate::Pointer::const_addr(fx, i64::try_from(layout.align.pref.bytes()).unwrap()),
+            layout,
+        );
+    }
+
+    let const_val = match const_.val {
+        ConstKind::Value(const_val) => const_val,
+        _ => unreachable!("Const {:?} should have been evaluated", const_),
+    };
+
+    match const_val {
+        ConstValue::Scalar(x) => {
+            let scalar = match layout.abi {
+                layout::Abi::Scalar(ref x) => x,
+                _ => bug!("from_const: invalid ByVal layout: {:#?}", layout),
+            };
+
+            match ty.kind {
+                ty::Bool | ty::Uint(_) => {
+                    let bits = const_.val.try_to_bits(layout.size).unwrap_or_else(|| {
+                        panic!("{:?}\n{:?}", const_, layout);
+                    });
+                    CValue::const_val(fx, ty, bits)
+                }
+                ty::Int(_) => {
+                    let bits = const_.val.try_to_bits(layout.size).unwrap();
+                    CValue::const_val(
+                        fx,
+                        ty,
+                        rustc::mir::interpret::sign_extend(bits, layout.size),
+                    )
+                }
+                ty::Float(fty) => {
+                    let bits = const_.val.try_to_bits(layout.size).unwrap();
+                    let val = match fty {
+                        FloatTy::F32 => fx
+                            .bcx
+                            .ins()
+                            .f32const(Ieee32::with_bits(u32::try_from(bits).unwrap())),
+                        FloatTy::F64 => fx
+                            .bcx
+                            .ins()
+                            .f64const(Ieee64::with_bits(u64::try_from(bits).unwrap())),
+                    };
+                    CValue::by_val(val, layout)
+                }
+                ty::FnDef(_def_id, _substs) => CValue::by_ref(
+                    crate::pointer::Pointer::const_addr(fx, fx.pointer_type.bytes() as i64),
+                    layout,
+                ),
+                _ => trans_const_place(fx, const_).to_cvalue(fx),
+            }
         }
-        ty::Int(_) => {
-            let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(
-                fx,
-                ty,
-                rustc::mir::interpret::sign_extend(bits, layout.size),
+        ConstValue::ByRef { alloc, offset } => {
+            let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
+            fx.constants_cx.todo.insert(TodoItem::Alloc(alloc_id));
+            let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
+            let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+            let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
+            assert!(!layout.is_unsized(), "unsized ConstValue::ByRef not supported");
+            CValue::by_ref(
+                crate::pointer::Pointer::new(global_ptr)
+                    .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
+                layout,
             )
         }
-        ty::Float(fty) => {
-            let bits = const_.val.try_to_bits(layout.size).unwrap();
-            let val = match fty {
-                FloatTy::F32 => fx
-                    .bcx
-                    .ins()
-                    .f32const(Ieee32::with_bits(u32::try_from(bits).unwrap())),
-                FloatTy::F64 => fx
-                    .bcx
-                    .ins()
-                    .f64const(Ieee64::with_bits(u64::try_from(bits).unwrap())),
-            };
-            CValue::by_val(val, layout)
+        ConstValue::Slice { data: _, start: _, end: _ } => {
+            trans_const_place(fx, const_).to_cvalue(fx)
         }
-        ty::FnDef(_def_id, _substs) => CValue::by_ref(
-            crate::pointer::Pointer::const_addr(fx, fx.pointer_type.bytes() as i64),
-            layout,
-        ),
-        _ => trans_const_place(fx, const_).to_cvalue(fx),
     }
 }
 
@@ -480,22 +532,8 @@ pub fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
 ) -> Option<&'tcx Const<'tcx>> {
-    let place = match operand {
-        Operand::Copy(place) | Operand::Move(place) => place,
+    match operand {
+        Operand::Copy(_) | Operand::Move(_) => return None,
         Operand::Constant(const_) => return Some(force_eval_const(fx, const_.literal)),
-    };
-
-    assert!(place.projection.is_empty());
-    let static_ = match &place.base {
-        PlaceBase::Static(static_) => static_,
-        PlaceBase::Local(_) => return None,
-    };
-
-    Some(match &static_.kind {
-        StaticKind::Static => unimplemented!(),
-        StaticKind::Promoted(promoted, substs) => {
-            let instance = Instance::new(static_.def_id, fx.monomorphize(substs));
-            fx.tcx.const_eval_promoted(instance, *promoted).unwrap()
-        }
-    })
+    }
 }

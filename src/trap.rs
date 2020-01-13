@@ -93,15 +93,3 @@ pub fn trap_unreachable_ret_value<'tcx>(
     trap_unimplemented(fx, msg);
     CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout)
 }
-
-/// Like `trap_unreachable` but returns a fake place for the specified type.
-///
-/// Trap code: user65535
-pub fn trap_unreachable_ret_place<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
-    dest_layout: TyLayout<'tcx>,
-    msg: impl AsRef<str>,
-) -> CPlace<'tcx> {
-    trap_unimplemented(fx, msg);
-    CPlace::for_ptr(Pointer::const_addr(fx, 0), dest_layout)
-}
