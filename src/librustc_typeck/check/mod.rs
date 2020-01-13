@@ -1248,8 +1248,13 @@ fn typeck_tables_of_with_fallback<'tcx>(
                                             "Type variable {:?} is equal to diverging var {:?}",
                                             var, diverging_var
                                         );
-                                        best_var = Some(var);
-                                        best_diverging_var = Some(diverging_var);
+
+                                        debug!(
+                                            "Var origin: {:?}",
+                                            fcx.infcx.type_variables.borrow().var_origin(*vid1)
+                                        );
+                                        best_var = Some(vid1);
+                                        best_diverging_var = Some(vid2);
                                     }
                                 }
                                 _ => bug!(
@@ -1261,31 +1266,39 @@ fn typeck_tables_of_with_fallback<'tcx>(
                         }
                     }
 
-                    let (var_span, diverging_var_span) =
-                        match (&best_var.unwrap().kind, &best_diverging_var.unwrap().kind) {
-                            (
-                                ty::Infer(ty::InferTy::TyVar(var_vid)),
-                                ty::Infer(ty::InferTy::TyVar(diverging_var_vid)),
-                            ) => (
-                                fcx.infcx.type_variables.borrow().var_origin(*var_vid).span,
-                                fcx.infcx
-                                    .type_variables
-                                    .borrow()
-                                    .var_origin(*diverging_var_vid)
-                                    .span,
-                            ),
-                            _ => bug!("Type is not a ty variable: {:?}", best_var),
-                        };
+                    let var_origin =
+                        *fcx.infcx.type_variables.borrow().var_origin(*best_var.unwrap());
+                    let diverging_var_span = fcx
+                        .infcx
+                        .type_variables
+                        .borrow()
+                        .var_origin(*best_diverging_var.unwrap())
+                        .span;
 
-                    fcx.tcx()
-                        .sess
-                        .struct_span_warn(
-                            path.span,
-                            "Fallback to `!` may introduce undefined behavior",
-                        )
-                        .span_note(var_span, "the type here was inferred to `!`")
-                        .span_note(diverging_var_span, "... due to this expression")
-                        .emit();
+                    let mut err = fcx.tcx().sess.struct_span_warn(
+                        path.span,
+                        "Fallback to `!` may introduce undefined behavior",
+                    );
+
+                    match var_origin.kind {
+                        TypeVariableOriginKind::TypeParameterDefinition(name, did) => {
+                            err.span_note(
+                                var_origin.span,
+                                &format!("the type parameter {} here was inferred to `!`", name),
+                            );
+                            if let Some(did) = did {
+                                err.span_note(
+                                    fcx.tcx.def_span(did),
+                                    "(type parameter defined here)",
+                                );
+                            }
+                        }
+                        _ => {
+                            err.span_note(var_origin.span, "the type here was inferred to `!`");
+                        }
+                    }
+
+                    err.span_note(diverging_var_span, "... due to this expression").emit();
                 }
             }
         }
