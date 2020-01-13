@@ -783,6 +783,8 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
             },
             {
+                // This is used by the loop below.
+                // Make sure it is complete before we fan out.
                 tcx.get_lang_items(LOCAL_CRATE);
 
                 let _timer = tcx.sess.timer("misc_module_passes");
@@ -802,6 +804,8 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 tcx.visible_parent_map(LOCAL_CRATE);
             },
             {
+                // This is used by `check_mod_unstable_api_usage`.
+                // Make sure it is complete before we fan out.
                 tcx.stability_index(LOCAL_CRATE);
 
                 let _timer = tcx.sess.timer("check_unstable_api_usage");
@@ -852,7 +856,8 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+                // Prefetch this as it is used later by lint checking and privacy checking.
+                tcx.privacy_access_levels(LOCAL_CRATE);
             },
             {
                 sess.time("MIR_borrow_checking", || {
