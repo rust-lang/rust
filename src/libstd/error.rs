@@ -496,7 +496,7 @@ impl Error for char::DecodeUtf16Error {
 }
 
 #[stable(feature = "box_error", since = "1.8.0")]
-impl<T: Error> Error for Box<T> {
+impl<T: Error + ?Sized> Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         Error::description(&**self)
@@ -801,5 +801,12 @@ mod tests {
             Ok(..) => panic!("expected error"),
             Err(e) => assert_eq!(*e.downcast::<A>().unwrap(), A),
         }
+    }
+
+    #[test]
+    fn box_dyn_error_is_error() {
+        let x: Box<dyn Error + Send + Sync + 'static> = "hello".into();
+        fn use_error<E: std::error::Error>(x: E) {}
+        use_error(x);
     }
 }
