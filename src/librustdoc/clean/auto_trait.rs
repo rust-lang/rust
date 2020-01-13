@@ -560,8 +560,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     lifetime_to_bounds.entry(lifetime).or_default().extend(bounds);
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
-                    match &lhs {
-                        &Type::QPath { name: ref left_name, ref self_type, ref trait_ } => {
+                    match lhs {
+                        Type::QPath { name: ref left_name, ref self_type, ref trait_ } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {
@@ -580,36 +580,30 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                         continue;
                                     }
 
-                                    // FIXME: Remove this scope when NLL lands
-                                    {
-                                        let args = &mut new_trait_path
-                                            .segments
-                                            .last_mut()
-                                            .expect("segments were empty")
-                                            .args;
+                                    let args = &mut new_trait_path
+                                        .segments
+                                        .last_mut()
+                                        .expect("segments were empty")
+                                        .args;
 
-                                        match args {
-                                            // Convert somethiung like '<T as Iterator::Item> = u8'
-                                            // to 'T: Iterator<Item=u8>'
-                                            &mut GenericArgs::AngleBracketed {
-                                                ref mut bindings,
-                                                ..
-                                            } => {
-                                                bindings.push(TypeBinding {
-                                                    name: left_name.clone(),
-                                                    kind: TypeBindingKind::Equality { ty: rhs },
-                                                });
-                                            }
-                                            &mut GenericArgs::Parenthesized { .. } => {
-                                                existing_predicates.push(
-                                                    WherePredicate::EqPredicate {
-                                                        lhs: lhs.clone(),
-                                                        rhs,
-                                                    },
-                                                );
-                                                continue; // If something other than a Fn ends up
-                                                // with parenthesis, leave it alone
-                                            }
+                                    match args {
+                                        // Convert somethiung like '<T as Iterator::Item> = u8'
+                                        // to 'T: Iterator<Item=u8>'
+                                        GenericArgs::AngleBracketed {
+                                            ref mut bindings, ..
+                                        } => {
+                                            bindings.push(TypeBinding {
+                                                name: left_name.clone(),
+                                                kind: TypeBindingKind::Equality { ty: rhs },
+                                            });
+                                        }
+                                        GenericArgs::Parenthesized { .. } => {
+                                            existing_predicates.push(WherePredicate::EqPredicate {
+                                                lhs: lhs.clone(),
+                                                rhs,
+                                            });
+                                            continue; // If something other than a Fn ends up
+                                            // with parenthesis, leave it alone
                                         }
                                     }
 
