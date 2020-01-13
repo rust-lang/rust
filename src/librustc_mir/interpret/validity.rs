@@ -608,9 +608,14 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // This is the element type size.
-                let ty_size = self.ecx.layout_of(tys)?.size;
+                let layout = self.ecx.layout_of(tys)?;
+                // Empty tuples and fieldless structs (the only ZSTs that allow reaching this code)
+                // have no data to be checked.
+                if layout.is_zst() {
+                    return Ok(());
+                }
                 // This is the size in bytes of the whole array.
-                let size = ty_size * len;
+                let size = layout.size * len;
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
@@ -640,7 +645,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
-                                let i = (offset.bytes() / ty_size.bytes()) as usize;
+                                let i = (offset.bytes() / layout.size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!("undefined bytes", self.path)
