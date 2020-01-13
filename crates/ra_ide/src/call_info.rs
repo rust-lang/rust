@@ -4,7 +4,7 @@ use ra_syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode,
 };
-use std::cmp::Ordering;
+
 use test_utils::tested_by;
 
 use crate::{
@@ -51,14 +51,14 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
 
-    match num_params.cmp(&1) {
-        Ordering::Less => {}
-        Ordering::Equal => {
+    match num_params {
+        0 => (),
+        1 => {
             if !has_self {
                 call_info.active_parameter = Some(0);
             }
         }
-        Ordering::Greater => {
+        _ => {
             if let Some(arg_list) = calling_node.arg_list() {
                 // Number of arguments specified at the call site
                 let num_args_at_callsite = arg_list.args().count();
