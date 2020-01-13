@@ -47,6 +47,10 @@ fn run_server() -> Result<()> {
     let initialize_params = connection.initialize(server_capabilities)?;
     let initialize_params: lsp_types::InitializeParams = serde_json::from_value(initialize_params)?;
 
+    if let Some(client_info) = initialize_params.client_info {
+        log::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
+    }
+
     let cwd = std::env::current_dir()?;
     let root = initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
