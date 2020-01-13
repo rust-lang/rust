@@ -167,6 +167,9 @@ pub struct _TypeDescriptor {
 
 // Note that we intentionally ignore name mangling rules here: we don't want C++
 // to be able to catch Rust panics by simply declaring a `struct rust_panic`.
+//
+// When modifying, make sure that the type name string exactly matches
+// the one used in src/librustc_codegen_llvm/intrinsic.rs.
 const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
@@ -199,12 +202,12 @@ extern "C" {
     static TYPE_INFO_VTABLE: *const u8;
 }
 
-// We use #[lang = "eh_catch_typeinfo"] here as this is the type descriptor which
-// we'll use in LLVM's `catchpad` instruction which ends up also being passed as
-// an argument to the C++ personality function.
+// This type descriptor is only used when throwing an exception. The catch part
+// is handled by the try intrinsic, which generates its own TypeDescriptor.
 //
-// Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(not(test), lang = "eh_catch_typeinfo")]
+// This is fine since the MSVC runtime uses string comparison on the type name
+// to match TypeDescriptors rather than pointer equality.
+#[cfg_attr(bootstrap, lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),

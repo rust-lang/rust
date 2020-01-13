@@ -954,6 +954,31 @@ fn codegen_msvc_try(
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
+        // We can't use the TypeDescriptor defined in libpanic_unwind because it
+        // might be in another DLL and the SEH encoding only supports specifying
+        // a TypeDescriptor from the current module.
+        //
+        // However this isn't an issue since the MSVC runtime uses string
+        // comparison on the type name to match TypeDescriptors rather than
+        // pointer equality.
+        //
+        // So instead we generate a new TypeDescriptor in each module that uses
+        // `try` and let the linker merge duplicate definitions in the same
+        // module.
+        //
+        // When modifying, make sure that the type_name string exactly matches
+        // the one used in src/libpanic_unwind/seh.rs.
+        let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_i8p());
+        let type_name = bx.const_bytes(b"rust_panic\0");
+        let type_info =
+            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_i8p()), type_name], false);
+        let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
+        unsafe {
+            llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
+            llvm::SetUniqueComdat(bx.llmod, tydesc);
+            llvm::LLVMSetInitializer(tydesc, type_info);
+        }
+
         // The flag value of 8 indicates that we are catching the exception by
         // reference instead of by value. We can't use catch by value because
         // that requires copying the exception object, which we don't support
@@ -961,12 +986,7 @@ fn codegen_msvc_try(
         //
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
         let flags = bx.const_i32(8);
-        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
-            Some(did) => bx.get_static(did),
-            None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
-        };
         let funclet = catchpad.catch_pad(cs, &[tydesc, flags, slot]);
-
         let i64_align = bx.tcx().data_layout.i64_align.abi;
         let payload_ptr = catchpad.load(slot, ptr_align);
         let payload = catchpad.load(payload_ptr, i64_align);
