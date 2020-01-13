@@ -45,10 +45,10 @@ DataType isIntASecretFloat(const std::map<llvm::Argument*, DataType> typeInfo, l
 //    onlyFirst should typically be used for store operands, whereas not used for memcpy
 DataType isIntPointerASecretFloat(const std::map<llvm::Argument*, DataType> typeInfo, llvm::Value* val, bool onlyFirst, bool errIfNotFound=true);
 
-bool isconstantValueM(llvm::Value* val, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant, llvm::SmallPtrSetImpl<llvm::Value*> &constantvals, llvm::SmallPtrSetImpl<llvm::Value*> &retvals, llvm::AAResults &AA, uint8_t directions=3);
+bool isconstantValueM(TypeAnalysis &TA, llvm::Value* val, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant, llvm::SmallPtrSetImpl<llvm::Value*> &constantvals, llvm::SmallPtrSetImpl<llvm::Value*> &retvals, llvm::AAResults &AA, uint8_t directions=3);
 
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
-bool isconstantM(llvm::Instruction* inst, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant, llvm::SmallPtrSetImpl<llvm::Value*> &constantvals, llvm::SmallPtrSetImpl<llvm::Value*> &retvals, llvm::AAResults &AA, uint8_t directions=3);
+bool isconstantM(TypeAnalysis &TA, llvm::Instruction* inst, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant, llvm::SmallPtrSetImpl<llvm::Value*> &constantvals, llvm::SmallPtrSetImpl<llvm::Value*> &retvals, llvm::AAResults &AA, uint8_t directions=3);
 
 #endif

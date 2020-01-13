@@ -376,20 +376,25 @@ void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
 }
 
 void TypeAnalyzer::visitLoadInst(LoadInst &I) {
-    updateAnalysis(I.getOperand(0), getAnalysis(&I).Only({0}), &I);
+    auto ptr = getAnalysis(&I).Only({0});
+    ptr |= ValueData(IntType::Pointer);
+    updateAnalysis(I.getOperand(0), ptr, &I);
     updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup({0}), &I);
 }
 
 void TypeAnalyzer::visitStoreInst(StoreInst &I) {
-    updateAnalysis(I.getPointerOperand(), getAnalysis(I.getValueOperand()).PurgeAnything().Only({0}), &I);
+    auto ptr = getAnalysis(I.getValueOperand()).PurgeAnything().Only({0});
+    ptr |= ValueData(IntType::Pointer);
+    updateAnalysis(I.getPointerOperand(), ptr, &I);
     updateAnalysis(I.getValueOperand(), getAnalysis(I.getPointerOperand()).Lookup({0}), &I);
 }
 
 //TODO gep
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
-    for(auto& ind : gep.indices()) {
-        updateAnalysis(ind, IntType::Integer, &gep);
-    }
+    
+    //for(auto& ind : gep.indices()) {
+    //    updateAnalysis(ind, IntType::Integer, &gep);
+    //}
     
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(gep.getContext());
     std::vector<Value*> idnext;

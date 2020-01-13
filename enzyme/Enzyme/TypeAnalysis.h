@@ -276,6 +276,12 @@ public:
                 llvm::errs() << "not handling more than 6 pointer lookups deep dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
                 return;
             }
+            for(auto a : v) {
+                if (a > 1000) {
+                    //llvm::errs() << "not handling more than 1000B offset pointer dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    return; 
+                }
+            }
             mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
         }
 
@@ -336,6 +342,9 @@ public:
 
             for(const auto &pair : mapping) {
                 dat.insert(appendIndices(indices, pair.first), pair.second);
+                if (pair.first.size() > 0) {
+                    dat.insert(indices, DataType(IntType::Pointer));
+                }
             }
 
             return dat;

@@ -798,12 +798,12 @@ public:
 
   bool isConstantValueInternal(Value* val, AAResults &AA) {
 	  cast<Value>(val);
-    return isconstantValueM(val, constants, nonconstant, constant_values, nonconstant_values, AA);
+    return isconstantValueM(TA, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   };
 
   bool isConstantInstructionInternal(Instruction* val, AAResults &AA) {
     cast<Instruction>(val);
-    return isconstantM(val, constants, nonconstant, constant_values, nonconstant_values, AA);
+    return isconstantM(TA, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   }
 
   SmallPtrSet<Instruction*,4> replaceableCalls;
