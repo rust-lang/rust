@@ -1,4 +1,4 @@
-use crate::utils::{match_type, paths, return_ty, span_lint};
+use crate::utils::{is_entrypoint_fn, match_type, paths, return_ty, span_lint};
 use itertools::Itertools;
 use rustc::lint::in_external_macro;
 use rustc_data_structures::fx::FxHashSet;
@@ -153,7 +153,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, ..) => {
-                if !in_external_macro(cx.tcx.sess, item.span) {
+                if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id))
+                    || in_external_macro(cx.tcx.sess, item.span))
+                {
                     lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers);
                 }
             },

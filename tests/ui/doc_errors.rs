@@ -61,4 +61,6 @@ impl Trait1 for Struct1 {
     }
 }
 
-fn main() {}
+fn main() -> Result<(), ()> {
+    Ok(())
+}
