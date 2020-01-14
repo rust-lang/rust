@@ -52,16 +52,16 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
 
-    pub fn to_def<D, ID>(&mut self, src: InFile<ID::Ast>) -> Option<D>
+    pub fn to_def<D, T>(&mut self, src: InFile<T>) -> Option<D>
     where
-        D: From<ID>,
-        ID: ToId,
+        D: From<T::ID>,
+        T: ToId,
     {
-        let id: ID = self.to_id(src)?;
+        let id: T::ID = self.to_id(src)?;
         Some(id.into())
     }
 
-    fn to_id<D: ToId>(&mut self, src: InFile<D::Ast>) -> Option<D> {
+    fn to_id<T: ToId>(&mut self, src: InFile<T>) -> Option<T::ID> {
         let container = self.find_container(src.as_ref().map(|it| it.syntax()))?;
         let db = self.db;
         let dyn_map =
@@ -73,7 +73,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
                 ChildContainer::EnumId(it) => it.child_by_source(db),
                 ChildContainer::VariantId(it) => it.child_by_source(db),
             });
-        dyn_map[D::KEY].get(&src).copied()
+        dyn_map[T::KEY].get(&src).copied()
     }
 
     fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
@@ -144,16 +144,16 @@ impl_froms! {
     VariantId,
 }
 
-pub trait ToId: Sized + Copy + 'static {
-    type Ast: AstNode + 'static;
-    const KEY: Key<Self::Ast, Self>;
+pub trait ToId: Sized + AstNode + 'static {
+    type ID: Sized + Copy + 'static;
+    const KEY: Key<Self, Self::ID>;
 }
 
 macro_rules! to_id_impls {
     ($(($id:ident, $ast:path, $key:path)),* ,) => {$(
-        impl ToId for $id {
-            type Ast = $ast;
-            const KEY: Key<Self::Ast, Self> = $key;
+        impl ToId for $ast {
+            type ID = $id;
+            const KEY: Key<Self, Self::ID> = $key;
         }
     )*}
 }
