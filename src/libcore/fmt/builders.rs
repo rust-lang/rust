@@ -778,7 +778,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(debug_map_key_value)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
@@ -796,7 +795,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
     /// );
     /// ```
-    #[unstable(feature = "debug_map_key_value", reason = "recently added", issue = "62482")]
+    #[stable(feature = "debug_map_key_value", since = "1.42.0")]
     pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             assert!(
@@ -843,7 +842,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(debug_map_key_value)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
@@ -861,7 +859,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
     /// );
     /// ```
-    #[unstable(feature = "debug_map_key_value", reason = "recently added", issue = "62482")]
+    #[stable(feature = "debug_map_key_value", since = "1.42.0")]
     pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             assert!(self.has_key, "attempted to format a map value before its key");
