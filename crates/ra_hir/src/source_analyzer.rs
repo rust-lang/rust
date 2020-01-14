@@ -15,7 +15,6 @@ use hir_def::{
     },
     expr::{ExprId, PatId},
     nameres::ModuleSource,
-    path::path,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     AssocItemId, DefWithBodyId,
 };
@@ -399,20 +398,20 @@ impl SourceAnalyzer {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &impl HirDatabase, ty: Type) -> bool {
-        let std_future_path = path![std::future::Future];
-
-        let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
-            Some(it) => it.into(),
-            _ => return false,
-        };
-
         let krate = match self.resolver.krate() {
             Some(krate) => krate,
-            _ => return false,
+            None => return false,
+        };
+
+        let std_future_trait =
+            db.lang_item(krate, "future_trait".into()).and_then(|it| it.as_trait());
+        let std_future_trait = match std_future_trait {
+            Some(it) => it,
+            None => return false,
         };
 
         let canonical_ty = Canonical { value: ty.ty.value, num_vars: 0 };
-        implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
+        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
     pub fn expand(

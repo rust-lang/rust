@@ -525,6 +525,7 @@ mod tests {
 
             //- /std/lib.rs
             pub mod future {
+                #[lang = "future_trait"]
                 pub trait Future {}
             }
             "###, CompletionKind::Keyword),
