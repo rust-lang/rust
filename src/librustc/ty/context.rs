@@ -436,11 +436,9 @@ pub struct TypeckTables<'tcx> {
     /// entire variable.
     pub upvar_list: ty::UpvarListMap,
 
-    /// Stores the type, span and optional scope span of all types
+    /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
-    pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
-
-    pub generator_interior_exprs: Vec<Option<hir::HirId>>,
+    pub generator_interior_types: Vec<(GeneratorInteriorTypeCause<'tcx>, Option<hir::HirId>)>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -467,7 +465,6 @@ impl<'tcx> TypeckTables<'tcx> {
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
             generator_interior_types: Default::default(),
-            generator_interior_exprs: Default::default(),
         }
     }
 
@@ -731,7 +728,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref concrete_opaque_types,
             ref upvar_list,
             ref generator_interior_types,
-            ref generator_interior_exprs,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -770,7 +766,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
-            generator_interior_exprs.hash_stable(hcx, hasher);
         })
     }
 }

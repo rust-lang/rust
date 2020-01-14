@@ -2456,7 +2456,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let target_span = tables
             .generator_interior_types
             .iter()
-            .zip(tables.generator_interior_exprs.iter())
             .find(|(ty::GeneratorInteriorTypeCause { ty, .. }, _)| {
                 // Careful: the regions for types that appear in the
                 // generator interior are not generally known, so we
@@ -2578,7 +2577,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             span.push_span_label(original_span, message);
-            err.set_span(span.clone());
+            err.set_span(span);
 
             format!("is not {}", trait_name)
         } else {
@@ -2586,28 +2585,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         // Look at the last interior type to get a span for the `.await`.
-        let await_span = tables.generator_interior_types.iter().map(|i| i.span).last().unwrap();
+        let await_span =
+            tables.generator_interior_types.iter().map(|(i, _)| i.span).last().unwrap();
         let mut span = MultiSpan::from_span(await_span);
         span.push_span_label(
             await_span,
             format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
         );
-
-        if let Some(expr_id) = expr {
-            let expr = hir.expect_expr(expr_id);
-            let is_ref = tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
-            let parent = hir.get_parent_node(expr_id);
-            if let Some(hir::Node::Expr(e)) = hir.find(parent) {
-                let method_span = hir.span(parent);
-                if tables.is_method_call(e) && is_ref {
-                    err.span_help(
-                        method_span,
-                        "consider moving this method call into a `let` \
-                        binding to create a shorter lived borrow"
-                    );
-                }
-            }
-        }
 
         span.push_span_label(target_span, format!("has type `{}`", target_ty));
 
@@ -2626,6 +2610,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 trait_explanation, await_or_yield,
             ),
         );
+
+        if let Some(expr_id) = expr {
+            let expr = hir.expect_expr(expr_id);
+            let is_ref = tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
+            let parent = hir.get_parent_node(expr_id);
+            if let Some(hir::Node::Expr(e)) = hir.find(parent) {
+                let method_span = hir.span(parent);
+                if tables.is_method_call(e) && is_ref {
+                    err.span_help(
+                        method_span,
+                        "consider moving this method call into a `let` \
+                        binding to create a shorter lived borrow",
+                    );
+                }
+            }
+        }
 
         // Add a note for the item obligation that remains - normally a note pointing to the
         // bound that introduced the obligation (e.g. `T: Send`).

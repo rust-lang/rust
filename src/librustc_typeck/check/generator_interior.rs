@@ -18,6 +18,7 @@ use rustc_span::Span;
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
+    exprs: Vec<Option<hir::HirId>>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
@@ -99,6 +100,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         scope_span,
                     })
                     .or_insert(entries);
+                self.exprs.push(expr.map(|e| e.hir_id));
             }
         } else {
             debug!(
@@ -136,6 +138,7 @@ pub fn resolve_interior<'a, 'tcx>(
         expr_count: 0,
         kind,
         prev_unresolved_span: None,
+        exprs: vec![],
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -170,7 +173,8 @@ pub fn resolve_interior<'a, 'tcx>(
     });
 
     // Store the generator types and spans into the tables for this generator.
-    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
+    let interior_types =
+        types.iter().zip(visitor.exprs).map(|(t, e)| (t.0.clone(), e)).collect::<Vec<_>>();
     visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
 
     // Extract type components
