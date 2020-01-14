@@ -10,7 +10,7 @@ use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::
 use crate::{
     db::RootDatabase,
     references::{
-        classify_name2, classify_name_ref2,
+        classify_name, classify_name_ref,
         NameKind::{self, *},
     },
     FileId,
@@ -110,7 +110,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
             NAME_REF => {
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-                let name_kind = classify_name_ref2(&mut sb, InFile::new(file_id.into(), &name_ref))
+                let name_kind = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
                     .map(|d| d.kind);
                 match name_kind {
                     Some(name_kind) => {
@@ -131,7 +131,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
                 let name_kind =
-                    classify_name2(&mut sb, InFile::new(file_id.into(), &name)).map(|d| d.kind);
+                    classify_name(&mut sb, InFile::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {

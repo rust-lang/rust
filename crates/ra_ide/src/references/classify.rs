@@ -11,12 +11,7 @@ use super::{
 };
 use crate::db::RootDatabase;
 
-pub(crate) fn classify_name(db: &RootDatabase, name: InFile<&ast::Name>) -> Option<NameDefinition> {
-    let mut sb = SourceBinder::new(db);
-    classify_name2(&mut sb, name)
-}
-
-pub(crate) fn classify_name2(
+pub(crate) fn classify_name(
     sb: &mut SourceBinder<RootDatabase>,
     name: InFile<&ast::Name>,
 ) -> Option<NameDefinition> {
@@ -132,14 +127,6 @@ pub(crate) fn classify_name2(
 }
 
 pub(crate) fn classify_name_ref(
-    db: &RootDatabase,
-    name_ref: InFile<&ast::NameRef>,
-) -> Option<NameDefinition> {
-    let mut sb = SourceBinder::new(db);
-    classify_name_ref2(&mut sb, name_ref)
-}
-
-pub(crate) fn classify_name_ref2(
     sb: &mut SourceBinder<RootDatabase>,
     name_ref: InFile<&ast::NameRef>,
 ) -> Option<NameDefinition> {

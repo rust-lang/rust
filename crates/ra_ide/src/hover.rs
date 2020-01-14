@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, Adt, HasSource, HirDisplay};
+use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, SourceBinder};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_covering_element,
@@ -152,13 +152,14 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let mut res = HoverResult::new();
 
+    let mut sb = SourceBinder::new(db);
     if let Some((range, name_kind)) = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                classify_name_ref(db, token.with_value(&name_ref)).map(|d| (name_ref.syntax().text_range(), d.kind))
+                classify_name_ref(&mut sb, token.with_value(&name_ref)).map(|d| (name_ref.syntax().text_range(), d.kind))
             },
             ast::Name(name) => {
-                classify_name(db, token.with_value(&name)).map(|d| (name.syntax().text_range(), d.kind))
+                classify_name(&mut sb, token.with_value(&name)).map(|d| (name.syntax().text_range(), d.kind))
             },
             _ => None,
         }
@@ -742,7 +743,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             }
             fn foo(bar:u32) {
                 let a = id!(ba<|>r);
-            }            
+            }
             ",
             &["u32"],
         );

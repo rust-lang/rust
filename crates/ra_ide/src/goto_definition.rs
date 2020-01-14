@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, InFile};
+use hir::{db::AstDatabase, InFile, SourceBinder};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
@@ -72,7 +72,8 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(db, name_ref).map(|d| d.kind);
+    let mut sb = SourceBinder::new(db);
+    let name_kind = classify_name_ref(&mut sb, name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(it)) => return Exact(it.to_nav(db)),
         Some(Field(it)) => return Exact(it.to_nav(db)),
