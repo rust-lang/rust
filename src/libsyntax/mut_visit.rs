@@ -922,6 +922,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             unsafety: _,
             polarity: _,
             defaultness: _,
+            constness: _,
             generics,
             of_trait,
             self_ty,

@@ -1230,6 +1230,7 @@ impl<'a> State<'a> {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 ref generics,
                 ref of_trait,
                 ref self_ty,
@@ -1240,6 +1241,7 @@ impl<'a> State<'a> {
                 self.print_defaultness(defaultness);
                 self.print_unsafety(unsafety);
                 self.word_nbsp("impl");
+                self.print_constness(constness);
 
                 if !generics.params.is_empty() {
                     self.print_generic_params(&generics.params);
@@ -2770,6 +2772,13 @@ impl<'a> State<'a> {
         match s {
             ast::Unsafety::Normal => {}
             ast::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    crate fn print_constness(&mut self, s: ast::Constness) {
+        match s {
+            ast::Constness::Const => self.word_nbsp("const"),
+            ast::Constness::NotConst => {}
         }
     }
 

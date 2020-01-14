@@ -2618,6 +2618,7 @@ pub enum ItemKind {
         unsafety: Unsafety,
         polarity: ImplPolarity,
         defaultness: Defaultness,
+        constness: Constness,
         generics: Generics,
 
         /// The trait being implemented, if any.

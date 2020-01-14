@@ -616,6 +616,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 unsafety,
                 polarity,
                 defaultness: _,
+                constness: _, // TODO
                 generics: _,
                 of_trait: Some(_),
                 ref self_ty,
@@ -649,6 +650,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 unsafety,
                 polarity,
                 defaultness,
+                constness: _, // TODO
                 generics: _,
                 of_trait: None,
                 self_ty: _,
