@@ -28,7 +28,7 @@ use crate::{Assist, AssistCtx, AssistId};
 pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
-    ctx.add_assist(AssistId("add_derive"), "add `#[derive]`", |edit| {
+    ctx.add_assist(AssistId("add_derive"), "Add `#[derive]`", |edit| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_simple_call())

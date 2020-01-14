@@ -32,7 +32,7 @@ pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         None => top_path.syntax().text_range().end(),
     };
 
-    ctx.add_assist(AssistId("split_import"), "split import", |edit| {
+    ctx.add_assist(AssistId("split_import"), "Split import", |edit| {
         edit.target(colon_colon.text_range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");

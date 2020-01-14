@@ -39,7 +39,7 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     let not_lhs = invert_boolean_expression(&lhs)?;
     let not_rhs = invert_boolean_expression(&rhs)?;
 
-    ctx.add_assist(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
+    ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", |edit| {
         edit.target(op_range);
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));

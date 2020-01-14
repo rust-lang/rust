@@ -95,7 +95,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
     let cursor_position = ctx.frange.range.start();
 
-    ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
+    ctx.add_assist(AssistId("convert_to_guarded_return"), "Convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
         let new_block = match if_let_pat {
             None => {

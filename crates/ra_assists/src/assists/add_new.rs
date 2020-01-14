@@ -43,7 +43,7 @@ pub(crate) fn add_new(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     // Return early if we've found an existing new fn
     let impl_block = find_struct_impl(&ctx, &strukt)?;
 
-    ctx.add_assist(AssistId("add_new"), "add new fn", |edit| {
+    ctx.add_assist(AssistId("add_new"), "Add default constructor", |edit| {
         edit.target(strukt.syntax().text_range());
 
         let mut buf = String::with_capacity(512);

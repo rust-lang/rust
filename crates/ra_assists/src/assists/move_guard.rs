@@ -41,7 +41,7 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx<impl HirDatabase>) -> Option
     let arm_expr = match_arm.expr()?;
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
-    ctx.add_assist(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
+    ctx.add_assist(AssistId("move_guard_to_arm_body"), "Move guard to arm body", |edit| {
         edit.target(guard.syntax().text_range());
         let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
             Some(tok) => {
@@ -111,7 +111,7 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx<impl HirDatabase>) -> 
 
     ctx.add_assist(
         AssistId("move_arm_cond_to_match_guard"),
-        "move condition to match guard",
+        "Move condition to match guard",
         |edit| {
             edit.target(if_expr.syntax().text_range());
             let then_only_expr = then_block.block().and_then(|it| it.statements().next()).is_none();

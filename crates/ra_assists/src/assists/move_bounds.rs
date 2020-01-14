@@ -46,7 +46,7 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx<impl HirDatabase>) -> O
         _ => return None,
     };
 
-    ctx.add_assist(AssistId("move_bounds_to_where_clause"), "move_bounds_to_where_clause", |edit| {
+    ctx.add_assist(AssistId("move_bounds_to_where_clause"), "Move to where clause", |edit| {
         let new_params = type_param_list
             .type_params()
             .filter(|it| it.type_bound_list().is_some())

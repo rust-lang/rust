@@ -292,8 +292,11 @@ mod tests {
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
 
-        assert_eq!(assists.next().expect("expected assist").0.label, "make pub(crate)");
-        assert_eq!(assists.next().expect("expected assist").0.label, "add `#[derive]`");
+        assert_eq!(
+            assists.next().expect("expected assist").0.label,
+            "Change visibility to pub(crate)"
+        );
+        assert_eq!(assists.next().expect("expected assist").0.label, "Add `#[derive]`");
     }
 
     #[test]
@@ -312,7 +315,7 @@ mod tests {
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
 
-        assert_eq!(assists.next().expect("expected assist").0.label, "introduce variable");
-        assert_eq!(assists.next().expect("expected assist").0.label, "replace with match");
+        assert_eq!(assists.next().expect("expected assist").0.label, "Extract into variable");
+        assert_eq!(assists.next().expect("expected assist").0.label, "Replace with match");
     }
 }

@@ -58,7 +58,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         text.slice(without_parens).to_string()
     };
 
-    ctx.add_assist(AssistId("remove_dbg"), "remove dbg!()", |edit| {
+    ctx.add_assist(AssistId("remove_dbg"), "Remove dbg!()", |edit| {
         edit.target(macro_call.syntax().text_range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);

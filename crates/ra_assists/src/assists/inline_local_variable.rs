@@ -93,7 +93,7 @@ pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<
 
     ctx.add_assist(
         AssistId("inline_local_variable"),
-        "inline local variable",
+        "Inline variable",
         move |edit: &mut AssistBuilder| {
             edit.delete(delete_range);
             for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
