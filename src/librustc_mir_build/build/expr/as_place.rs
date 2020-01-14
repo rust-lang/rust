@@ -364,7 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.hir.tcx();
         let place_ty =
-            Place::ty_from(&base_place.local, &base_place.projection, &self.local_decls, tcx);
+            Place::ty_from(base_place.local, &base_place.projection, &self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
@@ -374,7 +374,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let fake_borrow_deref_ty = Place::ty_from(
-                            &base_place.local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
@@ -399,7 +399,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ProjectionElem::Index(_) => {
                         let index_ty = Place::ty_from(
-                            &base_place.local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,

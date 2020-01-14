@@ -1623,7 +1623,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             place_span.0.projection
         {
             let place_ty =
-                Place::ty_from(&place_span.0.local, base_proj, self.body(), self.infcx.tcx);
+                Place::ty_from(place_span.0.local, base_proj, self.body(), self.infcx.tcx);
             if let ty::Array(..) = place_ty.ty.kind {
                 let array_place = PlaceRef { local: place_span.0.local, projection: base_proj };
                 self.check_if_subslice_element_is_moved(
@@ -1740,7 +1740,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&place.local, proj_base, self.body(), tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, self.body(), tcx).ty;
                     match base_ty.kind {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
@@ -1844,7 +1844,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::Adt(def, _) =
-                    Place::ty_from(&base.local, base.projection, this.body(), tcx).ty.kind
+                    Place::ty_from(base.local, base.projection, this.body(), tcx).ty.kind
                 {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
@@ -2058,7 +2058,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let base_ty =
-                            Place::ty_from(&place.local, proj_base, self.body(), self.infcx.tcx).ty;
+                            Place::ty_from(place.local, proj_base, self.body(), self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
                         match base_ty.kind {
@@ -2192,7 +2192,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match place_projection {
             [base @ .., ProjectionElem::Field(field, _ty)] => {
                 let tcx = self.infcx.tcx;
-                let base_ty = Place::ty_from(&place_ref.local, base, self.body(), tcx).ty;
+                let base_ty = Place::ty_from(place_ref.local, base, self.body(), tcx).ty;
 
                 if (base_ty.is_closure() || base_ty.is_generator())
                     && (!by_ref || self.upvars[field.index()].by_ref)

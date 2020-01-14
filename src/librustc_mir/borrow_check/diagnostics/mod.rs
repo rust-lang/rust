@@ -316,7 +316,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
                     let base_ty =
-                        Place::ty_from(&place.local, place.projection, *self.body, self.infcx.tcx)
+                        Place::ty_from(place.local, place.projection, *self.body, self.infcx.tcx)
                             .ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
@@ -447,7 +447,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = Place::ty_from(&deref_base.local, deref_base.projection, *self.body, tcx).ty;
+        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, *self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {

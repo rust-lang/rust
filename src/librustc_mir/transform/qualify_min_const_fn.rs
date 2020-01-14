@@ -268,7 +268,7 @@ fn check_place(
             ProjectionElem::Downcast(_symbol, _variant_index) => {}
 
             ProjectionElem::Field(..) => {
-                let base_ty = Place::ty_from(&place.local, &proj_base, body, tcx).ty;
+                let base_ty = Place::ty_from(place.local, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
                     if def.is_union() {
