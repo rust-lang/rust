@@ -414,6 +414,7 @@ E0742: include_str!("./error_codes/E0742.md"),
 E0743: include_str!("./error_codes/E0743.md"),
 E0744: include_str!("./error_codes/E0744.md"),
 E0745: include_str!("./error_codes/E0745.md"),
+E0746: include_str!("./error_codes/E0746.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -608,5 +609,4 @@ E0745: include_str!("./error_codes/E0745.md"),
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
     E0739, // invalid track_caller application/syntax
-    E0746, // `dyn Trait` return type
 }
