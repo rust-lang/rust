@@ -1,8 +1,8 @@
 //! Builtin macro
 use crate::db::AstDatabase;
 use crate::{
-    ast::{self, AstNode},
-    name, AstId, CrateId, HirFileId, MacroCallId, MacroDefId, MacroDefKind, TextUnit,
+    ast::{self},
+    name, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind, TextUnit,
 };
 
 use crate::quote;
@@ -61,48 +61,13 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand
 }
 
-fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
-    let file_id = file.original_file(db);
-
-    // FIXME: if the file is coming from macro, we return a dummy value for now.
-    if file.call_node(db).map(|it| it.file_id != file_id.into()).unwrap_or(true) {
-        return 0;
-    }
-
-    let text = db.file_text(file_id);
-    let mut line_num = 1;
-
-    let pos = pos.to_usize();
-    if pos > text.len() {
-        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
-        // in this case, when we know it's wrong, we return a dummy value
-        return 0;
-    }
-    // Count line end
-    for (i, c) in text.chars().enumerate() {
-        if i == pos {
-            break;
-        }
-        if c == '\n' {
-            line_num += 1;
-        }
-    }
-    line_num
-}
-
 fn line_expand(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let loc = db.lookup_intern_macro(id);
-
-    let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-    let arg_start = arg.text_range().start();
-
-    let file = id.as_file();
-    let line_num = to_line_number(db, file, arg_start);
-
+    // dummy implementation for type-checking purposes
+    let line_num = 0;
     let expanded = quote! {
         #line_num
     };
@@ -154,48 +119,13 @@ fn option_env_expand(
     Ok(expanded)
 }
 
-fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
-    let file_id = file.original_file(db);
-    // FIXME: if the file is coming from macro, we return a dummy value for now.
-    if file.call_node(db).map(|it| it.file_id != file_id.into()).unwrap_or(true) {
-        return 0;
-    }
-    let text = db.file_text(file_id);
-
-    let pos = pos.to_usize();
-    if pos > text.len() {
-        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
-        // in this case we return a dummy value so that we don't `panic!`
-        return 0;
-    }
-
-    let mut col_num = 1;
-    for c in text[..pos].chars().rev() {
-        if c == '\n' {
-            break;
-        }
-        col_num += 1;
-    }
-    col_num
-}
-
 fn column_expand(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let loc = db.lookup_intern_macro(id);
-    let macro_call = match loc.kind {
-        crate::MacroCallKind::FnLike(ast_id) => ast_id.to_node(db),
-        _ => panic!("column macro called as attr"),
-    };
-
-    let _arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-    let col_start = macro_call.syntax().text_range().start();
-
-    let file = id.as_file();
-    let col_num = to_col_number(db, file, col_start);
-
+    // dummy implementation for type-checking purposes
+    let col_num = 0;
     let expanded = quote! {
         #col_num
     };
@@ -284,7 +214,7 @@ fn format_args_expand(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{name::AsName, test_db::TestDB, MacroCallKind, MacroCallLoc};
+    use crate::{name::AsName, test_db::TestDB, AstNode, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
     use ra_syntax::ast::NameOwner;
 
@@ -330,7 +260,7 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, "13");
+        assert_eq!(expanded, "0");
     }
 
     #[test]
@@ -343,7 +273,7 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, "4");
+        assert_eq!(expanded, "0");
     }
 
     #[test]
