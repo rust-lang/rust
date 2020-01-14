@@ -3,6 +3,8 @@
 // revisions: legacy v0
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy
     //[v0]compile-flags: -Z symbol-mangling-version=v0
+//[legacy]normalize-stderr-32-bit: "hdb62078998ce7ea8" -> "SYMBOL_HASH"
+//[legacy]normalize-stderr-64bit: "h62e540f14f879d56" -> "SYMBOL_HASH"
 
 #![feature(optin_builtin_traits, rustc_attrs)]
 #![allow(dead_code)]
