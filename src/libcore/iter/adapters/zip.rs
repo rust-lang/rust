@@ -36,6 +36,22 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
     }
 }
 
+impl<A: DoubleEndedIterator, B: DoubleEndedIterator> Zip<A, B>
+where
+    A: DoubleEndedIterator + ExactSizeIterator,
+    B: DoubleEndedIterator + ExactSizeIterator,
+{
+    fn super_nth_back(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
+        while let Some(x) = DoubleEndedIterator::next_back(self) {
+            if n == 0 {
+                return Some(x);
+            }
+            n -= 1;
+        }
+        None
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> Iterator for Zip<A, B>
 where
@@ -70,6 +86,11 @@ where
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
         ZipImpl::next_back(self)
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        ZipImpl::nth_back(self, n)
+    }
 }
 
 // Zip specialization trait
@@ -81,6 +102,10 @@ trait ZipImpl<A, B> {
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
     fn next_back(&mut self) -> Option<Self::Item>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator;
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item>
     where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator;
@@ -140,6 +165,15 @@ where
             (None, None) => None,
             _ => unreachable!(),
         }
+    }
+
+    #[inline]
+    default fn nth_back(&mut self, n: usize) -> Option<Self::Item>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        self.super_nth_back(n)
     }
 
     #[inline]
@@ -247,6 +281,32 @@ where
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        let delta = cmp::min(n, self.index);
+        let end = self.index - delta;
+        while end < self.index {
+            let i = self.index;
+            self.index -= 1;
+            if A::may_have_side_effect() {
+                unsafe {
+                    self.a.get_unchecked(i);
+                }
+            }
+            if B::may_have_side_effect() {
+                unsafe {
+                    self.b.get_unchecked(i);
+                }
+            }
+        }
+
+        self.super_nth_back(n - delta)
     }
 }
 
