@@ -248,7 +248,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
     } else {
         flags_builder.set("is_pic", "false").unwrap();
     }
-    flags_builder.set("probestack_enabled", "false").unwrap(); // __cranelift_probestack is not provided
+    flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     flags_builder
         .set(
             "enable_verifier",
