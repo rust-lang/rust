@@ -62,5 +62,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.destructure_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::destructure_const(tcx, param_env, value)
-    }
+    };
 }

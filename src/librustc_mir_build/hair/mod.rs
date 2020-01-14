@@ -16,7 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
-mod constant;
+crate mod constant;
 crate mod cx;
 
 crate mod pattern;

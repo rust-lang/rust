@@ -119,7 +119,7 @@ use crate::mir;
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Instance, TyCtxt};
+use crate::ty::{self, Instance, Ty, TyCtxt};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
@@ -131,6 +131,7 @@ use std::fmt;
 use std::io;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
+use syntax::ast::LitKind;
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -145,6 +146,24 @@ pub struct GlobalId<'tcx> {
 
     /// The index for promoted globals within their function's `mir::Body`.
     pub promoted: Option<mir::Promoted>,
+}
+
+/// Input argument for `tcx.lit_to_const`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]
+pub struct LitToConstInput<'tcx> {
+    /// The absolute value of the resultant constant.
+    pub lit: &'tcx LitKind,
+    /// The type of the constant.
+    pub ty: Ty<'tcx>,
+    /// If the constant is negative.
+    pub neg: bool,
+}
+
+/// Error type for `tcx.lit_to_const`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
+pub enum LitToConstError {
+    UnparseableFloat,
+    Reported,
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]

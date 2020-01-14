@@ -1441,8 +1441,8 @@ pub struct MacroDef {
     pub legacy: bool,
 }
 
-// Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -1491,9 +1491,9 @@ impl StrLit {
     }
 }
 
-// Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -1504,7 +1504,8 @@ pub enum LitIntType {
 }
 
 /// Type of the float literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),
@@ -1515,8 +1516,7 @@ pub enum LitFloatType {
 /// Literal kind.
 ///
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
-// Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
