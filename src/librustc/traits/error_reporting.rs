@@ -1840,7 +1840,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 last_ty, trait_obj,
                             ),
                             format!("impl {}", trait_obj),
-                            Applicability::MaybeIncorrect,
+                            Applicability::MachineApplicable,
                         );
                         err.note(impl_trait_msg);
                     } else {
