@@ -563,7 +563,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
         // not for MSVC or macOS
         if builder.config.llvm_static_stdcpp &&
            !target.contains("freebsd") &&
-           !target.contains("windows") &&
+           !target.contains("msvc") &&
            !target.contains("apple") {
             let file = compiler_file(builder,
                                      builder.cxx(target).unwrap(),
