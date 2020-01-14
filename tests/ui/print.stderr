@@ -6,12 +6,6 @@ LL |         write!(f, "{:?}", 43.1415)
    |
    = note: `-D clippy::use-debug` implied by `-D warnings`
 
-error: use of `Debug`-based formatting
-  --> $DIR/print.rs:18:19
-   |
-LL |         write!(f, "{:?}", 42.718)
-   |                   ^^^^^^
-
 error: use of `println!`
   --> $DIR/print.rs:23:5
    |
@@ -56,5 +50,5 @@ error: use of `Debug`-based formatting
 LL |     print!("Hello {:#?}", "#orld");
    |            ^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
