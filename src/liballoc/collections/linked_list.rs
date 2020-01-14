@@ -509,18 +509,40 @@ impl<T> LinkedList<T> {
         IterMut { head: self.head, tail: self.tail, len: self.len, list: self }
     }
 
-    /// Provides a cursor.
+    /// Provides a cursor at the front element.
+    ///
+    /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor(&self) -> Cursor<'_, T> {
+    pub fn cursor_front(&self) -> Cursor<'_, T> {
         Cursor { index: 0, current: self.head, list: self }
     }
 
-    /// Provides a cursor with editing operations.
+    /// Provides a cursor with editing operations at the front element.
+    ///
+    /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_mut(&mut self) -> CursorMut<'_, T> {
+    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T> {
         CursorMut { index: 0, current: self.head, list: self }
+    }
+
+    /// Provides a cursor at the back element.
+    ///
+    /// The cursor is pointing to the "ghost" non-element if the list is empty.
+    #[inline]
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn cursor_back(&self) -> Cursor<'_, T> {
+        Cursor { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
+    }
+
+    /// Provides a cursor with editing operations at the back element.
+    ///
+    /// The cursor is pointing to the "ghost" non-element if the list is empty.
+    #[inline]
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T> {
+        CursorMut { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
     }
 
     /// Returns `true` if the `LinkedList` is empty.
@@ -1146,8 +1168,6 @@ impl<T: fmt::Debug> fmt::Debug for Cursor<'_, T> {
 /// Cursors always rest between two elements in the list, and index in a logically circular way.
 /// To accommodate this, there is a "ghost" non-element that yields `None` between the head and
 /// tail of the list.
-///
-/// When created, cursors start at the front of the list, or the "ghost" non-element if the list is empty.
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct CursorMut<'a, T: 'a> {
     index: usize,
@@ -1474,9 +1494,12 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_after(self) -> LinkedList<T> {
+    pub fn split_after(&mut self) -> LinkedList<T> {
         let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
-        // no need to update `self.index` because the cursor is consumed.
+        if self.index == self.list.len {
+            // The "ghost" non-element's index has changed to 0.
+            self.index = 0;
+        }
         unsafe { self.list.split_off_after_node(self.current, split_off_idx) }
     }
 
@@ -1487,9 +1510,9 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_before(self) -> LinkedList<T> {
+    pub fn split_before(&mut self) -> LinkedList<T> {
         let split_off_idx = self.index;
-        // no need to update `self.index` because the cursor is consumed.
+        self.index = 0;
         unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
     }
 }
