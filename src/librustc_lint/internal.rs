@@ -12,7 +12,8 @@ use syntax::ast::{Ident, Item, ItemKind};
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
-    "forbid HashMap and HashSet and suggest the FxHash* variants"
+    "forbid HashMap and HashSet and suggest the FxHash* variants",
+    report_in_external_macro: true
 }
 
 pub struct DefaultHashTypes {
@@ -52,19 +53,22 @@ impl EarlyLintPass for DefaultHashTypes {
 declare_tool_lint! {
     pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
-    "usage of `ty::TyKind` outside of the `ty::sty` module"
+    "usage of `ty::TyKind` outside of the `ty::sty` module",
+    report_in_external_macro: true
 }
 
 declare_tool_lint! {
     pub rustc::TY_PASS_BY_REFERENCE,
     Allow,
-    "passing `Ty` or `TyCtxt` by reference"
+    "passing `Ty` or `TyCtxt` by reference",
+    report_in_external_macro: true
 }
 
 declare_tool_lint! {
     pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
-    "using `ty::{Ty,TyCtxt}` instead of importing it"
+    "using `ty::{Ty,TyCtxt}` instead of importing it",
+    report_in_external_macro: true
 }
 
 declare_lint_pass!(TyTyKind => [
