@@ -184,7 +184,7 @@ impl LanguageItemCollector<'tcx> {
                         self.tcx.sess,
                         span,
                         E0152,
-                        "duplicate lang item found: `{}`.",
+                        "found duplicate lang item `{}`",
                         name
                     ),
                     None => {
@@ -206,12 +206,12 @@ impl LanguageItemCollector<'tcx> {
                     },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
-                    err.span_note(span, "first defined here.");
+                    err.span_note(span, "first defined here");
                 } else {
                     match self.tcx.extern_crate(original_def_id) {
                         Some(ExternCrate {dependency_of, ..}) => {
                             err.note(&format!(
-                            "first defined in crate `{}` (which `{}` depends on).",
+                            "first defined in crate `{}` (which `{}` depends on)",
                                       self.tcx.crate_name(original_def_id.krate),
                                       self.tcx.crate_name(*dependency_of)));
                         },

@@ -208,7 +208,7 @@ fn default_hook(info: &PanicInfo<'_>) {
                     let _ = writeln!(
                         err,
                         "note: run with `RUST_BACKTRACE=1` \
-                                           environment variable to display a backtrace."
+                                           environment variable to display a backtrace"
                     );
                 }
             }

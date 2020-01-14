@@ -325,7 +325,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                              `expected = \"error message\"`",
                         )
                         .note(
-                            "Errors in this attribute were erroneously \
+                            "errors in this attribute were erroneously \
                                 allowed and will become a hard error in a \
                                 future release.",
                         )

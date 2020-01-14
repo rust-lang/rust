@@ -1664,7 +1664,7 @@ fn check_opaque_for_cycles<'tcx>(
         if let hir::OpaqueTyOrigin::AsyncFn = origin {
             struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing",)
                 .span_label(span, "recursive `async fn`")
-                .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`.")
+                .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
                 .emit();
         } else {
             let mut err =
