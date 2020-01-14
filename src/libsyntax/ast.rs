@@ -1040,7 +1040,7 @@ impl Expr {
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(Vec::new(), path.clone(), None, self.span),
+                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
             _ => None,
@@ -2383,15 +2383,6 @@ pub enum AttrKind {
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
-
-    /// The `const` modifier, if any, that appears before this trait.
-    ///
-    /// |                | `constness`                 |
-    /// |----------------|-----------------------------|
-    /// | `Trait`        | `None`                      |
-    /// | `const Trait`  | `Some(Constness::Const)`    |
-    /// | `?const Trait` | `Some(Constness::NotConst)` |
-    pub constness: Option<Constness>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2406,15 +2397,10 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(
-        generic_params: Vec<GenericParam>,
-        path: Path,
-        constness: Option<Constness>,
-        span: Span,
-    ) -> Self {
+    pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
-            trait_ref: TraitRef { path, constness, ref_id: DUMMY_NODE_ID },
+            trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
         }
     }

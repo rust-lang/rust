@@ -838,8 +838,7 @@ pub fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut
     }
 }
 
-pub fn noop_visit_trait_ref<T: MutVisitor>(tr: &mut TraitRef, vis: &mut T) {
-    let TraitRef { path, ref_id, constness: _ } = tr;
+pub fn noop_visit_trait_ref<T: MutVisitor>(TraitRef { path, ref_id }: &mut TraitRef, vis: &mut T) {
     vis.visit_path(path);
     vis.visit_id(ref_id);
 }
