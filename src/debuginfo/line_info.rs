@@ -122,19 +122,25 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
 
         let line_strings = &mut self.debug_context.dwarf.line_strings;
+        let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-            let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
 
-            /*println!(
-                "srcloc {:>04X} {}:{}:{}",
-                line_program.row().address_offset,
-                file.display(),
-                loc.line,
-                loc.col.to_u32()
-            );*/
+            // line_program_add_file is very slow.
+            // Optimize for the common case of the current file not being changed.
+            let current_file_changed = if let Some(last_file) = &mut last_file {
+                // If the allocations are not equal, then the files may still be equal, but that
+                // is not a problem, as this is just an optimization.
+                !Lrc::ptr_eq(last_file, &loc.file)
+            } else {
+                true
+            };
+            if current_file_changed {
+                let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
+                line_program.row().file = file_id;
+                last_file = Some(loc.file.clone());
+            }
 
-            line_program.row().file = file_id;
             line_program.row().line = loc.line as u64;
             line_program.row().column = loc.col.to_u32() as u64 + 1;
             line_program.generate_row();
