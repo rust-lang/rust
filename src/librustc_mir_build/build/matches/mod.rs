@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
-                    all_fake_borrows.push(PlaceRef { local: &place.local, projection: proj_base });
+                    all_fake_borrows.push(PlaceRef { local: place.local, projection: proj_base });
                 }
             }
 

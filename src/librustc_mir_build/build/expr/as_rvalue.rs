@@ -393,20 +393,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place.as_ref() {
-            PlaceRef { local, projection: &[] } => this.local_decls[*local].mutability,
+            PlaceRef { local, projection: &[] } => this.local_decls[local].mutability,
             PlaceRef { local, projection: &[ProjectionElem::Deref] } => {
                 debug_assert!(
-                    this.local_decls[*local].is_ref_for_guard(),
+                    this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
                 );
-                this.local_decls[*local].mutability
+                this.local_decls[local].mutability
             }
             PlaceRef {
-                ref local,
+                local,
                 projection: &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             }
             | PlaceRef {
-                ref local,
+                local,
                 projection:
                     &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _), ProjectionElem::Deref],
             } => {

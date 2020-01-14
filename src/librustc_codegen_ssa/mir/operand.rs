@@ -373,7 +373,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
-        match self.locals[*place_ref.local] {
+        match self.locals[place_ref.local] {
             LocalRef::Operand(Some(mut o)) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {

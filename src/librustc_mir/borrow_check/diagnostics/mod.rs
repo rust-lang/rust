@@ -169,10 +169,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Result<(), ()> {
         match place {
             PlaceRef { local, projection: [] } => {
-                self.append_local_to_string(*local, buf)?;
+                self.append_local_to_string(local, buf)?;
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_for_guard() =>
+                if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 self.append_place_to_string(
                     PlaceRef { local: local, projection: &[] },
@@ -182,9 +182,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )?;
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_to_static() =>
+                if self.body.local_decls[local].is_ref_to_static() =>
             {
-                let local_info = &self.body.local_decls[*local].local_info;
+                let local_info = &self.body.local_decls[local].local_info;
                 if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                     buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
                 } else {
@@ -307,7 +307,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // FIXME Place2 Make this work iteratively
         match place {
             PlaceRef { local, projection: [] } => {
-                let local = &self.body.local_decls[*local];
+                let local = &self.body.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field, None)
             }
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
                     let base_ty =
-                        Place::ty_from(place.local, place.projection, *self.body, self.infcx.tcx)
+                        Place::ty_from(&place.local, place.projection, *self.body, self.infcx.tcx)
                             .ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
@@ -447,7 +447,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, *self.body, tcx).ty;
+        let base_ty = Place::ty_from(&deref_base.local, deref_base.projection, *self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
