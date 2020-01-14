@@ -329,7 +329,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 // FIXME(eddyb) this is probably excessive, with
                                 // the exception of `union` member accesses.
                                 let ty =
-                                    Place::ty_from(&place.local, proj_base, *self.body, self.tcx)
+                                    Place::ty_from(place.local, proj_base, *self.body, self.tcx)
                                         .projection_ty(self.tcx, elem)
                                         .ty;
                                 if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
@@ -491,7 +491,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::Field(..) => {
                         if self.const_kind.is_none() {
                             let base_ty =
-                                Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
+                                Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                             if let Some(def) = base_ty.ty_adt_def() {
                                 // No promotion of union field accesses.
                                 if def.is_union() {
@@ -589,7 +589,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Raw reborrows can come from reference to pointer coercions,
                 // so are allowed.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         return self.validate_place(PlaceRef {
                             local: place.local,
@@ -628,7 +628,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Special-case reborrows to be more like a copy of the reference.
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
-                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         place = PlaceRef { local: place.local, projection: proj_base };
                     }
@@ -647,7 +647,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     while let [proj_base @ .., elem] = place_projection {
                         // FIXME(eddyb) this is probably excessive, with
                         // the exception of `union` member accesses.
-                        let ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx)
+                        let ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx)
                             .projection_ty(self.tcx, elem)
                             .ty;
                         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {

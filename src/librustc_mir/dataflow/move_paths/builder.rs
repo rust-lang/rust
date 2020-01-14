@@ -109,7 +109,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let proj_base = &place.projection[..i];
             let body = self.builder.body;
             let tcx = self.builder.tcx;
-            let place_ty = Place::ty_from(&place.local, proj_base, body, tcx).ty;
+            let place_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
             match place_ty.kind {
                 ty::Ref(..) | ty::RawPtr(..) => {
                     let proj = &place.projection[..i + 1];
@@ -492,7 +492,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // of the union so it is marked as initialized again.
         if let [proj_base @ .., ProjectionElem::Field(_, _)] = place.projection {
             if let ty::Adt(def, _) =
-                Place::ty_from(&place.local, proj_base, self.builder.body, self.builder.tcx).ty.kind
+                Place::ty_from(place.local, proj_base, self.builder.body, self.builder.tcx).ty.kind
             {
                 if def.is_union() {
                     place = PlaceRef { local: place.local, projection: proj_base }

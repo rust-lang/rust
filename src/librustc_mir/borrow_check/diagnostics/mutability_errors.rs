@@ -57,7 +57,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(&local, proj_base, *self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
@@ -101,7 +101,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
-                            &the_place_err.local,
+                            the_place_err.local,
                             the_place_err.projection,
                             *self.body,
                             self.infcx.tcx
@@ -195,7 +195,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    Place::ty_from(&local, proj_base, *self.body, self.infcx.tcx).ty,
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty,
                     field,
                 ) {
                     err.span_suggestion(
@@ -271,7 +271,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(&local, proj_base, *self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, *self.body, self.infcx.tcx).ty
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
