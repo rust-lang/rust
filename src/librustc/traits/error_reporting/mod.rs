@@ -1412,6 +1412,8 @@ pub fn suggest_constraining_type_param(
     false
 }
 
+/// Collect all the returned expressions within the input expression.
+/// Used to point at the return spans when we want to suggest some change to them.
 struct ReturnsVisitor<'v>(Vec<&'v hir::Expr<'v>>);
 
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {

@@ -4,6 +4,7 @@ use super::{
 };
 
 use crate::infer::InferCtxt;
+use crate::traits::object_safety::object_safety_violations;
 use crate::ty::TypeckTables;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
@@ -543,6 +544,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// If all conditions are met to identify a returned `dyn Trait`, suggest using `impl Trait` if
+    /// applicable and signal that the error has been expanded appropriately and needs to be
+    /// emitted.
     crate fn suggest_impl_trait(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -550,9 +554,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) -> bool {
-        if let ObligationCauseCode::SizedReturnType = obligation.cause.code.peel_derives() {
-        } else {
-            return false;
+        match obligation.cause.code.peel_derives() {
+            // Only suggest `impl Trait` if the return type is unsized because it is `dyn Trait`.
+            ObligationCauseCode::SizedReturnType => {}
+            _ => return false,
         }
 
         let hir = self.tcx.hir();
@@ -565,12 +570,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let body = hir.body(*body_id);
             let trait_ref = self.resolve_vars_if_possible(trait_ref);
             let ty = trait_ref.skip_binder().self_ty();
-            if let ty::Dynamic(..) = ty.kind {
-            } else {
+            let is_object_safe;
+            match ty.kind {
+                ty::Dynamic(predicates, _) => {
+                    // The `dyn Trait` is not object safe, do not suggest `Box<dyn Trait>`.
+                    is_object_safe = predicates.principal_def_id().map_or(true, |def_id| {
+                        !object_safety_violations(self.tcx, def_id).is_empty()
+                    })
+                }
                 // We only want to suggest `impl Trait` to `dyn Trait`s.
                 // For example, `fn foo() -> str` needs to be filtered out.
-                return false;
+                _ => return false,
             }
+
+            let ret_ty = if let hir::FunctionRetTy::Return(ret_ty) = sig.decl.output {
+                ret_ty
+            } else {
+                return false;
+            };
+
             // Use `TypeVisitor` instead of the output type directly to find the span of `ty` for
             // cases like `fn foo() -> (dyn Trait, i32) {}`.
             // Recursively look for `TraitObject` types and if there's only one, use that span to
@@ -583,122 +601,120 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
 
-            if let hir::FunctionRetTy::Return(ret_ty) = sig.decl.output {
-                let mut all_returns_conform_to_trait = true;
-                let mut all_returns_have_same_type = true;
-                let mut last_ty = None;
-                if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
-                    let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
-                    if let ty::Dynamic(predicates, _) = &ty_ret_ty.kind {
-                        for predicate in predicates.iter() {
-                            for expr in &visitor.0 {
-                                if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
-                                    if let Some(ty) = last_ty {
-                                        all_returns_have_same_type &= ty == returned_ty;
-                                    }
-                                    last_ty = Some(returned_ty);
-
-                                    let param_env = ty::ParamEnv::empty();
-                                    let pred = predicate.with_self_ty(self.tcx, returned_ty);
-                                    let obligation =
-                                        Obligation::new(cause.clone(), param_env, pred);
-                                    all_returns_conform_to_trait &=
-                                        self.predicate_may_hold(&obligation);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // We still want to verify whether all the return types conform to each other.
+            let mut all_returns_conform_to_trait = true;
+            let mut all_returns_have_same_type = true;
+            let mut last_ty = None;
+            if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
+                let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
+                let param_env = ty::ParamEnv::empty();
+                if let ty::Dynamic(predicates, _) = &ty_ret_ty.kind {
                     for expr in &visitor.0 {
                         if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
-                            if let Some(ty) = last_ty {
-                                all_returns_have_same_type &= ty == returned_ty;
-                            }
+                            all_returns_have_same_type &=
+                                Some(returned_ty) == last_ty || last_ty.is_none();
                             last_ty = Some(returned_ty);
+                            for predicate in predicates.iter() {
+                                let pred = predicate.with_self_ty(self.tcx, returned_ty);
+                                let obl = Obligation::new(cause.clone(), param_env, pred);
+                                all_returns_conform_to_trait &= self.predicate_may_hold(&obl);
+                            }
                         }
                     }
                 }
+            } else {
+                // We still want to verify whether all the return types conform to each other.
+                for expr in &visitor.0 {
+                    if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
+                        if let Some(ty) = last_ty {
+                            all_returns_have_same_type &= ty == returned_ty;
+                        }
+                        last_ty = Some(returned_ty);
+                    }
+                }
+            }
 
+            let (snippet, last_ty) =
                 if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true, Some(last_ty)) = (
+                    // Verify that we're dealing with a return `dyn Trait`
                     ret_ty.span.overlaps(span),
                     &ret_ty.kind,
                     self.tcx.sess.source_map().span_to_snippet(ret_ty.span),
+                    // If any of the return types does not conform to the trait, then we can't
+                    // suggest `impl Trait` nor trait objects, it is a type mismatch error.
                     all_returns_conform_to_trait,
                     last_ty,
                 ) {
-                    err.code = Some(error_code!(E0746));
-                    err.set_primary_message(
-                        "return type cannot have a bare trait because it must be `Sized`",
+                    (snippet, last_ty)
+                } else {
+                    return false;
+                };
+            err.code(error_code!(E0746));
+            err.set_primary_message("return type cannot have an unboxed trait object");
+            err.children.clear();
+            let impl_trait_msg = "for information on `impl Trait`, see \
+                <https://doc.rust-lang.org/book/ch10-02-traits.html\
+                #returning-types-that-implement-traits>";
+            let trait_obj_msg = "for information on trait objects, see \
+                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
+                #using-trait-objects-that-allow-for-values-of-different-types>";
+            let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
+            let trait_obj = if has_dyn { &snippet[4..] } else { &snippet[..] };
+            if all_returns_have_same_type {
+                // Suggest `-> impl Trait`.
+                err.span_suggestion(
+                    ret_ty.span,
+                    &format!(
+                        "return `impl {1}` instead, as all return paths are of type `{}`, \
+                         which implements `{1}`",
+                        last_ty, trait_obj,
+                    ),
+                    format!("impl {}", trait_obj),
+                    Applicability::MachineApplicable,
+                );
+                err.note(impl_trait_msg);
+            } else {
+                if is_object_safe {
+                    // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
+                    // Get all the return values and collect their span and suggestion.
+                    let mut suggestions = visitor
+                        .0
+                        .iter()
+                        .map(|expr| {
+                            (
+                                expr.span,
+                                format!(
+                                    "Box::new({})",
+                                    self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap()
+                                ),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    // Add the suggestion for the return type.
+                    suggestions.push((
+                        ret_ty.span,
+                        format!("Box<{}{}>", if has_dyn { "" } else { "dyn " }, snippet),
+                    ));
+                    err.multipart_suggestion(
+                        "return a trait object instead",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
                     );
-                    err.children.clear();
-                    let impl_trait_msg = "for information on `impl Trait`, see \
-                        <https://doc.rust-lang.org/book/ch10-02-traits.html\
-                        #returning-types-that-implement-traits>";
-                    let trait_obj_msg = "for information on trait objects, see \
-                        <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
-                        #using-trait-objects-that-allow-for-values-of-different-types>";
-                    let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
-                    let trait_obj = if has_dyn { &snippet[4..] } else { &snippet[..] };
-                    if all_returns_have_same_type {
-                        err.span_suggestion(
-                            ret_ty.span,
-                            &format!(
-                                "you can use the `impl Trait` feature \
-                                 in the return type because all the return paths are of type \
-                                 `{}`, which implements `dyn {}`",
-                                last_ty, trait_obj,
-                            ),
-                            format!("impl {}", trait_obj),
-                            Applicability::MachineApplicable,
-                        );
-                        err.note(impl_trait_msg);
-                    } else {
-                        let mut suggestions = visitor
-                            .0
-                            .iter()
-                            .map(|expr| {
-                                (
-                                    expr.span,
-                                    format!(
-                                        "Box::new({})",
-                                        self.tcx
-                                            .sess
-                                            .source_map()
-                                            .span_to_snippet(expr.span)
-                                            .unwrap()
-                                    ),
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        suggestions.push((
-                            ret_ty.span,
-                            format!("Box<{}{}>", if has_dyn { "" } else { "dyn " }, snippet),
-                        ));
-                        err.multipart_suggestion(
-                            "if the performance implications are acceptable, you can return a \
-                             trait object",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.span_help(
-                            visitor.0.iter().map(|expr| expr.span).collect::<Vec<_>>(),
-                            &format!(
-                                "if all the returned values were of the same type you could use \
-                                 `impl {}` as the return type",
-                                trait_obj,
-                            ),
-                        );
-                        err.help(
-                            "alternatively, you can always create a new `enum` with a variant \
-                             for each returned type",
-                        );
-                        err.note(impl_trait_msg);
-                        err.note(trait_obj_msg);
-                    }
-                    return true;
+                } else {
+                    err.note(&format!(
+                        "if trait `{}` was object safe, you could return a trait object",
+                        trait_obj,
+                    ));
                 }
+                err.note(&format!(
+                    "if all the returned values were of the same type you could use \
+                     `impl {}` as the return type",
+                    trait_obj,
+                ));
+                err.note(impl_trait_msg);
+                err.note(trait_obj_msg);
+                err.note("you can create a new `enum` with a variant for each returned type");
             }
+            return true;
         }
         false
     }
@@ -708,9 +724,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        if let ObligationCauseCode::SizedReturnType = obligation.cause.code.peel_derives() {
-        } else {
-            return;
+        match obligation.cause.code.peel_derives() {
+            ObligationCauseCode::SizedReturnType => {}
+            _ => return,
         }
 
         let hir = self.tcx.hir();
@@ -726,10 +742,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
             for expr in &visitor.0 {
                 if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
-                    err.span_label(
-                        expr.span,
-                        &format!("this returned value is of type `{}`", returned_ty),
-                    );
+                    let ty = self.resolve_vars_if_possible(&returned_ty);
+                    err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
                 }
             }
         }
@@ -1685,9 +1699,8 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        match ex.kind {
-            hir::ExprKind::Ret(Some(ex)) => self.0.push(ex),
-            _ => {}
+        if let hir::ExprKind::Ret(Some(ex)) = ex.kind {
+            self.0.push(ex);
         }
         hir::intravisit::walk_expr(self, ex);
     }

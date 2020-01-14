@@ -4964,18 +4964,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_unsized_return(&self, blk_id: hir::HirId) -> bool {
-        if let Some((fn_decl, _)) = self.get_fn_decl(blk_id) {
-            if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
-                let ty = AstConv::ast_ty_to_ty(self, ty);
-                if let ty::Dynamic(..) = ty.kind {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     /// A possible error is to forget to add a return type that is needed:
     ///
     /// ```

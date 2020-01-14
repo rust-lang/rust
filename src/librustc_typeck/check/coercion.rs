@@ -50,6 +50,7 @@
 //! sort of a minor point so I've opted to leave it for later -- after all,
 //! we may want to adjust precisely when coercions occur.
 
+use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
@@ -1245,7 +1246,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             expression.map(|expr| (expr, blk_id)),
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            unsized_return = fcx.is_unsized_return(blk_id);
+                            unsized_return = self.is_return_ty_unsized(fcx, blk_id);
                         }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
@@ -1260,7 +1261,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         if !fcx.tcx.features().unsized_locals {
                             let id = fcx.tcx.hir().get_parent_node(id);
-                            unsized_return = fcx.is_unsized_return(id);
+                            unsized_return = self.is_return_ty_unsized(fcx, id);
                         }
                     }
                     _ => {
@@ -1290,15 +1291,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     .filter(|e| fcx.is_assign_to_bool(e, self.expected_ty()))
                     .is_some();
 
-                if unsized_return {
-                    fcx.tcx.sess.delay_span_bug(
-                        cause.span,
-                        &format!(
-                            "elided E0308 in favor of more detailed E0277 or E0746: {:?}",
-                            cause.code
-                        ),
-                    );
-                }
                 err.emit_unless(assign_to_bool || unsized_return);
 
                 self.final_ty = Some(fcx.tcx.types.err);
@@ -1365,10 +1357,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 "...is found to be `{}` here",
                 fcx.resolve_vars_with_obligations(expected),
             ));
-            err.note(
-                "`impl Trait` as a return type requires that all the returned values must have \
-                 the same type",
-            );
+            err.note("to return `impl Trait`, all returned values must be of the same type");
             let snippet = fcx
                 .tcx
                 .sess
@@ -1395,6 +1384,18 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
         err
+    }
+
+    fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
+        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
+            if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
+                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                if let ty::Dynamic(..) = ty.kind {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {

@@ -1,23 +1,23 @@
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/E0746.rs:8:13
    |
 LL | fn foo() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: you can use the `impl Trait` feature in the return type because all the return paths are of type `Struct`, which implements `dyn Trait`
+help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn foo() -> impl Trait { Struct }
    |             ^^^^^^^^^^
 
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/E0746.rs:11:13
    |
 LL | fn bar() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: you can use the `impl Trait` feature in the return type because all the return paths are of type `{integer}`, which implements `dyn Trait`
+help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bar() -> impl Trait {
    |             ^^^^^^^^^^

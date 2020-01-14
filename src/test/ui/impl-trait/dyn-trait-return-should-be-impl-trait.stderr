@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:7:35
    |
 LL | fn fuz() -> (usize, Trait) { (42, Struct) }
-   |                                   ^^^^^^ expected trait `Trait`, found struct `Struct`
+   |                                   ^^^^^^ expected trait object `dyn Trait`, found struct `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
@@ -24,7 +24,7 @@ error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:10:39
    |
 LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
-   |                                       ^^^^^^ expected trait `Trait`, found struct `Struct`
+   |                                       ^^^^^^ expected trait object `dyn Trait`, found struct `Struct`
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
@@ -42,26 +42,26 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:13:13
    |
 LL | fn bap() -> Trait { Struct }
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: you can use the `impl Trait` feature in the return type because all the return paths are of type `Struct`, which implements `dyn Trait`
+help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn bap() -> impl Trait { Struct }
    |             ^^^^^^^^^^
 
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
    |
 LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: you can use the `impl Trait` feature in the return type because all the return paths are of type `Struct`, which implements `dyn Trait`
+help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn ban() -> impl Trait { Struct }
    |             ^^^^^^^^^^
@@ -76,40 +76,26 @@ LL | fn bak() -> dyn Trait { unimplemented!() }
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the return type of a function must have a statically known size
 
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
    |
 LL | fn bal() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: if all the returned values were of the same type you could use `impl Trait` as the return type
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:23:5
-   |
-LL |         return Struct;
-   |                ^^^^^^
-LL |     }
-LL |     42
-   |     ^^
-   = help: alternatively, you can always create a new `enum` with a variant for each returned type
+   = note: if trait `Trait` was object safe, you could return a trait object
+   = note: if all the returned values were of the same type you could use `impl Trait` as the return type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-help: if the performance implications are acceptable, you can return a trait object
-   |
-LL | fn bal() -> Box<dyn Trait> {
-LL |     if true {
-LL |         return Box::new(Struct);
-LL |     }
-LL |     Box::new(42)
-   |
+   = note: you can create a new `enum` with a variant for each returned type
 
-error[E0746]: return type cannot have a bare trait because it must be `Sized`
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:27:13
    |
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: you can use the `impl Trait` feature in the return type because all the return paths are of type `{integer}`, which implements `dyn Trait`
+help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bat() -> impl Trait {
    |             ^^^^^^^^^^

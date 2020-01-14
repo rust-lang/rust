@@ -5,7 +5,7 @@ LL | ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<u32>` is not implemented for `impl Trait<<u32 as std::ops::Add>::Output>`
 ...
 LL |     add_generic(value, 1u32)
-   |     ------------------------ this returned value is of type `Either<impl Trait<<_ as std::ops::Add<_>>::Output>, impl Trait<<_ as std::ops::Add<_>>::Output>>`
+   |     ------------------------ this returned value is of type `Either<impl Trait<<u32 as std::ops::Add>::Output>, impl Trait<<u32 as std::ops::Add>::Output>>`
    |
    = note: the return type of a function must have a statically known size
 
@@ -16,7 +16,7 @@ LL | ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<u32>` is not implemented for `impl Trait<<u32 as std::ops::Add>::Output>`
 ...
 LL |     add_generic(value, 1u32)
-   |     ------------------------ this returned value is of type `Either<impl Trait<<_ as std::ops::Add<_>>::Output>, impl Trait<<_ as std::ops::Add<_>>::Output>>`
+   |     ------------------------ this returned value is of type `Either<impl Trait<<u32 as std::ops::Add>::Output>, impl Trait<<u32 as std::ops::Add>::Output>>`
    |
    = note: the return type of a function must have a statically known size
 
