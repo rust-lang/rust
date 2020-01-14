@@ -263,7 +263,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::InlineAsmInner,
+    ::rustc_hir::LlvmInlineAsmInner,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
     ::rustc_hir::Unsafety,

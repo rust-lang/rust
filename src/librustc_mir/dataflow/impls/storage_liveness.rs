@@ -124,7 +124,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | StatementKind::SetDiscriminant { box place, .. } => {
                 trans.gen(place.local);
             }
-            StatementKind::InlineAsm(asm) => {
+            StatementKind::LlvmInlineAsm(asm) => {
                 for place in &*asm.outputs {
                     trans.gen(place.local);
                 }

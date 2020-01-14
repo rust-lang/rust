@@ -277,8 +277,8 @@ crate enum ExprKind<'tcx> {
         literal: &'tcx Const<'tcx>,
         def_id: DefId,
     },
-    InlineAsm {
-        asm: &'tcx hir::InlineAsmInner,
+    LlvmInlineAsm {
+        asm: &'tcx hir::LlvmInlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,
         inputs: Vec<ExprRef<'tcx>>,
     },

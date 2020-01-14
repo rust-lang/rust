@@ -550,7 +550,7 @@ impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt
             StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
                 self.mutate_place(location, (place, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::InlineAsm(ref asm) => {
+            StatementKind::LlvmInlineAsm(ref asm) => {
                 for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should

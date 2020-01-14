@@ -716,12 +716,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
+            ExprKind::LlvmInlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 struct_span_err!(
                     self.session,
                     expr.span,
                     E0472,
-                    "asm! is unsupported on this target"
+                    "llvm_asm! is unsupported on this target"
                 )
                 .emit();
             }

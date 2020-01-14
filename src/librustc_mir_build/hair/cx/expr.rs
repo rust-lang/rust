@@ -398,7 +398,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             convert_path_expr(cx, expr, res)
         }
 
-        hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+        hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {
             asm: &asm.inner,
             outputs: asm.outputs_exprs.to_ref(),
             inputs: asm.inputs_exprs.to_ref(),

@@ -267,7 +267,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 pub unsafe fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+        llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
         crate::intrinsics::unreachable();
     }
     crate::intrinsics::abort();

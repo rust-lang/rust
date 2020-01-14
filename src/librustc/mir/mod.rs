@@ -1584,7 +1584,7 @@ pub enum StatementKind<'tcx> {
 
     /// Executes a piece of inline Assembly. Stored in a Box to keep the size
     /// of `StatementKind` low.
-    InlineAsm(Box<InlineAsm<'tcx>>),
+    LlvmInlineAsm(Box<LlvmInlineAsm<'tcx>>),
 
     /// Retag references in the given place, ensuring they got fresh tags. This is
     /// part of the Stacked Borrows model. These statements are currently only interpreted
@@ -1668,8 +1668,8 @@ pub enum FakeReadCause {
 }
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct InlineAsm<'tcx> {
-    pub asm: hir::InlineAsmInner,
+pub struct LlvmInlineAsm<'tcx> {
+    pub asm: hir::LlvmInlineAsmInner,
     pub outputs: Box<[Place<'tcx>]>,
     pub inputs: Box<[(Span, Operand<'tcx>)]>,
 }
@@ -1696,8 +1696,8 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
-            InlineAsm(ref asm) => {
-                write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs)
+            LlvmInlineAsm(ref asm) => {
+                write!(fmt, "llvm_asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs)
             }
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)

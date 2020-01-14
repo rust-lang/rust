@@ -14,9 +14,9 @@ use libc::{c_char, c_uint};
 use log::debug;
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn codegen_inline_asm(
+    fn codegen_llvm_inline_asm(
         &mut self,
-        ia: &hir::InlineAsmInner,
+        ia: &hir::LlvmInlineAsmInner,
         outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
         mut inputs: Vec<&'ll Value>,
         span: Span,
@@ -138,7 +138,7 @@ fn inline_asm_call(
     output: &'ll llvm::Type,
     volatile: bool,
     alignstack: bool,
-    dia: ::rustc_ast::ast::AsmDialect,
+    dia: ::rustc_ast::ast::LlvmAsmDialect,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };

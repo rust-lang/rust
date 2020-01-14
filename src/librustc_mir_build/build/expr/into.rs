@@ -328,7 +328,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::AssignOp { .. }
             | ExprKind::Continue { .. }
             | ExprKind::Break { .. }
-            | ExprKind::InlineAsm { .. }
+            | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 this.cfg.push_assign_unit(block, source_info, destination);

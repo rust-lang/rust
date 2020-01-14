@@ -1,8 +1,8 @@
-// Inline assembly support.
+// Llvm-style inline assembly support.
 //
 use State::*;
 
-use rustc_ast::ast::{self, AsmDialect};
+use rustc_ast::ast::{self, LlvmAsmDialect};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{self, TokenStream};
@@ -36,7 +36,7 @@ impl State {
 
 const OPTIONS: &[Symbol] = &[sym::volatile, sym::alignstack, sym::intel];
 
-pub fn expand_asm<'cx>(
+pub fn expand_llvm_asm<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -58,7 +58,7 @@ pub fn expand_asm<'cx>(
 
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        kind: ast::ExprKind::InlineAsm(P(inline_asm)),
+        kind: ast::ExprKind::LlvmInlineAsm(P(inline_asm)),
         span: cx.with_def_site_ctxt(sp),
         attrs: ast::AttrVec::new(),
     }))
@@ -80,9 +80,9 @@ fn parse_inline_asm<'a>(
     cx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> Result<Option<ast::InlineAsm>, DiagnosticBuilder<'a>> {
-    // Split the tts before the first colon, to avoid `asm!("x": y)`  being
-    // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
+) -> Result<Option<ast::LlvmInlineAsm>, DiagnosticBuilder<'a>> {
+    // Split the tts before the first colon, to avoid `llvm_asm!("x": y)`  being
+    // parsed as `llvm_asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts
         .trees()
         .position(|tt| match tt {
@@ -99,7 +99,7 @@ fn parse_inline_asm<'a>(
     let mut clobs = Vec::new();
     let mut volatile = false;
     let mut alignstack = false;
-    let mut dialect = AsmDialect::Att;
+    let mut dialect = LlvmAsmDialect::Att;
 
     let mut state = Asm;
 
@@ -183,7 +183,7 @@ fn parse_inline_asm<'a>(
 
                     let is_rw = output.is_some();
                     let is_indirect = constraint_str.contains('*');
-                    outputs.push(ast::InlineAsmOutput {
+                    outputs.push(ast::LlvmInlineAsmOutput {
                         constraint: output.unwrap_or(constraint),
                         expr,
                         is_rw,
@@ -257,7 +257,7 @@ fn parse_inline_asm<'a>(
                 } else if option == sym::alignstack {
                     alignstack = true;
                 } else if option == sym::intel {
-                    dialect = AsmDialect::Intel;
+                    dialect = LlvmAsmDialect::Intel;
                 } else {
                     cx.span_warn(p.prev_token.span, "unrecognized option");
                 }
@@ -287,7 +287,7 @@ fn parse_inline_asm<'a>(
         }
     }
 
-    Ok(Some(ast::InlineAsm {
+    Ok(Some(ast::LlvmInlineAsm {
         asm,
         asm_str_style: asm_str_style.unwrap(),
         outputs,

@@ -488,7 +488,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::InlineAsm { .. }
+            | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}

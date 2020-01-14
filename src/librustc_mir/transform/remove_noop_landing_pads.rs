@@ -52,7 +52,7 @@ impl RemoveNoopLandingPads {
 
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
-                | StatementKind::InlineAsm { .. }
+                | StatementKind::LlvmInlineAsm { .. }
                 | StatementKind::Retag { .. } => {
                     return false;
                 }

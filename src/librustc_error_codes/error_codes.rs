@@ -541,7 +541,7 @@ E0751: include_str!("./error_codes/E0751.md"),
 //  E0467, removed
 //  E0470, removed
 //  E0471, // constant evaluation error (in pattern)
-    E0472, // asm! is unsupported on this target
+    E0472, // llvm_asm! is unsupported on this target
     E0473, // dereference of reference outside its lifetime
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
