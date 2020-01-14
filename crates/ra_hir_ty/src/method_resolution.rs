@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocContainerId,
-    AssocItemId, FunctionId, HasModule, ImplId, Lookup, TraitId,
+    lang_item::LangItemTarget, type_ref::Mutability, AssocContainerId, AssocItemId, FunctionId,
+    HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -144,14 +144,24 @@ impl Ty {
 pub(crate) fn lookup_method(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: &Name,
-    resolver: &Resolver,
 ) -> Option<(Ty, FunctionId)> {
-    iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| match f
-    {
-        AssocItemId::FunctionId(f) => Some((ty.clone(), f)),
-        _ => None,
-    })
+    iterate_method_candidates(
+        ty,
+        db,
+        env,
+        krate,
+        &traits_in_scope,
+        Some(name),
+        LookupMode::MethodCall,
+        |ty, f| match f {
+            AssocItemId::FunctionId(f) => Some((ty.clone(), f)),
+            _ => None,
+        },
+    )
 }
 
 /// Whether we're looking up a dotted method call (like `v.len()`) or a path
@@ -172,14 +182,13 @@ pub enum LookupMode {
 pub fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    let traits_in_scope = resolver.traits_in_scope(db);
-    let krate = resolver.krate()?;
-    let env = TraitEnvironment::lower(db, resolver);
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and then one
@@ -190,9 +199,7 @@ pub fn iterate_method_candidates<T>(
             // Also note that when we've got a receiver like &S, even if the method we
             // find in the end takes &self, we still do the autoderef step (just as
             // rustc does an autoderef and then autoref again).
-            let environment = TraitEnvironment::lower(db, resolver);
-            let ty = InEnvironment { value: ty.clone(), environment };
-            let krate = resolver.krate()?;
+            let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
 
             // We have to be careful about the order we're looking at candidates
             // in here. Consider the case where we're resolving `x.clone()`
@@ -214,7 +221,7 @@ pub fn iterate_method_candidates<T>(
                     db,
                     env.clone(),
                     krate,
-                    &traits_in_scope,
+                    traits_in_scope,
                     name,
                     &mut callback,
                 ) {
@@ -230,7 +237,7 @@ pub fn iterate_method_candidates<T>(
                 db,
                 env,
                 krate,
-                &traits_in_scope,
+                traits_in_scope,
                 name,
                 &mut callback,
             )

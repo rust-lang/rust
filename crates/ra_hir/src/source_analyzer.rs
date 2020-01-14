@@ -358,10 +358,17 @@ impl SourceAnalyzer {
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
         let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
+
+        let env = TraitEnvironment::lower(db, &self.resolver);
+        let krate = self.resolver.krate()?;
+        let traits_in_scope = self.resolver.traits_in_scope(db);
+
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
-            &self.resolver,
+            env,
+            krate,
+            &traits_in_scope,
             name,
             method_resolution::LookupMode::MethodCall,
             |ty, it| match it {
@@ -382,10 +389,17 @@ impl SourceAnalyzer {
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
         let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
+
+        let env = TraitEnvironment::lower(db, &self.resolver);
+        let krate = self.resolver.krate()?;
+        let traits_in_scope = self.resolver.traits_in_scope(db);
+
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
-            &self.resolver,
+            env,
+            krate,
+            &traits_in_scope,
             name,
             method_resolution::LookupMode::Path,
             |ty, it| callback(ty, it.into()),
