@@ -27,7 +27,7 @@ macro_rules! impl_froms {
 }
 
 pub mod db;
-pub mod source_binder;
+pub mod source_analyzer;
 
 pub mod diagnostics;
 
@@ -46,7 +46,7 @@ pub use crate::{
     },
     from_source::FromSource,
     has_source::HasSource,
-    source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
+    source_analyzer::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
 };
 
 pub use hir_def::{
