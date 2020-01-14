@@ -729,12 +729,12 @@ fn main() {
                 label: "_",
             },
             InlayHint {
-                range: [322; 325),
+                range: [323; 326),
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: [349; 353),
+                range: [350; 354),
                 kind: ParameterHint,
                 label: "param",
             },
