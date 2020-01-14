@@ -169,22 +169,16 @@ use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
     marker::PhantomData,
-    mem::MaybeUninit,
-    ops::Deref,
+    mem::{self, MaybeUninit},
+    ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     thread::{self, Thread},
 };
 
-/// A thread-safe cell which can be written to only once.
+/// A synchronization primitive which can be written to only once.
 ///
-/// `OnceCell` provides `&` references to the contents without RAII guards.
-///
-/// Reading a non-`None` value out of `OnceCell` establishes a
-/// happens-before relationship with a corresponding write. For example, if
-/// thread A initializes the cell with `get_or_init(f)`, and thread B
-/// subsequently reads the result of this call, B also observes all the side
-/// effects of `f`.
+/// This type is a thread-safe `OnceCell`.
 ///
 /// # Examples
 ///
@@ -193,7 +187,7 @@ use crate::{
 ///
 /// use std::lazy::Once;
 ///
-/// static CELL: OnceCell<String> = OnceCell::new();
+/// static CELL: Once<String> = Once::new();
 /// assert!(CELL.get().is_none());
 ///
 /// std::thread::spawn(|| {
@@ -218,7 +212,7 @@ pub struct Once<T> {
 }
 
 // Why do we need `T: Send`?
-// Thread A creates a `OnceCell` and shares it with
+// Thread A creates a `Once` and shares it with
 // scoped thread B, which fills the cell, which is
 // then destroyed by A. That is, destructor observes
 // a sent value.
@@ -318,32 +312,6 @@ impl<T> Once<T> {
         } else {
             None
         }
-    }
-
-    /// Get the reference to the underlying value, without checking if the
-    /// cell is initialized.
-    ///
-    /// Safety:
-    ///
-    /// Caller must ensure that the cell is in initialized state, and that
-    /// the contents are acquired by (synchronized to) this thread.
-    #[unstable(feature = "once_cell", issue = "68198")]
-    pub unsafe fn get_unchecked(&self) -> &T {
-        debug_assert!(self.is_initialized());
-        (&*self.value.get()).get_ref()
-    }
-
-    /// Get the reference to the underlying value, without checking if the
-    /// cell is initialized.
-    ///
-    /// Safety:
-    ///
-    /// Caller must ensure that the cell is in initialized state, and that
-    /// the contents are acquired by (synchronized to) this thread.
-    #[unstable(feature = "once_cell", issue = "68198")]
-    pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
-        debug_assert!(self.is_initialized());
-        (&mut *self.value.get()).get_mut()
     }
 
     /// Sets the contents of this cell to `value`.
@@ -483,15 +451,32 @@ impl<T> Once<T> {
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
     #[unstable(feature = "once_cell", issue = "68198")]
-    pub fn into_inner(self) -> Option<T> {
-        // Because `into_inner` takes `self` by value, the compiler statically verifies
-        // that it is not currently borrowed. So it is safe to move out `Option<T>`.
-        if self.is_initialized() {
-            // Safe b/c called initialize
-            return Some(unsafe { self.value.into_inner().assume_init() });
-        }
+    pub fn into_inner(mut self) -> Option<T> {
+        // Safety: Safe because we immediately free `self` without dropping
+        let inner = unsafe { self.take_inner() };
 
-        None
+        // Don't drop this `Once`. We just moved out one of the fields, but didn't set
+        // the state to uninitialized.
+        mem::ManuallyDrop::new(self);
+        inner
+    }
+
+    /// Takes the wrapped value out of a `Once`.
+    /// Afterwards the cell is no longer initialized.
+    ///
+    /// Safety: The cell must now be free'd WITHOUT dropping. No other usages of the cell
+    /// are valid. Only used by `into_inner` and `drop`.
+    unsafe fn take_inner(&mut self) -> Option<T> {
+        // The mutable reference guarantees there are no other threads that can observe us
+        // taking out the wrapped value.
+        // Right after this function `self` is supposed to be freed, so it makes little sense
+        // to atomically set the state to uninitialized.
+        if self.is_initialized() {
+            let value = mem::replace(&mut self.value, UnsafeCell::new(MaybeUninit::uninit()));
+            Some(value.into_inner().assume_init())
+        } else {
+            None
+        }
     }
 
     /// Safety: synchronizes with store to value via Release/(Acquire|SeqCst).
@@ -529,6 +514,25 @@ impl<T> Once<T> {
             }
         });
         res
+    }
+
+    /// Safety: The value must be initialized
+    unsafe fn get_unchecked(&self) -> &T {
+        debug_assert!(self.is_initialized());
+        (&*self.value.get()).get_ref()
+    }
+
+    /// Safety: The value must be initialized
+    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+        debug_assert!(self.is_initialized());
+        (&mut *self.value.get()).get_mut()
+    }
+}
+
+impl<T> Drop for Once<T> {
+    fn drop(&mut self) {
+        // Safety: The cell is being dropped, so it can't be accessed again
+        unsafe { self.take_inner() };
     }
 }
 
@@ -636,7 +640,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 
 /// A value which is initialized on the first access.
 ///
-/// This type is thread-safe and can be used in statics:
+/// This type is a thread-safe `LazyCell`, and can be used in statics.
 ///
 /// # Examples
 ///
