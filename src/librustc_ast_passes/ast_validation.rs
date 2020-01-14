@@ -616,7 +616,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 unsafety,
                 polarity,
                 defaultness: _,
-                constness: _, // TODO
+                constness: _,
                 generics: _,
                 of_trait: Some(_),
                 ref self_ty,
@@ -650,7 +650,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 unsafety,
                 polarity,
                 defaultness,
-                constness: _, // TODO
+                constness,
                 generics: _,
                 of_trait: None,
                 self_ty: _,
@@ -676,6 +676,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler()
                         .struct_span_err(item.span, "inherent impls cannot be default")
                         .note("only trait implementations may be annotated with default")
+                        .emit();
+                }
+                if constness == Constness::Const {
+                    self.err_handler()
+                        .struct_span_err(item.span, "inherent impls cannot be `const`")
+                        .note("only trait implementations may be annotated with `const`")
                         .emit();
                 }
             }
