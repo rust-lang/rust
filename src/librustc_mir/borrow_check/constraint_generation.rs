@@ -97,7 +97,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
             ));
 
             // If there are borrows on this now dead local, we need to record them as `killed`.
-            if let StatementKind::StorageDead(ref local) = statement.kind {
+            if let StatementKind::StorageDead(local) = statement.kind {
                 record_killed_borrows_for_local(
                     all_facts,
                     self.borrow_set,
@@ -199,7 +199,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                         all_facts,
                         self.borrow_set,
                         self.location_table,
-                        local,
+                        *local,
                         location,
                     );
                 }
@@ -239,10 +239,10 @@ fn record_killed_borrows_for_local(
     all_facts: &mut AllFacts,
     borrow_set: &BorrowSet<'_>,
     location_table: &LocationTable,
-    local: &Local,
+    local: Local,
     location: Location,
 ) {
-    if let Some(borrow_indices) = borrow_set.local_map.get(local) {
+    if let Some(borrow_indices) = borrow_set.local_map.get(&local) {
         all_facts.killed.reserve(borrow_indices.len());
         for &borrow_index in borrow_indices {
             let location_index = location_table.mid_index(location);
