@@ -1,4 +1,36 @@
-//! A framework for expressing dataflow problems.
+//! A framework that can express both [gen-kill] and generic dataflow problems.
+//!
+//! There is another interface for dataflow in the compiler in `librustc_mir/dataflow/mod.rs`. The
+//! interface in this module will eventually [replace that one][design-meeting].
+//!
+//! To actually use this framework, you must implement either the `Analysis` or the
+//! `GenKillAnalysis` trait. If your transfer function can be expressed with only gen/kill
+//! operations, prefer `GenKillAnalysis` as it will perform better. Create an `Engine` using the
+//! appropriate constructor and call `iterate_to_fixpoint`. You can use a `ResultsCursor` to
+//! inspect the fixpoint solution to your dataflow problem.
+//!
+//! ```ignore(cross-crate-imports)
+//! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>, did: DefId) {
+//!     let analysis = MyAnalysis::new();
+//!
+//!     // If `MyAnalysis` implements `GenKillAnalysis`.
+//!     let results = Engine::new_gen_kill(tcx, body, did, analysis).iterate_to_fixpoint();
+//!
+//!     // If `MyAnalysis` implements `Analysis`.
+//!     // let results = Engine::new_generic(tcx, body, did, analysis).iterate_to_fixpoint();
+//!
+//!     let mut cursor = ResultsCursor::new(body, results);
+//!
+//!     for (_, statement_index) in body.block_data[START_BLOCK].statements.iter_enumerated() {
+//!         cursor.seek_after(Location { block: START_BLOCK, statement_index });
+//!         let state = cursor.get();
+//!         println!("{:?}", state);
+//!     }
+//! }
+//! ```
+//!
+//! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
+//! [design-meeting]https://github.com/rust-lang/compiler-team/issues/202
 
 use std::io;
 
@@ -68,7 +100,7 @@ pub trait AnalysisDomain<'tcx>: BottomValue {
     }
 }
 
-/// Define a dataflow problem with an arbitrarily complex transfer function.
+/// A dataflow problem with an arbitrarily complex transfer function.
 pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
@@ -134,7 +166,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     );
 }
 
-/// Define a gen/kill dataflow problem.
+/// A gen/kill dataflow problem.
 ///
 /// Each method in this trait has a corresponding one in `Analysis`. However, these methods only
 /// allow modification of the dataflow state via "gen" and "kill" operations. By defining transfer
