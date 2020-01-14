@@ -16,6 +16,7 @@ use rustc_lint::LintStore;
 use rustc_parse::new_parser_from_source_str;
 use rustc_span::edition;
 use rustc_span::source_map::{FileLoader, FileName, SourceMap};
+use std::mem;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -165,7 +166,7 @@ pub fn run_compiler_in_existing_thread_pool<R>(
         registry.clone(),
     );
 
-    let compiler = Compiler {
+    let mut compiler = Compiler {
         sess,
         codegen_backend,
         source_map,
@@ -179,11 +180,20 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     };
 
     let r = {
-        let _sess_abort_error = OnDrop(|| {
+        let sess_abort_error = OnDrop(|| {
             compiler.sess.diagnostic().print_error_count(registry);
         });
 
-        f(&compiler)
+        let r = f(&compiler);
+
+        mem::forget(sess_abort_error);
+
+        // Ensure there are no more references to Session so no more errors can be generated.
+        Lrc::get_mut(&mut compiler.sess).expect("no references to Session");
+
+        compiler.sess.diagnostic().print_error_count(registry);
+
+        r
     };
 
     let prof = compiler.sess.prof.clone();
