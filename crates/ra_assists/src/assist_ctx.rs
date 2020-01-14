@@ -85,8 +85,8 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
         assert_eq!(
-            label.label.chars().nth(0).and_then(|c| Some(c.is_uppercase())),
-            Some(true),
+            label.label.chars().nth(0).and_then(|c| Some(c.is_uppercase())).unwrap(),
+            true,
             "First character should be uppercase"
         );
 
