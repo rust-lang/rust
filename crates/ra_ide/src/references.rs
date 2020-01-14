@@ -196,7 +196,9 @@ fn process_definition(
 
     for (file_id, search_range) in scope {
         let text = db.file_text(file_id);
+
         let parse = Lazy::new(|| SourceFile::parse(&text));
+        let mut sb = Lazy::new(|| SourceBinder::new(db));
 
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
@@ -212,7 +214,7 @@ fn process_definition(
                 }
                 // FIXME: reuse sb
                 // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
-                let mut sb = SourceBinder::new(db);
+
                 if let Some(d) = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
                 {
                     if d == def {
