@@ -55,6 +55,15 @@ extern "C" {
     fn __rust_start_panic(payload: usize) -> u32;
 }
 
+/// This function is called by the panic runtime if FFI code catches a Rust
+/// panic but doesn't rethrow it. We don't support this case since it messes
+/// with our panic count.
+#[cfg(not(test))]
+#[rustc_std_internal_symbol]
+extern "C" fn __rust_drop_panic() -> ! {
+    rtabort!("Rust panics must be rethrown");
+}
+
 #[derive(Copy, Clone)]
 enum Hook {
     Default,

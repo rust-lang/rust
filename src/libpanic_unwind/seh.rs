@@ -77,8 +77,11 @@ use libc::{c_int, c_uint, c_void};
 //      #include <stdint.h>
 //
 //      struct rust_panic {
+//          rust_panic(const rust_panic&);
+//          ~rust_panic();
+//
 //          uint64_t x[2];
-//      }
+//      };
 //
 //      void foo() {
 //          rust_panic a = {0, 1};
@@ -128,7 +131,7 @@ mod imp {
 #[repr(C)]
 pub struct _ThrowInfo {
     pub attributes: c_uint,
-    pub pnfnUnwind: imp::ptr_t,
+    pub pmfnUnwind: imp::ptr_t,
     pub pForwardCompat: imp::ptr_t,
     pub pCatchableTypeArray: imp::ptr_t,
 }
@@ -145,7 +148,7 @@ pub struct _CatchableType {
     pub pType: imp::ptr_t,
     pub thisDisplacement: _PMD,
     pub sizeOrOffset: c_int,
-    pub copy_function: imp::ptr_t,
+    pub copyFunction: imp::ptr_t,
 }
 
 #[repr(C)]
@@ -168,7 +171,7 @@ const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
     attributes: 0,
-    pnfnUnwind: ptr!(0),
+    pmfnUnwind: ptr!(0),
     pForwardCompat: ptr!(0),
     pCatchableTypeArray: ptr!(0),
 };
@@ -181,7 +184,7 @@ static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     pType: ptr!(0),
     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
     sizeOrOffset: mem::size_of::<[u64; 2]>() as c_int,
-    copy_function: ptr!(0),
+    copyFunction: ptr!(0),
 };
 
 extern "C" {
@@ -208,6 +211,43 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     name: TYPE_NAME,
 };
 
+// Destructor used if the C++ code decides to capture the exception and drop it
+// without propagating it. The catch part of the try intrinsic will set the
+// first word of the exception object to 0 so that it is skipped by the
+// destructor.
+//
+// Note that x86 Windows uses the "thiscall" calling convention for C++ member
+// functions instead of the default "C" calling convention.
+//
+// The exception_copy function is a bit special here: it is invoked by the MSVC
+// runtime under a try/catch block and the panic that we generate here will be
+// used as the result of the exception copy. This is used by the C++ runtime to
+// support capturing exceptions with std::exception_ptr, which we can't support
+// because Box<dyn Any> isn't clonable.
+macro_rules! define_cleanup {
+    ($abi:tt) => {
+        unsafe extern $abi fn exception_cleanup(e: *mut [u64; 2]) {
+            if (*e)[0] != 0 {
+                cleanup(*e);
+                super::__rust_drop_panic();
+            }
+        }
+        #[unwind(allowed)]
+        unsafe extern $abi fn exception_copy(_dest: *mut [u64; 2],
+                                             _src: *mut [u64; 2])
+                                             -> *mut [u64; 2] {
+            panic!("Rust panics cannot be copied");
+        }
+    }
+}
+cfg_if::cfg_if! {
+   if #[cfg(target_arch = "x86")] {
+       define_cleanup!("thiscall");
+   } else {
+       define_cleanup!("C");
+   }
+}
+
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store;
 
@@ -220,8 +260,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // exception (constructed above).
     let ptrs = mem::transmute::<_, raw::TraitObject>(data);
     let mut ptrs = [ptrs.data as u64, ptrs.vtable as u64];
-    let ptrs_ptr = ptrs.as_mut_ptr();
-    let throw_ptr = ptrs_ptr as *mut _;
+    let throw_ptr = ptrs.as_mut_ptr() as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -243,6 +282,12 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
+    if !cfg!(bootstrap) {
+        atomic_store(
+            &mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32,
+            ptr!(exception_cleanup) as u32,
+        );
+    }
     atomic_store(
         &mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
         ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32,
@@ -255,6 +300,12 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         &mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
         ptr!(&TYPE_DESCRIPTOR as *const _) as u32,
     );
+    if !cfg!(bootstrap) {
+        atomic_store(
+            &mut CATCHABLE_TYPE.copyFunction as *mut _ as *mut u32,
+            ptr!(exception_copy) as u32,
+        );
+    }
 
     extern "system" {
         #[unwind(allowed)]

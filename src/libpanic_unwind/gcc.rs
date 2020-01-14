@@ -57,7 +57,7 @@ use unwind as uw;
 #[repr(C)]
 struct Exception {
     _uwe: uw::_Unwind_Exception,
-    cause: Option<Box<dyn Any + Send>>,
+    cause: Box<dyn Any + Send>,
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
@@ -67,7 +67,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
             exception_cleanup,
             private: [0; uw::unwinder_private_data_size],
         },
-        cause: Some(data),
+        cause: data,
     });
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
     return uw::_Unwind_RaiseException(exception_param) as u32;
@@ -78,6 +78,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     ) {
         unsafe {
             let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
+            super::__rust_drop_panic();
         }
     }
 }
@@ -87,10 +88,8 @@ pub fn payload() -> *mut u8 {
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
-    let my_ep = ptr as *mut Exception;
-    let cause = (*my_ep).cause.take();
-    uw::_Unwind_DeleteException(ptr as *mut _);
-    cause.unwrap()
+    let exception = Box::from_raw(ptr as *mut Exception);
+    exception.cause
 }
 
 // Rust's exception class identifier.  This is used by personality routines to
