@@ -25,7 +25,7 @@ default-features = false
 features = ["read", "std", "write"] # We don't need WASM support
 
 [dependencies.gimli]
-version = "0.19.0"
+version = "0.20.0"
 default-features = false
 features = ["write"] # We don't need read support
 
