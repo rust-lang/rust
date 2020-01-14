@@ -144,7 +144,8 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
-                let gen_sig = match ty.kind {
+                let gen_ty = tcx.body_tables(body_id).node_type(id);
+                let gen_sig = match gen_ty.kind {
                     ty::Generator(gen_def_id, gen_substs, ..) => {
                         gen_substs.as_generator().sig(gen_def_id, tcx)
                     }
