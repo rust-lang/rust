@@ -596,7 +596,7 @@ dependencies = [
  "log",
  "miow 0.3.3",
  "regex",
- "rustfix 0.4.6",
+ "rustfix 0.5.0",
  "serde",
  "serde_json",
  "walkdir",
