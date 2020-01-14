@@ -276,6 +276,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(log_syntax)]
+#![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
@@ -466,10 +467,7 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(
-    feature = "std_lazy",
-    issue = "99",
-)]
+#[unstable(feature = "once_cell", issue = "68198")]
 pub mod lazy;
 
 #[stable(feature = "futures_api", since = "1.36.0")]

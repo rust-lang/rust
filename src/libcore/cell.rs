@@ -18,15 +18,16 @@
 //! [`RwLock`](../../std/sync/struct.RwLock.html) or
 //! [`atomic`](../../core/sync/atomic/index.html) types.
 //!
-//! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
+//! Values of the cell types may be mutated through shared references (i.e.
 //! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
-//! references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
+//! references. We say that cells provide 'interior mutability', in contrast
 //! with typical Rust types that exhibit 'inherited mutability'.
 //!
-//! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` implements interior
+//! Cell types come in several flavors. `Cell<T>` implements interior
 //! mutability by moving values in and out of the `Cell<T>`. To use references instead of values,
-//! one must use the `RefCell<T>` type, acquiring a write lock before mutating. `Cell<T>` provides
-//! methods to retrieve and change the current interior value:
+//! one must use the `RefCell<T>` type, acquiring a write lock before mutating. For values that
+//! only need lazy initialization, one can use the `OnceCell<T>` or `LazyCell<T, F>` types. `Cell<T>`
+//! provides methods to retrieve and change the current interior value:
 //!
 //!  - For types that implement `Copy`, the `get` method retrieves the current interior value.
 //!  - For types that implement `Default`, the `take` method replaces the current interior value
@@ -42,6 +43,12 @@
 //! statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
 //! to borrow a value that is already mutably borrowed; when this happens it results in thread
 //! panic.
+//!
+//! `OnceCell<T>` allows one to access a value by also providing an initialization function for it.
+//! If the `OnceCell<T>` already contains an initialized value then it is returned, otherwise the
+//! initialization function is run and the result is stored in the cell.
+//! `LazyCell<T, F>` is similar to `OnceCell<T>`, but keeps its initialization function as part of
+//! the type, so it doesn't need to be provided whenever the cell is accessed.
 //!
 //! # When to choose interior mutability
 //!
@@ -1411,6 +1418,351 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
+    }
+}
+
+/// A cell which can be written to only once.
+///
+/// Unlike `RefCell`, a `OnceCell` only provides shared `&T` references to its value.
+/// Unlike `Cell`, a `OnceCell` doesn't require `T: Copy` to access its value.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(once_cell)]
+///
+/// use std::cell::OnceCell;
+///
+/// let cell = OnceCell::new();
+/// assert!(cell.get().is_none());
+///
+/// let value: &String = cell.get_or_init(|| {
+///     "Hello, World!".to_string()
+/// });
+/// assert_eq!(value, "Hello, World!");
+/// assert!(cell.get().is_some());
+/// ```
+#[unstable(feature = "once_cell", issue = "68198")]
+pub struct OnceCell<T> {
+    // Invariant: written to at most once.
+    inner: UnsafeCell<Option<T>>,
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T> Default for OnceCell<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.get() {
+            Some(v) => f.debug_tuple("OnceCell").field(v).finish(),
+            None => f.write_str("OnceCell(Uninit)"),
+        }
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: Clone> Clone for OnceCell<T> {
+    fn clone(&self) -> OnceCell<T> {
+        let res = OnceCell::new();
+        if let Some(value) = self.get() {
+            match res.set(value.clone()) {
+                Ok(()) => (),
+                Err(_) => unreachable!(),
+            }
+        }
+        res
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: PartialEq> PartialEq for OnceCell<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: Eq> Eq for OnceCell<T> {}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T> From<T> for OnceCell<T> {
+    fn from(value: T) -> Self {
+        OnceCell { inner: UnsafeCell::new(Some(value)) }
+    }
+}
+
+impl<T> OnceCell<T> {
+    /// Creates a new empty cell.
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub const fn new() -> OnceCell<T> {
+        OnceCell { inner: UnsafeCell::new(None) }
+    }
+
+    /// Gets the reference to the underlying value.
+    ///
+    /// Returns `None` if the cell is empty.
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn get(&self) -> Option<&T> {
+        // Safe due to `inner`'s invariant
+        unsafe { &*self.inner.get() }.as_ref()
+    }
+
+    /// Gets the mutable reference to the underlying value.
+    ///
+    /// Returns `None` if the cell is empty.
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn get_mut(&mut self) -> Option<&mut T> {
+        // Safe because we have unique access
+        unsafe { &mut *self.inner.get() }.as_mut()
+    }
+
+    /// Sets the contents of the cell to `value`.
+    ///
+    /// # Errors
+    ///
+    /// This method returns `Ok(())` if the cell was empty and `Err(value)` if
+    /// it was full.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let cell = OnceCell::new();
+    /// assert!(cell.get().is_none());
+    ///
+    /// assert_eq!(cell.set(92), Ok(()));
+    /// assert_eq!(cell.set(62), Err(62));
+    ///
+    /// assert!(cell.get().is_some());
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn set(&self, value: T) -> Result<(), T> {
+        let slot = unsafe { &*self.inner.get() };
+        if slot.is_some() {
+            return Err(value);
+        }
+        let slot = unsafe { &mut *self.inner.get() };
+        // This is the only place where we set the slot, no races
+        // due to reentrancy/concurrency are possible, and we've
+        // checked that slot is currently `None`, so this write
+        // maintains the `inner`'s invariant.
+        *slot = Some(value);
+        Ok(())
+    }
+
+    /// Gets the contents of the cell, initializing it with `f`
+    /// if the cell was empty.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and the cell
+    /// remains uninitialized.
+    ///
+    /// It is an error to reentrantly initialize the cell from `f`. Doing
+    /// so results in a panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let cell = OnceCell::new();
+    /// let value = cell.get_or_init(|| 92);
+    /// assert_eq!(value, &92);
+    /// let value = cell.get_or_init(|| unreachable!());
+    /// assert_eq!(value, &92);
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn get_or_init<F>(&self, f: F) -> &T
+    where
+        F: FnOnce() -> T,
+    {
+        match self.get_or_try_init(|| Ok::<T, !>(f())) {
+            Ok(val) => val,
+        }
+    }
+
+    /// Gets the contents of the cell, initializing it with `f` if
+    /// the cell was empty. If the cell was empty and `f` failed, an
+    /// error is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `f` panics, the panic is propagated to the caller, and the cell
+    /// remains uninitialized.
+    ///
+    /// It is an error to reentrantly initialize the cell from `f`. Doing
+    /// so results in a panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let cell = OnceCell::new();
+    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    /// assert!(cell.get().is_none());
+    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
+    ///     Ok(92)
+    /// });
+    /// assert_eq!(value, Ok(&92));
+    /// assert_eq!(cell.get(), Some(&92))
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        if let Some(val) = self.get() {
+            return Ok(val);
+        }
+        let val = f()?;
+        // Note that *some* forms of reentrant initialization might lead to
+        // UB (see `reentrant_init` test). I believe that just removing this
+        // `assert`, while keeping `set/get` would be sound, but it seems
+        // better to panic, rather than to silently use an old value.
+        assert!(self.set(val).is_ok(), "reentrant init");
+        Ok(self.get().unwrap())
+    }
+
+    /// Consumes the cell, returning the wrapped value.
+    ///
+    /// Returns `None` if the cell was empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::cell::OnceCell;
+    ///
+    /// let cell: OnceCell<String> = OnceCell::new();
+    /// assert_eq!(cell.into_inner(), None);
+    ///
+    /// let cell = OnceCell::new();
+    /// cell.set("hello".to_string()).unwrap();
+    /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn into_inner(self) -> Option<T> {
+        // Because `into_inner` takes `self` by value, the compiler statically verifies
+        // that it is not currently borrowed. So it is safe to move out `Option<T>`.
+        self.inner.into_inner()
+    }
+}
+
+/// A value which is initialized on the first access.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(once_cell)]
+///
+/// use std::cell::LazyCell;
+///
+/// let lazy: LazyCell<i32> = LazyCell::new(|| {
+///     println!("initializing");
+///     92
+/// });
+/// println!("ready");
+/// println!("{}", *lazy);
+/// println!("{}", *lazy);
+///
+/// // Prints:
+/// //   ready
+/// //   initializing
+/// //   92
+/// //   92
+/// ```
+#[unstable(feature = "once_cell", issue = "68198")]
+pub struct LazyCell<T, F = fn() -> T> {
+    cell: OnceCell<T>,
+    init: Cell<Option<F>>,
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: fmt::Debug, F: fmt::Debug> fmt::Debug for LazyCell<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LazyCell").field("cell", &self.cell).field("init", &"..").finish()
+    }
+}
+
+impl<T, F> LazyCell<T, F> {
+    /// Creates a new lazy value with the given initializing function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// # fn main() {
+    /// use std::cell::LazyCell;
+    ///
+    /// let hello = "Hello, World!".to_string();
+    ///
+    /// let lazy = LazyCell::new(|| hello.to_uppercase());
+    ///
+    /// assert_eq!(&*lazy, "HELLO, WORLD!");
+    /// # }
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub const fn new(init: F) -> LazyCell<T, F> {
+        LazyCell { cell: OnceCell::new(), init: Cell::new(Some(init)) }
+    }
+}
+
+impl<T, F: FnOnce() -> T> LazyCell<T, F> {
+    /// Forces the evaluation of this lazy value and returns a reference to
+    /// the result.
+    ///
+    /// This is equivalent to the `Deref` impl, but is explicit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::cell::LazyCell;
+    ///
+    /// let lazy = LazyCell::new(|| 92);
+    ///
+    /// assert_eq!(LazyCell::force(&lazy), &92);
+    /// assert_eq!(&*lazy, &92);
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn force(this: &LazyCell<T, F>) -> &T {
+        this.cell.get_or_init(|| match this.init.take() {
+            Some(f) => f(),
+            None => panic!("`LazyCell` instance has previously been poisoned"),
+        })
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        LazyCell::force(self)
+    }
+}
+
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: Default> Default for LazyCell<T> {
+    /// Creates a new lazy value using `Default` as the initializing function.
+    fn default() -> LazyCell<T> {
+        LazyCell::new(T::default)
     }
 }
 
