@@ -3038,9 +3038,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
                 if tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help(
-                        "add `#![feature(trivial_bounds)]` to the crate attributes to enable",
-                    );
+                    err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
                 }
             }
             ObligationCauseCode::AssocTypeBound(ref data) => {
