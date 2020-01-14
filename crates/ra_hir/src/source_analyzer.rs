@@ -15,17 +15,13 @@ use hir_def::{
     },
     expr::{ExprId, PatId},
     nameres::ModuleSource,
-    path::path,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     AssocItemId, DefWithBodyId,
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
 };
-use hir_ty::{
-    method_resolution::{self, implements_trait},
-    Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty,
-};
+use hir_ty::{method_resolution, Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -39,64 +35,6 @@ use crate::{
     ImplBlock, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
     TypeParam,
 };
-
-fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
-    match_ast! {
-        match (node.value) {
-            ast::Module(it) => {
-                let src = node.with_value(it);
-                Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
-            },
-             ast::SourceFile(it) => {
-                let src = node.with_value(ModuleSource::SourceFile(it));
-                Some(crate::Module::from_definition(db, src)?.id.resolver(db))
-            },
-            ast::StructDef(it) => {
-                let src = node.with_value(it);
-                Some(Struct::from_source(db, src)?.id.resolver(db))
-            },
-            ast::EnumDef(it) => {
-                let src = node.with_value(it);
-                Some(Enum::from_source(db, src)?.id.resolver(db))
-            },
-            ast::ImplBlock(it) => {
-                let src = node.with_value(it);
-                Some(ImplBlock::from_source(db, src)?.id.resolver(db))
-            },
-            ast::TraitDef(it) => {
-                let src = node.with_value(it);
-                Some(Trait::from_source(db, src)?.id.resolver(db))
-            },
-            _ => match node.value.kind() {
-                FN_DEF | CONST_DEF | STATIC_DEF => {
-                    let def = def_with_body_from_child_node(db, node)?;
-                    let def = DefWithBodyId::from(def);
-                    Some(def.resolver(db))
-                }
-                // FIXME add missing cases
-                _ => None
-            }
-        }
-    }
-}
-
-fn def_with_body_from_child_node(
-    db: &impl HirDatabase,
-    child: InFile<&SyntaxNode>,
-) -> Option<DefWithBody> {
-    let _p = profile("def_with_body_from_child_node");
-    child.cloned().ancestors_with_macros(db).find_map(|node| {
-        let n = &node.value;
-        match_ast! {
-            match n {
-                ast::FnDef(def)  => { return Function::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                ast::ConstDef(def) => { return Const::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                ast::StaticDef(def) => { return Static::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                _ => { None },
-            }
-        }
-    })
-}
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
 /// original source files. It should not be used inside the HIR itself.
@@ -454,25 +392,6 @@ impl SourceAnalyzer {
         )
     }
 
-    /// Checks that particular type `ty` implements `std::future::Future`.
-    /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &impl HirDatabase, ty: Type) -> bool {
-        let std_future_path = path![std::future::Future];
-
-        let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
-            Some(it) => it.into(),
-            _ => return false,
-        };
-
-        let krate = match self.resolver.krate() {
-            Some(krate) => krate,
-            _ => return false,
-        };
-
-        let canonical_ty = Canonical { value: ty.ty.value, num_vars: 0 };
-        implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
-    }
-
     pub fn expand(
         &self,
         db: &impl HirDatabase,
@@ -485,6 +404,64 @@ impl SourceAnalyzer {
         );
         Some(Expansion { macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)) })
     }
+}
+
+fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
+    match_ast! {
+        match (node.value) {
+            ast::Module(it) => {
+                let src = node.with_value(it);
+                Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
+            },
+             ast::SourceFile(it) => {
+                let src = node.with_value(ModuleSource::SourceFile(it));
+                Some(crate::Module::from_definition(db, src)?.id.resolver(db))
+            },
+            ast::StructDef(it) => {
+                let src = node.with_value(it);
+                Some(Struct::from_source(db, src)?.id.resolver(db))
+            },
+            ast::EnumDef(it) => {
+                let src = node.with_value(it);
+                Some(Enum::from_source(db, src)?.id.resolver(db))
+            },
+            ast::ImplBlock(it) => {
+                let src = node.with_value(it);
+                Some(ImplBlock::from_source(db, src)?.id.resolver(db))
+            },
+            ast::TraitDef(it) => {
+                let src = node.with_value(it);
+                Some(Trait::from_source(db, src)?.id.resolver(db))
+            },
+            _ => match node.value.kind() {
+                FN_DEF | CONST_DEF | STATIC_DEF => {
+                    let def = def_with_body_from_child_node(db, node)?;
+                    let def = DefWithBodyId::from(def);
+                    Some(def.resolver(db))
+                }
+                // FIXME add missing cases
+                _ => None
+            }
+        }
+    }
+}
+
+fn def_with_body_from_child_node(
+    db: &impl HirDatabase,
+    child: InFile<&SyntaxNode>,
+) -> Option<DefWithBody> {
+    let _p = profile("def_with_body_from_child_node");
+    child.cloned().ancestors_with_macros(db).find_map(|node| {
+        let n = &node.value;
+        match_ast! {
+            match n {
+                ast::FnDef(def)  => { return Function::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::ConstDef(def) => { return Const::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::StaticDef(def) => { return Static::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                _ => { None },
+            }
+        }
+    })
 }
 
 fn scope_for(

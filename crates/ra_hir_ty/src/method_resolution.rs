@@ -465,7 +465,7 @@ fn transform_receiver_ty(
 pub fn implements_trait(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
     krate: CrateId,
     trait_: TraitId,
 ) -> bool {
@@ -474,7 +474,6 @@ pub fn implements_trait(
         // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
         return true;
     }
-    let env = TraitEnvironment::lower(db, resolver);
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
     let solution = db.trait_solve(krate.into(), goal);
 
