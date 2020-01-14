@@ -710,6 +710,7 @@ pub fn handle_code_action(
             title: command.title.clone(),
             kind: match assist.id {
                 AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
+                AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
                 _ => None,
             },
             diagnostics: None,
