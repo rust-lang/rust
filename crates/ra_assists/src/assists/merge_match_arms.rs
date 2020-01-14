@@ -52,7 +52,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
 
     let cursor_to_end = current_arm.syntax().text_range().end() - ctx.frange.range.start();
 
-    ctx.add_assist(AssistId("merge_match_arms"), "Merge Match Arms", |edit| {
+    ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", |edit| {
         fn contains_placeholder(a: &MatchArm) -> bool {
             a.pats().any(|x| match x {
                 ra_syntax::ast::Pat::PlaceholderPat(..) => true,

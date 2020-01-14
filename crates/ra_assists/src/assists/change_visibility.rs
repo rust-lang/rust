@@ -57,7 +57,7 @@ fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         (vis_offset(field.syntax()), ident.text_range())
     };
 
-    ctx.add_assist(AssistId("change_visibility"), "Change Visibility to pub(crate)", |edit| {
+    ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub(crate)", |edit| {
         edit.target(target);
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
@@ -88,7 +88,7 @@ fn change_vis(ctx: AssistCtx<impl HirDatabase>, vis: ast::Visibility) -> Option<
         );
     }
     if vis.syntax().text() == "pub(crate)" {
-        return ctx.add_assist(AssistId("change_visibility"), "Change Visibility to pub", |edit| {
+        return ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub", |edit| {
             edit.target(vis.syntax().text_range());
             edit.replace(vis.syntax().text_range(), "pub");
             edit.set_cursor(vis.syntax().text_range().start());

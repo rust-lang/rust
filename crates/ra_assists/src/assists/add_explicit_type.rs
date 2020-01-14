@@ -49,7 +49,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
 
     ctx.add_assist(
         AssistId("add_explicit_type"),
-        format!("Insert Explicit Type '{}'", ty.display(db)),
+        format!("Insert explicit type '{}'", ty.display(db)),
         |edit| {
             edit.target(pat_range);
             edit.insert(name_range.end(), format!(": {}", ty.display(db)));

@@ -50,7 +50,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     let start_offset = annotated.syntax().parent()?.text_range().end();
 
     let label =
-        format!("Add Custom impl '{}' for '{}'", trait_token.text().as_str(), annotated_name);
+        format!("Add custom impl '{}' for '{}'", trait_token.text().as_str(), annotated_name);
 
     ctx.add_assist(AssistId("add_custom_impl"), label, |edit| {
         edit.target(attr.syntax().text_range());

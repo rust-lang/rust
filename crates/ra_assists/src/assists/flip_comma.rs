@@ -29,7 +29,7 @@ pub(crate) fn flip_comma(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_comma"), "Flip Comma", |edit| {
+    ctx.add_assist(AssistId("flip_comma"), "Flip comma", |edit| {
         edit.target(comma.text_range());
         edit.replace(prev.text_range(), next.to_string());
         edit.replace(next.text_range(), prev.to_string());

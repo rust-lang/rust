@@ -42,7 +42,7 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Opt
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with Match", |edit| {
+    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
         edit.target(if_expr.syntax().text_range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);

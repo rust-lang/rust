@@ -25,7 +25,7 @@ use crate::{Assist, AssistCtx, AssistId};
 pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as Raw String", |edit| {
+    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", |edit| {
         edit.target(token.syntax().text_range());
         let max_hash_streak = count_hashes(&value);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
@@ -54,7 +54,7 @@ pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as Regular String", |edit| {
+    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", |edit| {
         edit.target(token.syntax().text_range());
         // parse inside string to escape `"`
         let escaped = value.escape_default().to_string();
@@ -79,7 +79,7 @@ pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
 // ```
 pub(crate) fn add_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
-    ctx.add_assist(AssistId("add_hash"), "Add # to Raw String", |edit| {
+    ctx.add_assist(AssistId("add_hash"), "Add # to raw string", |edit| {
         edit.target(token.text_range());
         edit.insert(token.text_range().start() + TextUnit::of_char('r'), "#");
         edit.insert(token.text_range().end(), "#");
@@ -108,7 +108,7 @@ pub(crate) fn remove_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         // no hash to remove
         return None;
     }
-    ctx.add_assist(AssistId("remove_hash"), "remove hash from raw string", |edit| {
+    ctx.add_assist(AssistId("remove_hash"), "Remove hash from raw string", |edit| {
         edit.target(token.text_range());
         let result = &text[2..text.len() - 1];
         let result = if result.starts_with('\"') {
