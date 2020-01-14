@@ -186,7 +186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let ty =
-                Place::ty_from(used_place.local, used_place.projection, *self.body, self.infcx.tcx)
+                Place::ty_from(&used_place.local, used_place.projection, *self.body, self.infcx.tcx)
                     .ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
@@ -605,7 +605,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                     match elem {
                         ProjectionElem::Field(field, _) if union_ty(local, proj_base).is_some() => {
-                            return Some((PlaceRef { local, projection: proj_base }, field));
+                            return Some((PlaceRef { local: *local, projection: proj_base }, field));
                         }
                         _ => {}
                     }
@@ -624,12 +624,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if let ProjectionElem::Field(field, _) = elem {
                         if let Some(union_ty) = union_ty(local, proj_base) {
                             if field != target_field
-                                && local == target_base.local
+                                && *local == target_base.local
                                 && proj_base == target_base.projection
                             {
                                 // FIXME when we avoid clone reuse describe_place closure
                                 let describe_base_place = self
-                                    .describe_place(PlaceRef { local, projection: proj_base })
+                                    .describe_place(PlaceRef { local: *local, projection: proj_base })
                                     .unwrap_or_else(|| "_".to_owned());
 
                                 return Some((
@@ -686,7 +686,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let borrow_span = borrow_spans.var_or_use();
 
         assert!(root_place.projection.is_empty());
-        let proper_span = self.body.local_decls[*root_place.local].source_info.span;
+        let proper_span = self.body.local_decls[root_place.local].source_info.span;
 
         let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
 
@@ -1139,7 +1139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let root_place =
                 self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
             let local = root_place.local;
-            match self.body.local_kind(*local) {
+            match self.body.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Temp => {
                     ("temporary value".to_string(), "temporary value created here".to_string())
                 }

@@ -122,7 +122,7 @@ fn place_components_conflict<'tcx>(
     let borrow_local = borrow_place.local;
     let access_local = access_place.local;
 
-    match place_base_conflict(borrow_local, *access_local) {
+    match place_base_conflict(borrow_local, access_local) {
         Overlap::Arbitrary => {
             bug!("Two base can't return Arbitrary");
         }

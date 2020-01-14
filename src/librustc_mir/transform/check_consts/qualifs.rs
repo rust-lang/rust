@@ -46,7 +46,7 @@ pub trait Qualif {
             let qualif = base_qualif
                 && Self::in_any_value_of_ty(
                     cx,
-                    Place::ty_from(place.local, proj_base, *cx.body, cx.tcx)
+                    Place::ty_from(&place.local, proj_base, *cx.body, cx.tcx)
                         .projection_ty(cx.tcx, elem)
                         .ty,
                 );
@@ -78,7 +78,7 @@ pub trait Qualif {
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         match place {
-            PlaceRef { local, projection: [] } => per_local(*local),
+            PlaceRef { local, projection: [] } => per_local(local),
             PlaceRef { local: _, projection: [.., _] } => Self::in_projection(cx, per_local, place),
         }
     }
@@ -154,7 +154,7 @@ pub trait Qualif {
                         return Self::in_place(
                             cx,
                             per_local,
-                            PlaceRef { local: &place.local, projection: proj_base },
+                            PlaceRef { local: place.local, projection: proj_base },
                         );
                     }
                 }

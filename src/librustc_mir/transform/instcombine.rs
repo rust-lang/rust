@@ -95,7 +95,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
-                if Place::ty_from(local, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                if Place::ty_from(&local, proj_base, self.body, self.tcx).ty.is_region_ptr() {
                     self.optimizations.and_stars.insert(location);
                 }
             }

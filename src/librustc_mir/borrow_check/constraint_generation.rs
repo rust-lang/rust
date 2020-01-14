@@ -199,7 +199,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                         all_facts,
                         self.borrow_set,
                         self.location_table,
-                        *local,
+                        local,
                         location,
                     );
                 }
@@ -212,7 +212,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                         local, location
                     );
 
-                    if let Some(borrow_indices) = self.borrow_set.local_map.get(local) {
+                    if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
                         for &borrow_index in borrow_indices {
                             let places_conflict = places_conflict::places_conflict(
                                 self.infcx.tcx,
