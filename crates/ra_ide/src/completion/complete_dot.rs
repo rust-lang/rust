@@ -27,7 +27,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     complete_methods(acc, ctx, &receiver_ty);
 
     // Suggest .await syntax for types that implement Future trait
-    if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
+    if receiver_ty.impls_future(ctx.db) {
         CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
             .detail("expr.await")
             .insert_text("await")

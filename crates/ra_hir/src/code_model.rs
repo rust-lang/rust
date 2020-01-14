@@ -21,8 +21,8 @@ use hir_expand::{
     MacroDefId,
 };
 use hir_ty::{
-    autoderef, display::HirFormatter, expr::ExprValidator, ApplicationTy, Canonical, InEnvironment,
-    TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+    autoderef, display::HirFormatter, expr::ExprValidator, method_resolution::implements_trait,
+    ApplicationTy, Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -876,6 +876,22 @@ impl Type {
             Ty::Unknown => true,
             _ => false,
         }
+    }
+
+    /// Checks that particular type `ty` implements `std::future::Future`.
+    /// This function is used in `.await` syntax completion.
+    pub fn impls_future(&self, db: &impl HirDatabase) -> bool {
+        let krate = self.krate;
+
+        let std_future_trait =
+            db.lang_item(krate, "future_trait".into()).and_then(|it| it.as_trait());
+        let std_future_trait = match std_future_trait {
+            Some(it) => it,
+            None => return false,
+        };
+
+        let canonical_ty = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        implements_trait(&canonical_ty, db, self.ty.environment.clone(), krate, std_future_trait)
     }
 
     // FIXME: this method is broken, as it doesn't take closures into account.

@@ -21,10 +21,7 @@ use hir_def::{
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
 };
-use hir_ty::{
-    method_resolution::{self, implements_trait},
-    Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty,
-};
+use hir_ty::{method_resolution, Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -393,25 +390,6 @@ impl SourceAnalyzer {
             method_resolution::LookupMode::Path,
             |ty, it| callback(ty, it.into()),
         )
-    }
-
-    /// Checks that particular type `ty` implements `std::future::Future`.
-    /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &impl HirDatabase, ty: Type) -> bool {
-        let krate = match self.resolver.krate() {
-            Some(krate) => krate,
-            None => return false,
-        };
-
-        let std_future_trait =
-            db.lang_item(krate, "future_trait".into()).and_then(|it| it.as_trait());
-        let std_future_trait = match std_future_trait {
-            Some(it) => it,
-            None => return false,
-        };
-
-        let canonical_ty = Canonical { value: ty.ty.value, num_vars: 0 };
-        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
     pub fn expand(
