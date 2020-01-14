@@ -38,17 +38,6 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:13:21
-   |
-LL | fn bap() -> Trait { Struct }
-   |             -----   ^^^^^^ expected trait `Trait`, found struct `Struct`
-   |             |
-   |             expected `(dyn Trait + 'static)` because of return type
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                    found struct `Struct`
-
 error[E0746]: return type cannot have a bare trait because it must be `Sized`
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:13:13
    |
@@ -61,19 +50,8 @@ help: you can use the `impl Trait` feature in the return type because all the re
 LL | fn bap() -> impl Trait { Struct }
    |             ^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:16:25
-   |
-LL | fn ban() -> dyn Trait { Struct }
-   |             ---------   ^^^^^^ expected trait `Trait`, found struct `Struct`
-   |             |
-   |             expected `(dyn Trait + 'static)` because of return type
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                    found struct `Struct`
-
 error[E0746]: return type cannot have a bare trait because it must be `Sized`
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:16:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
    |
 LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
@@ -85,7 +63,7 @@ LL | fn ban() -> impl Trait { Struct }
    |             ^^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:17:13
    |
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
@@ -94,26 +72,14 @@ LL | fn bak() -> dyn Trait { unimplemented!() }
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the return type of a function must have a statically known size
 
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:23:16
-   |
-LL | fn bal() -> dyn Trait {
-   |             --------- expected `(dyn Trait + 'static)` because of return type
-LL |     if true {
-LL |         return Struct;
-   |                ^^^^^^ expected trait `Trait`, found struct `Struct`
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                    found struct `Struct`
-
 error[E0746]: return type cannot have a bare trait because it must be `Sized`
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:21:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
    |
 LL | fn bal() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
 help: if all the returned values were of the same type you could use `impl Trait` as the return type
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:5
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:23:5
    |
 LL |         return Struct;
    |                ^^^^^^
@@ -132,20 +98,8 @@ LL |     }
 LL |     Box::new(42)
    |
 
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:5
-   |
-LL | fn bal() -> dyn Trait {
-   |             --------- expected `(dyn Trait + 'static)` because of return type
-...
-LL |     42
-   |     ^^ expected trait `Trait`, found integer
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                      found type `{integer}`
-
 error[E0746]: return type cannot have a bare trait because it must be `Sized`
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:29:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:27:13
    |
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
@@ -156,31 +110,7 @@ help: you can use the `impl Trait` feature in the return type because all the re
 LL | fn bat() -> impl Trait {
    |             ^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:31:16
-   |
-LL | fn bat() -> dyn Trait {
-   |             --------- expected `(dyn Trait + 'static)` because of return type
-LL |     if true {
-LL |         return 0;
-   |                ^ expected trait `Trait`, found integer
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                      found type `{integer}`
-
-error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:33:5
-   |
-LL | fn bat() -> dyn Trait {
-   |             --------- expected `(dyn Trait + 'static)` because of return type
-...
-LL |     42
-   |     ^^ expected trait `Trait`, found integer
-   |
-   = note: expected trait object `(dyn Trait + 'static)`
-                      found type `{integer}`
-
-error: aborting due to 15 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

@@ -1222,6 +1222,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 };
 
                 let mut err;
+                let mut unsized_return = false;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
@@ -1243,6 +1244,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             parent_id,
                             expression.map(|expr| (expr, blk_id)),
                         );
+                        if !fcx.tcx.features().unsized_locals {
+                            unsized_return = fcx.is_unsized_return(blk_id);
+                        }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
                         err = self.report_return_mismatched_types(
@@ -1254,6 +1258,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             id,
                             None,
                         );
+                        if !fcx.tcx.features().unsized_locals {
+                            let id = fcx.tcx.hir().get_parent_node(id);
+                            unsized_return = fcx.is_unsized_return(id);
+                        }
                     }
                     _ => {
                         err = fcx.report_mismatched_types(cause, expected, found, coercion_error);
@@ -1282,7 +1290,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     .filter(|e| fcx.is_assign_to_bool(e, self.expected_ty()))
                     .is_some();
 
-                err.emit_unless(assign_to_bool);
+                if unsized_return {
+                    fcx.tcx.sess.delay_span_bug(
+                        cause.span,
+                        &format!(
+                            "elided E0308 in favor of more detailed E0277 or E0746: {:?}",
+                            cause.code
+                        ),
+                    );
+                }
+                err.emit_unless(assign_to_bool || unsized_return);
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
