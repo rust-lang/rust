@@ -2165,7 +2165,8 @@ impl IsAsync {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum Constness {
     Const,
     NotConst,

@@ -1490,7 +1490,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     trait_ref
                 );
                 match trait_ref {
-                    ty::Predicate::Trait(pred) => {
+                    ty::Predicate::Trait(pred, constness) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .filter(|item| item.kind == ty::AssocKind::Type)

@@ -62,7 +62,7 @@ pub fn predicate_obligations<'a, 'tcx>(
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
-        ty::Predicate::Trait(ref t) => {
+        ty::Predicate::Trait(ref t, _) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
         }
         ty::Predicate::RegionOutlives(..) => {}
@@ -245,7 +245,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             }
                         }
                     }
-                    ty::Predicate::Trait(proj) => {
+                    ty::Predicate::Trait(proj, _) => {
                         // An associated item obligation born out of the `trait` failed to be met.
                         // Point at the `impl` that failed the obligation, the associated item that
                         // needed to meet the obligation, and the definition of that associated item,

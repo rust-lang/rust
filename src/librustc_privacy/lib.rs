@@ -93,7 +93,7 @@ where
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
-                ty::Predicate::Trait(poly_predicate) => {
+                ty::Predicate::Trait(poly_predicate, _) => {
                     let ty::TraitPredicate { trait_ref } = *poly_predicate.skip_binder();
                     if self.visit_trait(trait_ref) {
                         return true;

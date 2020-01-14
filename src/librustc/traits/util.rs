@@ -13,8 +13,8 @@ use super::{Normalized, Obligation, ObligationCause, PredicateObligation, Select
 
 fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
     match *pred {
-        ty::Predicate::Trait(ref data) => {
-            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data))
+        ty::Predicate::Trait(ref data, constness) => {
+            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data), constness)
         }
 
         ty::Predicate::RegionOutlives(ref data) => {
@@ -127,7 +127,7 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
         let tcx = self.visited.tcx;
         match *predicate {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -471,7 +471,7 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(pred) = self.base_iterator.next() {
-            if let ty::Predicate::Trait(data) = pred {
+            if let ty::Predicate::Trait(data, _) = pred {
                 return Some(data.to_poly_trait_ref());
             }
         }

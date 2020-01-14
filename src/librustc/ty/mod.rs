@@ -1068,7 +1068,11 @@ pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
-    Trait(PolyTraitPredicate<'tcx>),
+    ///
+    /// A trait predicate will have `Constness::Const` if it originates
+    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
+    /// `const fn foobar<Foo: Bar>() {}`).
+    Trait(PolyTraitPredicate<'tcx>, ast::Constness),
 
     /// `where 'a: 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
@@ -1191,8 +1195,8 @@ impl<'tcx> Predicate<'tcx> {
 
         let substs = &trait_ref.skip_binder().substs;
         match *self {
-            Predicate::Trait(ref binder) => {
-                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)))
+            Predicate::Trait(ref binder, constness) => {
+                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
             }
             Predicate::Subtype(ref binder) => {
                 Predicate::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
@@ -1338,13 +1342,16 @@ pub trait ToPredicate<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.clone() }))
+        ty::Predicate::Trait(
+            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.clone() }),
+            ast::Constness::NotConst,
+        )
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTraitRef<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.to_poly_trait_predicate())
+        ty::Predicate::Trait(self.to_poly_trait_predicate(), ast::Constness::NotConst)
     }
 }
 
@@ -1413,7 +1420,7 @@ impl<'tcx> Predicate<'tcx> {
     /// with depth 0 are bound by the predicate.
     pub fn walk_tys(&'a self) -> impl Iterator<Item = Ty<'tcx>> + 'a {
         match *self {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 WalkTysIter::InputTypes(data.skip_binder().input_types())
             }
             ty::Predicate::Subtype(binder) => {
@@ -1439,7 +1446,7 @@ impl<'tcx> Predicate<'tcx> {
 
     pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
         match *self {
-            Predicate::Trait(ref t) => Some(t.to_poly_trait_ref()),
+            Predicate::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
             Predicate::Projection(..)
             | Predicate::Subtype(..)
             | Predicate::RegionOutlives(..)

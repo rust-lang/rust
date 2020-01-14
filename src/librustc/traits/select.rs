@@ -51,7 +51,7 @@ use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
-use syntax::attr;
+use syntax::{ast, attr};
 
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
@@ -718,7 +718,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match obligation.predicate {
-            ty::Predicate::Trait(ref t) => {
+            ty::Predicate::Trait(ref t, _) => {
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t.clone());
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
@@ -945,7 +945,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // trait refs. This is important because it's only a cycle
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
-            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
+            let cycle = cycle.map(|stack| {
+                ty::Predicate::Trait(stack.obligation.predicate, ast::Constness::NotConst)
+            });
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack({:?}) --> recursive, coinductive", stack.fresh_trait_ref);
                 Some(EvaluatedToOk)
@@ -1060,7 +1062,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate {
-            ty::Predicate::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::Predicate::Trait(ref data, _) => self.tcx().trait_is_auto(data.def_id()),
             _ => false,
         };
         debug!("coinductive_predicate({:?}) = {:?}", predicate, result);

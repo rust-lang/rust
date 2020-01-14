@@ -234,7 +234,7 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
         .map(|(predicate, _)| predicate.subst_supertrait(tcx, &trait_ref))
         .any(|predicate| {
             match predicate {
-                ty::Predicate::Trait(ref data) => {
+                ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
                     data.skip_binder().input_types().skip(1).any(has_self_ty)
                 }
@@ -285,7 +285,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates).any(|predicate| match predicate {
-        ty::Predicate::Trait(ref trait_pred) => {
+        ty::Predicate::Trait(ref trait_pred, _) => {
             trait_pred.def_id() == sized_def_id && trait_pred.skip_binder().self_ty().is_param(0)
         }
         ty::Predicate::Projection(..)

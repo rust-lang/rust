@@ -2623,7 +2623,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(self.param_env.caller_bounds.iter().filter_map(
                 |&predicate| match predicate {
-                    ty::Predicate::Trait(ref data)
+                    ty::Predicate::Trait(ref data, _)
                         if data.skip_binder().self_ty().is_param(index) =>
                     {
                         // HACK(eddyb) should get the original `Span`.
@@ -3695,7 +3695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Predicate::Projection(ref data) => {
                     Some((data.to_poly_trait_ref(self.tcx), obligation))
                 }
-                ty::Predicate::Trait(ref data) => Some((data.to_poly_trait_ref(), obligation)),
+                ty::Predicate::Trait(ref data, _) => Some((data.to_poly_trait_ref(), obligation)),
                 ty::Predicate::Subtype(..) => None,
                 ty::Predicate::RegionOutlives(..) => None,
                 ty::Predicate::TypeOutlives(..) => None,
@@ -3998,7 +3998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+            if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
                 let mut referenced_in = final_arg_types
@@ -4042,7 +4042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                        if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
                             for arg in path
