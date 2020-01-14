@@ -624,12 +624,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             } else {
                 // We still want to verify whether all the return types conform to each other.
                 for expr in &visitor.0 {
-                    if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
-                        if let Some(ty) = last_ty {
-                            all_returns_have_same_type &= ty == returned_ty;
-                        }
-                        last_ty = Some(returned_ty);
-                    }
+                    let returned_ty = tables.node_type_opt(expr.hir_id);
+                    all_returns_have_same_type &= last_ty == returned_ty || last_ty.is_none();
+                    last_ty = returned_ty;
                 }
             }
 

@@ -1372,6 +1372,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     &snippet[5..]
                 ));
             }
+            err.help("alternatively, create a new `enum` with a variant for each returned type");
             let impl_trait_msg = "for information on `impl Trait`, see \
                 <https://doc.rust-lang.org/book/ch10-02-traits.html\
                 #returning-types-that-implement-traits>";

@@ -12,6 +12,7 @@ LL |     1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
@@ -29,6 +30,7 @@ LL |         return 1u32;
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
@@ -46,6 +48,7 @@ LL |         1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
@@ -75,6 +78,7 @@ LL |         _ => 1u32,
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
@@ -94,6 +98,7 @@ LL | |     }
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
@@ -111,6 +116,7 @@ LL |             1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: alternatively, create a new `enum` with a variant for each returned type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
 
