@@ -197,6 +197,7 @@ pub struct InlayHintsParams {
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum InlayKind {
     TypeHint,
+    ParameterHint,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

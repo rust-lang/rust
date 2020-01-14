@@ -34,6 +34,8 @@ pub struct FunctionSignature {
     pub generic_parameters: Vec<String>,
     /// Parameters of the function
     pub parameters: Vec<String>,
+    /// Parameter names of the function
+    pub parameter_names: Vec<String>,
     /// Optional return type
     pub ret_type: Option<String>,
     /// Where predicates
@@ -75,6 +77,7 @@ impl FunctionSignature {
                 name: node.name().map(|n| n.text().to_string()),
                 ret_type: node.name().map(|n| n.text().to_string()),
                 parameters: params,
+                parameter_names: vec![],
                 generic_parameters: generic_parameters(&node),
                 where_predicates: where_predicates(&node),
                 doc: None,
@@ -114,6 +117,7 @@ impl FunctionSignature {
                 name: Some(name),
                 ret_type: None,
                 parameters: params,
+                parameter_names: vec![],
                 generic_parameters: vec![],
                 where_predicates: vec![],
                 doc: None,
@@ -134,6 +138,7 @@ impl FunctionSignature {
                 name: node.name().map(|n| n.text().to_string()),
                 ret_type: None,
                 parameters: params,
+                parameter_names: vec![],
                 generic_parameters: vec![],
                 where_predicates: vec![],
                 doc: None,
@@ -157,6 +162,22 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
             res
         }
 
+        fn param_name_list(node: &ast::FnDef) -> Vec<String> {
+            let mut res = vec![];
+            if let Some(param_list) = node.param_list() {
+                if let Some(self_param) = param_list.self_param() {
+                    res.push(self_param.syntax().text().to_string())
+                }
+
+                res.extend(
+                    param_list
+                        .params()
+                        .map(|param| param.pat().unwrap().syntax().text().to_string()),
+                );
+            }
+            res
+        }
+
         FunctionSignature {
             kind: CallableKind::Function,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
@@ -166,6 +187,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                 .and_then(|r| r.type_ref())
                 .map(|n| n.syntax().text().to_string()),
             parameters: param_list(node),
+            parameter_names: param_name_list(node),
             generic_parameters: generic_parameters(node),
             where_predicates: where_predicates(node),
             // docs are processed separately

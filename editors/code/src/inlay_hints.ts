@@ -38,6 +38,12 @@ const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     },
 });
 
+const parameterHintDecorationType = vscode.window.createTextEditorDecorationType({
+    before: {
+        color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+    }
+})
+
 class HintsUpdater {
     private pending: Map<string, vscode.CancellationTokenSource> = new Map();
     private ctx: Ctx;
@@ -55,7 +61,10 @@ class HintsUpdater {
         if (this.enabled) {
             await this.refresh();
         } else {
-            this.allEditors.forEach(it => this.setDecorations(it, []));
+            this.allEditors.forEach(it => {
+                this.setTypeDecorations(it, []);
+                this.setParameterDecorations(it, []);
+            });
         }
     }
 
@@ -68,15 +77,27 @@ class HintsUpdater {
     private async refreshEditor(editor: vscode.TextEditor): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints == null) return;
-        const newDecorations = newHints.map(hint => ({
-            range: hint.range,
-            renderOptions: {
-                after: {
-                    contentText: `: ${hint.label}`,
+        const newTypeDecorations = newHints.filter(hint => hint.kind === 'TypeHint')
+            .map(hint => ({
+                range: hint.range,
+                renderOptions: {
+                    after: {
+                        contentText: `: ${hint.label}`,
+                    },
                 },
-            },
-        }));
-        this.setDecorations(editor, newDecorations);
+            }));
+        this.setTypeDecorations(editor, newTypeDecorations);
+
+        const newParameterDecorations = newHints.filter(hint => hint.kind === 'ParameterHint')
+            .map(hint => ({
+                range: hint.range,
+                renderOptions: {
+                    before: {
+                        contentText: `${hint.label}: `,
+                    },
+                },
+            }));
+        this.setParameterDecorations(editor, newParameterDecorations);
     }
 
     private get allEditors(): vscode.TextEditor[] {
@@ -85,12 +106,22 @@ class HintsUpdater {
         );
     }
 
-    private setDecorations(
+    private setTypeDecorations(
         editor: vscode.TextEditor,
         decorations: vscode.DecorationOptions[],
     ) {
         editor.setDecorations(
             typeHintDecorationType,
+            this.enabled ? decorations : [],
+        );
+    }
+
+    private setParameterDecorations(
+        editor: vscode.TextEditor,
+        decorations: vscode.DecorationOptions[],
+    ) {
+        editor.setDecorations(
+            parameterHintDecorationType,
             this.enabled ? decorations : [],
         );
     }
