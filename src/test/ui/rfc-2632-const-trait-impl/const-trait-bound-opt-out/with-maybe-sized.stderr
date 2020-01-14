@@ -4,11 +4,5 @@ error: `?const` and `?` are mutually exclusive
 LL | struct S<T: ?const ?Sized>(std::marker::PhantomData<T>);
    |             ^^^^^^^^^^^^^
 
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/with-maybe-sized.rs:4:13
-   |
-LL | struct S<T: ?const ?Sized>(std::marker::PhantomData<T>);
-   |             ^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

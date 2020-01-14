@@ -1,10 +1,30 @@
-error: `const` cannot modify an inherent impl
-  --> $DIR/inherent-impl.rs:11:6
+error: inherent impls cannot be `const`
+  --> $DIR/inherent-impl.rs:9:1
+   |
+LL | impl const S {}
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: only trait implementations may be annotated with `const`
+
+error: inherent impls cannot be `const`
+  --> $DIR/inherent-impl.rs:13:1
    |
 LL | impl const T {}
-   |      ^^^^^
+   | ^^^^^^^^^^^^^^^
    |
-   = help: only a trait impl can be `const`
+   = note: only trait implementations may be annotated with `const`
 
-error: aborting due to previous error
+error: const trait impls are not yet implemented
+  --> $DIR/inherent-impl.rs:9:1
+   |
+LL | impl const S {}
+   | ^^^^^^^^^^^^^^^
+
+error: const trait impls are not yet implemented
+  --> $DIR/inherent-impl.rs:13:1
+   |
+LL | impl const T {}
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

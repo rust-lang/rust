@@ -5,34 +5,16 @@ LL | impl ?const T {}
    |      ^^^^^^^^
 
 error: `?const` is not permitted in trait objects
-  --> $DIR/in-trait-object.rs:14:35
+  --> $DIR/in-trait-object.rs:13:35
    |
 LL | fn trait_object() -> &'static dyn ?const T { &S }
    |                                   ^^^^^^^^
 
 error: `?const` is not permitted in trait objects
-  --> $DIR/in-trait-object.rs:18:61
+  --> $DIR/in-trait-object.rs:16:61
    |
 LL | fn trait_object_in_apit(_: impl IntoIterator<Item = Box<dyn ?const T>>) {}
    |                                                             ^^^^^^^^
 
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-trait-object.rs:10:6
-   |
-LL | impl ?const T {}
-   |      ^^^^^^^^
-
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-trait-object.rs:14:35
-   |
-LL | fn trait_object() -> &'static dyn ?const T { &S }
-   |                                   ^^^^^^^^
-
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-trait-object.rs:18:61
-   |
-LL | fn trait_object_in_apit(_: impl IntoIterator<Item = Box<dyn ?const T>>) {}
-   |                                                             ^^^^^^^^
-
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 

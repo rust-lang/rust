@@ -1,8 +1,8 @@
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/feature-gate.rs:11:29
+error: fatal error triggered by #[rustc_error]
+  --> $DIR/feature-gate.rs:16:1
    |
-LL | const fn get_assoc_const<S: ?const T>() -> i32 { <S as T>::CONST }
-   |                             ^^^^^^^^
+LL | fn main() {}
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

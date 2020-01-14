@@ -5,46 +5,22 @@ LL | fn rpit() -> impl ?const T { S }
    |                   ^^^^^^^^
 
 error: `?const` is not permitted in `impl Trait`
-  --> $DIR/in-impl-trait.rs:13:17
+  --> $DIR/in-impl-trait.rs:12:17
    |
 LL | fn apit(_: impl ?const T) {}
    |                 ^^^^^^^^
 
 error: `?const` is not permitted in `impl Trait`
-  --> $DIR/in-impl-trait.rs:17:50
+  --> $DIR/in-impl-trait.rs:15:50
    |
 LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ?const T> { Some(S) }
    |                                                  ^^^^^^^^
 
 error: `?const` is not permitted in `impl Trait`
-  --> $DIR/in-impl-trait.rs:21:48
+  --> $DIR/in-impl-trait.rs:18:48
    |
 LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ?const T>) {}
    |                                                ^^^^^^^^
 
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-impl-trait.rs:9:19
-   |
-LL | fn rpit() -> impl ?const T { S }
-   |                   ^^^^^^^^
-
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-impl-trait.rs:13:17
-   |
-LL | fn apit(_: impl ?const T) {}
-   |                 ^^^^^^^^
-
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-impl-trait.rs:17:50
-   |
-LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ?const T> { Some(S) }
-   |                                                  ^^^^^^^^
-
-error: `?const` on trait bounds is not yet implemented
-  --> $DIR/in-impl-trait.rs:21:48
-   |
-LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ?const T>) {}
-   |                                                ^^^^^^^^
-
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
