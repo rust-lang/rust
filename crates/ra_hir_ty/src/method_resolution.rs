@@ -12,7 +12,7 @@ use hir_def::{
 use hir_expand::name::Name;
 use ra_db::CrateId;
 use ra_prof::profile;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::Substs;
 use crate::{
@@ -177,6 +177,9 @@ pub fn iterate_method_candidates<T>(
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
+    let traits_in_scope = resolver.traits_in_scope(db);
+    let krate = resolver.krate()?;
+    let env = TraitEnvironment::lower(db, resolver);
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and then one
@@ -209,7 +212,9 @@ pub fn iterate_method_candidates<T>(
                 if let Some(result) = iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
                     db,
-                    resolver,
+                    env.clone(),
+                    krate,
+                    &traits_in_scope,
                     name,
                     &mut callback,
                 ) {
@@ -220,7 +225,15 @@ pub fn iterate_method_candidates<T>(
         }
         LookupMode::Path => {
             // No autoderef for path lookups
-            iterate_method_candidates_for_self_ty(&ty, db, resolver, name, &mut callback)
+            iterate_method_candidates_for_self_ty(
+                &ty,
+                db,
+                env,
+                krate,
+                &traits_in_scope,
+                name,
+                &mut callback,
+            )
         }
     }
 }
@@ -228,7 +241,9 @@ pub fn iterate_method_candidates<T>(
 fn iterate_method_candidates_with_autoref<T>(
     deref_chain: &[Canonical<Ty>],
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
@@ -236,7 +251,9 @@ fn iterate_method_candidates_with_autoref<T>(
         &deref_chain[0],
         &deref_chain[1..],
         db,
-        resolver,
+        env.clone(),
+        krate,
+        &traits_in_scope,
         name,
         &mut callback,
     ) {
@@ -250,7 +267,9 @@ fn iterate_method_candidates_with_autoref<T>(
         &refed,
         deref_chain,
         db,
-        resolver,
+        env.clone(),
+        krate,
+        &traits_in_scope,
         name,
         &mut callback,
     ) {
@@ -264,7 +283,9 @@ fn iterate_method_candidates_with_autoref<T>(
         &ref_muted,
         deref_chain,
         db,
-        resolver,
+        env.clone(),
+        krate,
+        &traits_in_scope,
         name,
         &mut callback,
     ) {
@@ -277,14 +298,15 @@ fn iterate_method_candidates_by_receiver<T>(
     receiver_ty: &Canonical<Ty>,
     rest_of_deref_chain: &[Canonical<Ty>],
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
-    let krate = resolver.krate()?;
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
         if let Some(result) =
             iterate_inherent_methods(self_ty, db, name, Some(receiver_ty), krate, &mut callback)
@@ -296,7 +318,9 @@ fn iterate_method_candidates_by_receiver<T>(
         if let Some(result) = iterate_trait_method_candidates(
             self_ty,
             db,
-            resolver,
+            env.clone(),
+            krate,
+            &traits_in_scope,
             name,
             Some(receiver_ty),
             &mut callback,
@@ -310,17 +334,25 @@ fn iterate_method_candidates_by_receiver<T>(
 fn iterate_method_candidates_for_self_ty<T>(
     self_ty: &Canonical<Ty>,
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    let krate = resolver.krate()?;
     if let Some(result) = iterate_inherent_methods(self_ty, db, name, None, krate, &mut callback) {
         return Some(result);
     }
-    if let Some(result) =
-        iterate_trait_method_candidates(self_ty, db, resolver, name, None, &mut callback)
-    {
+    if let Some(result) = iterate_trait_method_candidates(
+        self_ty,
+        db,
+        env,
+        krate,
+        traits_in_scope,
+        name,
+        None,
+        &mut callback,
+    ) {
         return Some(result);
     }
     None
@@ -329,14 +361,13 @@ fn iterate_method_candidates_for_self_ty<T>(
 fn iterate_trait_method_candidates<T>(
     self_ty: &Canonical<Ty>,
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    let krate = resolver.krate()?;
-    // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
-    let env = TraitEnvironment::lower(db, resolver);
     // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait = self_ty.value.inherent_trait().into_iter();
     // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
@@ -344,8 +375,7 @@ fn iterate_trait_method_candidates<T>(
         .trait_predicates_for_self_ty(&self_ty.value)
         .map(|tr| tr.trait_)
         .flat_map(|t| all_super_traits(db, t));
-    let traits =
-        inherent_trait.chain(traits_from_env).chain(resolver.traits_in_scope(db).into_iter());
+    let traits = inherent_trait.chain(traits_from_env).chain(traits_in_scope.iter().copied());
     'traits: for t in traits {
         let data = db.trait_data(t);
 
