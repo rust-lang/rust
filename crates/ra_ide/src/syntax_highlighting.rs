@@ -310,8 +310,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::single_file;
+    use std::fs;
+
     use test_utils::{assert_eq_text, project_dir, read_text};
+
+    use crate::mock_analysis::{single_file, MockAnalysis};
 
     #[test]
     fn te3st_highlighting() {
@@ -359,7 +362,7 @@ impl<X> E<X> {
         let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
         let expected_html = &read_text(&dst_file);
-        std::fs::write(dst_file, &actual_html).unwrap();
+        fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
     }
 
@@ -385,7 +388,21 @@ fn bar() {
         let dst_file = project_dir().join("crates/ra_ide/src/snapshots/rainbow_highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
-        std::fs::write(dst_file, &actual_html).unwrap();
+        fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
+    }
+
+    #[test]
+    fn accidentally_quadratic() {
+        let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
+        let src = fs::read_to_string(file).unwrap();
+
+        let mut mock = MockAnalysis::new();
+        let file_id = mock.add_file("/main.rs", &src);
+        let host = mock.analysis_host();
+
+        // let t = std::time::Instant::now();
+        let _ = host.analysis().highlight(file_id).unwrap();
+        // eprintln!("elapsed: {:?}", t.elapsed());
     }
 }
