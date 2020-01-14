@@ -211,6 +211,7 @@ fn process_definition(
                     }
                 }
                 // FIXME: reuse sb
+                // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
                 let mut sb = SourceBinder::new(db);
                 if let Some(d) = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
                 {
