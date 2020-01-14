@@ -24,7 +24,7 @@ being a `hair::ExprKind::Neg(hair::Expr)` it is a `hair::ExprKind::Neg(hir::Expr
 This shallowness enables the `HAIR` to represent all datatypes that [HIR] has, but
 without having to create an in-memory copy of the entire [HIR].
 [MIR] lowering will first convert the topmost expression from
-[HIR] to [HAIR] (in [rustc_mir::hair::cx::expr]) and then process
+[HIR] to [HAIR] (in [`rustc_mir_build::hair::cx::expr`]) and then process
 the [HAIR] expressions recursively.
 
 The lowering creates local variables for every argument as specified in the signature.
@@ -154,5 +154,5 @@ case of `enum`s.
 [HIR]: ../hir.html
 [HAIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/hair/index.html
 
-[rustc_mir::hair::cx::expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/cx/expr/index.html
+[`rustc_mir_build::hair::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/hair/cx/expr/index.html
 [`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/build/fn.mir_built.html
