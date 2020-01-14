@@ -1806,9 +1806,9 @@ dependencies = [
 
 [[package]]
 name = "libssh2-sys"
-version = "0.2.11"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "126a1f4078368b163bfdee65fbab072af08a1b374a5551b21e87ade27b1fbf9d"
+checksum = "36aa6e813339d3a063292b77091dfbbb6152ff9006a459895fa5bebed7d34f10"
 dependencies = [
  "cc",
  "libc",
