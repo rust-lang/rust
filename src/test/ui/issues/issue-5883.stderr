@@ -14,6 +14,9 @@ error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at
    |
 LL |     -> Struct {
    |        ^^^^^^ doesn't have a size known at compile-time
+LL |
+LL |     Struct { r: r }
+   |     --------------- this returned value is of type `Struct`
    |
    = help: within `Struct`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

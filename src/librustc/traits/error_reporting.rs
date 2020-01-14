@@ -1130,6 +1130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, obligation);
+        self.point_at_returns_when_relevant(&mut err, &obligation);
 
         err.emit();
     }
@@ -1737,35 +1738,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Recursively look for `TraitObject` types and if there's only one, use that span to
             // suggest `impl Trait`.
 
-            struct ReturnsVisitor<'v>(Vec<&'v hir::Expr<'v>>);
-
-            impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
-                type Map = rustc::hir::map::Map<'v>;
-
-                fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<'_, Self::Map> {
-                    hir::intravisit::NestedVisitorMap::None
-                }
-
-                fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                    match ex.kind {
-                        hir::ExprKind::Ret(Some(ex)) => self.0.push(ex),
-                        _ => {}
-                    }
-                    hir::intravisit::walk_expr(self, ex);
-                }
-
-                fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-                    if body.generator_kind().is_none() {
-                        if let hir::ExprKind::Block(block, None) = body.value.kind {
-                            if let Some(expr) = block.expr {
-                                self.0.push(expr);
-                            }
-                        }
-                    }
-                    hir::intravisit::walk_body(self, body);
-                }
-            }
-
             // Visit to make sure there's a single `return` type to suggest `impl Trait`,
             // otherwise suggest using `Box<dyn Trait>` or an enum.
             let mut visitor = ReturnsVisitor(vec![]);
@@ -1891,6 +1863,38 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
         false
+    }
+
+    fn point_at_returns_when_relevant(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let ObligationCauseCode::SizedReturnType = obligation.cause.code.peel_derives() {
+        } else {
+            return;
+        }
+
+        let hir = self.tcx.hir();
+        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let node = hir.find(parent_node);
+        if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) =
+            node
+        {
+            let body = hir.body(*body_id);
+            // Point at all the `return`s in the function as they have failed trait bounds.
+            let mut visitor = ReturnsVisitor(vec![]);
+            visitor.visit_body(&body);
+            let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
+            for expr in &visitor.0 {
+                if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
+                    err.span_label(
+                        expr.span,
+                        &format!("this returned value is of type `{}`", returned_ty),
+                    );
+                }
+            }
+        }
     }
 
     /// Given some node representing a fn-like thing in the HIR map,
@@ -2911,19 +2915,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::RepeatVec(suggest_const_in_array_repeat_expressions) => {
                 err.note(
-                    "the `Copy` trait is required because the \
-                          repeated element will be copied",
+                    "the `Copy` trait is required because the repeated element will be copied",
                 );
                 if suggest_const_in_array_repeat_expressions {
                     err.note(
                         "this array initializer can be evaluated at compile-time, for more \
-                              information, see issue \
-                              https://github.com/rust-lang/rust/issues/49147",
+                         information, see issue \
+                         https://github.com/rust-lang/rust/issues/49147",
                     );
                     if tcx.sess.opts.unstable_features.is_nightly_build() {
                         err.help(
                             "add `#![feature(const_in_array_repeat_expressions)]` to the \
-                                  crate attributes to enable",
+                             crate attributes to enable",
                         );
                     }
                 }
@@ -2941,16 +2944,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             ObligationCauseCode::SizedReturnType => {
-                err.note(
-                    "the return type of a function must have a \
-                          statically known size",
-                );
+                err.note("the return type of a function must have a statically known size");
             }
             ObligationCauseCode::SizedYieldType => {
-                err.note(
-                    "the yield type of a generator must have a \
-                          statically known size",
-                );
+                err.note("the yield type of a generator must have a statically known size");
             }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
@@ -2966,12 +2963,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if last {
                         err.note(
                             "the last field of a packed struct may only have a \
-                                      dynamically sized type if it does not need drop to be run",
+                             dynamically sized type if it does not need drop to be run",
                         );
                     } else {
                         err.note(
-                            "only the last field of a struct may have a dynamically \
-                                      sized type",
+                            "only the last field of a struct may have a dynamically sized type",
                         );
                     }
                 }
@@ -3025,13 +3021,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::CompareImplMethodObligation { .. } => {
                 err.note(&format!(
                     "the requirement `{}` appears on the impl method \
-                              but not on the corresponding trait method",
+                     but not on the corresponding trait method",
                     predicate
                 ));
             }
             ObligationCauseCode::CompareImplTypeObligation { .. } => {
                 err.note(&format!(
-                    "the requirement `{}` appears on the associated impl type\
+                    "the requirement `{}` appears on the associated impl type \
                      but not on the corresponding associated trait type",
                     predicate
                 ));
@@ -3043,8 +3039,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.help("see issue #48214");
                 if tcx.sess.opts.unstable_features.is_nightly_build() {
                     err.help(
-                        "add `#![feature(trivial_bounds)]` to the \
-                              crate attributes to enable",
+                        "add `#![feature(trivial_bounds)]` to the crate attributes to enable",
                     );
                 }
             }
@@ -3185,4 +3180,33 @@ pub fn suggest_constraining_type_param(
         return true;
     }
     false
+}
+
+struct ReturnsVisitor<'v>(Vec<&'v hir::Expr<'v>>);
+
+impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
+    type Map = rustc::hir::map::Map<'v>;
+
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<'_, Self::Map> {
+        hir::intravisit::NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        match ex.kind {
+            hir::ExprKind::Ret(Some(ex)) => self.0.push(ex),
+            _ => {}
+        }
+        hir::intravisit::walk_expr(self, ex);
+    }
+
+    fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+        if body.generator_kind().is_none() {
+            if let hir::ExprKind::Block(block, None) = body.value.kind {
+                if let Some(expr) = block.expr {
+                    self.0.push(expr);
+                }
+            }
+        }
+        hir::intravisit::walk_body(self, body);
+    }
 }

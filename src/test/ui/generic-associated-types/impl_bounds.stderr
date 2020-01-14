@@ -38,7 +38,7 @@ LL |     type C where Self: Copy = String;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
    = note: required because of the requirements on the impl of `std::marker::Copy` for `Fooy<T>`
-   = note: the requirement `Fooy<T>: std::marker::Copy` appears on the associated impl typebut not on the corresponding associated trait type
+   = note: the requirement `Fooy<T>: std::marker::Copy` appears on the associated impl type but not on the corresponding associated trait type
 
 error: aborting due to 3 previous errors
 
