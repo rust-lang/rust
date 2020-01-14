@@ -365,7 +365,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unsafety,
                 polarity,
                 defaultness,
-                constness: _, // TODO
+                constness,
                 generics: ref ast_generics,
                 of_trait: ref trait_ref,
                 self_ty: ref ty,
@@ -422,6 +422,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     unsafety,
                     polarity,
                     defaultness: self.lower_defaultness(defaultness, true /* [1] */),
+                    constness,
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
