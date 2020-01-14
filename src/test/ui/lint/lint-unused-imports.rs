@@ -13,11 +13,6 @@ use std::option::Option::{Some, None};
 //~^ ERROR unused imports: `None`, `Some`
 
 use test::A;       //~ ERROR unused import: `test::A`
-// Be sure that if we just bring some methods into scope that they're also
-// counted as being used.
-use test::B;
-// But only when actually used: do not get confused by the method with the same name.
-use test::B2; //~ ERROR unused import: `test::B2`
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
@@ -30,11 +25,6 @@ mod test2 {
 
 mod test {
     pub trait A { fn a(&self) {} }
-    pub trait B { fn b(&self) {} }
-    pub trait B2 { fn b(&self) {} }
-    pub struct C;
-    impl A for C {}
-    impl B for C {}
 }
 
 mod foo {
@@ -85,6 +75,5 @@ fn main() {
     let mut a = 3;
     let mut b = 4;
     swap(&mut a, &mut b);
-    test::C.b();
     let _a = foo();
 }

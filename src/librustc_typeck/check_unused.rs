@@ -10,6 +10,8 @@ use rustc_span::Span;
 use syntax::ast;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
+    let _timer = tcx.sess.timer("check_unused_imports");
+
     let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);

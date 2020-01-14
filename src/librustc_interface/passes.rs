@@ -871,6 +871,9 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                         tcx.ensure().check_mod_intrinsics(local_def_id);
                     });
                 });
+            },
+            {
+                typeck::check_crate_late(tcx);
             }
         );
     });
