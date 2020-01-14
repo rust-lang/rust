@@ -460,7 +460,7 @@ pub const ALL_LINTS: [Lint; 357] = [
         group: "pedantic",
         desc: "use items that import all variants of an enum",
         deprecation: None,
-        module: "enum_glob_use",
+        module: "wildcard_imports",
     },
     Lint {
         name: "enum_variant_names",

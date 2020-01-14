@@ -1,10 +1,31 @@
 use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{
+    def::{DefKind, Res},
+    Item, ItemKind, UseKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::BytePos;
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for `use Enum::*`.
+    ///
+    /// **Why is this bad?** It is usually better style to use the prefixed name of
+    /// an enumeration variant, rather than importing variants.
+    ///
+    /// **Known problems:** Old-style enumerations that prefix the variants are
+    /// still around.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// use std::cmp::Ordering::*;
+    /// ```
+    pub ENUM_GLOB_USE,
+    pedantic,
+    "use items that import all variants of an enum"
+}
 
 declare_clippy_lint! {
     /// **What it does:** Checks for wildcard imports `use _::*`.
@@ -45,7 +66,7 @@ declare_clippy_lint! {
     "lint `use _::*` statements"
 }
 
-declare_lint_pass!(WildcardImports => [WILDCARD_IMPORTS]);
+declare_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_, '_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
@@ -94,11 +115,17 @@ impl LateLintPass<'_, '_> for WildcardImports {
                     format!("{}::{}", import_source, imports_string)
                 };
 
+                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res {
+                    (ENUM_GLOB_USE, "usage of wildcard import for enum variants")
+                } else {
+                    (WILDCARD_IMPORTS, "usage of wildcard import")
+                };
+
                 span_lint_and_sugg(
                     cx,
-                    WILDCARD_IMPORTS,
+                    lint,
                     span,
-                    "usage of wildcard import",
+                    message,
                     "try",
                     sugg,
                     applicability,

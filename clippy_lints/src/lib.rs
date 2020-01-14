@@ -197,7 +197,6 @@ pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
 pub mod enum_clike;
-pub mod enum_glob_use;
 pub mod enum_variants;
 pub mod eq_op;
 pub mod erasing_op;
@@ -520,7 +519,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &empty_enum::EMPTY_ENUM,
         &entry::MAP_ENTRY,
         &enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
-        &enum_glob_use::ENUM_GLOB_USE,
         &enum_variants::ENUM_VARIANT_NAMES,
         &enum_variants::MODULE_INCEPTION,
         &enum_variants::MODULE_NAME_REPETITIONS,
@@ -814,6 +812,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &use_self::USE_SELF,
         &vec::USELESS_VEC,
         &wildcard_dependencies::WILDCARD_DEPENDENCIES,
+        &wildcard_imports::ENUM_GLOB_USE,
         &wildcard_imports::WILDCARD_IMPORTS,
         &write::PRINTLN_EMPTY_STRING,
         &write::PRINT_LITERAL,
@@ -837,7 +836,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
     store.register_late_pass(|| box eq_op::EqOp);
-    store.register_late_pass(|| box enum_glob_use::EnumGlobUse);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
     store.register_late_pass(|| box float_literal::FloatLiteral);
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
@@ -1064,7 +1062,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&doc::DOC_MARKDOWN),
         LintId::of(&doc::MISSING_ERRORS_DOC),
         LintId::of(&empty_enum::EMPTY_ENUM),
-        LintId::of(&enum_glob_use::ENUM_GLOB_USE),
         LintId::of(&enum_variants::MODULE_NAME_REPETITIONS),
         LintId::of(&enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
@@ -1108,6 +1105,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
         LintId::of(&unused_self::UNUSED_SELF),
+        LintId::of(&wildcard_imports::ENUM_GLOB_USE),
         LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
     ]);
 
