@@ -312,7 +312,7 @@ mod tests {
     use test_utils::{assert_eq_text, project_dir, read_text};
 
     #[test]
-    fn test_highlighting() {
+    fn te3st_highlighting() {
         let (analysis, file_id) = single_file(
             r#"
 #[derive(Clone, Debug)]

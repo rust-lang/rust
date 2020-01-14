@@ -332,7 +332,7 @@ pub enum VariantId {
     StructId(StructId),
     UnionId(UnionId),
 }
-impl_froms!(VariantId: EnumVariantId, StructId);
+impl_froms!(VariantId: EnumVariantId, StructId, UnionId);
 
 trait Intern {
     type ID;

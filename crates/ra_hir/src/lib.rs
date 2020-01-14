@@ -8,7 +8,7 @@
 #![recursion_limit = "512"]
 
 macro_rules! impl_froms {
-    ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
+    ($e:ident: $($v:ident $(($($sv:ident),*))?),*$(,)?) => {
         $(
             impl From<$v> for $e {
                 fn from(it: $v) -> $e {
@@ -28,6 +28,7 @@ macro_rules! impl_froms {
 
 pub mod db;
 pub mod source_analyzer;
+pub mod source_binder;
 
 pub mod diagnostics;
 
