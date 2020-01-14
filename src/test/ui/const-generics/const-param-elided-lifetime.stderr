@@ -1,0 +1,40 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:9:19
+   |
+LL | struct A<const N: &u8>;
+   |                   ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:13:15
+   |
+LL | impl<const N: &u8> A<N> {
+   |               ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:14:21
+   |
+LL |     fn foo<const M: &u8>(&self) {}
+   |                     ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:18:15
+   |
+LL | impl<const N: &u8> B for A<N> {}
+   |               ^ explicit lifetime name needed here
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-param-elided-lifetime.rs:21:17
+   |
+LL | fn bar<const N: &u8>() {}
+   |                 ^ explicit lifetime name needed here
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-param-elided-lifetime.rs:6:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 5 previous errors
+
