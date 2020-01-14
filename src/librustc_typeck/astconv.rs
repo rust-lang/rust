@@ -3,6 +3,8 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
+// ignore-tidy-filelength
+
 use crate::collect::PlaceholderHirTyCollector;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
