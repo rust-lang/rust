@@ -165,13 +165,13 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(windows, target_pointer_width = "64"))]
+        #[cfg(all(windows, target_arch = "x86_64"))]
         $(#[$($attr)*])*
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
 
-        #[cfg(all(windows, target_pointer_width = "64"))]
+        #[cfg(all(windows, target_arch = "x86_64"))]
         pub mod $name {
 
             intrinsics! {
@@ -184,7 +184,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(windows, target_pointer_width = "64")))]
+        #[cfg(not(all(windows, target_arch = "x86_64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
