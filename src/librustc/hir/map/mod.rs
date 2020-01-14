@@ -821,7 +821,7 @@ impl<'hir> Map<'hir> {
                     | ItemKind::Struct(..)
                     | ItemKind::Union(..)
                     | ItemKind::Trait(..)
-                    | ItemKind::Impl(..) => true,
+                    | ItemKind::Impl { .. } => true,
                     _ => false,
                 },
                 Node::ForeignItem(fi) => match fi.kind {

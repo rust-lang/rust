@@ -482,15 +482,15 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::Impl(
+            ast::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
                 ref generics,
-                ref opt_trait,
-                ref ty,
-                _,
-            ) => {
+                ref of_trait,
+                ref self_ty,
+                items: _,
+            } => {
                 let mut text = String::new();
                 if let ast::Defaultness::Default = defaultness {
                     text.push_str("default ");
@@ -505,7 +505,7 @@ impl Sig for ast::Item {
 
                 text.push(' ');
 
-                let trait_sig = if let Some(ref t) = *opt_trait {
+                let trait_sig = if let Some(ref t) = *of_trait {
                     if polarity == ast::ImplPolarity::Negative {
                         text.push('!');
                     }
@@ -517,7 +517,7 @@ impl Sig for ast::Item {
                     text_sig(String::new())
                 };
 
-                let ty_sig = ty.make(offset + text.len(), id, scx)?;
+                let ty_sig = self_ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty_sig.text);
 
                 text.push_str(" {}");

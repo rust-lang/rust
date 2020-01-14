@@ -305,8 +305,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {
-                if let ast::TyKind::Path(None, ref path) = typ.kind {
+            ast::ItemKind::Impl { ref of_trait, ref self_ty, ref items, .. } => {
+                if let ast::TyKind::Path(None, ref path) = self_ty.kind {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
                         return None;
@@ -317,14 +317,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let impl_id = self.next_impl_id();
                     let span = self.span_from_span(sub_span);
 
-                    let type_data = self.lookup_def_id(typ.id);
+                    let type_data = self.lookup_def_id(self_ty.id);
                     type_data.map(|type_data| {
                         Data::RelationData(
                             Relation {
                                 kind: RelationKind::Impl { id: impl_id },
                                 span: span.clone(),
                                 from: id_from_def_id(type_data),
-                                to: trait_ref
+                                to: of_trait
                                     .as_ref()
                                     .and_then(|t| self.lookup_def_id(t.ref_id))
                                     .map(id_from_def_id)
@@ -332,14 +332,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             },
                             Impl {
                                 id: impl_id,
-                                kind: match *trait_ref {
+                                kind: match *of_trait {
                                     Some(_) => ImplKind::Direct,
                                     None => ImplKind::Inherent,
                                 },
                                 span: span,
                                 value: String::new(),
                                 parent: None,
-                                children: impls
+                                children: items
                                     .iter()
                                     .map(|i| id_from_node_id(i.id, self))
                                     .collect(),

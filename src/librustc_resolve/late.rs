@@ -797,14 +797,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) => {
-                self.resolve_implementation(
-                    generics,
-                    opt_trait_ref,
-                    &self_type,
-                    item.id,
-                    impl_items,
-                )
+            ItemKind::Impl {
+                ref generics,
+                ref of_trait,
+                ref self_ty,
+                items: ref impl_items,
+                ..
+            } => {
+                self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
             }
 
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {

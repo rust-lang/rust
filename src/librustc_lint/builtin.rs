@@ -251,7 +251,7 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
-            ast::ItemKind::Impl(ast::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Impl { unsafety: ast::Unsafety::Unsafe, .. } => {
                 self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 

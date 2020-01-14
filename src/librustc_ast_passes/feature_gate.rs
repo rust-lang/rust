@@ -339,7 +339,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, ..) => {
+            ast::ItemKind::Impl { polarity, defaultness, .. } => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(
                         &self,

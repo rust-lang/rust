@@ -1300,8 +1300,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 self.process_struct(item, def, ty_params)
             }
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            Impl(.., ref ty_params, ref trait_ref, ref typ, ref impl_items) => {
-                self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
+            Impl { ref generics, ref of_trait, ref self_ty, ref items, .. } => {
+                self.process_impl(item, generics, of_trait, &self_ty, items)
             }
             Trait(_, _, ref generics, ref trait_refs, ref methods) => {
                 self.process_trait(item, generics, trait_refs, methods)

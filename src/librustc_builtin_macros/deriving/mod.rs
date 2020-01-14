@@ -156,15 +156,15 @@ fn inject_impl_of_structural_trait(
         span,
         ast::Ident::invalid(),
         attrs,
-        ItemKind::Impl(
-            ast::Unsafety::Normal,
-            ast::ImplPolarity::Positive,
-            ast::Defaultness::Final,
+        ItemKind::Impl {
+            unsafety: ast::Unsafety::Normal,
+            polarity: ast::ImplPolarity::Positive,
+            defaultness: ast::Defaultness::Final,
             generics,
-            Some(trait_ref),
-            self_type,
-            Vec::new(),
-        ),
+            of_trait: Some(trait_ref),
+            self_ty: self_type,
+            items: Vec::new(),
+        },
     );
 
     push(Annotatable::Item(newitem));

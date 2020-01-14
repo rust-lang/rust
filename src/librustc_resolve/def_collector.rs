@@ -104,7 +104,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
         let def_data = match &i.kind {
-            ItemKind::Impl(..) => DefPathData::Impl,
+            ItemKind::Impl { .. } => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
             }

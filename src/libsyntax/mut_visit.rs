@@ -918,10 +918,18 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_variant_data(variant_data);
             vis.visit_generics(generics);
         }
-        ItemKind::Impl(_unsafety, _polarity, _defaultness, generics, trait_ref, ty, items) => {
+        ItemKind::Impl {
+            unsafety: _,
+            polarity: _,
+            defaultness: _,
+            generics,
+            of_trait,
+            self_ty,
+            items,
+        } => {
             vis.visit_generics(generics);
-            visit_opt(trait_ref, |trait_ref| vis.visit_trait_ref(trait_ref));
-            vis.visit_ty(ty);
+            visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
+            vis.visit_ty(self_ty);
             items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
         }
         ItemKind::Trait(_is_auto, _unsafety, generics, bounds, items) => {
