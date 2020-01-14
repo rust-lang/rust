@@ -290,6 +290,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 }
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
+    let _timer = tcx.sess.prof.generic_activity("check_entry_fn");
     match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
@@ -361,10 +362,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         )
     });
 
-    check_unused::check_crate(tcx);
-    check_for_entry_fn(tcx);
-
     if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
+}
+
+pub fn check_crate_late(tcx: TyCtxt<'_>) {
+    join(|| check_unused::check_crate(tcx), || check_for_entry_fn(tcx));
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

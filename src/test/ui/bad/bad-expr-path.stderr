@@ -16,16 +16,6 @@ error[E0425]: cannot find value `arguments` in module `m1`
 LL |     log(debug, m1::arguments);
    |                    ^^^^^^^^^ not found in `m1`
 
-error[E0580]: `main` function has wrong type
-  --> $DIR/bad-expr-path.rs:3:1
-   |
-LL | fn main(arguments: Vec<String>) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
-   |
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn(std::vec::Vec<std::string::String>)`
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0425, E0580.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.

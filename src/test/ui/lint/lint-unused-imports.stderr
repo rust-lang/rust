@@ -23,19 +23,19 @@ LL | use test::A;
    |     ^^^^^^^
 
 error: unused import: `bar`
-  --> $DIR/lint-unused-imports.rs:24:18
+  --> $DIR/lint-unused-imports.rs:19:18
    |
 LL | use test2::{foo, bar};
    |                  ^^^
 
 error: unused import: `foo::Square`
-  --> $DIR/lint-unused-imports.rs:52:13
+  --> $DIR/lint-unused-imports.rs:42:13
    |
 LL |         use foo::Square;
    |             ^^^^^^^^^^^
 
 error: the item `g` is imported redundantly
-  --> $DIR/lint-unused-imports.rs:68:9
+  --> $DIR/lint-unused-imports.rs:58:9
    |
 LL | / fn g() {
 LL | |     use self::g;
@@ -48,13 +48,13 @@ LL | | }
    | |_- the item `g` is already defined here
 
 error: unused import: `self::g`
-  --> $DIR/lint-unused-imports.rs:68:9
+  --> $DIR/lint-unused-imports.rs:58:9
    |
 LL |     use self::g;
    |         ^^^^^^^
 
 error: the item `foo` is imported redundantly
-  --> $DIR/lint-unused-imports.rs:78:9
+  --> $DIR/lint-unused-imports.rs:68:9
    |
 LL | use test2::{foo, bar};
    |             --- the item `foo` is already imported here
@@ -63,16 +63,10 @@ LL |     use test2::foo;
    |         ^^^^^^^^^^
 
 error: unused import: `test2::foo`
-  --> $DIR/lint-unused-imports.rs:78:9
+  --> $DIR/lint-unused-imports.rs:68:9
    |
 LL |     use test2::foo;
    |         ^^^^^^^^^^
 
-error: unused import: `test::B2`
-  --> $DIR/lint-unused-imports.rs:20:5
-   |
-LL | use test::B2;
-   |     ^^^^^^^^
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
