@@ -273,21 +273,19 @@ where
 }
 
 /// The legal operations for a transfer function in a gen/kill problem.
-pub trait GenKill<T>: Sized {
-    /// Inserts `elem` into the `gen` set, removing it the `kill` set if present.
+pub trait GenKill<T> {
+    /// Inserts `elem` into the state vector.
     fn gen(&mut self, elem: T);
 
-    /// Inserts `elem` into the `kill` set, removing it the `gen` set if present.
+    /// Removes `elem` from the state vector.
     fn kill(&mut self, elem: T);
 
-    /// Inserts the given elements into the `gen` set, removing them from the `kill` set if present.
     fn gen_all(&mut self, elems: impl IntoIterator<Item = T>) {
         for elem in elems {
             self.gen(elem);
         }
     }
 
-    /// Inserts the given elements into the `kill` set, removing them from the `gen` set if present.
     fn kill_all(&mut self, elems: impl IntoIterator<Item = T>) {
         for elem in elems {
             self.kill(elem);
@@ -296,6 +294,10 @@ pub trait GenKill<T>: Sized {
 }
 
 /// Stores a transfer function for a gen/kill problem.
+///
+/// Calling `gen`/`kill` on a `GenKillSet` will "build up" a transfer function so that it can be
+/// applied to a state vector efficiently. When there are multiple calls to `gen` and/or `kill` for
+/// the same element, the most recent one takes precedence.
 #[derive(Clone)]
 pub struct GenKillSet<T: Idx> {
     gen: HybridBitSet<T>,
@@ -311,7 +313,7 @@ impl<T: Idx> GenKillSet<T> {
         }
     }
 
-    /// Applies this transfer function to the given bitset.
+    /// Applies this transfer function to the given state vector.
     pub fn apply(&self, state: &mut BitSet<T>) {
         state.union(&self.gen);
         state.subtract(&self.kill);
