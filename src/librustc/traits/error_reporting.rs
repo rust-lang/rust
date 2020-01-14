@@ -2578,7 +2578,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             span.push_span_label(original_span, message);
-            err.set_span(span);
+            err.set_span(span.clone());
 
             format!("is not {}", trait_name)
         } else {
