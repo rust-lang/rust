@@ -2663,8 +2663,8 @@ function getSearchElement() {
             "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
-            "Search functions by type signature (e.g., <code>vec -> usize</code> or \
-             <code>* -> vec</code>)",
+            "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
+             <code>* -&gt; vec</code>)",
             "Search multiple things at once by splitting your query with comma (e.g., \
              <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
             "You can look for items with an exact name by putting double quotes around \

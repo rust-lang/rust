@@ -181,21 +181,23 @@
 # Indicate whether the vendored sources are used for Rust dependencies or not
 #vendor = false
 
-# Typically the build system will build the rust compiler twice. The second
+# Typically the build system will build the Rust compiler twice. The second
 # compiler, however, will simply use its own libraries to link against. If you
 # would rather to perform a full bootstrap, compiling the compiler three times,
 # then you can set this option to true. You shouldn't ever need to set this
 # option to true.
 #full-bootstrap = false
 
-# Enable a build of the extended rust tool set which is not only the compiler
+# Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
 # which are used to install Rust and Cargo together. This is disabled by
-# default.
+# default. The `tools` option (immediately below) specifies which tools should
+# be built if `extended = true`.
 #extended = false
 
-# Installs chosen set of extended tools if enabled. By default builds all.
-# If chosen tool failed to build the installation fails.
+# Installs chosen set of extended tools if `extended = true`. By default builds all.
+# If chosen tool failed to build the installation fails. If `extended = false`, this
+# option is ignored.
 #tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
