@@ -41,7 +41,7 @@ pub(crate) fn invert_if(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         let else_node = else_block.syntax();
         let else_range = else_node.text_range();
         let then_range = then_node.text_range();
-        return ctx.add_assist(AssistId("invert_if"), "invert if branches", |edit| {
+        return ctx.add_assist(AssistId("invert_if"), "Invert If", |edit| {
             edit.target(if_range);
             edit.replace(cond_range, flip_cond.syntax().text());
             edit.replace(else_range, then_node.text());

@@ -33,7 +33,7 @@ pub(crate) fn flip_trait_bound(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         non_trivia_sibling(plus.clone().into(), Direction::Next)?,
     );
 
-    ctx.add_assist(AssistId("flip_trait_bound"), "flip trait bound", |edit| {
+    ctx.add_assist(AssistId("flip_trait_bound"), "Flip Trait Bounds", |edit| {
         edit.target(plus.text_range());
         edit.replace(before.text_range(), after.to_string());
         edit.replace(after.text_range(), before.to_string());

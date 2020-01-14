@@ -72,7 +72,7 @@ pub(crate) fn add_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("add_import"), format!("import {}", fmt_segments(&segments)), |edit| {
+    ctx.add_assist(AssistId("add_import"), format!("Import {}", fmt_segments(&segments)), |edit| {
         apply_auto_import(&position, &path, &segments, edit.text_edit_builder());
     })
 }

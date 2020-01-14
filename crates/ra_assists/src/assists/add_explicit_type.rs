@@ -47,10 +47,14 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
         return None;
     }
 
-    ctx.add_assist(AssistId("add_explicit_type"), "add explicit type", |edit| {
-        edit.target(pat_range);
-        edit.insert(name_range.end(), format!(": {}", ty.display(db)));
-    })
+    ctx.add_assist(
+        AssistId("add_explicit_type"),
+        format!("Insert Explicit Type '{}'", ty.display(db)),
+        |edit| {
+            edit.target(pat_range);
+            edit.insert(name_range.end(), format!(": {}", ty.display(db)));
+        },
+    )
 }
 
 #[cfg(test)]

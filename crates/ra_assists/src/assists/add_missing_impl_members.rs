@@ -48,7 +48,7 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
         ctx,
         AddMissingImplMembersMode::NoDefaultMethods,
         "add_impl_missing_members",
-        "add missing impl members",
+        "Implement Missing Members",
     )
 }
 
@@ -89,7 +89,7 @@ pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> O
         ctx,
         AddMissingImplMembersMode::DefaultMethodsOnly,
         "add_impl_default_members",
-        "add impl default members",
+        "Implement Default Members",
     )
 }
 

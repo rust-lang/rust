@@ -43,7 +43,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
     if indent.kind() != WHITESPACE {
         return None;
     }
-    ctx.add_assist(AssistId("introduce_variable"), "introduce variable", move |edit| {
+    ctx.add_assist(AssistId("introduce_variable"), "Extract into Variable", move |edit| {
         let mut buf = String::new();
 
         let cursor_offset = if wrap_in_block {

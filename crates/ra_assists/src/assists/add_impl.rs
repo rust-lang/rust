@@ -30,7 +30,7 @@ use crate::{Assist, AssistCtx, AssistId};
 pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
-    ctx.add_assist(AssistId("add_impl"), "add impl", |edit| {
+    ctx.add_assist(AssistId("add_impl"), format!("Implement {}", name.text().as_str()), |edit| {
         edit.target(nominal.syntax().text_range());
         let type_params = nominal.type_param_list();
         let start_offset = nominal.syntax().text_range().end();

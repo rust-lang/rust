@@ -57,7 +57,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 
     let db = ctx.db;
 
-    ctx.add_assist(AssistId("fill_match_arms"), "fill match arms", |edit| {
+    ctx.add_assist(AssistId("fill_match_arms"), "Fill Match Arms", |edit| {
         let indent_level = IndentLevel::from_node(match_arm_list.syntax());
 
         let new_arm_list = {
