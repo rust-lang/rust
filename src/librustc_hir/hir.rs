@@ -364,6 +364,7 @@ impl GenericArgs<'_> {
 pub enum TraitBoundModifier {
     None,
     Maybe,
+    MaybeConst,
 }
 
 /// The AST represents all type param bounds as types.

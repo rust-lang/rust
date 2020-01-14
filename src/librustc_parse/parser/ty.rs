@@ -27,11 +27,17 @@ struct BoundModifiers {
 }
 
 impl BoundModifiers {
-    fn trait_bound_modifier(&self) -> TraitBoundModifier {
-        match self.maybe {
-            Some(_) => TraitBoundModifier::Maybe,
-            None => TraitBoundModifier::None,
-        }
+    fn to_trait_bound_modifier(&self) -> Result<TraitBoundModifier, &'static str> {
+        let modifier = match (self.maybe, self.maybe_const) {
+            (None, None) => TraitBoundModifier::None,
+            (Some(_), None) => TraitBoundModifier::Maybe,
+            (None, Some(_)) => TraitBoundModifier::MaybeConst,
+            (Some(_), Some(_)) => {
+                return Err("`?const` and `?` are mutually exclusive");
+            }
+        };
+
+        Ok(modifier)
     }
 }
 
@@ -215,7 +221,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         assert_ne!(self.token, token::Question);
 
-        let poly_trait_ref = PolyTraitRef::new(generic_params, path, None, lo.to(self.prev_span));
+        let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
@@ -557,9 +563,18 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren))?;
         }
 
-        let constness = modifiers.maybe_const.map(|_| ast::Constness::NotConst);
-        let poly_trait = PolyTraitRef::new(lifetime_defs, path, constness, lo.to(self.prev_span));
-        Ok(GenericBound::Trait(poly_trait, modifiers.trait_bound_modifier()))
+        let modifier = match modifiers.to_trait_bound_modifier() {
+            Ok(m) => m,
+            Err(msg) => {
+                self.struct_span_err(lo.to(self.prev_span), msg).emit();
+
+                // Continue compilation as if the user had written `?Trait`.
+                TraitBoundModifier::Maybe
+            }
+        };
+
+        let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
+        Ok(GenericBound::Trait(poly_trait, modifier))
     }
 
     /// Optionally parses `for<$generic_params>`.

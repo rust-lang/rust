@@ -266,12 +266,19 @@ pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
-/// A modifier on a bound, currently this is only used for `?Sized`, where the
-/// modifier is `Maybe`. Negative bounds should also be handled here.
+/// A modifier on a bound, e.g., `?Sized` or `?const Trait`.
+///
+/// Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitBoundModifier {
+    /// No modifiers
     None,
+
+    /// `?Trait`
     Maybe,
+
+    /// `?const Trait`
+    MaybeConst,
 }
 
 /// The AST represents all type param bounds as types.
