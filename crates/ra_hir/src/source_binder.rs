@@ -18,48 +18,52 @@ use rustc_hash::FxHashMap;
 
 use crate::{db::HirDatabase, ModuleSource, SourceAnalyzer};
 
-#[derive(Default)]
-pub struct SourceBinder {
+pub struct SourceBinder<'a, DB> {
+    pub db: &'a DB,
     child_by_source_cache: FxHashMap<ChildContainer, DynMap>,
 }
 
-impl SourceBinder {
+impl<DB: HirDatabase> SourceBinder<'_, DB> {
+    pub fn new(db: &DB) -> SourceBinder<DB> {
+        SourceBinder { db, child_by_source_cache: FxHashMap::default() }
+    }
+
     pub fn analyze(
         &mut self,
-        db: &impl HirDatabase,
         src: InFile<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
         let _p = profile("SourceBinder::analyzer");
-        let container = match self.find_container(db, src) {
+        let container = match self.find_container(src) {
             Some(it) => it,
             None => return SourceAnalyzer::new_for_resolver(Resolver::default(), src),
         };
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
-                return SourceAnalyzer::new_for_body(db, def, src, offset)
+                return SourceAnalyzer::new_for_body(self.db, def, src, offset)
             }
-            ChildContainer::TraitId(it) => it.resolver(db),
-            ChildContainer::ImplId(it) => it.resolver(db),
-            ChildContainer::ModuleId(it) => it.resolver(db),
-            ChildContainer::EnumId(it) => it.resolver(db),
-            ChildContainer::VariantId(it) => it.resolver(db),
+            ChildContainer::TraitId(it) => it.resolver(self.db),
+            ChildContainer::ImplId(it) => it.resolver(self.db),
+            ChildContainer::ModuleId(it) => it.resolver(self.db),
+            ChildContainer::EnumId(it) => it.resolver(self.db),
+            ChildContainer::VariantId(it) => it.resolver(self.db),
         };
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
 
-    pub fn to_def<D, ID>(&mut self, db: &impl HirDatabase, src: InFile<ID::Ast>) -> Option<D>
+    pub fn to_def<D, ID>(&mut self, src: InFile<ID::Ast>) -> Option<D>
     where
         D: From<ID>,
         ID: ToId,
     {
-        let id: ID = self.to_id(db, src)?;
+        let id: ID = self.to_id(src)?;
         Some(id.into())
     }
 
-    fn to_id<D: ToId>(&mut self, db: &impl HirDatabase, src: InFile<D::Ast>) -> Option<D> {
-        let container = self.find_container(db, src.as_ref().map(|it| it.syntax()))?;
+    fn to_id<D: ToId>(&mut self, src: InFile<D::Ast>) -> Option<D> {
+        let container = self.find_container(src.as_ref().map(|it| it.syntax()))?;
+        let db = self.db;
         let dyn_map =
             &*self.child_by_source_cache.entry(container).or_insert_with(|| match container {
                 ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
@@ -72,44 +76,40 @@ impl SourceBinder {
         dyn_map[D::KEY].get(&src).copied()
     }
 
-    fn find_container(
-        &mut self,
-        db: &impl HirDatabase,
-        src: InFile<&SyntaxNode>,
-    ) -> Option<ChildContainer> {
-        for container in src.cloned().ancestors_with_macros(db).skip(1) {
+    fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
+        for container in src.cloned().ancestors_with_macros(self.db).skip(1) {
             let res: ChildContainer = match_ast! {
                 match (container.value) {
                     ast::TraitDef(it) => {
-                        let def: TraitId = self.to_id(db, container.with_value(it))?;
+                        let def: TraitId = self.to_id(container.with_value(it))?;
                         def.into()
                     },
                     ast::ImplBlock(it) => {
-                        let def: ImplId = self.to_id(db, container.with_value(it))?;
+                        let def: ImplId = self.to_id(container.with_value(it))?;
                         def.into()
                     },
                     ast::FnDef(it) => {
-                        let def: FunctionId = self.to_id(db, container.with_value(it))?;
+                        let def: FunctionId = self.to_id(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
                     ast::StaticDef(it) => {
-                        let def: StaticId = self.to_id(db, container.with_value(it))?;
+                        let def: StaticId = self.to_id(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
                     ast::ConstDef(it) => {
-                        let def: ConstId = self.to_id(db, container.with_value(it))?;
+                        let def: ConstId = self.to_id(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
                     ast::EnumDef(it) => {
-                        let def: EnumId = self.to_id(db, container.with_value(it))?;
+                        let def: EnumId = self.to_id(container.with_value(it))?;
                         def.into()
                     },
                     ast::StructDef(it) => {
-                        let def: StructId = self.to_id(db, container.with_value(it))?;
+                        let def: StructId = self.to_id(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
                     ast::UnionDef(it) => {
-                        let def: UnionId = self.to_id(db, container.with_value(it))?;
+                        let def: UnionId = self.to_id(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
                     // FIXME: handle out-of-line modules here
@@ -119,8 +119,8 @@ impl SourceBinder {
             return Some(res);
         }
 
-        let module_source = ModuleSource::from_child_node(db, src);
-        let c = crate::Module::from_definition(db, src.with_value(module_source))?;
+        let module_source = ModuleSource::from_child_node(self.db, src);
+        let c = crate::Module::from_definition(self.db, src.with_value(module_source))?;
         Some(c.id.into())
     }
 }

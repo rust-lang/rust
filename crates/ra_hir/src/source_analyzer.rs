@@ -105,7 +105,7 @@ impl SourceAnalyzer {
         node: InFile<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        crate::source_binder::SourceBinder::default().analyze(db, node, offset)
+        crate::source_binder::SourceBinder::new(db).analyze(node, offset)
     }
 
     pub(crate) fn new_for_body(

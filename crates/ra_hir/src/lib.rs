@@ -48,6 +48,7 @@ pub use crate::{
     from_source::FromSource,
     has_source::HasSource,
     source_analyzer::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
+    source_binder::SourceBinder,
 };
 
 pub use hir_def::{
