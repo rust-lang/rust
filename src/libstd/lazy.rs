@@ -1,508 +1,32 @@
-//! `lazy` modules provides lazy values and one-time initialization of static data.
-//!
-//! `lazy` provides two new cell-like types, `OnceCell` and `SyncOnceCell`. `OnceCell`
-//! might store arbitrary non-`Copy` types, can be assigned to at most once and provide direct access
-//! to the stored contents. In a nutshell, API looks *roughly* like this:
-//!
-//! ```rust,ignore
-//! impl<T> OnceCell<T> {
-//!     fn new() -> OnceCell<T> { ... }
-//!     fn set(&self, value: T) -> Result<(), T> { ... }
-//!     fn get(&self) -> Option<&T> { ... }
-//! }
-//! ```
-//!
-//! Note that, like with `RefCell` and `Mutex`, the `set` method requires only a shared reference.
-//! Because of the single assignment restriction `get` can return an `&T` instead of `Ref<T>`
-//! or `MutexGuard<T>`.
-//!
-//! The `SyncOnceCell` flavor is thread-safe (that is, implements [`Sync`]) trait, while  `OnceCell` one is not.
-//!
-//! [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html
-//!
-//! # Patterns
-//!
-//! `OnceCell` might be useful for a variety of patterns.
-//!
-//! ## Safe Initialization of global data
-//!
-//! ```rust
-//! use std::{env, io};
-//! use std::lazy::SyncOnceCell;
-//!
-//! #[derive(Debug)]
-//! pub struct Logger {
-//!     // ...
-//! }
-//! static INSTANCE: OnceCell<Logger> = OnceCell::new();
-//!
-//! impl Logger {
-//!     pub fn global() -> &'static Logger {
-//!         INSTANCE.get().expect("logger is not initialized")
-//!     }
-//!
-//!     fn from_cli(args: env::Args) -> Result<Logger, std::io::Error> {
-//!        // ...
-//! #      Ok(Logger {})
-//!     }
-//! }
-//!
-//! fn main() {
-//!     let logger = Logger::from_cli(env::args()).unwrap();
-//!     INSTANCE.set(logger).unwrap();
-//!     // use `Logger::global()` from now on
-//! }
-//! ```
-//!
-//! ## Lazy initialized global data
-//!
-//! This is essentially `lazy_static!` macro, but without a macro.
-//!
-//! ```rust
-//! use std::{sync::Mutex, collections::HashMap};
-//! use lazy::SyncOnceCell;
-//!
-//! fn global_data() -> &'static Mutex<HashMap<i32, String>> {
-//!     static INSTANCE: OnceCell<Mutex<HashMap<i32, String>>> = OnceCell::new();
-//!     INSTANCE.get_or_init(|| {
-//!         let mut m = HashMap::new();
-//!         m.insert(13, "Spica".to_string());
-//!         m.insert(74, "Hoyten".to_string());
-//!         Mutex::new(m)
-//!     })
-//! }
-//! ```
-//!
-//! There are also `sync::Lazy` and `unsync::Lazy` convenience types to streamline this pattern:
-//!
-//! ```rust
-//! use std::{sync::Mutex, collections::HashMap};
-//! use lazy::SyncLazy;
-//!
-//! static GLOBAL_DATA: Lazy<Mutex<HashMap<i32, String>>> = Lazy::new(|| {
-//!     let mut m = HashMap::new();
-//!     m.insert(13, "Spica".to_string());
-//!     m.insert(74, "Hoyten".to_string());
-//!     Mutex::new(m)
-//! });
-//!
-//! fn main() {
-//!     println!("{:?}", GLOBAL_DATA.lock().unwrap());
-//! }
-//! ```
-//!
-//! ## General purpose lazy evaluation
-//!
-//! `Lazy` also works with local variables.
-//!
-//! ```rust
-//! use std::lazy::Lazy;
-//!
-//! fn main() {
-//!     let ctx = vec![1, 2, 3];
-//!     let thunk = Lazy::new(|| {
-//!         ctx.iter().sum::<i32>()
-//!     });
-//!     assert_eq!(*thunk, 6);
-//! }
-//! ```
-//!
-//! If you need a lazy field in a struct, you probably should use `OnceCell`
-//! directly, because that will allow you to access `self` during initialization.
-//!
-//! ```rust
-//! use std::{fs, path::PathBuf};
-//!
-//! use std::lazy::OnceCell;
-//!
-//! struct Ctx {
-//!     config_path: PathBuf,
-//!     config: OnceCell<String>,
-//! }
-//!
-//! impl Ctx {
-//!     pub fn get_config(&self) -> Result<&str, std::io::Error> {
-//!         let cfg = self.config.get_or_try_init(|| {
-//!             fs::read_to_string(&self.config_path)
-//!         })?;
-//!         Ok(cfg.as_str())
-//!     }
-//! }
-//! ```
-//!
-//! ## Building block
-//!
-//! Naturally, it is  possible to build other abstractions on top of `OnceCell`.
-//! For example, this is a `regex!` macro which takes a string literal and returns an
-//! *expression* that evaluates to a `&'static Regex`:
-//!
-//! ```
-//! macro_rules! regex {
-//!     ($re:literal $(,)?) => {{
-//!         static RE: std::lazy::SyncOnceCell<regex::Regex> = std::lazy::SyncOnceCell::new();
-//!         RE.get_or_init(|| regex::Regex::new($re).unwrap())
-//!     }};
-//! }
-//! ```
-//!
-//! This macro can be useful to avoid "compile regex on every loop iteration" problem.
-//!
-//! # Comparison with other interior mutatbility types
-//!
-//! |`!Sync` types         | Access Mode            | Drawbacks                                     |
-//! |----------------------|------------------------|-----------------------------------------------|
-//! |`Cell<T>`             | `T`                    | requires `T: Copy` for `get`                  |
-//! |`RefCell<T>`          | `RefMut<T>` / `Ref<T>` | may panic at runtime                          |
-//! |`OnceCell<T>`         | `&T`                   | assignable only once                          |
-//!
-//! |`Sync` types          | Access Mode            | Drawbacks                                     |
-//! |----------------------|------------------------|-----------------------------------------------|
-//! |`AtomicT`             | `T`                    | works only with certain `Copy` types          |
-//! |`Mutex<T>`            | `MutexGuard<T>`        | may deadlock at runtime, may block the thread |
-//! |`SyncOnceCell<T>`     | `&T`                   | assignable only once, may block the thread    |
-//!
-//! Technically, calling `get_or_init` will also cause a panic or a deadlock if it recursively calls
-//! itself. However, because the assignment can happen only once, such cases should be more rare than
-//! equivalents with `RefCell` and `Mutex`.
+//! Lazy values and one-time initialization of static data.
 
 use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
-    hint::unreachable_unchecked,
     marker::PhantomData,
-    ops::Deref,
+    mem::{self, MaybeUninit},
+    ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     thread::{self, Thread},
 };
 
-/// A cell which can be written to only once. Not thread safe.
+#[doc(inline)]
+#[unstable(feature = "once_cell", issue = "68198")]
+pub use core::lazy::*;
+
+/// A synchronization primitive which can be written to only once.
 ///
-/// Unlike `:td::cell::RefCell`, a `OnceCell` provides simple `&`
-/// references to the contents.
+/// This type is a thread-safe `OnceCell`.
 ///
-/// # Example
+/// # Examples
+///
 /// ```
-/// use std::lazy::OnceCell;
+/// #![feature(once_cell)]
 ///
-/// let cell = OnceCell::new();
-/// assert!(cell.get().is_none());
-///
-/// let value: &String = cell.get_or_init(|| {
-///     "Hello, World!".to_string()
-/// });
-/// assert_eq!(value, "Hello, World!");
-/// assert!(cell.get().is_some());
-/// ```
-pub struct OnceCell<T> {
-    // Invariant: written to at most once.
-    inner: UnsafeCell<Option<T>>,
-}
-
-// Similarly to a `Sync` bound on `SyncOnceCell`, we can use
-// `&OnceCell` to sneak a `T` through `catch_unwind`,
-// by initializing the cell in closure and extracting the value in the
-// `Drop`.
-#[cfg(feature = "std")]
-impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for OnceCell<T> {}
-#[cfg(feature = "std")]
-impl<T: UnwindSafe> UnwindSafe for OnceCell<T> {}
-
-impl<T> Default for OnceCell<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.get() {
-            Some(v) => f.debug_tuple("OnceCell").field(v).finish(),
-            None => f.write_str("OnceCell(Uninit)"),
-        }
-    }
-}
-
-impl<T: Clone> Clone for OnceCell<T> {
-    fn clone(&self) -> OnceCell<T> {
-        let res = OnceCell::new();
-        if let Some(value) = self.get() {
-            match res.set(value.clone()) {
-                Ok(()) => (),
-                Err(_) => unreachable!(),
-            }
-        }
-        res
-    }
-}
-
-impl<T: PartialEq> PartialEq for OnceCell<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.get() == other.get()
-    }
-}
-
-impl<T: Eq> Eq for OnceCell<T> {}
-
-impl<T> From<T> for OnceCell<T> {
-    fn from(value: T) -> Self {
-        OnceCell { inner: UnsafeCell::new(Some(value)) }
-    }
-}
-
-impl<T> OnceCell<T> {
-    /// Creates a new empty cell.
-    pub const fn new() -> OnceCell<T> {
-        OnceCell { inner: UnsafeCell::new(None) }
-    }
-
-    /// Gets the reference to the underlying value.
-    ///
-    /// Returns `None` if the cell is empty.
-    pub fn get(&self) -> Option<&T> {
-        // Safe due to `inner`'s invariant
-        unsafe { &*self.inner.get() }.as_ref()
-    }
-
-    /// Gets the mutable reference to the underlying value.
-    ///
-    /// Returns `None` if the cell is empty.
-    pub fn get_mut(&mut self) -> Option<&mut T> {
-        // Safe because we have unique access
-        unsafe { &mut *self.inner.get() }.as_mut()
-    }
-
-    /// Sets the contents of this cell to `value`.
-    ///
-    /// Returns `Ok(())` if the cell was empty and `Err(value)` if it was
-    /// full.
-    ///
-    /// # Example
-    /// ```
-    /// use std::lazy::OnceCell;
-    ///
-    /// let cell = OnceCell::new();
-    /// assert!(cell.get().is_none());
-    ///
-    /// assert_eq!(cell.set(92), Ok(()));
-    /// assert_eq!(cell.set(62), Err(62));
-    ///
-    /// assert!(cell.get().is_some());
-    /// ```
-    pub fn set(&self, value: T) -> Result<(), T> {
-        let slot = unsafe { &*self.inner.get() };
-        if slot.is_some() {
-            return Err(value);
-        }
-        let slot = unsafe { &mut *self.inner.get() };
-        // This is the only place where we set the slot, no races
-        // due to reentrancy/concurrency are possible, and we've
-        // checked that slot is currently `None`, so this write
-        // maintains the `inner`'s invariant.
-        *slot = Some(value);
-        Ok(())
-    }
-
-    /// Gets the contents of the cell, initializing it with `f`
-    /// if the cell was empty.
-    ///
-    /// # Panics
-    ///
-    /// If `f` panics, the panic is propagated to the caller, and the cell
-    /// remains uninitialized.
-    ///
-    /// It is an error to reentrantly initialize the cell from `f`. Doing
-    /// so results in a panic.
-    ///
-    /// # Example
-    /// ```
-    /// use std::lazy::OnceCell;
-    ///
-    /// let cell = OnceCell::new();
-    /// let value = cell.get_or_init(|| 92);
-    /// assert_eq!(value, &92);
-    /// let value = cell.get_or_init(|| unreachable!());
-    /// assert_eq!(value, &92);
-    /// ```
-    pub fn get_or_init<F>(&self, f: F) -> &T
-    where
-        F: FnOnce() -> T,
-    {
-        match self.get_or_try_init(|| Ok::<T, !>(f())) {
-            Ok(val) => val,
-        }
-    }
-
-    /// Gets the contents of the cell, initializing it with `f` if
-    /// the cell was empty. If the cell was empty and `f` failed, an
-    /// error is returned.
-    ///
-    /// # Panics
-    ///
-    /// If `f` panics, the panic is propagated to the caller, and the cell
-    /// remains uninitialized.
-    ///
-    /// It is an error to reentrantly initialize the cell from `f`. Doing
-    /// so results in a panic.
-    ///
-    /// # Example
-    /// ```
-    /// use std::lazy::OnceCell;
-    ///
-    /// let cell = OnceCell::new();
-    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
-    /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
-    ///     Ok(92)
-    /// });
-    /// assert_eq!(value, Ok(&92));
-    /// assert_eq!(cell.get(), Some(&92))
-    /// ```
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
-    where
-        F: FnOnce() -> Result<T, E>,
-    {
-        if let Some(val) = self.get() {
-            return Ok(val);
-        }
-        let val = f()?;
-        // Note that *some* forms of reentrant initialization might lead to
-        // UB (see `reentrant_init` test). I believe that just removing this
-        // `assert`, while keeping `set/get` would be sound, but it seems
-        // better to panic, rather than to silently use an old value.
-        assert!(self.set(val).is_ok(), "reentrant init");
-        Ok(self.get().unwrap())
-    }
-
-    /// Consumes the `OnceCell`, returning the wrapped value.
-    ///
-    /// Returns `None` if the cell was empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::lazy::OnceCell;
-    ///
-    /// let cell: OnceCell<String> = OnceCell::new();
-    /// assert_eq!(cell.into_inner(), None);
-    ///
-    /// let cell = OnceCell::new();
-    /// cell.set("hello".to_string()).unwrap();
-    /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
-    /// ```
-    pub fn into_inner(self) -> Option<T> {
-        // Because `into_inner` takes `self` by value, the compiler statically verifies
-        // that it is not currently borrowed. So it is safe to move out `Option<T>`.
-        self.inner.into_inner()
-    }
-}
-
-/// A value which is initialized on the first access.
-///
-/// # Example
-/// ```
-/// use std::lazy::Lazy;
-///
-/// let lazy: Lazy<i32> = Lazy::new(|| {
-///     println!("initializing");
-///     92
-/// });
-/// println!("ready");
-/// println!("{}", *lazy);
-/// println!("{}", *lazy);
-///
-/// // Prints:
-/// //   ready
-/// //   initializing
-/// //   92
-/// //   92
-/// ```
-pub struct Lazy<T, F = fn() -> T> {
-    cell: OnceCell<T>,
-    init: Cell<Option<F>>,
-}
-
-#[cfg(feature = "std")]
-impl<T, F: RefUnwindSafe> RefUnwindSafe for Lazy<T, F> where OnceCell<T>: RefUnwindSafe {}
-
-impl<T: fmt::Debug, F: fmt::Debug> fmt::Debug for Lazy<T, F> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
-    }
-}
-
-impl<T, F> Lazy<T, F> {
-    /// Creates a new lazy value with the given initializing function.
-    ///
-    /// # Example
-    /// ```
-    /// # fn main() {
-    /// use std::lazy::Lazy;
-    ///
-    /// let hello = "Hello, World!".to_string();
-    ///
-    /// let lazy = Lazy::new(|| hello.to_uppercase());
-    ///
-    /// assert_eq!(&*lazy, "HELLO, WORLD!");
-    /// # }
-    /// ```
-    pub const fn new(init: F) -> Lazy<T, F> {
-        Lazy { cell: OnceCell::new(), init: Cell::new(Some(init)) }
-    }
-}
-
-impl<T, F: FnOnce() -> T> Lazy<T, F> {
-    /// Forces the evaluation of this lazy value and returns a reference to
-    /// the result.
-    ///
-    /// This is equivalent to the `Deref` impl, but is explicit.
-    ///
-    /// # Example
-    /// ```
-    /// use std::lazy::Lazy;
-    ///
-    /// let lazy = Lazy::new(|| 92);
-    ///
-    /// assert_eq!(Lazy::force(&lazy), &92);
-    /// assert_eq!(&*lazy, &92);
-    /// ```
-    pub fn force(this: &Lazy<T, F>) -> &T {
-        this.cell.get_or_init(|| match this.init.take() {
-            Some(f) => f(),
-            None => panic!("Lazy instance has previously been poisoned"),
-        })
-    }
-}
-
-impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        Lazy::force(self)
-    }
-}
-
-impl<T: Default> Default for Lazy<T> {
-    /// Creates a new lazy value using `Default` as the initializing function.
-    fn default() -> Lazy<T> {
-        Lazy::new(T::default)
-    }
-}
-
-/// A thread-safe cell which can be written to only once.
-///
-/// `OnceCell` provides `&` references to the contents without RAII guards.
-///
-/// Reading a non-`None` value out of `OnceCell` establishes a
-/// happens-before relationship with a corresponding write. For example, if
-/// thread A initializes the cell with `get_or_init(f)`, and thread B
-/// subsequently reads the result of this call, B also observes all the side
-/// effects of `f`.
-///
-/// # Example
-/// ```
 /// use std::lazy::SyncOnceCell;
 ///
-/// static CELL: OnceCell<String> = OnceCell::new();
+/// static CELL: SyncOnceCell<String> = SyncOnceCell::new();
 /// assert!(CELL.get().is_none());
 ///
 /// std::thread::spawn(|| {
@@ -516,44 +40,49 @@ impl<T: Default> Default for Lazy<T> {
 /// assert!(value.is_some());
 /// assert_eq!(value.unwrap().as_str(), "Hello, World!");
 /// ```
+#[unstable(feature = "once_cell", issue = "68198")]
 pub struct SyncOnceCell<T> {
     // This `state` word is actually an encoded version of just a pointer to a
     // `Waiter`, so we add the `PhantomData` appropriately.
     state_and_queue: AtomicUsize,
     _marker: PhantomData<*mut Waiter>,
-    // FIXME: switch to `std::mem::MaybeUninit` once we are ready to bump MSRV
-    // that far. It was stabilized in 1.36.0, so, if you are reading this and
-    // it's higher than 1.46.0 outside, please send a PR! ;) (and do the same
-    // for `Lazy`, while we are at it).
-    pub(crate) value: UnsafeCell<Option<T>>,
+    // Whether or not the value is initialized is tracked by `state_and_queue`.
+    value: UnsafeCell<MaybeUninit<T>>,
 }
 
 // Why do we need `T: Send`?
-// Thread A creates a `OnceCell` and shares it with
+// Thread A creates a `SyncOnceCell` and shares it with
 // scoped thread B, which fills the cell, which is
 // then destroyed by A. That is, destructor observes
 // a sent value.
+#[unstable(feature = "once_cell", issue = "68198")]
 unsafe impl<T: Sync + Send> Sync for SyncOnceCell<T> {}
+#[unstable(feature = "once_cell", issue = "68198")]
 unsafe impl<T: Send> Send for SyncOnceCell<T> {}
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for SyncOnceCell<T> {}
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: UnwindSafe> UnwindSafe for SyncOnceCell<T> {}
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T> Default for SyncOnceCell<T> {
     fn default() -> SyncOnceCell<T> {
         SyncOnceCell::new()
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: fmt::Debug> fmt::Debug for SyncOnceCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
-            Some(v) => f.debug_tuple("SyncOnceCell").field(v).finish(),
-            None => f.write_str("SyncOnceCell(Uninit)"),
+            Some(v) => f.debug_tuple("Once").field(v).finish(),
+            None => f.write_str("Once(Uninit)"),
         }
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: Clone> Clone for SyncOnceCell<T> {
     fn clone(&self) -> SyncOnceCell<T> {
         let res = SyncOnceCell::new();
@@ -567,6 +96,7 @@ impl<T: Clone> Clone for SyncOnceCell<T> {
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T> From<T> for SyncOnceCell<T> {
     fn from(value: T) -> Self {
         let cell = Self::new();
@@ -575,21 +105,24 @@ impl<T> From<T> for SyncOnceCell<T> {
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: PartialEq> PartialEq for SyncOnceCell<T> {
     fn eq(&self, other: &SyncOnceCell<T>) -> bool {
         self.get() == other.get()
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: Eq> Eq for SyncOnceCell<T> {}
 
 impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub const fn new() -> SyncOnceCell<T> {
         SyncOnceCell {
             state_and_queue: AtomicUsize::new(INCOMPLETE),
             _marker: PhantomData,
-            value: UnsafeCell::new(None),
+            value: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
 
@@ -597,6 +130,7 @@ impl<T> SyncOnceCell<T> {
     ///
     /// Returns `None` if the cell is empty, or being initialized. This
     /// method never blocks.
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get(&self) -> Option<&T> {
         if self.is_initialized() {
             // Safe b/c checked is_initialize
@@ -608,29 +142,14 @@ impl<T> SyncOnceCell<T> {
 
     /// Gets the mutable reference to the underlying value.
     ///
-    /// Returns `None` if the cell is empty.
+    /// Returns `None` if the cell is empty. This method never blocks.
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
-        // Safe b/c we have a unique access.
-        unsafe { &mut *self.value.get() }.as_mut()
-    }
-
-    /// Get the reference to the underlying value, without checking if the
-    /// cell is initialized.
-    ///
-    /// Safety:
-    ///
-    /// Caller must ensure that the cell is in initialized state, and that
-    /// the contents are acquired by (synchronized to) this thread.
-    pub unsafe fn get_unchecked(&self) -> &T {
-        debug_assert!(self.is_initialized());
-        let slot: &Option<T> = &*self.value.get();
-        match slot {
-            Some(value) => value,
-            // This unsafe does improve performance, see `examples/bench`.
-            None => {
-                debug_assert!(false);
-                unreachable_unchecked()
-            }
+        if self.is_initialized() {
+            // Safe b/c checked is_initialize and we have a unique access
+            Some(unsafe { self.get_unchecked_mut() })
+        } else {
+            None
         }
     }
 
@@ -639,8 +158,11 @@ impl<T> SyncOnceCell<T> {
     /// Returns `Ok(())` if the cell was empty and `Err(value)` if it was
     /// full.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
+    /// #![feature(once_cell)]
+    ///
     /// use std::lazy::SyncOnceCell;
     ///
     /// static CELL: SyncOnceCell<i32> = SyncOnceCell::new();
@@ -656,6 +178,7 @@ impl<T> SyncOnceCell<T> {
     ///     assert_eq!(CELL.get(), Some(&92));
     /// }
     /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn set(&self, value: T) -> Result<(), T> {
         let mut value = Some(value);
         self.get_or_init(|| value.take().unwrap());
@@ -681,8 +204,11 @@ impl<T> SyncOnceCell<T> {
     /// exact outcome is unspecified. Current implementation deadlocks, but
     /// this may be changed to a panic in the future.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
+    /// #![feature(once_cell)]
+    ///
     /// use std::lazy::SyncOnceCell;
     ///
     /// let cell = SyncOnceCell::new();
@@ -691,6 +217,7 @@ impl<T> SyncOnceCell<T> {
     /// let value = cell.get_or_init(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -713,8 +240,11 @@ impl<T> SyncOnceCell<T> {
     /// The exact outcome is unspecified. Current implementation
     /// deadlocks, but this may be changed to a panic in the future.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
+    /// #![feature(once_cell)]
+    ///
     /// use std::lazy::SyncOnceCell;
     ///
     /// let cell = SyncOnceCell::new();
@@ -726,18 +256,22 @@ impl<T> SyncOnceCell<T> {
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
     {
         // Fast path check
+        // NOTE: This acquire here is important to ensure
+        // `SyncLazy::force` is correctly synchronized
         if let Some(value) = self.get() {
             return Ok(value);
         }
         self.initialize(f)?;
 
-        // Safe b/c called initialize
         debug_assert!(self.is_initialized());
+
+        // Safety: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
     }
 
@@ -747,6 +281,8 @@ impl<T> SyncOnceCell<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(once_cell)]
+    ///
     /// use std::lazy::SyncOnceCell;
     ///
     /// let cell: SyncOnceCell<String> = SyncOnceCell::new();
@@ -756,10 +292,59 @@ impl<T> SyncOnceCell<T> {
     /// cell.set("hello".to_string()).unwrap();
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
-    pub fn into_inner(self) -> Option<T> {
-        // Because `into_inner` takes `self` by value, the compiler statically verifies
-        // that it is not currently borrowed. So it is safe to move out `Option<T>`.
-        self.value.into_inner()
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn into_inner(mut self) -> Option<T> {
+        // Safety: Safe because we immediately free `self` without dropping
+        let inner = unsafe { self.take_inner() };
+
+        // Don't drop this `SyncOnceCell`. We just moved out one of the fields, but didn't set
+        // the state to uninitialized.
+        mem::ManuallyDrop::new(self);
+        inner
+    }
+
+    /// Takes the value out of this `SyncOnceCell`, moving it back to an uninitialized state.
+    ///
+    /// Has no effect and returns `None` if the `SyncOnceCell` hasn't been initialized.
+    ///
+    /// Safety is guaranteed by requiring a mutable reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell)]
+    ///
+    /// use std::lazy::SyncOnceCell;
+    ///
+    /// let mut cell: SyncOnceCell<String> = SyncOnceCell::new();
+    /// assert_eq!(cell.take(), None);
+    ///
+    /// let mut cell = SyncOnceCell::new();
+    /// cell.set("hello".to_string()).unwrap();
+    /// assert_eq!(cell.take(), Some("hello".to_string()));
+    /// assert_eq!(cell.get(), None);
+    /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
+    pub fn take(&mut self) -> Option<T> {
+        mem::take(self).into_inner()
+    }
+
+    /// Takes the wrapped value out of a `SyncOnceCell`.
+    /// Afterwards the cell is no longer initialized.
+    ///
+    /// Safety: The cell must now be free'd WITHOUT dropping. No other usages of the cell
+    /// are valid. Only used by `into_inner` and `drop`.
+    unsafe fn take_inner(&mut self) -> Option<T> {
+        // The mutable reference guarantees there are no other threads that can observe us
+        // taking out the wrapped value.
+        // Right after this function `self` is supposed to be freed, so it makes little sense
+        // to atomically set the state to uninitialized.
+        if self.is_initialized() {
+            let value = mem::replace(&mut self.value, UnsafeCell::new(MaybeUninit::uninit()));
+            Some(value.into_inner().assume_init())
+        } else {
+            None
+        }
     }
 
     /// Safety: synchronizes with store to value via Release/(Acquire|SeqCst).
@@ -787,7 +372,7 @@ impl<T> SyncOnceCell<T> {
             let f = f.take().unwrap();
             match f() {
                 Ok(value) => {
-                    unsafe { *slot.get() = Some(value) };
+                    unsafe { (&mut *slot.get()).write(value) };
                     true
                 }
                 Err(e) => {
@@ -798,17 +383,32 @@ impl<T> SyncOnceCell<T> {
         });
         res
     }
+
+    /// Safety: The value must be initialized
+    unsafe fn get_unchecked(&self) -> &T {
+        debug_assert!(self.is_initialized());
+        (&*self.value.get()).get_ref()
+    }
+
+    /// Safety: The value must be initialized
+    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+        debug_assert!(self.is_initialized());
+        (&mut *self.value.get()).get_mut()
+    }
 }
 
-// region: copy-paste
-// The following code is copied from `sync::Once`.
-// This should be uncopypasted once we decide the right way to handle panics.
+impl<T> Drop for SyncOnceCell<T> {
+    fn drop(&mut self) {
+        // Safety: The cell is being dropped, so it can't be accessed again
+        unsafe { self.take_inner() };
+    }
+}
+
 const INCOMPLETE: usize = 0x0;
 const RUNNING: usize = 0x1;
 const COMPLETE: usize = 0x2;
 
 const STATE_MASK: usize = 0x3;
-
 
 #[repr(align(4))]
 struct Waiter {
@@ -901,19 +501,21 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
         break;
     }
 }
-// endregion: copy-paste
 
 /// A value which is initialized on the first access.
 ///
-/// This type is thread-safe and can be used in statics:
+/// This type is a thread-safe `Lazy`, and can be used in statics.
 ///
-/// # Example
+/// # Examples
+///
 /// ```
+/// #![feature(once_cell)]
+///
 /// use std::collections::HashMap;
 ///
-/// use std::lazy::Lazy;
+/// use std::lazy::SyncLazy;
 ///
-/// static HASHMAP: Lazy<HashMap<i32, String>> = Lazy::new(|| {
+/// static HASHMAP: SyncLazy<HashMap<i32, String>> = SyncLazy::new(|| {
 ///     println!("initializing");
 ///     let mut m = HashMap::new();
 ///     m.insert(13, "Spica".to_string());
@@ -935,14 +537,16 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 ///     //   Some("Hoyten")
 /// }
 /// ```
+#[unstable(feature = "once_cell", issue = "68198")]
 pub struct SyncLazy<T, F = fn() -> T> {
     cell: SyncOnceCell<T>,
     init: Cell<Option<F>>,
 }
 
-impl<T: fmt::Debug, F: fmt::Debug> fmt::Debug for SyncLazy<T, F> {
+#[unstable(feature = "once_cell", issue = "68198")]
+impl<T: fmt::Debug, F> fmt::Debug for SyncLazy<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyncLazy").field("cell", &self.cell).field("init", &"..").finish()
+        f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
     }
 }
 
@@ -951,15 +555,17 @@ impl<T: fmt::Debug, F: fmt::Debug> fmt::Debug for SyncLazy<T, F> {
 // we do create a `&mut Option<F>` in `force`, but this is
 // properly synchronized, so it only happens once
 // so it also does not contribute to this impl.
+#[unstable(feature = "once_cell", issue = "68198")]
 unsafe impl<T, F: Send> Sync for SyncLazy<T, F> where SyncOnceCell<T>: Sync {}
 // auto-derived `Send` impl is OK.
 
-#[cfg(feature = "std")]
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T, F: RefUnwindSafe> RefUnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: RefUnwindSafe {}
 
 impl<T, F> SyncLazy<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub const fn new(f: F) -> SyncLazy<T, F> {
         SyncLazy { cell: SyncOnceCell::new(), init: Cell::new(Some(f)) }
     }
@@ -970,8 +576,11 @@ impl<T, F: FnOnce() -> T> SyncLazy<T, F> {
     /// returns a reference to result. This is equivalent
     /// to the `Deref` impl, but is explicit.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
+    /// #![feature(once_cell)]
+    ///
     /// use std::lazy::SyncLazy;
     ///
     /// let lazy = SyncLazy::new(|| 92);
@@ -979,14 +588,16 @@ impl<T, F: FnOnce() -> T> SyncLazy<T, F> {
     /// assert_eq!(SyncLazy::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
+    #[unstable(feature = "once_cell", issue = "68198")]
     pub fn force(this: &SyncLazy<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
             Some(f) => f(),
-            None => panic!("SyncLazy instance has previously been poisoned"),
+            None => panic!("Lazy instance has previously been poisoned"),
         })
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T, F: FnOnce() -> T> Deref for SyncLazy<T, F> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -994,9 +605,348 @@ impl<T, F: FnOnce() -> T> Deref for SyncLazy<T, F> {
     }
 }
 
+#[unstable(feature = "once_cell", issue = "68198")]
 impl<T: Default> Default for SyncLazy<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     fn default() -> SyncLazy<T> {
         SyncLazy::new(T::default)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        lazy::{Lazy, SyncLazy, SyncOnceCell},
+        panic,
+        sync::{
+            atomic::{AtomicUsize, Ordering::SeqCst},
+            mpsc::channel,
+            Mutex,
+        },
+    };
+
+    #[test]
+    fn lazy_default() {
+        static CALLED: AtomicUsize = AtomicUsize::new(0);
+
+        struct Foo(u8);
+        impl Default for Foo {
+            fn default() -> Self {
+                CALLED.fetch_add(1, SeqCst);
+                Foo(42)
+            }
+        }
+
+        let lazy: Lazy<Mutex<Foo>> = <_>::default();
+
+        assert_eq!(CALLED.load(SeqCst), 0);
+
+        assert_eq!(lazy.lock().unwrap().0, 42);
+        assert_eq!(CALLED.load(SeqCst), 1);
+
+        lazy.lock().unwrap().0 = 21;
+
+        assert_eq!(lazy.lock().unwrap().0, 21);
+        assert_eq!(CALLED.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn lazy_poisoning() {
+        let x: Lazy<String> = Lazy::new(|| panic!("kaboom"));
+        for _ in 0..2 {
+            let res = panic::catch_unwind(panic::AssertUnwindSafe(|| x.len()));
+            assert!(res.is_err());
+        }
+    }
+
+    // miri doesn't support threads
+    #[cfg(not(miri))]
+    fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
+        crate::thread::spawn(f).join().unwrap()
+    }
+
+    #[cfg(not(miri))]
+    fn spawn(f: impl FnOnce() + Send + 'static) {
+        let _ = crate::thread::spawn(f);
+    }
+
+    // "stub threads" for Miri
+    #[cfg(miri)]
+    fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> R {
+        f(())
+    }
+
+    #[cfg(miri)]
+    fn spawn(f: impl FnOnce() + Send + 'static) {
+        f(())
+    }
+
+    #[test]
+    fn sync_once_cell() {
+        static ONCE_CELL: SyncOnceCell<i32> = SyncOnceCell::new();
+
+        assert!(ONCE_CELL.get().is_none());
+
+        spawn_and_wait(|| {
+            ONCE_CELL.get_or_init(|| 92);
+            assert_eq!(ONCE_CELL.get(), Some(&92));
+        });
+
+        ONCE_CELL.get_or_init(|| panic!("Kabom!"));
+        assert_eq!(ONCE_CELL.get(), Some(&92));
+    }
+
+    #[test]
+    fn sync_once_cell_get_mut() {
+        let mut c = SyncOnceCell::new();
+        assert!(c.get_mut().is_none());
+        c.set(90).unwrap();
+        *c.get_mut().unwrap() += 2;
+        assert_eq!(c.get_mut(), Some(&mut 92));
+    }
+
+    #[test]
+    fn sync_once_cell_get_unchecked() {
+        let c = SyncOnceCell::new();
+        c.set(92).unwrap();
+        unsafe {
+            assert_eq!(c.get_unchecked(), &92);
+        }
+    }
+
+    #[test]
+    fn sync_once_cell_drop() {
+        static DROP_CNT: AtomicUsize = AtomicUsize::new(0);
+        struct Dropper;
+        impl Drop for Dropper {
+            fn drop(&mut self) {
+                DROP_CNT.fetch_add(1, SeqCst);
+            }
+        }
+
+        let x = SyncOnceCell::new();
+        spawn_and_wait(move || {
+            x.get_or_init(|| Dropper);
+            assert_eq!(DROP_CNT.load(SeqCst), 0);
+            drop(x);
+        });
+
+        assert_eq!(DROP_CNT.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn sync_once_cell_drop_empty() {
+        let x = SyncOnceCell::<String>::new();
+        drop(x);
+    }
+
+    #[test]
+    fn clone() {
+        let s = SyncOnceCell::new();
+        let c = s.clone();
+        assert!(c.get().is_none());
+
+        s.set("hello".to_string()).unwrap();
+        let c = s.clone();
+        assert_eq!(c.get().map(String::as_str), Some("hello"));
+    }
+
+    #[test]
+    fn get_or_try_init() {
+        let cell: SyncOnceCell<String> = SyncOnceCell::new();
+        assert!(cell.get().is_none());
+
+        let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
+        assert!(res.is_err());
+        assert!(cell.get().is_none());
+
+        assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+
+        assert_eq!(
+            cell.get_or_try_init(|| Ok::<_, ()>("hello".to_string())),
+            Ok(&"hello".to_string())
+        );
+        assert_eq!(cell.get(), Some(&"hello".to_string()));
+    }
+
+    #[test]
+    fn from_impl() {
+        assert_eq!(SyncOnceCell::from("value").get(), Some(&"value"));
+        assert_ne!(SyncOnceCell::from("foo").get(), Some(&"bar"));
+    }
+
+    #[test]
+    fn partialeq_impl() {
+        assert!(SyncOnceCell::from("value") == SyncOnceCell::from("value"));
+        assert!(SyncOnceCell::from("foo") != SyncOnceCell::from("bar"));
+
+        assert!(SyncOnceCell::<String>::new() == SyncOnceCell::new());
+        assert!(SyncOnceCell::<String>::new() != SyncOnceCell::from("value".to_owned()));
+    }
+
+    #[test]
+    fn into_inner() {
+        let cell: SyncOnceCell<String> = SyncOnceCell::new();
+        assert_eq!(cell.into_inner(), None);
+        let cell = SyncOnceCell::new();
+        cell.set("hello".to_string()).unwrap();
+        assert_eq!(cell.into_inner(), Some("hello".to_string()));
+    }
+
+    #[test]
+    fn sync_lazy_new() {
+        static CALLED: AtomicUsize = AtomicUsize::new(0);
+        static SYNC_LAZY: SyncLazy<i32> = SyncLazy::new(|| {
+            CALLED.fetch_add(1, SeqCst);
+            92
+        });
+
+        assert_eq!(CALLED.load(SeqCst), 0);
+
+        spawn_and_wait(|| {
+            let y = *SYNC_LAZY - 30;
+            assert_eq!(y, 62);
+            assert_eq!(CALLED.load(SeqCst), 1);
+        });
+
+        let y = *SYNC_LAZY - 30;
+        assert_eq!(y, 62);
+        assert_eq!(CALLED.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn sync_lazy_default() {
+        static CALLED: AtomicUsize = AtomicUsize::new(0);
+
+        struct Foo(u8);
+        impl Default for Foo {
+            fn default() -> Self {
+                CALLED.fetch_add(1, SeqCst);
+                Foo(42)
+            }
+        }
+
+        let lazy: SyncLazy<Mutex<Foo>> = <_>::default();
+
+        assert_eq!(CALLED.load(SeqCst), 0);
+
+        assert_eq!(lazy.lock().unwrap().0, 42);
+        assert_eq!(CALLED.load(SeqCst), 1);
+
+        lazy.lock().unwrap().0 = 21;
+
+        assert_eq!(lazy.lock().unwrap().0, 21);
+        assert_eq!(CALLED.load(SeqCst), 1);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)] // leaks memory
+    fn static_sync_lazy() {
+        static XS: SyncLazy<Vec<i32>> = SyncLazy::new(|| {
+            let mut xs = Vec::new();
+            xs.push(1);
+            xs.push(2);
+            xs.push(3);
+            xs
+        });
+
+        spawn_and_wait(|| {
+            assert_eq!(&*XS, &vec![1, 2, 3]);
+        });
+
+        assert_eq!(&*XS, &vec![1, 2, 3]);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)] // leaks memory
+    fn static_sync_lazy_via_fn() {
+        fn xs() -> &'static Vec<i32> {
+            static XS: SyncOnceCell<Vec<i32>> = SyncOnceCell::new();
+            XS.get_or_init(|| {
+                let mut xs = Vec::new();
+                xs.push(1);
+                xs.push(2);
+                xs.push(3);
+                xs
+            })
+        }
+        assert_eq!(xs(), &vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn sync_lazy_poisoning() {
+        let x: SyncLazy<String> = SyncLazy::new(|| panic!("kaboom"));
+        for _ in 0..2 {
+            let res = panic::catch_unwind(|| x.len());
+            assert!(res.is_err());
+        }
+    }
+
+    #[test]
+    fn is_sync_send() {
+        fn assert_traits<T: Send + Sync>() {}
+        assert_traits::<SyncOnceCell<String>>();
+        assert_traits::<SyncLazy<String>>();
+    }
+
+    #[test]
+    fn eval_once_macro() {
+        macro_rules! eval_once {
+            (|| -> $ty:ty {
+                $($body:tt)*
+            }) => {{
+                static ONCE_CELL: SyncOnceCell<$ty> = SyncOnceCell::new();
+                fn init() -> $ty {
+                    $($body)*
+                }
+                ONCE_CELL.get_or_init(init)
+            }};
+        }
+
+        let fib: &'static Vec<i32> = eval_once! {
+            || -> Vec<i32> {
+                let mut res = vec![1, 1];
+                for i in 0..10 {
+                    let next = res[i] + res[i + 1];
+                    res.push(next);
+                }
+                res
+            }
+        };
+        assert_eq!(fib[5], 8)
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)] // deadlocks without real threads
+    fn sync_once_cell_does_not_leak_partially_constructed_boxes() {
+        static ONCE_CELL: SyncOnceCell<String> = SyncOnceCell::new();
+
+        let n_readers = 10;
+        let n_writers = 3;
+        const MSG: &str = "Hello, World";
+
+        let (tx, rx) = channel();
+
+        for _ in 0..n_readers {
+            let tx = tx.clone();
+            spawn(move || {
+                loop {
+                    if let Some(msg) = ONCE_CELL.get() {
+                        tx.send(msg).unwrap();
+                        break;
+                    }
+                }
+            });
+        }
+        for _ in 0..n_writers {
+            spawn(move || {
+                let _ = ONCE_CELL.set(MSG.to_owned());
+            });
+        }
+
+        for _ in 0..n_readers {
+            let msg = rx.recv().unwrap();
+            assert_eq!(msg, MSG);
+        }
     }
 }
