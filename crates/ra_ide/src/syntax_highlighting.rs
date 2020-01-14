@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{InFile, Name};
+use hir::{InFile, Name, SourceBinder};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
@@ -10,7 +10,7 @@ use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::
 use crate::{
     db::RootDatabase,
     references::{
-        classify_name, classify_name_ref,
+        classify_name2, classify_name_ref2,
         NameKind::{self, *},
     },
     FileId,
@@ -84,6 +84,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
         hash((file_id, name, shadow_count))
     }
 
+    let mut sb = SourceBinder::new(db);
+
     // Visited nodes to handle highlighting priorities
     // FIXME: retain only ranges here
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
@@ -108,8 +110,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
             NAME_REF => {
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-                let name_kind =
-                    classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
+                let name_kind = classify_name_ref2(&mut sb, InFile::new(file_id.into(), &name_ref))
+                    .map(|d| d.kind);
                 match name_kind {
                     Some(name_kind) => {
                         if let Local(local) = &name_kind {
@@ -129,7 +131,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
                 let name_kind =
-                    classify_name(db, InFile::new(file_id.into(), &name)).map(|d| d.kind);
+                    classify_name2(&mut sb, InFile::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {

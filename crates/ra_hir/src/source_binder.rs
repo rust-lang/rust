@@ -8,8 +8,8 @@ use hir_def::{
     dyn_map::DynMap,
     keys::{self, Key},
     resolver::{HasResolver, Resolver},
-    ConstId, DefWithBodyId, EnumId, FunctionId, ImplId, ModuleId, StaticId, StructId, TraitId,
-    UnionId, VariantId,
+    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ImplId, ModuleId, StaticId,
+    StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::InFile;
 use ra_prof::profile;
@@ -166,6 +166,8 @@ to_id_impls![
     (FunctionId, ast::FnDef, keys::FUNCTION),
     (StaticId, ast::StaticDef, keys::STATIC),
     (ConstId, ast::ConstDef, keys::CONST),
-    // (TypeAlias, TypeAliasId, ast::TypeAliasDef, keys::TYPE_ALIAS),
+    (TypeAliasId, ast::TypeAliasDef, keys::TYPE_ALIAS),
     (ImplId, ast::ImplBlock, keys::IMPL),
+    (StructFieldId, ast::RecordFieldDef, keys::RECORD_FIELD),
+    (EnumVariantId, ast::EnumVariant, keys::ENUM_VARIANT),
 ];

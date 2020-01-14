@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub(crate) use self::{
-    classify::{classify_name, classify_name_ref},
+    classify::{classify_name, classify_name2, classify_name_ref, classify_name_ref2},
     name_definition::{NameDefinition, NameKind},
     rename::rename,
 };
@@ -309,7 +309,7 @@ mod tests {
     }
     impl Foo {
         fn f() -> i32 { 42 }
-    }    
+    }
     fn main() {
         let f: Foo;
         f = Foo {a: Foo::f()};
@@ -319,7 +319,7 @@ mod tests {
         check_result(
             refs,
             "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15) Other",
-            &["FileId(1) [142; 145) StructLiteral"],
+            &["FileId(1) [138; 141) StructLiteral"],
         );
     }
 
