@@ -28,7 +28,7 @@ pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> 
     }
 }
 
-pub fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use super::*;
 
-pub fn codegen_simd_intrinsic_call<'tcx>(
+pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],

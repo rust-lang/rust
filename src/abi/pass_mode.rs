@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+pub(super) use EmptySinglePair::*;
+
 #[derive(Copy, Clone, Debug)]
 pub enum PassMode {
     NoPass,
@@ -9,18 +11,18 @@ pub enum PassMode {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum EmptySinglePair<T> {
+pub(super) enum EmptySinglePair<T> {
     Empty,
     Single(T),
     Pair(T, T),
 }
 
 impl<T> EmptySinglePair<T> {
-    pub fn into_iter(self) -> EmptySinglePairIter<T> {
+    pub(super) fn into_iter(self) -> EmptySinglePairIter<T> {
         EmptySinglePairIter(self)
     }
 
-    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> EmptySinglePair<U> {
+    pub(super) fn map<U>(self, mut f: impl FnMut(T) -> U) -> EmptySinglePair<U> {
         match self {
             Empty => Empty,
             Single(v) => Single(f(v)),
@@ -29,7 +31,7 @@ impl<T> EmptySinglePair<T> {
     }
 }
 
-pub struct EmptySinglePairIter<T>(EmptySinglePair<T>);
+pub(super) struct EmptySinglePairIter<T>(EmptySinglePair<T>);
 
 impl<T> Iterator for EmptySinglePairIter<T> {
     type Item = T;
@@ -47,14 +49,14 @@ impl<T> Iterator for EmptySinglePairIter<T> {
 }
 
 impl<T: std::fmt::Debug> EmptySinglePair<T> {
-    pub fn assert_single(self) -> T {
+    pub(super) fn assert_single(self) -> T {
         match self {
             Single(v) => v,
             _ => panic!("Called assert_single on {:?}", self),
         }
     }
 
-    pub fn assert_pair(self) -> (T, T) {
+    pub(super) fn assert_pair(self) -> (T, T) {
         match self {
             Pair(a, b) => (a, b),
             _ => panic!("Called assert_pair on {:?}", self),
@@ -62,10 +64,8 @@ impl<T: std::fmt::Debug> EmptySinglePair<T> {
     }
 }
 
-pub use EmptySinglePair::*;
-
 impl PassMode {
-    pub fn get_param_ty(self, tcx: TyCtxt<'_>) -> EmptySinglePair<Type> {
+    pub(super) fn get_param_ty(self, tcx: TyCtxt<'_>) -> EmptySinglePair<Type> {
         match self {
             PassMode::NoPass => Empty,
             PassMode::ByVal(clif_type) => Single(clif_type),
@@ -108,7 +108,7 @@ pub fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMod
     }
 }
 
-pub fn adjust_arg_for_abi<'tcx>(
+pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
 ) -> EmptySinglePair<Value> {
@@ -123,7 +123,7 @@ pub fn adjust_arg_for_abi<'tcx>(
     }
 }
 
-pub fn cvalue_for_param<'tcx>(
+pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_ebb: Ebb,
     local: Option<mir::Local>,

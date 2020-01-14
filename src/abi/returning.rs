@@ -13,7 +13,7 @@ pub fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx
     }
 }
 
-pub fn codegen_return_param(
+pub(super) fn codegen_return_param(
     fx: &mut FunctionCx<impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_ebb: Ebb,
@@ -54,7 +54,7 @@ pub fn codegen_return_param(
     );
 }
 
-pub fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
+pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
     fn_sig: FnSig<'tcx>,
     ret_place: Option<CPlace<'tcx>>,

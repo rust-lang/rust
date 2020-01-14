@@ -101,7 +101,7 @@ impl<'tcx> DebugContext<'tcx> {
 }
 
 impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
-    pub(crate) fn create_debug_lines(
+    pub(super) fn create_debug_lines(
         &mut self,
         context: &Context,
         isa: &dyn cranelift_codegen::isa::TargetIsa,

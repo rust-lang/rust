@@ -10,7 +10,7 @@
 
 use crate::prelude::*;
 
-pub fn optimize_function(ctx: &mut Context, cold_ebbs: &EntitySet<Ebb>) {
+pub(super) fn optimize_function(ctx: &mut Context, cold_ebbs: &EntitySet<Ebb>) {
     // FIXME Move the ebb in place instead of remove and append once
     // bytecodealliance/cranelift#1339 is implemented.
 

@@ -127,7 +127,7 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
     $ret.write_cvalue($fx, ret_val);
 }
 
-pub fn lane_type_and_count<'tcx>(
+fn lane_type_and_count<'tcx>(
     tcx: TyCtxt<'tcx>,
     layout: TyLayout<'tcx>,
 ) -> (TyLayout<'tcx>, u32) {
