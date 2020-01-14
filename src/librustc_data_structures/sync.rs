@@ -19,6 +19,7 @@
 
 use crate::owning_ref::{Erased, OwningRef};
 use std::any::Any;
+use std::cmp;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
@@ -822,4 +823,14 @@ impl<T> DerefMut for OneThread<T> {
         self.check();
         &mut self.inner
     }
+}
+
+/// Splits the slice into parts and runs `f` on them in parallel.
+pub fn par_partition<'a, T: Sync, R: Send>(
+    slice: &'a [T],
+    parts: usize,
+    f: impl Fn(&'a [T]) -> R + Sync,
+) -> Vec<R> {
+    let chunks: Vec<_> = slice.chunks(cmp::max((slice.len() + parts - 1) / parts, 1)).collect();
+    par_map(chunks, |chunk| f(chunk))
 }
