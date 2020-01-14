@@ -41,12 +41,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&mut bx, &place.as_ref());
+                    let cg_dest = self.codegen_place(&mut bx, place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {
-                self.codegen_place(&mut bx, &place.as_ref())
+                self.codegen_place(&mut bx, place.as_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -70,7 +70,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let outputs = asm
                     .outputs
                     .iter()
-                    .map(|output| self.codegen_place(&mut bx, &output.as_ref()))
+                    .map(|output| self.codegen_place(&mut bx, output.as_ref()))
                     .collect();
 
                 let input_vals = asm.inputs.iter().fold(
