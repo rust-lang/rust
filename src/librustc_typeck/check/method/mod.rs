@@ -17,7 +17,7 @@ use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable, WithConstness};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -322,7 +322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             self.body_id,
             self.param_env,
-            poly_trait_ref.to_predicate(),
+            poly_trait_ref.without_const().to_predicate(),
         );
 
         // Now we want to know if this can be matched

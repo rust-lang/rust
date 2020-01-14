@@ -3,7 +3,7 @@ use crate::infer::InferCtxt;
 use crate::middle::lang_items;
 use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Ident};
@@ -350,7 +350,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.compute_trait_ref(&trait_ref, Elaborate::None);
 
         if !data.has_escaping_bound_vars() {
-            let predicate = trait_ref.to_predicate();
+            let predicate = trait_ref.without_const().to_predicate();
             let cause = self.cause(traits::ProjectionWf(data));
             self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
@@ -378,7 +378,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                 substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
             };
-            self.out.push(traits::Obligation::new(cause, self.param_env, trait_ref.to_predicate()));
+            self.out.push(traits::Obligation::new(
+                cause,
+                self.param_env,
+                trait_ref.without_const().to_predicate(),
+            ));
         }
     }
 

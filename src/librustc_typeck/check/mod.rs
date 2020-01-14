@@ -112,7 +112,7 @@ use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSel
 use rustc::ty::util::{Discr, IntTypeExt, Representability};
 use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType,
+    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
 };
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1423,7 +1423,7 @@ fn check_fn<'a, 'tcx>(
                 inherited.register_predicate(traits::Obligation::new(
                     cause,
                     param_env,
-                    trait_ref.to_predicate(),
+                    trait_ref.without_const().to_predicate(),
                 ));
             }
         }

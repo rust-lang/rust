@@ -12,7 +12,7 @@ use super::elaborate_predicates;
 
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -585,6 +585,7 @@ fn receiver_is_dispatchable<'tcx>(
             def_id: unsize_did,
             substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
         }
+        .without_const()
         .to_predicate();
 
         // U: Trait<Arg1, ..., ArgN>
@@ -598,7 +599,7 @@ fn receiver_is_dispatchable<'tcx>(
                     }
                 });
 
-            ty::TraitRef { def_id: unsize_did, substs }.to_predicate()
+            ty::TraitRef { def_id: unsize_did, substs }.without_const().to_predicate()
         };
 
         let caller_bounds: Vec<Predicate<'tcx>> = param_env
@@ -620,6 +621,7 @@ fn receiver_is_dispatchable<'tcx>(
             def_id: dispatch_from_dyn_did,
             substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
         }
+        .without_const()
         .to_predicate();
 
         Obligation::new(ObligationCause::dummy(), param_env, predicate)

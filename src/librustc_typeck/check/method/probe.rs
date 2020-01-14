@@ -25,6 +25,7 @@ use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    WithConstness,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -1396,7 +1397,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 TraitCandidate(trait_ref) => {
-                    let predicate = trait_ref.to_predicate();
+                    let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {

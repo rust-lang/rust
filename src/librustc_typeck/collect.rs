@@ -30,7 +30,7 @@ use rustc::ty::subst::GenericArgKind;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -411,7 +411,8 @@ fn type_param_predicates(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        extend = Some((identity_trait_ref.to_predicate(), item.span));
+                        extend =
+                            Some((identity_trait_ref.without_const().to_predicate(), item.span));
                     }
                     generics
                 }
@@ -2056,7 +2057,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         let span = tcx.def_span(def_id);
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).to_predicate(),
+                ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(),
                 span,
             ))));
     }
@@ -2230,7 +2231,10 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
-        predicates.push((trait_ref.to_poly_trait_ref().to_predicate(), tcx.def_span(def_id)));
+        predicates.push((
+            trait_ref.to_poly_trait_ref().without_const().to_predicate(),
+            tcx.def_span(def_id),
+        ));
     }
 
     // Collect the region predicates that were declared inline as

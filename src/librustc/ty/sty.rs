@@ -12,7 +12,9 @@ use crate::mir::interpret::Scalar;
 use crate::mir::Promoted;
 use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
+use crate::ty::{
+    self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
+};
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
@@ -665,14 +667,16 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match *self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => Binder(tr).with_self_ty(tcx, self_ty).to_predicate(),
+            ExistentialPredicate::Trait(tr) => {
+                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate()
+            }
             ExistentialPredicate::Projection(p) => {
                 ty::Predicate::Projection(Binder(p.with_self_ty(tcx, self_ty)))
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =
                     Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
-                trait_ref.to_predicate()
+                trait_ref.without_const().to_predicate()
             }
         }
     }

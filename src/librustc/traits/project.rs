@@ -16,7 +16,7 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -738,7 +738,12 @@ fn get_paranoid_cache_value_obligation<'a, 'tcx>(
     depth: usize,
 ) -> PredicateObligation<'tcx> {
     let trait_ref = projection_ty.trait_ref(infcx.tcx).to_poly_trait_ref();
-    Obligation { cause, recursion_depth: depth, param_env, predicate: trait_ref.to_predicate() }
+    Obligation {
+        cause,
+        recursion_depth: depth,
+        param_env,
+        predicate: trait_ref.without_const().to_predicate(),
+    }
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
@@ -772,7 +777,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(),
     };
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;

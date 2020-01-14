@@ -37,7 +37,7 @@ use crate::middle::lang_items;
 use crate::ty::fast_reject;
 use crate::ty::relate::TypeRelation;
 use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -3368,7 +3368,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                     tcx.mk_substs_trait(source, &[]),
                 );
-                nested.push(predicate_to_obligation(tr.to_predicate()));
+                nested.push(predicate_to_obligation(tr.without_const().to_predicate()));
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:

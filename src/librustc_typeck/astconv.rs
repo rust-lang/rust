@@ -17,7 +17,7 @@ use rustc::traits::astconv_object_safety_violations;
 use rustc::traits::error_reporting::report_object_safety_error;
 use rustc::traits::wf::object_region_bounds;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
@@ -2980,7 +2980,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.to_predicate(), span)
+                (trait_ref.without_const().to_predicate(), span)
             })
         });
 
