@@ -111,55 +111,46 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     errors
 }
 
-// FIXME: kill duplication
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
+    fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
+        text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
+    }
+
     let token = literal.token();
     let text = token.text().as_str();
+
+    let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {
+        let off = token.text_range().start() + TextUnit::from_usize(off + prefix_len);
+        acc.push(SyntaxError::new(err.into(), off));
+    };
+
     match token.kind() {
         BYTE => {
-            if let Some(end) = text.rfind('\'') {
-                if let Some(without_quotes) = text.get(2..end) {
-                    if let Err((off, err)) = unescape::unescape_byte(without_quotes) {
-                        let off = token.text_range().start() + TextUnit::from_usize(off + 2);
-                        acc.push(SyntaxError::new(err.into(), off))
-                    }
-                }
+            if let Some(Err(e)) = unquote(text, 2, '\'').map(unescape::unescape_byte) {
+                push_err(2, e);
             }
         }
         CHAR => {
-            if let Some(end) = text.rfind('\'') {
-                if let Some(without_quotes) = text.get(1..end) {
-                    if let Err((off, err)) = unescape::unescape_char(without_quotes) {
-                        let off = token.text_range().start() + TextUnit::from_usize(off + 1);
-                        acc.push(SyntaxError::new(err.into(), off))
-                    }
-                }
+            if let Some(Err(e)) = unquote(text, 1, '\'').map(unescape::unescape_char) {
+                push_err(1, e);
             }
         }
         BYTE_STRING => {
-            if let Some(end) = text.rfind('\"') {
-                if let Some(without_quotes) = text.get(2..end) {
-                    unescape::unescape_byte_str(without_quotes, &mut |range, char| {
-                        if let Err(err) = char {
-                            let off = range.start;
-                            let off = token.text_range().start() + TextUnit::from_usize(off + 2);
-                            acc.push(SyntaxError::new(err.into(), off))
-                        }
-                    })
-                }
+            if let Some(without_quotes) = unquote(text, 2, '"') {
+                unescape::unescape_byte_str(without_quotes, &mut |range, char| {
+                    if let Err(err) = char {
+                        push_err(2, (range.start, err));
+                    }
+                })
             }
         }
         STRING => {
-            if let Some(end) = text.rfind('\"') {
-                if let Some(without_quotes) = text.get(1..end) {
-                    unescape::unescape_str(without_quotes, &mut |range, char| {
-                        if let Err(err) = char {
-                            let off = range.start;
-                            let off = token.text_range().start() + TextUnit::from_usize(off + 1);
-                            acc.push(SyntaxError::new(err.into(), off))
-                        }
-                    })
-                }
+            if let Some(without_quotes) = unquote(text, 1, '"') {
+                unescape::unescape_str(without_quotes, &mut |range, char| {
+                    if let Err(err) = char {
+                        push_err(1, (range.start, err));
+                    }
+                })
             }
         }
         _ => (),
