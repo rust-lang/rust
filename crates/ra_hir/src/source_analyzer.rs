@@ -16,12 +16,12 @@ use hir_def::{
     expr::{ExprId, PatId},
     nameres::ModuleSource,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
-    AssocItemId, DefWithBodyId,
+    DefWithBodyId, TraitId,
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
 };
-use hir_ty::{method_resolution, Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty};
+use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -29,11 +29,11 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
 };
+use rustc_hash::FxHashSet;
 
 use crate::{
-    db::HirDatabase, Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function,
-    ImplBlock, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
-    TypeParam,
+    db::HirDatabase, Adt, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, ImplBlock,
+    Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -347,49 +347,9 @@ impl SourceAnalyzer {
             .collect()
     }
 
-    pub fn iterate_method_candidates<T>(
-        &self,
-        db: &impl HirDatabase,
-        ty: &Type,
-        name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
-    ) -> Option<T> {
-        // There should be no inference vars in types passed here
-        // FIXME check that?
-        // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
-        method_resolution::iterate_method_candidates(
-            &canonical,
-            db,
-            &self.resolver,
-            name,
-            method_resolution::LookupMode::MethodCall,
-            |ty, it| match it {
-                AssocItemId::FunctionId(f) => callback(ty, f.into()),
-                _ => None,
-            },
-        )
-    }
-
-    pub fn iterate_path_candidates<T>(
-        &self,
-        db: &impl HirDatabase,
-        ty: &Type,
-        name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
-    ) -> Option<T> {
-        // There should be no inference vars in types passed here
-        // FIXME check that?
-        // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
-        method_resolution::iterate_method_candidates(
-            &canonical,
-            db,
-            &self.resolver,
-            name,
-            method_resolution::LookupMode::Path,
-            |ty, it| callback(ty, it.into()),
-        )
+    /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
+    pub fn traits_in_scope(&self, db: &impl HirDatabase) -> FxHashSet<TraitId> {
+        self.resolver.traits_in_scope(db)
     }
 
     pub fn expand(

@@ -21,8 +21,8 @@ use hir_expand::{
     MacroDefId,
 };
 use hir_ty::{
-    autoderef, display::HirFormatter, expr::ExprValidator, method_resolution::implements_trait,
-    ApplicationTy, Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+    autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
+    Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -120,7 +120,8 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::{attr::Attrs, visibility::Visibility};
+pub use hir_def::{attr::Attrs, visibility::Visibility, AssocItemId};
+use rustc_hash::FxHashSet;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
@@ -891,7 +892,13 @@ impl Type {
         };
 
         let canonical_ty = Canonical { value: self.ty.value.clone(), num_vars: 0 };
-        implements_trait(&canonical_ty, db, self.ty.environment.clone(), krate, std_future_trait)
+        method_resolution::implements_trait(
+            &canonical_ty,
+            db,
+            self.ty.environment.clone(),
+            krate,
+            std_future_trait,
+        )
     }
 
     // FIXME: this method is broken, as it doesn't take closures into account.
@@ -1000,6 +1007,65 @@ impl Type {
             }
         }
         None
+    }
+
+    pub fn iterate_method_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        krate: Crate,
+        traits_in_scope: &FxHashSet<TraitId>,
+        name: Option<&Name>,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    ) -> Option<T> {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        // FIXME replace Unknown by bound vars here
+        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+
+        let env = self.ty.environment.clone();
+        let krate = krate.id;
+
+        method_resolution::iterate_method_candidates(
+            &canonical,
+            db,
+            env,
+            krate,
+            traits_in_scope,
+            name,
+            method_resolution::LookupMode::MethodCall,
+            |ty, it| match it {
+                AssocItemId::FunctionId(f) => callback(ty, f.into()),
+                _ => None,
+            },
+        )
+    }
+
+    pub fn iterate_path_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        krate: Crate,
+        traits_in_scope: &FxHashSet<TraitId>,
+        name: Option<&Name>,
+        mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+    ) -> Option<T> {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        // FIXME replace Unknown by bound vars here
+        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+
+        let env = self.ty.environment.clone();
+        let krate = krate.id;
+
+        method_resolution::iterate_method_candidates(
+            &canonical,
+            db,
+            env,
+            krate,
+            traits_in_scope,
+            name,
+            method_resolution::LookupMode::Path,
+            |ty, it| callback(ty, it.into()),
+        )
     }
 
     pub fn as_adt(&self) -> Option<Adt> {

@@ -11,7 +11,7 @@ use hir_expand::name::Name;
 
 use crate::{db::HirDatabase, method_resolution, Substs, Ty, TypeWalk, ValueTyDefId};
 
-use super::{ExprOrPatId, InferenceContext, TraitRef};
+use super::{ExprOrPatId, InferenceContext, TraitEnvironment, TraitRef};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(
@@ -193,11 +193,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
 
         let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
+        let env = TraitEnvironment::lower(self.db, &self.resolver);
+        let krate = self.resolver.krate()?;
+        let traits_in_scope = self.resolver.traits_in_scope(self.db);
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
-            &self.resolver.clone(),
+            env,
+            krate,
+            &traits_in_scope,
             Some(name),
             method_resolution::LookupMode::Path,
             move |_ty, item| {

@@ -569,12 +569,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
         let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
-        let resolved = method_resolution::lookup_method(
-            &canonicalized_receiver.value,
-            self.db,
-            method_name,
-            &self.resolver,
-        );
+
+        let traits_in_scope = self.resolver.traits_in_scope(self.db);
+
+        let resolved = self.resolver.krate().and_then(|krate| {
+            method_resolution::lookup_method(
+                &canonicalized_receiver.value,
+                self.db,
+                self.trait_env.clone(),
+                krate,
+                &traits_in_scope,
+                method_name,
+            )
+        });
         let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);

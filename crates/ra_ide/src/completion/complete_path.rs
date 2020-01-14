@@ -49,22 +49,24 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            ctx.analyzer.iterate_path_candidates(ctx.db, &ty, None, |_ty, item| {
-                match item {
-                    hir::AssocItem::Function(func) => {
-                        if !func.has_self_param(ctx.db) {
-                            acc.add_function(ctx, func);
-                        }
-                    }
-                    hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-                    hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-                }
-                None::<()>
-            });
             // Iterate assoc types separately
             // FIXME: complete T::AssocType
             let krate = ctx.module.map(|m| m.krate());
             if let Some(krate) = krate {
+                let traits_in_scope = ctx.analyzer.traits_in_scope(ctx.db);
+                ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
+                    match item {
+                        hir::AssocItem::Function(func) => {
+                            if !func.has_self_param(ctx.db) {
+                                acc.add_function(ctx, func);
+                            }
+                        }
+                        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                    }
+                    None::<()>
+                });
+
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     match item {
                         hir::AssocItem::Function(_) | hir::AssocItem::Const(_) => {}
