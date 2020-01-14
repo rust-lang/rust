@@ -84,11 +84,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
-        assert_eq!(
-            label.label.chars().nth(0).and_then(|c| Some(c.is_uppercase())).unwrap(),
-            true,
-            "First character should be uppercase"
-        );
+        assert!(label.label.chars().nth(0).unwrap().is_uppercase());
 
         let assist = if self.should_compute_edit {
             let action = {
