@@ -90,6 +90,7 @@ pub mod writeback;
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -2610,6 +2611,16 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn item_def_id(&self) -> Option<DefId> {
         None
+    }
+
+    fn default_constness_for_trait_bounds(&self) -> ast::Constness {
+        // FIXME: refactor this into a method
+        let node = self.tcx.hir().get(self.body_id);
+        if let Some(fn_like) = FnLikeNode::from_node(node) {
+            fn_like.constness()
+        } else {
+            ast::Constness::NotConst
+        }
     }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
