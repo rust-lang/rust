@@ -624,7 +624,8 @@ fn is_up_to_date(
 
     // Check timestamps.
     let mut inputs = inputs.clone();
-    inputs.add_path(&testpaths.file);
+    // Use `add_dir` to account for run-make tests, which use their individual directory
+    inputs.add_dir(&testpaths.file);
 
     for aux in &props.aux {
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
