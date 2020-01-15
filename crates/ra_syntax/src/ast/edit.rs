@@ -22,9 +22,8 @@ impl ast::BinExpr {
     #[must_use]
     pub fn replace_op(&self, op: SyntaxKind) -> Option<ast::BinExpr> {
         let op_node: SyntaxElement = self.op_details()?.0.into();
-        let to_insert: Option<SyntaxElement> = Some(tokens::op(op).into());
-        let replace_range = RangeInclusive::new(op_node.clone(), op_node);
-        Some(replace_children(self, replace_range, to_insert.into_iter()))
+        let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
+        Some(replace_children(self, single_node(op_node), to_insert))
     }
 }
 
@@ -40,11 +39,10 @@ impl ast::FnDef {
         } else {
             to_insert.push(make::tokens::single_space().into());
             to_insert.push(body.syntax().clone().into());
-            return insert_children(self, InsertPosition::Last, to_insert.into_iter());
+            return insert_children(self, InsertPosition::Last, to_insert);
         };
         to_insert.push(body.syntax().clone().into());
-        let replace_range = RangeInclusive::new(old_body_or_semi.clone(), old_body_or_semi);
-        replace_children(self, replace_range, to_insert.into_iter())
+        replace_children(self, single_node(old_body_or_semi), to_insert)
     }
 }
 
@@ -77,7 +75,7 @@ impl ast::ItemList {
         let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
         let to_insert: ArrayVec<[SyntaxElement; 2]> =
             [ws.ws().into(), item.syntax().clone().into()].into();
-        insert_children(self, position, to_insert.into_iter())
+        insert_children(self, position, to_insert)
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {
@@ -109,9 +107,7 @@ impl ast::ItemList {
         let to_insert = iter::once(ws.ws().into());
         match existing_ws {
             None => insert_children(self, InsertPosition::After(l_curly), to_insert),
-            Some(ws) => {
-                replace_children(self, RangeInclusive::new(ws.clone().into(), ws.into()), to_insert)
-            }
+            Some(ws) => replace_children(self, single_node(ws), to_insert),
         }
     }
 }
@@ -188,7 +184,7 @@ impl ast::RecordFieldList {
             InsertPosition::After(anchor) => after_field!(anchor),
         };
 
-        insert_children(self, position, to_insert.iter().cloned())
+        insert_children(self, position, to_insert)
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {
@@ -207,7 +203,7 @@ impl ast::TypeParam {
             Some(it) => it.syntax().clone().into(),
             None => colon.clone().into(),
         };
-        replace_children(self, RangeInclusive::new(colon.into(), end), iter::empty())
+        replace_children(self, colon.into()..=end, iter::empty())
     }
 }
 
@@ -224,7 +220,7 @@ fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
             Some(el) if el.kind() == WHITESPACE => el.clone(),
             Some(_) | None => start.clone(),
         };
-        node = algo::replace_children(&node, RangeInclusive::new(start, end), &mut iter::empty());
+        node = algo::replace_children(&node, start..=end, &mut iter::empty());
     }
     node
 }
@@ -232,9 +228,10 @@ fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
 #[must_use]
 pub fn replace_descendants<N: AstNode, D: AstNode>(
     parent: &N,
-    replacement_map: impl Iterator<Item = (D, D)>,
+    replacement_map: impl IntoIterator<Item = (D, D)>,
 ) -> N {
     let map = replacement_map
+        .into_iter()
         .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
         .collect::<FxHashMap<SyntaxElement, _>>();
     let new_syntax = algo::replace_descendants(parent.syntax(), &|n| map.get(n).cloned());
@@ -348,19 +345,25 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
 fn insert_children<N: AstNode>(
     parent: &N,
     position: InsertPosition<SyntaxElement>,
-    mut to_insert: impl Iterator<Item = SyntaxElement>,
+    to_insert: impl IntoIterator<Item = SyntaxElement>,
 ) -> N {
-    let new_syntax = algo::insert_children(parent.syntax(), position, &mut to_insert);
+    let new_syntax = algo::insert_children(parent.syntax(), position, &mut to_insert.into_iter());
     N::cast(new_syntax).unwrap()
+}
+
+fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElement> {
+    let element = element.into();
+    element.clone()..=element
 }
 
 #[must_use]
 fn replace_children<N: AstNode>(
     parent: &N,
     to_replace: RangeInclusive<SyntaxElement>,
-    mut to_insert: impl Iterator<Item = SyntaxElement>,
+    to_insert: impl IntoIterator<Item = SyntaxElement>,
 ) -> N {
-    let new_syntax = algo::replace_children(parent.syntax(), to_replace, &mut to_insert);
+    let new_syntax =
+        algo::replace_children(parent.syntax(), to_replace, &mut to_insert.into_iter());
     N::cast(new_syntax).unwrap()
 }
 

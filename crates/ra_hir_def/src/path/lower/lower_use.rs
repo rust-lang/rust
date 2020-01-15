@@ -84,7 +84,7 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
                     res
                 }
                 Either::Right(crate_id) => {
-                    return Some(ModPath::from_simple_segments(
+                    return Some(ModPath::from_segments(
                         PathKind::DollarCrate(crate_id),
                         iter::empty(),
                     ))
@@ -95,19 +95,19 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
             if prefix.is_some() {
                 return None;
             }
-            ModPath::from_simple_segments(PathKind::Crate, iter::empty())
+            ModPath::from_segments(PathKind::Crate, iter::empty())
         }
         ast::PathSegmentKind::SelfKw => {
             if prefix.is_some() {
                 return None;
             }
-            ModPath::from_simple_segments(PathKind::Super(0), iter::empty())
+            ModPath::from_segments(PathKind::Super(0), iter::empty())
         }
         ast::PathSegmentKind::SuperKw => {
             if prefix.is_some() {
                 return None;
             }
-            ModPath::from_simple_segments(PathKind::Super(1), iter::empty())
+            ModPath::from_segments(PathKind::Super(1), iter::empty())
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
