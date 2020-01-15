@@ -68,7 +68,7 @@ use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_span;
+use rustc_span::{self, Span};
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
@@ -1352,39 +1352,48 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
         if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
-            err.span_label(return_sp, "expected because this return type...");
-            err.span_label( *sp, format!(
-                "...is found to be `{}` here",
-                fcx.resolve_vars_with_obligations(expected),
-            ));
-            err.note("to return `impl Trait`, all returned values must be of the same type");
-            let snippet = fcx
-                .tcx
-                .sess
-                .source_map()
-                .span_to_snippet(return_sp)
-                .unwrap_or_else(|_| "dyn Trait".to_string());
-            let mut snippet_iter = snippet.split_whitespace();
-            let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
-            if has_impl {
-                err.help(&format!(
-                    "you can instead return a trait object using `Box<dyn {}>`",
-                    &snippet[5..]
-                ));
-            }
-            err.help("alternatively, create a new `enum` with a variant for each returned type");
-            let impl_trait_msg = "for information on `impl Trait`, see \
-                <https://doc.rust-lang.org/book/ch10-02-traits.html\
-                #returning-types-that-implement-traits>";
-            let trait_obj_msg = "for information on trait objects, see \
-                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
-                #using-trait-objects-that-allow-for-values-of-different-types>";
-            err.note(impl_trait_msg);
-            if has_impl {
-                err.note(trait_obj_msg);
-            }
+            self.add_impl_trait_explanation(&mut err, fcx, expected, *sp, return_sp);
         }
         err
+    }
+
+    fn add_impl_trait_explanation<'a>(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        fcx: &FnCtxt<'a, 'tcx>,
+        expected: Ty<'tcx>,
+        sp: Span,
+        return_sp: Span,
+    ) {
+        err.span_label(return_sp, "expected because this return type...");
+        err.span_label(
+            sp,
+            format!("...is found to be `{}` here", fcx.resolve_vars_with_obligations(expected)),
+        );
+        let impl_trait_msg = "for information on `impl Trait`, see \
+                <https://doc.rust-lang.org/book/ch10-02-traits.html\
+                #returning-types-that-implement-traits>";
+        let trait_obj_msg = "for information on trait objects, see \
+                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
+                #using-trait-objects-that-allow-for-values-of-different-types>";
+        err.note("to return `impl Trait`, all returned values must be of the same type");
+        err.note(impl_trait_msg);
+        let snippet = fcx
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(return_sp)
+            .unwrap_or_else(|_| "dyn Trait".to_string());
+        let mut snippet_iter = snippet.split_whitespace();
+        let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
+        if has_impl {
+            err.help(&format!(
+                "you can instead return a trait object using `Box<dyn {}>`",
+                &snippet[5..]
+            ));
+            err.note(trait_obj_msg);
+        }
+        err.help("alternatively, create a new `enum` with a variant for each returned type");
     }
 
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {

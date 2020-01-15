@@ -82,11 +82,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bal() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: if trait `Trait` was object safe, you could return a trait object
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = note: if all the returned values were of the same type you could use `impl Trait` as the return type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = note: you can create a new `enum` with a variant for each returned type
+help: return a trait object instead
+   |
+LL | fn bal() -> Box<dyn Trait> {
+LL |     if true {
+LL |         return Box::new(Struct);
+LL |     }
+LL |     Box::new(42)
+   |
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:27:13

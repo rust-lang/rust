@@ -25,7 +25,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::Visitor;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
@@ -1410,35 +1409,4 @@ pub fn suggest_constraining_type_param(
         return true;
     }
     false
-}
-
-/// Collect all the returned expressions within the input expression.
-/// Used to point at the return spans when we want to suggest some change to them.
-struct ReturnsVisitor<'v>(Vec<&'v hir::Expr<'v>>);
-
-impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
-    type Map = rustc::hir::map::Map<'v>;
-
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<'_, Self::Map> {
-        hir::intravisit::NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        match ex.kind {
-            hir::ExprKind::Ret(Some(ex)) => self.0.push(ex),
-            _ => {}
-        }
-        hir::intravisit::walk_expr(self, ex);
-    }
-
-    fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-        if body.generator_kind().is_none() {
-            if let hir::ExprKind::Block(block, None) = body.value.kind {
-                if let Some(expr) = block.expr {
-                    self.0.push(expr);
-                }
-            }
-        }
-        hir::intravisit::walk_body(self, body);
-    }
 }

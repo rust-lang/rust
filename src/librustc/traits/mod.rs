@@ -1171,7 +1171,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-impl<'tcx> ObligationCauseCode<'tcx> {
+impl ObligationCauseCode<'_> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
