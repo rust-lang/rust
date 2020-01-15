@@ -1,36 +1,34 @@
-use crate::reexport::*;
-use if_chain::if_chain;
-use itertools::Itertools;
-use rustc::lint::in_external_macro;
-use rustc::middle::region;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id;
-use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use rustc_hir::*;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-// use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
-use crate::utils::usage::mutated_variables;
-use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
-use rustc::hir::map::Map;
-use rustc::ty::{self, Ty};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::Applicability;
-use rustc_span::source_map::Span;
-use rustc_span::{BytePos, Symbol};
-use rustc_typeck::expr_use_visitor::*;
-use std::iter::{once, Iterator};
-use std::mem;
-use syntax::ast;
-
+use crate::reexport::*;
 use crate::utils::paths;
+use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_refutable, last_path_segment, match_trait_method, match_type, match_var, multispan_sugg,
     snippet, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg,
     span_lint_and_then, SpanlessEq,
 };
+use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
+use if_chain::if_chain;
+use itertools::Itertools;
+use rustc::hir::map::Map;
+use rustc::lint::in_external_macro;
+use rustc::middle::region;
+use rustc::ty::{self, Ty};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id;
+use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::*;
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Span;
+use rustc_span::{BytePos, Symbol};
+use rustc_typeck::expr_use_visitor::*;
+use std::iter::{once, Iterator};
+use std::mem;
+use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for for-loops that manually copy items between
@@ -1689,36 +1687,8 @@ fn check_for_mutation(
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => {
-            let mut visitor = UsedVisitor {
-                var: ident.name,
-                used: false,
-            };
-            walk_expr(&mut visitor, body);
-            !visitor.used
-        },
+        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => is_unused(&ident, body),
         _ => false,
-    }
-}
-
-struct UsedVisitor {
-    var: ast::Name, // var to look for
-    used: bool,     // has the var been used otherwise?
-}
-
-impl<'tcx> Visitor<'tcx> for UsedVisitor {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if match_var(expr, self.var) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

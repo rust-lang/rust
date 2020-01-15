@@ -1,8 +1,9 @@
 use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
+use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
+    expr_block, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
     snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
     walk_ptrs_ty,
 };
@@ -461,33 +462,40 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
     }
 }
 
-fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
-    match pat.kind {
-        PatKind::Wild => true,
-        _ => false,
-    }
-}
-
 fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
-                if_chain! {
-                    if path_str == "Err";
-                    if inner.iter().any(is_wild);
-                    if let ExprKind::Block(ref block, _) = arm.body.kind;
-                    if is_panic_block(block);
-                    then {
-                        // `Err(_)` arm with `panic!` found
-                        span_note_and_lint(cx,
-                                           MATCH_WILD_ERR_ARM,
-                                           arm.pat.span,
-                                           "`Err(_)` will match all errors, maybe not a good idea",
-                                           arm.pat.span,
-                                           "to remove this warning, match each error separately \
-                                            or use `unreachable!` macro");
+                if path_str == "Err" {
+                    let mut matching_wild = inner.iter().any(is_wild);
+                    let mut ident_bind_name = String::from("_");
+                    if !matching_wild {
+                        // Looking for unused bindings (i.e.: `_e`)
+                        inner.iter().for_each(|pat| {
+                            if let PatKind::Binding(.., ident, None) = &pat.kind {
+                                if ident.as_str().starts_with('_') && is_unused(ident, arm.body) {
+                                    ident_bind_name = (&ident.name.as_str()).to_string();
+                                    matching_wild = true;
+                                }
+                            }
+                        });
+                    }
+                    if_chain! {
+                        if matching_wild;
+                        if let ExprKind::Block(ref block, _) = arm.body.kind;
+                        if is_panic_block(block);
+                        then {
+                            // `Err(_)` or `Err(_e)` arm with `panic!` found
+                            span_note_and_lint(cx,
+                                MATCH_WILD_ERR_ARM,
+                                arm.pat.span,
+                                &format!("`Err({})` matches all errors", &ident_bind_name),
+                                arm.pat.span,
+                                "match each error separately or use the error output",
+                            );
+                        }
                     }
                 }
             }

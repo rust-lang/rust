@@ -28,6 +28,19 @@ fn match_wild_err_arm() {
         },
     }
 
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_e) => panic!(),
+    }
+
+    // Allowed when used in `panic!`.
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_e) => panic!("{}", _e),
+    }
+
     // Allowed when not with `panic!` block.
     match x {
         Ok(3) => println!("ok"),

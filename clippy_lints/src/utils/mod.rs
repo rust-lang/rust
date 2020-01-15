@@ -127,6 +127,14 @@ pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
     true
 }
 
+/// Checks if given pattern is a wildcard (`_`)
+pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
+    match pat.kind {
+        PatKind::Wild => true,
+        _ => false,
+    }
+}
+
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.kind {
