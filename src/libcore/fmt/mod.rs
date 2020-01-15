@@ -1244,12 +1244,15 @@ impl<'a> Formatter<'a> {
             // The sign and prefix goes before the padding if the fill character
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
-                self.fill = '0';
-                self.align = rt::v1::Alignment::Right;
+                let old_fill = crate::mem::replace(&mut self.fill, '0');
+                let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
                 write_prefix(self, sign, prefix)?;
                 let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
                 self.buf.write_str(buf)?;
-                post_padding.write(self.buf)
+                post_padding.write(self.buf)?;
+                self.fill = old_fill;
+                self.align = old_align;
+                Ok(())
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
