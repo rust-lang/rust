@@ -20,7 +20,7 @@ case $1 in
         ./prepare.sh
         ;;
     "commit")
-        git commit -m "$(rustc -V)"
+        git commit -m "Rustup to $(rustc -V)"
         ;;
     *)
         echo "Unknown command '$1'"
