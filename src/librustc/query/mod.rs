@@ -1148,11 +1148,11 @@ rustc_queries! {
             desc { "normalizing `{:?}`", goal }
         }
 
-        query substitute_normalize_and_test_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
+        query substitute_normalize_and_test_predicates(key: (DefId, SubstsRef<'tcx>, traits::TraitQueryMode)) -> bool {
             no_force
             desc { |tcx|
-                "testing substituted normalized predicates:`{}`",
-                tcx.def_path_str(key.0)
+                "testing substituted normalized predicates in mode {:?}:`{}`",
+                key.2, tcx.def_path_str(key.0)
             }
         }
 
