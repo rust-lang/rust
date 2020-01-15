@@ -2,7 +2,7 @@
 //! of smaller pieces.
 use itertools::Itertools;
 
-use crate::{algo, ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {};", text))
@@ -20,20 +20,6 @@ pub fn path_qualified(qual: ast::Path, name_ref: ast::NameRef) -> ast::Path {
 }
 fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
-}
-pub fn path_with_type_arg_list(path: ast::Path, args: Option<ast::TypeArgList>) -> ast::Path {
-    if let Some(args) = args {
-        let syntax = path.syntax();
-        // FIXME: remove existing type args
-        let new_syntax = algo::insert_children(
-            syntax,
-            crate::algo::InsertPosition::Last,
-            &mut Some(args).into_iter().map(|n| n.syntax().clone().into()),
-        );
-        ast::Path::cast(new_syntax).unwrap()
-    } else {
-        path
-    }
 }
 
 pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
@@ -201,7 +187,7 @@ pub mod tokens {
     use once_cell::sync::Lazy;
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
-        Lazy::new(|| SourceFile::parse("const C: () = (1 != 1, 2 == 2)\n;"));
+        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2)\n;"));
 
     pub fn comma() -> SyntaxToken {
         SOURCE_FILE
