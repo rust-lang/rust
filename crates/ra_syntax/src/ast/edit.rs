@@ -23,8 +23,7 @@ impl ast::BinExpr {
     pub fn replace_op(&self, op: SyntaxKind) -> Option<ast::BinExpr> {
         let op_node: SyntaxElement = self.op_details()?.0.into();
         let to_insert: Option<SyntaxElement> = Some(tokens::op(op).into());
-        let replace_range = op_node.clone()..=op_node;
-        Some(replace_children(self, replace_range, to_insert.into_iter()))
+        Some(replace_children(self, single_node(op_node), to_insert.into_iter()))
     }
 }
 
@@ -43,8 +42,7 @@ impl ast::FnDef {
             return insert_children(self, InsertPosition::Last, to_insert.into_iter());
         };
         to_insert.push(body.syntax().clone().into());
-        let replace_range = old_body_or_semi.clone()..=old_body_or_semi;
-        replace_children(self, replace_range, to_insert.into_iter())
+        replace_children(self, single_node(old_body_or_semi), to_insert.into_iter())
     }
 }
 
@@ -109,7 +107,7 @@ impl ast::ItemList {
         let to_insert = iter::once(ws.ws().into());
         match existing_ws {
             None => insert_children(self, InsertPosition::After(l_curly), to_insert),
-            Some(ws) => replace_children(self, ws.clone().into()..=ws.into(), to_insert),
+            Some(ws) => replace_children(self, single_node(ws), to_insert),
         }
     }
 }
@@ -350,6 +348,11 @@ fn insert_children<N: AstNode>(
 ) -> N {
     let new_syntax = algo::insert_children(parent.syntax(), position, &mut to_insert);
     N::cast(new_syntax).unwrap()
+}
+
+fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElement> {
+    let element = element.into();
+    element.clone()..=element
 }
 
 #[must_use]
