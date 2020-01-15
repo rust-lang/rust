@@ -4,15 +4,16 @@ use hir::{HirDisplay, SourceAnalyzer};
 use once_cell::unsync::Lazy;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode, TypeAscriptionOwner},
+    ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{db::RootDatabase, FileId};
+use crate::{db::RootDatabase, FileId, FunctionSignature};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {
     TypeHint,
+    ParameterHint,
 }
 
 #[derive(Debug)]
@@ -87,8 +88,77 @@ fn get_inlay_hints(
                         .collect(),
                 )
             },
+            ast::CallExpr(it) => {
+                get_param_name_hints(db, &analyzer, ast::Expr::from(it))
+            },
+            ast::MethodCallExpr(it) => {
+                get_param_name_hints(db, &analyzer, ast::Expr::from(it))
+            },
             _ => None,
         }
+    }
+}
+fn get_param_name_hints(
+    db: &RootDatabase,
+    analyzer: &SourceAnalyzer,
+    expr: ast::Expr,
+) -> Option<Vec<InlayHint>> {
+    let args = match &expr {
+        ast::Expr::CallExpr(expr) => Some(expr.arg_list()?.args()),
+        ast::Expr::MethodCallExpr(expr) => Some(expr.arg_list()?.args()),
+        _ => None,
+    }?;
+
+    let mut parameters = get_fn_signature(db, analyzer, &expr)?.parameter_names.into_iter();
+
+    if let ast::Expr::MethodCallExpr(_) = &expr {
+        parameters.next();
+    };
+
+    let hints = parameters
+        .zip(args)
+        .filter_map(|(param, arg)| {
+            if arg.syntax().kind() == SyntaxKind::LITERAL {
+                Some((arg.syntax().text_range(), param))
+            } else {
+                None
+            }
+        })
+        .map(|(range, param_name)| InlayHint {
+            range,
+            kind: InlayKind::ParameterHint,
+            label: param_name.into(),
+        })
+        .collect();
+
+    Some(hints)
+}
+
+fn get_fn_signature(
+    db: &RootDatabase,
+    analyzer: &SourceAnalyzer,
+    expr: &ast::Expr,
+) -> Option<FunctionSignature> {
+    match expr {
+        ast::Expr::CallExpr(expr) => {
+            // FIXME: Type::as_callable is broken for closures
+            let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
+            match callable_def {
+                hir::CallableDef::FunctionId(it) => {
+                    let fn_def = it.into();
+                    Some(FunctionSignature::from_hir(db, fn_def))
+                }
+                hir::CallableDef::StructId(it) => FunctionSignature::from_struct(db, it.into()),
+                hir::CallableDef::EnumVariantId(it) => {
+                    FunctionSignature::from_enum_variant(db, it.into())
+                }
+            }
+        }
+        ast::Expr::MethodCallExpr(expr) => {
+            let fn_def = analyzer.resolve_method_call(&expr)?;
+            Some(FunctionSignature::from_hir(db, fn_def))
+        }
+        _ => None,
     }
 }
 
@@ -600,6 +670,73 @@ fn main() {
                 range: [137; 138),
                 kind: TypeHint,
                 label: "Smol<Smol<…>>",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn function_call_parameter_hint() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Test {}
+
+impl Test {
+    fn method(&self, param: i32) -> i32 {
+        param * 2
+    }
+}
+
+fn test_func(foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
+    foo + bar
+}
+
+fn main() {
+    let not_literal = 1;
+    let _: i32 = test_func(1, 2, "hello", 3, not_literal);
+    let t: Test = Test {};
+    t.method(123);
+    Test::method(&t, 3456);
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [207; 218),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [251; 252),
+                kind: ParameterHint,
+                label: "foo",
+            },
+            InlayHint {
+                range: [254; 255),
+                kind: ParameterHint,
+                label: "bar",
+            },
+            InlayHint {
+                range: [257; 264),
+                kind: ParameterHint,
+                label: "msg",
+            },
+            InlayHint {
+                range: [266; 267),
+                kind: ParameterHint,
+                label: "_",
+            },
+            InlayHint {
+                range: [323; 326),
+                kind: ParameterHint,
+                label: "param",
+            },
+            InlayHint {
+                range: [350; 354),
+                kind: ParameterHint,
+                label: "param",
             },
         ]
         "###

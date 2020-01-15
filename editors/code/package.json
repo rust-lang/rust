@@ -228,7 +228,7 @@
                 "rust-analyzer.displayInlayHints": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Display additional type information in the editor"
+                    "description": "Display additional type and parameter information in the editor"
                 },
                 "rust-analyzer.maxInlayHintLength": {
                     "type": "number",

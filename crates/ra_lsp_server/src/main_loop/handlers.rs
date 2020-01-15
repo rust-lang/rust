@@ -953,6 +953,7 @@ pub fn handle_inlay_hints(
             range: api_type.range.conv_with(&line_index),
             kind: match api_type.kind {
                 ra_ide::InlayKind::TypeHint => InlayKind::TypeHint,
+                ra_ide::InlayKind::ParameterHint => InlayKind::ParameterHint,
             },
         })
         .collect())
