@@ -207,7 +207,11 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                         }
                     }
 
-                    err.span_note(diverging_var_span, "... due to this expression").emit();
+                    err.span_note(
+                        diverging_var_span,
+                        "... due to this expression evaluating to `!`",
+                    )
+                    .emit();
                 }
             }
         }
