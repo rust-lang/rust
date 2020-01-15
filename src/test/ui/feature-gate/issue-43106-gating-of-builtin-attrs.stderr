@@ -172,19 +172,19 @@ warning: unknown lint: `x5100`
 LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
 
-warning: macro_escape is a deprecated synonym for macro_use
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:466:1
    |
 LL | #[macro_escape]
    | ^^^^^^^^^^^^^^^
 
-warning: macro_escape is a deprecated synonym for macro_use
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:469:17
    |
 LL |     mod inner { #![macro_escape] }
    |                 ^^^^^^^^^^^^^^^^
    |
-   = help: consider an outer attribute, `#[macro_use]` mod ...
+   = help: try an outer attribute: `#[macro_use]`
 
 warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:221:17

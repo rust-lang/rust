@@ -1,4 +1,4 @@
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:43:9
    |
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
@@ -27,7 +27,7 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
 LL |             demand_y(x, y, p)
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1
    |
 LL | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {

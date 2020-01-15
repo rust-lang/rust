@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/propagate-despite-same-free-region.rs:42:9
    |
 LL | /         |_outlives1, _outlives2, x, y| {
@@ -16,7 +16,7 @@ LL | |         },
    = note: number of external vids: 4
    = note: where '_#1r: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-despite-same-free-region.rs:39:1
    |
 LL | / fn supply<'a>(cell_a: Cell<&'a u32>) {

@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
 LL |       with_signature(a, b, |x, y| {
@@ -19,7 +19,7 @@ LL | |     })
    = note: number of external vids: 3
    = note: where T: '_#1r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
    |
 LL | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
@@ -48,7 +48,7 @@ LL | |     })
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(DefId(0:12 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]::'a[0]), 'a))`...
 
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
    |
 LL |       with_signature(a, b, |x, y| {
@@ -68,7 +68,7 @@ LL | |     })
    = note: number of external vids: 3
    = note: where T: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:39:1
    |
 LL | / fn correct_region<'a, T>(a: Cell<&'a ()>, b: T)
@@ -82,7 +82,7 @@ LL | | }
    |
    = note: defining type: correct_region::<'_#1r, T>
 
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
 LL |       with_signature(a, b, |x, y| {
@@ -101,7 +101,7 @@ LL | |     })
    = note: number of external vids: 4
    = note: where T: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:60:1
    |
 LL | / fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
@@ -128,7 +128,7 @@ LL | |     })
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(DefId(0:20 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::'a[0]), 'a))`...
 
-note: External requirements
+note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
    |
 LL |       with_signature(a, b, |x, y| {
@@ -145,7 +145,7 @@ LL | |     })
    = note: number of external vids: 4
    = note: where T: '_#3r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:72:1
    |
 LL | / fn outlives_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)

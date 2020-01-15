@@ -2006,7 +2006,7 @@ impl<'a> Resolver<'a> {
                             continue;
                         }
                     }
-                    let msg = "there are too many initial `super`s.".to_string();
+                    let msg = "there are too many leading `super` keywords".to_string();
                     return PathResult::Failed {
                         span: ident.span,
                         label: msg,

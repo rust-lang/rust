@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/propagate-from-trait-match.rs:32:36
    |
 LL |       establish_relationships(value, |value| {
@@ -18,7 +18,7 @@ LL | |     });
    = note: number of external vids: 2
    = note: where T: '_#1r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-from-trait-match.rs:28:1
    |
 LL | / fn supply<'a, T>(value: T)

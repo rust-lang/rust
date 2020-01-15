@@ -4,7 +4,7 @@ error[E0733]: recursion in an `async fn` requires boxing
 LL | async fn rec_1() {
    |                  ^ recursive `async fn`
    |
-   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`.
+   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
 
 error[E0733]: recursion in an `async fn` requires boxing
   --> $DIR/mutually-recursive-async-impl-trait-type.rs:9:18
@@ -12,7 +12,7 @@ error[E0733]: recursion in an `async fn` requires boxing
 LL | async fn rec_2() {
    |                  ^ recursive `async fn`
    |
-   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`.
+   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
 
 error: aborting due to 2 previous errors
 
