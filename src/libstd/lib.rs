@@ -282,6 +282,7 @@
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(once_cell)]
 #![feature(optin_builtin_traits)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
