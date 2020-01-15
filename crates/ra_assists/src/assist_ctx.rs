@@ -166,7 +166,7 @@ pub(crate) struct ActionBuilder {
 impl ActionBuilder {
     #[allow(dead_code)]
     /// Adds a custom label to the action, if it needs to be different from the assist label
-    pub fn label(&mut self, label: impl Into<String>) {
+    pub(crate) fn label(&mut self, label: impl Into<String>) {
         self.label = Some(label.into())
     }
 
