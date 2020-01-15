@@ -51,7 +51,7 @@ impl CheckWatcher {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = std::thread::spawn(move || {
-            let mut check = CheckWatcherState::new(options, workspace_root);
+            let mut check = CheckWatcherThread::new(options, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
         CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), state }
@@ -175,16 +175,16 @@ pub enum CheckCommand {
     Update,
 }
 
-struct CheckWatcherState {
+struct CheckWatcherThread {
     options: CheckOptions,
     workspace_root: PathBuf,
     watcher: WatchThread,
     last_update_req: Option<Instant>,
 }
 
-impl CheckWatcherState {
-    fn new(options: CheckOptions, workspace_root: PathBuf) -> CheckWatcherState {
-        CheckWatcherState {
+impl CheckWatcherThread {
+    fn new(options: CheckOptions, workspace_root: PathBuf) -> CheckWatcherThread {
+        CheckWatcherThread {
             options,
             workspace_root,
             watcher: WatchThread::dummy(),
