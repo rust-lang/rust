@@ -4,7 +4,7 @@ use rustc::infer::type_variable::TypeVariableOriginKind;
 use rustc::infer::InferCtxt;
 use rustc::ty;
 use rustc::ty::fold::TypeFolder;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt, TyVid};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 
@@ -34,10 +34,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TyVarFinder<'a, 'tcx> {
     }
 }
 
-fn find_questionable_call(
-    path: InferredPath<'tcx>,
+fn find_questionable_call<'a, 'tcx>(
+    path: &'a InferredPath<'tcx>,
     fcx: &FnCtxt<'a, 'tcx>,
-) -> Option<Vec<Ty<'tcx>>> {
+) -> Option<&'a [Ty<'tcx>]> {
     let tcx = fcx.tcx;
     let ty = fcx.infcx.resolve_vars_if_possible(&path.ty);
     debug!("post_fallback: Fully resolved ty: {:?}", ty);
@@ -48,7 +48,7 @@ fn find_questionable_call(
         debug!("Got substs: {:?}", substs);
         let mut args_inhabited = true;
 
-        for arg in &*path.args.unwrap() {
+        for arg in &**path.args.as_ref().unwrap() {
             let resolved_arg = fcx.infcx.resolve_vars_if_possible(arg);
 
             if resolved_arg.conservative_is_privately_uninhabited(tcx) {
@@ -65,7 +65,7 @@ fn find_questionable_call(
             return None;
         }
 
-        for (subst_ty, vars) in substs.types().zip(path.unresolved_vars.into_iter()) {
+        for (subst_ty, vars) in substs.types().zip(path.unresolved_vars.iter()) {
             let resolved_subst = fcx.infcx.resolve_vars_if_possible(&subst_ty);
             if resolved_subst.conservative_is_privately_uninhabited(tcx) {
                 debug!("post_fallback: Subst is uninhabited: {:?}", resolved_subst);
@@ -84,6 +84,11 @@ fn find_questionable_call(
         }
     }
     return None;
+}
+
+struct VarData {
+    best_var: TyVid,
+    best_diverging_var: TyVid,
 }
 
 impl<'tcx> NeverCompatHandler<'tcx> {
@@ -136,56 +141,50 @@ impl<'tcx> NeverCompatHandler<'tcx> {
         NeverCompatHandler { unresolved_paths, unconstrained_diverging }
     }
 
+    fn find_best_vars(&self, fcx: &FnCtxt<'a, 'tcx>, vars: &[Ty<'tcx>]) -> VarData {
+        for var in vars {
+            for diverging_var in &self.unconstrained_diverging {
+                match (&var.kind, &diverging_var.kind) {
+                    (ty::Infer(ty::InferTy::TyVar(vid1)), ty::Infer(ty::InferTy::TyVar(vid2))) => {
+                        if fcx.infcx.type_variables.borrow_mut().sub_unified(*vid1, *vid2) {
+                            debug!(
+                                "Type variable {:?} is equal to diverging var {:?}",
+                                var, diverging_var
+                            );
+
+                            debug!(
+                                "Var origin: {:?}",
+                                fcx.infcx.type_variables.borrow().var_origin(*vid1)
+                            );
+                            return VarData { best_var: *vid1, best_diverging_var: *vid2 };
+                        }
+                    }
+                    _ => bug!("Unexpected types: var={:?} diverging_var={:?}", var, diverging_var),
+                }
+            }
+        }
+        bug!("No vars were equated to divering vars: {:?}", vars)
+    }
+
     pub fn post_fallback(self, fcx: &FnCtxt<'a, 'tcx>) {
         let tcx = fcx.tcx;
-        for (call_id, path) in self.unresolved_paths {
+        for (call_id, path) in &self.unresolved_paths {
             debug!(
                 "post_fallback: resolved ty: {:?} at span {:?} : expr={:?} parent={:?} path={:?}",
                 path.span,
                 path.ty,
-                tcx.hir().get(call_id),
-                tcx.hir().get(tcx.hir().get_parent_node(call_id)),
+                tcx.hir().get(*call_id),
+                tcx.hir().get(tcx.hir().get_parent_node(*call_id)),
                 path
             );
 
             let span = path.span;
             if let Some(vars) = find_questionable_call(path, fcx) {
-                let mut best_diverging_var = None;
-                let mut best_var = None;
+                let VarData { best_var, best_diverging_var } = self.find_best_vars(fcx, &vars);
 
-                for var in vars {
-                    for diverging_var in &self.unconstrained_diverging {
-                        match (&var.kind, &diverging_var.kind) {
-                            (
-                                ty::Infer(ty::InferTy::TyVar(vid1)),
-                                ty::Infer(ty::InferTy::TyVar(vid2)),
-                            ) => {
-                                if fcx.infcx.type_variables.borrow_mut().sub_unified(*vid1, *vid2) {
-                                    debug!(
-                                        "Type variable {:?} is equal to diverging var {:?}",
-                                        var, diverging_var
-                                    );
-
-                                    debug!(
-                                        "Var origin: {:?}",
-                                        fcx.infcx.type_variables.borrow().var_origin(*vid1)
-                                    );
-                                    best_var = Some(vid1);
-                                    best_diverging_var = Some(vid2);
-                                }
-                            }
-                            _ => bug!(
-                                "Unexpected types: var={:?} diverging_var={:?}",
-                                var,
-                                diverging_var
-                            ),
-                        }
-                    }
-                }
-
-                let var_origin = *fcx.infcx.type_variables.borrow().var_origin(*best_var.unwrap());
+                let var_origin = *fcx.infcx.type_variables.borrow().var_origin(best_var);
                 let diverging_var_span =
-                    fcx.infcx.type_variables.borrow().var_origin(*best_diverging_var.unwrap()).span;
+                    fcx.infcx.type_variables.borrow().var_origin(best_diverging_var).span;
 
                 let mut err = tcx
                     .sess
