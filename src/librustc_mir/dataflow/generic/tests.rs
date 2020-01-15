@@ -4,6 +4,7 @@ use rustc::mir::{self, BasicBlock, Location};
 use rustc::ty;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_span::DUMMY_SP;
 
 use super::*;
 use crate::dataflow::BottomValue;
@@ -23,8 +24,7 @@ fn is_call_terminator_non_diverging(body: &mir::Body<'_>, loc: Location) -> bool
 /// This is the `Body` that will be used by the `MockAnalysis` below. The shape of its CFG is not
 /// important.
 fn mock_body() -> mir::Body<'static> {
-    let span = syntax_pos::DUMMY_SP;
-    let source_info = mir::SourceInfo { scope: mir::OUTERMOST_SOURCE_SCOPE, span };
+    let source_info = mir::SourceInfo { scope: mir::OUTERMOST_SOURCE_SCOPE, span: DUMMY_SP };
 
     let mut blocks = IndexVec::new();
     let mut block = |n, kind| {
@@ -97,14 +97,14 @@ impl MockAnalysis<'tcx> {
 
     /// The entry set for each `BasicBlock` is the ID of that block offset by a fixed amount to
     /// avoid colliding with the statement/terminator effects.
-    fn mock_entry_set(self, bb: BasicBlock) -> BitSet<usize> {
-        let mut ret = BitSet::new_empty(self.bits_per_block(body));
+    fn mock_entry_set(&self, bb: BasicBlock) -> BitSet<usize> {
+        let mut ret = BitSet::new_empty(self.bits_per_block(self.body));
         ret.insert(Self::BASIC_BLOCK_OFFSET + bb.index());
         ret
     }
 
     fn mock_entry_sets(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
-        let empty = BitSet::new_empty(self.bits_per_block(body));
+        let empty = BitSet::new_empty(self.bits_per_block(self.body));
         let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks());
 
         for (bb, _) in self.body.basic_blocks().iter_enumerated() {
@@ -183,7 +183,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        let idx = SeekTarget::After(location).effect(self.body).unwrap();
+        let idx = self.effect_at_target(SeekTarget::After(location)).unwrap();
         assert!(state.insert(idx));
     }
 
@@ -193,7 +193,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        let idx = SeekTarget::Before(location).effect(self.body).unwrap();
+        let idx = self.effect_at_target(SeekTarget::Before(location)).unwrap();
         assert!(state.insert(idx));
     }
 
@@ -203,7 +203,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        let idx = SeekTarget::After(location).effect(self.body).unwrap();
+        let idx = self.effect_at_target(SeekTarget::After(location)).unwrap();
         assert!(state.insert(idx));
     }
 
@@ -213,7 +213,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        let idx = SeekTarget::Before(location).effect(self.body).unwrap();
+        let idx = self.effect_at_target(SeekTarget::Before(location)).unwrap();
         assert!(state.insert(idx));
     }
 
@@ -226,7 +226,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         _return_place: &mir::Place<'tcx>,
     ) {
         let location = self.body.terminator_loc(block);
-        let idx = SeekTarget::AfterAssumeCallReturns(location).effect(self.body).unwrap();
+        let idx = self.effect_at_target(SeekTarget::AfterAssumeCallReturns(location)).unwrap();
         assert!(state.insert(idx));
     }
 }
@@ -286,7 +286,10 @@ fn cursor_seek() {
         .analysis()
         .effect_at_target(SeekTarget::AfterAssumeCallReturns(call_terminator_loc))
         .unwrap();
-    assert_ne!(call_return_effect, SeekTarget::After(call_terminator_loc).effect(body).unwrap());
+    assert_ne!(
+        call_return_effect,
+        cursor.analysis().effect_at_target(SeekTarget::After(call_terminator_loc)).unwrap()
+    );
 
     cursor.seek_after(call_terminator_loc);
     assert!(!cursor.get().contains(call_return_effect));
