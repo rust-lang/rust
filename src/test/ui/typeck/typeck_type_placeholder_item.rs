@@ -68,6 +68,13 @@ struct Test10 {
 }
 
 pub fn main() {
+    static A = 42;
+    //~^ ERROR missing type for `static` item
+    static B: _ = 42;
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    static C: Option<_> = Some(42);
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+
     fn fn_test() -> _ { 5 }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
