@@ -409,7 +409,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         _ => {
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
-                            mplace.meta.unwrap_none(); // must be sized
+                            assert!(!mplace.layout.is_unsized());
                             this.memory.write_bytes(
                                 mplace.ptr,
                                 iter::repeat(0u8).take(dest.layout.size.bytes() as usize),
@@ -574,7 +574,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         _ => {
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
-                            mplace.meta.unwrap_none();
+                            assert!(!mplace.layout.is_unsized());
                             let ptr = mplace.ptr.assert_ptr();
                             // We know the return place is in-bounds
                             this.memory.get_raw_mut(ptr.alloc_id)?.mark_definedness(
