@@ -123,37 +123,24 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     // what can be found here:
     //
     // http://www.flexhex.com/docs/articles/hard-links.phtml
-    //
-    // Copied from std
     #[cfg(windows)]
-    #[allow(nonstandard_style)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
         use std::ptr;
 
-        const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
-        const GENERIC_WRITE: DWORD = 0x40000000;
-        const OPEN_EXISTING: DWORD = 3;
-        const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
-        const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
-        const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
-        const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xa0000003;
-        const FILE_SHARE_DELETE: DWORD = 0x4;
-        const FILE_SHARE_READ: DWORD = 0x1;
-        const FILE_SHARE_WRITE: DWORD = 0x2;
+        use winapi::shared::minwindef::{DWORD, WORD};
+        use winapi::um::fileapi::{CreateFileW, OPEN_EXISTING};
+        use winapi::um::handleapi::CloseHandle;
+        use winapi::um::ioapiset::DeviceIoControl;
+        use winapi::um::winbase::{FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT};
+        use winapi::um::winioctl::FSCTL_SET_REPARSE_POINT;
+        use winapi::um::winnt::{
+            FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_WRITE,
+            IO_REPARSE_TAG_MOUNT_POINT, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, WCHAR,
+        };
 
-        type BOOL = i32;
-        type DWORD = u32;
-        type HANDLE = *mut u8;
-        type LPCWSTR = *const u16;
-        type LPDWORD = *mut DWORD;
-        type LPOVERLAPPED = *mut u8;
-        type LPSECURITY_ATTRIBUTES = *mut u8;
-        type LPVOID = *mut u8;
-        type WCHAR = u16;
-        type WORD = u16;
-
+        #[allow(non_snake_case)]
         #[repr(C)]
         struct REPARSE_MOUNTPOINT_DATA_BUFFER {
             ReparseTag: DWORD,
@@ -163,29 +150,6 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             ReparseTargetMaximumLength: WORD,
             Reserved1: WORD,
             ReparseTarget: WCHAR,
-        }
-
-        extern "system" {
-            fn CreateFileW(
-                lpFileName: LPCWSTR,
-                dwDesiredAccess: DWORD,
-                dwShareMode: DWORD,
-                lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-                dwCreationDisposition: DWORD,
-                dwFlagsAndAttributes: DWORD,
-                hTemplateFile: HANDLE,
-            ) -> HANDLE;
-            fn DeviceIoControl(
-                hDevice: HANDLE,
-                dwIoControlCode: DWORD,
-                lpInBuffer: LPVOID,
-                nInBufferSize: DWORD,
-                lpOutBuffer: LPVOID,
-                nOutBufferSize: DWORD,
-                lpBytesReturned: LPDWORD,
-                lpOverlapped: LPOVERLAPPED,
-            ) -> BOOL;
-            fn CloseHandle(hObject: HANDLE) -> BOOL;
         }
 
         fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
@@ -212,7 +176,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
                 ptr::null_mut(),
             );
 
-            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize];
             let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
             let buf = &mut (*db).ReparseTarget as *mut u16;
             let mut i = 0;

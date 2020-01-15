@@ -569,39 +569,19 @@ fn get_resident() -> Option<usize> {
 
 #[cfg(windows)]
 fn get_resident() -> Option<usize> {
-    type BOOL = i32;
-    type DWORD = u32;
-    type HANDLE = *mut u8;
-    use libc::size_t;
-    #[repr(C)]
-    #[allow(non_snake_case)]
-    struct PROCESS_MEMORY_COUNTERS {
-        cb: DWORD,
-        PageFaultCount: DWORD,
-        PeakWorkingSetSize: size_t,
-        WorkingSetSize: size_t,
-        QuotaPeakPagedPoolUsage: size_t,
-        QuotaPagedPoolUsage: size_t,
-        QuotaPeakNonPagedPoolUsage: size_t,
-        QuotaNonPagedPoolUsage: size_t,
-        PagefileUsage: size_t,
-        PeakPagefileUsage: size_t,
-    }
-    #[allow(non_camel_case_types)]
-    type PPROCESS_MEMORY_COUNTERS = *mut PROCESS_MEMORY_COUNTERS;
-    #[link(name = "psapi")]
-    extern "system" {
-        fn GetCurrentProcess() -> HANDLE;
-        fn GetProcessMemoryInfo(
-            Process: HANDLE,
-            ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
-            cb: DWORD,
-        ) -> BOOL;
-    }
-    let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
-    pmc.cb = std::mem::size_of_val(&pmc) as DWORD;
-    match unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut pmc, pmc.cb) } {
+    use std::mem::{self, MaybeUninit};
+    use winapi::shared::minwindef::DWORD;
+    use winapi::um::processthreadsapi::GetCurrentProcess;
+    use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+
+    let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
+    match unsafe {
+        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
+    } {
         0 => None,
-        _ => Some(pmc.WorkingSetSize as usize),
+        _ => {
+            let pmc = unsafe { pmc.assume_init() };
+            Some(pmc.WorkingSetSize as usize)
+        }
     }
 }

@@ -201,6 +201,7 @@ dependencies = [
  "serde_json",
  "time",
  "toml",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3491,6 +3492,7 @@ dependencies = [
  "serialize",
  "smallvec 1.0.0",
  "stable_deref_trait",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3518,6 +3520,7 @@ dependencies = [
  "rustc_target",
  "serialize",
  "syntax",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3537,6 +3540,7 @@ dependencies = [
  "term_size",
  "termcolor",
  "unicode-width",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3648,6 +3652,7 @@ dependencies = [
  "smallvec 1.0.0",
  "syntax",
  "tempfile",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3717,6 +3722,7 @@ dependencies = [
  "smallvec 1.0.0",
  "stable_deref_trait",
  "syntax",
+ "winapi 0.3.8",
 ]
 
 [[package]]

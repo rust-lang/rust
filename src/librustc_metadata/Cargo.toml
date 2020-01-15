@@ -27,3 +27,6 @@ rustc_expand = { path = "../librustc_expand" }
 rustc_parse = { path = "../librustc_parse" }
 rustc_span = { path = "../librustc_span" }
 rustc_error_codes = { path = "../librustc_error_codes" }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["errhandlingapi", "libloaderapi"] }

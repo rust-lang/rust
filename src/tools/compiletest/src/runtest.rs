@@ -42,10 +42,8 @@ mod tests;
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
-    const SEM_NOGPFAULTERRORBOX: u32 = 0x0002;
-    extern "system" {
-        fn SetErrorMode(mode: u32) -> u32;
-    }
+    use winapi::um::errhandlingapi::SetErrorMode;
+    use winapi::um::winbase::SEM_NOGPFAULTERRORBOX;
 
     lazy_static! {
         static ref LOCK: Mutex<()> = { Mutex::new(()) };
