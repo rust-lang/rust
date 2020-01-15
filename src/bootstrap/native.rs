@@ -659,6 +659,24 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 });
             }
         }
+        "x86_64-fuchsia" => {
+            for s in &["asan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-x86_64", s),
+                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-x86_64.a", s)),
+                    name: format!("librustc_rt.{}.a", s),
+                });
+            }
+        }
+        "aarch64-fuchsia" => {
+            for s in &["asan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-aarch64", s),
+                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-aarch64.a", s)),
+                    name: format!("librustc_rt.{}.a", s),
+                });
+            }
+        }
         _ => {}
     }
     result
