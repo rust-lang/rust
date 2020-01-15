@@ -203,14 +203,13 @@ fn find_questionable_call<'a, 'tcx>(
 
     let ty = ty.unwrap_or_else(|| bug!("Missing ty in path: {:?}", path));
 
-    /// Check that this InferredPath actually corresponds to a method
-    /// invocation. Currently, type-checking resolves generic paths
-    /// (e.g. `Box::<_>::new` separately from determining that a method call
-    /// is occuring). We use this check to skip over `InferredPaths` for
-    /// non-method-calls (e.g. struct constructors).
+    // Check that this InferredPath actually corresponds to a method
+    // invocation. Currently, type-checking resolves generic paths
+    // (e.g. `Box::<_>::new` separately from determining that a method call
+    // is occurring). We use this check to skip over `InferredPaths` for
+    // non-method-calls (e.g. struct constructors).
     if let ty::FnDef(_, substs) = ty.kind {
         debug!("find_questionable_call: Got substs: {:?}", substs);
-        let mut args_inhabited = true;
 
         // See if we can find any arguments that are definitely uninhabited.
         // If we can, we're done - the method call is dead, so fallback
@@ -221,7 +220,10 @@ fn find_questionable_call<'a, 'tcx>(
             // We use `conservative_is_privately_uninhabited` so that we only
             // bail out if we're certain that a type is uninhabited.
             if resolved_arg.conservative_is_privately_uninhabited(tcx) {
-                debug!("find_questionable_call: bailing out due to uninhabited arg: {:?}", resolved_arg);
+                debug!(
+                    "find_questionable_call: bailing out due to uninhabited arg: {:?}",
+                    resolved_arg
+                );
                 return None;
             } else {
                 debug!("find_questionable_call: Arg is inhabited: {:?}", resolved_arg);
@@ -236,7 +238,7 @@ fn find_questionable_call<'a, 'tcx>(
             // Using a broader check for uninhabitedness ensures that we lint
             // whenever the subst is uninhabted, regardless of whether or not
             // the user code could know this.
-            if tcx.is_ty_uninhabited_from_any_module(resolved_subst){
+            if tcx.is_ty_uninhabited_from_any_module(resolved_subst) {
                 debug!("find_questionable_call: Subst is uninhabited: {:?}", resolved_subst);
                 if !vars.is_empty() {
                     debug!("find_questionable_call: Found fallback vars: {:?}", vars);

@@ -256,6 +256,12 @@ pub struct Inherited<'a, 'tcx> {
     /// not clear.
     implicit_region_bound: Option<ty::Region<'tcx>>,
 
+    /// Maps each expression with a generic path
+    /// (e.g. `foo::<u8>()` to `InferredPath` containing
+    /// additional information used by `NeverCompatHandler`.
+    ///
+    /// Each entry in this map is gradually filled in during typecheck,
+    /// as the information we need is not available all at once.
     inferred_paths: RefCell<FxHashMap<hir::HirId, InferredPath<'tcx>>>,
 
     body_id: Option<hir::BodyId>,
@@ -623,11 +629,45 @@ pub struct FnCtxt<'a, 'tcx> {
     inh: &'a Inherited<'a, 'tcx>,
 }
 
+/// Stores additional data about a generic path
+/// containing inference variables (e.g. `my_method::<_, u8>(bar)`).
+/// This is used by `NeverCompatHandler` to inspect
+/// all method calls that contain inference variables.
+///
+/// This struct is a little strange, in that its data
+/// is filled in from two different places in typecheck.
+/// Thw two `Option` fields are written by `check_argument_types`
+/// and `instantiate_value_path`, since neither method
+/// has all of the information it needs.
 #[derive(Clone, Debug)]
 struct InferredPath<'tcx> {
+    /// The span of the corresponding expression.
     span: Span,
+    /// The type of this path. For method calls,
+    /// this is a `ty::FnDef`
     ty: Option<Ty<'tcx>>,
+    /// The types of the arguments (*not* generic substs)
+    /// provided to this path, if it represents a method
+    /// call. For example, `foo(true, 25)` would have
+    /// types `[bool, i32]`. If this path does not
+    /// correspond to a method, then this will be `None`
+    ///
+    /// This is a `Cow` rather than a `Vec` or slice
+    /// to accommodate `check_argument_types`, which may
+    /// be called with either an interned slice or a Vec.
+    /// A `Cow` lets us avoid unecessary interning
+    /// and Vec construction, since we just need to iterate
+    /// over this
     args: Option<Cow<'tcx, [Ty<'tcx>]>>,
+    /// The unresolved inference variables for each
+    /// generic substs. Each entry in the outer vec
+    /// corresponds to a generic substs in the function.
+    ///
+    /// For example, suppose we have the function
+    /// `fn foo<T, V> (){ ... }`.
+    ///
+    /// The method call `foo::<MyStruct<_#0t, #1t>, true>>()`
+    /// will have an `unresolved_vars` of `[[_#0t, _#1t], []]`
     unresolved_vars: Vec<Vec<Ty<'tcx>>>,
 }
 
@@ -3757,6 +3797,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let fn_inputs = fn_inputs.into();
         debug!("check_argument_types: storing arguments for expr {:?}", expr);
+        // We now have the arguments types available for this msthod call,
+        // so store them in the `inferred_paths` entry for this method call.
+        // We set `ty` as `None` if we are the first to access the entry
+        // for this method, and leave it untouched otherwise.
         match self.inferred_paths.borrow_mut().entry(expr.hir_id) {
             Entry::Vacant(e) => {
                 debug!("check_argument_types: making new entry for types {:?}", fn_inputs);
@@ -3769,7 +3813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Entry::Occupied(mut e) => {
                 debug!(
-                    "check_argument_types: modifiying exsting entry {:?} with types {:?}",
+                    "check_argument_types: modifying existing {:?} with types {:?}",
                     e.get(),
                     fn_inputs
                 );
@@ -5473,6 +5517,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match parent {
                 Node::Expr(hir::Expr { span: p_span, kind: ExprKind::Call(..), .. })
                 | Node::Expr(hir::Expr { span: p_span, kind: ExprKind::MethodCall(..), .. }) => {
+                    // Fill in the type for our parent expression. This might not be
+                    // a method call - if it is, the argumetns will be filled in by
+                    // `check_argument_types`
                     match self.inferred_paths.borrow_mut().entry(parent_id) {
                         Entry::Vacant(e) => {
                             debug!("instantiate_value_path: inserting new path");
