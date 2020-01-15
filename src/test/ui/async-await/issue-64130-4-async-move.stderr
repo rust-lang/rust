@@ -16,6 +16,11 @@ LL |                 let _x = get().await;
 ...
 LL |     }
    |     - `client` is later dropped here
+help: consider moving this method call into a `let` binding to create a shorter lived borrow
+  --> $DIR/issue-64130-4-async-move.rs:19:15
+   |
+LL |         match client.status() {
+   |               ^^^^^^^^^^^^^^^
    = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error

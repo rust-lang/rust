@@ -97,6 +97,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
+                        expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);
             }
@@ -164,17 +165,25 @@ pub fn resolve_interior<'a, 'tcx>(
     // which means that none of the regions inside relate to any other, even if
     // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let types = fcx.tcx.fold_regions(&types, &mut false, |_, current_depth| {
+    let fold_types: Vec<_> = types.iter().map(|(t, _)| t.ty).collect();
+    let folded_types = fcx.tcx.fold_regions(&fold_types, &mut false, |_, current_depth| {
         counter += 1;
         fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
     });
 
     // Store the generator types and spans into the tables for this generator.
-    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
-    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
+    let types = types
+        .into_iter()
+        .zip(&folded_types)
+        .map(|((mut interior_cause, _), ty)| {
+            interior_cause.ty = ty;
+            interior_cause
+        })
+        .collect();
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = types;
 
     // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
+    let type_list = fcx.tcx.mk_type_list(folded_types.iter());
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
