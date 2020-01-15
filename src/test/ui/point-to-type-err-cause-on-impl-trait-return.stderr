@@ -12,7 +12,7 @@ LL |     1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 
@@ -30,7 +30,7 @@ LL |         return 1u32;
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 
@@ -48,7 +48,7 @@ LL |         1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 
@@ -78,7 +78,7 @@ LL |         _ => 1u32,
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 
@@ -98,7 +98,7 @@ LL | |     }
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 
@@ -116,7 +116,7 @@ LL |             1u32
    |
    = note: to return `impl Trait`, all returned values must be of the same type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: you can instead return a trait object using `Box<dyn std::fmt::Display>`
+   = help: you can instead return a boxed trait object using `Box<dyn std::fmt::Display>`
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
    = help: alternatively, create a new `enum` with a variant for each returned type
 

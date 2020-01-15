@@ -1,0 +1,21 @@
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:1
+   |
+LL |     fn foo() -> Self;
+   |        --- associated function `foo` has no `self` parameter
+...
+LL | fn car() -> dyn NotObjectSafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:1
+   |
+LL |     fn foo() -> Self;
+   |        --- associated function `foo` has no `self` parameter
+...
+LL | fn cat() -> Box<dyn NotObjectSafe> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

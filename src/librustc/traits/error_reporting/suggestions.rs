@@ -696,11 +696,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     format!("Box<{}{}>", if has_dyn { "" } else { "dyn " }, snippet),
                 ));
                 err.multipart_suggestion(
-                        "return a trait object instead",
+                    "return a boxed trait object instead",
                     suggestions,
                     Applicability::MaybeIncorrect,
                 );
             } else {
+                // This is currently not possible to trigger because E0038 takes precedence, but
+                // leave it in for completeness in case anything changes in an earlier stage.
                 err.note(&format!(
                     "if trait `{}` was object safe, you could return a trait object",
                     trait_obj,
