@@ -1,4 +1,6 @@
-# Rust Analyzer
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/1711539/72443316-5a79f280-37ae-11ea-858f-035209ece2dd.png" alt="rust-analyzer logo">
+</p>
 
 Rust Analyzer is an **experimental** modular compiler frontend for the Rust
 language. It is a part of a larger rls-2.0 effort to create excellent IDE
