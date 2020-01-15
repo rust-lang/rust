@@ -285,10 +285,11 @@ pub fn trans_checked_int_binop<'tcx>(
     };
 
     let has_overflow = fx.bcx.ins().bint(types::I8, has_overflow);
+
+    // FIXME directly write to result place instead
     let out_place = CPlace::new_stack_slot(
         fx,
-        fx.tcx
-            .mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()),
+        fx.layout_of(fx.tcx.mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter())),
     );
     let out_layout = out_place.layout();
     out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));

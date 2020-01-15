@@ -28,7 +28,9 @@ pub fn unsized_info<'tcx>(
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::Dynamic(ref data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
+        (_, &ty::Dynamic(ref data, ..)) => {
+            crate::vtable::get_vtable(fx, fx.layout_of(source), data.principal())
+        }
         _ => bug!(
             "unsized_info: invalid unsizing {:?} -> {:?}",
             source,
@@ -38,13 +40,13 @@ pub fn unsized_info<'tcx>(
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'tcx>(
+fn unsize_thin_ptr<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     src: Value,
-    src_ty: Ty<'tcx>,
-    dst_ty: Ty<'tcx>,
+    src_layout: TyLayout<'tcx>,
+    dst_layout: TyLayout<'tcx>,
 ) -> (Value, Value) {
-    match (&src_ty.kind, &dst_ty.kind) {
+    match (&src_layout.ty.kind, &dst_layout.ty.kind) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
         | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
@@ -52,15 +54,13 @@ pub fn unsize_thin_ptr<'tcx>(
             (src, unsized_info(fx, a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
+            let (a, b) = (src_layout.ty.boxed_ty(), dst_layout.ty.boxed_ty());
             assert!(!fx.layout_of(a).is_unsized());
             (src, unsized_info(fx, a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_layout = fx.layout_of(src_ty);
-            let dst_layout = fx.layout_of(dst_ty);
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(fx, i);
@@ -74,7 +74,7 @@ pub fn unsize_thin_ptr<'tcx>(
                 let dst_f = dst_layout.field(fx, i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
-                result = Some(unsize_thin_ptr(fx, src, src_f.ty, dst_f.ty));
+                result = Some(unsize_thin_ptr(fx, src, src_f, dst_f));
             }
             result.unwrap()
         }
@@ -101,7 +101,7 @@ pub fn coerce_unsized_into<'tcx>(
             src.load_scalar_pair(fx)
         } else {
             let base = src.load_scalar(fx);
-            unsize_thin_ptr(fx, base, src_ty, dst_ty)
+            unsize_thin_ptr(fx, base, src.layout(), dst.layout())
         };
         dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
@@ -139,10 +139,9 @@ pub fn coerce_unsized_into<'tcx>(
 
 pub fn size_and_align_of_dst<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
     info: Value,
 ) -> (Value, Value) {
-    let layout = fx.layout_of(ty);
     if !layout.is_unsized() {
         let size = fx
             .bcx
@@ -154,7 +153,7 @@ pub fn size_and_align_of_dst<'tcx>(
             .iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
         return (size, align);
     }
-    match ty.kind {
+    match layout.ty.kind {
         ty::Dynamic(..) => {
             // load size/align from vtable
             (
@@ -177,7 +176,7 @@ pub fn size_and_align_of_dst<'tcx>(
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
-            assert!(!ty.is_simd());
+            assert!(!layout.ty.is_simd());
 
             let i = layout.fields.count() - 1;
             let sized_size = layout.fields.offset(i).bytes();
@@ -186,8 +185,8 @@ pub fn size_and_align_of_dst<'tcx>(
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = layout.field(fx, i).ty;
-            let (unsized_size, mut unsized_align) = size_and_align_of_dst(fx, field_ty, info);
+            let field_layout = layout.field(fx, i);
+            let (unsized_size, mut unsized_align) = size_and_align_of_dst(fx, field_layout, info);
 
             // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
@@ -200,7 +199,7 @@ pub fn size_and_align_of_dst<'tcx>(
             let size = fx.bcx.ins().iadd_imm(unsized_size, sized_size as i64);
 
             // Packed types ignore the alignment of their fields.
-            if let ty::Adt(def, _) = ty.kind {
+            if let ty::Adt(def, _) = layout.ty.kind {
                 if def.repr.packed() {
                     unsized_align = sized_align;
                 }

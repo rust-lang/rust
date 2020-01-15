@@ -43,11 +43,11 @@ pub fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
 fn codegen_static_ref<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
 ) -> CPlace<'tcx> {
     let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
     let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
-    cplace_for_dataid(fx, ty, data_id)
+    cplace_for_dataid(fx, layout, data_id)
 }
 
 pub fn trans_constant<'tcx>(
@@ -62,7 +62,7 @@ pub fn trans_constant<'tcx>(
             return codegen_static_ref(
                 fx,
                 def_id,
-                fx.monomorphize(&constant.literal.ty),
+                fx.layout_of(fx.monomorphize(&constant.literal.ty)),
             ).to_cvalue(fx);
         }
         ConstKind::Unevaluated(def_id, ref substs, promoted) => {
@@ -137,13 +137,13 @@ pub fn trans_const_value<'tcx>(
                     let bits = const_.val.try_to_bits(layout.size).unwrap_or_else(|| {
                         panic!("{:?}\n{:?}", const_, layout);
                     });
-                    CValue::const_val(fx, ty, bits)
+                    CValue::const_val(fx, layout, bits)
                 }
                 ty::Int(_) => {
                     let bits = const_.val.try_to_bits(layout.size).unwrap();
                     CValue::const_val(
                         fx,
-                        ty,
+                        layout,
                         rustc::mir::interpret::sign_extend(bits, layout.size),
                     )
                 }
@@ -228,7 +228,7 @@ fn trans_const_place<'tcx>(
     let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
     fx.constants_cx.todo.insert(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
-    cplace_for_dataid(fx, const_.ty, data_id)
+    cplace_for_dataid(fx, fx.layout_of(const_.ty), data_id)
 }
 
 fn data_id_for_alloc_id<B: Backend>(
@@ -304,12 +304,11 @@ fn data_id_for_static(
 
 fn cplace_for_dataid<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
     data_id: DataId,
 ) -> CPlace<'tcx> {
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
-    let layout = fx.layout_of(fx.monomorphize(&ty));
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
     CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }

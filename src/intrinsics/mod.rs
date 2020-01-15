@@ -453,7 +453,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             let layout = fx.layout_of(T);
             let size = if layout.is_unsized() {
                 let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
+                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
                 size
             } else {
                 fx
@@ -467,7 +467,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             let layout = fx.layout_of(T);
             let align = if layout.is_unsized() {
                 let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
+                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
                 align
             } else {
                 fx
@@ -951,7 +951,7 @@ pub fn codegen_intrinsic_call<'tcx>(
 
             fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-            let ret_val = CValue::const_val(fx, ret.layout().ty, 0);
+            let ret_val = CValue::const_val(fx, ret.layout(), 0);
             ret.write_cvalue(fx, ret_val);
         };
     }

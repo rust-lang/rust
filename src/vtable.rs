@@ -60,14 +60,14 @@ pub fn get_ptr_and_method_ref<'tcx>(
 
 pub fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.vtables.get(&(ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
-        let data_id = build_vtable(fx, ty, trait_ref);
-        fx.vtables.insert((ty, trait_ref), data_id);
+        let data_id = build_vtable(fx, layout, trait_ref);
+        fx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
@@ -77,20 +77,20 @@ pub fn get_vtable<'tcx>(
 
 fn build_vtable<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
     let drop_in_place_fn =
-        import_function(tcx, fx.module, Instance::resolve_drop_in_place(tcx, ty));
+        import_function(tcx, fx.module, Instance::resolve_drop_in_place(tcx, layout.ty));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
     let methods_root;
     let methods = if let Some(trait_ref) = trait_ref {
-        methods_root = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
+        methods_root = tcx.vtable_methods(trait_ref.with_self_ty(tcx, layout.ty));
         methods_root.iter()
     } else {
         (&[]).iter()
@@ -112,7 +112,6 @@ fn build_vtable<'tcx>(
         .collect::<Vec<u8>>()
         .into_boxed_slice();
 
-    let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
     write_usize(fx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
     write_usize(fx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
     data_ctx.define(data);
@@ -127,7 +126,7 @@ fn build_vtable<'tcx>(
     let data_id = fx
         .module
         .declare_data(
-            &format!("vtable.{:?}.for.{:?}", trait_ref, ty),
+            &format!("vtable.{:?}.for.{:?}", trait_ref, layout.ty),
             Linkage::Local,
             false,
             Some(

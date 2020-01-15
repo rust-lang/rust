@@ -27,7 +27,7 @@ pub fn codegen_set_discriminant<'tcx>(
                 .discriminant_for_variant(fx.tcx, variant_index)
                 .unwrap()
                 .val;
-            let discr = CValue::const_val(fx, ptr.layout().ty, to);
+            let discr = CValue::const_val(fx, ptr.layout(), to);
             ptr.write_cvalue(fx, discr);
         }
         layout::Variants::Multiple {
@@ -45,7 +45,7 @@ pub fn codegen_set_discriminant<'tcx>(
                 let niche = place.place_field(fx, mir::Field::new(discr_index));
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = u128::from(niche_value).wrapping_add(niche_start);
-                let niche_llval = CValue::const_val(fx, niche.layout().ty, niche_value);
+                let niche_llval = CValue::const_val(fx, niche.layout(), niche_value);
                 niche.write_cvalue(fx, niche_llval);
             }
         }
@@ -73,7 +73,7 @@ pub fn codegen_get_discriminant<'tcx>(
                 .ty
                 .discriminant_for_variant(fx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
-            return CValue::const_val(fx, dest_layout.ty, discr_val);
+            return CValue::const_val(fx, dest_layout, discr_val);
         }
         layout::Variants::Multiple {
             discr,

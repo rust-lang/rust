@@ -131,7 +131,7 @@ pub(super) fn cvalue_for_param<'tcx>(
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.tcx, fx.layout_of(arg_ty));
+    let pass_mode = get_pass_mode(fx.tcx, layout);
 
     if let PassMode::NoPass = pass_mode {
         return None;

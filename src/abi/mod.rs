@@ -276,7 +276,7 @@ fn local_place<'tcx>(
     let place = if is_ssa {
         CPlace::new_var(fx, local, layout)
     } else {
-        CPlace::new_stack_slot(fx, layout.ty)
+        CPlace::new_stack_slot(fx, layout)
     };
 
     #[cfg(debug_assertions)]
@@ -667,13 +667,13 @@ pub fn codegen_drop<'tcx>(
             _ => {
                 let arg_place = CPlace::new_stack_slot(
                     fx,
-                    fx.tcx.mk_ref(
+                    fx.layout_of(fx.tcx.mk_ref(
                         &ty::RegionKind::ReErased,
                         TypeAndMut {
                             ty,
                             mutbl: crate::rustc_hir::Mutability::Mut,
                         },
-                    ),
+                    )),
                 );
                 drop_place.write_place_ref(fx, arg_place);
                 let arg_value = arg_place.to_cvalue(fx);

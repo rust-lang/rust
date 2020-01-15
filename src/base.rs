@@ -363,7 +363,7 @@ fn trans_stmt<'tcx>(
                         }
                         UnOp::Neg => match layout.ty.kind {
                             ty::Int(_) => {
-                                let zero = CValue::const_val(fx, layout.ty, 0);
+                                let zero = CValue::const_val(fx, layout, 0);
                                 crate::num::trans_int_binop(fx, BinOp::Sub, zero, operand)
                             }
                             ty::Float(_) => {
@@ -528,7 +528,7 @@ fn trans_stmt<'tcx>(
                         .ty
                         .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
-                    let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size.into());
+                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {

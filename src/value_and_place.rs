@@ -32,7 +32,7 @@ fn codegen_field<'tcx>(
             _ => {
                 // We have to align the offset for DST's
                 let unaligned_offset = field_offset.bytes();
-                let (_, unsized_align) = crate::unsize::size_and_align_of_dst(fx, field_layout.ty, extra);
+                let (_, unsized_align) = crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
 
                 let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
                 let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
@@ -88,12 +88,13 @@ impl<'tcx> CValue<'tcx> {
         self.1
     }
 
+    // FIXME remove
     pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Pointer {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr) => ptr,
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => {
-                let cplace = CPlace::new_stack_slot(fx, layout.ty);
+                let cplace = CPlace::new_stack_slot(fx, layout);
                 cplace.write_cvalue(fx, self);
                 cplace.to_ptr(fx)
             }
@@ -196,13 +197,12 @@ impl<'tcx> CValue<'tcx> {
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub fn const_val<'a>(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-        ty: Ty<'tcx>,
+        layout: TyLayout<'tcx>,
         const_val: u128,
     ) -> CValue<'tcx> {
-        let clif_ty = fx.clif_type(ty).unwrap();
-        let layout = fx.layout_of(ty);
+        let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        let val = match ty.kind {
+        let val = match layout.ty.kind {
             ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx
@@ -226,7 +226,7 @@ impl<'tcx> CValue<'tcx> {
             ty::TyKind::Int(_) => fx.bcx.ins().iconst(clif_ty, const_val as i128 as i64),
             _ => panic!(
                 "CValue::const_val for non bool/integer/pointer type {:?} is not allowed",
-                ty
+                layout.ty
             ),
         };
 
@@ -270,9 +270,8 @@ impl<'tcx> CPlace<'tcx> {
 
     pub fn new_stack_slot(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-        ty: Ty<'tcx>,
+        layout: TyLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let layout = fx.layout_of(ty);
         assert!(!layout.is_unsized());
         if layout.size.bytes() == 0 {
             return CPlace {
