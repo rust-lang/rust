@@ -169,11 +169,9 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     res.push(self_param.syntax().text().to_string())
                 }
 
-                res.extend(
-                    param_list
-                        .params()
-                        .map(|param| param.pat().unwrap().syntax().text().to_string()),
-                );
+                res.extend(param_list.params().map(|param| {
+                    param.pat().map(|pat| pat.syntax().text().to_string()).unwrap_or_default()
+                }));
             }
             res
         }
