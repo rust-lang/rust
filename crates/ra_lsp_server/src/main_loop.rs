@@ -9,7 +9,7 @@ use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
-use lsp_types::{ClientCapabilities, NumberOrString};
+use lsp_types::{ClientCapabilities, NumberOrString, Url};
 use ra_cargo_watch::{CheckOptions, CheckTask};
 use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
@@ -336,28 +336,7 @@ fn loop_turn(
             world_state.maybe_collect_garbage();
             loop_state.in_flight_libraries -= 1;
         }
-        Event::CheckWatcher(task) => match task {
-            CheckTask::Update(uri) => {
-                // We manually send a diagnostic update when the watcher asks
-                // us to, to avoid the issue of having to change the file to
-                // receive updated diagnostics.
-                let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-                if let Some(file_id) = world_state.vfs.read().path2file(&path) {
-                    let params =
-                        handlers::publish_diagnostics(&world_state.snapshot(), FileId(file_id.0))?;
-                    let not = notification_new::<req::PublishDiagnostics>(params);
-                    task_sender.send(Task::Notify(not)).unwrap();
-                }
-            }
-            CheckTask::Status(progress) => {
-                let params = req::ProgressParams {
-                    token: req::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
-                    value: req::ProgressParamsValue::WorkDone(progress),
-                };
-                let not = notification_new::<req::Progress>(params);
-                task_sender.send(Task::Notify(not)).unwrap();
-            }
-        },
+        Event::CheckWatcher(task) => on_check_task(task, world_state, task_sender)?,
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(
                 world_state,
@@ -602,6 +581,60 @@ fn on_notification(
         Err(not) => not,
     };
     log::error!("unhandled notification: {:?}", not);
+    Ok(())
+}
+
+fn on_check_task(
+    task: CheckTask,
+    world_state: &WorldState,
+    task_sender: &Sender<Task>,
+) -> Result<()> {
+    match task {
+        CheckTask::ClearDiagnostics => {
+            let cleared_files = world_state.check_watcher.state.write().clear();
+
+            // Send updated diagnostics for each cleared file
+            for url in cleared_files {
+                publish_diagnostics_for_url(&url, world_state, task_sender)?;
+            }
+        }
+
+        CheckTask::AddDiagnostic(url, diagnostic) => {
+            world_state
+                .check_watcher
+                .state
+                .write()
+                .add_diagnostic_with_fixes(url.clone(), diagnostic);
+
+            // We manually send a diagnostic update when the watcher asks
+            // us to, to avoid the issue of having to change the file to
+            // receive updated diagnostics.
+            publish_diagnostics_for_url(&url, world_state, task_sender)?;
+        }
+
+        CheckTask::Status(progress) => {
+            let params = req::ProgressParams {
+                token: req::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
+                value: req::ProgressParamsValue::WorkDone(progress),
+            };
+            let not = notification_new::<req::Progress>(params);
+            task_sender.send(Task::Notify(not)).unwrap();
+        }
+    }
+    Ok(())
+}
+
+fn publish_diagnostics_for_url(
+    url: &Url,
+    world_state: &WorldState,
+    task_sender: &Sender<Task>,
+) -> Result<()> {
+    let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
+    if let Some(file_id) = world_state.vfs.read().path2file(&path) {
+        let params = handlers::publish_diagnostics(&world_state.snapshot(), FileId(file_id.0))?;
+        let not = notification_new::<req::PublishDiagnostics>(params);
+        task_sender.send(Task::Notify(not)).unwrap();
+    }
     Ok(())
 }
 

@@ -38,7 +38,7 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
-    pub shared: Arc<RwLock<CheckWatcherSharedState>>,
+    pub state: Arc<RwLock<CheckState>>,
     cmd_send: Option<Sender<CheckCommand>>,
     handle: Option<JoinHandle<()>>,
 }
@@ -46,22 +46,21 @@ pub struct CheckWatcher {
 impl CheckWatcher {
     pub fn new(options: &CheckOptions, workspace_root: PathBuf) -> CheckWatcher {
         let options = options.clone();
-        let shared = Arc::new(RwLock::new(CheckWatcherSharedState::new()));
+        let state = Arc::new(RwLock::new(CheckState::new()));
 
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
-        let shared_ = shared.clone();
         let handle = std::thread::spawn(move || {
-            let mut check = CheckWatcherState::new(options, workspace_root, shared_);
+            let mut check = CheckWatcherThread::new(options, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
-        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), shared }
+        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), state }
     }
 
     /// Returns a CheckWatcher that doesn't actually do anything
     pub fn dummy() -> CheckWatcher {
-        let shared = Arc::new(RwLock::new(CheckWatcherSharedState::new()));
-        CheckWatcher { task_recv: never(), cmd_send: None, handle: None, shared }
+        let state = Arc::new(RwLock::new(CheckState::new()));
+        CheckWatcher { task_recv: never(), cmd_send: None, handle: None, state }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -89,14 +88,14 @@ impl std::ops::Drop for CheckWatcher {
 }
 
 #[derive(Debug)]
-pub struct CheckWatcherSharedState {
+pub struct CheckState {
     diagnostic_collection: HashMap<Url, Vec<Diagnostic>>,
     suggested_fix_collection: HashMap<Url, Vec<SuggestedFix>>,
 }
 
-impl CheckWatcherSharedState {
-    fn new() -> CheckWatcherSharedState {
-        CheckWatcherSharedState {
+impl CheckState {
+    fn new() -> CheckState {
+        CheckState {
             diagnostic_collection: HashMap::new(),
             suggested_fix_collection: HashMap::new(),
         }
@@ -104,15 +103,11 @@ impl CheckWatcherSharedState {
 
     /// Clear the cached diagnostics, and schedule updating diagnostics by the
     /// server, to clear stale results.
-    pub fn clear(&mut self, task_send: &Sender<CheckTask>) {
+    pub fn clear(&mut self) -> Vec<Url> {
         let cleared_files: Vec<Url> = self.diagnostic_collection.keys().cloned().collect();
-
         self.diagnostic_collection.clear();
         self.suggested_fix_collection.clear();
-
-        for uri in cleared_files {
-            task_send.send(CheckTask::Update(uri.clone())).unwrap();
-        }
+        cleared_files
     }
 
     pub fn diagnostics_for(&self, uri: &Url) -> Option<&[Diagnostic]> {
@@ -121,6 +116,13 @@ impl CheckWatcherSharedState {
 
     pub fn fixes_for(&self, uri: &Url) -> Option<&[SuggestedFix]> {
         self.suggested_fix_collection.get(uri).map(|d| d.as_slice())
+    }
+
+    pub fn add_diagnostic_with_fixes(&mut self, file_uri: Url, diagnostic: DiagnosticWithFixes) {
+        for fix in diagnostic.suggested_fixes {
+            self.add_suggested_fix_for_diagnostic(fix, &diagnostic.diagnostic);
+        }
+        self.add_diagnostic(file_uri, diagnostic.diagnostic);
     }
 
     fn add_diagnostic(&mut self, file_uri: Url, diagnostic: Diagnostic) {
@@ -158,8 +160,11 @@ impl CheckWatcherSharedState {
 
 #[derive(Debug)]
 pub enum CheckTask {
-    /// Request a update of the given files diagnostics
-    Update(Url),
+    /// Request a clearing of all cached diagnostics from the check watcher
+    ClearDiagnostics,
+
+    /// Request adding a diagnostic with fixes included to a file
+    AddDiagnostic(Url, DiagnosticWithFixes),
 
     /// Request check progress notification to client
     Status(WorkDoneProgress),
@@ -170,26 +175,20 @@ pub enum CheckCommand {
     Update,
 }
 
-struct CheckWatcherState {
+struct CheckWatcherThread {
     options: CheckOptions,
     workspace_root: PathBuf,
     watcher: WatchThread,
     last_update_req: Option<Instant>,
-    shared: Arc<RwLock<CheckWatcherSharedState>>,
 }
 
-impl CheckWatcherState {
-    fn new(
-        options: CheckOptions,
-        workspace_root: PathBuf,
-        shared: Arc<RwLock<CheckWatcherSharedState>>,
-    ) -> CheckWatcherState {
-        CheckWatcherState {
+impl CheckWatcherThread {
+    fn new(options: CheckOptions, workspace_root: PathBuf) -> CheckWatcherThread {
+        CheckWatcherThread {
             options,
             workspace_root,
             watcher: WatchThread::dummy(),
             last_update_req: None,
-            shared,
         }
     }
 
@@ -215,7 +214,7 @@ impl CheckWatcherState {
 
             if self.should_recheck() {
                 self.last_update_req.take();
-                self.shared.write().clear(task_send);
+                task_send.send(CheckTask::ClearDiagnostics).unwrap();
 
                 // By replacing the watcher, we drop the previous one which
                 // causes it to shut down automatically.
@@ -240,7 +239,7 @@ impl CheckWatcherState {
         }
     }
 
-    fn handle_message(&mut self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
+    fn handle_message(&self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
         match msg {
             CheckEvent::Begin => {
                 task_send
@@ -279,24 +278,21 @@ impl CheckWatcherState {
                     };
 
                 let MappedRustDiagnostic { location, diagnostic, suggested_fixes } = map_result;
-                let file_uri = location.uri.clone();
 
-                if !suggested_fixes.is_empty() {
-                    for suggested_fix in suggested_fixes {
-                        self.shared
-                            .write()
-                            .add_suggested_fix_for_diagnostic(suggested_fix, &diagnostic);
-                    }
-                }
-                self.shared.write().add_diagnostic(file_uri, diagnostic);
-
-                task_send.send(CheckTask::Update(location.uri)).unwrap();
+                let diagnostic = DiagnosticWithFixes { diagnostic, suggested_fixes };
+                task_send.send(CheckTask::AddDiagnostic(location.uri, diagnostic)).unwrap();
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
             CheckEvent::Msg(Message::Unknown) => {}
         }
     }
+}
+
+#[derive(Debug)]
+pub struct DiagnosticWithFixes {
+    diagnostic: Diagnostic,
+    suggested_fixes: Vec<SuggestedFix>,
 }
 
 /// WatchThread exists to wrap around the communication needed to be able to

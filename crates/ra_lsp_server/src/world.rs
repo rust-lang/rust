@@ -13,7 +13,7 @@ use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_cargo_watch::{
-    url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher, CheckWatcherSharedState,
+    url_from_path_with_drive_lowercasing, CheckOptions, CheckState, CheckWatcher,
 };
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
@@ -64,7 +64,7 @@ pub struct WorldSnapshot {
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
-    pub check_watcher: Arc<RwLock<CheckWatcherSharedState>>,
+    pub check_watcher: Arc<RwLock<CheckState>>,
 }
 
 impl WorldState {
@@ -220,7 +220,7 @@ impl WorldState {
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
-            check_watcher: self.check_watcher.shared.clone(),
+            check_watcher: self.check_watcher.state.clone(),
         }
     }
 
