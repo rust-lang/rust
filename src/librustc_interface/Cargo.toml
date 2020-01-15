@@ -43,6 +43,9 @@ rustc_resolve = { path = "../librustc_resolve" }
 tempfile = "3.0.5"
 once_cell = "1"
 
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["libloaderapi"] }
+
 [dev-dependencies]
 rustc_target = { path = "../librustc_target" }
 

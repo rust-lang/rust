@@ -207,6 +207,7 @@ dependencies = [
  "serde_json",
  "time",
  "toml",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -520,9 +521,9 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.38"
+version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96210eec534fc3fbfc0452a63769424eaa80205fda6cea98e5b61cb3d97bcec8"
+checksum = "81fb25b677f8bf1eb325017cb6bb8452f87969db0fedb4f757b297bee78a7c62"
 dependencies = [
  "cc",
 ]
@@ -576,9 +577,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.22"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f083abf9bb9005a27d2da62706f661245278cb7096da37ab27410eaf60f2c1"
+checksum = "b9975aefa63997ef75ca9cf013ff1bb81487aaa0b622c21053afd3b92979a7af"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1587,12 +1588,11 @@ dependencies = [
 
 [[package]]
 name = "iovec"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbe6e417e7d0975db6512b90796e8ce223145ac4e33c377e4a42882a0e88bb08"
+checksum = "b2b3ea6ff95e175473f8ffe6a7eb7c00d054240321b84c57051175fe3c1e075e"
 dependencies = [
  "libc",
- "winapi 0.2.8",
 ]
 
 [[package]]
@@ -1812,9 +1812,9 @@ dependencies = [
 
 [[package]]
 name = "libssh2-sys"
-version = "0.2.11"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "126a1f4078368b163bfdee65fbab072af08a1b374a5551b21e87ade27b1fbf9d"
+checksum = "36aa6e813339d3a063292b77091dfbbb6152ff9006a459895fa5bebed7d34f10"
 dependencies = [
  "cc",
  "libc",
@@ -3497,6 +3497,7 @@ dependencies = [
  "serialize",
  "smallvec 1.0.0",
  "stable_deref_trait",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3524,6 +3525,7 @@ dependencies = [
  "rustc_target",
  "serialize",
  "syntax",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3543,6 +3545,7 @@ dependencies = [
  "term_size",
  "termcolor",
  "unicode-width",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3654,6 +3657,7 @@ dependencies = [
  "smallvec 1.0.0",
  "syntax",
  "tempfile",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3723,6 +3727,7 @@ dependencies = [
  "smallvec 1.0.0",
  "stable_deref_trait",
  "syntax",
+ "winapi 0.3.8",
 ]
 
 [[package]]

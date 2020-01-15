@@ -32,5 +32,8 @@ rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }
+
 [features]
 llvm = ['rustc_interface/llvm']

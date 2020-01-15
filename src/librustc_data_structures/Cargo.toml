@@ -31,3 +31,6 @@ measureme = "0.7.1"
 [dependencies.parking_lot]
 version = "0.9"
 features = ["nightly"]
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "psapi"] }
