@@ -33,7 +33,7 @@ use crate::{
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
-/// original source files. It should not be used pinside the HIR itself.
+/// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     file_id: HirFileId,

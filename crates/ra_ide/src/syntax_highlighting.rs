@@ -317,7 +317,7 @@ mod tests {
     use crate::mock_analysis::{single_file, MockAnalysis};
 
     #[test]
-    fn te3st_highlighting() {
+    fn test_highlighting() {
         let (analysis, file_id) = single_file(
             r#"
 #[derive(Clone, Debug)]
