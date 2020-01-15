@@ -1,3 +1,4 @@
+// ignore-tidy-filelength FIXME(#67418) Split up this file.
 //! Conversion from AST representation of types to the `ty.rs` representation.
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
@@ -37,6 +38,7 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
+use rustc::mir::interpret::LitToConstInput;
 use rustc_error_codes::*;
 
 #[derive(Debug)]
@@ -2699,17 +2701,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let def_id = tcx.hir().local_def_id(ast_const.hir_id);
 
-        let mut const_ = ty::Const {
-            val: ty::ConstKind::Unevaluated(
-                def_id,
-                InternalSubsts::identity_for_item(tcx, def_id),
-                None,
-            ),
-            ty,
+        let expr = &tcx.hir().body(ast_const.body).value;
+
+        let lit_input = match expr.kind {
+            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
+                hir::ExprKind::Lit(ref lit) => {
+                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
+                }
+                _ => None,
+            },
+            _ => None,
         };
 
-        let expr = &tcx.hir().body(ast_const.body).value;
-        if let Some(def_id) = self.const_param_def_id(expr) {
+        if let Some(lit_input) = lit_input {
+            // If an error occurred, ignore that it's a literal and leave reporting the error up to
+            // mir.
+            if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
+                return c;
+            }
+        }
+
+        let kind = if let Some(def_id) = self.const_param_def_id(expr) {
             // Find the name and index of the const parameter by indexing the generics of the
             // parent item and construct a `ParamConst`.
             let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -2718,10 +2731,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
             let name = tcx.hir().name(hir_id);
-            const_.val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
-        }
-
-        tcx.mk_const(const_)
+            ty::ConstKind::Param(ty::ParamConst::new(index, name))
+        } else {
+            ty::ConstKind::Unevaluated(def_id, InternalSubsts::identity_for_item(tcx, def_id), None)
+        };
+        tcx.mk_const(ty::Const { val: kind, ty })
     }
 
     pub fn impl_trait_ty_to_ty(

@@ -15,6 +15,7 @@ use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use crate::session::CrateDisambiguator;

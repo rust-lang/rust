@@ -6,10 +6,10 @@ mod const_to_pat;
 
 pub(crate) use self::check_match::check_match;
 
-use crate::hair::constant::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
+use rustc::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc::mir::UserTypeProjection;
 use rustc::mir::{BorrowKind, Field, Mutability};
 use rustc::ty::layout::VariantIdx;
@@ -822,35 +822,30 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr<'tcx>) -> PatKind<'tcx> {
-        match expr.kind {
-            hir::ExprKind::Lit(ref lit) => {
-                let ty = self.tables.expr_ty(expr);
-                match lit_to_const(&lit.node, self.tcx, ty, false) {
-                    Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span).kind,
-                    Err(LitToConstError::UnparseableFloat) => {
-                        self.errors.push(PatternError::FloatBug);
-                        PatKind::Wild
-                    }
-                    Err(LitToConstError::Reported) => PatKind::Wild,
+        if let hir::ExprKind::Path(ref qpath) = expr.kind {
+            *self.lower_path(qpath, expr.hir_id, expr.span).kind
+        } else {
+            let (lit, neg) = match expr.kind {
+                hir::ExprKind::Lit(ref lit) => (lit, false),
+                hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
+                    let lit = match expr.kind {
+                        hir::ExprKind::Lit(ref lit) => lit,
+                        _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+                    };
+                    (lit, true)
                 }
-            }
-            hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
-                let ty = self.tables.expr_ty(expr);
-                let lit = match expr.kind {
-                    hir::ExprKind::Lit(ref lit) => lit,
-                    _ => span_bug!(expr.span, "not a literal: {:?}", expr),
-                };
-                match lit_to_const(&lit.node, self.tcx, ty, true) {
-                    Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span).kind,
-                    Err(LitToConstError::UnparseableFloat) => {
-                        self.errors.push(PatternError::FloatBug);
-                        PatKind::Wild
-                    }
-                    Err(LitToConstError::Reported) => PatKind::Wild,
+                _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+            };
+
+            let lit_input = LitToConstInput { lit: &lit.node, ty: self.tables.expr_ty(expr), neg };
+            match self.tcx.at(expr.span).lit_to_const(lit_input) {
+                Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span).kind,
+                Err(LitToConstError::UnparseableFloat) => {
+                    self.errors.push(PatternError::FloatBug);
+                    PatKind::Wild
                 }
+                Err(LitToConstError::Reported) => PatKind::Wild,
             }
-            _ => span_bug!(expr.span, "not a literal: {:?}", expr),
         }
     }
 }

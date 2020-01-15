@@ -5,9 +5,9 @@
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
 
-use crate::hair::constant::{lit_to_const, LitToConstError};
 use rustc::infer::InferCtxt;
 use rustc::middle::region;
+use rustc::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{GenericArg, InternalSubsts};
@@ -136,7 +136,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        match lit_to_const(lit, self.tcx, ty, neg) {
+        match self.tcx.at(sp).lit_to_const(LitToConstInput { lit, ty, neg }) {
             Ok(c) => c,
             Err(LitToConstError::UnparseableFloat) => {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
