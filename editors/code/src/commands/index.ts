@@ -39,6 +39,18 @@ function applySourceChange(ctx: Ctx): Cmd {
     };
 }
 
+function selectAndApplySourceChange(ctx: Ctx): Cmd {
+    return async (changes: sourceChange.SourceChange[]) => {
+        if (changes.length === 1) {
+            await sourceChange.applySourceChange(ctx, changes[0]);
+        } else if (changes.length > 0) {
+            const selectedChange = await vscode.window.showQuickPick(changes);
+            if (!selectedChange) return;
+            await sourceChange.applySourceChange(ctx, selectedChange);
+        }
+    };
+}
+
 function reload(ctx: Ctx): Cmd {
     return async () => {
         vscode.window.showInformationMessage('Reloading rust-analyzer...');
@@ -59,5 +71,6 @@ export {
     runSingle,
     showReferences,
     applySourceChange,
+    selectAndApplySourceChange,
     reload
 };

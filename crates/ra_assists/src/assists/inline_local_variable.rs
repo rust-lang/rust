@@ -4,7 +4,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::assist_ctx::AssistBuilder;
+use crate::assist_ctx::ActionBuilder;
 use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: inline_local_variable
@@ -94,7 +94,7 @@ pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<
     ctx.add_assist(
         AssistId("inline_local_variable"),
         "Inline variable",
-        move |edit: &mut AssistBuilder| {
+        move |edit: &mut ActionBuilder| {
             edit.delete(delete_range);
             for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
                 if should_wrap {

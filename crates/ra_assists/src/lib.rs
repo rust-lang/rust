@@ -13,6 +13,7 @@ mod doc_tests;
 mod test_db;
 pub mod ast_transform;
 
+use either::Either;
 use hir::db::HirDatabase;
 use ra_db::FileRange;
 use ra_syntax::{TextRange, TextUnit};
@@ -35,9 +36,25 @@ pub struct AssistLabel {
 
 #[derive(Debug, Clone)]
 pub struct AssistAction {
+    pub label: Option<String>,
     pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
     pub target: Option<TextRange>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedAssist {
+    pub label: AssistLabel,
+    pub action_data: Either<AssistAction, Vec<AssistAction>>,
+}
+
+impl ResolvedAssist {
+    pub fn get_first_action(&self) -> AssistAction {
+        match &self.action_data {
+            Either::Left(action) => action.clone(),
+            Either::Right(actions) => actions[0].clone(),
+        }
+    }
 }
 
 /// Return all the assists applicable at the given position.
@@ -64,7 +81,7 @@ where
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists<H>(db: &H, range: FileRange) -> Vec<(AssistLabel, AssistAction)>
+pub fn assists<H>(db: &H, range: FileRange) -> Vec<ResolvedAssist>
 where
     H: HirDatabase + 'static,
 {
@@ -75,11 +92,11 @@ where
             .iter()
             .filter_map(|f| f(ctx.clone()))
             .map(|a| match a {
-                Assist::Resolved { label, action } => (label, action),
+                Assist::Resolved { assist } => assist,
                 Assist::Unresolved { .. } => unreachable!(),
             })
             .collect::<Vec<_>>();
-        a.sort_by(|a, b| match (a.1.target, b.1.target) {
+        a.sort_by(|a, b| match (a.get_first_action().target, b.get_first_action().target) {
             (Some(a), Some(b)) => a.len().cmp(&b.len()),
             (Some(_), None) => Ordering::Less,
             (None, Some(_)) => Ordering::Greater,
@@ -174,7 +191,7 @@ mod helpers {
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { action, .. } => action,
+            Assist::Resolved { assist } => assist.get_first_action(),
         };
 
         let actual = action.edit.apply(&before);
@@ -201,7 +218,7 @@ mod helpers {
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { action, .. } => action,
+            Assist::Resolved { assist } => assist.get_first_action(),
         };
 
         let mut actual = action.edit.apply(&before);
@@ -224,7 +241,7 @@ mod helpers {
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { action, .. } => action,
+            Assist::Resolved { assist } => assist.get_first_action(),
         };
 
         let range = action.target.expect("expected target on action");
@@ -243,7 +260,7 @@ mod helpers {
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { action, .. } => action,
+            Assist::Resolved { assist } => assist.get_first_action(),
         };
 
         let range = action.target.expect("expected target on action");
@@ -293,10 +310,10 @@ mod tests {
         let mut assists = assists.iter();
 
         assert_eq!(
-            assists.next().expect("expected assist").0.label,
+            assists.next().expect("expected assist").label.label,
             "Change visibility to pub(crate)"
         );
-        assert_eq!(assists.next().expect("expected assist").0.label, "Add `#[derive]`");
+        assert_eq!(assists.next().expect("expected assist").label.label, "Add `#[derive]`");
     }
 
     #[test]
@@ -315,7 +332,7 @@ mod tests {
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
 
-        assert_eq!(assists.next().expect("expected assist").0.label, "Extract into variable");
-        assert_eq!(assists.next().expect("expected assist").0.label, "Replace with match");
+        assert_eq!(assists.next().expect("expected assist").label.label, "Extract into variable");
+        assert_eq!(assists.next().expect("expected assist").label.label, "Replace with match");
     }
 }
