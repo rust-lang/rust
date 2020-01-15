@@ -337,11 +337,34 @@ fn loop_turn(
             loop_state.in_flight_libraries -= 1;
         }
         Event::CheckWatcher(task) => match task {
-            CheckTask::Update(uri) => {
+            CheckTask::ClearDiagnostics => {
+                let cleared_files = world_state.check_watcher.state.write().clear();
+
+                // Send updated diagnostics for each cleared file
+                for url in cleared_files {
+                    let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
+                    if let Some(file_id) = world_state.vfs.read().path2file(&path) {
+                        let params = handlers::publish_diagnostics(
+                            &world_state.snapshot(),
+                            FileId(file_id.0),
+                        )?;
+                        let not = notification_new::<req::PublishDiagnostics>(params);
+                        task_sender.send(Task::Notify(not)).unwrap();
+                    }
+                }
+            }
+
+            CheckTask::AddDiagnostic(url, diagnostic) => {
+                world_state
+                    .check_watcher
+                    .state
+                    .write()
+                    .add_diagnostic_with_fixes(url.clone(), diagnostic);
+
                 // We manually send a diagnostic update when the watcher asks
                 // us to, to avoid the issue of having to change the file to
                 // receive updated diagnostics.
-                let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
+                let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
                 if let Some(file_id) = world_state.vfs.read().path2file(&path) {
                     let params =
                         handlers::publish_diagnostics(&world_state.snapshot(), FileId(file_id.0))?;
@@ -349,6 +372,7 @@ fn loop_turn(
                     task_sender.send(Task::Notify(not)).unwrap();
                 }
             }
+
             CheckTask::Status(progress) => {
                 let params = req::ProgressParams {
                     token: req::ProgressToken::String("rustAnalyzer/cargoWatcher".to_string()),
