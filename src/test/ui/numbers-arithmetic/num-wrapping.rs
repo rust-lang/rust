@@ -1,4 +1,5 @@
 // run-pass
+// ignore-emscripten times out
 #![allow(unused_macros)]
 
 // compile-flags: -C debug-assertions

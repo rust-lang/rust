@@ -1,5 +1,6 @@
 // run-pass
 // only-32bit too impatient for 2⁶⁴ items
+// ignore-emscripten times out
 // compile-flags: -C debug_assertions=no -C opt-level=3
 
 use std::panic;

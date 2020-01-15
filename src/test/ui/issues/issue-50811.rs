@@ -1,4 +1,5 @@
 // run-pass
+// ignore-emscripten times out
 #![feature(test)]
 
 extern crate test;

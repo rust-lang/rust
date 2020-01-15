@@ -1,6 +1,7 @@
 // aux-build:arc_wake.rs
 // edition:2018
 // run-pass
+// ignore-emscripten times out
 
 #![allow(unused_variables)]
 

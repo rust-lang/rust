@@ -33,4 +33,5 @@ ENV EMCC_CFLAGS=-O1
 # Emscripten installation is user-specific
 ENV NO_CHANGE_USER=1
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS
+# libcore takes about 15 minutes to build, so skip it
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS --exclude src/libcore

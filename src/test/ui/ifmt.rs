@@ -1,4 +1,5 @@
 // run-pass
+// ignore-emscripten times out
 
 #![deny(warnings)]
 #![allow(unused_must_use)]
