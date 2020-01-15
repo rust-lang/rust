@@ -23,6 +23,7 @@ members = [
   "src/tools/rustfmt",
   "src/tools/miri",
   "src/tools/rustdoc-themes",
+  "src/tools/unicode-table-generator",
 ]
 exclude = [
   "build",

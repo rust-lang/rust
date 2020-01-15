@@ -2479,19 +2479,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 eq
             })
-            .map(|ty::GeneratorInteriorTypeCause { span, scope_span, .. }| {
-                (span, source_map.span_to_snippet(*span), scope_span)
+            .map(|ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. }| {
+                (span, source_map.span_to_snippet(*span), scope_span, expr)
             });
+
         debug!(
             "maybe_note_obligation_cause_for_async_await: target_ty={:?} \
                 generator_interior_types={:?} target_span={:?}",
             target_ty, tables.generator_interior_types, target_span
         );
-        if let Some((target_span, Ok(snippet), scope_span)) = target_span {
+        if let Some((target_span, Ok(snippet), scope_span, expr)) = target_span {
             self.note_obligation_cause_for_async_await(
                 err,
                 *target_span,
                 scope_span,
+                *expr,
                 snippet,
                 generator_did,
                 last_generator,
@@ -2514,6 +2516,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         target_span: Span,
         scope_span: &Option<Span>,
+        expr: Option<hir::HirId>,
         snippet: String,
         first_generator: DefId,
         last_generator: Option<DefId>,
@@ -2549,6 +2552,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // not implemented.
         let is_send = self.tcx.is_diagnostic_item(sym::send_trait, trait_ref.def_id);
         let is_sync = self.tcx.is_diagnostic_item(sym::sync_trait, trait_ref.def_id);
+        let hir = self.tcx.hir();
         let trait_explanation = if is_send || is_sync {
             let (trait_name, trait_verb) =
                 if is_send { ("`Send`", "sent") } else { ("`Sync`", "shared") };
@@ -2564,8 +2568,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             let message = if let Some(name) = last_generator
                 .and_then(|generator_did| self.tcx.parent(generator_did))
-                .and_then(|parent_did| self.tcx.hir().as_local_hir_id(parent_did))
-                .and_then(|parent_hir_id| self.tcx.hir().opt_name(parent_hir_id))
+                .and_then(|parent_did| hir.as_local_hir_id(parent_did))
+                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
             {
                 format!("future returned by `{}` is not {}", name, trait_name)
             } else {
@@ -2581,7 +2585,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         // Look at the last interior type to get a span for the `.await`.
-        let await_span = tables.generator_interior_types.iter().map(|i| i.span).last().unwrap();
+        let await_span = tables.generator_interior_types.iter().map(|t| t.span).last().unwrap();
         let mut span = MultiSpan::from_span(await_span);
         span.push_span_label(
             await_span,
@@ -2605,6 +2609,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 trait_explanation, await_or_yield,
             ),
         );
+
+        if let Some(expr_id) = expr {
+            let expr = hir.expect_expr(expr_id);
+            let is_ref = tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
+            let parent = hir.get_parent_node(expr_id);
+            if let Some(hir::Node::Expr(e)) = hir.find(parent) {
+                let method_span = hir.span(parent);
+                if tables.is_method_call(e) && is_ref {
+                    err.span_help(
+                        method_span,
+                        "consider moving this method call into a `let` \
+                        binding to create a shorter lived borrow",
+                    );
+                }
+            }
+        }
 
         // Add a note for the item obligation that remains - normally a note pointing to the
         // bound that introduced the obligation (e.g. `T: Send`).

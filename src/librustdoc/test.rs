@@ -704,7 +704,7 @@ impl Tester for Collector {
         debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name.clone()),
+                name: testing::DynTestName(name),
                 ignore: match config.ignore {
                     Ignore::All => true,
                     Ignore::None => false,

@@ -315,8 +315,7 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
 /// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -324,6 +323,8 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
+    /// Expr which the type evaluated from.
+    pub expr: Option<hir::HirId>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
@@ -436,7 +437,7 @@ pub struct TypeckTables<'tcx> {
     /// entire variable.
     pub upvar_list: ty::UpvarListMap,
 
-    /// Stores the type, span and optional scope span of all types
+    /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
 }

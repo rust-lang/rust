@@ -1806,6 +1806,16 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
+fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
+    generic_args
+        .iter()
+        .filter_map(|arg| match arg {
+            hir::GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        })
+        .any(is_suggestable_infer_ty)
+}
+
 /// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
 /// use inference to provide suggestions for the appropriate type if possible.
 fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
@@ -1815,13 +1825,16 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
         Slice(ty) | Array(ty, _) => is_suggestable_infer_ty(ty),
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
         Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
-        Def(_, generic_args) => generic_args
-            .iter()
-            .filter_map(|arg| match arg {
-                hir::GenericArg::Type(ty) => Some(ty),
-                _ => None,
-            })
-            .any(is_suggestable_infer_ty),
+        Def(_, generic_args) => are_suggestable_generic_args(generic_args),
+        Path(hir::QPath::TypeRelative(ty, segment)) => {
+            is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.generic_args().args)
+        }
+        Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
+            ty_opt.map_or(false, is_suggestable_infer_ty)
+                || segments
+                    .iter()
+                    .any(|segment| are_suggestable_generic_args(segment.generic_args().args))
+        }
         _ => false,
     }
 }

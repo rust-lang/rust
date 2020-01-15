@@ -553,7 +553,7 @@ fn run_test_in_process(
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap().to_vec();
-    let message = CompletedTest::new(desc.clone(), test_result, exec_time, stdout);
+    let message = CompletedTest::new(desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
 }
 
@@ -602,7 +602,7 @@ fn spawn_test_subprocess(
         (result, test_output, exec_time)
     })();
 
-    let message = CompletedTest::new(desc.clone(), result, exec_time, test_output);
+    let message = CompletedTest::new(desc, result, exec_time, test_output);
     monitor_ch.send(message).unwrap();
 }
 

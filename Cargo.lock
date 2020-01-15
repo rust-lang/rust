@@ -4954,6 +4954,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
 
 [[package]]
+name = "ucd-parse"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca6b52bf4da6512f0f07785a04769222e50d29639e7ecd016b7806fd2de306b4"
+dependencies = [
+ "lazy_static 1.3.0",
+ "regex",
+]
+
+[[package]]
 name = "ucd-trie"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4972,6 +4982,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e2e6bd1e59e56598518beb94fd6db628ded570326f0a98c679a304bd9f00150"
 dependencies = [
  "version_check 0.1.5",
+]
+
+[[package]]
+name = "unicode-bdd"
+version = "0.1.0"
+dependencies = [
+ "ucd-parse",
 ]
 
 [[package]]
