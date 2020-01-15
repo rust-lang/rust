@@ -185,8 +185,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn find_foreign_static(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
+        id: AllocId,
         memory_extra: &Self::MemoryExtra,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called for all binary operations where the LHS has pointer type.
     ///

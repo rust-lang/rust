@@ -435,7 +435,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // We got a "lazy" static that has not been computed yet.
                 if tcx.is_foreign_item(def_id) {
                     trace!("static_alloc: foreign item {:?}", def_id);
-                    M::find_foreign_static(tcx.tcx, def_id, memory_extra)?
+                    return Ok(M::find_foreign_static(tcx.tcx, def_id, id, memory_extra)?);
                 } else {
                     trace!("static_alloc: Need to compute {:?}", def_id);
                     let instance = Instance::mono(tcx.tcx, def_id);
