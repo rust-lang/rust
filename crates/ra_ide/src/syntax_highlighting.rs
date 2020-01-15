@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{InFile, Name};
+use hir::{InFile, Name, SourceBinder};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
@@ -84,6 +84,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
         hash((file_id, name, shadow_count))
     }
 
+    let mut sb = SourceBinder::new(db);
+
     // Visited nodes to handle highlighting priorities
     // FIXME: retain only ranges here
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
@@ -108,8 +110,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
             NAME_REF => {
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-                let name_kind =
-                    classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
+                let name_kind = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
+                    .map(|d| d.kind);
                 match name_kind {
                     Some(name_kind) => {
                         if let Local(local) = &name_kind {
@@ -129,7 +131,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
                 let name_kind =
-                    classify_name(db, InFile::new(file_id.into(), &name)).map(|d| d.kind);
+                    classify_name(&mut sb, InFile::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {
@@ -308,8 +310,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::single_file;
+    use std::fs;
+
     use test_utils::{assert_eq_text, project_dir, read_text};
+
+    use crate::mock_analysis::{single_file, MockAnalysis};
 
     #[test]
     fn test_highlighting() {
@@ -357,7 +362,7 @@ impl<X> E<X> {
         let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
         let expected_html = &read_text(&dst_file);
-        std::fs::write(dst_file, &actual_html).unwrap();
+        fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
     }
 
@@ -383,7 +388,21 @@ fn bar() {
         let dst_file = project_dir().join("crates/ra_ide/src/snapshots/rainbow_highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
-        std::fs::write(dst_file, &actual_html).unwrap();
+        fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
+    }
+
+    #[test]
+    fn accidentally_quadratic() {
+        let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
+        let src = fs::read_to_string(file).unwrap();
+
+        let mut mock = MockAnalysis::new();
+        let file_id = mock.add_file("/main.rs", &src);
+        let host = mock.analysis_host();
+
+        // let t = std::time::Instant::now();
+        let _ = host.analysis().highlight(file_id).unwrap();
+        // eprintln!("elapsed: {:?}", t.elapsed());
     }
 }

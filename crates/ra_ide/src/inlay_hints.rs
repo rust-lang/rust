@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{HirDisplay, SourceAnalyzer};
+use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_prof::profile;
 use ra_syntax::{
@@ -29,22 +29,23 @@ pub(crate) fn inlay_hints(
     file: &SourceFile,
     max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
+    let mut sb = SourceBinder::new(db);
     file.syntax()
         .descendants()
-        .flat_map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length))
+        .flat_map(|node| get_inlay_hints(&mut sb, file_id, &node, max_inlay_hint_length))
         .flatten()
         .collect()
 }
 
 fn get_inlay_hints(
-    db: &RootDatabase,
+    sb: &mut SourceBinder<RootDatabase>,
     file_id: FileId,
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
     let _p = profile("get_inlay_hints");
-    let analyzer =
-        Lazy::new(|| SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None));
+    let db = sb.db;
+    let analyzer = Lazy::new(move || sb.analyze(hir::InFile::new(file_id.into(), node), None));
     match_ast! {
         match node {
             ast::LetStmt(it) => {

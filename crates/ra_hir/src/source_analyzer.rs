@@ -14,26 +14,22 @@ use hir_def::{
         BodySourceMap,
     },
     expr::{ExprId, PatId},
-    nameres::ModuleSource,
-    resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
+    resolver::{self, resolver_for_scope, Resolver, TypeNs, ValueNs},
     DefWithBodyId, TraitId,
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
 };
 use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
-use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
-    match_ast, AstPtr,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
+    AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
 };
 use rustc_hash::FxHashSet;
 
 use crate::{
-    db::HirDatabase, Adt, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, ImplBlock,
-    Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, Adt, Const, DefWithBody, EnumVariant, Function, Local, MacroDef, Name, Path,
+    ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -109,37 +105,43 @@ impl SourceAnalyzer {
         node: InFile<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let _p = profile("SourceAnalyzer::new");
-        let def_with_body = def_with_body_from_child_node(db, node);
-        if let Some(def) = def_with_body {
-            let (_body, source_map) = db.body_with_source_map(def.into());
-            let scopes = db.expr_scopes(def.into());
-            let scope = match offset {
-                None => scope_for(&scopes, &source_map, node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
-            };
-            let resolver = resolver_for_scope(db, def.into(), scope);
-            SourceAnalyzer {
-                resolver,
-                body_owner: Some(def),
-                body_source_map: Some(source_map),
-                infer: Some(db.infer(def.into())),
-                scopes: Some(scopes),
-                file_id: node.file_id,
-            }
-        } else {
-            SourceAnalyzer {
-                resolver: node
-                    .value
-                    .ancestors()
-                    .find_map(|it| try_get_resolver_for_node(db, node.with_value(&it)))
-                    .unwrap_or_default(),
-                body_owner: None,
-                body_source_map: None,
-                infer: None,
-                scopes: None,
-                file_id: node.file_id,
-            }
+        crate::source_binder::SourceBinder::new(db).analyze(node, offset)
+    }
+
+    pub(crate) fn new_for_body(
+        db: &impl HirDatabase,
+        def: DefWithBodyId,
+        node: InFile<&SyntaxNode>,
+        offset: Option<TextUnit>,
+    ) -> SourceAnalyzer {
+        let (_body, source_map) = db.body_with_source_map(def);
+        let scopes = db.expr_scopes(def);
+        let scope = match offset {
+            None => scope_for(&scopes, &source_map, node),
+            Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
+        };
+        let resolver = resolver_for_scope(db, def, scope);
+        SourceAnalyzer {
+            resolver,
+            body_owner: Some(def.into()),
+            body_source_map: Some(source_map),
+            infer: Some(db.infer(def)),
+            scopes: Some(scopes),
+            file_id: node.file_id,
+        }
+    }
+
+    pub(crate) fn new_for_resolver(
+        resolver: Resolver,
+        node: InFile<&SyntaxNode>,
+    ) -> SourceAnalyzer {
+        SourceAnalyzer {
+            resolver,
+            body_owner: None,
+            body_source_map: None,
+            infer: None,
+            scopes: None,
+            file_id: node.file_id,
         }
     }
 
@@ -364,64 +366,6 @@ impl SourceAnalyzer {
         );
         Some(Expansion { macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)) })
     }
-}
-
-fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
-    match_ast! {
-        match (node.value) {
-            ast::Module(it) => {
-                let src = node.with_value(it);
-                Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
-            },
-             ast::SourceFile(it) => {
-                let src = node.with_value(ModuleSource::SourceFile(it));
-                Some(crate::Module::from_definition(db, src)?.id.resolver(db))
-            },
-            ast::StructDef(it) => {
-                let src = node.with_value(it);
-                Some(Struct::from_source(db, src)?.id.resolver(db))
-            },
-            ast::EnumDef(it) => {
-                let src = node.with_value(it);
-                Some(Enum::from_source(db, src)?.id.resolver(db))
-            },
-            ast::ImplBlock(it) => {
-                let src = node.with_value(it);
-                Some(ImplBlock::from_source(db, src)?.id.resolver(db))
-            },
-            ast::TraitDef(it) => {
-                let src = node.with_value(it);
-                Some(Trait::from_source(db, src)?.id.resolver(db))
-            },
-            _ => match node.value.kind() {
-                FN_DEF | CONST_DEF | STATIC_DEF => {
-                    let def = def_with_body_from_child_node(db, node)?;
-                    let def = DefWithBodyId::from(def);
-                    Some(def.resolver(db))
-                }
-                // FIXME add missing cases
-                _ => None
-            }
-        }
-    }
-}
-
-fn def_with_body_from_child_node(
-    db: &impl HirDatabase,
-    child: InFile<&SyntaxNode>,
-) -> Option<DefWithBody> {
-    let _p = profile("def_with_body_from_child_node");
-    child.cloned().ancestors_with_macros(db).find_map(|node| {
-        let n = &node.value;
-        match_ast! {
-            match n {
-                ast::FnDef(def)  => { return Function::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                ast::ConstDef(def) => { return Const::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                ast::StaticDef(def) => { return Static::from_source(db, node.with_value(def)).map(DefWithBody::from); },
-                _ => { None },
-            }
-        }
-    })
 }
 
 fn scope_for(

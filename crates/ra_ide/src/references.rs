@@ -14,7 +14,7 @@ mod name_definition;
 mod rename;
 mod search_scope;
 
-use hir::InFile;
+use hir::{InFile, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
@@ -171,13 +171,14 @@ fn find_name(
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> Option<RangeInfo<(String, NameDefinition)>> {
+    let mut sb = SourceBinder::new(db);
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-        let def = classify_name(db, InFile::new(position.file_id.into(), &name))?;
+        let def = classify_name(&mut sb, InFile::new(position.file_id.into(), &name))?;
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }
     let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(db, InFile::new(position.file_id.into(), &name_ref))?;
+    let def = classify_name_ref(&mut sb, InFile::new(position.file_id.into(), &name_ref))?;
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
@@ -195,7 +196,9 @@ fn process_definition(
 
     for (file_id, search_range) in scope {
         let text = db.file_text(file_id);
+
         let parse = Lazy::new(|| SourceFile::parse(&text));
+        let mut sb = Lazy::new(|| SourceBinder::new(db));
 
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
@@ -209,7 +212,11 @@ fn process_definition(
                         continue;
                     }
                 }
-                if let Some(d) = classify_name_ref(db, InFile::new(file_id.into(), &name_ref)) {
+                // FIXME: reuse sb
+                // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
+
+                if let Some(d) = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
+                {
                     if d == def {
                         let kind = if name_ref
                             .syntax()
@@ -309,7 +316,7 @@ mod tests {
     }
     impl Foo {
         fn f() -> i32 { 42 }
-    }    
+    }
     fn main() {
         let f: Foo;
         f = Foo {a: Foo::f()};
@@ -319,7 +326,7 @@ mod tests {
         check_result(
             refs,
             "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15) Other",
-            &["FileId(1) [142; 145) StructLiteral"],
+            &["FileId(1) [138; 141) StructLiteral"],
         );
     }
 
