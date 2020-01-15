@@ -252,7 +252,7 @@ pub(crate) struct FatPtr<T> {
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
 /// let x = [5, 6, 7];
-/// let ptr = &x[0] as *const _;
+/// let ptr = x.as_ptr();
 /// let slice = ptr::slice_from_raw_parts(ptr, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
