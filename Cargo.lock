@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.68.1"
+version = "0.69.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -905,7 +905,7 @@ dependencies = [
  "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "lsp-types 0.68.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-types 0.69.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.44 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1070,7 +1070,7 @@ dependencies = [
  "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-server 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "lsp-types 0.68.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-types 0.69.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_cargo_watch 0.1.0",
  "ra_ide 0.1.0",
@@ -1852,7 +1852,7 @@ dependencies = [
 "checksum lock_api 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "79b2de95ecb4691949fea4716ca53cdbcfccb2c612e19644a8bad05edcf9f47b"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 "checksum lsp-server 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5383e043329615624bbf45e1ba27bd75c176762b2592855c659bc28ac580a06b"
-"checksum lsp-types 0.68.1 (registry+https://github.com/rust-lang/crates.io-index)" = "19b79f72914b929daa263483134b8974962cdebc731593b11508afb7f9acec80"
+"checksum lsp-types 0.69.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cd78b254376c0734bb75c200616e256adbf2c3685497fcc1124db9daf5958630"
 "checksum matches 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 "checksum memchr 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3197e20c7edb283f87c071ddfc7a2cca8f8e0b888c242959846a6fce03c72223"
 "checksum memoffset 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "75189eb85871ea5c2e2c15abbdd541185f63b408415e5051f5cac122d8c774b9"
