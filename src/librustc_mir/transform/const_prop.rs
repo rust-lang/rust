@@ -30,9 +30,9 @@ use syntax::ast::Mutability;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
-    LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
-    ScalarMaybeUndef, StackPopCleanup,
+    self, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy, Immediate, InternKind,
+    InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
+    Pointer, ScalarMaybeUndef, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -767,7 +767,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             )) => l.is_bits() && r.is_bits(),
             interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
                 let mplace = op.assert_mem_place(&self.ecx);
-                intern_const_alloc_recursive(&mut self.ecx, None, mplace, false)
+                intern_const_alloc_recursive(&mut self.ecx, InternKind::ConstProp, mplace, false)
                     .expect("failed to intern alloc");
                 true
             }
