@@ -57,7 +57,7 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                 if fcx.infcx.unresolved_type_vars(fn_substs).is_some() {
                     for subst in fn_substs.types() {
                         let mut finder = TyVarFinder { infcx: &fcx.infcx, vars: vec![] };
-                        path.ty.fold_with(&mut finder);
+                        subst.fold_with(&mut finder);
                         path.unresolved_vars.push(finder.vars);
                     }
 
@@ -124,7 +124,7 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                         debug!("Subst is uninhabited: {:?}", resolved_subst);
                         if !vars.is_empty() {
                             debug!("Found fallback vars: {:?}", vars);
-                            uninhabited_subst = Some((resolved_subst, vars));
+                            uninhabited_subst = Some(vars);
                             break;
                         } else {
                             debug!("No fallback vars")
@@ -134,7 +134,7 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                     }
                 }
 
-                if let (true, Some((subst, vars))) = (args_inhabited, uninhabited_subst) {
+                if let (true, Some(vars)) = (args_inhabited, uninhabited_subst) {
                     debug!("All arguments are inhabited, at least one subst is not inhabited!");
 
                     let mut best_diverging_var = None;
@@ -211,6 +211,7 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                         diverging_var_span,
                         "... due to this expression evaluating to `!`",
                     )
+                    .note("If you want the `!` type to be used here, add explicit type annotations")
                     .emit();
                 }
             }
