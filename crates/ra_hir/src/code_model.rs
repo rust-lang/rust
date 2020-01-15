@@ -7,7 +7,6 @@ use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
-    nameres::ModuleSource,
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
@@ -193,13 +192,14 @@ impl Module {
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let _p = profile("Module::diagnostics");
-        db.crate_def_map(self.id.krate).add_diagnostics(db, self.id.local_id, sink);
+        let crate_def_map = db.crate_def_map(self.id.krate);
+        crate_def_map.add_diagnostics(db, self.id.local_id, sink);
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
-                    if let ModuleSource::Module(_) = m.definition_source(db).value {
+                    if crate_def_map[m.id.local_id].origin.is_inline() {
                         m.diagnostics(db, sink)
                     }
                 }
