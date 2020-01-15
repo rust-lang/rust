@@ -145,6 +145,13 @@ impl ModuleOrigin {
         }
     }
 
+    pub fn is_inline(&self) -> bool {
+        match self {
+            ModuleOrigin::Inline { .. } => true,
+            ModuleOrigin::CrateRoot { .. } | ModuleOrigin::File { .. } => false,
+        }
+    }
+
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
     fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
