@@ -215,12 +215,14 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg(llvm_link_arg).arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
-        if lib.starts_with("-LIBPATH:") {
-            println!("cargo:rustc-link-search=native={}", &lib[9..]);
-        } else if is_crossed {
-            if lib.starts_with("-L") {
+        if is_crossed {
+            if lib.starts_with("-LIBPATH:") {
+                println!("cargo:rustc-link-search=native={}", lib[9..].replace(&host, &target));
+            } else if lib.starts_with("-L") {
                 println!("cargo:rustc-link-search=native={}", lib[2..].replace(&host, &target));
             }
+        } else if lib.starts_with("-LIBPATH:") {
+            println!("cargo:rustc-link-search=native={}", &lib[9..]);
         } else if lib.starts_with("-l") {
             println!("cargo:rustc-link-lib={}", &lib[2..]);
         } else if lib.starts_with("-L") {
