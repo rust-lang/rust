@@ -1,6 +1,6 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
+use either::Either;
 use hir::{db::HirDatabase, InFile, SourceAnalyzer};
-use itertools::Either;
 use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_syntax::{

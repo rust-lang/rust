@@ -13,8 +13,8 @@ mod doc_tests;
 mod test_db;
 pub mod ast_transform;
 
+use either::Either;
 use hir::db::HirDatabase;
-use itertools::Either;
 use ra_db::FileRange;
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;

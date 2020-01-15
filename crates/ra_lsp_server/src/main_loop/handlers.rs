@@ -3,7 +3,7 @@
 
 use std::{fmt::Write as _, io::Write as _};
 
-use itertools::Either;
+use either::Either;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,

@@ -4,7 +4,7 @@ use ra_db::{FilePosition, FileRange};
 
 use crate::{db::RootDatabase, FileId, SourceChange, SourceFileEdit};
 
-use itertools::Either;
+use either::Either;
 pub use ra_assists::AssistId;
 use ra_assists::{AssistAction, AssistLabel};
 

@@ -28,7 +28,7 @@ ra_prof = { path = "../ra_prof" }
 ra_vfs_glob = { path = "../ra_vfs_glob" }
 env_logger = { version = "0.7.1", default-features = false, features = ["humantime"] }
 ra_cargo_watch = { path = "../ra_cargo_watch" }
-itertools = "0.8"
+either = "1.5"
 
 [dev-dependencies]
 tempfile = "3"
