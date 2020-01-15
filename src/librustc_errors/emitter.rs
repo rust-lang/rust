@@ -1475,6 +1475,11 @@ impl EmitterWriter {
             Some(ref sm) => sm,
             None => return Ok(()),
         };
+        if !suggestion.has_valid_spans(&**sm) {
+            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // approach to avoid ICEs by ignoring the suggestion outright.
+            return Ok(());
+        }
 
         let mut buffer = StyledBuffer::new();
 
@@ -1505,7 +1510,9 @@ impl EmitterWriter {
             let show_underline = !(parts.len() == 1 && parts[0].snippet.trim() == complete.trim())
                 && complete.lines().count() == 1;
 
-            let lines = sm.span_to_lines(parts[0].span).unwrap();
+            let lines = sm
+                .span_to_lines(parts[0].span)
+                .expect("span_to_lines failed when emitting suggestion");
 
             assert!(!lines.lines.is_empty());
 

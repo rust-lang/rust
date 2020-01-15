@@ -10,6 +10,7 @@
 
 pub use emitter::ColorConfig;
 
+use log::debug;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -143,6 +144,18 @@ pub struct SubstitutionPart {
 }
 
 impl CodeSuggestion {
+    /// Suggestions coming from macros can have malformed spans. This is a heavy handed approach
+    /// to avoid ICEs by ignoring the suggestion outright.
+    pub fn has_valid_spans(&self, cm: &SourceMap) -> bool {
+        !self.substitutions.iter().any(|subst| {
+            let invalid = subst.parts.iter().any(|item| cm.is_valid_span(item.span).is_err());
+            if invalid {
+                debug!("malformed span in suggestion: {:?}", subst);
+            }
+            invalid
+        })
+    }
+
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub fn splice_lines(&self, cm: &SourceMap) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
