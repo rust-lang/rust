@@ -356,7 +356,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                 // It is UB to mutate through a raw pointer obtained via an immutable reference.
                 // Since all references and pointers inside a promoted must by their very definition
                 // be created from an immutable reference (and promotion also excludes interior
-                // mutability), mutating though them would be UB.
+                // mutability), mutating through them would be UB.
                 // There's no way we can check whether the user is using raw pointers correctly,
                 // so all we can do is mark this as immutable here.
                 InternKind::Promoted => {
