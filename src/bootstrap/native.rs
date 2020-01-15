@@ -230,6 +230,8 @@ impl Step for Llvm {
                 cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
             } else if target.contains("freebsd") {
                 cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+            } else if target.contains("windows") {
+                cfg.define("CMAKE_SYSTEM_NAME", "Windows");
             }
 
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
