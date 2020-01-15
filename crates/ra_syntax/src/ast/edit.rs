@@ -22,7 +22,7 @@ impl ast::BinExpr {
     #[must_use]
     pub fn replace_op(&self, op: SyntaxKind) -> Option<ast::BinExpr> {
         let op_node: SyntaxElement = self.op_details()?.0.into();
-        let to_insert: Option<SyntaxElement> = Some(tokens::op(op).into());
+        let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
         Some(replace_children(self, single_node(op_node), to_insert.into_iter()))
     }
 }
