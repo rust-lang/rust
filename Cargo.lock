@@ -58,6 +58,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
+
+[[package]]
 name = "arc-swap"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -277,6 +283,7 @@ dependencies = [
 name = "cargo"
 version = "0.43.0"
 dependencies = [
+ "anyhow",
  "atty",
  "bytesize",
  "cargo-platform",
@@ -290,7 +297,6 @@ dependencies = [
  "curl",
  "curl-sys",
  "env_logger 0.7.1",
- "failure",
  "filetime",
  "flate2",
  "fs2",
@@ -318,7 +324,7 @@ dependencies = [
  "pretty_env_logger",
  "remove_dir_all",
  "rustc-workspace-hack",
- "rustfix",
+ "rustfix 0.5.0",
  "same-file",
  "semver",
  "serde",
@@ -590,7 +596,7 @@ dependencies = [
  "log",
  "miow 0.3.3",
  "regex",
- "rustfix",
+ "rustfix 0.5.0",
  "serde",
  "serde_json",
  "walkdir",
@@ -610,7 +616,7 @@ dependencies = [
  "log",
  "miow 0.3.3",
  "regex",
- "rustfix",
+ "rustfix 0.4.6",
  "serde",
  "serde_derive",
  "serde_json",
@@ -694,10 +700,10 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "crates-io"
-version = "0.30.0"
+version = "0.31.0"
 dependencies = [
+ "anyhow",
  "curl",
- "failure",
  "percent-encoding 2.1.0",
  "serde",
  "serde_derive",
@@ -2936,13 +2942,13 @@ dependencies = [
 name = "rls"
 version = "1.41.0"
 dependencies = [
+ "anyhow",
  "cargo",
  "cargo_metadata 0.8.0",
  "clippy_lints",
  "crossbeam-channel",
  "difference",
  "env_logger 0.7.1",
- "failure",
  "futures",
  "heck",
  "home",
@@ -4000,6 +4006,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7150ac777a2931a53489f5a41eb0937b84e3092a20cd0e73ad436b65b507f607"
 dependencies = [
  "failure",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rustfix"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "804b11883a5ce0ad0378fbf95a8dea59ee6b51c331a73b8f471b6bdaa3bd40c1"
+dependencies = [
+ "anyhow",
  "log",
  "serde",
  "serde_json",
