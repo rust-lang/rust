@@ -398,7 +398,7 @@ impl<'tcx> NeverCompatHandler<'tcx> {
 
                 let mut err = tcx
                     .sess
-                    .struct_span_warn(span, "Fallback to `!` may introduce undefined behavior");
+                    .struct_span_err(span, "Fallback to `!` may introduce undefined behavior");
 
                 // There are two possible cases here:
                 match var_origin.kind {
