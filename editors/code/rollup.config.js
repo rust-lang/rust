@@ -13,7 +13,7 @@ export default {
         commonjs({
             namedExports: {
                 // squelch missing import warnings
-                'vscode-languageclient': ['CreateFile', 'RenameFile', 'ErrorCodes']
+                'vscode-languageclient': ['CreateFile', 'RenameFile', 'ErrorCodes', 'WorkDoneProgress', 'WorkDoneProgressBegin', 'WorkDoneProgressReport', 'WorkDoneProgressEnd']
             }
         })
     ],
