@@ -42,6 +42,7 @@ export class Config {
 
     private prevEnhancedTyping: null | boolean = null;
     private prevCargoFeatures: null | CargoFeatures = null;
+    private prevCargoWatchOptions: null | CargoWatchOptions = null;
 
     constructor(ctx: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), ctx.subscriptions);
@@ -173,6 +174,21 @@ export class Config {
             requireReloadMessage = 'Changing cargo features requires a reload';
         }
         this.prevCargoFeatures = { ...this.cargoFeatures };
+
+        if (this.prevCargoWatchOptions !== null) {
+            const changed =
+                this.cargoWatchOptions.enable !== this.prevCargoWatchOptions.enable ||
+                this.cargoWatchOptions.command !== this.prevCargoWatchOptions.command ||
+                this.cargoWatchOptions.allTargets !== this.prevCargoWatchOptions.allTargets ||
+                this.cargoWatchOptions.arguments.length !== this.prevCargoWatchOptions.arguments.length ||
+                this.cargoWatchOptions.arguments.some(
+                    (v, i) => v !== this.prevCargoWatchOptions!.arguments[i],
+                );
+            if (changed) {
+                requireReloadMessage = 'Changing cargo-watch options requires a reload';
+            }
+        }
+        this.prevCargoWatchOptions = { ...this.cargoWatchOptions };
 
         if (requireReloadMessage !== null) {
             const reloadAction = 'Reload now';
