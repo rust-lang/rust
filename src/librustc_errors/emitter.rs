@@ -14,7 +14,6 @@ use rustc_span::{MultiSpan, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
-use crate::Level::Error;
 use crate::{
     pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
 };
@@ -284,17 +283,11 @@ pub trait Emitter {
 
         if !backtrace {
             if self.fix_multispans_in_extern_macros(source_map, span, children) {
-                let msg = if level == &Error {
-                    "this error originates in a macro outside of the current crate \
-                    (in Nightly builds, run with -Z macro-backtrace \
-                    for more info)"
-                        .to_string()
-                } else {
-                    "this warning originates in a macro outside of the current crate \
-                    (in Nightly builds, run with -Z macro-backtrace \
-                    for more info)"
-                        .to_string()
-                };
+                let msg = format!(
+                    "this {} originates in a macro outside of the current crate \
+                    (in Nightly builds, run with -Z macro-backtrace for more info)",
+                    level,
+                );
 
                 children.push(SubDiagnostic {
                     level: Level::Note,
