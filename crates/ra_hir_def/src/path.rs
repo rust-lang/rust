@@ -39,10 +39,7 @@ impl ModPath {
         lower::lower_path(path, hygiene).map(|it| it.mod_path)
     }
 
-    pub fn from_simple_segments(
-        kind: PathKind,
-        segments: impl IntoIterator<Item = Name>,
-    ) -> ModPath {
+    pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
         let segments = segments.into_iter().collect::<Vec<_>>();
         ModPath { kind, segments }
     }
@@ -240,7 +237,7 @@ impl From<Name> for Path {
     fn from(name: Name) -> Path {
         Path {
             type_anchor: None,
-            mod_path: ModPath::from_simple_segments(PathKind::Plain, iter::once(name)),
+            mod_path: ModPath::from_segments(PathKind::Plain, iter::once(name)),
             generic_args: vec![None],
         }
     }
@@ -248,7 +245,7 @@ impl From<Name> for Path {
 
 impl From<Name> for ModPath {
     fn from(name: Name) -> ModPath {
-        ModPath::from_simple_segments(PathKind::Plain, iter::once(name))
+        ModPath::from_segments(PathKind::Plain, iter::once(name))
     }
 }
 
@@ -311,7 +308,7 @@ macro_rules! __known_path {
 macro_rules! __path {
     ($start:ident $(:: $seg:ident)*) => ({
         $crate::__known_path!($start $(:: $seg)*);
-        $crate::path::ModPath::from_simple_segments($crate::path::PathKind::Abs, vec![
+        $crate::path::ModPath::from_segments($crate::path::PathKind::Abs, vec![
             $crate::path::__name![$start], $($crate::path::__name![$seg],)*
         ])
     });

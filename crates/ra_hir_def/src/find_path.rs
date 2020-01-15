@@ -35,7 +35,7 @@ fn find_path_inner(
     let def_map = db.crate_def_map(from.krate);
     let from_scope: &crate::item_scope::ItemScope = &def_map.modules[from.local_id].scope;
     if let Some((name, _)) = from_scope.name_of(item) {
-        return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
+        return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
     }
 
     // - if the item is the crate root, return `crate`
@@ -45,12 +45,12 @@ fn find_path_inner(
             local_id: def_map.root,
         }))
     {
-        return Some(ModPath::from_simple_segments(PathKind::Crate, Vec::new()));
+        return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
     }
 
     // - if the item is the module we're in, use `self`
     if item == ItemInNs::Types(from.into()) {
-        return Some(ModPath::from_simple_segments(PathKind::Super(0), Vec::new()));
+        return Some(ModPath::from_segments(PathKind::Super(0), Vec::new()));
     }
 
     // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
@@ -61,14 +61,14 @@ fn find_path_inner(
                 local_id: parent_id,
             }))
         {
-            return Some(ModPath::from_simple_segments(PathKind::Super(1), Vec::new()));
+            return Some(ModPath::from_segments(PathKind::Super(1), Vec::new()));
         }
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
     for (name, def_id) in &def_map.extern_prelude {
         if item == ItemInNs::Types(*def_id) {
-            return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
+            return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
         }
     }
 
@@ -79,7 +79,7 @@ fn find_path_inner(
             &prelude_def_map.modules[prelude_module.local_id].scope;
         if let Some((name, vis)) = prelude_scope.name_of(item) {
             if vis.is_visible_from(db, from) {
-                return Some(ModPath::from_simple_segments(PathKind::Plain, vec![name.clone()]));
+                return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
             }
         }
     }
