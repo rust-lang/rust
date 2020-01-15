@@ -11,7 +11,7 @@ pub fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
     ));
 }
 
-pub fn add_arg_comment<'tcx>(
+pub(super) fn add_arg_comment<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     kind: &str,
     local: Option<mir::Local>,
