@@ -429,7 +429,6 @@ pub fn print_after_hir_lowering<'tcx>(
         PpmSource(s) => {
             // Silently ignores an identified node.
             let out = &mut out;
-            let src = src.clone();
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
@@ -447,7 +446,6 @@ pub fn print_after_hir_lowering<'tcx>(
 
         PpmHir(s) => {
             let out = &mut out;
-            let src = src.clone();
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();

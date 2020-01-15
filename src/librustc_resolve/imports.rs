@@ -718,7 +718,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         if !errors.is_empty() {
-            self.throw_unresolved_import_error(errors.clone(), None);
+            self.throw_unresolved_import_error(errors, None);
         }
     }
 
