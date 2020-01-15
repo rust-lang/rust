@@ -207,6 +207,48 @@ impl ast::TypeParam {
     }
 }
 
+impl ast::Path {
+    #[must_use]
+    pub fn with_segment(&self, segment: ast::PathSegment) -> ast::Path {
+        if let Some(old) = self.segment() {
+            return replace_children(
+                self,
+                single_node(old.syntax().clone()),
+                iter::once(segment.syntax().clone().into()),
+            );
+        }
+        self.clone()
+    }
+}
+
+impl ast::PathSegment {
+    #[must_use]
+    pub fn with_type_args(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+        self._with_type_args(type_args, false)
+    }
+
+    #[must_use]
+    pub fn with_turbo_fish(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+        self._with_type_args(type_args, true)
+    }
+
+    fn _with_type_args(&self, type_args: ast::TypeArgList, turbo: bool) -> ast::PathSegment {
+        if let Some(old) = self.type_arg_list() {
+            return replace_children(
+                self,
+                single_node(old.syntax().clone()),
+                iter::once(type_args.syntax().clone().into()),
+            );
+        }
+        let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
+        if turbo {
+            to_insert.push(make::token(T![::]).into());
+        }
+        to_insert.push(type_args.syntax().clone().into());
+        insert_children(self, InsertPosition::Last, to_insert)
+    }
+}
+
 #[must_use]
 pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
     N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()

@@ -2,7 +2,7 @@
 use rustc_hash::FxHashMap;
 
 use hir::{db::HirDatabase, InFile, PathResolution};
-use ra_syntax::ast::{self, make, AstNode};
+use ra_syntax::ast::{self, AstNode};
 
 pub trait AstTransform<'a> {
     fn get_substitution(
@@ -134,11 +134,18 @@ impl<'a, DB: HirDatabase> QualifyPaths<'a, DB> {
         match resolution {
             PathResolution::Def(def) => {
                 let found_path = from.find_use_path(self.db, def)?;
-                let args = p
+                let mut path = path_to_ast(found_path);
+
+                let type_args = p
                     .segment()
                     .and_then(|s| s.type_arg_list())
                     .map(|arg_list| apply(self, node.with_value(arg_list)));
-                Some(make::path_with_type_arg_list(path_to_ast(found_path), args).syntax().clone())
+                if let Some(type_args) = type_args {
+                    let last_segment = path.segment().unwrap();
+                    path = path.with_segment(last_segment.with_type_args(type_args))
+                }
+
+                Some(path.syntax().clone())
             }
             PathResolution::Local(_)
             | PathResolution::TypeParam(_)
