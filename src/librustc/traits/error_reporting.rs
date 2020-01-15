@@ -2456,7 +2456,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let target_span = tables
             .generator_interior_types
             .iter()
-            .find(|(ty::GeneratorInteriorTypeCause { ty, .. }, _)| {
+            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| {
                 // Careful: the regions for types that appear in the
                 // generator interior are not generally known, so we
                 // want to erase them when comparing (and anyway,
@@ -2479,7 +2479,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 eq
             })
-            .map(|(ty::GeneratorInteriorTypeCause { span, scope_span, .. }, expr)| {
+            .map(|ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. }| {
                 (span, source_map.span_to_snippet(*span), scope_span, expr)
             });
 
@@ -2585,8 +2585,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         // Look at the last interior type to get a span for the `.await`.
-        let await_span =
-            tables.generator_interior_types.iter().map(|(i, _)| i.span).last().unwrap();
+        let await_span = tables.generator_interior_types.iter().map(|t| t.span).last().unwrap();
         let mut span = MultiSpan::from_span(await_span);
         span.push_span_label(
             await_span,
