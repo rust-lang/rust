@@ -2595,7 +2595,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
     }
 
     // If there are methods directly on this trait object, render them here.
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All);
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All);
 
     let mut synthetic_types = Vec::new();
 
@@ -2942,7 +2942,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
             }
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union) {
@@ -2988,7 +2988,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union) 
             document(w, cx, field);
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
@@ -3130,7 +3130,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
             render_stability_since(w, variant, it);
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
@@ -3344,7 +3344,7 @@ fn render_assoc_items(
     cx: &Context,
     containing_item: &clean::Item,
     it: DefId,
-    what: &AssocItemRender<'_>,
+    what: AssocItemRender<'_>,
 ) {
     let c = &cx.cache;
     let v = match c.impls.get(&it) {
@@ -3377,7 +3377,7 @@ fn render_assoc_items(
                     trait_.print(),
                     type_.print()
                 );
-                RenderMode::ForDeref { mut_: *deref_mut_ }
+                RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
         for i in &non_trait {
@@ -3461,19 +3461,6 @@ fn render_assoc_items(
     }
 }
 
-fn get_def_id(real_target: &clean::Type, cx: &Context) -> Option<DefId> {
-    if let Some(did) = real_target.def_id() {
-        return Some(did);
-    } else {
-        if let Some(prim) = real_target.primitive_type() {
-            if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
-                return Some(did);
-            }
-        }
-    }
-    None
-}
-
 fn render_deref_methods(
     w: &mut Buffer,
     cx: &Context,
@@ -3488,21 +3475,23 @@ fn render_deref_methods(
         .iter()
         .filter_map(|item| match item.inner {
             clean::TypedefItem(ref t, true) => Some(match *t {
-                clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, Some(type_)),
-                _ => (&t.type_, None),
+                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                _ => (&t.type_, &t.type_),
             }),
             _ => None,
         })
         .next()
         .expect("Expected associated type binding");
-    let did = get_def_id(&target, cx);
     let what =
-        AssocItemRender::DerefFor { trait_: deref_type, type_: target, deref_mut_: deref_mut };
-    if let Some(did) = did {
-        render_assoc_items(w, cx, container_item, did, &what);
-    }
-    if let Some(did) = real_target.and_then(|x| get_def_id(x, cx)) {
-        render_assoc_items(w, cx, container_item, did, &what);
+        AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
+    if let Some(did) = target.def_id() {
+        render_assoc_items(w, cx, container_item, did, what);
+    } else {
+        if let Some(prim) = target.primitive_type() {
+            if let Some(&did) = cx.cache.primitive_locations.get(&prim) {
+                render_assoc_items(w, cx, container_item, did, what);
+            }
+        }
     }
 }
 
@@ -3884,7 +3873,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Opa
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_trait_alias(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::TraitAlias) {
@@ -3905,7 +3894,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::T
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typedef) {
@@ -3926,7 +3915,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typed
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item) {
@@ -3941,7 +3930,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item) {
 
     document(w, cx, it);
 
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
@@ -4137,20 +4126,20 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some((target, real_target)) = impl_
+                if let Some(target) = impl_
                     .inner_impl()
                     .items
                     .iter()
                     .filter_map(|item| match item.inner {
                         clean::TypedefItem(ref t, true) => Some(match *t {
-                            clean::Typedef { item_type: Some(ref type_), .. } => (&t.type_, type_),
-                            _ => (&t.type_, &t.type_),
+                            clean::Typedef { item_type: Some(ref type_), .. } => type_,
+                            _ => &t.type_,
                         }),
                         _ => None,
                     })
                     .next()
                 {
-                    let inner_impl = real_target
+                    let inner_impl = target
                         .def_id()
                         .or(target
                             .primitive_type()
@@ -4613,7 +4602,7 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, m: &clean::Pr
 
 fn item_primitive(w: &mut Buffer, cx: &Context, it: &clean::Item) {
     document(w, cx, it);
-    render_assoc_items(w, cx, it, it.def_id, &AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_keyword(w: &mut Buffer, cx: &Context, it: &clean::Item) {

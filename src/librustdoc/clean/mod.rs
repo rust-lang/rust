@@ -2105,7 +2105,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 
-        let provided = trait_
+        let provided: FxHashSet<String> = trait_
             .def_id()
             .map(|did| {
                 cx.tcx
@@ -2116,6 +2116,33 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             })
             .unwrap_or_default();
 
+        let for_ = self.for_.clean(cx);
+        let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
+            Some(DefKind::TyAlias) => Some(cx.tcx.type_of(did).clean(cx)),
+            _ => None,
+        });
+        if let Some(type_alias) = type_alias {
+            ret.push(Item {
+                name: None,
+                attrs: self.attrs.clean(cx),
+                source: self.whence.clean(cx),
+                def_id,
+                visibility: self.vis.clean(cx),
+                stability: cx.stability(self.id).clean(cx),
+                deprecation: cx.deprecation(self.id).clean(cx),
+                inner: ImplItem(Impl {
+                    unsafety: self.unsafety,
+                    generics: self.generics.clean(cx),
+                    provided_trait_methods: provided.clone(),
+                    trait_: trait_.clone(),
+                    for_: type_alias,
+                    items: items.clone(),
+                    polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
+                    synthetic: false,
+                    blanket_impl: None,
+                }),
+            });
+        }
         ret.push(Item {
             name: None,
             attrs: self.attrs.clean(cx),
@@ -2129,7 +2156,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
                 generics: self.generics.clean(cx),
                 provided_trait_methods: provided,
                 trait_,
-                for_: self.for_.clean(cx),
+                for_,
                 items,
                 polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
                 synthetic: false,
