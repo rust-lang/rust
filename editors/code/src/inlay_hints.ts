@@ -42,7 +42,7 @@ const parameterHintDecorationType = vscode.window.createTextEditorDecorationType
     before: {
         color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
     }
-})
+});
 
 class HintsUpdater {
     private pending: Map<string, vscode.CancellationTokenSource> = new Map();
