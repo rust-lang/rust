@@ -587,12 +587,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // padding.
                     match tys.kind {
                         ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
-                        ty::Tuple(tys) if tys.len() == 0 => true,
-                        ty::Adt(adt_def, _)
-                            if adt_def.is_struct() && adt_def.all_fields().next().is_none() =>
-                        {
-                            true
-                        }
                         _ => false,
                     }
                 } =>
@@ -609,11 +603,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
                 // This is the element type size.
                 let layout = self.ecx.layout_of(tys)?;
-                // Empty tuples and fieldless structs (the only ZSTs that allow reaching this code)
-                // have no data to be checked.
-                if layout.is_zst() {
-                    return Ok(());
-                }
                 // This is the size in bytes of the whole array.
                 let size = layout.size * len;
                 // Size is not 0, get a pointer.
@@ -655,6 +644,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         }
                     }
                 }
+            }
+            // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
+            // of an array and not all of them, because there's only a single value of a specific
+            // ZST type, so either validation fails for all elements or none.
+            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
+                // Validate just the first element
+                self.walk_aggregate(op, fields.take(1))?
             }
             _ => {
                 self.walk_aggregate(op, fields)? // default handler
