@@ -132,7 +132,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let payload = this.machine.panic_payload.take().unwrap();
             let payload = this.ref_to_mplace(payload)?;
             let payload_data_place = payload.ptr;
-            let payload_vtable_place = payload.meta.expect("Expected fat pointer");
+            let payload_vtable_place = payload.meta.unwrap_meta();
 
             this.write_scalar(payload_data_place, unwind_data.data_place.into())?;
             this.write_scalar(payload_vtable_place, unwind_data.vtable_place.into())?;
