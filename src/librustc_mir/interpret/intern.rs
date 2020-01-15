@@ -385,29 +385,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
-        } else if let Some(_) = ecx.tcx.alloc_map.lock().get(alloc_id) {
-            // We have hit an `AllocId` that belongs to an already interned static,
-            // and are thus not interning any further.
-
-            // For `InternKind::Promoted` this is only reachable for allocations
-            // created for string and byte string literals, since these are interned immediately
-            // at creation time.
-
-            // FIXME(oli-obk): Since we are also checking things during interning,
-            // we should probably continue doing those checks no matter what we encounter.
-            // So we basically have to check if the allocation is ok as per the interning rules as
-            // if we interned it right here.
-            // This should be as simple as
-            /*
-            for &(_, ((), reloc)) in alloc.relocations().iter() {
-                if leftover_allocations.insert(reloc) {
-                    todo.push(reloc);
-                }
-            }
-            */
-            // But I (oli-obk) haven't thought about the ramnificatons yet. This also would cause
-            // compile-time regressions, so we should think about caching these.
-        } else {
+        } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
+            // We have hit an `AllocId` that is neither in local or global memory and isn't marked
+            // as dangling by local memory.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
