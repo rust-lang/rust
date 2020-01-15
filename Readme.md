@@ -8,7 +8,7 @@
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
 $ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
-$ ./test.sh
+$ ./test.sh --release
 ```
 
 ## Usage
@@ -18,13 +18,15 @@ $ ./test.sh
 ### Cargo
 
 ```bash
-$ $cg_clif_dir/cargo.sh run
+$ CHANNEL="release" $cg_clif_dir/cargo.sh run
 ```
+
+If you compiled cg_clif in debug mode you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
 
 ### Rustc
 
 ```bash
-$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
+$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
 ```
 
 
