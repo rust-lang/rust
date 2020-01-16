@@ -63,7 +63,7 @@ impl CargoTargetSpec {
             None => return Ok(None),
         };
         let file_id = world.analysis().crate_root(crate_id)?;
-        let path = world.vfs.read().file2path(ra_vfs::VfsFile(file_id.0));
+        let path = world.file_id_to_path(file_id);
         let res = world.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {
                 let tgt = cargo.target_by_root(&path)?;

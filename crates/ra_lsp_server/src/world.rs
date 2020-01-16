@@ -62,9 +62,9 @@ pub struct WorldSnapshot {
     pub options: Options,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
-    pub vfs: Arc<RwLock<Vfs>>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
     pub check_watcher: Arc<RwLock<CheckState>>,
+    vfs: Arc<RwLock<Vfs>>,
 }
 
 impl WorldState {
@@ -263,6 +263,10 @@ impl WorldSnapshot {
         let url = url_from_path_with_drive_lowercasing(path)?;
 
         Ok(url)
+    }
+
+    pub fn file_id_to_path(&self, id: FileId) -> PathBuf {
+        self.vfs.read().file2path(VfsFile(id.0))
     }
 
     pub fn file_line_endings(&self, id: FileId) -> LineEndings {
