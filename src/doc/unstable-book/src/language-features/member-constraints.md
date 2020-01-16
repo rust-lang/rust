@@ -1,8 +1,8 @@
 # `member_constraints`
 
-The tracking issue for this feature is: [#61977]
+The tracking issue for this feature is: [#61997]
 
-[#61977]: https://github.com/rust-lang/rust/issues/61977
+[#61997]: https://github.com/rust-lang/rust/issues/61997
 
 ------------------------
 

@@ -6,7 +6,7 @@ LL | |     A(u64)
 LL | | }
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/35118
+   = note: for more information, see https://github.com/rust-lang/rust/issues/56071
    = help: add `#![feature(repr128)]` to the crate attributes to enable
 
 error: aborting due to previous error
