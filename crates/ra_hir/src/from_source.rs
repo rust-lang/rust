@@ -20,7 +20,7 @@ use crate::{
     MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
-pub trait FromSource: Sized {
+pub(crate) trait FromSource: Sized {
     type Ast;
     fn from_source(db: &impl DefDatabase, src: InFile<Self::Ast>) -> Option<Self>;
 }

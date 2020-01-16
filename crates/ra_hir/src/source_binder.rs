@@ -11,7 +11,7 @@ use hir_def::{
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ImplId, ModuleId, StaticId,
     StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
-use hir_expand::InFile;
+use hir_expand::{AstId, InFile, MacroDefId, MacroDefKind};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, TextUnit};
 use rustc_hash::FxHashMap;
@@ -62,18 +62,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
     }
 
     fn to_id<T: ToId>(&mut self, src: InFile<T>) -> Option<T::ID> {
-        let container = self.find_container(src.as_ref().map(|it| it.syntax()))?;
-        let db = self.db;
-        let dyn_map =
-            &*self.child_by_source_cache.entry(container).or_insert_with(|| match container {
-                ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
-                ChildContainer::ModuleId(it) => it.child_by_source(db),
-                ChildContainer::TraitId(it) => it.child_by_source(db),
-                ChildContainer::ImplId(it) => it.child_by_source(db),
-                ChildContainer::EnumId(it) => it.child_by_source(db),
-                ChildContainer::VariantId(it) => it.child_by_source(db),
-            });
-        dyn_map[T::KEY].get(&src).copied()
+        T::to_id(self, src)
     }
 
     fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
@@ -146,19 +135,46 @@ impl_froms! {
 
 pub trait ToId: Sized + AstNode + 'static {
     type ID: Sized + Copy + 'static;
+    fn to_id<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>)
+        -> Option<Self::ID>;
+}
+
+pub trait ToIdByKey: Sized + AstNode + 'static {
+    type ID: Sized + Copy + 'static;
     const KEY: Key<Self, Self::ID>;
 }
 
-macro_rules! to_id_impls {
+impl<T: ToIdByKey> ToId for T {
+    type ID = <T as ToIdByKey>::ID;
+    fn to_id<DB: HirDatabase>(
+        sb: &mut SourceBinder<'_, DB>,
+        src: InFile<Self>,
+    ) -> Option<Self::ID> {
+        let container = sb.find_container(src.as_ref().map(|it| it.syntax()))?;
+        let db = sb.db;
+        let dyn_map =
+            &*sb.child_by_source_cache.entry(container).or_insert_with(|| match container {
+                ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
+                ChildContainer::ModuleId(it) => it.child_by_source(db),
+                ChildContainer::TraitId(it) => it.child_by_source(db),
+                ChildContainer::ImplId(it) => it.child_by_source(db),
+                ChildContainer::EnumId(it) => it.child_by_source(db),
+                ChildContainer::VariantId(it) => it.child_by_source(db),
+            });
+        dyn_map[T::KEY].get(&src).copied()
+    }
+}
+
+macro_rules! to_id_key_impls {
     ($(($id:ident, $ast:path, $key:path)),* ,) => {$(
-        impl ToId for $ast {
+        impl ToIdByKey for $ast {
             type ID = $id;
             const KEY: Key<Self, Self::ID> = $key;
         }
     )*}
 }
 
-to_id_impls![
+to_id_key_impls![
     (StructId, ast::StructDef, keys::STRUCT),
     (UnionId, ast::UnionDef, keys::UNION),
     (EnumId, ast::EnumDef, keys::ENUM),
@@ -171,3 +187,23 @@ to_id_impls![
     (StructFieldId, ast::RecordFieldDef, keys::RECORD_FIELD),
     (EnumVariantId, ast::EnumVariant, keys::ENUM_VARIANT),
 ];
+
+// FIXME: use DynMap as well?
+impl ToId for ast::MacroCall {
+    type ID = MacroDefId;
+    fn to_id<DB: HirDatabase>(
+        sb: &mut SourceBinder<'_, DB>,
+        src: InFile<Self>,
+    ) -> Option<Self::ID> {
+        let kind = MacroDefKind::Declarative;
+
+        let module_src = ModuleSource::from_child_node(sb.db, src.as_ref().map(|it| it.syntax()));
+        let module = crate::Module::from_definition(sb.db, InFile::new(src.file_id, module_src))?;
+        let krate = Some(module.krate().id);
+
+        let ast_id =
+            Some(AstId::new(src.file_id, sb.db.ast_id_map(src.file_id).ast_id(&src.value)));
+
+        Some(MacroDefId { krate, ast_id, kind })
+    }
+}

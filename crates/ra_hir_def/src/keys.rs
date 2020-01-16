@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use hir_expand::InFile;
+use hir_expand::{InFile, MacroDefId};
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
@@ -28,6 +28,8 @@ pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
 pub const TUPLE_FIELD: Key<ast::TupleFieldDef, StructFieldId> = Key::new();
 pub const RECORD_FIELD: Key<ast::RecordFieldDef, StructFieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
+
+pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.

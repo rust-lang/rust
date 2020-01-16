@@ -45,7 +45,6 @@ pub use crate::{
         MacroDef, Module, ModuleDef, ScopeDef, Static, Struct, StructField, Trait, Type, TypeAlias,
         TypeParam, Union, VariantDef,
     },
-    from_source::FromSource,
     has_source::HasSource,
     source_analyzer::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     source_binder::SourceBinder,

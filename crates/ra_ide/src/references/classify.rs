@@ -1,6 +1,6 @@
 //! Functions that are used to classify an element from its definition or reference.
 
-use hir::{FromSource, InFile, Module, ModuleSource, PathResolution, SourceBinder};
+use hir::{InFile, Module, ModuleSource, PathResolution, SourceBinder};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
@@ -101,7 +101,7 @@ pub(crate) fn classify_name(
             },
             ast::MacroCall(it) => {
                 let src = name.with_value(it);
-                let def = hir::MacroDef::from_source(sb.db, src.clone())?;
+                let def = sb.to_def(src.clone())?;
 
                 let module_src = ModuleSource::from_child_node(sb.db, src.as_ref().map(|it| it.syntax()));
                 let module = Module::from_definition(sb.db, src.with_value(module_src))?;
