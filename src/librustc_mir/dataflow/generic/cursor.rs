@@ -79,7 +79,7 @@ where
     /// effect, use `seek_after` or `seek_after_assume_call_returns`.
     pub fn seek_before(&mut self, target: Location) {
         assert!(target <= self.body.terminator_loc(target.block));
-        self._seek(target, false);
+        self.seek_(target, false);
     }
 
     /// Advances the cursor to hold the full effect of all statements (and possibly closing
@@ -98,7 +98,7 @@ where
             self.seek_to_block_start(target.block);
         }
 
-        self._seek(target, true);
+        self.seek_(target, true);
     }
 
     /// Advances the cursor to hold all effects up to and including of the statement (or
@@ -110,7 +110,7 @@ where
         let terminator_loc = self.body.terminator_loc(target.block);
         assert!(target.statement_index <= terminator_loc.statement_index);
 
-        self._seek(target, true);
+        self.seek_(target, true);
 
         if target != terminator_loc {
             return;
@@ -134,7 +134,7 @@ where
         }
     }
 
-    fn _seek(&mut self, target: Location, apply_after_effect_at_target: bool) {
+    fn seek_(&mut self, target: Location, apply_after_effect_at_target: bool) {
         use CursorPosition::*;
 
         match self.pos {
