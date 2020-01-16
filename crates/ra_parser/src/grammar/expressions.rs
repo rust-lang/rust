@@ -14,9 +14,9 @@ pub(super) enum StmtWithSemi {
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser) -> BlockLike {
+pub(super) fn expr(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    expr_bp(p, r, 1).1
+    expr_bp(p, r, 1)
 }
 
 pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
