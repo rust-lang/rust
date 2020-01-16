@@ -2121,8 +2121,8 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             Some(DefKind::TyAlias) => Some(cx.tcx.type_of(did).clean(cx)),
             _ => None,
         });
-        if let Some(type_alias) = type_alias {
-            ret.push(Item {
+        let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
+            Item {
                 name: None,
                 attrs: self.attrs.clean(cx),
                 source: self.whence.clean(cx),
@@ -2134,35 +2134,19 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
                     unsafety: self.unsafety,
                     generics: self.generics.clean(cx),
                     provided_trait_methods: provided.clone(),
-                    trait_: trait_.clone(),
-                    for_: type_alias,
-                    items: items.clone(),
+                    trait_,
+                    for_,
+                    items,
                     polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
                     synthetic: false,
                     blanket_impl: None,
                 }),
-            });
+            }
+        };
+        if let Some(type_alias) = type_alias {
+            ret.push(make_item(trait_.clone(), type_alias, items.clone()));
         }
-        ret.push(Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.whence.clean(cx),
-            def_id,
-            visibility: self.vis.clean(cx),
-            stability: cx.stability(self.id).clean(cx),
-            deprecation: cx.deprecation(self.id).clean(cx),
-            inner: ImplItem(Impl {
-                unsafety: self.unsafety,
-                generics: self.generics.clean(cx),
-                provided_trait_methods: provided,
-                trait_,
-                for_,
-                items,
-                polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
-                synthetic: false,
-                blanket_impl: None,
-            }),
-        });
+        ret.push(make_item(trait_, for_, items));
         ret
     }
 }
