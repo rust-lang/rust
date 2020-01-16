@@ -192,9 +192,8 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     //    1,
     //    2,
     // ];
-    attributes::outer_attributes(p);
+    attributes::with_outer_attributes(p, |p| expr(p).0);
 
-    expr(p);
     if p.eat(T![;]) {
         expr(p);
         p.expect(T![']']);
@@ -212,12 +211,15 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
         //    #[cfg(test)]
         //    2,
         // ];
-        attributes::outer_attributes(p);
-        if !p.at_ts(EXPR_FIRST) {
-            p.error("expected expression");
+        if !attributes::with_outer_attributes(p, |p| {
+            if !p.at_ts(EXPR_FIRST) {
+                p.error("expected expression");
+                return None;
+            }
+            expr(p).0
+        }) {
             break;
         }
-        expr(p);
     }
     p.expect(T![']']);
     m.complete(p, ARRAY_EXPR)
