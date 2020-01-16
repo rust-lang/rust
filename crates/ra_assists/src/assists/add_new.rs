@@ -1,5 +1,5 @@
 use format_buf::format;
-use hir::{db::HirDatabase, FromSource, InFile};
+use hir::{db::HirDatabase, InFile};
 use join_to_string::join;
 use ra_syntax::{
     ast::{
@@ -136,15 +136,16 @@ fn find_struct_impl(
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
     })?;
+    let mut sb = ctx.source_binder();
 
     let struct_ty = {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
-        hir::Struct::from_source(db, src)?.ty(db)
+        sb.to_def(src)?.ty(db)
     };
 
     let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
-        let blk = hir::ImplBlock::from_source(db, src)?;
+        let blk = sb.to_def(src)?;
 
         let same_ty = blk.target_ty(db) == struct_ty;
         let not_trait_impl = blk.target_trait(db).is_none();

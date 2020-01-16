@@ -1,17 +1,23 @@
 //! FIXME: write short doc here
 
 use ra_db::{CrateId, FileId, FilePosition, SourceDatabase};
+use ra_syntax::{
+    algo::find_node_at_offset,
+    ast::{self, AstNode},
+};
 
 use crate::{db::RootDatabase, NavigationTarget};
 
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
-    let src = hir::ModuleSource::from_position(db, position);
-    let module = match hir::Module::from_definition(
-        db,
-        hir::InFile { file_id: position.file_id.into(), value: src },
-    ) {
+    let mut sb = hir::SourceBinder::new(db);
+    let parse = db.parse(position.file_id);
+    let module = match find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
+        Some(module) => sb.to_def(hir::InFile::new(position.file_id.into(), module)),
+        None => sb.to_module_def(position.file_id),
+    };
+    let module = match module {
         None => return Vec::new(),
         Some(it) => it,
     };
@@ -21,14 +27,11 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
-    let source_file = db.parse(file_id).tree();
-    let src = hir::ModuleSource::SourceFile(source_file);
-    let module =
-        match hir::Module::from_definition(db, hir::InFile { file_id: file_id.into(), value: src })
-        {
-            Some(it) => it,
-            None => return Vec::new(),
-        };
+    let mut sb = hir::SourceBinder::new(db);
+    let module = match sb.to_module_def(file_id) {
+        Some(it) => it,
+        None => return Vec::new(),
+    };
     let krate = module.krate();
     vec![krate.into()]
 }

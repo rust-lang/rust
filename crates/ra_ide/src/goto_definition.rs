@@ -24,13 +24,14 @@ pub(crate) fn goto_definition(
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, original_token.clone());
 
+    let mut sb = SourceBinder::new(db);
     let nav_targets = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                reference_definition(db, token.with_value(&name_ref)).to_vec()
+                reference_definition(&mut sb, token.with_value(&name_ref)).to_vec()
             },
             ast::Name(name) => {
-                name_definition(db, token.with_value(&name))?
+                name_definition(&mut sb, token.with_value(&name))?
             },
             _ => return None,
         }
@@ -67,20 +68,19 @@ impl ReferenceResult {
 }
 
 pub(crate) fn reference_definition(
-    db: &RootDatabase,
+    sb: &mut SourceBinder<RootDatabase>,
     name_ref: InFile<&ast::NameRef>,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let mut sb = SourceBinder::new(db);
-    let name_kind = classify_name_ref(&mut sb, name_ref).map(|d| d.kind);
+    let name_kind = classify_name_ref(sb, name_ref).map(|d| d.kind);
     match name_kind {
-        Some(Macro(it)) => return Exact(it.to_nav(db)),
-        Some(Field(it)) => return Exact(it.to_nav(db)),
-        Some(TypeParam(it)) => return Exact(it.to_nav(db)),
-        Some(AssocItem(it)) => return Exact(it.to_nav(db)),
-        Some(Local(it)) => return Exact(it.to_nav(db)),
-        Some(Def(def)) => match NavigationTarget::from_def(db, def) {
+        Some(Macro(it)) => return Exact(it.to_nav(sb.db)),
+        Some(Field(it)) => return Exact(it.to_nav(sb.db)),
+        Some(TypeParam(it)) => return Exact(it.to_nav(sb.db)),
+        Some(AssocItem(it)) => return Exact(it.to_nav(sb.db)),
+        Some(Local(it)) => return Exact(it.to_nav(sb.db)),
+        Some(Def(def)) => match NavigationTarget::from_def(sb.db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },
@@ -88,21 +88,21 @@ pub(crate) fn reference_definition(
             // FIXME: ideally, this should point to the type in the impl, and
             // not at the whole impl. And goto **type** definition should bring
             // us to the actual type
-            return Exact(imp.to_nav(db));
+            return Exact(imp.to_nav(sb.db));
         }
         None => {}
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(db, name_ref.value)
+    let navs = crate::symbol_index::index_resolve(sb.db, name_ref.value)
         .into_iter()
-        .map(|s| s.to_nav(db))
+        .map(|s| s.to_nav(sb.db))
         .collect();
     Approximate(navs)
 }
 
-pub(crate) fn name_definition(
-    db: &RootDatabase,
+fn name_definition(
+    sb: &mut SourceBinder<RootDatabase>,
     name: InFile<&ast::Name>,
 ) -> Option<Vec<NavigationTarget>> {
     let parent = name.value.syntax().parent()?;
@@ -110,14 +110,14 @@ pub(crate) fn name_definition(
     if let Some(module) = ast::Module::cast(parent.clone()) {
         if module.has_semi() {
             let src = name.with_value(module);
-            if let Some(child_module) = hir::Module::from_declaration(db, src) {
-                let nav = child_module.to_nav(db);
+            if let Some(child_module) = sb.to_def(src) {
+                let nav = child_module.to_nav(sb.db);
                 return Some(vec![nav]);
             }
         }
     }
 
-    if let Some(nav) = named_target(db, name.with_value(&parent)) {
+    if let Some(nav) = named_target(sb.db, name.with_value(&parent)) {
         return Some(vec![nav]);
     }
 

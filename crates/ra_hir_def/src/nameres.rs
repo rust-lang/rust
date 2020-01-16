@@ -59,12 +59,9 @@ use std::sync::Arc;
 
 use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
 use ra_arena::Arena;
-use ra_db::{CrateId, Edition, FileId, FilePosition};
+use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
-use ra_syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
+use ra_syntax::ast;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -253,35 +250,6 @@ impl ModuleData {
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
-}
-
-impl ModuleSource {
-    // FIXME: this methods do not belong here
-    pub fn from_position(db: &impl DefDatabase, position: FilePosition) -> ModuleSource {
-        let parse = db.parse(position.file_id);
-        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
-            parse.tree().syntax(),
-            position.offset,
-        ) {
-            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
-            _ => {
-                let source_file = parse.tree();
-                ModuleSource::SourceFile(source_file)
-            }
-        }
-    }
-
-    pub fn from_child_node(db: &impl DefDatabase, child: InFile<&SyntaxNode>) -> ModuleSource {
-        if let Some(m) =
-            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
-        {
-            ModuleSource::Module(m)
-        } else {
-            let file_id = child.file_id.original_file(db);
-            let source_file = db.parse(file_id).tree();
-            ModuleSource::SourceFile(source_file)
-        }
-    }
 }
 
 mod diagnostics {

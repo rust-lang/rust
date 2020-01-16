@@ -36,7 +36,6 @@ mod from_id;
 mod code_model;
 
 mod has_source;
-mod from_source;
 
 pub use crate::{
     code_model::{
@@ -45,7 +44,6 @@ pub use crate::{
         MacroDef, Module, ModuleDef, ScopeDef, Static, Struct, StructField, Trait, Type, TypeAlias,
         TypeParam, Union, VariantDef,
     },
-    from_source::FromSource,
     has_source::HasSource,
     source_analyzer::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     source_binder::SourceBinder,
