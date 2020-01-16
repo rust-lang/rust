@@ -199,11 +199,11 @@ cfg_if! {
             ($($blocks:tt),*) => {
                 // We catch panics here ensuring that all the blocks execute.
                 // This makes behavior consistent with the parallel compiler.
-                let panic = ::rustc_data_structures::sync::Lock::new(None);
+                let panic = $crate::sync::Lock::new(None);
                 $(
-                    ::rustc_data_structures::sync::catch(&panic, || $blocks);
+                    $crate::sync::catch(&panic, || $blocks);
                 )*
-                ::rustc_data_structures::sync::resume(panic);
+                $crate::sync::resume(panic);
             }
         }
 
@@ -383,7 +383,7 @@ cfg_if! {
                 parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
             (impl $fblock:tt [$($blocks:tt,)*] []) => {
-                ::rustc_data_structures::sync::scope(|s| {
+                $crate::sync::scope(|s| {
                     $(
                         s.spawn(|_| $blocks);
                     )*
@@ -445,7 +445,7 @@ cfg_if! {
         macro_rules! rustc_erase_owner {
             ($v:expr) => {{
                 let v = $v;
-                ::rustc_data_structures::sync::assert_send_val(&v);
+                $crate::sync::assert_send_val(&v);
                 v.erase_send_sync_owner()
             }}
         }
