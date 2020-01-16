@@ -12,8 +12,8 @@ SOURCE_FILE@[0; 112)
       BLOCK@[7; 33)
         L_CURLY@[7; 8) "{"
         WHITESPACE@[8; 9) " "
-        EXPR_STMT@[9; 15)
-          ARRAY_EXPR@[9; 15)
+        EXPR_STMT@[9; 26)
+          ARRAY_EXPR@[9; 26)
             L_BRACK@[9; 10) "["
             LITERAL@[10; 11)
               INT_NUMBER@[10; 11) "1"
@@ -22,17 +22,13 @@ SOURCE_FILE@[0; 112)
             LITERAL@[13; 14)
               INT_NUMBER@[13; 14) "2"
             COMMA@[14; 15) ","
-        WHITESPACE@[15; 16) " "
-        EXPR_STMT@[16; 17)
-          ERROR@[16; 17)
-            AT@[16; 17) "@"
-        EXPR_STMT@[17; 18)
-          ERROR@[17; 18)
+            WHITESPACE@[15; 16) " "
+            ERROR@[16; 17)
+              AT@[16; 17) "@"
             COMMA@[17; 18) ","
-        WHITESPACE@[18; 19) " "
-        STRUCT_DEF@[19; 26)
-          STRUCT_KW@[19; 25) "struct"
-          ERROR@[25; 26)
+            WHITESPACE@[18; 19) " "
+            ERROR@[19; 25)
+              STRUCT_KW@[19; 25) "struct"
             COMMA@[25; 26) ","
         WHITESPACE@[26; 27) " "
         LET_STMT@[27; 31)
@@ -151,15 +147,12 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[109; 110) " "
         R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
-error 15: expected expression
-error 15: expected R_BRACK
-error 15: expected SEMI
 error 16: expected expression
-error 17: expected SEMI
-error 17: expected expression
-error 18: expected SEMI
-error 25: expected a name
-error 26: expected `;`, `{`, or `(`
+error 19: expected expression
+error 26: expected expression
+error 26: expected COMMA
+error 26: expected R_BRACK
+error 26: expected SEMI
 error 30: expected pattern
 error 31: expected SEMI
 error 52: expected expression

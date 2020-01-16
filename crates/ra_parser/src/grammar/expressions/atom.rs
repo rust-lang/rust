@@ -181,47 +181,42 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 fn array_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['[']));
     let m = p.start();
+
+    let mut n_exprs = 0u32;
+    let mut has_semi = false;
+
     p.bump(T!['[']);
-    if p.eat(T![']']) {
-        return m.complete(p, ARRAY_EXPR);
-    }
-
-    // test first_array_member_attributes
-    // pub const A: &[i64] = &[
-    //    #[cfg(test)]
-    //    1,
-    //    2,
-    // ];
-    attributes::with_outer_attributes(p, |p| expr(p).0);
-
-    if p.eat(T![;]) {
-        expr(p);
-        p.expect(T![']']);
-        return m.complete(p, ARRAY_EXPR);
-    }
     while !p.at(EOF) && !p.at(T![']']) {
-        p.expect(T![,]);
-        if p.at(T![']']) {
-            break;
+        n_exprs += 1;
+
+        // test array_attrs
+        // const A: &[i64] = &[1, #[cfg(test)] 2];
+        let m = p.start();
+        let has_attrs = p.at(T![#]);
+        attributes::outer_attributes(p);
+
+        let cm = expr(p).0;
+
+        match (has_attrs, cm) {
+            (true, Some(cm)) => {
+                let kind = cm.kind();
+                cm.undo_completion(p).abandon(p);
+                m.complete(p, kind);
+            }
+            _ => m.abandon(p),
         }
 
-        // test subsequent_array_member_attributes
-        // pub const A: &[i64] = &[
-        //    1,
-        //    #[cfg(test)]
-        //    2,
-        // ];
-        if !attributes::with_outer_attributes(p, |p| {
-            if !p.at_ts(EXPR_FIRST) {
-                p.error("expected expression");
-                return None;
-            }
-            expr(p).0
-        }) {
+        if n_exprs == 1 && p.eat(T![;]) {
+            has_semi = true;
+            continue;
+        }
+
+        if has_semi || !p.at(T![']']) && !p.expect(T![,]) {
             break;
         }
     }
     p.expect(T![']']);
+
     m.complete(p, ARRAY_EXPR)
 }
 
