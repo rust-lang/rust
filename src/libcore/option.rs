@@ -521,10 +521,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(err),
-        }
+        self.map_or(Err(err), |v| Ok(v))
     }
 
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
@@ -548,10 +545,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(err()),
-        }
+        self.map_or_else(|| Err(err()), |v| Ok(v))
     }
 
     /////////////////////////////////////////////////////////////////////////
