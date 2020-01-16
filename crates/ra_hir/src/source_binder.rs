@@ -111,7 +111,10 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
                         let def: UnionId = self.to_id(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
-                    // FIXME: handle out-of-line modules here
+                    ast::Module(it) => {
+                        let def: ModuleId = self.to_id(container.with_value(it))?;
+                        def.into()
+                    },
                     _ => { continue },
                 }
             };
@@ -162,6 +165,7 @@ macro_rules! to_def_impls {
 }
 
 to_def_impls![
+    (crate::Module, ast::Module),
     (crate::Struct, ast::StructDef),
     (crate::Enum, ast::EnumDef),
     (crate::Union, ast::UnionDef),
@@ -318,13 +322,13 @@ impl ToDef for ast::TypeParam {
     }
 }
 
-impl ToDef for ast::Module {
-    type Def = Module;
+impl ToId for ast::Module {
+    type ID = ModuleId;
 
-    fn to_def<DB: HirDatabase>(
+    fn to_id<DB: HirDatabase>(
         sb: &mut SourceBinder<'_, DB>,
         src: InFile<ast::Module>,
-    ) -> Option<Module> {
+    ) -> Option<ModuleId> {
         {
             let _p = profile("ast::Module::to_def");
             let parent_declaration = src
@@ -339,17 +343,17 @@ impl ToDef for ast::Module {
                 });
 
             let parent_module = match parent_declaration {
-                Some(parent_declaration) => sb.to_def(parent_declaration),
+                Some(parent_declaration) => sb.to_id(parent_declaration)?,
                 None => {
                     let file_id = src.file_id.original_file(sb.db);
-                    sb.to_module_def(file_id)
+                    sb.to_module_def(file_id)?.id
                 }
-            }?;
+            };
 
             let child_name = src.value.name()?.as_name();
-            let def_map = sb.db.crate_def_map(parent_module.id.krate);
-            let child_id = def_map[parent_module.id.local_id].children.get(&child_name)?;
-            Some(parent_module.with_module_id(*child_id))
+            let def_map = sb.db.crate_def_map(parent_module.krate);
+            let child_id = *def_map[parent_module.local_id].children.get(&child_name)?;
+            Some(ModuleId { krate: parent_module.krate, local_id: child_id })
         }
     }
 }
