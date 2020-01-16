@@ -42,7 +42,7 @@ pub(crate) fn classify_name(
                         hir::Module::from_definition(sb.db, src)
                     } else {
                         let src = name.with_value(it);
-                        hir::Module::from_declaration(sb.db, src)
+                        sb.to_def(src)
                     }
                 }?;
                 Some(from_module_def(sb.db, def.into(), None))

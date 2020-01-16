@@ -11,12 +11,15 @@ use hir_def::{
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
     StaticId, StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
-use hir_expand::{AstId, InFile, MacroDefId, MacroDefKind};
+use hir_expand::{name::AsName, AstId, InFile, MacroDefId, MacroDefKind};
 use ra_prof::profile;
-use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, TextUnit};
+use ra_syntax::{
+    ast::{self, NameOwner},
+    match_ast, AstNode, SyntaxNode, TextUnit,
+};
 use rustc_hash::FxHashMap;
 
-use crate::{db::HirDatabase, Local, ModuleSource, SourceAnalyzer, TypeParam};
+use crate::{db::HirDatabase, Local, Module, ModuleSource, SourceAnalyzer, TypeParam};
 
 pub struct SourceBinder<'a, DB> {
     pub db: &'a DB,
@@ -304,5 +307,40 @@ impl ToDef for ast::TypeParam {
         })?;
         let &id = sb.child_by_source(parent.into())[keys::TYPE_PARAM].get(&src)?;
         Some(TypeParam { id })
+    }
+}
+
+impl ToDef for ast::Module {
+    type Def = Module;
+
+    fn to_def<DB: HirDatabase>(
+        sb: &mut SourceBinder<'_, DB>,
+        src: InFile<ast::Module>,
+    ) -> Option<Module> {
+        {
+            let _p = profile("ast::Module::to_def");
+            let parent_declaration =
+                src.value.syntax().ancestors().skip(1).find_map(ast::Module::cast);
+
+            let parent_module = match parent_declaration {
+                Some(parent_declaration) => {
+                    let src_parent = InFile { file_id: src.file_id, value: parent_declaration };
+                    sb.to_def(src_parent)
+                }
+                None => {
+                    let source_file = sb.db.parse(src.file_id.original_file(sb.db)).tree();
+                    let src_parent = InFile {
+                        file_id: src.file_id,
+                        value: ModuleSource::SourceFile(source_file),
+                    };
+                    Module::from_definition(sb.db, src_parent)
+                }
+            }?;
+
+            let child_name = src.value.name()?.as_name();
+            let def_map = sb.db.crate_def_map(parent_module.id.krate);
+            let child_id = def_map[parent_module.id.local_id].children.get(&child_name)?;
+            Some(parent_module.with_module_id(*child_id))
+        }
     }
 }
