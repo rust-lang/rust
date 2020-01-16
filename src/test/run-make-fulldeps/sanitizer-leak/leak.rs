@@ -1,6 +1,13 @@
+#![feature(test)]
+
+use std::hint::black_box;
 use std::mem;
 
 fn main() {
-    let xs = vec![1, 2, 3, 4];
-    mem::forget(xs);
+    for _ in 0..10 {
+        let xs = vec![1, 2, 3];
+        // Prevent compiler from removing the memory allocation.
+        let xs = black_box(xs);
+        mem::forget(xs);
+    }
 }
