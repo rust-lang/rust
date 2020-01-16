@@ -564,7 +564,7 @@ impl f32 {
         unsafe { cmath::fdimf(self, other) }
     }
 
-    /// Takes the cubic root of a number.
+    /// Returns the cubic root of a number.
     ///
     /// # Examples
     ///
