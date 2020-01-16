@@ -52,11 +52,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
 
-    pub fn to_def<D, T>(&mut self, src: InFile<T>) -> Option<D>
-    where
-        D: From<T::ID>,
-        T: ToId,
-    {
+    pub fn to_def<T: ToDef>(&mut self, src: InFile<T>) -> Option<T::Def> {
         let id: T::ID = self.to_id(src)?;
         Some(id.into())
     }
@@ -114,6 +110,39 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
     }
 }
 
+pub trait ToId: Sized + AstNode + 'static {
+    type ID: Sized + Copy + 'static;
+    fn to_id<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>)
+        -> Option<Self::ID>;
+}
+
+pub trait ToDef: ToId {
+    type Def: From<Self::ID>;
+}
+
+macro_rules! to_def_impls {
+    ($(($def:path, $ast:path)),* ,) => {$(
+        impl ToDef for $ast {
+            type Def = $def;
+        }
+    )*}
+}
+
+to_def_impls![
+    (crate::Struct, ast::StructDef),
+    (crate::Enum, ast::EnumDef),
+    (crate::Union, ast::UnionDef),
+    (crate::Trait, ast::TraitDef),
+    (crate::ImplBlock, ast::ImplBlock),
+    (crate::TypeAlias, ast::TypeAliasDef),
+    (crate::Const, ast::ConstDef),
+    (crate::Static, ast::StaticDef),
+    (crate::Function, ast::FnDef),
+    (crate::StructField, ast::RecordFieldDef),
+    (crate::EnumVariant, ast::EnumVariant),
+    (crate::MacroDef, ast::MacroCall), // this one is dubious, not all calls are macros
+];
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum ChildContainer {
     DefWithBodyId(DefWithBodyId),
@@ -131,12 +160,6 @@ impl_froms! {
     ImplId,
     EnumId,
     VariantId,
-}
-
-pub trait ToId: Sized + AstNode + 'static {
-    type ID: Sized + Copy + 'static;
-    fn to_id<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>)
-        -> Option<Self::ID>;
 }
 
 pub trait ToIdByKey: Sized + AstNode + 'static {

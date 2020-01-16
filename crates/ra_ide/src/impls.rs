@@ -44,15 +44,15 @@ fn impls_for_def(
     let ty = match node {
         ast::NominalDef::StructDef(def) => {
             let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
-            sb.to_def::<hir::Struct, _>(src)?.ty(sb.db)
+            sb.to_def(src)?.ty(sb.db)
         }
         ast::NominalDef::EnumDef(def) => {
             let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
-            sb.to_def::<hir::Enum, _>(src)?.ty(sb.db)
+            sb.to_def(src)?.ty(sb.db)
         }
         ast::NominalDef::UnionDef(def) => {
             let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
-            sb.to_def::<hir::Union, _>(src)?.ty(sb.db)
+            sb.to_def(src)?.ty(sb.db)
         }
     };
 

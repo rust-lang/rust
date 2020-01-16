@@ -14,8 +14,7 @@ use ra_syntax::{
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    Const, DefWithBody, Enum, Function, ImplBlock, InFile, Local, Module, SourceBinder, Static,
-    Struct, Trait, TypeAlias, TypeParam,
+    DefWithBody, InFile, Local, Module, SourceBinder, TypeParam,
 };
 
 impl Local {
@@ -25,9 +24,9 @@ impl Local {
         let parent: DefWithBody = src.value.syntax().ancestors().find_map(|it| {
             let res = match_ast! {
                 match it {
-                    ast::ConstDef(value) => { sb.to_def::<Const, _>(InFile { value, file_id})?.into() },
-                    ast::StaticDef(value) => { sb.to_def::<Static, _>(InFile { value, file_id})?.into() },
-                    ast::FnDef(value) => { sb.to_def::<Function, _>(InFile { value, file_id})?.into() },
+                    ast::ConstDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
+                    ast::StaticDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
+                    ast::FnDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
                     _ => return None,
                 }
             };
@@ -47,12 +46,12 @@ impl TypeParam {
         let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
             let res = match_ast! {
                 match it {
-                    ast::FnDef(value) => { sb.to_def::<Function, _>(InFile { value, file_id})?.id.into() },
-                    ast::StructDef(value) => { sb.to_def::<Struct, _>(InFile { value, file_id})?.id.into() },
-                    ast::EnumDef(value) => { sb.to_def::<Enum, _>(InFile { value, file_id})?.id.into() },
-                    ast::TraitDef(value) => { sb.to_def::<Trait, _>(InFile { value, file_id})?.id.into() },
-                    ast::TypeAliasDef(value) => { sb.to_def::<TypeAlias, _>(InFile { value, file_id})?.id.into() },
-                    ast::ImplBlock(value) => { sb.to_def::<ImplBlock, _>(InFile { value, file_id})?.id.into() },
+                    ast::FnDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
+                    ast::StructDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
+                    ast::EnumDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
+                    ast::TraitDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
+                    ast::TypeAliasDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
+                    ast::ImplBlock(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
                     _ => return None,
                 }
             };

@@ -140,12 +140,12 @@ fn find_struct_impl(
 
     let struct_ty = {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
-        sb.to_def::<hir::Struct, _>(src)?.ty(db)
+        sb.to_def(src)?.ty(db)
     };
 
     let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
-        let blk = sb.to_def::<hir::ImplBlock, _>(src)?;
+        let blk = sb.to_def(src)?;
 
         let same_ty = blk.target_ty(db) == struct_ty;
         let not_trait_impl = blk.target_trait(db).is_none();
