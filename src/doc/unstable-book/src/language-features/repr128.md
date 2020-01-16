@@ -1,8 +1,8 @@
 # `repr128`
 
-The tracking issue for this feature is: [#35118]
+The tracking issue for this feature is: [#56071]
 
-[#35118]: https://github.com/rust-lang/rust/issues/35118
+[#56071]: https://github.com/rust-lang/rust/issues/56071
 
 ------------------------
 
