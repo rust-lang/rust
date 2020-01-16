@@ -1,5 +1,5 @@
 use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method, walk_ptrs_ty};
-use rustc::ty::{Adt, Dynamic, Opaque, Param, RawPtr, Ref, Ty, TypeAndMut};
+use rustc::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -101,21 +101,24 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, ty: Ty<'tcx>) {
         if [&paths::HASHMAP, &paths::BTREEMAP, &paths::HASHSET, &paths::BTREESET]
             .iter()
             .any(|path| match_def_path(cx, def.did, &**path))
+            && is_mutable_type(cx, substs.type_at(0), span)
         {
-            let key_type = concrete_type(substs.type_at(0));
-            if let Some(key_type) = key_type {
-                if !key_type.is_freeze(cx.tcx, cx.param_env, span) {
-                    span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
-                }
-            }
+            span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
         }
     }
 }
 
-fn concrete_type(ty: Ty<'_>) -> Option<Ty<'_>> {
+fn is_mutable_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
     match ty.kind {
-        RawPtr(TypeAndMut { ty: inner_ty, .. }) | Ref(_, inner_ty, _) => concrete_type(inner_ty),
-        Dynamic(..) | Opaque(..) | Param(..) => None,
-        _ => Some(ty),
+        RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
+            mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
+        },
+        Slice(inner_ty) => is_mutable_type(cx, inner_ty, span),
+        Array(inner_ty, size) => {
+            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0) && is_mutable_type(cx, inner_ty, span)
+        },
+        Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
+        Adt(..) => cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx, cx.param_env, span),
+        _ => false,
     }
 }
