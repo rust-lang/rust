@@ -333,7 +333,7 @@ declare_features! (
     (active, abi_ptx, "1.15.0", Some(38788), None),
 
     /// Allows the `#[repr(i128)]` attribute for enums.
-    (active, repr128, "1.16.0", Some(35118), None),
+    (active, repr128, "1.16.0", Some(56071), None),
 
     /// Allows `#[link(kind="static-nobundle"...)]`.
     (active, static_nobundle, "1.16.0", Some(37403), None),
