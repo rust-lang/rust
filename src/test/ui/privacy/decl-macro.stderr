@@ -2,7 +2,13 @@ error[E0603]: macro `mac` is private
   --> $DIR/decl-macro.rs:8:8
    |
 LL |     m::mac!();
-   |        ^^^
+   |        ^^^ this macro is private
+   |
+note: the macro `mac` is defined here
+  --> $DIR/decl-macro.rs:4:5
+   |
+LL |     macro mac() {}
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 

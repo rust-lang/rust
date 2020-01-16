@@ -13,7 +13,16 @@ error[E0603]: static `x` is private
   --> $DIR/pub-item-macro.rs:17:23
    |
 LL |     let y: u32 = foo::x;
-   |                       ^
+   |                       ^ this static is private
+   |
+note: the static `x` is defined here
+  --> $DIR/pub-item-macro.rs:4:5
+   |
+LL |     static x: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+...
+LL |     pub_x!();
+   |     --------- in this macro invocation
 
 error: aborting due to 2 previous errors
 
