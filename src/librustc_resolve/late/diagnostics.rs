@@ -282,7 +282,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
-            if self.smart_resolve_context_dependent_help(
+            if let Some(needs_candidates) = self.smart_resolve_context_dependent_help(
                 &mut err,
                 span,
                 source,
@@ -290,7 +290,11 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 &path_str,
                 &fallback_label,
             ) {
-                return (err, candidates);
+                if needs_candidates {
+                    return (err, candidates);
+                } else {
+                    return (err, Vec::new());
+                }
             }
         }
 
@@ -402,7 +406,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
     /// function.
-    /// Returns `true` if able to provide context-dependent help.
+    /// Returns `Some` if able to provide context-dependent help and `true` if diagnostics
+    /// should suggest import candidates.
     fn smart_resolve_context_dependent_help(
         &mut self,
         err: &mut DiagnosticBuilder<'a>,
@@ -411,7 +416,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         res: Res,
         path_str: &str,
         fallback_label: &str,
-    ) -> bool {
+    ) -> Option<bool> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
@@ -482,6 +487,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 if path_str == "try" && span.rust_2015() {
                     err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
+                return Some(false);
             }
             (Res::Def(DefKind::TyAlias, _), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
@@ -491,7 +497,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             }
             (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
                 if !path_sep(err, &parent) {
-                    return false;
+                    return None;
                 }
             }
             (Res::Def(DefKind::Enum, def_id), PathSource::TupleStruct)
@@ -552,9 +558,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             {
                 err.note("can't use a type alias as a constructor");
             }
-            _ => return false,
+            _ => return None,
         }
-        true
+        Some(true)
     }
 
     fn lookup_assoc_candidate<FilterFn>(
