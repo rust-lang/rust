@@ -8,15 +8,15 @@ use hir_def::{
     dyn_map::DynMap,
     keys::{self, Key},
     resolver::{HasResolver, Resolver},
-    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ImplId, ModuleId, StaticId,
-    StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
+    StaticId, StructFieldId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use hir_expand::{AstId, InFile, MacroDefId, MacroDefKind};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, TextUnit};
 use rustc_hash::FxHashMap;
 
-use crate::{db::HirDatabase, ModuleSource, SourceAnalyzer};
+use crate::{db::HirDatabase, Local, ModuleSource, SourceAnalyzer, TypeParam};
 
 pub struct SourceBinder<'a, DB> {
     pub db: &'a DB,
@@ -53,8 +53,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
     }
 
     pub fn to_def<T: ToDef>(&mut self, src: InFile<T>) -> Option<T::Def> {
-        let id: T::ID = self.to_id(src)?;
-        Some(id.into())
+        T::to_def(self, src)
     }
 
     fn to_id<T: ToId>(&mut self, src: InFile<T>) -> Option<T::ID> {
@@ -110,20 +109,27 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
     }
 }
 
-pub trait ToId: Sized + AstNode + 'static {
+pub trait ToId: Sized {
     type ID: Sized + Copy + 'static;
     fn to_id<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>)
         -> Option<Self::ID>;
 }
 
-pub trait ToDef: ToId {
-    type Def: From<Self::ID>;
+pub trait ToDef: Sized + AstNode + 'static {
+    type Def;
+    fn to_def<DB: HirDatabase>(
+        sb: &mut SourceBinder<'_, DB>,
+        src: InFile<Self>,
+    ) -> Option<Self::Def>;
 }
 
 macro_rules! to_def_impls {
     ($(($def:path, $ast:path)),* ,) => {$(
         impl ToDef for $ast {
             type Def = $def;
+            fn to_def<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>)
+                -> Option<Self::Def>
+            { sb.to_id(src).map(Into::into) }
         }
     )*}
 }
@@ -228,5 +234,56 @@ impl ToId for ast::MacroCall {
             Some(AstId::new(src.file_id, sb.db.ast_id_map(src.file_id).ast_id(&src.value)));
 
         Some(MacroDefId { krate, ast_id, kind })
+    }
+}
+
+impl ToDef for ast::BindPat {
+    type Def = Local;
+
+    fn to_def<DB: HirDatabase>(sb: &mut SourceBinder<'_, DB>, src: InFile<Self>) -> Option<Local> {
+        let file_id = src.file_id;
+        let parent: DefWithBodyId = src.value.syntax().ancestors().find_map(|it| {
+            let res = match_ast! {
+                match it {
+                    ast::ConstDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::StaticDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::FnDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })?;
+        let (_body, source_map) = sb.db.body_with_source_map(parent);
+        let src = src.map(ast::Pat::from);
+        let pat_id = source_map.node_pat(src.as_ref())?;
+        Some(Local { parent: parent.into(), pat_id })
+    }
+}
+
+impl ToDef for ast::TypeParam {
+    type Def = TypeParam;
+
+    fn to_def<DB: HirDatabase>(
+        sb: &mut SourceBinder<'_, DB>,
+        src: InFile<ast::TypeParam>,
+    ) -> Option<TypeParam> {
+        let mut sb = SourceBinder::new(sb.db);
+        let file_id = src.file_id;
+        let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
+            let res = match_ast! {
+                match it {
+                    ast::FnDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::StructDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::EnumDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::TraitDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::TypeAliasDef(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    ast::ImplBlock(value) => { sb.to_id(InFile { value, file_id})?.into() },
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })?;
+        let &id = parent.child_by_source(sb.db)[keys::TYPE_PARAM].get(&src)?;
+        Some(TypeParam { id })
     }
 }

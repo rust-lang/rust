@@ -1,66 +1,13 @@
 //! Finds a corresponding hir data structure for a syntax node in a specific
 //! file.
 
-use hir_def::{
-    child_by_source::ChildBySource, keys, nameres::ModuleSource, GenericDefId, ModuleId,
-};
+use hir_def::{nameres::ModuleSource, ModuleId};
 use hir_expand::name::AsName;
 use ra_db::FileId;
 use ra_prof::profile;
-use ra_syntax::{
-    ast::{self, AstNode, NameOwner},
-    match_ast,
-};
+use ra_syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{
-    db::{DefDatabase, HirDatabase},
-    DefWithBody, InFile, Local, Module, SourceBinder, TypeParam,
-};
-
-impl Local {
-    pub fn from_source(db: &impl HirDatabase, src: InFile<ast::BindPat>) -> Option<Self> {
-        let mut sb = SourceBinder::new(db);
-        let file_id = src.file_id;
-        let parent: DefWithBody = src.value.syntax().ancestors().find_map(|it| {
-            let res = match_ast! {
-                match it {
-                    ast::ConstDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
-                    ast::StaticDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
-                    ast::FnDef(value) => { sb.to_def(InFile { value, file_id})?.into() },
-                    _ => return None,
-                }
-            };
-            Some(res)
-        })?;
-        let (_body, source_map) = db.body_with_source_map(parent.into());
-        let src = src.map(ast::Pat::from);
-        let pat_id = source_map.node_pat(src.as_ref())?;
-        Some(Local { parent, pat_id })
-    }
-}
-
-impl TypeParam {
-    pub fn from_source(db: &impl HirDatabase, src: InFile<ast::TypeParam>) -> Option<Self> {
-        let mut sb = SourceBinder::new(db);
-        let file_id = src.file_id;
-        let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
-            let res = match_ast! {
-                match it {
-                    ast::FnDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    ast::StructDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    ast::EnumDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    ast::TraitDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    ast::TypeAliasDef(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    ast::ImplBlock(value) => { sb.to_def(InFile { value, file_id})?.id.into() },
-                    _ => return None,
-                }
-            };
-            Some(res)
-        })?;
-        let &id = parent.child_by_source(db)[keys::TYPE_PARAM].get(&src)?;
-        Some(TypeParam { id })
-    }
-}
+use crate::{db::DefDatabase, InFile, Module};
 
 impl Module {
     pub fn from_declaration(db: &impl DefDatabase, src: InFile<ast::Module>) -> Option<Self> {

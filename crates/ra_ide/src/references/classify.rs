@@ -22,7 +22,7 @@ pub(crate) fn classify_name(
         match parent {
             ast::BindPat(it) => {
                 let src = name.with_value(it);
-                let local = hir::Local::from_source(sb.db, src)?;
+                let local = sb.to_def(src)?;
                 Some(NameDefinition {
                     visibility: None,
                     container: local.module(sb.db),
@@ -114,7 +114,7 @@ pub(crate) fn classify_name(
             },
             ast::TypeParam(it) => {
                 let src = name.with_value(it);
-                let def = hir::TypeParam::from_source(sb.db, src)?;
+                let def = sb.to_def(src)?;
                 Some(NameDefinition {
                     visibility: None,
                     container: def.module(sb.db),
