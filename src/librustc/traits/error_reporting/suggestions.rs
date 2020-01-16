@@ -605,34 +605,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
 
-        let mut all_returns_conform_to_trait = true;
-        let mut all_returns_have_same_type = true;
-        let mut last_ty = None;
-        if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
-            let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
-            let param_env = ty::ParamEnv::empty();
-            if let ty::Dynamic(predicates, _) = &ty_ret_ty.kind {
-                for expr in &visitor.0 {
-                    if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
-                        all_returns_have_same_type &=
-                            Some(returned_ty) == last_ty || last_ty.is_none();
-                        last_ty = Some(returned_ty);
-                        for predicate in predicates.iter() {
-                            let pred = predicate.with_self_ty(self.tcx, returned_ty);
-                            let obl = Obligation::new(cause.clone(), param_env, pred);
-                            all_returns_conform_to_trait &= self.predicate_may_hold(&obl);
-                        }
+        let mut ret_types = visitor.0.iter().filter_map(|expr| tables.node_type_opt(expr.hir_id));
+        let (last_ty, all_returns_have_same_type) =
+            ret_types.clone().fold((None, true), |(last_ty, mut same), returned_ty| {
+                same &= last_ty.map_or(true, |ty| ty == returned_ty);
+                (Some(returned_ty), same)
+            });
+        let all_returns_conform_to_trait =
+            if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
+                match ty_ret_ty.kind {
+                    ty::Dynamic(predicates, _) => {
+                        let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
+                        let param_env = ty::ParamEnv::empty();
+                        ret_types.all(|returned_ty| {
+                            predicates.iter().all(|predicate| {
+                                let pred = predicate.with_self_ty(self.tcx, returned_ty);
+                                let obl = Obligation::new(cause.clone(), param_env, pred);
+                                self.predicate_may_hold(&obl)
+                            })
+                        })
                     }
+                    _ => true,
                 }
-            }
-        } else {
-            // We still want to verify whether all the return types conform to each other.
-            for expr in &visitor.0 {
-                let returned_ty = tables.node_type_opt(expr.hir_id);
-                all_returns_have_same_type &= last_ty == returned_ty || last_ty.is_none();
-                last_ty = returned_ty;
-            }
-        }
+            } else {
+                true
+            };
 
         let (snippet, last_ty) =
             if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true, Some(last_ty)) = (
