@@ -8,6 +8,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
+use rustc_codegen_utils::symbol_names;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -356,5 +357,34 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         SymbolExportLevel::C
     } else {
         SymbolExportLevel::Rust
+    }
+}
+
+/// This is the symbol name of the given instance instantiated in a specific crate.
+pub fn symbol_name_for_instance_in_crate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    instantiating_crate: CrateNum,
+) -> String {
+    // If this is something instantiated in the local crate then we might
+    // already have cached the name as a query result.
+    if instantiating_crate == LOCAL_CRATE {
+        return symbol.symbol_name_for_local_instance(tcx).to_string();
+    }
+
+    // This is something instantiated in an upstream crate, so we have to use
+    // the slower (because uncached) version of computing the symbol name.
+    match symbol {
+        ExportedSymbol::NonGeneric(def_id) => symbol_names::symbol_name_for_instance_in_crate(
+            tcx,
+            Instance::mono(tcx, def_id),
+            instantiating_crate,
+        ),
+        ExportedSymbol::Generic(def_id, substs) => symbol_names::symbol_name_for_instance_in_crate(
+            tcx,
+            Instance::new(def_id, substs),
+            instantiating_crate,
+        ),
+        ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
 }

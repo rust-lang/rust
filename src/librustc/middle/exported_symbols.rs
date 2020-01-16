@@ -32,7 +32,9 @@ pub enum ExportedSymbol<'tcx> {
 }
 
 impl<'tcx> ExportedSymbol<'tcx> {
-    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
+    /// This is the symbol name of an instance if it is instantiated in the
+    /// local crate.
+    pub fn symbol_name_for_local_instance(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
         match *self {
             ExportedSymbol::NonGeneric(def_id) => tcx.symbol_name(ty::Instance::mono(tcx, def_id)),
             ExportedSymbol::Generic(def_id, substs) => {
@@ -50,9 +52,22 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 }
                 ExportedSymbol::Generic(..) | ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
             },
-            ExportedSymbol::Generic(..) => match *other {
+            ExportedSymbol::Generic(self_def_id, self_substs) => match *other {
                 ExportedSymbol::NonGeneric(_) => cmp::Ordering::Greater,
-                ExportedSymbol::Generic(..) => self.symbol_name(tcx).cmp(&other.symbol_name(tcx)),
+                ExportedSymbol::Generic(other_def_id, other_substs) => {
+                    // We compare the symbol names because they are cached as query
+                    // results which makes them relatively cheap to access repeatedly.
+                    //
+                    // It might be even faster to build a local cache of stable IDs
+                    // for sorting. Exported symbols are really only sorted once
+                    // in order to make the `exported_symbols` query result stable.
+                    let self_symbol_name =
+                        tcx.symbol_name(ty::Instance::new(self_def_id, self_substs));
+                    let other_symbol_name =
+                        tcx.symbol_name(ty::Instance::new(other_def_id, other_substs));
+
+                    self_symbol_name.cmp(&other_symbol_name)
+                }
                 ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
             },
             ExportedSymbol::NoDefId(self_symbol_name) => match *other {
