@@ -169,22 +169,12 @@ mod mut_ptr;
 /// i.e., you do not usually have to worry about such issues unless you call `drop_in_place`
 /// manually.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[inline(always)]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-    real_drop_in_place(&mut *to_drop)
-}
-
-// The real `drop_in_place` -- the one that gets called implicitly when variables go
-// out of scope -- should have a safe reference and not a raw pointer as argument
-// type.  When we drop a local variable, we access it with a pointer that behaves
-// like a safe reference; transmuting that to a raw pointer does not mean we can
-// actually access it with raw pointers.
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
-unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    real_drop_in_place(to_drop)
+    drop_in_place(to_drop)
 }
 
 /// Creates a null raw pointer.
