@@ -535,15 +535,9 @@ fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     m.complete(p, CAST_EXPR)
 }
 
-// test arg_list
-// fn assert_float(s: &str, n: f64) {}
-// fn foo() {
-//     assert_float(
-//         "1.797693134862315708e+308L",
-//         #[allow(clippy::excessive_precision)]
-//         #[allow(dead_code)]
-//         1.797_693_134_862_315_730_8e+308,
-//     );
+// test arg_with_attr
+// fn main() {
+//     foo(#[attr] 92)
 // }
 fn arg_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
