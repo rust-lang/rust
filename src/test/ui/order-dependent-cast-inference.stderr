@@ -6,7 +6,7 @@ LL |     let mut y = 0 as *const _;
    |                      |
    |                      help: consider giving more type information
    |
-   = note: The type information given here is insufficient to check whether the pointer cast is valid
+   = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error: aborting due to previous error
 

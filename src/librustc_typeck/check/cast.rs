@@ -381,7 +381,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     if unknown_cast_to { "to" } else { "from" }
                 );
                 err.note(
-                    "The type information given here is insufficient to check whether \
+                    "the type information given here is insufficient to check whether \
                           the pointer cast is valid",
                 );
                 if unknown_cast_to {

@@ -236,8 +236,8 @@ impl<'a> Parser<'a> {
             self.struct_span_err(lit.span, msg)
                 .help(
                     "instead of using a suffixed literal \
-                                    (1u8, 1.0f32, etc.), use an unsuffixed version \
-                                    (1, 1.0, etc.).",
+                                    (`1u8`, `1.0f32`, etc.), use an unsuffixed version \
+                                    (`1`, `1.0`, etc.)",
                 )
                 .emit()
         }
