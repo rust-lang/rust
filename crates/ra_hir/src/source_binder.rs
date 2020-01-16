@@ -1,7 +1,5 @@
-//! `SourceBinder` should be the main entry point for getting info about source code.
+//! `SourceBinder` is the main entry point for getting info about source code.
 //! It's main task is to map source syntax trees to hir-level IDs.
-//!
-//! It is intended to subsume `FromSource` and `SourceAnalyzer`.
 
 use hir_def::{
     child_by_source::ChildBySource,
