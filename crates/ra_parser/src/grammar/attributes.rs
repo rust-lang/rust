@@ -14,7 +14,7 @@ pub(super) fn with_outer_attributes(
 ) -> bool {
     let am = p.start();
     let has_attrs = p.at(T![#]);
-    attributes::outer_attributes(p);    
+    attributes::outer_attributes(p);
     let cm = f(p);
     let success = cm.is_some();
 
