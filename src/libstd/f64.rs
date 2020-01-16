@@ -323,7 +323,7 @@ impl f64 {
         unsafe { intrinsics::powf64(self, n) }
     }
 
-    /// Takes the square root of a number.
+    /// Returns the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -506,7 +506,7 @@ impl f64 {
         unsafe { cmath::fdim(self, other) }
     }
 
-    /// Takes the cubic root of a number.
+    /// Returns the cubic root of a number.
     ///
     /// # Examples
     ///
