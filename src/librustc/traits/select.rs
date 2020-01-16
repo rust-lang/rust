@@ -3767,16 +3767,12 @@ impl<'tcx> TraitObligation<'tcx> {
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
-        if obligation.recursion_depth >= 0 {
-            let derived_cause = DerivedObligationCause {
-                parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
-                parent_code: Rc::new(obligation.cause.code.clone()),
-            };
-            let derived_code = variant(derived_cause);
-            ObligationCause::new(obligation.cause.span, obligation.cause.body_id, derived_code)
-        } else {
-            obligation.cause.clone()
-        }
+        let derived_cause = DerivedObligationCause {
+            parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
+            parent_code: Rc::new(obligation.cause.code.clone()),
+        };
+        let derived_code = variant(derived_cause);
+        ObligationCause::new(obligation.cause.span, obligation.cause.body_id, derived_code)
     }
 }
 
