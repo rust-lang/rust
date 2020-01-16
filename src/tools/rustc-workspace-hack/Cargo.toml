@@ -66,6 +66,8 @@ smallvec-0_6 = { package = "smallvec", version = "0.6", features = ['union', 'ma
 smallvec = { version = "1.0", features = ['union', 'may_dangle'] }
 url = { version = "2.0", features = ['serde'] }
 syn = { version = "0.15", features = ['full', 'extra-traits'] }
+quote = "0.6" # enable the default feature
+proc-macro2 = "0.4" # enable the default feature
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.12", optional = true }
