@@ -188,19 +188,9 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
     p.bump(T!['[']);
     while !p.at(EOF) && !p.at(T![']']) {
         n_exprs += 1;
-        // test first_array_member_attributes
-        // pub const A: &[i64] = &[
-        //    #[cfg(test)]
-        //    1,
-        //    2,
-        // ];
 
-        // test subsequent_array_member_attributes
-        // pub const A: &[i64] = &[
-        //    1,
-        //    #[cfg(test)]
-        //    2,
-        // ];
+        // test array_attrs
+        // const A: &[i64] = &[1, #[cfg(test)] 2];
         let m = p.start();
         let has_attrs = p.at(T![#]);
         attributes::outer_attributes(p);
