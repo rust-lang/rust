@@ -360,12 +360,15 @@ impl<T> RangeInclusiveEquality for T {
     }
 }
 
-impl<T: PartialOrd> RangeInclusiveEquality for T {
-    #[inline]
-    fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        range.is_empty()
-    }
-}
+// rust-lang/rust#67194: We cannot use this specialized implementation
+// soundly in Rust today.
+//
+// impl<T: PartialOrd> RangeInclusiveEquality for T {
+//     #[inline]
+//     fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
+//         range.is_empty()
+//     }
+// }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
