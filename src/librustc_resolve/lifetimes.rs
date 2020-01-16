@@ -2398,6 +2398,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_refs.len(),
                 &lifetime_names,
                 self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
+                &self.missing_named_lifetime_spots,
             );
         }
 
@@ -2908,19 +2909,80 @@ fn add_missing_lifetime_specifiers_label(
     count: usize,
     lifetime_names: &FxHashSet<ast::Ident>,
     snippet: Option<&str>,
+    missing_named_lifetime_spots: &[&hir::Generics<'_>],
 ) {
     if count > 1 {
         err.span_label(span, format!("expected {} lifetime parameters", count));
-    } else if let (1, Some(name), Some("&")) =
-        (lifetime_names.len(), lifetime_names.iter().next(), snippet)
-    {
-        err.span_suggestion(
-            span,
-            "consider using the named lifetime",
-            format!("&{} ", name),
-            Applicability::MaybeIncorrect,
-        );
     } else {
-        err.span_label(span, "expected lifetime parameter");
+        let mut introduce_suggestion = vec![];
+        if let Some(generics) = missing_named_lifetime_spots.iter().last() {
+            introduce_suggestion.push(match &generics.params {
+                [] => (generics.span, "<'lifetime>".to_string()),
+                [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+            });
+        }
+
+        match (lifetime_names.len(), lifetime_names.iter().next(), snippet) {
+            (1, Some(name), Some("&")) => {
+                err.span_suggestion(
+                    span,
+                    "consider using the named lifetime",
+                    format!("&{} ", name),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (1, Some(name), Some("'_")) => {
+                err.span_suggestion(
+                    span,
+                    "consider using the named lifetime",
+                    name.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
+                err.span_suggestion(
+                    span,
+                    "consider using the named lifetime",
+                    format!("{}<{}>", snippet, name),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (0, _, Some("&")) => {
+                err.span_label(span, "expected named lifetime parameter");
+                if !introduce_suggestion.is_empty() {
+                    introduce_suggestion.push((span, "&'lifetime ".to_string()));
+                    err.multipart_suggestion(
+                        "consider introducing a named lifetime",
+                        introduce_suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            (0, _, Some("'_")) => {
+                err.span_label(span, "expected named lifetime parameter");
+                if !introduce_suggestion.is_empty() {
+                    introduce_suggestion.push((span, "'lifetime".to_string()));
+                    err.multipart_suggestion(
+                        "consider introducing a named lifetime",
+                        introduce_suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            (0, _, Some(snippet)) if !snippet.ends_with(">") => {
+                err.span_label(span, "expected named lifetime parameter");
+                if !introduce_suggestion.is_empty() {
+                    introduce_suggestion.push((span, format!("{}<'lifetime>", snippet)));
+                    err.multipart_suggestion(
+                        "consider introducing a named lifetime",
+                        introduce_suggestion,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            _ => {
+                err.span_label(span, "expected lifetime parameter");
+            }
+        }
     }
 }
