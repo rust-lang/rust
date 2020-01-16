@@ -1,0 +1,4 @@
+error: LeakSanitizer only works with the `x86_64-unknown-linux-gnu` or `x86_64-apple-darwin` target
+
+error: aborting due to previous error
+
