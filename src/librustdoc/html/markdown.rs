@@ -381,8 +381,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                     _ => {}
                 }
                 match event {
-                    Event::Start(Tag::Link(_, _, text)) => self.buf.push_back(Event::Text(text)),
-                    Event::End(Tag::Link(..)) => {}
+                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
                     event => self.buf.push_back(event),
                 }
             }
