@@ -15,6 +15,7 @@
 
 use super::ModuleLlvm;
 
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common;
 use crate::context::CodegenCx;
@@ -23,7 +24,7 @@ use crate::metadata;
 use crate::value::Value;
 
 use rustc::dep_graph;
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols;
 use rustc::mir::mono::{Linkage, Visibility};
@@ -131,7 +132,9 @@ pub fn compile_codegen_unit(
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx);
+            if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
+                attributes::sanitize(&cx, CodegenFnAttrFlags::empty(), entry);
+            }
 
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
