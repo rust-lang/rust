@@ -109,10 +109,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = 3.5_f64;
-    /// let y = -3.5_f64;
-    /// let abs_difference_x = (x.fract() - 0.5).abs();
-    /// let abs_difference_y = (y.fract() - (-0.5)).abs();
+    /// let x = 3.6_f64;
+    /// let y = -3.6_f64;
+    /// let abs_difference_x = (x.fract() - 0.6).abs();
+    /// let abs_difference_y = (y.fract() - (-0.6)).abs();
     ///
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
@@ -323,7 +323,7 @@ impl f64 {
         unsafe { intrinsics::powf64(self, n) }
     }
 
-    /// Takes the square root of a number.
+    /// Returns the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -506,7 +506,7 @@ impl f64 {
         unsafe { cmath::fdim(self, other) }
     }
 
-    /// Takes the cubic root of a number.
+    /// Returns the cubic root of a number.
     ///
     /// # Examples
     ///

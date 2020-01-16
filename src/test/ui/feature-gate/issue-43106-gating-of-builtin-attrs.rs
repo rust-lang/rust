@@ -464,10 +464,10 @@ mod reexport_test_harness_main {
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
 #[macro_escape]
-//~^ WARN macro_escape is a deprecated synonym for macro_use
+//~^ WARN `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
 mod macro_escape {
     mod inner { #![macro_escape] }
-    //~^ WARN macro_escape is a deprecated synonym for macro_use
+    //~^ WARN `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
 
     #[macro_escape] fn f() { }
     //~^ WARN unused attribute

@@ -1,4 +1,4 @@
-note: External requirements
+note: external requirements
   --> $DIR/propagate-approximated-ref.rs:43:47
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
@@ -18,7 +18,7 @@ LL | |     });
    = note: number of external vids: 5
    = note: where '_#1r: '_#2r
 
-note: No external requirements
+note: no external requirements
   --> $DIR/propagate-approximated-ref.rs:42:1
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {

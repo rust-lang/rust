@@ -963,7 +963,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             .session
                             .struct_span_err(
                                 attr.span,
-                                "`macro_use` is not supported on `extern crate self`",
+                                "`#[macro_use]` is not supported on `extern crate self`",
                             )
                             .emit();
                     }
@@ -1054,10 +1054,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name(sym::macro_escape) {
-                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("consider an outer attribute, `#[macro_use]` mod ...").emit();
+                    err.help("try an outer attribute: `#[macro_use]`").emit();
                 } else {
                     err.emit();
                 }
@@ -1066,7 +1066,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             if !attr.is_word() {
-                self.r.session.span_err(attr.span, "arguments to macro_use are not allowed here");
+                self.r.session.span_err(attr.span, "arguments to `macro_use` are not allowed here");
             }
             return true;
         }

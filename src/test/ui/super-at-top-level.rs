@@ -1,4 +1,4 @@
-use super::f; //~ ERROR there are too many initial `super`s
+use super::f; //~ ERROR there are too many leading `super` keywords
 
 fn main() {
 }
