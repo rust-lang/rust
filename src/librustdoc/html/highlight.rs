@@ -65,7 +65,7 @@ pub fn render_with_highlighting(
         Err(()) => {
             // If errors are encountered while trying to highlight, just emit
             // the unhighlighted source.
-            write!(out, "<pre><code>{}</code></pre>", src).unwrap();
+            write!(out, "<pre><code>{}</code></pre>", Escape(src)).unwrap();
         }
     }
 
