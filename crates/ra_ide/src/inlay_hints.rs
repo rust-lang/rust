@@ -30,19 +30,20 @@ pub(crate) fn inlay_hints(
     max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
     let mut sb = SourceBinder::new(db);
-    file.syntax()
-        .descendants()
-        .flat_map(|node| get_inlay_hints(&mut sb, file_id, &node, max_inlay_hint_length))
-        .flatten()
-        .collect()
+    let mut res = Vec::new();
+    for node in file.syntax().descendants() {
+        get_inlay_hints(&mut res, &mut sb, file_id, &node, max_inlay_hint_length);
+    }
+    res
 }
 
 fn get_inlay_hints(
+    acc: &mut Vec<InlayHint>,
     sb: &mut SourceBinder<RootDatabase>,
     file_id: FileId,
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
-) -> Option<Vec<InlayHint>> {
+) -> Option<()> {
     let _p = profile("get_inlay_hints");
     let db = sb.db;
     let analyzer = Lazy::new(move || sb.analyze(hir::InFile::new(file_id.into(), node), None));
@@ -53,7 +54,7 @@ fn get_inlay_hints(
                     return None;
                 }
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
+                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
             },
             ast::LambdaExpr(it) => {
                 it.param_list().map(|param_list| {
@@ -61,54 +62,50 @@ fn get_inlay_hints(
                         .params()
                         .filter(|closure_param| closure_param.ascribed_type().is_none())
                         .filter_map(|closure_param| closure_param.pat())
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, max_inlay_hint_length))
-                        .flatten()
-                        .collect()
-                })
+                        .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, false, max_inlay_hint_length))
+                });
             },
             ast::ForExpr(it) => {
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
+                get_pat_type_hints(acc, db, &analyzer, pat, false, max_inlay_hint_length);
             },
             ast::IfExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
+                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
             },
             ast::WhileExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
+                get_pat_type_hints(acc, db, &analyzer, pat, true, max_inlay_hint_length);
             },
             ast::MatchArmList(it) => {
-                Some(
-                    it
-                        .arms()
-                        .map(|match_arm| match_arm.pats())
-                        .flatten()
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, max_inlay_hint_length))
-                        .flatten()
-                        .collect(),
-                )
+                it.arms()
+                    .map(|match_arm| match_arm.pats())
+                    .flatten()
+                    .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, true, max_inlay_hint_length));
             },
             ast::CallExpr(it) => {
-                get_param_name_hints(db, &analyzer, ast::Expr::from(it))
+                get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
             ast::MethodCallExpr(it) => {
-                get_param_name_hints(db, &analyzer, ast::Expr::from(it))
+                get_param_name_hints(acc, db, &analyzer, ast::Expr::from(it));
             },
-            _ => None,
+            _ => (),
         }
-    }
+    };
+    Some(())
 }
+
 fn get_param_name_hints(
+    acc: &mut Vec<InlayHint>,
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     expr: ast::Expr,
-) -> Option<Vec<InlayHint>> {
+) -> Option<()> {
     let args = match &expr {
-        ast::Expr::CallExpr(expr) => Some(expr.arg_list()?.args()),
-        ast::Expr::MethodCallExpr(expr) => Some(expr.arg_list()?.args()),
-        _ => None,
-    }?;
+        ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
+        ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
+        _ => return None,
+    };
 
     let mut parameters = get_fn_signature(db, analyzer, &expr)?.parameter_names.into_iter();
 
@@ -129,10 +126,10 @@ fn get_param_name_hints(
             range,
             kind: InlayKind::ParameterHint,
             label: param_name.into(),
-        })
-        .collect();
+        });
 
-    Some(hints)
+    acc.extend(hints);
+    Some(())
 }
 
 fn get_fn_signature(
@@ -164,15 +161,16 @@ fn get_fn_signature(
 }
 
 fn get_pat_type_hints(
+    acc: &mut Vec<InlayHint>,
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
     root_pat: ast::Pat,
     skip_root_pat_hint: bool,
     max_inlay_hint_length: Option<usize>,
-) -> Vec<InlayHint> {
+) {
     let original_pat = &root_pat.clone();
 
-    get_leaf_pats(root_pat)
+    let hints = get_leaf_pats(root_pat)
         .into_iter()
         .filter(|pat| !skip_root_pat_hint || pat != original_pat)
         .filter_map(|pat| {
@@ -186,8 +184,9 @@ fn get_pat_type_hints(
             range,
             kind: InlayKind::TypeHint,
             label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
-        })
-        .collect()
+        });
+
+    acc.extend(hints);
 }
 
 fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
