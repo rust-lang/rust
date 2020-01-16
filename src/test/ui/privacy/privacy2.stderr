@@ -4,11 +4,17 @@ error[E0432]: unresolved import `bar::foo`
 LL |     use bar::foo;
    |         ^^^^^^^^ no `foo` in `bar`
 
-error[E0603]: function `foo` is private
+error[E0603]: function import `foo` is private
   --> $DIR/privacy2.rs:23:20
    |
 LL |     use bar::glob::foo;
-   |                    ^^^
+   |                    ^^^ this function import is private
+   |
+note: the function import `foo` is defined here
+  --> $DIR/privacy2.rs:10:13
+   |
+LL |         use foo;
+   |             ^^^
 
 error: requires `sized` lang_item
 
