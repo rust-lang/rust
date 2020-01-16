@@ -48,6 +48,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
             ChildContainer::ModuleId(it) => it.resolver(self.db),
             ChildContainer::EnumId(it) => it.resolver(self.db),
             ChildContainer::VariantId(it) => it.resolver(self.db),
+            ChildContainer::GenericDefId(it) => it.resolver(self.db),
         };
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
@@ -107,6 +108,19 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
         let c = crate::Module::from_definition(self.db, src.with_value(module_source))?;
         Some(c.id.into())
     }
+
+    fn child_by_source(&mut self, container: ChildContainer) -> &DynMap {
+        let db = self.db;
+        self.child_by_source_cache.entry(container).or_insert_with(|| match container {
+            ChildContainer::DefWithBodyId(it) => it.child_by_source(db),
+            ChildContainer::ModuleId(it) => it.child_by_source(db),
+            ChildContainer::TraitId(it) => it.child_by_source(db),
+            ChildContainer::ImplId(it) => it.child_by_source(db),
+            ChildContainer::EnumId(it) => it.child_by_source(db),
+            ChildContainer::VariantId(it) => it.child_by_source(db),
+            ChildContainer::GenericDefId(it) => it.child_by_source(db),
+        })
+    }
 }
 
 pub trait ToId: Sized {
@@ -157,6 +171,9 @@ enum ChildContainer {
     ImplId(ImplId),
     EnumId(EnumId),
     VariantId(VariantId),
+    /// XXX: this might be the same def as, for example an `EnumId`. However,
+    /// here the children generic parameters, and not, eg enum variants.
+    GenericDefId(GenericDefId),
 }
 impl_froms! {
     ChildContainer:
@@ -166,6 +183,7 @@ impl_froms! {
     ImplId,
     EnumId,
     VariantId,
+    GenericDefId
 }
 
 pub trait ToIdByKey: Sized + AstNode + 'static {
@@ -189,6 +207,7 @@ impl<T: ToIdByKey> ToId for T {
                 ChildContainer::ImplId(it) => it.child_by_source(db),
                 ChildContainer::EnumId(it) => it.child_by_source(db),
                 ChildContainer::VariantId(it) => it.child_by_source(db),
+                ChildContainer::GenericDefId(it) => it.child_by_source(db),
             });
         dyn_map[T::KEY].get(&src).copied()
     }
@@ -283,7 +302,7 @@ impl ToDef for ast::TypeParam {
             };
             Some(res)
         })?;
-        let &id = parent.child_by_source(sb.db)[keys::TYPE_PARAM].get(&src)?;
+        let &id = sb.child_by_source(parent.into())[keys::TYPE_PARAM].get(&src)?;
         Some(TypeParam { id })
     }
 }
