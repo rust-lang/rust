@@ -27,7 +27,7 @@ extern "C" {
 
 pub use self::shims::*;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(all(target_env = "msvc", target_arch = "x86")))]
 mod shims {
     use libc::c_float;
 
@@ -43,10 +43,10 @@ mod shims {
     }
 }
 
-// On MSVC these functions aren't defined, so we just define shims which promote
-// everything fo f64, perform the calculation, and then demote back to f32.
-// While not precisely correct should be "correct enough" for now.
-#[cfg(target_env = "msvc")]
+// On 32-bit x86 MSVC these functions aren't defined, so we just define shims
+// which promote everything fo f64, perform the calculation, and then demote
+// back to f32. While not precisely correct should be "correct enough" for now.
+#[cfg(all(target_env = "msvc", target_arch = "x86"))]
 mod shims {
     use libc::c_float;
 
