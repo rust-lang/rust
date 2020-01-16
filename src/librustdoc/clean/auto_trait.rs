@@ -239,7 +239,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         //  constraint, and add it to our list. Since we make sure to never re-add
         //  deleted items, this process will always finish.
         while !vid_map.is_empty() {
-            let target = vid_map.keys().next().expect("Keys somehow empty").clone();
+            let target = *vid_map.keys().next().expect("Keys somehow empty");
             let deps = vid_map.remove(&target).expect("Entry somehow missing");
 
             for smaller in deps.smaller.iter() {

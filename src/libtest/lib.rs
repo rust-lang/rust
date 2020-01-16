@@ -485,9 +485,7 @@ pub fn run_test(
         }
         StaticBenchFn(benchfn) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
-                (benchfn.clone())(harness)
-            });
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, benchfn);
         }
         DynTestFn(f) => {
             match strategy {
