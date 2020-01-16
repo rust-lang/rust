@@ -100,18 +100,17 @@ mod debug_struct {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt.debug_struct("Foo")
-                    .finish_non_exhaustive()
+                fmt.debug_struct("Foo").finish_non_exhaustive()
             }
         }
 
-
         assert_eq!("Foo { .. }", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+            "Foo {
     ..
 }",
-                   format!("{:#?}", Foo));
+            format!("{:#?}", Foo)
+        );
     }
 
     #[test]
@@ -129,12 +128,13 @@ mod debug_struct {
 
         assert_eq!("Foo { bar: true, baz: 10/20, .. }", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+            "Foo {
     bar: true,
     baz: 10/20,
     ..
 }",
-                   format!("{:#?}", Foo));
+            format!("{:#?}", Foo)
+        );
     }
 
     #[test]
@@ -161,10 +161,12 @@ mod debug_struct {
             }
         }
 
-        assert_eq!("Bar { foo: Foo { bar: true, baz: 10/20, .. }, hello: \"world\", .. }",
-                   format!("{:?}", Bar));
         assert_eq!(
-"Bar {
+            "Bar { foo: Foo { bar: true, baz: 10/20, .. }, hello: \"world\", .. }",
+            format!("{:?}", Bar)
+        );
+        assert_eq!(
+            "Bar {
     foo: Foo {
         bar: true,
         baz: 10/20,
@@ -173,9 +175,9 @@ mod debug_struct {
     hello: \"world\",
     ..
 }",
-                   format!("{:#?}", Bar));
+            format!("{:#?}", Bar)
+        );
     }
-
 }
 
 mod debug_tuple {
