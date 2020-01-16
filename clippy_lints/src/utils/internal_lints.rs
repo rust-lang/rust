@@ -13,10 +13,10 @@ use rustc_hir::*;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::declare_tool_lint;
 use rustc_session::{declare_lint_pass, impl_lint_pass};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::SymbolStr;
 use syntax::ast;
-use syntax::ast::{Crate as AstCrate, ItemKind, Name};
+use syntax::ast::{Crate as AstCrate, ItemKind, LitKind, Name};
 use syntax::visit::FnKind;
 
 declare_clippy_lint! {
@@ -121,6 +121,29 @@ declare_clippy_lint! {
     "this message should not appear anywhere as we ICE before and don't emit the lint"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for cases of an auto-generated lint without an updated description,
+    /// i.e. `default lint description`.
+    ///
+    /// **Why is this bad?** Indicates that the lint is not finished.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// declare_lint! { pub COOL_LINT, nursery, "default lint description" }
+    /// ```
+    ///
+    /// Good:
+    /// ```rust,ignore
+    /// declare_lint! { pub COOL_LINT, nursery, "a great new lint" }
+    /// ```
+    pub DEFAULT_LINT,
+    internal,
+    "found 'default lint description' in a lint declaration"
+}
+
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
@@ -163,12 +186,34 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Name>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [LINT_WITHOUT_LINT_PASS]);
+impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        if let hir::ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
+        if let hir::ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
+                let expr = &cx.tcx.hir().body(body_id).value;
+                if_chain! {
+                    if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
+                    if let ExprKind::Struct(_, ref fields, _) = inner_exp.kind;
+                    let field = fields.iter()
+                                      .find(|f| f.ident.as_str() == "desc")
+                                      .expect("lints must have a description field");
+                    if let ExprKind::Lit(Spanned {
+                        node: LitKind::Str(ref sym, _),
+                        ..
+                    }) = field.expr.kind;
+                    if sym.as_str() == "default lint description";
+
+                    then {
+                        span_lint(
+                            cx,
+                            DEFAULT_LINT,
+                            item.span,
+                            &format!("the lint `{}` has the default lint description", item.ident.name),
+                        );
+                    }
+                }
                 self.declared_lints.insert(item.ident.name, item.span);
             }
         } else if is_expn_of(item.span, "impl_lint_pass").is_some()

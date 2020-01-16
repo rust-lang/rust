@@ -9,6 +9,7 @@ because that's clearly a non-descriptive name.
 
 - [Adding a new lint](#adding-a-new-lint)
   - [Setup](#setup)
+  - [Getting Started](#getting-started)
   - [Testing](#testing)
   - [Rustfix tests](#rustfix-tests)
   - [Edition 2018 tests](#edition-2018-tests)
@@ -31,6 +32,19 @@ which can change rapidly. Make sure you're working near rust-clippy's master,
 and use the `setup-toolchain.sh` script to configure the appropriate toolchain
 for the Clippy directory.
 
+### Getting Started
+
+There is a bit of boilerplate code that needs to be set up when creating a new
+lint. Fortunately, you can use the clippy dev tools to handle this for you. We
+are naming our new lint `foo_functions` (lints are generally written in snake
+case), and we don't need type information so it will have an early pass type
+(more on this later on). To get started on this lint you can run
+`./util/dev new_lint --name=foo_functions --pass=early --category=pedantic`
+(category will default to nursery if not provided). This command will create
+two files: `tests/ui/foo_functions.rs` and `clippy_lints/src/foo_functions.rs`,
+as well as run `./util/dev update_lints` to register the new lint. Next, we'll
+open up these files and add our lint!
+
 ### Testing
 
 Let's write some tests first that we can execute while we iterate on our lint.
@@ -41,11 +55,9 @@ we want to check. The output of Clippy is compared against a `.stderr` file.
 Note that you don't have to create this file yourself, we'll get to
 generating the `.stderr` files further down.
 
-We start by creating the test file at `tests/ui/foo_functions.rs`. It doesn't
-really matter what the file is called, but it's a good convention to name it
-after the lint it is testing, so `foo_functions.rs` it is.
+We start by opening the test file created at `tests/ui/foo_functions.rs`. 
 
-Inside the file we put some examples to get started:
+Update the file with some examples to get started:
 
 ```rust
 #![warn(clippy::foo_functions)]
@@ -90,8 +102,8 @@ Once we are satisfied with the output, we need to run
 `tests/ui/update-all-references.sh` to update the `.stderr` file for our lint.
 Please note that, we should run `TESTNAME=foo_functions cargo uitest`
 every time before running `tests/ui/update-all-references.sh`.
-Running `TESTNAME=foo_functions cargo uitest` should pass then. When we
-commit our lint, we need to commit the generated `.stderr` files, too.
+Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit 
+our lint, we need to commit the generated `.stderr` files, too.
 
 ### Rustfix tests
 
@@ -121,26 +133,42 @@ With tests in place, let's have a look at implementing our lint now.
 
 ### Lint declaration
 
-We start by creating a new file in the `clippy_lints` crate. That's the crate
-where all the lint code is. We are going to call the file
-`clippy_lints/src/foo_functions.rs` and import some initial things we need:
+Let's start by opening the new file created in the `clippy_lints` crate 
+at `clippy_lints/src/foo_functions.rs`. That's the crate where all the
+lint code is. This file has already imported some initial things we will need:
 
 ```rust
-use rustc::lint::{LintArray, LintPass, EarlyLintPass};
+use rustc::lint::{LintArray, LintPass, EarlyLintPass, EarlyContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use syntax::ast::*;
 ```
 
-The next step is to provide a lint declaration. Lints are declared using the
-[`declare_clippy_lint!`][declare_clippy_lint] macro:
+The next step is to update the lint declaration. Lints are declared using the
+[`declare_clippy_lint!`][declare_clippy_lint] macro, and we just need to update
+the auto-generated lint declaration to have a real description, something like this:
 
 ```rust
 declare_clippy_lint! {
+    /// **What it does:**
+    ///
+    /// **Why is this bad?**
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code
+    /// ```
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
 }
 ```
 
+* The section of lines prefixed with `///` constitutes the lint documentation
+section. This is the default documentation style and will be displayed at
+https://rust-lang.github.io/rust-clippy/master/index.html.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the [lint naming
 guidelines][lint_naming] here when naming your lint. In short, the name should
 state the thing that is being checked for and read well when used with
@@ -150,8 +178,8 @@ state the thing that is being checked for and read well when used with
 * The last part should be a text that explains what exactly is wrong with the
   code
 
-With our lint declaration done, we will now make sure that it is assigned to a
-lint pass:
+The rest of this file contains an empty implementation for our lint pass, 
+which in this case is `EarlyLintPass` and should look like this:
 
 ```rust
 // clippy_lints/src/foo_functions.rs
@@ -166,12 +194,9 @@ impl EarlyLintPass for FooFunctions {}
 Don't worry about the `name` method here. As long as it includes the name of the
 lint pass it should be fine.
 
-Next we need to run `util/dev update_lints` to register the lint in various
-places, mainly in `clippy_lints/src/lib.rs`.
-
-While `update_lints` automates some things, it doesn't automate everything. We
-will have to register our lint pass manually in the `register_plugins` function
-in `clippy_lints/src/lib.rs`:
+The new lint automation runs `update_lints`, which automates some things, but it 
+doesn't automate everything. We will have to register our lint pass manually in
+the `register_plugins` function in `clippy_lints/src/lib.rs`:
 
 ```rust
 reg.register_early_lint_pass(box foo_functions::FooFunctions);
@@ -195,14 +220,9 @@ In short, the `LateLintPass` has access to type information while the
 `EarlyLintPass`. The `EarlyLintPass` is also faster. However linting speed
 hasn't really been a concern with Clippy so far.
 
-Since we don't need type information for checking the function name, we are
-going to use the `EarlyLintPass`. It has to be imported as well, changing our
-imports to:
-
-```rust
-use rustc::lint::{LintArray, LintPass, EarlyLintPass, EarlyContext};
-use rustc::{declare_tool_lint, lint_array};
-```
+Since we don't need type information for checking the function name, we used
+`--pass=early` when running the new lint automation and all the imports were
+added accordingly.
 
 ### Emitting a lint
 

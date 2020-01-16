@@ -1,0 +1,182 @@
+use std::fs::{File, OpenOptions};
+use std::io;
+use std::io::prelude::*;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
+
+pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>) -> Result<(), io::Error> {
+    let pass = pass.expect("`pass` argument is validated by clap");
+    let lint_name = lint_name.expect("`name` argument is validated by clap");
+    let category = category.expect("`category` argument is validated by clap");
+
+    match open_files(lint_name) {
+        Ok((mut test_file, mut lint_file)) => {
+            let (pass_type, pass_import, context_import) = match pass {
+                "early" => ("EarlyLintPass", "use syntax::ast::*;", "EarlyContext"),
+                "late" => ("LateLintPass", "use rustc_hir::*;", "LateContext"),
+                _ => {
+                    unreachable!("`pass_type` should only ever be `early` or `late`!");
+                },
+            };
+
+            let camel_case_name = to_camel_case(lint_name);
+
+            if let Err(e) = test_file.write_all(get_test_file_contents(lint_name).as_bytes()) {
+                return Err(io::Error::new(
+                    ErrorKind::Other,
+                    format!("Could not write to test file: {}", e),
+                ));
+            };
+
+            if let Err(e) = lint_file.write_all(
+                get_lint_file_contents(
+                    pass_type,
+                    lint_name,
+                    &camel_case_name,
+                    category,
+                    pass_import,
+                    context_import,
+                )
+                .as_bytes(),
+            ) {
+                return Err(io::Error::new(
+                    ErrorKind::Other,
+                    format!("Could not write to lint file: {}", e),
+                ));
+            }
+            Ok(())
+        },
+        Err(e) => Err(io::Error::new(
+            ErrorKind::Other,
+            format!("Unable to create lint: {}", e),
+        )),
+    }
+}
+
+fn open_files(lint_name: &str) -> Result<(File, File), io::Error> {
+    let project_root = project_root()?;
+
+    let test_file_path = project_root.join("tests").join("ui").join(format!("{}.rs", lint_name));
+    let lint_file_path = project_root
+        .join("clippy_lints")
+        .join("src")
+        .join(format!("{}.rs", lint_name));
+
+    if Path::new(&test_file_path).exists() {
+        return Err(io::Error::new(
+            ErrorKind::AlreadyExists,
+            format!("test file {:?} already exists", test_file_path),
+        ));
+    }
+    if Path::new(&lint_file_path).exists() {
+        return Err(io::Error::new(
+            ErrorKind::AlreadyExists,
+            format!("lint file {:?} already exists", lint_file_path),
+        ));
+    }
+
+    let test_file = OpenOptions::new().write(true).create_new(true).open(test_file_path)?;
+    let lint_file = OpenOptions::new().write(true).create_new(true).open(lint_file_path)?;
+
+    Ok((test_file, lint_file))
+}
+
+fn project_root() -> Result<PathBuf, io::Error> {
+    let current_dir = std::env::current_dir()?;
+    for path in current_dir.ancestors() {
+        let result = std::fs::read_to_string(path.join("Cargo.toml"));
+        if let Err(err) = &result {
+            if err.kind() == io::ErrorKind::NotFound {
+                continue;
+            }
+        }
+
+        let content = result?;
+        if content.contains("[package]\nname = \"clippy\"") {
+            return Ok(path.to_path_buf());
+        }
+    }
+    Err(io::Error::new(ErrorKind::Other, "Unable to find project root"))
+}
+
+fn to_camel_case(name: &str) -> String {
+    name.split('_')
+        .map(|s| {
+            if s.is_empty() {
+                String::from("")
+            } else {
+                [&s[0..1].to_uppercase(), &s[1..]].concat()
+            }
+        })
+        .collect()
+}
+
+fn get_test_file_contents(lint_name: &str) -> String {
+    format!(
+        "#![warn(clippy::{})]
+
+fn main() {{
+    // test code goes here
+}}
+",
+        lint_name
+    )
+}
+
+fn get_lint_file_contents(
+    pass_type: &str,
+    lint_name: &str,
+    camel_case_name: &str,
+    category: &str,
+    pass_import: &str,
+    context_import: &str,
+) -> String {
+    format!(
+        "use rustc::lint::{{LintArray, LintPass, {type}, {context_import}}};
+use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+{pass_import}
+
+declare_clippy_lint! {{
+    /// **What it does:**
+    ///
+    /// **Why is this bad?**
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code
+    /// ```
+    pub {name_upper},
+    {category},
+    \"default lint description\"
+}}
+
+declare_lint_pass!({name_camel} => [{name_upper}]);
+
+impl {type} for {name_camel} {{}}
+",
+        type=pass_type,
+        name_upper=lint_name.to_uppercase(),
+        name_camel=camel_case_name,
+        category=category,
+        pass_import=pass_import,
+        context_import=context_import
+    )
+}
+
+#[test]
+fn test_camel_case() {
+    let s = "a_lint";
+    let s2 = to_camel_case(s);
+    assert_eq!(s2, "ALint");
+
+    let name = "a_really_long_new_lint";
+    let name2 = to_camel_case(name);
+    assert_eq!(name2, "AReallyLongNewLint");
+
+    let name3 = "lint__name";
+    let name4 = to_camel_case(name3);
+    assert_eq!(name4, "LintName");
+}

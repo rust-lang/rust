@@ -4,6 +4,7 @@ use clap::{App, Arg, SubCommand};
 use clippy_dev::*;
 
 mod fmt;
+mod new_lint;
 mod stderr_length_check;
 
 #[derive(PartialEq)]
@@ -51,6 +52,47 @@ fn main() {
                         .help("Checks that util/dev update_lints has been run. Used on CI."),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("new_lint")
+                .about("Create new lint and run util/dev update_lints")
+                .arg(
+                    Arg::with_name("pass")
+                        .short("p")
+                        .long("pass")
+                        .help("Specify whether the lint runs during the early or late pass")
+                        .takes_value(true)
+                        .possible_values(&["early", "late"])
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("name")
+                        .short("n")
+                        .long("name")
+                        .help("Name of the new lint in snake case, ex: fn_too_long")
+                        .takes_value(true)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("category")
+                        .short("c")
+                        .long("category")
+                        .help("What category the lint belongs to")
+                        .default_value("nursery")
+                        .possible_values(&[
+                            "style",
+                            "correctness",
+                            "complexity",
+                            "perf",
+                            "pedantic",
+                            "restriction",
+                            "cargo",
+                            "nursery",
+                            "internal",
+                            "internal_warn",
+                        ])
+                        .takes_value(true),
+                ),
+        )
         .arg(
             Arg::with_name("limit-stderr-length")
                 .long("limit-stderr-length")
@@ -73,6 +115,16 @@ fn main() {
                 update_lints(&UpdateMode::Check);
             } else {
                 update_lints(&UpdateMode::Change);
+            }
+        },
+        ("new_lint", Some(matches)) => {
+            match new_lint::create(
+                matches.value_of("pass"),
+                matches.value_of("name"),
+                matches.value_of("category"),
+            ) {
+                Ok(_) => update_lints(&UpdateMode::Change),
+                Err(e) => eprintln!("Unable to create lint: {}", e),
             }
         },
         _ => {},
