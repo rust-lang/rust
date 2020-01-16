@@ -1,6 +1,6 @@
 //! Functions that are used to classify an element from its definition or reference.
 
-use hir::{InFile, Module, ModuleSource, PathResolution, SourceBinder};
+use hir::{InFile, PathResolution, SourceBinder};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
@@ -35,16 +35,7 @@ pub(crate) fn classify_name(
                 Some(from_struct_field(sb.db, field))
             },
             ast::Module(it) => {
-                let def = {
-                    if !it.has_semi() {
-                        let ast = hir::ModuleSource::Module(it);
-                        let src = name.with_value(ast);
-                        hir::Module::from_definition(sb.db, src)
-                    } else {
-                        let src = name.with_value(it);
-                        sb.to_def(src)
-                    }
-                }?;
+                let def = sb.to_def(name.with_value(it))?;
                 Some(from_module_def(sb.db, def.into(), None))
             },
             ast::StructDef(it) => {
@@ -103,8 +94,7 @@ pub(crate) fn classify_name(
                 let src = name.with_value(it);
                 let def = sb.to_def(src.clone())?;
 
-                let module_src = ModuleSource::from_child_node(sb.db, src.as_ref().map(|it| it.syntax()));
-                let module = Module::from_definition(sb.db, src.with_value(module_src))?;
+                let module = sb.to_module_def(src.file_id.original_file(sb.db))?;
 
                 Some(NameDefinition {
                     visibility: None,
@@ -157,10 +147,9 @@ pub(crate) fn classify_name_ref(
         }
     }
 
-    let ast = ModuleSource::from_child_node(sb.db, name_ref.with_value(&parent));
     // FIXME: find correct container and visibility for each case
-    let container = Module::from_definition(sb.db, name_ref.with_value(ast))?;
     let visibility = None;
+    let container = sb.to_module_def(name_ref.file_id.original_file(sb.db))?;
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
         tested_by!(goto_def_for_macros);
@@ -178,12 +167,13 @@ pub(crate) fn classify_name_ref(
         PathResolution::Def(def) => Some(from_module_def(sb.db, def, Some(container))),
         PathResolution::AssocItem(item) => Some(from_assoc_item(sb.db, item)),
         PathResolution::Local(local) => {
-            let container = local.module(sb.db);
             let kind = NameKind::Local(local);
+            let container = local.module(sb.db);
             Some(NameDefinition { kind, container, visibility: None })
         }
         PathResolution::TypeParam(par) => {
             let kind = NameKind::TypeParam(par);
+            let container = par.module(sb.db);
             Some(NameDefinition { kind, container, visibility })
         }
         PathResolution::Macro(def) => {

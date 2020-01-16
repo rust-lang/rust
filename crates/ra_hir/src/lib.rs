@@ -36,7 +36,6 @@ mod from_id;
 mod code_model;
 
 mod has_source;
-mod from_source;
 
 pub use crate::{
     code_model::{

@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{ImplBlock, SourceBinder};
+use hir::{Crate, ImplBlock, SourceBinder};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -14,21 +14,17 @@ pub(crate) fn goto_implementation(
     let syntax = parse.tree().syntax().clone();
     let mut sb = SourceBinder::new(db);
 
-    let src = hir::ModuleSource::from_position(db, position);
-    let module = hir::Module::from_definition(
-        db,
-        hir::InFile { file_id: position.file_id.into(), value: src },
-    )?;
+    let krate = sb.to_module_def(position.file_id)?.krate();
 
     if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             nominal_def.syntax().text_range(),
-            impls_for_def(&mut sb, position, &nominal_def, module)?,
+            impls_for_def(&mut sb, position, &nominal_def, krate)?,
         ));
     } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             trait_def.syntax().text_range(),
-            impls_for_trait(&mut sb, position, &trait_def, module)?,
+            impls_for_trait(&mut sb, position, &trait_def, krate)?,
         ));
     }
 
@@ -39,7 +35,7 @@ fn impls_for_def(
     sb: &mut SourceBinder<RootDatabase>,
     position: FilePosition,
     node: &ast::NominalDef,
-    module: hir::Module,
+    krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let ty = match node {
         ast::NominalDef::StructDef(def) => {
@@ -56,7 +52,6 @@ fn impls_for_def(
         }
     };
 
-    let krate = module.krate();
     let impls = ImplBlock::all_in_crate(sb.db, krate);
 
     Some(
@@ -72,12 +67,11 @@ fn impls_for_trait(
     sb: &mut SourceBinder<RootDatabase>,
     position: FilePosition,
     node: &ast::TraitDef,
-    module: hir::Module,
+    krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let src = hir::InFile { file_id: position.file_id.into(), value: node.clone() };
     let tr = sb.to_def(src)?;
 
-    let krate = module.krate();
     let impls = ImplBlock::for_trait(sb.db, krate, tr);
 
     Some(impls.into_iter().map(|imp| imp.to_nav(sb.db)).collect())

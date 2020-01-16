@@ -52,15 +52,11 @@ impl<'a> CompletionContext<'a> {
         original_parse: &'a Parse<ast::SourceFile>,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
-        let src = hir::ModuleSource::from_position(db, position);
-        let module = hir::Module::from_definition(
-            db,
-            hir::InFile { file_id: position.file_id.into(), value: src },
-        );
+        let mut sb = hir::SourceBinder::new(db);
+        let module = sb.to_module_def(position.file_id);
         let token =
             original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
-        let analyzer = hir::SourceAnalyzer::new(
-            db,
+        let analyzer = sb.analyze(
             hir::InFile::new(position.file_id.into(), &token.parent()),
             Some(position.offset),
         );

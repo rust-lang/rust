@@ -23,6 +23,7 @@ pub enum Severity {
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let _p = profile("diagnostics");
+    let mut sb = hir::SourceBinder::new(db);
     let parse = db.parse(file_id);
     let mut res = Vec::new();
 
@@ -108,10 +109,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             fix: Some(fix),
         })
     });
-    let source_file = db.parse(file_id).tree();
-    let src =
-        hir::InFile { file_id: file_id.into(), value: hir::ModuleSource::SourceFile(source_file) };
-    if let Some(m) = hir::Module::from_definition(db, src) {
+    if let Some(m) = sb.to_module_def(file_id) {
         m.diagnostics(db, &mut sink);
     };
     drop(sink);

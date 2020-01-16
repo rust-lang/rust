@@ -19,7 +19,8 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{db::HirDatabase, Local, Module, ModuleSource, SourceAnalyzer, TypeParam};
+use crate::{db::HirDatabase, Local, Module, SourceAnalyzer, TypeParam};
+use ra_db::FileId;
 
 pub struct SourceBinder<'a, DB> {
     pub db: &'a DB,
@@ -58,6 +59,16 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
 
     pub fn to_def<T: ToDef>(&mut self, src: InFile<T>) -> Option<T::Def> {
         T::to_def(self, src)
+    }
+
+    pub fn to_module_def(&mut self, file: FileId) -> Option<Module> {
+        let _p = profile("SourceBinder::to_module_def");
+        let (krate, local_id) = self.db.relevant_crates(file).iter().find_map(|&crate_id| {
+            let crate_def_map = self.db.crate_def_map(crate_id);
+            let local_id = crate_def_map.modules_for_file(file).next()?;
+            Some((crate_id, local_id))
+        })?;
+        Some(Module { id: ModuleId { krate, local_id } })
     }
 
     fn to_id<T: ToId>(&mut self, src: InFile<T>) -> Option<T::ID> {
@@ -107,8 +118,7 @@ impl<DB: HirDatabase> SourceBinder<'_, DB> {
             return Some(res);
         }
 
-        let module_source = ModuleSource::from_child_node(self.db, src);
-        let c = crate::Module::from_definition(self.db, src.with_value(module_source))?;
+        let c = self.to_module_def(src.file_id.original_file(self.db))?;
         Some(c.id.into())
     }
 
@@ -248,14 +258,12 @@ impl ToId for ast::MacroCall {
     ) -> Option<Self::ID> {
         let kind = MacroDefKind::Declarative;
 
-        let module_src = ModuleSource::from_child_node(sb.db, src.as_ref().map(|it| it.syntax()));
-        let module = crate::Module::from_definition(sb.db, InFile::new(src.file_id, module_src))?;
-        let krate = Some(module.krate().id);
+        let krate = sb.to_module_def(src.file_id.original_file(sb.db))?.id.krate;
 
         let ast_id =
             Some(AstId::new(src.file_id, sb.db.ast_id_map(src.file_id).ast_id(&src.value)));
 
-        Some(MacroDefId { krate, ast_id, kind })
+        Some(MacroDefId { krate: Some(krate), ast_id, kind })
     }
 }
 
@@ -319,21 +327,22 @@ impl ToDef for ast::Module {
     ) -> Option<Module> {
         {
             let _p = profile("ast::Module::to_def");
-            let parent_declaration =
-                src.value.syntax().ancestors().skip(1).find_map(ast::Module::cast);
+            let parent_declaration = src
+                .as_ref()
+                .map(|it| it.syntax())
+                .cloned()
+                .ancestors_with_macros(sb.db)
+                .skip(1)
+                .find_map(|it| {
+                    let m = ast::Module::cast(it.value.clone())?;
+                    Some(it.with_value(m))
+                });
 
             let parent_module = match parent_declaration {
-                Some(parent_declaration) => {
-                    let src_parent = InFile { file_id: src.file_id, value: parent_declaration };
-                    sb.to_def(src_parent)
-                }
+                Some(parent_declaration) => sb.to_def(parent_declaration),
                 None => {
-                    let source_file = sb.db.parse(src.file_id.original_file(sb.db)).tree();
-                    let src_parent = InFile {
-                        file_id: src.file_id,
-                        value: ModuleSource::SourceFile(source_file),
-                    };
-                    Module::from_definition(sb.db, src_parent)
+                    let file_id = src.file_id.original_file(sb.db);
+                    sb.to_module_def(file_id)
                 }
             }?;
 

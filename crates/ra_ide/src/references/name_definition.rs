@@ -25,6 +25,8 @@ pub enum NameKind {
 #[derive(PartialEq, Eq)]
 pub(crate) struct NameDefinition {
     pub visibility: Option<ast::Visibility>,
+    /// FIXME: this doesn't really make sense. For example, builtin types don't
+    /// really have a module.
     pub container: Module,
     pub kind: NameKind,
 }
