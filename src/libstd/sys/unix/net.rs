@@ -140,10 +140,7 @@ impl Socket {
             }
 
             let timeout = timeout - elapsed;
-            let mut timeout = timeout
-                .as_secs()
-                .saturating_mul(1_000)
-                .saturating_add(timeout.subsec_nanos() as u64 / 1_000_000);
+            let mut timeout = timeout.as_millis() as u64;
             if timeout == 0 {
                 timeout = 1;
             }
