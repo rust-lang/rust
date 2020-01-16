@@ -681,10 +681,12 @@ pub fn handle_code_action(
             continue;
         }
 
-        let edits = vec![TextEdit::new(fix.location.range, fix.replacement.clone())];
-        let mut edit_map = std::collections::HashMap::new();
-        edit_map.insert(fix.location.uri.clone(), edits);
-        let edit = WorkspaceEdit::new(edit_map);
+        let edit = {
+            let edits = vec![TextEdit::new(fix.location.range, fix.replacement.clone())];
+            let mut edit_map = std::collections::HashMap::new();
+            edit_map.insert(fix.location.uri.clone(), edits);
+            WorkspaceEdit::new(edit_map)
+        };
 
         let action = CodeAction {
             title: fix.title.clone(),
