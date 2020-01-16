@@ -11,9 +11,9 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
 
     match open_files(lint_name) {
         Ok((mut test_file, mut lint_file)) => {
-            let (pass_type, pass_import, context_import) = match pass {
-                "early" => ("EarlyLintPass", "use syntax::ast::*;", "EarlyContext"),
-                "late" => ("LateLintPass", "use rustc_hir::*;", "LateContext"),
+            let (pass_type, pass_lifetimes, pass_import, context_import) = match pass {
+                "early" => ("EarlyLintPass", "", "use syntax::ast::*;", "EarlyContext"),
+                "late" => ("LateLintPass", "<'_, '_>", "use rustc_hir::*;", "LateContext"),
                 _ => {
                     unreachable!("`pass_type` should only ever be `early` or `late`!");
                 },
@@ -31,6 +31,7 @@ pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str
             if let Err(e) = lint_file.write_all(
                 get_lint_file_contents(
                     pass_type,
+                    pass_lifetimes,
                     lint_name,
                     &camel_case_name,
                     category,
@@ -125,6 +126,7 @@ fn main() {{
 
 fn get_lint_file_contents(
     pass_type: &str,
+    pass_lifetimes: &str,
     lint_name: &str,
     camel_case_name: &str,
     category: &str,
@@ -155,9 +157,10 @@ declare_clippy_lint! {{
 
 declare_lint_pass!({name_camel} => [{name_upper}]);
 
-impl {type} for {name_camel} {{}}
+impl {type}{lifetimes} for {name_camel} {{}}
 ",
         type=pass_type,
+        lifetimes=pass_lifetimes,
         name_upper=lint_name.to_uppercase(),
         name_camel=camel_case_name,
         category=category,
