@@ -355,7 +355,7 @@ impl f32 {
         return unsafe { intrinsics::powf32(self, n) };
     }
 
-    /// Takes the square root of a number.
+    /// Returns the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
