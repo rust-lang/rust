@@ -33,6 +33,9 @@ LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/trait-object-trait-parens.rs:11:31
    |
+LL | fn main() {
+   |        - help: consider introducing lifetime `'a` here: `<'a>`
+...
 LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
    |                               ^^ undeclared lifetime
 

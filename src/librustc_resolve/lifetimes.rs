@@ -183,6 +183,10 @@ struct LifetimeContext<'a, 'tcx> {
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
 
     lifetime_uses: &'a mut DefIdMap<LifetimeUseSet<'tcx>>,
+
+    /// When encountering an undefined named lifetime, we will suggest introducing it in these
+    /// places.
+    missing_named_lifetime_spots: Vec<&'tcx hir::Generics<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -342,6 +346,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
             labels_in_fn: vec![],
             xcrate_object_lifetime_defaults: Default::default(),
             lifetime_uses: &mut Default::default(),
+            missing_named_lifetime_spots: vec![],
         };
         for (_, item) in &krate.items {
             visitor.visit_item(item);
@@ -384,9 +389,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
+                self.missing_named_lifetime_spots.push(generics);
                 self.visit_early_late(None, &sig.decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
 
             hir::ItemKind::ExternCrate(_)
@@ -417,6 +424,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
             | hir::ItemKind::Impl { ref generics, .. } => {
+                self.missing_named_lifetime_spots.push(generics);
+
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
                 let track_lifetime_uses = match item.kind {
@@ -454,6 +463,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.check_lifetime_params(old_scope, &generics.params);
                     intravisit::walk_item(this, item);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
         }
     }
@@ -686,6 +696,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
+        self.missing_named_lifetime_spots.push(&trait_item.generics);
         match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -737,10 +748,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 intravisit::walk_trait_item(self, trait_item);
             }
         }
+        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
+        self.missing_named_lifetime_spots.push(&impl_item.generics);
         match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -824,6 +837,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 intravisit::walk_impl_item(self, impl_item);
             }
         }
+        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
@@ -1306,7 +1320,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
     {
-        let LifetimeContext { tcx, map, lifetime_uses, .. } = self;
+        let LifetimeContext { tcx, map, lifetime_uses, missing_named_lifetime_spots, .. } = self;
         let labels_in_fn = take(&mut self.labels_in_fn);
         let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
         let mut this = LifetimeContext {
@@ -1317,7 +1331,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             is_in_fn_syntax: self.is_in_fn_syntax,
             labels_in_fn,
             xcrate_object_lifetime_defaults,
-            lifetime_uses: lifetime_uses,
+            lifetime_uses,
+            missing_named_lifetime_spots: missing_named_lifetime_spots.to_vec(),
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
@@ -1807,15 +1822,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             self.insert_lifetime(lifetime_ref, def);
         } else {
-            struct_span_err!(
+            let mut err = struct_span_err!(
                 self.tcx.sess,
                 lifetime_ref.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref
-            )
-            .span_label(lifetime_ref.span, "undeclared lifetime")
-            .emit();
+            );
+            err.span_label(lifetime_ref.span, "undeclared lifetime");
+            if !self.is_in_fn_syntax {
+                for generics in &self.missing_named_lifetime_spots {
+                    let (span, sugg) = match &generics.params {
+                        [] => (generics.span, format!("<{}>", lifetime_ref)),
+                        [param, ..] => (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref)),
+                    };
+                    err.span_suggestion(
+                        span,
+                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            err.emit();
         }
     }
 
