@@ -109,10 +109,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = 3.5_f64;
-    /// let y = -3.5_f64;
-    /// let abs_difference_x = (x.fract() - 0.5).abs();
-    /// let abs_difference_y = (y.fract() - (-0.5)).abs();
+    /// let x = 3.6_f64;
+    /// let y = -3.6_f64;
+    /// let abs_difference_x = (x.fract() - 0.6).abs();
+    /// let abs_difference_y = (y.fract() - (-0.6)).abs();
     ///
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
