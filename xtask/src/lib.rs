@@ -53,6 +53,7 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
     write!(rustfmt.stdin.take().unwrap(), "{}", text)?;
     let output = rustfmt.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout)?;
+    // TODO: update the preable: replace ra_tools with the relevant path
     let preamble = "Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`";
     Ok(format!("//! {}\n\n{}", preamble, stdout))
 }
