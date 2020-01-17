@@ -350,7 +350,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat<'_>) {
-        if let &PatKind::Binding(_, _, ident, _) = &p.kind {
+        if let &PatKind::Binding(_, hid, ident, _) = &p.kind {
+            if let hir::Node::Pat(parent_pat) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
+            {
+                if let PatKind::Struct(_, field_pats, _) = &parent_pat.kind {
+                    for field in field_pats.iter() {
+                        if field.ident != ident {
+                            // Only check if a new name has been introduced, to avoid warning
+                            // on both the struct definition and this pattern.
+                            self.check_snake_case(cx, "variable", &ident);
+                        }
+                    }
+                    return;
+                }
+            }
             self.check_snake_case(cx, "variable", &ident);
         }
     }
