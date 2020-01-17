@@ -386,11 +386,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
                     // FIXME: find implementation of trait corresponding to operation
                     // symbol and resolve associated `Output` type
-                    let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty);
+                    let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
                     let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
 
                     // FIXME: similar as above, return ty is often associated trait type
-                    op::binary_op_return_ty(*op, rhs_ty)
+                    op::binary_op_return_ty(*op, lhs_ty, rhs_ty)
                 }
                 _ => Ty::Unknown,
             },
