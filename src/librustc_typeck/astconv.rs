@@ -1320,10 +1320,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // those that do.
                 self.one_bound_for_assoc_type(
                     || traits::supertraits(tcx, trait_ref),
-                    &trait_ref.print_only_trait_path().to_string(),
+                    || trait_ref.print_only_trait_path().to_string(),
                     binding.item_name,
                     path_span,
-                    match binding.kind {
+                    || match binding.kind {
                         ConvertedBindingKind::Equality(ty) => Some(ty.to_string()),
                         _ => None,
                     },
@@ -1880,10 +1880,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     predicates.iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref()),
                 )
             },
-            &param_name.as_str(),
+            || param_name.to_string(),
             assoc_name,
             span,
-            None,
+            || None,
         )
     }
 
@@ -1892,10 +1892,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn one_bound_for_assoc_type<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        ty_param_name: &str,
+        ty_param_name: impl Fn() -> String,
         assoc_name: ast::Ident,
         span: Span,
-        is_equality: Option<String>,
+        is_equality: impl Fn() -> Option<String>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1908,7 +1908,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             None => {
                 self.complain_about_assoc_type_not_found(
                     all_candidates,
-                    ty_param_name,
+                    &ty_param_name(),
                     assoc_name,
                     span,
                 );
@@ -1921,6 +1921,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(bound2) = matching_candidates.next() {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
+            let is_equality = is_equality();
             let bounds = iter::once(bound).chain(iter::once(bound2)).chain(matching_candidates);
             let mut err = if is_equality.is_some() {
                 // More specific Error Index entry.
@@ -1930,7 +1931,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     E0222,
                     "ambiguous associated type `{}` in bounds of `{}`",
                     assoc_name,
-                    ty_param_name
+                    ty_param_name()
                 )
             } else {
                 struct_span_err!(
@@ -1939,7 +1940,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     E0221,
                     "ambiguous associated type `{}` in bounds of `{}`",
                     assoc_name,
-                    ty_param_name
+                    ty_param_name()
                 )
             };
             err.span_label(span, format!("ambiguous associated type `{}`", assoc_name));
@@ -1977,7 +1978,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             "use fully qualified syntax to disambiguate",
                             format!(
                                 "<{} as {}>::{}",
-                                ty_param_name,
+                                ty_param_name(),
                                 bound.print_only_trait_path(),
                                 assoc_name,
                             ),
@@ -1987,7 +1988,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else {
                     err.note(&format!(
                         "associated type `{}` could derive from `{}`",
-                        ty_param_name,
+                        ty_param_name(),
                         bound.print_only_trait_path(),
                     ));
                 }
@@ -1996,7 +1997,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.help(&format!(
                     "consider introducing a new type parameter `T` and adding `where` constraints:\
                      \n    where\n        T: {},\n{}",
-                    ty_param_name,
+                    ty_param_name(),
                     where_bounds.join(",\n"),
                 ));
             }
@@ -2110,10 +2111,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 self.one_bound_for_assoc_type(
                     || traits::supertraits(tcx, ty::Binder::bind(trait_ref)),
-                    "Self",
+                    || "Self".to_string(),
                     assoc_ident,
                     span,
-                    None,
+                    || None,
                 )?
             }
             (&ty::Param(_), Res::SelfTy(Some(param_did), None))
