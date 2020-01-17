@@ -1477,7 +1477,11 @@ impl EmitterWriter {
             Some(ref sm) => sm,
             None => return Ok(()),
         };
-        if !suggestion.has_valid_spans(&**sm) {
+
+        // Render the replacements for each suggestion
+        let suggestions = suggestion.splice_lines(&**sm);
+
+        if suggestions.is_empty() {
             // Suggestions coming from macros can have malformed spans. This is a heavy handed
             // approach to avoid ICEs by ignoring the suggestion outright.
             return Ok(());
@@ -1498,9 +1502,6 @@ impl EmitterWriter {
             "suggestion",
             Some(Style::HeaderMsg),
         );
-
-        // Render the replacements for each suggestion
-        let suggestions = suggestion.splice_lines(&**sm);
 
         let mut row_num = 2;
         let mut notice_capitalization = false;
