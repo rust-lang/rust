@@ -136,9 +136,11 @@ bitflags::bitflags! {
     }
 }
 
+// keep this in sync with the `-Z self-profile-events` help message in librustc_session/options.rs
 const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("none", EventFilter::NONE),
     ("all", EventFilter::ALL),
+    ("default", EventFilter::DEFAULT),
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
     ("query-cache-hit", EventFilter::QUERY_CACHE_HITS),

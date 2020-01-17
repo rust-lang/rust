@@ -923,8 +923,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
+    // keep this in sync with the event filter names in librustc_data_structures/profiling.rs
     self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
-        "specifies which kinds of events get recorded by the self profiler"),
+        "specifies which kinds of events get recorded by the self profiler;
+        for example: `-Z self-profile-events=default,query-keys`
+        all options: none, all, default, generic-activity, query-provider, query-cache-hit
+                     query-blocked, incr-cache-load, query-keys"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emits a section containing stack size metadata"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
