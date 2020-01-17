@@ -67,7 +67,7 @@ impl Command {
             let _lock = sys::os::env_lock();
 
             let ret = libc::rtpSpawn(
-                self.get_argv()[0],                             // executing program
+                self.get_program().as_ptr(),
                 self.get_argv().as_ptr() as *mut *const c_char, // argv
                 c_envp as *mut *const c_char,
                 100 as c_int, // initial priority
