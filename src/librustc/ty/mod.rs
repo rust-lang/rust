@@ -6,6 +6,7 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
+use crate::arena::Arena;
 use crate::hir::exports::ExportMap;
 use crate::hir::map as hir_map;
 
@@ -25,7 +26,6 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
-use arena::SyncDroplessArena;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
@@ -74,7 +74,7 @@ pub use crate::ty::diagnostics::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{keep_local, tls, AllArenas, FreeRegionInfo, TyCtxt};
+pub use self::context::{keep_local, tls, FreeRegionInfo, TyCtxt};
 pub use self::context::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
     UserType, UserTypeAnnotationIndex,
@@ -604,7 +604,7 @@ unsafe impl<T: Sync> Sync for List<T> {}
 
 impl<T: Copy> List<T> {
     #[inline]
-    fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx List<T> {
+    fn from_arena<'tcx>(arena: &'tcx Arena<'tcx>, slice: &[T]) -> &'tcx List<T> {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
@@ -617,7 +617,9 @@ impl<T: Copy> List<T> {
 
         let size = offset + slice.len() * mem::size_of::<T>();
 
-        let mem = arena.alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
+        let mem = arena
+            .dropless
+            .alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
         unsafe {
             let result = &mut *(mem.as_mut_ptr() as *mut List<T>);
             // Write the length
