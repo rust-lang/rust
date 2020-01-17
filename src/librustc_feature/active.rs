@@ -152,9 +152,6 @@ declare_features! (
     /// Allows features specific to OIBIT (auto traits).
     (active, optin_builtin_traits, "1.0.0", Some(13231), None),
 
-    /// Allow negative trait implementations.
-    (active, negative_impls, "1.0.0", Some(13231), None),
-
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
@@ -556,6 +553,9 @@ declare_features! (
 
     // Allows limiting the evaluation steps of const expressions
     (active, const_eval_limit, "1.43.0", Some(67217), None),
+
+    /// Allow negative trait implementations.
+    (active, negative_impls, "1.43.0", Some(68318), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

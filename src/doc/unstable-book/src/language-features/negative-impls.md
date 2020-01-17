@@ -1,8 +1,8 @@
 # `negative_impls`
 
-The tracking issue for this feature is [#13231] 
+The tracking issue for this feature is [#68318].
 
-[#13231]: https://github.com/rust-lang/rust/issues/13231
+[#68318]: https://github.com/rust-lang/rust/issues/68318
 
 ----
 
