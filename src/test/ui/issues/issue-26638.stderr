@@ -5,7 +5,7 @@ LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.ne
    |                                                              ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `iter`'s 2 lifetimes it is borrowed from
-help: consider introducing a named lifetime
+help: consider introducing a named lifetime parameter
    |
 LL | fn parse_type<'lifetime>(iter: Box<dyn Iterator<Item=&str>+'static>) -> &'lifetime str { iter.next() }
    |              ^^^^^^^^^^^                                                ^^^^^^^^^^

@@ -2952,7 +2952,7 @@ fn add_missing_lifetime_specifiers_label(
                 if !introduce_suggestion.is_empty() {
                     introduce_suggestion.push((span, "&'lifetime ".to_string()));
                     err.multipart_suggestion(
-                        "consider introducing a named lifetime",
+                        "consider introducing a named lifetime parameter",
                         introduce_suggestion,
                         Applicability::MaybeIncorrect,
                     );
@@ -2963,7 +2963,7 @@ fn add_missing_lifetime_specifiers_label(
                 if !introduce_suggestion.is_empty() {
                     introduce_suggestion.push((span, "'lifetime".to_string()));
                     err.multipart_suggestion(
-                        "consider introducing a named lifetime",
+                        "consider introducing a named lifetime parameter",
                         introduce_suggestion,
                         Applicability::MaybeIncorrect,
                     );
@@ -2974,7 +2974,7 @@ fn add_missing_lifetime_specifiers_label(
                 if !introduce_suggestion.is_empty() {
                     introduce_suggestion.push((span, format!("{}<'lifetime>", snippet)));
                     err.multipart_suggestion(
-                        "consider introducing a named lifetime",
+                        "consider introducing a named lifetime parameter",
                         introduce_suggestion,
                         Applicability::MaybeIncorrect,
                     );

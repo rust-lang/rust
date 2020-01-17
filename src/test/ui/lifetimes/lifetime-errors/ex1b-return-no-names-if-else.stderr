@@ -5,7 +5,7 @@ LL | fn foo(x: &i32, y: &i32) -> &i32 {
    |                             ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `x` or `y`
-help: consider introducing a named lifetime
+help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'lifetime>(x: &i32, y: &i32) -> &'lifetime i32 {
    |       ^^^^^^^^^^^                      ^^^^^^^^^^
