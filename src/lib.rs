@@ -162,7 +162,11 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
 struct CraneliftCodegenBackend;
 
 impl CodegenBackend for CraneliftCodegenBackend {
-    fn init(&self, _sess: &Session) {}
+    fn init(&self, sess: &Session) {
+        if sess.lto() != rustc_session::config::Lto::No {
+            sess.warn("LTO is not supported. You may get a linker error.");
+        }
+    }
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(crate::metadata::CraneliftMetadataLoader)
