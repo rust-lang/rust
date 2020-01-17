@@ -1330,6 +1330,18 @@ pub struct Expr<'hir> {
     pub span: Span,
 }
 
+/// `Expr` pattern alias to facilitate pattern-matching.
+///
+/// Usage examples:
+/// * `hir::Expr!(Unary(_, hir::Expr!(Lit(_))))`
+/// * `hir::Expr! { Loop(..), hir_id: loop_id }`
+pub macro Expr($variant:ident $($rest:tt)*) {
+    $crate::hir::Expr {
+        kind: $crate::hir::ExprKind::$variant $($rest)*,
+        ..
+    }
+}
+
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Expr<'static>, 64);

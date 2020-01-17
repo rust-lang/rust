@@ -2703,14 +2703,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let expr = &tcx.hir().body(ast_const.body).value;
 
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
+        let lit_input = match expr {
+            hir::Expr!(Lit(ref lit)) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::Expr!(Unary(hir::UnOp::UnNeg, hir::Expr!(Lit(ref lit)))) => {
+                Some(LitToConstInput { lit: &lit.node, ty, neg: true })
+            }
             _ => None,
         };
 

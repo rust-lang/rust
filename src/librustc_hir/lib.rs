@@ -4,6 +4,7 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)] // For the unsizing cast on `&[]`
+#![feature(decl_macro)]
 #![feature(in_band_lifetimes)]
 #![feature(specialization)]
 #![recursion_limit = "256"]

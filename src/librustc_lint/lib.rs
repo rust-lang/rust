@@ -33,6 +33,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(slice_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]

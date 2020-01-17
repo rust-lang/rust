@@ -1885,10 +1885,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             const TRANSMUTE_PATH: &[Symbol] =
                 &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
 
-            if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
+            match expr {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
-                if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                    let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                hir::Expr!(Call(hir::Expr! { Path(ref qpath), hir_id: path_hir_id }, ref args)) => {
+                    let def_id = cx.tables.qpath_res(qpath, *path_hir_id).opt_def_id()?;
 
                     if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
                         return Some(InitKind::Zeroed);
@@ -1900,25 +1900,30 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         }
                     }
                 }
-            } else if let hir::ExprKind::MethodCall(_, _, ref args) = expr.kind {
-                // Find problematic calls to `MaybeUninit::assume_init`.
-                let def_id = cx.tables.type_dependent_def_id(expr.hir_id)?;
-                if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
-                    // This is a call to *some* method named `assume_init`.
-                    // See if the `self` parameter is one of the dangerous constructors.
-                    if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
-                        if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                            let def_id =
-                                cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
-                            if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
-                                return Some(InitKind::Zeroed);
-                            } else if cx.tcx.is_diagnostic_item(sym::maybe_uninit_uninit, def_id) {
-                                return Some(InitKind::Uninit);
-                            }
-                        }
+                // Find problematic calls to `MaybeUninit::assume_init`, where
+                // the `self` parameter is one of the dangerous constructors.
+                hir::Expr!(
+                    MethodCall(
+                        _,
+                        _,
+                        [hir::Expr!(Call(hir::Expr! { Path(ref qpath), hir_id: path_hir_id }, _)), ..],
+                    )
+                ) if cx.tcx.is_diagnostic_item(
+                    sym::assume_init,
+                    cx.tables.type_dependent_def_id(expr.hir_id)?,
+                ) =>
+                {
+                    let def_id = cx.tables.qpath_res(qpath, *path_hir_id).opt_def_id()?;
+
+                    if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
+                        return Some(InitKind::Zeroed);
+                    } else if cx.tcx.is_diagnostic_item(sym::maybe_uninit_uninit, def_id) {
+                        return Some(InitKind::Uninit);
                     }
                 }
+
+                _ => {}
             }
 
             None
