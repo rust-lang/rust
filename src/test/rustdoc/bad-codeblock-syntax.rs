@@ -33,3 +33,10 @@ pub fn ok() {}
 /// <script>alert("not valid Rust");</script>
 /// ```
 pub fn escape() {}
+
+// @has bad_codeblock_syntax/fn.unterminated.html
+// @has - '//*[@class="docblock"]/pre/code' '"unterminated'
+/// ```
+/// "unterminated
+/// ```
+pub fn unterminated() {}
