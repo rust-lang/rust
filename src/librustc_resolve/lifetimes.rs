@@ -2914,71 +2914,50 @@ fn add_missing_lifetime_specifiers_label(
     if count > 1 {
         err.span_label(span, format!("expected {} lifetime parameters", count));
     } else {
-        let mut introduce_suggestion = vec![];
-        if let Some(generics) = missing_named_lifetime_spots.iter().last() {
-            introduce_suggestion.push(match &generics.params {
-                [] => (generics.span, "<'lifetime>".to_string()),
-                [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
-            });
-        }
+        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_suggestion(
+                span,
+                "consider using the named lifetime",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        };
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_label(span, "expected named lifetime parameter");
+
+            if let Some(generics) = missing_named_lifetime_spots.iter().last() {
+                let mut introduce_suggestion = vec![];
+                introduce_suggestion.push(match &generics.params {
+                    [] => (generics.span, "<'lifetime>".to_string()),
+                    [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+                });
+                introduce_suggestion.push((span, sugg));
+                err.multipart_suggestion(
+                    "consider introducing a named lifetime parameter",
+                    introduce_suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
 
         match (lifetime_names.len(), lifetime_names.iter().next(), snippet) {
             (1, Some(name), Some("&")) => {
-                err.span_suggestion(
-                    span,
-                    "consider using the named lifetime",
-                    format!("&{} ", name),
-                    Applicability::MaybeIncorrect,
-                );
+                suggest_existing(err, format!("&{} ", name));
             }
             (1, Some(name), Some("'_")) => {
-                err.span_suggestion(
-                    span,
-                    "consider using the named lifetime",
-                    name.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+                suggest_existing(err, name.to_string());
             }
             (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
-                err.span_suggestion(
-                    span,
-                    "consider using the named lifetime",
-                    format!("{}<{}>", snippet, name),
-                    Applicability::MaybeIncorrect,
-                );
+                suggest_existing(err, format!("{}<{}>", snippet, name));
             }
             (0, _, Some("&")) => {
-                err.span_label(span, "expected named lifetime parameter");
-                if !introduce_suggestion.is_empty() {
-                    introduce_suggestion.push((span, "&'lifetime ".to_string()));
-                    err.multipart_suggestion(
-                        "consider introducing a named lifetime parameter",
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+                suggest_new(err, "&'lifetime ".to_string());
             }
             (0, _, Some("'_")) => {
-                err.span_label(span, "expected named lifetime parameter");
-                if !introduce_suggestion.is_empty() {
-                    introduce_suggestion.push((span, "'lifetime".to_string()));
-                    err.multipart_suggestion(
-                        "consider introducing a named lifetime parameter",
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+                suggest_new(err, "'lifetime".to_string());
             }
             (0, _, Some(snippet)) if !snippet.ends_with(">") => {
-                err.span_label(span, "expected named lifetime parameter");
-                if !introduce_suggestion.is_empty() {
-                    introduce_suggestion.push((span, format!("{}<'lifetime>", snippet)));
-                    err.multipart_suggestion(
-                        "consider introducing a named lifetime parameter",
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+                suggest_new(err, format!("{}<'lifetime>", snippet));
             }
             _ => {
                 err.span_label(span, "expected lifetime parameter");
