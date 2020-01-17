@@ -22,31 +22,31 @@ error[E0308]: mismatched types
 LL |     let &&x = &1isize as &dyn T;
    |          ^^
    |          |
-   |          expected trait `T`, found reference
+   |          expected trait object `dyn T`, found reference
    |          help: you can probably remove the explicit borrow: `x`
    |
    = note: expected trait object `dyn T`
                  found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:37:11
+  --> $DIR/destructure-trait-ref.rs:36:11
    |
 LL |     let &&&x = &(&1isize as &dyn T);
    |           ^^
    |           |
-   |           expected trait `T`, found reference
+   |           expected trait object `dyn T`, found reference
    |           help: you can probably remove the explicit borrow: `x`
    |
    = note: expected trait object `dyn T`
                  found reference `&_`
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:42:13
+  --> $DIR/destructure-trait-ref.rs:40:13
    |
 LL |     let box box x = box 1isize as Box<dyn T>;
    |             ^^^^^   ------------------------ this expression has type `std::boxed::Box<dyn T>`
    |             |
-   |             expected trait `T`, found struct `std::boxed::Box`
+   |             expected trait object `dyn T`, found struct `std::boxed::Box`
    |
    = note: expected trait object `dyn T`
                     found struct `std::boxed::Box<_>`

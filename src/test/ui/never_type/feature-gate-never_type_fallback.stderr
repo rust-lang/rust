@@ -3,8 +3,12 @@ error[E0277]: the trait bound `(): T` is not satisfied
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^ the trait `T` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- this returned value is of type `()`
    |
    = note: the return type of a function must have a statically known size
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error
 

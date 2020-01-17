@@ -377,6 +377,13 @@ pub enum GenericBound<'hir> {
 }
 
 impl GenericBound<'_> {
+    pub fn trait_def_id(&self) -> Option<DefId> {
+        match self {
+            GenericBound::Trait(data, _) => Some(data.trait_ref.trait_def_id()),
+            _ => None,
+        }
+    }
+
     pub fn span(&self) -> Span {
         match self {
             &GenericBound::Trait(ref t, ..) => t.span,

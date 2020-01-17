@@ -155,8 +155,8 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>,
 }
 
-impl<'tcx> ObligationCause<'tcx> {
-    pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
+impl ObligationCause<'_> {
+    pub fn span(&self, tcx: TyCtxt<'_>) -> Span {
         match self.code {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
@@ -1168,6 +1168,17 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn dummy() -> ObligationCause<'tcx> {
         ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation }
+    }
+}
+
+impl ObligationCauseCode<'_> {
+    // Return the base obligation, ignoring derived obligations.
+    pub fn peel_derives(&self) -> &Self {
+        let mut base_cause = self;
+        while let BuiltinDerivedObligation(cause) | ImplDerivedObligation(cause) = base_cause {
+            base_cause = &cause.parent_code;
+        }
+        base_cause
     }
 }
 

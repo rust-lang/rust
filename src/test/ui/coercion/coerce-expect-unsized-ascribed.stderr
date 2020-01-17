@@ -29,7 +29,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:13:13
    |
 LL |     let _ = box { |x| (x as u8) }: Box<dyn Fn(i32) -> _>;
-   |             ^^^^^^^^^^^^^^^^^^^^^ expected trait `std::ops::Fn`, found closure
+   |             ^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::ops::Fn`, found closure
    |
    = note: expected struct `std::boxed::Box<dyn std::ops::Fn(i32) -> u8>`
               found struct `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:13:19: 13:32]>`
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:14:13
    |
 LL |     let _ = box if true { false } else { true }: Box<dyn Debug>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait `std::fmt::Debug`, found `bool`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::fmt::Debug`, found `bool`
    |
    = note: expected struct `std::boxed::Box<dyn std::fmt::Debug>`
               found struct `std::boxed::Box<bool>`
@@ -47,7 +47,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:15:13
    |
 LL |     let _ = box match true { true => 'a', false => 'b' }: Box<dyn Debug>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait `std::fmt::Debug`, found `char`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::fmt::Debug`, found `char`
    |
    = note: expected struct `std::boxed::Box<dyn std::fmt::Debug>`
               found struct `std::boxed::Box<char>`
@@ -83,7 +83,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:21:13
    |
 LL |     let _ = &{ |x| (x as u8) }: &dyn Fn(i32) -> _;
-   |             ^^^^^^^^^^^^^^^^^^ expected trait `std::ops::Fn`, found closure
+   |             ^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::ops::Fn`, found closure
    |
    = note: expected reference `&dyn std::ops::Fn(i32) -> u8`
               found reference `&[closure@$DIR/coerce-expect-unsized-ascribed.rs:21:16: 21:29]`
@@ -92,7 +92,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:22:13
    |
 LL |     let _ = &if true { false } else { true }: &dyn Debug;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait `std::fmt::Debug`, found `bool`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::fmt::Debug`, found `bool`
    |
    = note: expected reference `&dyn std::fmt::Debug`
               found reference `&bool`
@@ -101,7 +101,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:23:13
    |
 LL |     let _ = &match true { true => 'a', false => 'b' }: &dyn Debug;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait `std::fmt::Debug`, found `char`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::fmt::Debug`, found `char`
    |
    = note: expected reference `&dyn std::fmt::Debug`
               found reference `&char`
@@ -119,7 +119,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:26:13
    |
 LL |     let _ = Box::new(|x| (x as u8)): Box<dyn Fn(i32) -> _>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ expected trait `std::ops::Fn`, found closure
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::ops::Fn`, found closure
    |
    = note: expected struct `std::boxed::Box<dyn std::ops::Fn(i32) -> _>`
               found struct `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:26:22: 26:35]>`
