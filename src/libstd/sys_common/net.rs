@@ -12,80 +12,43 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_void};
-#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
-          target_os = "openbsd", target_os = "netbsd",
-          target_os = "solaris"))]
-use libc::{c_uchar};
 
-#[cfg(not(any(
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "macos",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "haiku",
-    target_os = "l4re"
-)))]
-use crate::sys::net::netc::IPV6_ADD_MEMBERSHIP;
-#[cfg(not(any(
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "macos",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "haiku",
-    target_os = "l4re"
-)))]
-use crate::sys::net::netc::IPV6_DROP_MEMBERSHIP;
-#[cfg(any(
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "macos",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "haiku",
-    target_os = "l4re"
-))]
-use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
-#[cfg(any(
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "ios",
-    target_os = "macos",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "solaris",
-    target_os = "haiku",
-    target_os = "l4re"
-))]
-use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "dragonfly", target_os = "freebsd",
+        target_os = "ios", target_os = "macos",
+        target_os = "openbsd", target_os = "netbsd",
+        target_os = "solaris", target_os = "haiku", target_os = "l4re"))] {
+        use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
+        use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+    } else {
+        use crate::sys::net::netc::IPV6_ADD_MEMBERSHIP;
+        use crate::sys::net::netc::IPV6_DROP_MEMBERSHIP;
+    }
+}
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "haiku"
-))]
-use libc::MSG_NOSIGNAL;
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "netbsd",
-    target_os = "haiku"
-)))]
-const MSG_NOSIGNAL: c_int = 0x0;
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "linux", target_os = "android",
+        target_os = "dragonfly", target_os = "freebsd",
+        target_os = "openbsd", target_os = "netbsd",
+        target_os = "haiku"))] {
+        use libc::MSG_NOSIGNAL;
+    } else {
+        const MSG_NOSIGNAL: c_int = 0x0;
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "dragonfly", target_os = "freebsd",
+        target_os = "openbsd", target_os = "netbsd",
+        target_os = "solaris"))] {
+        type ip_mcast_type_v4 = c_uchar;
+    } else {
+        type ip_mcast_type_v4 = c_int;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -569,6 +532,24 @@ impl UdpSocket {
         Ok(raw != 0)
     }
 
+    pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP, multicast_loop_v4 as ip_mcast_type_v4)
+    }
+
+    pub fn multicast_loop_v4(&self) -> io::Result<bool> {
+        let raw: ip_mcast_type_v4 = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
+        Ok(raw != 0)
+    }
+
+    pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, multicast_ttl_v4 as ip_mcast_type_v4)
+    }
+
+    pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
+        let raw: ip_mcast_type_v4 = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
+        Ok(raw as u32)
+    }
+
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP, multicast_loop_v6 as c_int)
     }
@@ -646,52 +627,6 @@ impl UdpSocket {
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
         let (addrp, len) = addr?.into_inner();
         cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(drop)
-    }
-}
-
-#[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
-              target_os = "openbsd", target_os = "netbsd",
-              target_os = "solaris")))]
-impl UdpSocket {
-    pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP, multicast_loop_v4 as c_int)
-    }
-
-    pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
-        Ok(raw != 0)
-    }
-
-    pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, multicast_ttl_v4 as c_int)
-    }
-
-    pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
-        Ok(raw as u32)
-    }
-}
-
-#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
-          target_os = "openbsd", target_os = "netbsd",
-          target_os = "solaris"))]
-impl UdpSocket {
-    pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP, multicast_loop_v4 as c_uchar)
-    }
-
-    pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        let raw: c_uchar = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
-        Ok(raw != 0)
-    }
-
-    pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, multicast_ttl_v4 as c_uchar)
-    }
-
-    pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        let raw: c_uchar = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
-        Ok(raw as u32)
     }
 }
 
