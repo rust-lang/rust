@@ -1,0 +1,37 @@
+SOURCE_FILE@[0; 34)
+  FN_DEF@[0; 33)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 7)
+      IDENT@[3; 7) "main"
+    PARAM_LIST@[7; 9)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
+    BLOCK_EXPR@[10; 33)
+      BLOCK@[10; 33)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        CALL_EXPR@[16; 31)
+          PATH_EXPR@[16; 19)
+            PATH@[16; 19)
+              PATH_SEGMENT@[16; 19)
+                NAME_REF@[16; 19)
+                  IDENT@[16; 19) "foo"
+          ARG_LIST@[19; 31)
+            L_PAREN@[19; 20) "("
+            ATTR@[20; 27)
+              POUND@[20; 21) "#"
+              L_BRACK@[21; 22) "["
+              PATH@[22; 26)
+                PATH_SEGMENT@[22; 26)
+                  NAME_REF@[22; 26)
+                    IDENT@[22; 26) "attr"
+              R_BRACK@[26; 27) "]"
+            WHITESPACE@[27; 28) " "
+            LITERAL@[28; 30)
+              INT_NUMBER@[28; 30) "92"
+            R_PAREN@[30; 31) ")"
+        WHITESPACE@[31; 32) "\n"
+        R_CURLY@[32; 33) "}"
+  WHITESPACE@[33; 34) "\n"

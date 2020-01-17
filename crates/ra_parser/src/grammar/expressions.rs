@@ -535,15 +535,15 @@ fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     m.complete(p, CAST_EXPR)
 }
 
-// test arg_with_attr
-// fn main() {
-//     foo(#[attr] 92)
-// }
 fn arg_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
     p.bump(T!['(']);
     while !p.at(T![')']) && !p.at(EOF) {
+        // test arg_with_attr
+        // fn main() {
+        //     foo(#[attr] 92)
+        // }
         attributes::outer_attributes(p);
         if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
