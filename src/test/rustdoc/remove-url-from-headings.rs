@@ -7,7 +7,7 @@
 
 /// fooo
 ///
-/// # Implementing [stuff](http://a.a) somewhere
+/// # Implementing [stuff](http://a.a "title") somewhere
 ///
 /// hello
 ///
