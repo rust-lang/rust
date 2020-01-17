@@ -1031,9 +1031,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                 None
             }
         }
-        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-            Some(tcx.closure_base_def_id(def_id))
-        }
+        Node::Expr(hir::Expr!(Closure(..))) => Some(tcx.closure_base_def_id(def_id)),
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => impl_trait_fn,
             _ => None,
@@ -1172,7 +1170,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., gen), .. }) = node {
+    if let Node::Expr(hir::Expr!(Closure(.., gen))) = node {
         let dummy_args = if gen.is_some() {
             &["<yield_ty>", "<return_ty>", "<witness>"][..]
         } else {
@@ -1433,8 +1431,8 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
 
                 Node::Ty(&hir::Ty { kind: hir::TyKind::Path(_), .. })
-                | Node::Expr(&hir::Expr { kind: ExprKind::Struct(..), .. })
-                | Node::Expr(&hir::Expr { kind: ExprKind::Path(_), .. })
+                | Node::Expr(hir::Expr!(Struct(..)))
+                | Node::Expr(hir::Expr!(Path(_)))
                 | Node::TraitRef(..) => {
                     let path = match parent_node {
                         Node::Ty(&hir::Ty {

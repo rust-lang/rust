@@ -98,15 +98,17 @@ pub(super) fn note_and_explain_region(
             let span = scope.span(tcx, region_scope_tree);
             let tag = match tcx.hir().find(scope.hir_id(region_scope_tree)) {
                 Some(Node::Block(_)) => "block",
-                Some(Node::Expr(expr)) => match expr.kind {
-                    hir::ExprKind::Call(..) => "call",
-                    hir::ExprKind::MethodCall(..) => "method call",
-                    hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                    hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
-                    hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
-                    hir::ExprKind::Match(..) => "match",
-                    _ => "expression",
-                },
+                Some(Node::Expr(hir::Expr!(Call(..)))) => "call",
+                Some(Node::Expr(hir::Expr!(MethodCall(..)))) => "method call",
+                Some(Node::Expr(hir::Expr!(Match(.., hir::MatchSource::IfLetDesugar { .. })))) => {
+                    "if let"
+                }
+                Some(Node::Expr(hir::Expr!(Match(.., hir::MatchSource::WhileLetDesugar)))) => {
+                    "while let"
+                }
+                Some(Node::Expr(hir::Expr!(Match(.., hir::MatchSource::ForLoopDesugar)))) => "for",
+                Some(Node::Expr(hir::Expr!(Match(..)))) => "match",
+                Some(Node::Expr(_)) => "expression",
                 Some(Node::Stmt(_)) => "statement",
                 Some(Node::Item(it)) => item_scope_tag(&it),
                 Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),

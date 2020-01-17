@@ -277,11 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
         let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(param_parent) {
-            Some(Node::Expr(hir::Expr {
-                hir_id,
-                kind: hir::ExprKind::Closure(_, decl, ..),
-                ..
-            })) => (hir_id, decl),
+            Some(Node::Expr(hir::Expr! { Closure(_, decl, ..), hir_id })) => (hir_id, decl),
             _ => return None,
         };
 
@@ -289,13 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir().find(expr_parent);
         let closure_params_len = closure_fn_decl.inputs.len();
         let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
-            (
-                Some(Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::MethodCall(path, span, expr),
-                    ..
-                })),
-                1,
-            ) => (path, span, expr),
+            (Some(Node::Expr(hir::Expr!(MethodCall(path, span, expr)))), 1) => (path, span, expr),
             _ => return None,
         };
 
@@ -323,15 +313,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let cm = self.sess().source_map();
         let parent_id = self.tcx.hir().get_parent_node(hir_id);
-        if let Some(parent) = self.tcx.hir().find(parent_id) {
+        if let Some(Node::Expr(hir::Expr!(Struct(_, fields, ..)))) = self.tcx.hir().find(parent_id)
+        {
             // Account for fields
-            if let Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(_, fields, ..), .. }) = parent
-            {
-                if let Ok(src) = cm.span_to_snippet(sp) {
-                    for field in *fields {
-                        if field.ident.as_str() == src && field.is_shorthand {
-                            return true;
-                        }
+            if let Ok(src) = cm.span_to_snippet(sp) {
+                for field in *fields {
+                    if field.ident.as_str() == src && field.is_shorthand {
+                        return true;
                     }
                 }
             }

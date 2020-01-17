@@ -759,9 +759,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mir_hir_id = tcx.hir().as_local_hir_id(mbcx.mir_def_id).expect("non-local mir");
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, _, _, span, _), ..
-            }) => (tcx.sess.source_map().end_point(*span)),
+            hir::Node::Expr(hir::Expr!(Closure(_, _, _, span, _))) => {
+                (tcx.sess.source_map().end_point(*span))
+            }
             _ => mbcx.body.span,
         };
 

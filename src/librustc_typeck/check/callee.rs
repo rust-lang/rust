@@ -229,18 +229,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'a>,
         hir_id: hir::HirId,
-        callee_node: &hir::ExprKind<'_>,
-        callee_span: Span,
+        callee: &hir::Expr<'_>,
     ) {
         let hir_id = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
-        if let (
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
-            hir::ExprKind::Block(..),
-        ) = (parent_node, callee_node)
+        if let (hir::Node::Expr(hir::Expr!(Closure(_, _, _, sp, ..))), hir::Expr!(Block(..))) =
+            (parent_node, callee)
         {
             let start = sp.shrink_to_lo();
-            let end = callee_span.shrink_to_hi();
+            let end = callee.span.shrink_to_hi();
             err.multipart_suggestion(
                 "if you meant to create this closure and immediately call it, surround the \
                 closure with parenthesis",
@@ -285,12 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     );
 
-                    self.identify_bad_closure_def_and_call(
-                        &mut err,
-                        call_expr.hir_id,
-                        &callee.kind,
-                        callee.span,
-                    );
+                    self.identify_bad_closure_def_and_call(&mut err, call_expr.hir_id, callee);
 
                     if let Some(ref path) = unit_variant {
                         err.span_suggestion(

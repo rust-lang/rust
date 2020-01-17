@@ -178,7 +178,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let parent_node = self.tcx.hir().get_parent_node(hir_id);
             if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
                 if let Some(ref expr) = local.init {
-                    if let hir::ExprKind::Index(_, _) = expr.kind {
+                    if let hir::Expr!(Index(_, _)) = expr {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                             err.span_suggestion(
                                 expr.span,
@@ -753,10 +753,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `report_arg_count_mismatch`.
     pub fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
         match node {
-            Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
-                ..
-            }) => (
+            Node::Expr(&hir::Expr!(Closure(_, ref _decl, id, span, _))) => (
                 self.tcx.sess.source_map().def_span(span),
                 self.tcx
                     .hir()
@@ -1699,7 +1696,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        if let hir::ExprKind::Ret(Some(ex)) = ex.kind {
+        if let hir::Expr!(Ret(Some(ex))) = ex {
             self.0.push(ex);
         }
         hir::intravisit::walk_expr(self, ex);
@@ -1707,7 +1704,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
 
     fn visit_body(&mut self, body: &'v hir::Body<'v>) {
         if body.generator_kind().is_none() {
-            if let hir::ExprKind::Block(block, None) = body.value.kind {
+            if let hir::Expr!(Block(block, None)) = &body.value {
                 if let Some(expr) = block.expr {
                     self.0.push(expr);
                 }
