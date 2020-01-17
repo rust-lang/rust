@@ -403,8 +403,8 @@ impl<'tcx> AllocMap<'tcx> {
         let next = self.next_id;
         self.next_id.0 = self.next_id.0.checked_add(1).expect(
             "You overflowed a u64 by incrementing by 1... \
-                     You've just earned yourself a free drink if we ever meet. \
-                     Seriously, how did you do that?!",
+             You've just earned yourself a free drink if we ever meet. \
+             Seriously, how did you do that?!",
         );
         next
     }
