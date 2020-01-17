@@ -44,9 +44,9 @@ cfg_if::cfg_if! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris"))] {
-        type ip_mcast_type_v4 = c_uchar;
+        type IpV4MultiCastType = c_uchar;
     } else {
-        type ip_mcast_type_v4 = c_int;
+        type IpV4MultiCastType = c_int;
     }
 }
 
@@ -533,20 +533,30 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP, multicast_loop_v4 as ip_mcast_type_v4)
+        setsockopt(
+            &self.inner,
+            c::IPPROTO_IP,
+            c::IP_MULTICAST_LOOP,
+            multicast_loop_v4 as IpV4MultiCastType,
+        )
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        let raw: ip_mcast_type_v4 = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
+        let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
         Ok(raw != 0)
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, multicast_ttl_v4 as ip_mcast_type_v4)
+        setsockopt(
+            &self.inner,
+            c::IPPROTO_IP,
+            c::IP_MULTICAST_TTL,
+            multicast_ttl_v4 as IpV4MultiCastType,
+        )
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        let raw: ip_mcast_type_v4 = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
+        let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
         Ok(raw as u32)
     }
 
