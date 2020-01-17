@@ -153,12 +153,13 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
+        env::remove_var(SECONDARY_TEST_INVOKER_VAR);
         let test = tests
             .iter()
             .filter(|test| test.desc.name.as_slice() == name)
             .map(make_owned_test)
             .next()
-            .expect("couldn't find a test with the provided name");
+            .expect(&format!("couldn't find a test with the provided name '{}'", name));
         let TestDescAndFn { desc, testfn } = test;
         let testfn = match testfn {
             StaticTestFn(f) => f,
