@@ -78,6 +78,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
+    fn has_opaque_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+    }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_ERR)
     }

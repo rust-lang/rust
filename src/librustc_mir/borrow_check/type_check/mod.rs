@@ -1208,6 +1208,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
              anon_ty={:?})",
             revealed_ty, anon_ty
         );
+
+        // Fast path for the common case.
+        if !anon_ty.has_opaque_types() {
+            if let Err(terr) = self.eq_types(anon_ty, revealed_ty, locations, category) {
+                span_mirbug!(
+                    self,
+                    locations,
+                    "eq_opaque_type_and_type: `{:?}=={:?}` failed with `{:?}`",
+                    revealed_ty,
+                    anon_ty,
+                    terr
+                );
+            }
+            return Ok(());
+        }
+
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
