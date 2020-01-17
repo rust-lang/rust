@@ -65,7 +65,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_sig = cx.tables().liberated_fn_sigs()[id].clone();
+            let fn_sig = cx.tables().liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
             let ty = tcx.type_of(fn_def_id);

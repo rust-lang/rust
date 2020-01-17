@@ -196,7 +196,7 @@ impl AnnotateSnippetEmitterWriter {
     ) {
         let converter = DiagnosticConverter {
             source_map: self.source_map.clone(),
-            level: level.clone(),
+            level: *level,
             message,
             code: code.clone(),
             msp: msp.clone(),
