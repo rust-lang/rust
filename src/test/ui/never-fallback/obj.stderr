@@ -1,0 +1,21 @@
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/obj.rs:14:15
+   |
+LL |         match unconstrained_return::<_>() {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type here was inferred to `!`
+  --> $DIR/obj.rs:14:38
+   |
+LL |         match unconstrained_return::<_>() {
+   |                                      ^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/obj.rs:16:23
+   |
+LL |             Err(s) => panic!(s),  // … except for unifying with the type of `panic!()`
+   |                       ^^^^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
