@@ -3829,9 +3829,7 @@ impl str {
             j = b;
         }
         // SAFETY: `Searcher` is known to return valid indices.
-        unsafe {
-            self.get_unchecked(i..j)
-        }
+        unsafe { self.get_unchecked(i..j) }
     }
 
     /// Returns a string slice with all prefixes that match a pattern
@@ -3868,9 +3866,7 @@ impl str {
             i = a;
         }
         // SAFETY: `Searcher` is known to return valid indices.
-        unsafe {
-            self.get_unchecked(i..self.len())
-        }
+        unsafe { self.get_unchecked(i..self.len()) }
     }
 
     /// Returns a string slice with the prefix removed.
@@ -3902,9 +3898,7 @@ impl str {
                 must include the first character"
             );
             // SAFETY: `Searcher` is known to return valid indices.
-            unsafe {
-                Some(self.get_unchecked(len..))
-            }
+            unsafe { Some(self.get_unchecked(len..)) }
         } else {
             None
         }
@@ -3943,9 +3937,7 @@ impl str {
                 must include the last character"
             );
             // SAFETY: `Searcher` is known to return valid indices.
-            unsafe {
-                Some(self.get_unchecked(..start))
-            }
+            unsafe { Some(self.get_unchecked(..start)) }
         } else {
             None
         }
@@ -3994,9 +3986,7 @@ impl str {
             j = b;
         }
         // SAFETY: `Searcher` is known to return valid indices.
-        unsafe {
-            self.get_unchecked(0..j)
-        }
+        unsafe { self.get_unchecked(0..j) }
     }
 
     /// Returns a string slice with all prefixes that match a pattern
