@@ -8,7 +8,7 @@ extern crate test_macros;
 mod m {
     use test_macros::Empty;
 }
-use m::Empty; //~ ERROR derive macro `Empty` is private
+use m::Empty; //~ ERROR derive macro import `Empty` is private
 
 // To resolve `empty_helper` we need to resolve `Empty`.
 // During initial resolution `use m::Empty` introduces no entries, so we proceed to `macro_use`,

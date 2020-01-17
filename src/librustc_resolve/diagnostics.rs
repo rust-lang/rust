@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
@@ -20,8 +20,9 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::path_names_to_string;
-use crate::VisResolutionError;
+use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 use rustc_error_codes::*;
@@ -801,6 +802,163 @@ impl<'a> Resolver<'a> {
             return true;
         }
         false
+    }
+
+    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
+        let res = b.res();
+        if b.span.is_dummy() {
+            let add_built_in = match b.res() {
+                // These already contain the "built-in" prefix or look bad with it.
+                Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod => false,
+                _ => true,
+            };
+            let (built_in, from) = if from_prelude {
+                ("", " from prelude")
+            } else if b.is_extern_crate()
+                && !b.is_import()
+                && self.session.opts.externs.get(&ident.as_str()).is_some()
+            {
+                ("", " passed with `--extern`")
+            } else if add_built_in {
+                (" built-in", "")
+            } else {
+                ("", "")
+            };
+
+            let article = if built_in.is_empty() { res.article() } else { "a" };
+            format!(
+                "{a}{built_in} {thing}{from}",
+                a = article,
+                thing = res.descr(),
+                built_in = built_in,
+                from = from
+            )
+        } else {
+            let introduced = if b.is_import() { "imported" } else { "defined" };
+            format!("the {thing} {introduced} here", thing = res.descr(), introduced = introduced)
+        }
+    }
+
+    crate fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+            // We have to print the span-less alternative first, otherwise formatting looks bad.
+            (b2, b1, misc2, misc1, true)
+        } else {
+            (b1, b2, misc1, misc2, false)
+        };
+
+        let mut err = struct_span_err!(
+            self.session,
+            ident.span,
+            E0659,
+            "`{ident}` is ambiguous ({why})",
+            ident = ident,
+            why = kind.descr()
+        );
+        err.span_label(ident.span, "ambiguous name");
+
+        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
+            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
+            let note_msg = format!(
+                "`{ident}` could{also} refer to {what}",
+                ident = ident,
+                also = also,
+                what = what
+            );
+
+            let thing = b.res().descr();
+            let mut help_msgs = Vec::new();
+            if b.is_glob_import()
+                && (kind == AmbiguityKind::GlobVsGlob
+                    || kind == AmbiguityKind::GlobVsExpanded
+                    || kind == AmbiguityKind::GlobVsOuter && swapped != also.is_empty())
+            {
+                help_msgs.push(format!(
+                    "consider adding an explicit import of \
+                     `{ident}` to disambiguate",
+                    ident = ident
+                ))
+            }
+            if b.is_extern_crate() && ident.span.rust_2018() {
+                help_msgs.push(format!(
+                    "use `::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            }
+            if misc == AmbiguityErrorMisc::SuggestCrate {
+                help_msgs.push(format!(
+                    "use `crate::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            } else if misc == AmbiguityErrorMisc::SuggestSelf {
+                help_msgs.push(format!(
+                    "use `self::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident,
+                    thing = thing,
+                ))
+            }
+
+            err.span_note(b.span, &note_msg);
+            for (i, help_msg) in help_msgs.iter().enumerate() {
+                let or = if i == 0 { "" } else { "or " };
+                err.help(&format!("{}{}", or, help_msg));
+            }
+        };
+
+        could_refer_to(b1, misc1, "");
+        could_refer_to(b2, misc2, " also");
+        err.emit();
+    }
+
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+        let session = &self.session;
+        let mk_struct_span_error = |is_constructor| {
+            let mut descr = binding.res().descr().to_string();
+            if is_constructor {
+                descr += " constructor";
+            }
+            if binding.is_import() {
+                descr += " import";
+            }
+
+            let mut err =
+                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
+
+            err.span_label(ident.span, &format!("this {} is private", descr));
+            err.span_note(
+                session.source_map().def_span(binding.span),
+                &format!("the {} `{}` is defined here", descr, ident),
+            );
+
+            err
+        };
+
+        let mut err = if let NameBindingKind::Res(
+            Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
+            _,
+        ) = binding.kind
+        {
+            let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
+            if let Some(fields) = self.field_names.get(&def_id) {
+                let mut err = mk_struct_span_error(true);
+                let first_field = fields.first().expect("empty field list in the map");
+                err.span_label(
+                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
+                    "a constructor is private if any of the fields is private",
+                );
+                err
+            } else {
+                mk_struct_span_error(false)
+            }
+        } else {
+            mk_struct_span_error(false)
+        };
+
+        err.emit();
     }
 }
 

@@ -2,7 +2,13 @@ error[E0603]: function `unexported` is private
   --> $DIR/export-import.rs:1:8
    |
 LL | use m::unexported;
-   |        ^^^^^^^^^^
+   |        ^^^^^^^^^^ this function is private
+   |
+note: the function `unexported` is defined here
+  --> $DIR/export-import.rs:7:5
+   |
+LL |     fn unexported() { }
+   |     ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
