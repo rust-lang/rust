@@ -183,15 +183,15 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let with_pool = move |pool: &ThreadPool| pool.install(move || f());
 
-    syntax::with_globals(edition, || {
-        syntax::GLOBALS.with(|syntax_globals| {
+    syntax::attr::with_globals(edition, || {
+        syntax::attr::GLOBALS.with(|syntax_globals| {
             rustc_span::GLOBALS.with(|rustc_span_globals| {
                 // The main handler runs for each Rayon worker thread and sets up
                 // the thread local rustc uses. syntax_globals and rustc_span_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
                 // thread local callbacks from libsyntax
                 let main_handler = move |thread: ThreadBuilder| {
-                    syntax::GLOBALS.set(syntax_globals, || {
+                    syntax::attr::GLOBALS.set(syntax_globals, || {
                         rustc_span::GLOBALS.set(rustc_span_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
