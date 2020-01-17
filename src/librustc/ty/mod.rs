@@ -481,6 +481,8 @@ bitflags! {
 
         const HAS_CT_INFER       = 1 << 14;
         const HAS_CT_PLACEHOLDER = 1 << 15;
+        /// Does this have any [Opaque] types.
+        const HAS_TY_OPAQUE      = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -503,7 +505,8 @@ bitflags! {
                                   TypeFlags::HAS_RE_ERASED.bits |
                                   TypeFlags::HAS_TY_PLACEHOLDER.bits |
                                   TypeFlags::HAS_CT_INFER.bits |
-                                  TypeFlags::HAS_CT_PLACEHOLDER.bits;
+                                  TypeFlags::HAS_CT_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_TY_OPAQUE.bits;
     }
 }
 

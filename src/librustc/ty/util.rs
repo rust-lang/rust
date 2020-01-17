@@ -615,7 +615,7 @@ impl<'tcx> TyCtxt<'tcx> {
             fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
                 if let ty::Opaque(def_id, substs) = t.kind {
                     self.expand_opaque_ty(def_id, substs).unwrap_or(t)
-                } else if t.has_projections() {
+                } else if t.has_opaque_types() {
                     t.super_fold_with(self)
                 } else {
                     t
