@@ -20,16 +20,16 @@ SOURCE_FILE@[0; 34)
                   IDENT@[16; 19) "foo"
           ARG_LIST@[19; 31)
             L_PAREN@[19; 20) "("
-            ATTR@[20; 27)
-              POUND@[20; 21) "#"
-              L_BRACK@[21; 22) "["
-              PATH@[22; 26)
-                PATH_SEGMENT@[22; 26)
-                  NAME_REF@[22; 26)
-                    IDENT@[22; 26) "attr"
-              R_BRACK@[26; 27) "]"
-            WHITESPACE@[27; 28) " "
-            LITERAL@[28; 30)
+            LITERAL@[20; 30)
+              ATTR@[20; 27)
+                POUND@[20; 21) "#"
+                L_BRACK@[21; 22) "["
+                PATH@[22; 26)
+                  PATH_SEGMENT@[22; 26)
+                    NAME_REF@[22; 26)
+                      IDENT@[22; 26) "attr"
+                R_BRACK@[26; 27) "]"
+              WHITESPACE@[27; 28) " "
               INT_NUMBER@[28; 30) "92"
             R_PAREN@[30; 31) ")"
         WHITESPACE@[31; 32) "\n"

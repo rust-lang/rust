@@ -564,12 +564,9 @@ fn arg_list(p: &mut Parser) {
         // fn main() {
         //     foo(#[attr] 92)
         // }
-        attributes::outer_attributes(p);
-        if !p.at_ts(EXPR_FIRST) {
-            p.error("expected expression");
+        if !expr_with_attrs(p) {
             break;
         }
-        expr(p);
         if !p.at(T![')']) && !p.expect(T![,]) {
             break;
         }
