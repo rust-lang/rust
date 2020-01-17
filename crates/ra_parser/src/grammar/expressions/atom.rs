@@ -191,19 +191,8 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 
         // test array_attrs
         // const A: &[i64] = &[1, #[cfg(test)] 2];
-        let m = p.start();
-        let has_attrs = p.at(T![#]);
-        attributes::outer_attributes(p);
-
-        let cm = expr(p).0;
-
-        match (has_attrs, cm) {
-            (true, Some(cm)) => {
-                let kind = cm.kind();
-                cm.undo_completion(p).abandon(p);
-                m.complete(p, kind);
-            }
-            _ => m.abandon(p),
+        if !expr_with_attrs(p) {
+            break;
         }
 
         if n_exprs == 1 && p.eat(T![;]) {

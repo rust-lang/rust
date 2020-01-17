@@ -12,8 +12,8 @@ SOURCE_FILE@[0; 112)
       BLOCK@[7; 33)
         L_CURLY@[7; 8) "{"
         WHITESPACE@[8; 9) " "
-        EXPR_STMT@[9; 26)
-          ARRAY_EXPR@[9; 26)
+        EXPR_STMT@[9; 17)
+          ARRAY_EXPR@[9; 17)
             L_BRACK@[9; 10) "["
             LITERAL@[10; 11)
               INT_NUMBER@[10; 11) "1"
@@ -25,10 +25,13 @@ SOURCE_FILE@[0; 112)
             WHITESPACE@[15; 16) " "
             ERROR@[16; 17)
               AT@[16; 17) "@"
+        EXPR_STMT@[17; 18)
+          ERROR@[17; 18)
             COMMA@[17; 18) ","
-            WHITESPACE@[18; 19) " "
-            ERROR@[19; 25)
-              STRUCT_KW@[19; 25) "struct"
+        WHITESPACE@[18; 19) " "
+        STRUCT_DEF@[19; 26)
+          STRUCT_KW@[19; 25) "struct"
+          ERROR@[25; 26)
             COMMA@[25; 26) ","
         WHITESPACE@[26; 27) " "
         LET_STMT@[27; 31)
@@ -51,14 +54,14 @@ SOURCE_FILE@[0; 112)
       BLOCK@[41; 68)
         L_CURLY@[41; 42) "{"
         WHITESPACE@[42; 43) " "
-        EXPR_STMT@[43; 52)
-          CALL_EXPR@[43; 52)
+        EXPR_STMT@[43; 54)
+          CALL_EXPR@[43; 54)
             PATH_EXPR@[43; 46)
               PATH@[43; 46)
                 PATH_SEGMENT@[43; 46)
                   NAME_REF@[43; 46)
                     IDENT@[43; 46) "foo"
-            ARG_LIST@[46; 52)
+            ARG_LIST@[46; 54)
               L_PAREN@[46; 47) "("
               LITERAL@[47; 48)
                 INT_NUMBER@[47; 48) "1"
@@ -67,10 +70,9 @@ SOURCE_FILE@[0; 112)
               LITERAL@[50; 51)
                 INT_NUMBER@[50; 51) "2"
               COMMA@[51; 52) ","
-        WHITESPACE@[52; 53) " "
-        EXPR_STMT@[53; 54)
-          ERROR@[53; 54)
-            AT@[53; 54) "@"
+              WHITESPACE@[52; 53) " "
+              ERROR@[53; 54)
+                AT@[53; 54) "@"
         EXPR_STMT@[54; 55)
           ERROR@[54; 55)
             COMMA@[54; 55) ","
@@ -101,8 +103,8 @@ SOURCE_FILE@[0; 112)
       BLOCK@[76; 111)
         L_CURLY@[76; 77) "{"
         WHITESPACE@[77; 78) " "
-        EXPR_STMT@[78; 91)
-          METHOD_CALL_EXPR@[78; 91)
+        EXPR_STMT@[78; 93)
+          METHOD_CALL_EXPR@[78; 93)
             PATH_EXPR@[78; 81)
               PATH@[78; 81)
                 PATH_SEGMENT@[78; 81)
@@ -111,7 +113,7 @@ SOURCE_FILE@[0; 112)
             DOT@[81; 82) "."
             NAME_REF@[82; 85)
               IDENT@[82; 85) "bar"
-            ARG_LIST@[85; 91)
+            ARG_LIST@[85; 93)
               L_PAREN@[85; 86) "("
               LITERAL@[86; 87)
                 INT_NUMBER@[86; 87) "1"
@@ -120,10 +122,9 @@ SOURCE_FILE@[0; 112)
               LITERAL@[89; 90)
                 INT_NUMBER@[89; 90) "2"
               COMMA@[90; 91) ","
-        WHITESPACE@[91; 92) " "
-        EXPR_STMT@[92; 93)
-          ERROR@[92; 93)
-            AT@[92; 93) "@"
+              WHITESPACE@[91; 92) " "
+              ERROR@[92; 93)
+                AT@[92; 93) "@"
         EXPR_STMT@[93; 94)
           ERROR@[93; 94)
             COMMA@[93; 94) ","
@@ -148,15 +149,14 @@ SOURCE_FILE@[0; 112)
         R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
 error 16: expected expression
-error 19: expected expression
-error 26: expected expression
-error 26: expected COMMA
-error 26: expected R_BRACK
-error 26: expected SEMI
+error 17: expected R_BRACK
+error 17: expected SEMI
+error 17: expected expression
+error 18: expected SEMI
+error 25: expected a name
+error 26: expected `;`, `{`, or `(`
 error 30: expected pattern
 error 31: expected SEMI
-error 52: expected expression
-error 52: expected SEMI
 error 53: expected expression
 error 54: expected SEMI
 error 54: expected expression
@@ -168,8 +168,6 @@ error 61: expected SEMI
 error 65: expected pattern
 error 65: expected SEMI
 error 65: expected expression
-error 91: expected expression
-error 91: expected SEMI
 error 92: expected expression
 error 93: expected SEMI
 error 93: expected expression
