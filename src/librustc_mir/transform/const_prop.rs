@@ -92,7 +92,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         //
         // We manually filter the predicates, skipping anything that's not
         // "global". We are in a potentially generic context
-        // (e.g. we are evaluating a function without substituging generic
+        // (e.g. we are evaluating a function without substituting generic
         // parameters, so this filtering serves two purposes:
         //
         // 1. We skip evaluating any predicates that we would
