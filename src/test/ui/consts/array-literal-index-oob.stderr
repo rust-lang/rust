@@ -1,17 +1,17 @@
 warning: index out of bounds: the len is 3 but the index is 4
-  --> $DIR/array-literal-index-oob.rs:6:8
+  --> $DIR/array-literal-index-oob.rs:7:8
    |
 LL |     &{ [1, 2, 3][4] };
    |        ^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/array-literal-index-oob.rs:3:9
+  --> $DIR/array-literal-index-oob.rs:4:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: reaching this expression at runtime will panic or abort
-  --> $DIR/array-literal-index-oob.rs:6:8
+  --> $DIR/array-literal-index-oob.rs:7:8
    |
 LL |     &{ [1, 2, 3][4] };
    |     ---^^^^^^^^^^^^--
@@ -19,7 +19,7 @@ LL |     &{ [1, 2, 3][4] };
    |        indexing out of bounds: the len is 3 but the index is 4
 
 warning: erroneous constant used
-  --> $DIR/array-literal-index-oob.rs:6:5
+  --> $DIR/array-literal-index-oob.rs:7:5
    |
 LL |     &{ [1, 2, 3][4] };
    |     ^^^^^^^^^^^^^^^^^ referenced constant has errors

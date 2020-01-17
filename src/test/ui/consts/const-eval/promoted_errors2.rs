@@ -1,4 +1,5 @@
 // build-pass
+// ignore-pass (emit codegen-time warnings and verify that they are indeed warnings and not errors)
 // compile-flags: -C overflow-checks=on -O
 
 #![warn(const_err)]
