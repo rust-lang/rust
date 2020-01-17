@@ -3,8 +3,6 @@ use crate::fmt::{self, Write};
 use crate::mem;
 use crate::str as core_str;
 
-// ignore-tidy-undocumented-unsafe
-
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "none")]
 pub struct Utf8Lossy {
@@ -17,6 +15,7 @@ impl Utf8Lossy {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> &Utf8Lossy {
+        // SAFETY: Both use the same memory layout, and UTF-8 correctness isn't required.
         unsafe { mem::transmute(bytes) }
     }
 
@@ -60,6 +59,8 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         while i < self.source.len() {
             let i_ = i;
 
+            // SAFETY: `i` starts at `0`, is less than `self.source.len()`, and
+            // only increases, so `0 <= i < self.source.len()`.
             let byte = unsafe { *self.source.get_unchecked(i) };
             i += 1;
 
@@ -69,6 +70,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
 
                 macro_rules! error {
                     () => {{
+                        // SAFETY: We have checked up to `i` that source is valid UTF-8.
                         unsafe {
                             let r = Utf8LossyChunk {
                                 valid: core_str::from_utf8_unchecked(&self.source[0..i_]),
@@ -130,6 +132,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         }
 
         let r = Utf8LossyChunk {
+            // SAFETY: We have checked that the entire source is valid UTF-8.
             valid: unsafe { core_str::from_utf8_unchecked(self.source) },
             broken: &[],
         };

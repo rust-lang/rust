@@ -51,10 +51,9 @@ use rustc_session::config::CrateType;
 use rustc_session::config::{BorrowckMode, OutputFilenames};
 use rustc_session::Session;
 
-use arena::SyncDroplessArena;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
@@ -83,21 +82,11 @@ use syntax::ast;
 use syntax::attr;
 use syntax::expand::allocator::AllocatorKind;
 
-pub struct AllArenas {
-    pub interner: SyncDroplessArena,
-}
-
-impl AllArenas {
-    pub fn new() -> Self {
-        AllArenas { interner: SyncDroplessArena::default() }
-    }
-}
-
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
-    arena: &'tcx SyncDroplessArena,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     /// Specifically use a speedy hash algorithm for these hash sets, since
     /// they're accessed quite often.
@@ -117,7 +106,7 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx SyncDroplessArena) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
@@ -1125,7 +1114,6 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
-        arenas: &'tcx AllArenas,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
@@ -1136,7 +1124,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
-        let interners = CtxtInterners::new(&arenas.interner);
+        let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
@@ -1567,11 +1555,11 @@ pub trait Lift<'tcx>: fmt::Debug {
 }
 
 macro_rules! nop_lift {
-    ($ty:ty => $lifted:ty) => {
+    ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.arena.in_arena(*self as *const _) {
+                if tcx.interners.$set.contains_pointer_to(&Interned(*self)) {
                     Some(unsafe { mem::transmute(*self) })
                 } else {
                     None
@@ -1582,14 +1570,14 @@ macro_rules! nop_lift {
 }
 
 macro_rules! nop_list_lift {
-    ($ty:ty => $lifted:ty) => {
+    ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
             fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 if self.is_empty() {
                     return Some(List::empty());
                 }
-                if tcx.interners.arena.in_arena(*self as *const _) {
+                if tcx.interners.$set.contains_pointer_to(&Interned(*self)) {
                     Some(unsafe { mem::transmute(*self) })
                 } else {
                     None
@@ -1599,21 +1587,21 @@ macro_rules! nop_list_lift {
     };
 }
 
-nop_lift! {Ty<'a> => Ty<'tcx>}
-nop_lift! {Region<'a> => Region<'tcx>}
-nop_lift! {Goal<'a> => Goal<'tcx>}
-nop_lift! {&'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift! {type_; Ty<'a> => Ty<'tcx>}
+nop_lift! {region; Region<'a> => Region<'tcx>}
+nop_lift! {goal; Goal<'a> => Goal<'tcx>}
+nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 
-nop_list_lift! {Goal<'a> => Goal<'tcx>}
-nop_list_lift! {Clause<'a> => Clause<'tcx>}
-nop_list_lift! {Ty<'a> => Ty<'tcx>}
-nop_list_lift! {ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
-nop_list_lift! {Predicate<'a> => Predicate<'tcx>}
-nop_list_lift! {CanonicalVarInfo => CanonicalVarInfo}
-nop_list_lift! {ProjectionKind => ProjectionKind}
+nop_list_lift! {goal_list; Goal<'a> => Goal<'tcx>}
+nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
+nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
+nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
+nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
+nop_list_lift! {canonical_var_infos; CanonicalVarInfo => CanonicalVarInfo}
+nop_list_lift! {projs; ProjectionKind => ProjectionKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
-nop_list_lift! {GenericArg<'a> => GenericArg<'tcx>}
+nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
@@ -1937,6 +1925,11 @@ impl<'tcx, T: 'tcx + ?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx + ?Sized> Copy for Interned<'tcx, T> {}
 
+impl<'tcx, T: 'tcx + ?Sized> IntoPointer for Interned<'tcx, T> {
+    fn into_pointer(&self) -> *const () {
+        self.0 as *const _ as *const ()
+    }
+}
 // N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
@@ -2089,7 +2082,7 @@ macro_rules! slice_interners {
         $(impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
-                    Interned(List::from_arena(&self.interners.arena, v))
+                    Interned(List::from_arena(&*self.arena, v))
                 }).0
             }
         })+

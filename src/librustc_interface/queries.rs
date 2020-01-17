@@ -7,7 +7,7 @@ use rustc::hir::map;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::ty::steal::Steal;
-use rustc::ty::{AllArenas, GlobalCtxt, ResolverOutputs};
+use rustc::ty::{GlobalCtxt, ResolverOutputs};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
@@ -66,7 +66,6 @@ pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: Once<GlobalCtxt<'tcx>>,
 
-    all_arenas: AllArenas,
     arena: WorkerLocal<Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
@@ -86,7 +85,6 @@ impl<'tcx> Queries<'tcx> {
         Queries {
             compiler,
             gcx: Once::new(),
-            all_arenas: AllArenas::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
@@ -265,7 +263,6 @@ impl<'tcx> Queries<'tcx> {
                 outputs,
                 &crate_name,
                 &self.gcx,
-                &self.all_arenas,
                 &self.arena,
             ))
         })
