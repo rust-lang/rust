@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/object-unsafe-trait-in-return-position-impl-trait.rs:36:5
+   |
+LL | fn can() -> impl NotObjectSafe {
+   |             ------------------ expected because this return type...
+LL |     if true {
+LL |         return A;
+   |                - ...is found to be `A` here
+LL |     }
+LL |     B
+   |     ^ expected struct `A`, found struct `B`
+   |
+   = note: to return `impl Trait`, all returned values must be of the same type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = help: if the trait `NotObjectSafe` were object safe, you could return a boxed trait object
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = help: alternatively, create a new `enum` with a variant for each returned type
+
+error[E0308]: mismatched types
+  --> $DIR/object-unsafe-trait-in-return-position-impl-trait.rs:43:5
+   |
+LL | fn cat() -> impl ObjectSafe {
+   |             --------------- expected because this return type...
+LL |     if true {
+LL |         return A;
+   |                - ...is found to be `A` here
+LL |     }
+LL |     B
+   |     ^ expected struct `A`, found struct `B`
+   |
+   = note: to return `impl Trait`, all returned values must be of the same type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = help: you can instead return a boxed trait object using `Box<dyn ObjectSafe>`
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = help: alternatively, create a new `enum` with a variant for each returned type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

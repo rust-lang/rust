@@ -504,7 +504,7 @@ impl<'tcx> EncodeContext<'tcx> {
             },
             proc_macro_data,
             proc_macro_stability: if is_proc_macro {
-                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| stab.clone())
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| *stab)
             } else {
                 None
             },

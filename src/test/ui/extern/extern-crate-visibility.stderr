@@ -1,14 +1,26 @@
-error[E0603]: crate `core` is private
+error[E0603]: crate import `core` is private
   --> $DIR/extern-crate-visibility.rs:6:10
    |
 LL | use foo::core::cell;
-   |          ^^^^
+   |          ^^^^ this crate import is private
+   |
+note: the crate import `core` is defined here
+  --> $DIR/extern-crate-visibility.rs:2:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
 
-error[E0603]: crate `core` is private
+error[E0603]: crate import `core` is private
   --> $DIR/extern-crate-visibility.rs:9:10
    |
 LL |     foo::core::cell::Cell::new(0);
-   |          ^^^^
+   |          ^^^^ this crate import is private
+   |
+note: the crate import `core` is defined here
+  --> $DIR/extern-crate-visibility.rs:2:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

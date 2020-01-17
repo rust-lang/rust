@@ -44,13 +44,25 @@ error[E0603]: struct `Foo` is private
   --> $DIR/use-from-trait-xc.rs:14:24
    |
 LL | use use_from_trait_xc::Foo::new;
-   |                        ^^^
+   |                        ^^^ this struct is private
+   |
+note: the struct `Foo` is defined here
+  --> $DIR/auxiliary/use-from-trait-xc.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^^
 
 error[E0603]: struct `Foo` is private
   --> $DIR/use-from-trait-xc.rs:17:24
    |
 LL | use use_from_trait_xc::Foo::C;
-   |                        ^^^
+   |                        ^^^ this struct is private
+   |
+note: the struct `Foo` is defined here
+  --> $DIR/auxiliary/use-from-trait-xc.rs:9:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^^
 
 error: aborting due to 9 previous errors
 

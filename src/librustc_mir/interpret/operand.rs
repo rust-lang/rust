@@ -684,16 +684,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
                                 .expect("oveflow computing absolute variant idx");
-                            assert!(
-                                (variant_index as usize)
-                                    < rval
-                                        .layout
-                                        .ty
-                                        .ty_adt_def()
-                                        .expect("tagged layout for non adt")
-                                        .variants
-                                        .len()
-                            );
+                            let variants_len = rval
+                                .layout
+                                .ty
+                                .ty_adt_def()
+                                .expect("tagged layout for non adt")
+                                .variants
+                                .len();
+                            assert!((variant_index as usize) < variants_len);
                             (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
                             (u128::from(dataful_variant.as_u32()), dataful_variant)

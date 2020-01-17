@@ -33,7 +33,7 @@ impl ErrorHandled {
             ErrorHandled::Reported => {}
             ErrorHandled::TooGeneric => bug!(
                 "MIR interpretation failed without reporting an error \
-                                              even though it was fully monomorphized"
+                 even though it was fully monomorphized"
             ),
         }
     }

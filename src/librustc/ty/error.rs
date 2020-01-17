@@ -244,9 +244,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
                 if let Some(principal) = inner.principal() {
-                    format!("trait `{}`", tcx.def_path_str(principal.def_id())).into()
+                    format!("trait object `dyn {}`", tcx.def_path_str(principal.def_id())).into()
                 } else {
-                    "trait".into()
+                    "trait object".into()
                 }
             }
             ty::Closure(..) => "closure".into(),

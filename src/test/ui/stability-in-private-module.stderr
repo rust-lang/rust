@@ -1,8 +1,14 @@
 error[E0603]: module `thread_info` is private
-  --> $DIR/stability-in-private-module.rs:2:26
+  --> $DIR/stability-in-private-module.rs:7:26
    |
 LL |     let _ = std::thread::thread_info::current_thread();
-   |                          ^^^^^^^^^^^
+   |                          ^^^^^^^^^^^ this module is private
+   |
+note: the module `thread_info` is defined here
+  --> $SRC_DIR/libstd/thread/mod.rs:LL:COL
+   |
+LL | use crate::sys_common::thread_info;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

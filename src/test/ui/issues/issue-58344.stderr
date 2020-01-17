@@ -3,6 +3,9 @@ error[E0277]: the trait bound `impl Trait<<u32 as std::ops::Add>::Output>: Trait
    |
 LL | ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u32>>::Output>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<u32>` is not implemented for `impl Trait<<u32 as std::ops::Add>::Output>`
+...
+LL |     add_generic(value, 1u32)
+   |     ------------------------ this returned value is of type `Either<impl Trait<<u32 as std::ops::Add>::Output>, impl Trait<<u32 as std::ops::Add>::Output>>`
    |
    = note: the return type of a function must have a statically known size
 
@@ -11,6 +14,9 @@ error[E0277]: the trait bound `impl Trait<<u32 as std::ops::Add>::Output>: Trait
    |
 LL | ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u32>>::Output>> {
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<u32>` is not implemented for `impl Trait<<u32 as std::ops::Add>::Output>`
+...
+LL |     add_generic(value, 1u32)
+   |     ------------------------ this returned value is of type `Either<impl Trait<<u32 as std::ops::Add>::Output>, impl Trait<<u32 as std::ops::Add>::Output>>`
    |
    = note: the return type of a function must have a statically known size
 

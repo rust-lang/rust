@@ -122,7 +122,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
+use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
@@ -2312,44 +2312,81 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                 "type has conflicting packed and align representation hints"
             )
             .emit();
-        } else if check_packed_inner(tcx, def_id, &mut Vec::new()) {
-            struct_span_err!(
-                tcx.sess,
-                sp,
-                E0588,
-                "packed type cannot transitively contain a `[repr(align)]` type"
-            )
-            .emit();
+        } else {
+            if let Some(def_spans) = check_packed_inner(tcx, def_id, &mut vec![]) {
+                let mut err = struct_span_err!(
+                    tcx.sess,
+                    sp,
+                    E0588,
+                    "packed type cannot transitively contain a `#[repr(align)]` type"
+                );
+
+                let hir = tcx.hir();
+                if let Some(hir_id) = hir.as_local_hir_id(def_spans[0].0) {
+                    if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
+                        err.span_note(
+                            tcx.def_span(def_spans[0].0),
+                            &format!("`{}` has a `#[repr(align)]` attribute", ident),
+                        );
+                    }
+                }
+
+                if def_spans.len() > 2 {
+                    let mut first = true;
+                    for (adt_def, span) in def_spans.iter().skip(1).rev() {
+                        if let Some(hir_id) = hir.as_local_hir_id(*adt_def) {
+                            if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
+                                err.span_note(
+                                    *span,
+                                    &if first {
+                                        format!(
+                                            "`{}` contains a field of type `{}`",
+                                            tcx.type_of(def_id),
+                                            ident
+                                        )
+                                    } else {
+                                        format!("...which contains a field of type `{}`", ident)
+                                    },
+                                );
+                                first = false;
+                            }
+                        }
+                    }
+                }
+
+                err.emit();
+            }
         }
     }
 }
 
-fn check_packed_inner(tcx: TyCtxt<'_>, def_id: DefId, stack: &mut Vec<DefId>) -> bool {
-    let t = tcx.type_of(def_id);
-    if stack.contains(&def_id) {
-        debug!("check_packed_inner: {:?} is recursive", t);
-        return false;
-    }
-    if let ty::Adt(def, substs) = t.kind {
+fn check_packed_inner(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    stack: &mut Vec<DefId>,
+) -> Option<Vec<(DefId, Span)>> {
+    if let ty::Adt(def, substs) = tcx.type_of(def_id).kind {
         if def.is_struct() || def.is_union() {
-            if tcx.adt_def(def.did).repr.align.is_some() {
-                return true;
+            if def.repr.align.is_some() {
+                return Some(vec![(def.did, DUMMY_SP)]);
             }
-            // push struct def_id before checking fields
+
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                let f = field.ty(tcx, substs);
-                if let ty::Adt(def, _) = f.kind {
-                    if check_packed_inner(tcx, def.did, stack) {
-                        return true;
+                if let ty::Adt(def, _) = field.ty(tcx, substs).kind {
+                    if !stack.contains(&def.did) {
+                        if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
+                            defs.push((def.did, field.ident.span));
+                            return Some(defs);
+                        }
                     }
                 }
             }
-            // only need to pop if not early out
             stack.pop();
         }
     }
-    false
+
+    None
 }
 
 /// Emit an error when encountering more or less than one variant in a transparent enum.

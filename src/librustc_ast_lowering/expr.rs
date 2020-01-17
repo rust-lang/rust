@@ -909,18 +909,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind<'hir> {
         let inner = hir::InlineAsmInner {
-            inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
+            inputs: asm.inputs.iter().map(|&(c, _)| c).collect(),
             outputs: asm
                 .outputs
                 .iter()
                 .map(|out| hir::InlineAsmOutput {
-                    constraint: out.constraint.clone(),
+                    constraint: out.constraint,
                     is_rw: out.is_rw,
                     is_indirect: out.is_indirect,
                     span: out.expr.span,
                 })
                 .collect(),
-            asm: asm.asm.clone(),
+            asm: asm.asm,
             asm_str_style: asm.asm_str_style,
             clobbers: asm.clobbers.clone().into(),
             volatile: asm.volatile,

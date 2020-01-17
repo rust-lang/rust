@@ -8,7 +8,13 @@ error[E0603]: struct `A` is private
   --> $DIR/issue-29161.rs:13:8
    |
 LL |     a::A::default();
-   |        ^
+   |        ^ this struct is private
+   |
+note: the struct `A` is defined here
+  --> $DIR/issue-29161.rs:2:5
+   |
+LL |     struct A;
+   |     ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

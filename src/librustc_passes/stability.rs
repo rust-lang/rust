@@ -91,7 +91,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 // deprecated_since and its reason.
                 if let Some(parent_stab) = self.parent_stab {
                     if parent_stab.rustc_depr.is_some() && stab.rustc_depr.is_none() {
-                        stab.rustc_depr = parent_stab.rustc_depr.clone()
+                        stab.rustc_depr = parent_stab.rustc_depr
                     }
                 }
 
