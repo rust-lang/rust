@@ -3093,7 +3093,6 @@ dependencies = [
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
- "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
