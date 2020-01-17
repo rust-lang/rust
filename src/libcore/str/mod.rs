@@ -1301,9 +1301,9 @@ where
 impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<(usize, &'a str)> {
-        // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
         self.0
             .next_match()
+            // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
             .map(|(start, end)| unsafe { (start, self.0.haystack().get_unchecked(start..end)) })
     }
 
@@ -1312,9 +1312,9 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     where
         P::Searcher: ReverseSearcher<'a>,
     {
-        // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
         self.0
             .next_match_back()
+            // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
             .map(|(start, end)| unsafe { (start, self.0.haystack().get_unchecked(start..end)) })
     }
 }
@@ -3901,8 +3901,8 @@ impl str {
                 "The first search step from Searcher \
                 must include the first character"
             );
+            // SAFETY: `Searcher` is known to return valid indices.
             unsafe {
-                // Searcher is known to return valid indices.
                 Some(self.get_unchecked(len..))
             }
         } else {
@@ -3942,8 +3942,8 @@ impl str {
                 "The first search step from ReverseSearcher \
                 must include the last character"
             );
+            // SAFETY: `Searcher` is known to return valid indices.
             unsafe {
-                // Searcher is known to return valid indices.
                 Some(self.get_unchecked(..start))
             }
         } else {
@@ -4381,8 +4381,8 @@ impl Default for &str {
 #[stable(feature = "default_mut_str", since = "1.28.0")]
 impl Default for &mut str {
     /// Creates an empty mutable str
-    // SAFETY: `str` is guranteed to be UTF-8.
     fn default() -> Self {
+        // SAFETY: The empty string is valid UTF-8.
         unsafe { from_utf8_unchecked_mut(&mut []) }
     }
 }
