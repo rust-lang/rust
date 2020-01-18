@@ -67,6 +67,8 @@ pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Back
             let arg_argc = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
             let arg_argv = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
 
+            crate::atomic_shim::init_global_lock(m, &mut bcx);
+
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
             let call_inst = if use_start_lang_item {

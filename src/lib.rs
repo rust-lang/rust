@@ -2,6 +2,7 @@
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate flate2;
+extern crate libc;
 extern crate tempfile;
 extern crate rustc;
 extern crate rustc_codegen_ssa;
@@ -36,6 +37,7 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
+mod atomic_shim;
 mod base;
 mod backend;
 mod cast;

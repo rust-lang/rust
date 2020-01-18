@@ -36,6 +36,13 @@ pub fn codegen_crate(
 fn run_jit(tcx: TyCtxt<'_>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
+    // Rustc opens us without the RTLD_GLOBAL flag, so __cg_clif_global_atomic_mutex will not be
+    // exported. We fix this by opening ourself again as global.
+    // FIXME remove once atomic_shim is gone
+    let cg_dylib = std::ffi::OsString::from(&tcx.sess.opts.debugging_opts.codegen_backend.as_ref().unwrap());
+    std::mem::forget(libloading::os::unix::Library::open(Some(cg_dylib), libc::RTLD_NOW | libc::RTLD_GLOBAL).unwrap());
+
+
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
     let mut jit_builder = SimpleJITBuilder::with_isa(

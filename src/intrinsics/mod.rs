@@ -104,14 +104,20 @@ macro call_intrinsic_match {
 }
 
 macro atomic_binop_return_old($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident)  {
+    crate::atomic_shim::lock_global_lock($fx);
+
     let clif_ty = $fx.clif_type($T).unwrap();
     let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
     let new = $fx.bcx.ins().$op(old, $src);
     $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
     $ret.write_cvalue($fx, CValue::by_val(old, $fx.layout_of($T)));
+
+    crate::atomic_shim::unlock_global_lock($fx);
 }
 
 macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $ret:ident) {
+    crate::atomic_shim::lock_global_lock($fx);
+
     // Read old
     let clif_ty = $fx.clif_type($T).unwrap();
     let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
@@ -125,6 +131,8 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
 
     let ret_val = CValue::by_val(old, $ret.layout());
     $ret.write_cvalue($fx, ret_val);
+
+    crate::atomic_shim::unlock_global_lock($fx);
 }
 
 fn lane_type_and_count<'tcx>(
@@ -845,19 +853,35 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, caller_location);
         };
 
-        _ if intrinsic.starts_with("atomic_fence"), () {};
-        _ if intrinsic.starts_with("atomic_singlethreadfence"), () {};
+        _ if intrinsic.starts_with("atomic_fence"), () {
+            crate::atomic_shim::lock_global_lock(fx);
+            crate::atomic_shim::unlock_global_lock(fx);
+        };
+        _ if intrinsic.starts_with("atomic_singlethreadfence"), () {
+            crate::atomic_shim::lock_global_lock(fx);
+            crate::atomic_shim::unlock_global_lock(fx);
+        };
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
+            crate::atomic_shim::lock_global_lock(fx);
+
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
+
+            crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
+            crate::atomic_shim::lock_global_lock(fx);
+
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
+
+            crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
+            crate::atomic_shim::lock_global_lock(fx);
+
             // Read old
             let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
@@ -866,8 +890,12 @@ pub fn codegen_intrinsic_call<'tcx>(
             // Write new
             let dest = CPlace::for_ptr(Pointer::new(ptr), src.layout());
             dest.write_cvalue(fx, src);
+
+            crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+            crate::atomic_shim::lock_global_lock(fx);
+
             // Read old
             let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
@@ -881,6 +909,8 @@ pub fn codegen_intrinsic_call<'tcx>(
 
             let ret_val = CValue::by_val_pair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
             ret.write_cvalue(fx, ret_val);
+
+            crate::atomic_shim::unlock_global_lock(fx);
         };
 
         _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, v amount) {
@@ -893,12 +923,16 @@ pub fn codegen_intrinsic_call<'tcx>(
             atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
         };
         _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, v src) {
+            crate::atomic_shim::lock_global_lock(fx);
+
             let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
             let and = fx.bcx.ins().band(old, src);
             let new = fx.bcx.ins().bnot(and);
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
             ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
+
+            crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, v src) {
             atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
