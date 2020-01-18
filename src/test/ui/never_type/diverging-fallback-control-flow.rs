@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
@@ -33,7 +31,7 @@ fn assignment() {
     let x;
 
     if true {
-        x = BadDefault::default();
+        x = BadDefault::default(); //~ ERROR Fallback to `!`
     } else {
         x = return;
     }
@@ -45,13 +43,13 @@ fn assignment_rev() {
     if true {
         x = return;
     } else {
-        x = BadDefault::default();
+        x = BadDefault::default(); //~ ERROR Fallback to `!`
     }
 }
 
 fn if_then_else() {
     let _x = if true {
-        BadDefault::default()
+        BadDefault::default() //~ ERROR Fallback to `!`
     } else {
         return;
     };
@@ -61,19 +59,19 @@ fn if_then_else_rev() {
     let _x = if true {
         return;
     } else {
-        BadDefault::default()
+        BadDefault::default() //~ ERROR Fallback to `!`
     };
 }
 
 fn match_arm() {
-    let _x = match Ok(BadDefault::default()) {
+    let _x = match Ok(BadDefault::default()) { //~ ERROR Fallback to `!`
         Ok(v) => v,
         Err(()) => return,
     };
 }
 
 fn match_arm_rev() {
-    let _x = match Ok(BadDefault::default()) {
+    let _x = match Ok(BadDefault::default()) { //~ ERROR Fallback to `!`
         Err(()) => return,
         Ok(v) => v,
     };
@@ -84,7 +82,7 @@ fn loop_break() {
         if false {
             break return;
         } else {
-            break BadDefault::default();
+            break BadDefault::default(); //~ ERROR Fallback to `!`
         }
     };
 }
@@ -94,7 +92,7 @@ fn loop_break_rev() {
         if false {
             break return;
         } else {
-            break BadDefault::default();
+            break BadDefault::default(); //~ ERROR Fallback to `!`
         }
     };
 }

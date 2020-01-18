@@ -1,0 +1,209 @@
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:34:13
+   |
+LL |         x = BadDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:34:13
+   |
+LL |         x = BadDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:36:13
+   |
+LL |         x = return;
+   |             ^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:46:13
+   |
+LL |         x = BadDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:46:13
+   |
+LL |         x = BadDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:44:13
+   |
+LL |         x = return;
+   |             ^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:52:9
+   |
+LL |         BadDefault::default()
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:52:9
+   |
+LL |         BadDefault::default()
+   |         ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:54:9
+   |
+LL |         return;
+   |         ^^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:62:9
+   |
+LL |         BadDefault::default()
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:62:9
+   |
+LL |         BadDefault::default()
+   |         ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:59:22
+   |
+LL |       let _x = if true {
+   |  ______________________^
+LL | |         return;
+LL | |     } else {
+   | |_____^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:67:23
+   |
+LL |     let _x = match Ok(BadDefault::default()) {
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:67:23
+   |
+LL |     let _x = match Ok(BadDefault::default()) {
+   |                       ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:67:14
+   |
+LL |       let _x = match Ok(BadDefault::default()) {
+   |  ______________^
+LL | |         Ok(v) => v,
+LL | |         Err(()) => return,
+LL | |     };
+   | |_____^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:74:23
+   |
+LL |     let _x = match Ok(BadDefault::default()) {
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:74:23
+   |
+LL |     let _x = match Ok(BadDefault::default()) {
+   |                       ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:75:20
+   |
+LL |         Err(()) => return,
+   |                    ^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:85:19
+   |
+LL |             break BadDefault::default();
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:85:19
+   |
+LL |             break BadDefault::default();
+   |                   ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:83:19
+   |
+LL |             break return;
+   |                   ^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: Fallback to `!` may introduce undefined behavior
+  --> $DIR/diverging-fallback-control-flow.rs:95:19
+   |
+LL |             break BadDefault::default();
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the type parameter Self here was inferred to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:95:19
+   |
+LL |             break BadDefault::default();
+   |                   ^^^^^^^^^^^^^^^^^^^
+note: (type parameter defined here)
+  --> $DIR/diverging-fallback-control-flow.rs:14:1
+   |
+LL | / trait BadDefault {
+LL | |     fn default() -> Self;
+LL | | }
+   | |_^
+note: ... due to this expression evaluating to `!`
+  --> $DIR/diverging-fallback-control-flow.rs:93:19
+   |
+LL |             break return;
+   |                   ^^^^^^
+   = note: If you want the `!` type to be used here, add explicit type annotations
+
+error: aborting due to 8 previous errors
+
