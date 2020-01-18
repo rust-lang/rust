@@ -68,7 +68,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             // being tested is `'empty`.
             VerifyBound::IsEmpty
         } else {
-            // If we can find any other bound R such that `T: R`, then
+            // If we can find any other bound `R` such that `T: R`, then
             // we don't need to check for `'empty`, because `R: 'empty`.
             VerifyBound::AnyBound(any_bounds)
         }

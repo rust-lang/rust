@@ -1438,9 +1438,9 @@ pub enum RegionKind {
     /// Empty lifetime is for data that is never accessed.  We tag the
     /// empty lifetime with a universe -- the idea is that we don't
     /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
-    /// Therefore, the `'empty` in a universe U is less than all
-    /// regions visible from U, but not less than regions not visible
-    /// from U.
+    /// Therefore, the `'empty` in a universe `U` is less than all
+    /// regions visible from `U`, but not less than regions not visible
+    /// from `U`.
     ReEmpty(ty::UniverseIndex),
 
     /// Erased region, used by trait selection, in MIR and during codegen.
