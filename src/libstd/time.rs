@@ -65,7 +65,7 @@ pub use core::time::Duration;
 ///
 /// |  Platform |               System call                                            |
 /// |:---------:|:--------------------------------------------------------------------:|
-/// | Cloud ABI | [clock_time_get (Monotonic Clock)]                                   |
+/// | CloudABI  | [clock_time_get (Monotonic Clock)]                                   |
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
 /// | Darwin    | [mach_absolute_time]                                                 |
@@ -79,7 +79,7 @@ pub use core::time::Duration;
 /// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get
 /// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
 /// [mach_absolute_time]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html
-/// [clock_time_get (Monotonic Clock)]: https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt
+/// [clock_time_get (Monotonic Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
