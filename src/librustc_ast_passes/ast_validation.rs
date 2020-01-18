@@ -612,9 +612,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match item.kind {
-            ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
+            ItemKind::Impl {
+                unsafety,
+                polarity,
+                defaultness: _,
+                generics: _,
+                of_trait: Some(_),
+                ref self_ty,
+                ref items,
+            } => {
                 self.invalid_visibility(&item.vis, None);
-                if let TyKind::Err = ty.kind {
+                if let TyKind::Err = self_ty.kind {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
                         .help("use `auto trait Trait {}` instead")
@@ -629,7 +637,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     )
                     .emit();
                 }
-                for impl_item in impl_items {
+                for impl_item in items {
                     self.invalid_visibility(&impl_item.vis, None);
                     if let AssocItemKind::Fn(ref sig, _) = impl_item.kind {
                         self.check_trait_fn_not_const(sig.header.constness);
@@ -637,7 +645,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Impl(unsafety, polarity, defaultness, _, None, _, _) => {
+            ItemKind::Impl {
+                unsafety,
+                polarity,
+                defaultness,
+                generics: _,
+                of_trait: None,
+                self_ty: _,
+                items: _,
+            } => {
                 self.invalid_visibility(
                     &item.vis,
                     Some("place qualifiers on individual impl items instead"),

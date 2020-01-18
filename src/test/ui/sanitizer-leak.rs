@@ -1,3 +1,11 @@
+// needs-sanitizer-support
+// only-x86_64
+//
+// compile-flags: -Z sanitizer=leak -O
+//
+// run-fail
+// error-pattern: LeakSanitizer: detected memory leaks
+
 #![feature(test)]
 
 use std::hint::black_box;

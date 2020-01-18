@@ -315,7 +315,7 @@ impl DirtyCleanVisitor<'tcx> {
                     //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
-                    HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
+                    HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.sess.span_fatal(
                         attr.span,

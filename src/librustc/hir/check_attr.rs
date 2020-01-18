@@ -112,7 +112,7 @@ impl Target {
             ItemKind::Union(..) => Target::Union,
             ItemKind::Trait(..) => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ItemKind::Impl(..) => Target::Impl,
+            ItemKind::Impl { .. } => Target::Impl,
         }
     }
 
@@ -144,7 +144,7 @@ impl Target {
                 let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
                 let containing_item = tcx.hir().expect_item(parent_hir_id);
                 let containing_impl_is_for_trait = match &containing_item.kind {
-                    hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr.is_some(),
+                    hir::ItemKind::Impl { ref of_trait, .. } => of_trait.is_some(),
                     _ => bug!("parent of an ImplItem must be an Impl"),
                 };
                 if containing_impl_is_for_trait {

@@ -1406,6 +1406,14 @@ pub struct PathSegment {
 pub struct Typedef {
     pub type_: Type,
     pub generics: Generics,
+    // Type of target item.
+    pub item_type: Option<Type>,
+}
+
+impl GetDefId for Typedef {
+    fn def_id(&self) -> Option<DefId> {
+        self.type_.def_id()
+    }
 }
 
 #[derive(Clone, Debug)]

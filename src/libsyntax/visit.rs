@@ -308,11 +308,19 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
         }
-        ItemKind::Impl(_, _, _, ref generics, ref opt_trait_reference, ref typ, ref impl_items) => {
+        ItemKind::Impl {
+            unsafety: _,
+            polarity: _,
+            defaultness: _,
+            ref generics,
+            ref of_trait,
+            ref self_ty,
+            ref items,
+        } => {
             visitor.visit_generics(generics);
-            walk_list!(visitor, visit_trait_ref, opt_trait_reference);
-            visitor.visit_ty(typ);
-            walk_list!(visitor, visit_impl_item, impl_items);
+            walk_list!(visitor, visit_trait_ref, of_trait);
+            visitor.visit_ty(self_ty);
+            walk_list!(visitor, visit_impl_item, items);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {

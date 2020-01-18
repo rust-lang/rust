@@ -184,7 +184,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
         | hir::ItemKind::Enum(_, generics)
         | hir::ItemKind::TraitAlias(generics, _)
         | hir::ItemKind::Trait(_, _, generics, ..)
-        | hir::ItemKind::Impl(_, _, _, generics, ..)
+        | hir::ItemKind::Impl { generics, .. }
         | hir::ItemKind::Struct(_, generics) => (generics, true),
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. })
         | hir::ItemKind::TyAlias(_, generics) => (generics, false),
@@ -401,7 +401,7 @@ fn type_param_predicates(
         Node::Item(item) => {
             match item.kind {
                 ItemKind::Fn(.., ref generics, _)
-                | ItemKind::Impl(_, _, _, ref generics, ..)
+                | ItemKind::Impl { ref generics, .. }
                 | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. })
                 | ItemKind::Enum(_, ref generics)
@@ -531,7 +531,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
             tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         }
-        hir::ItemKind::Impl(..) => {
+        hir::ItemKind::Impl { .. } => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.impl_trait_ref(def_id);
@@ -1052,9 +1052,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Fn(.., ref generics, _) | ItemKind::Impl(_, _, _, ref generics, ..) => {
-                    generics
-                }
+                ItemKind::Fn(.., ref generics, _) | ItemKind::Impl { ref generics, .. } => generics,
 
                 ItemKind::TyAlias(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
@@ -1338,7 +1336,9 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::TyAlias(ref ty, _) | ItemKind::Impl(.., ref ty, _) => icx.to_ty(ty),
+                ItemKind::TyAlias(ref self_ty, _) | ItemKind::Impl { ref self_ty, .. } => {
+                    icx.to_ty(self_ty)
+                }
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
@@ -1956,12 +1956,10 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     match tcx.hir().expect_item(hir_id).kind {
-        hir::ItemKind::Impl(.., ref opt_trait_ref, _, _) => {
-            opt_trait_ref.as_ref().map(|ast_trait_ref| {
-                let selfty = tcx.type_of(def_id);
-                AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
-            })
-        }
+        hir::ItemKind::Impl { ref of_trait, .. } => of_trait.as_ref().map(|ast_trait_ref| {
+            let selfty = tcx.type_of(def_id);
+            AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
+        }),
         _ => bug!(),
     }
 }
@@ -1971,19 +1969,21 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl(_, hir::ImplPolarity::Negative, ..) => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative, .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
-        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, None, _, _) => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Positive, of_trait: None, .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
-        hir::ItemKind::Impl(_, hir::ImplPolarity::Positive, _, _, Some(_tr), _, _) => {
+        hir::ItemKind::Impl {
+            polarity: hir::ImplPolarity::Positive, of_trait: Some(_), ..
+        } => {
             if is_rustc_reservation {
                 ty::ImplPolarity::Reservation
             } else {
@@ -2142,7 +2142,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Impl(_, _, defaultness, ref generics, ..) => {
+                ItemKind::Impl { defaultness, ref generics, .. } => {
                     if defaultness.is_default() {
                         is_default_impl_trait = tcx.impl_trait_ref(def_id);
                     }
@@ -2359,7 +2359,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // before uses of `U`.  This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
-    if let Node::Item(&Item { kind: ItemKind::Impl(..), .. }) = node {
+    if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
         let self_ty = tcx.type_of(def_id);
         let trait_ref = tcx.impl_trait_ref(def_id);
         cgp::setup_constraining_predicates(

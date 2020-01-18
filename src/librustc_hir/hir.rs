@@ -2436,15 +2436,18 @@ pub enum ItemKind<'hir> {
     TraitAlias(Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(
-        Unsafety,
-        ImplPolarity,
-        Defaultness,
-        Generics<'hir>,
-        Option<TraitRef<'hir>>, // (optional) trait this impl implements
-        &'hir Ty<'hir>,         // self
-        &'hir [ImplItemRef<'hir>],
-    ),
+    Impl {
+        unsafety: Unsafety,
+        polarity: ImplPolarity,
+        defaultness: Defaultness,
+        generics: Generics<'hir>,
+
+        /// The trait being implemented, if any.
+        of_trait: Option<TraitRef<'hir>>,
+
+        self_ty: &'hir Ty<'hir>,
+        items: &'hir [ImplItemRef<'hir>],
+    },
 }
 
 impl ItemKind<'_> {
@@ -2465,7 +2468,7 @@ impl ItemKind<'_> {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl(..) => "impl",
+            ItemKind::Impl { .. } => "impl",
         }
     }
 
@@ -2478,7 +2481,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::Impl(_, _, _, ref generics, _, _, _) => generics,
+            | ItemKind::Impl { ref generics, .. } => generics,
             _ => return None,
         })
     }

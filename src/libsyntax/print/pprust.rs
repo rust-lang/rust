@@ -1226,15 +1226,15 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Impl(
+            ast::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
                 ref generics,
-                ref opt_trait,
-                ref ty,
-                ref impl_items,
-            ) => {
+                ref of_trait,
+                ref self_ty,
+                ref items,
+            } => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -1250,19 +1250,19 @@ impl<'a> State<'a> {
                     self.s.word("!");
                 }
 
-                if let Some(ref t) = *opt_trait {
+                if let Some(ref t) = *of_trait {
                     self.print_trait_ref(t);
                     self.s.space();
                     self.word_space("for");
                 }
 
-                self.print_type(ty);
+                self.print_type(self_ty);
                 self.print_where_clause(&generics.where_clause);
 
                 self.s.space();
                 self.bopen();
                 self.print_inner_attributes(&item.attrs);
-                for impl_item in impl_items {
+                for impl_item in items {
                     self.print_assoc_item(impl_item);
                 }
                 self.bclose(item.span);

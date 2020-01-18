@@ -229,9 +229,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         //      |
                         //      = note: expected type `u32`
                         //                 found type `()`
-                        if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
+                        if let Some(hir::ItemKind::Impl { items, .. }) = item.map(|i| &i.kind) {
                             let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
-                            if let Some(impl_item) = impl_items
+                            if let Some(impl_item) = items
                                 .iter()
                                 .filter(|item| item.ident == trait_assoc_item.ident)
                                 .next()
@@ -279,14 +279,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
                         if let (
                             ty::Projection(ty::ProjectionTy { item_def_id, .. }),
-                            Some(hir::ItemKind::Impl(.., impl_items)),
+                            Some(hir::ItemKind::Impl { items, .. }),
                         ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind))
                         {
                             if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
                                 .filter(|i| i.def_id == *item_def_id)
                                 .next()
                                 .and_then(|trait_assoc_item| {
-                                    impl_items
+                                    items
                                         .iter()
                                         .filter(|i| i.ident == trait_assoc_item.ident)
                                         .next()

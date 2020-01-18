@@ -341,7 +341,7 @@ impl<'hir> Map<'hir> {
                 | ItemKind::Use(..)
                 | ItemKind::ForeignMod(..)
                 | ItemKind::GlobalAsm(..)
-                | ItemKind::Impl(..) => return None,
+                | ItemKind::Impl { .. } => return None,
             },
             Node::ForeignItem(item) => match item.kind {
                 ForeignItemKind::Fn(..) => DefKind::Fn,
@@ -604,7 +604,7 @@ impl<'hir> Map<'hir> {
                 | ItemKind::Union(_, ref generics)
                 | ItemKind::Trait(_, _, ref generics, ..)
                 | ItemKind::TraitAlias(ref generics, _)
-                | ItemKind::Impl(_, _, _, ref generics, ..) => Some(generics),
+                | ItemKind::Impl { ref generics, .. } => Some(generics),
                 _ => None,
             },
             _ => None,
@@ -821,7 +821,7 @@ impl<'hir> Map<'hir> {
                     | ItemKind::Struct(..)
                     | ItemKind::Union(..)
                     | ItemKind::Trait(..)
-                    | ItemKind::Impl(..) => true,
+                    | ItemKind::Impl { .. } => true,
                     _ => false,
                 },
                 Node::ForeignItem(fi) => match fi.kind {
@@ -1332,7 +1332,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ItemKind::Union(..) => "union",
                 ItemKind::Trait(..) => "trait",
                 ItemKind::TraitAlias(..) => "trait alias",
-                ItemKind::Impl(..) => "impl",
+                ItemKind::Impl { .. } => "impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }

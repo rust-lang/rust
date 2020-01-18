@@ -634,15 +634,15 @@ impl<'a> Parser<'a> {
                 let constness = constness.map(|c| c.node);
                 let trait_ref = TraitRef { path, constness, ref_id: ty_first.id };
 
-                ItemKind::Impl(
+                ItemKind::Impl {
                     unsafety,
                     polarity,
                     defaultness,
                     generics,
-                    Some(trait_ref),
-                    ty_second,
-                    impl_items,
-                )
+                    of_trait: Some(trait_ref),
+                    self_ty: ty_second,
+                    items: impl_items,
+                }
             }
             None => {
                 // Reject `impl const Type {}` here
@@ -653,15 +653,15 @@ impl<'a> Parser<'a> {
                 }
 
                 // impl Type
-                ItemKind::Impl(
+                ItemKind::Impl {
                     unsafety,
                     polarity,
                     defaultness,
                     generics,
-                    None,
-                    ty_first,
-                    impl_items,
-                )
+                    of_trait: None,
+                    self_ty: ty_first,
+                    items: impl_items,
+                }
             }
         };
 

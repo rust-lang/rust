@@ -67,14 +67,15 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.kind {
-                    if opt_trait_ref.as_ref().map(|tr| tr.constness.is_some()).unwrap_or(false) {
+                if let ItemKind::Impl { ref of_trait, .. } = item.kind {
+                    if of_trait.as_ref().map(|tr| tr.constness.is_some()).unwrap_or(false) {
+                        this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                         this.lctx
                             .diagnostic()
                             .span_err(item.span, "const trait impls are not yet implemented");
                     }
 
-                    this.with_trait_impl_ref(opt_trait_ref, |this| visit::walk_item(this, item));
+                    this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
                 }
@@ -118,7 +119,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let old_len = self.in_scope_lifetimes.len();
 
         let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
-            hir::ItemKind::Impl(_, _, _, ref generics, ..)
+            hir::ItemKind::Impl { ref generics, .. }
             | hir::ItemKind::Trait(_, _, ref generics, ..) => &generics.params[..],
             _ => &[],
         };
@@ -173,7 +174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 vec
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
-            ItemKind::Fn(..) | ItemKind::Impl(.., None, _, _) => smallvec![i.id],
+            ItemKind::Fn(..) | ItemKind::Impl { of_trait: None, .. } => smallvec![i.id],
             ItemKind::Static(ref ty, ..) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
@@ -361,15 +362,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
-            ItemKind::Impl(
+            ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
-                ref ast_generics,
-                ref trait_ref,
-                ref ty,
-                ref impl_items,
-            ) => {
+                generics: ref ast_generics,
+                of_trait: ref trait_ref,
+                self_ty: ref ty,
+                items: ref impl_items,
+            } => {
                 let def_id = self.resolver.definitions().local_def_id(id);
 
                 // Lower the "impl header" first. This ordering is important
@@ -417,15 +418,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     });
 
-                hir::ItemKind::Impl(
+                hir::ItemKind::Impl {
                     unsafety,
                     polarity,
-                    self.lower_defaultness(defaultness, true /* [1] */),
+                    defaultness: self.lower_defaultness(defaultness, true /* [1] */),
                     generics,
-                    trait_ref,
-                    lowered_ty,
-                    new_impl_items,
-                )
+                    of_trait: trait_ref,
+                    self_ty: lowered_ty,
+                    items: new_impl_items,
+                }
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_param_bounds(bounds, ImplTraitContext::disallowed());

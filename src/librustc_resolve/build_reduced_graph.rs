@@ -815,7 +815,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(..) | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
