@@ -144,7 +144,7 @@ pub struct Instant(time::Instant);
 ///
 /// |  Platform |               System call                                            |
 /// |:---------:|:--------------------------------------------------------------------:|
-/// | Cloud ABI | [clock_time_get (Realtime Clock)]                                    |
+/// | CloudABI  | [clock_time_get (Realtime Clock)]                                    |
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
 /// | DARWIN    | [gettimeofday]                                                       |
@@ -152,7 +152,7 @@ pub struct Instant(time::Instant);
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimeAsFileTime]                                            |
 ///
-/// [clock_time_get (Realtime Clock)]: https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt
+/// [clock_time_get (Realtime Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [gettimeofday]: http://man7.org/linux/man-pages/man2/gettimeofday.2.html
