@@ -1,5 +1,5 @@
 fn main() {
-    *(&(4, 5).1);
+    *(&(4, 5).1); // This does not currently propagate (#67862)
 }
 
 // END RUST SOURCE
@@ -35,7 +35,7 @@ fn main() {
 //     ...
 //     _4 = const main::promoted[0];
 //     _2 = &((*_4).1: i32);
-//     _1 = const 5i32;
+//     _1 = (*_2);
 //     ...
 // }
 // END rustc.main.ConstProp.after.mir
