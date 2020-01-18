@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod(..)
             | hir::ItemKind::GlobalAsm(..)
-            | hir::ItemKind::Impl(..)
+            | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => return,
         };
 

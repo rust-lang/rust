@@ -388,10 +388,13 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         hir::ItemKind::TraitAlias(..) => {
             println!("trait alias");
         },
-        hir::ItemKind::Impl(_, _, _, _, Some(ref _trait_ref), _, _) => {
+        hir::ItemKind::Impl {
+            of_trait: Some(ref _trait_ref),
+            ..
+        } => {
             println!("trait impl");
         },
-        hir::ItemKind::Impl(_, _, _, _, None, _, _) => {
+        hir::ItemKind::Impl { of_trait: None, .. } => {
             println!("impl");
         },
     }

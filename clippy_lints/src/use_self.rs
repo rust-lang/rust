@@ -173,7 +173,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             return;
         }
         if_chain! {
-            if let ItemKind::Impl(.., ref item_type, refs) = item.kind;
+            if let ItemKind::Impl{ self_ty: ref item_type, items: refs, .. } = item.kind;
             if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.kind;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
@@ -269,7 +269,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
             | ItemKind::Union(..)
-            | ItemKind::Impl(..)
+            | ItemKind::Impl { .. }
             | ItemKind::Fn(..) => {
                 // Don't check statements that shadow `Self` or where `Self` can't be used
             },

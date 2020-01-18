@@ -181,7 +181,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     ) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
+            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
                 return;
             }
         }
@@ -2106,7 +2106,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
         }
 
         match item.kind {
-            ItemKind::Impl(_, _, _, ref generics, _, ref ty, ref items) => {
+            ItemKind::Impl {
+                ref generics,
+                self_ty: ref ty,
+                ref items,
+                ..
+            } => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(ty);
 
