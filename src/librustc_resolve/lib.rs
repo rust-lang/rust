@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! This crate is responsible for the part of name resolution that doesn't require type checker.
 //!
 //! Module structure of the crate is built here.
@@ -58,7 +59,7 @@ use std::{cmp, fmt, iter, ptr};
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
 use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
-use late::{HasGenericParams, PathSource, Rib, RibKind::*};
+use late::{AnonConstUsage, HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
 
 use rustc_error_codes::*;
@@ -203,6 +204,8 @@ enum ResolutionError<'a> {
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant,
+    /// Error E0747: type parameters can't appear within `{}`.
+    GenericParamsInConst(AnonConstUsage),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
@@ -2327,12 +2330,12 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 // We don't immediately trigger a resolve error, because
                                 // we want certain other resolution errors (namely those
-                                // emitted for `ConstantItemRibKind` below) to take
+                                // emitted for `ConstantRibKind` below) to take
                                 // precedence.
                                 res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
                             }
                         }
-                        ConstantItemRibKind => {
+                        ConstantRibKind(_) => {
                             // Still doesn't deal with upvars
                             if record_used {
                                 self.report_error(span, AttemptToUseNonConstantValueInConstant);
@@ -2353,10 +2356,54 @@ impl<'a> Resolver<'a> {
                         | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
-                        | ForwardTyParamBanRibKind
-                        | ConstantItemRibKind => {
+                        | ForwardTyParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
+                        }
+                        ConstantRibKind(usage) => {
+                            if self.session.features_untracked().const_generics {
+                                // With const generics/lazy normalization any constants can depend
+                                // on generic parameters, including type parameters.
+                                continue;
+                            };
+                            match usage {
+                                AnonConstUsage::AssocConstant | AnonConstUsage::GenericArg => {
+                                    // Allowed to use any type parameters.
+                                    continue
+                                },
+                                // Enum discriminants can use `Self` to refer to other variants in
+                                // the same enum, but can refer to any other type parameters.
+                                AnonConstUsage::EnumDiscriminant
+                                // In most cases array lengths can't refer to type parameters but
+                                // previously some usages involving `Self` did compile. Example:
+                                //
+                                // impl Foo {
+                                //     const A: usize = 32;
+                                //
+                                //     pub fn bar() {
+                                //         let _ = [0; Self::A];
+                                //     }
+                                // }
+                                //
+                                // Though if `Foo` had a type parameter,
+                                // e.g. `impl<T> Foo<T> { ... }` then is wouldn't compile with a
+                                // confusing error message.
+                                | AnonConstUsage::ArrayLength => {
+                                    if let Res::SelfTy(..) = res {
+                                        continue
+                                    }
+                                }
+                                // can't use any type parameters including `Self`.
+                                AnonConstUsage::Constant | AnonConstUsage::Static => {}
+                            }
+
+                            if record_used {
+                                self.report_error(
+                                    span,
+                                    ResolutionError::GenericParamsInConst(usage),
+                                );
+                            }
+                            return Res::Err;
                         }
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,

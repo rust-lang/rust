@@ -360,6 +360,17 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, "non-constant value");
                 err
             }
+            ResolutionError::GenericParamsInConst(source) => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0447,
+                    "type parameters can't appear within {}",
+                    source.descr()
+                );
+                err.span_label(span, "type parameter");
+                err
+            }
             ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
                 let res = binding.res();
                 let shadows_what = res.descr();

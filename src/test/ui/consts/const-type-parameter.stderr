@@ -1,0 +1,71 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-type-parameter.rs:8:32
+   |
+LL | fn foo<T: Bar>() {
+   |        - type parameter from outer function
+LL |     const A: usize = size_of::<T>();
+   |                                ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-type-parameter.rs:10:22
+   |
+LL | fn foo<T: Bar>() {
+   |        - type parameter from outer function
+...
+LL |     const B: usize = T::A;
+   |                      ^^^^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-type-parameter.rs:12:33
+   |
+LL | fn foo<T: Bar>() {
+   |        - type parameter from outer function
+...
+LL |     static C: usize = size_of::<T>();
+   |                                 ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-type-parameter.rs:14:23
+   |
+LL | fn foo<T: Bar>() {
+   |        - type parameter from outer function
+...
+LL |     static D: usize = T::A;
+   |                       ^^^^ use of generic parameter from outer function
+
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/const-type-parameter.rs:17:27
+   |
+LL |     let _ = [0; size_of::<T>()];
+   |                           ^ type parameter
+
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/const-type-parameter.rs:19:17
+   |
+LL |     let _ = [0; T::A];
+   |                 ^^^^ type parameter
+
+error[E0447]: type parameters can't appear within an enum discriminant
+  --> $DIR/const-type-parameter.rs:26:20
+   |
+LL |     V1 = size_of::<T>(),
+   |                    ^ type parameter
+
+error[E0447]: type parameters can't appear within an enum discriminant
+  --> $DIR/const-type-parameter.rs:28:10
+   |
+LL |     V2 = T::A,
+   |          ^^^^ type parameter
+
+error[E0392]: parameter `T` is never used
+  --> $DIR/const-type-parameter.rs:24:11
+   |
+LL | enum Enum<T: Bar> {
+   |           ^ unused parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0392, E0401, E0447.
+For more information about an error, try `rustc --explain E0392`.

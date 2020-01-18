@@ -1,14 +1,9 @@
-error[E0277]: the trait bound `A: Foo` is not satisfied
-  --> $DIR/associated-const-type-parameter-arrays.rs:16:23
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/associated-const-type-parameter-arrays.rs:16:24
    |
-LL |     const Y: usize;
-   |     --------------- required by `Foo::Y`
-...
-LL | pub fn test<A: Foo, B: Foo>() {
-   |             -- help: consider further restricting this bound: `A: Foo +`
 LL |     let _array: [u32; <A as Foo>::Y];
-   |                       ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
+   |                        ^ type parameter
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0447`.

@@ -1,0 +1,80 @@
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/issue-67945.rs:9:16
+   |
+LL |         let x: S = MaybeUninit::uninit();
+   |                ^ type parameter
+
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/issue-67945.rs:11:45
+   |
+LL |         let b = &*(&x as *const _ as *const S);
+   |                                             ^ type parameter
+
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/issue-67945.rs:20:23
+   |
+LL |         let x: Option<S> = None;
+   |                       ^ type parameter
+
+error[E0447]: type parameters can't appear within an array length expression
+  --> $DIR/issue-67945.rs:29:27
+   |
+LL |         let x: Option<Box<S>> = None;
+   |                           ^ type parameter
+
+error[E0447]: type parameters can't appear within an enum discriminant
+  --> $DIR/issue-67945.rs:38:16
+   |
+LL |         let x: S = 0;
+   |                ^ type parameter
+
+error[E0447]: type parameters can't appear within an enum discriminant
+  --> $DIR/issue-67945.rs:46:14
+   |
+LL |     Var = 0: S,
+   |              ^ type parameter
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945.rs:6:13
+   |
+LL | struct Bug1<S> {
+   |             ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945.rs:17:13
+   |
+LL | struct Bug2<S> {
+   |             ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945.rs:26:13
+   |
+LL | struct Bug3<S> {
+   |             ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945.rs:35:11
+   |
+LL | enum Bug4<S> {
+   |           ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945.rs:44:11
+   |
+LL | enum Bug5<S> {
+   |           ^ unused parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0392, E0447.
+For more information about an error, try `rustc --explain E0392`.

@@ -78,6 +78,36 @@ enum PatBoundCtx {
     Or,
 }
 
+/// Denotes the location/usage of an anonymous constant.
+#[derive(Copy, Clone, PartialEq, Debug)]
+crate enum AnonConstUsage {
+    /// constant item, e.g., `const _: u8 = X;`.
+    Constant,
+    /// static item, e.g., `static _: u8 = X;`.
+    Static,
+    /// an array length expression, e.g., `[...; X]`.
+    ArrayLength,
+    /// an enum discriminant value, e.g., `enum Enum { V = X, }`.
+    EnumDiscriminant,
+    /// an associated constant in an impl or trait, e.g., `impl A { const _: u8 = X; }`.
+    AssocConstant,
+    /// a const generic argument, e.g., `Struct<{X}>`.
+    GenericArg,
+}
+
+impl AnonConstUsage {
+    crate fn descr(self) -> &'static str {
+        match self {
+            AnonConstUsage::Constant => "a constant",
+            AnonConstUsage::Static => "a static",
+            AnonConstUsage::ArrayLength => "an array length expression",
+            AnonConstUsage::EnumDiscriminant => "an enum discriminant",
+            AnonConstUsage::AssocConstant => "an associated constant",
+            AnonConstUsage::GenericArg => "a const generic argument",
+        }
+    }
+}
+
 /// Does this the item (from the item rib scope) allow generic parameters?
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 crate enum HasGenericParams {
@@ -105,8 +135,8 @@ crate enum RibKind<'a> {
     /// We passed through an item scope. Disallow upvars.
     ItemRibKind(HasGenericParams),
 
-    /// We're in a constant item. Can't refer to dynamic stuff.
-    ConstantItemRibKind,
+    /// We're in a constant. Depending on it's usage, it may be able to refer to type parameters.
+    ConstantRibKind(AnonConstUsage),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -125,7 +155,7 @@ impl RibKind<'_> {
     // variables.
     crate fn contains_params(&self) -> bool {
         match self {
-            NormalRibKind | FnItemRibKind | ConstantItemRibKind | ModuleRibKind(_)
+            NormalRibKind | FnItemRibKind | ConstantRibKind(_) | ModuleRibKind(_)
             | MacroDefinition(_) => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
         }
@@ -382,9 +412,17 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
     }
     fn visit_anon_const(&mut self, constant: &'tcx AnonConst) {
         debug!("visit_anon_const {:?}", constant);
-        self.with_constant_rib(|this| {
+        self.with_constant_rib(AnonConstUsage::ArrayLength, |this| {
             visit::walk_anon_const(this, constant);
         });
+    }
+    fn visit_variant(&mut self, variant: &'tcx Variant) {
+        self.visit_variant_data(&variant.data);
+        if let Some(ref disr) = variant.disr_expr {
+            self.with_constant_rib(AnonConstUsage::EnumDiscriminant, |this| {
+                visit::walk_anon_const(this, disr);
+            });
+        }
     }
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         self.resolve_expr(expr, None);
@@ -562,7 +600,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
                             // directly due to visitor lifetimes so we have to copy-paste some code.
-                            self.with_constant_rib(|this| {
+                            self.with_constant_rib(AnonConstUsage::GenericArg, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -584,7 +622,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 self.visit_ty(ty);
             }
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
-            GenericArg::Const(ct) => self.visit_anon_const(ct),
+            GenericArg::Const(ct) => {
+                self.with_constant_rib(AnonConstUsage::GenericArg, |this| {
+                    visit::walk_anon_const(this, ct);
+                });
+            }
         }
     }
 }
@@ -829,9 +871,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                 // ConstRibKind for an actual constant
                                                 // expression in a provided default.
                                                 if let Some(ref expr) = *default {
-                                                    this.with_constant_rib(|this| {
-                                                        this.visit_expr(expr);
-                                                    });
+                                                    this.with_constant_rib(
+                                                        AnonConstUsage::AssocConstant,
+                                                        |this| {
+                                                            this.visit_expr(expr);
+                                                        },
+                                                    );
                                                 }
                                             }
                                             AssocItemKind::Fn(_, _) => {
@@ -873,7 +918,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
-                    this.with_constant_rib(|this| {
+                    let usage = if let ItemKind::Static(..) = item.kind {
+                        AnonConstUsage::Static
+                    } else {
+                        AnonConstUsage::Constant
+                    };
+                    this.with_constant_rib(usage, |this| {
                         this.visit_expr(expr);
                     });
                 });
@@ -971,10 +1021,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
+    fn with_constant_rib(&mut self, usage: AnonConstUsage, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
-        self.with_rib(ValueNS, ConstantItemRibKind, |this| {
-            this.with_label_rib(ConstantItemRibKind, f);
+        self.with_rib(ValueNS, ConstantRibKind(usage), |this| {
+            this.with_rib(TypeNS, ConstantRibKind(usage), |this| {
+                this.with_label_rib(ConstantRibKind(usage), f);
+            });
         });
     }
 
@@ -1106,7 +1158,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                 |this| {
                                         use crate::ResolutionError::*;
                                         match impl_item.kind {
-                                            AssocItemKind::Const(..) => {
+                                            AssocItemKind::Const(ref ty, ref expr) => {
                                                 debug!(
                                                     "resolve_implementation AssocItemKind::Const",
                                                 );
@@ -1119,9 +1171,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     |n, s| ConstNotMemberOfTrait(n, s),
                                                 );
 
-                                                this.with_constant_rib(|this| {
-                                                    visit::walk_impl_item(this, impl_item)
-                                                });
+                                                this.visit_ty(ty);
+
+                                                // Only impose the restrictions of ConstRibKind for
+                                                // the actual constant expression.
+                                                if let Some(expr) = expr.as_deref() {
+                                                    this.with_constant_rib(AnonConstUsage::AssocConstant, |this| {
+                                                        this.visit_expr(expr)
+                                                    });
+                                                }
                                             }
                                             AssocItemKind::Fn(..) => {
                                                 // If this is a trait impl, ensure the method

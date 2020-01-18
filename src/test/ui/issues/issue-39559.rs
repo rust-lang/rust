@@ -12,7 +12,7 @@ impl Dim for Dim3 {
 
 pub struct Vector<T, D: Dim> {
     entries: [T; D::dim()],
-    //~^ ERROR no function or associated item named `dim` found
+    //~^ ERROR type parameters can't appear within an array length expression [E0447]
     _dummy: D,
 }
 

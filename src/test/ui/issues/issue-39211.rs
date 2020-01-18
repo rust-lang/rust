@@ -8,7 +8,8 @@ trait Mat {
 }
 
 fn m<M: Mat>() {
-    let a = [3; M::Row::DIM]; //~ ERROR associated type `Row` not found for `M`
+    let a = [3; M::Row::DIM];
+    //~^ ERROR type parameters can't appear within an array length expression [E0447]
 }
 fn main() {
 }
