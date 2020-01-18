@@ -22,7 +22,7 @@ use self::zip::try_get_unchecked;
 pub use self::zip::TrustedRandomAccess;
 pub use self::zip::Zip;
 
-/// This trait provides transitive access to source-stages in an interator-adapter pipeline
+/// This trait provides transitive access to source-stage in an interator-adapter pipeline
 /// under the conditions that
 /// * the iterator source `S` itself implements `SourceIter<Source = S>`
 /// * there is a delegating implementation of this trait for each adapter in the pipeline between
@@ -49,40 +49,44 @@ pub use self::zip::Zip;
 ///
 /// let mut iter = vec![9, 9, 9].into_iter().map(|i| i * i);
 /// let _ = iter.next();
-/// let mut remainder = std::mem::replace(iter.as_inner(), Vec::new().into_iter());
+/// let mut remainder = std::mem::replace(unsafe { iter.as_inner() }, Vec::new().into_iter());
 /// println!("n = {} elements remaining", remainder.len());
 /// ```
 ///
-/// [`FromIterator`]: trait.FromIterator.html
-/// [`as_inner`]: #method.as_inner
+/// [`FromIterator`]: crate::iter::FromIterator
+/// [`as_inner`]: SourceIter::as_inner
 #[unstable(issue = "0", feature = "inplace_iteration")]
 pub unsafe trait SourceIter {
     /// A source stage in an iterator pipeline.
     type Source: Iterator;
 
-    /// Extract the source of an iterator pipeline.
+    /// Retrieve the source of an iterator pipeline.
     ///
-    /// Callers may assume that calls to [`next()`] or any method taking `&self`
-    /// does no replace the referenced value.
-    /// But callers may replace the referenced values as long they in turn do not
-    /// expose it through a delegating implementation of this trait.
-    /// Which means that while adapters may not modify the reference they cannot
-    /// rely on it not being modified.
+    /// # Safety
     ///
-    /// Adapters must not rely on exclusive ownership or immutability of the source.
-    /// The lack of exclusive ownership also requires that adapters must uphold the source's
-    /// public API even when they have crate- or module-internal access.
+    /// Implementations of must return the same mutable reference for their lifetime, unless
+    /// replaced by a caller.
+    /// Callers may only replace the reference when they stopped iteration and drop the
+    /// iterator pipeline after extracting the source.
+    ///
+    /// This means iterator adapters can rely on the source not changing during
+    /// iteration but they cannot rely on it in their Drop implementations.
+    ///
+    /// Implementing this method means adapters relinquish private-only access to their
+    /// source and can only rely on guarantees made based on method receiver types.
+    /// The lack of restricted access also requires that adapters must uphold the source's
+    /// public API even when they have access to its internals.
     ///
     /// Callers in turn must expect the source to be in any state that is consistent with
     /// its public API since adapters sitting between it and the source have the same
     /// access. In particular an adapter may have consumed more elements than strictly necessary.
     ///
-    /// The overall goal of these requirements is to grant the consumer of a pipeline
-    /// access to the underlying storage of an iterator while restricting any statefulness
-    /// and side-effects of the pipeline stages from affecting or relying on that storage.
+    /// The overall goal of these requirements is to let the consumer of a pipeline use
+    /// * whatever remains in the source after iteration has stopped
+    /// * the memory that has become unused by advancing a consuming iterator
     ///
     /// [`next()`]: trait.Iterator.html#method.next
-    fn as_inner(&mut self) -> &mut Self::Source;
+    unsafe fn as_inner(&mut self) -> &mut Self::Source;
 }
 
 /// A double-ended iterator with the direction inverted.
@@ -1015,8 +1019,9 @@ where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -1162,8 +1167,9 @@ unsafe impl<S: Iterator, P, I: Iterator> SourceIter for Filter<I, P> where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -1305,8 +1311,9 @@ unsafe impl<S: Iterator, B, I: Iterator, F> SourceIter for FilterMap<I, F> where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -1541,8 +1548,9 @@ where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -1838,8 +1846,9 @@ where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -1955,8 +1964,9 @@ unsafe impl<S: Iterator, P, I: Iterator> SourceIter for SkipWhile<I, P> where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -2163,8 +2173,9 @@ unsafe impl<S: Iterator, P, I: Iterator> SourceIter for TakeWhile<I, P> where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -2364,8 +2375,9 @@ where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -2487,8 +2499,9 @@ unsafe impl<S: Iterator, I: Iterator> SourceIter for Take<I> where I: SourceIter
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -2667,8 +2680,9 @@ unsafe impl<St, F, B, S: Iterator, I: Iterator> SourceIter for Scan<I, St, F>
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 
@@ -2831,8 +2845,9 @@ unsafe impl<S: Iterator, I: Iterator, F> SourceIter for Inspect<I, F> where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
-        SourceIter::as_inner(&mut self.iter)
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
 

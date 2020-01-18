@@ -1178,7 +1178,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut Self::Source {
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
         self
     }
 }

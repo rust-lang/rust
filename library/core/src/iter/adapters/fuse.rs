@@ -529,9 +529,10 @@ unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut S {
         match self.iter {
-            Some(ref mut iter) => SourceIter::as_inner(iter),
+            // Safety: unsafe function forwarding to unsafe function with the same requirements
+            Some(ref mut iter) => unsafe { SourceIter::as_inner(iter) },
             // SAFETY: the specialized iterator never sets `None`
             None => unsafe { intrinsics::unreachable() },
         }
