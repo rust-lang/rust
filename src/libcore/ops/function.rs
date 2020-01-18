@@ -300,18 +300,20 @@ macro_rules! gen_fn_struct_unopt {
             struct $z<F> {
                 f: F,
             }
+            #[$attr]
             impl<A, F: ?Sized> $imp for F
             where
-                F: Fn<A>,
+                F: FnOnce<A>,
             {
                 type Output = $z<F>;
                 fn $method(self) -> Self::Output {
                     $z { f: self }
                 }
             }
+            #[$attr]
             impl<A, F: ?Sized> $imp for $z<F>
             where
-                F: Fn<A>,
+                F: FnOnce<A>,
             {
                 type Output = F;
                 fn $method(self) -> Self::Output {
