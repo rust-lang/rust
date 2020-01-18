@@ -300,12 +300,30 @@ macro_rules! gen_fn_struct_unopt {
             struct $z<F> {
                 f: F,
             }
+            impl<A, F: ?Sized> $imp for F
+            where
+                F: Fn<A>,
+            {
+                type Output = $z<F>;
+                fn $method(self) -> Self::Output {
+                    $z { f: self }
+                }
+            }
+            impl<A, F: ?Sized> $imp for $z<F>
+            where
+                F: Fn<A>,
+            {
+                type Output = F;
+                fn $method(self) -> Self::Output {
+                    self.f
+                }
+            }
             #[$attr]
             impl<A, F: ?Sized> Fn<A> for &$z<F>
             where
                 F: Fn<A>,
             {
-                extern "rust-call" fn call(&self, args: A) -> F::Output {
+                extern "rust-call" fn call(&self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((**self).f).call(args))
                 }
             }
@@ -315,7 +333,7 @@ macro_rules! gen_fn_struct_unopt {
             where
                 F: Fn<A>,
             {
-                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((**self).f).call(args))
                 }
             }
@@ -327,7 +345,7 @@ macro_rules! gen_fn_struct_unopt {
             {
                 type Output = F::Output;
 
-                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                extern "rust-call" fn call_once(self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((*self).f).call(args))
                 }
             }
@@ -337,7 +355,7 @@ macro_rules! gen_fn_struct_unopt {
             where
                 F: FnMut<A>,
             {
-                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((*self).f).call_mut(args))
                 }
             }
@@ -348,7 +366,7 @@ macro_rules! gen_fn_struct_unopt {
                 F: FnMut<A>,
             {
                 type Output = F::Output;
-                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                extern "rust-call" fn call_once(self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((*self).f).call_mut(args))
                 }
             }
