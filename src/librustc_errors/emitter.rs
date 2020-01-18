@@ -1476,6 +1476,15 @@ impl EmitterWriter {
             None => return Ok(()),
         };
 
+        // Render the replacements for each suggestion
+        let suggestions = suggestion.splice_lines(&**sm);
+
+        if suggestions.is_empty() {
+            // Suggestions coming from macros can have malformed spans. This is a heavy handed
+            // approach to avoid ICEs by ignoring the suggestion outright.
+            return Ok(());
+        }
+
         let mut buffer = StyledBuffer::new();
 
         // Render the suggestion message
@@ -1492,9 +1501,6 @@ impl EmitterWriter {
             Some(Style::HeaderMsg),
         );
 
-        // Render the replacements for each suggestion
-        let suggestions = suggestion.splice_lines(&**sm);
-
         let mut row_num = 2;
         let mut notice_capitalization = false;
         for (complete, parts, only_capitalization) in suggestions.iter().take(MAX_SUGGESTIONS) {
@@ -1505,7 +1511,9 @@ impl EmitterWriter {
             let show_underline = !(parts.len() == 1 && parts[0].snippet.trim() == complete.trim())
                 && complete.lines().count() == 1;
 
-            let lines = sm.span_to_lines(parts[0].span).unwrap();
+            let lines = sm
+                .span_to_lines(parts[0].span)
+                .expect("span_to_lines failed when emitting suggestion");
 
             assert!(!lines.lines.is_empty());
 
