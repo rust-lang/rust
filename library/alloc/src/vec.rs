@@ -2172,7 +2172,6 @@ where
 struct InPlaceDrop<T> {
     inner: *mut T,
     dst: *mut T,
-    did_panic: bool,
 }
 
 impl<T> InPlaceDrop<T> {
@@ -2185,9 +2184,7 @@ impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            if self.did_panic {
-                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()) as *mut _);
-            }
+            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()) as *mut _);
         }
     }
 }
@@ -2240,7 +2237,7 @@ where
 
         let dst = if mem::needs_drop::<T>() {
             // special-case drop handling since it prevents vectorization
-            let mut sink = InPlaceDrop { inner: src_buf, dst, did_panic: true };
+            let mut sink = InPlaceDrop { inner: src_buf, dst };
             let _ = iterator.try_for_each::<_, Result<_, !>>(|item| {
                 unsafe {
                     debug_assert!(
@@ -2252,7 +2249,8 @@ where
                 }
                 Ok(())
             });
-            sink.did_panic = false;
+            // iteration succeeded, don't drop head
+            let sink = mem::ManuallyDrop::new(sink);
             sink.dst
         } else {
             // use try-fold
