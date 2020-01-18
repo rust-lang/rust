@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 struct Foo {
     first: bool,
     second: Option<[usize; 4]>

@@ -64,7 +64,7 @@ This API is completely unstable and subject to change.
 #![feature(exhaustive_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]

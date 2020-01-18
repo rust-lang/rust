@@ -19,7 +19,7 @@
 #![feature(range_is_empty)]
 #![feature(raw)]
 #![feature(saturating_neg)]
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
 #![feature(specialization)]

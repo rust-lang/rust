@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:8:13
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:6:13
    |
 LL |     let [ref first, ref second, ..] = *s;
    |                     ---------- immutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     nop(&[first, second, second2, third]);
    |                  ------ immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:14:14
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:12:14
    |
 LL |     let [.., ref fourth, ref third, _, ref first] = *s;
    |                          --------- immutable borrow occurs here
@@ -19,7 +19,7 @@ LL |     nop(&[first, third, third2, fourth]);
    |                  ----- immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:21:16
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:19:16
    |
 LL |     let [.., _, ref from_end4, ref from_end3, _, ref from_end1] = *s;
    |                 ------------- immutable borrow occurs here
@@ -30,7 +30,7 @@ LL |     nop(&[from_begin2, from_end1, from_end3, from_end4]);
    |                                              --------- immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:23:19
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:21:19
    |
 LL |     let [.., _, ref from_end4, ref from_end3, _, ref from_end1] = *s;
    |                                ------------- immutable borrow occurs here
@@ -41,7 +41,7 @@ LL |     nop(&[from_begin3, from_end1, from_end3, from_end4]);
    |                                   --------- immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:28:14
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:26:14
    |
 LL |     let [ref from_begin0, ref from_begin1, _, ref from_begin3, _, ..] = *s;
    |                                               --------------- immutable borrow occurs here
@@ -52,7 +52,7 @@ LL |     nop(&[from_begin0, from_begin1, from_begin3, from_end3]);
    |                                     ----------- immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:34:13
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:32:13
    |
 LL |     let [ref first, ref second, ..] = *s;
    |                     ---------- immutable borrow occurs here
@@ -62,7 +62,7 @@ LL |     nop(&[first, second]);
    |                  ------ immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:41:10
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:39:10
    |
 LL |     let [.., ref second, ref first] = *s;
    |              ---------- immutable borrow occurs here
@@ -72,7 +72,7 @@ LL |     nop(&[first, second]);
    |                  ------ immutable borrow later used here
 
 error[E0502]: cannot borrow `s[..]` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:48:10
+  --> $DIR/borrowck-slice-pattern-element-loan-array.rs:46:10
    |
 LL |     let [_,  ref s1 @ ..] = *s;
    |              ----------- immutable borrow occurs here

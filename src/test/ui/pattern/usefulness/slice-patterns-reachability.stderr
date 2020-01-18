@@ -1,41 +1,41 @@
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:9:9
+  --> $DIR/slice-patterns-reachability.rs:8:9
    |
 LL |         [true, ..] => {}
    |         ^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/slice-patterns-reachability.rs:2:9
+  --> $DIR/slice-patterns-reachability.rs:1:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:10:9
+  --> $DIR/slice-patterns-reachability.rs:9:9
    |
 LL |         [true] => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:15:9
+  --> $DIR/slice-patterns-reachability.rs:14:9
    |
 LL |         [.., true] => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:16:9
+  --> $DIR/slice-patterns-reachability.rs:15:9
    |
 LL |         [true] => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:21:9
+  --> $DIR/slice-patterns-reachability.rs:20:9
    |
 LL |         [false, .., true] => {}
    |         ^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/slice-patterns-reachability.rs:22:9
+  --> $DIR/slice-patterns-reachability.rs:21:9
    |
 LL |         [false, true] => {}
    |         ^^^^^^^^^^^^^

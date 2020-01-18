@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn main() {
     match "foo".to_string() {
         ['f', 'o', ..] => {}

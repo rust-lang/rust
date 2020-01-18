@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(slice_patterns)]
-
 use std::fmt::Debug;
 
 fn foldl<T, U, F>(values: &[T],

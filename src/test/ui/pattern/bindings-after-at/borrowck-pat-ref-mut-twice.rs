@@ -1,7 +1,6 @@
 // Test that `ref mut x @ ref mut y` and varieties of that are not allowed.
 
 #![feature(bindings_after_at)]
-#![feature(slice_patterns)]
 
 fn main() {
     struct U;

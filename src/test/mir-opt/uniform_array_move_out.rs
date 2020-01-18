@@ -1,5 +1,4 @@
 #![feature(box_syntax)]
-#![feature(slice_patterns)]
 
 fn move_out_from_end() {
     let a = [box 1, box 2];
