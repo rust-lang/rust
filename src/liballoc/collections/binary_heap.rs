@@ -152,7 +152,7 @@ use core::ops::{Deref, DerefMut};
 use core::ptr;
 
 use crate::slice;
-use crate::vec::{self, Vec, AsIntoIter};
+use crate::vec::{self, AsIntoIter, Vec};
 
 use super::SpecExtend;
 
@@ -1145,7 +1145,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
@@ -1155,7 +1155,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
     }
 }
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
 impl<I> AsIntoIter<I> for IntoIter<I> {

@@ -262,7 +262,7 @@ where
 }
 
 #[doc(hidden)]
-#[unstable(issue = "0", feature = "std_internals")]
+#[unstable(issue = "none", feature = "std_internals")]
 unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 where
     A: TrustedRandomAccess,
@@ -295,7 +295,7 @@ where
 
 // Arbitrarily selects the left side of the zip iteration as extractable "source"
 // it would require negative trait bounds to be able to try both
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<S, A, B> SourceIter for Zip<A, B>
 where
     A: SourceIter<Source = S>,
@@ -310,7 +310,7 @@ where
     }
 }
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 // Limited to Item: Copy since interaction between Zip's use of TrustedRandomAccess
 // and Drop implementation of the source is unclear.
 //
@@ -328,7 +328,7 @@ unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> where
 /// .get_unchecked() must return distinct mutable references for distinct
 /// indices (if applicable), and must return a valid reference if index is in
 /// 0..self.len().
-#[unstable(issue = "0", feature = "std_internals")]
+#[unstable(issue = "none", feature = "std_internals")]
 pub unsafe trait TrustedRandomAccess: ExactSizeIterator {
     /// Returns item at offset `i` from the current position of the iterator.
     /// It does not advance the iterator.

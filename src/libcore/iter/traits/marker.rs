@@ -52,5 +52,5 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// In other words this trait indicates that an iterator pipeline can be collected in place.
 ///
 /// [`SourceIter`]: ../../std/iter/trait.SourceIter.html
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 pub unsafe trait InPlaceIterable: Iterator {}
