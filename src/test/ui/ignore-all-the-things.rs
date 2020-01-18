@@ -3,9 +3,6 @@
 #![allow(non_shorthand_field_patterns)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
-
-#![feature(slice_patterns)]
 
 struct Foo(isize, isize, isize, isize);
 struct Bar{a: isize, b: isize, c: isize, d: isize}

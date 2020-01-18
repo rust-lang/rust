@@ -1,11 +1,10 @@
 // run-pass
-#![allow(unused_assignments)]
-#![allow(unused_variables)]
-
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions)]
-#![feature(slice_patterns)]
+
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
 
 use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;

@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn a<'a>() -> &'a [isize] {
     let vec = vec![1, 2, 3, 4];
     let vec: &[isize] = &vec;

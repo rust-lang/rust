@@ -1,5 +1,5 @@
 // check-pass
-#![feature(slice_patterns)]
+
 #![deny(unreachable_patterns)]
 
 const C0: &'static [u8] = b"\x00";

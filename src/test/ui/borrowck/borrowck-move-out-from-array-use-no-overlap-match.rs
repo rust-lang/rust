@@ -3,8 +3,6 @@
 // Once the bug is fixed, the test, which is derived from a
 // passing test for `let` statements, should become check-pass.
 
-#![feature(slice_patterns)]
-
 fn array() -> [(String, String); 3] {
     Default::default()
 }

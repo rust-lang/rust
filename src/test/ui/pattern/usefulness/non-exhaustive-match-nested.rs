@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 enum T { A(U), B }
 enum U { C, D }
 
