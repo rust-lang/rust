@@ -1335,7 +1335,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
-            if let hir::ItemKind::Impl(_, _, _, _, None, _, _) = item.kind;
+            if let hir::ItemKind::Impl{ of_trait: None, .. } = item.kind;
 
             let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
             let method_sig = cx.tcx.fn_sig(method_def_id);

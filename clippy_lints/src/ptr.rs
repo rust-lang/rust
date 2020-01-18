@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
         if let ImplItemKind::Method(ref sig, body_id) = item.kind {
             let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
-                if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.kind {
+                if let ItemKind::Impl { of_trait: Some(_), .. } = it.kind {
                     return; // ignore trait impls
                 }
             }

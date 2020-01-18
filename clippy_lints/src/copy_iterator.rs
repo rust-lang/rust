@@ -33,7 +33,11 @@ declare_lint_pass!(CopyIterator => [COPY_ITERATOR]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyIterator {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.kind {
+        if let ItemKind::Impl {
+            of_trait: Some(ref trait_ref),
+            ..
+        } = item.kind
+        {
             let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
 
             if is_copy(cx, ty) && match_path(&trait_ref.path, &paths::ITERATOR) {

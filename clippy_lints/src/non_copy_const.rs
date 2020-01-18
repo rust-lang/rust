@@ -168,7 +168,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id);
             let item = cx.tcx.hir().expect_item(item_hir_id);
             // Ensure the impl is an inherent impl.
-            if let ItemKind::Impl(_, _, _, _, None, _, _) = item.kind {
+            if let ItemKind::Impl { of_trait: None, .. } = item.kind {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);
                 verify_ty_bound(
                     cx,

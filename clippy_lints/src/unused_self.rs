@@ -44,7 +44,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
         if item.span.from_expansion() {
             return;
         }
-        if let ItemKind::Impl(_, _, _, _, None, _, impl_item_refs) = item.kind {
+        if let ItemKind::Impl {
+            of_trait: None,
+            items: impl_item_refs,
+            ..
+        } = item.kind
+        {
             for impl_item_ref in impl_item_refs {
                 if_chain! {
                     if let ImplItemRef {

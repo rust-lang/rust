@@ -64,7 +64,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
         let parent_node = cx.tcx.hir().find(parent_id);
 
         if let Some(Node::Item(item)) = parent_node {
-            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.kind {
+            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
                 return;
             }
         }

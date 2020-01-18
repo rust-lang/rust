@@ -196,7 +196,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         let is_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            matches!(item.kind, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
+            matches!(item.kind, hir::ItemKind::Impl{ of_trait: Some(_), .. })
         } else {
             false
         };
