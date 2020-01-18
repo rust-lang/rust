@@ -380,7 +380,10 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                     }
                     _ => {}
                 }
-                self.buf.push_back(event);
+                match event {
+                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
+                    event => self.buf.push_back(event),
+                }
             }
             let id = self.id_map.derive(id);
 
@@ -395,7 +398,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
 
             let start_tags = format!(
                 "<h{level} id=\"{id}\" class=\"section-header\">\
-                                      <a href=\"#{id}\">",
+                    <a href=\"#{id}\">",
                 id = id,
                 level = level
             );
