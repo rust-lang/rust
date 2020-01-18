@@ -288,11 +288,11 @@ mod impls {
 }
 
 macro_rules! gen_fn_struct_unopt {
-    (impl $imp:ident, $method:ident in $m:ty with $z:ty) => {
-        gen_fn_struct_unopt!(impl $imp, $method with $m in $z,
+    (impl $imp:ident, $method:ident in $m:ty; with $z:path) => {
+        gen_fn_struct_unopt!(impl $imp, $method in $m; with $z,
             #[unstable(feature = stringify!($m))]);
     };
-    (impl $imp:ident, $method:ident with $m:ident in $z:ident, #[$attr:meta]) => {
+    (impl $imp:ident, $method:ident in $m:ty; with $z:path, #[$attr:meta]) => {
         #[$attr]
         mod $m {
             use crate::ops::$imp;
@@ -375,5 +375,5 @@ macro_rules! gen_fn_struct_unopt {
         }
     };
 }
-gen_fn_struct_unopt!(impl Not, not in fn_not_impl with FnNot);
-gen_fn_struct_unopt!(impl Neg, neg in fn_neg_impl with FnNeg);
+gen_fn_struct_unopt!(impl Not, not in fn_not_impl; with FnNot);
+gen_fn_struct_unopt!(impl Neg, neg in fn_neg_impl; with FnNeg);
