@@ -173,10 +173,10 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct CommonLifetimes<'tcx> {
-    /// ReEmpty in the root universe
+    /// `ReEmpty` in the root universe.
     pub re_root_empty: Region<'tcx>,
 
-    /// ReStatic
+    /// `ReStatic`
     pub re_static: Region<'tcx>,
 
     /// Erased region, used after type-checking

@@ -83,7 +83,7 @@ pub enum RegionResolutionError<'tcx> {
     ),
 
     /// Indicates a `'b: 'a` constraint where `'a` is in a universe that
-    /// cannot name the placeholder `'b`
+    /// cannot name the placeholder `'b`.
     UpperBoundUniverseConflict(
         RegionVid,
         RegionVariableOrigin,
@@ -449,7 +449,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             return true;
         }
 
-        // If both a and b are free, consult the declared
+        // If both `a` and `b` are free, consult the declared
         // relationships.  Note that this can be more precise than the
         // `lub` relationship defined below, since sometimes the "lub"
         // is actually the `postdom_upper_bound` (see
@@ -460,7 +460,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
 
         // For other cases, leverage the LUB code to find the LUB and
-        // check if it is equal to b.
+        // check if it is equal to `b`.
         self.lub_concrete_regions(a, b) == b
     }
 
@@ -491,7 +491,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
 
             (&ReStatic, _) | (_, &ReStatic) => {
-                // nothing lives longer than static
+                // nothing lives longer than `'static`
                 self.tcx().lifetimes.re_static
             }
 
@@ -501,14 +501,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             | (r @ ReFree(_), &ReEmpty(_))
             | (&ReEmpty(_), r @ ReScope(_))
             | (r @ ReScope(_), &ReEmpty(_)) => {
-                // all empty regions are less than early-bound, free,
-                // and scope regions
+                // All empty regions are less than early-bound, free,
+                // and scope regions.
                 r
             }
 
             (&ReEmpty(a_ui), &ReEmpty(b_ui)) => {
-                // empty regions are ordered according to the universe
-                // they are associated with
+                // Empty regions are ordered according to the universe
+                // they are associated with.
                 let ui = a_ui.min(b_ui);
                 self.tcx().mk_region(ReEmpty(ui))
             }

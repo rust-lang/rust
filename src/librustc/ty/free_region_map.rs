@@ -56,7 +56,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         }
     }
 
-    /// Check whether `r_a <= r_b` is found in the relation
+    /// Check whether `r_a <= r_b` is found in the relation.
     fn check_relation(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
         r_a == r_b || self.relation.contains(&r_a, &r_b)
     }
