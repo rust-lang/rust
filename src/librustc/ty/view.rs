@@ -3,8 +3,11 @@ use std::{fmt, marker::PhantomData};
 use syntax::ast;
 
 use crate::ty::{
-    self, AdtDef, Binder, BoundTy, ExistentialPredicate, InferTy, List, ParamTy, PolyFnSig,
-    ProjectionTy, Region, SubstsRef, Ty, TypeAndMut,
+    self,
+    context::{Lift, TyCtxt},
+    fold::{TypeFoldable, TypeFolder, TypeVisitor},
+    AdtDef, Binder, BoundTy, ExistentialPredicate, InferTy, List, ParamTy, PolyFnSig, ProjectionTy,
+    Region, SubstsRef, Ty, TypeAndMut,
 };
 use rustc_hir::{self as hir, def_id::DefId};
 
@@ -13,10 +16,37 @@ pub use self::ViewKind::*;
 /// `View<'tcx, T>` contains a value of `T` but stores the `Ty<'tcx>` ptr that contains the `T`
 /// This allows for cheap access to the `Ty<'tcx>` without needing to ask the type interner or
 /// losing the `T` type.
-#[derive(TypeFoldable, Eq, PartialEq, Hash, Lift)]
+#[derive(Eq, PartialEq, Hash)]
 pub struct View<'tcx, T> {
     ty: Ty<'tcx>,
     _marker: PhantomData<T>,
+}
+
+impl<'a, 'tcx, T> Lift<'tcx> for View<'a, T>
+where
+    T: TyDeref<'a> + Lift<'tcx>,
+    T::Lifted: TyDeref<'tcx>,
+{
+    type Lifted = View<'tcx, T::Lifted>;
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&**self).map(|t| View::intern(tcx, t))
+    }
+}
+
+impl<'tcx, T> TypeFoldable<'tcx> for View<'tcx, T>
+where
+    T: TyDeref<'tcx> + TypeFoldable<'tcx> + PartialEq,
+{
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        let tcx = folder.tcx();
+        let old_t = &**self;
+        let new_t = old_t.super_fold_with(folder);
+        if *old_t == new_t { *self } else { Self::intern(tcx, new_t) }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        (**self).super_visit_with(visitor)
+    }
 }
 
 impl<T> Copy for View<'_, T> {}
@@ -70,6 +100,12 @@ where
         T::ty_deref(ty)?;
         Some(View { ty, _marker: PhantomData })
     }
+
+    #[inline]
+    pub fn intern(tcx: TyCtxt<'tcx>, t: T) -> Self {
+        let ty = t.intern(tcx);
+        View { ty, _marker: PhantomData }
+    }
 }
 
 impl<'tcx, T> View<'tcx, T> {
@@ -82,12 +118,18 @@ impl<'tcx, T> View<'tcx, T> {
 /// SAFETY If `Some` is returned for `ty` then `Some` must always be returned for any subsequent
 /// call with the same `Ty` value
 pub unsafe trait TyDeref<'tcx>: Sized + 'tcx {
+    fn intern(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
     fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self>;
 }
 
 macro_rules! impl_ty_deref {
     ($ty: ty, $variant: ident) => {
         unsafe impl<'tcx> TyDeref<'tcx> for $ty {
+            #[inline]
+            fn intern(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+                tcx.mk_ty(ty::$variant(self))
+            }
+
             #[inline]
             fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self> {
                 match &ty.kind {
