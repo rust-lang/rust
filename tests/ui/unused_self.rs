@@ -26,6 +26,24 @@ mod unused_self {
     }
 }
 
+mod unused_self_allow {
+    struct A {}
+
+    impl A {
+        // shouldn't trigger
+        #[allow(clippy::unused_self)]
+        fn unused_self_move(self) {}
+    }
+
+    struct B {}
+
+    // shouldn't trigger
+    #[allow(clippy::unused_self)]
+    impl B {
+        fn unused_self_move(self) {}
+    }
+}
+
 mod used_self {
     use std::pin::Pin;
 
