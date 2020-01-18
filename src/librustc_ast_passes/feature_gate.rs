@@ -470,29 +470,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_expr(self, e)
     }
 
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
-    }
-
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
-            PatKind::Slice(pats) => {
-                for pat in &*pats {
-                    let span = pat.span;
-                    let inner_pat = match &pat.kind {
-                        PatKind::Ident(.., Some(pat)) => pat,
-                        _ => pat,
-                    };
-                    if inner_pat.is_rest() {
-                        gate_feature_post!(
-                            &self,
-                            slice_patterns,
-                            span,
-                            "subslice patterns are unstable"
-                        );
-                    }
-                }
-            }
             PatKind::Box(..) => {
                 gate_feature_post!(
                     &self,

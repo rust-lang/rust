@@ -1,29 +1,29 @@
 error[E0425]: cannot find value `does_not_exist` in this scope
-  --> $DIR/match-vec-mismatch.rs:28:11
+  --> $DIR/slice-pat-type-mismatches.rs:26:11
    |
 LL |     match does_not_exist {
    |           ^^^^^^^^^^^^^^ not found in this scope
 
 error[E0529]: expected an array or slice, found `std::string::String`
-  --> $DIR/match-vec-mismatch.rs:5:9
+  --> $DIR/slice-pat-type-mismatches.rs:3:9
    |
 LL |         ['f', 'o', ..] => {}
    |         ^^^^^^^^^^^^^^ pattern cannot match with input type `std::string::String`
 
 error[E0527]: pattern requires 1 element but array has 3
-  --> $DIR/match-vec-mismatch.rs:20:9
+  --> $DIR/slice-pat-type-mismatches.rs:18:9
    |
 LL |         [0] => {},
    |         ^^^ expected 3 elements
 
 error[E0528]: pattern requires at least 4 elements but array has 3
-  --> $DIR/match-vec-mismatch.rs:25:9
+  --> $DIR/slice-pat-type-mismatches.rs:23:9
    |
 LL |         [0, 1, 2, 3, x @ ..] => {}
    |         ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
 
 error[E0282]: type annotations needed
-  --> $DIR/match-vec-mismatch.rs:36:9
+  --> $DIR/slice-pat-type-mismatches.rs:34:9
    |
 LL |         [] => {}
    |         ^^ cannot infer type

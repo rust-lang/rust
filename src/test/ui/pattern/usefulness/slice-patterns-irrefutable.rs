@@ -1,5 +1,4 @@
 // check-pass
-#![feature(slice_patterns)]
 
 fn main() {
     let s: &[bool] = &[true; 0];

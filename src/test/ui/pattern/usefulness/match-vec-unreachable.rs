@@ -1,4 +1,3 @@
-#![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
 
 fn main() {

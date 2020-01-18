@@ -4,7 +4,6 @@ fn main() {
 
     let Test(&desc[..]) = x;
     //~^ ERROR: expected one of `)`, `,`, `@`, or `|`, found `[`
-    //~^^ ERROR subslice patterns are unstable
 }
 
 const RECOVERY_WITNESS: () = 0; //~ ERROR mismatched types
