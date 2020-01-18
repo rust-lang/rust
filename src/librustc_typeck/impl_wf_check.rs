@@ -75,10 +75,10 @@ struct ImplWfCheck<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
+        if let hir::ItemKind::Impl { ref items, .. } = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
-            enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_item_refs);
-            enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
+            enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
+            enforce_impl_items_are_distinct(self.tcx, items);
         }
     }
 

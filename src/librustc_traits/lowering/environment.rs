@@ -195,8 +195,8 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl(.., Some(..), _, _) => NodeKind::TraitImpl,
-            ItemKind::Impl(.., None, _, _) => NodeKind::InherentImpl,
+            ItemKind::Impl { of_trait: Some(_), .. } => NodeKind::TraitImpl,
+            ItemKind::Impl { of_trait: None, .. } => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },

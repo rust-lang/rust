@@ -251,7 +251,7 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
-            ast::ItemKind::Impl(ast::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Impl { unsafety: ast::Unsafety::Unsafe, .. } => {
                 self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
@@ -431,7 +431,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 "a trait"
             }
             hir::ItemKind::TyAlias(..) => "a type alias",
-            hir::ItemKind::Impl(.., Some(ref trait_ref), _, impl_item_refs) => {
+            hir::ItemKind::Impl { of_trait: Some(ref trait_ref), items, .. } => {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
@@ -439,7 +439,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                     match cx.tcx.hir().find(hir_id) {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
-                                for impl_item_ref in impl_item_refs {
+                                for impl_item_ref in items {
                                     self.private_traits.insert(impl_item_ref.id.hir_id);
                                 }
                             }

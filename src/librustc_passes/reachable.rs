@@ -35,7 +35,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: Codegen
         hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => {
             return true;
         }
-        hir::ItemKind::Impl(..) | hir::ItemKind::Fn(..) => {
+        hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
@@ -181,7 +181,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
                             match self.tcx.hir().expect_item(impl_hir_id).kind {
-                                hir::ItemKind::Impl(..) => {
+                                hir::ItemKind::Impl { .. } => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
                                 }
@@ -266,7 +266,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     | hir::ItemKind::Static(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod(..)
-                    | hir::ItemKind::Impl(..)
+                    | hir::ItemKind::Impl { .. }
                     | hir::ItemKind::Trait(..)
                     | hir::ItemKind::TraitAlias(..)
                     | hir::ItemKind::Struct(..)
@@ -349,9 +349,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.kind {
+        if let hir::ItemKind::Impl { of_trait: Some(ref trait_ref), ref items, .. } = item.kind {
             if !self.access_levels.is_reachable(item.hir_id) {
-                self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
+                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.hir_id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,

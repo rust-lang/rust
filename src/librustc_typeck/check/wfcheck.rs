@@ -97,7 +97,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(_, _, defaultness, _, ref trait_ref, ref self_ty, _) => {
+        hir::ItemKind::Impl { defaultness, ref of_trait, ref self_ty, .. } => {
             let is_auto = tcx
                 .impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
@@ -107,11 +107,11 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
             }
             match polarity {
                 ty::ImplPolarity::Positive => {
-                    check_impl(tcx, item, self_ty, trait_ref);
+                    check_impl(tcx, item, self_ty, of_trait);
                 }
                 ty::ImplPolarity::Negative => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if trait_ref.is_some() && !is_auto {
+                    if of_trait.is_some() && !is_auto {
                         struct_span_err!(
                             tcx.sess,
                             item.span,

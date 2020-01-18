@@ -2614,15 +2614,18 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl(
-        Unsafety,
-        ImplPolarity,
-        Defaultness,
-        Generics,
-        Option<TraitRef>, // (optional) trait this impl implements
-        P<Ty>,            // self
-        Vec<AssocItem>,
-    ),
+    Impl {
+        unsafety: Unsafety,
+        polarity: ImplPolarity,
+        defaultness: Defaultness,
+        generics: Generics,
+
+        /// The trait being implemented, if any.
+        of_trait: Option<TraitRef>,
+
+        self_ty: P<Ty>,
+        items: Vec<AssocItem>,
+    },
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -2649,7 +2652,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl(..) => "item",
+            ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl { .. } => "item",
         }
     }
 }

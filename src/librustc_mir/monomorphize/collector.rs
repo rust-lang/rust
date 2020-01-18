@@ -954,7 +954,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 // Nothing to do, just keep recursing.
             }
 
-            hir::ItemKind::Impl(..) => {
+            hir::ItemKind::Impl { .. } => {
                 if self.mode == MonoItemCollectionMode::Eager {
                     create_mono_items_for_default_impls(self.tcx, item, self.output);
                 }
@@ -1098,7 +1098,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     match item.kind {
-        hir::ItemKind::Impl(_, _, _, ref generics, .., ref impl_item_refs) => {
+        hir::ItemKind::Impl { ref generics, ref items, .. } => {
             for param in generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
@@ -1119,7 +1119,7 @@ fn create_mono_items_for_default_impls<'tcx>(
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods: FxHashSet<_> =
-                    impl_item_refs.iter().map(|iiref| iiref.ident.modern()).collect();
+                    items.iter().map(|iiref| iiref.ident.modern()).collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains(&method.ident.modern()) {
                         continue;
