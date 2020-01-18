@@ -10,6 +10,7 @@
 
 pub use emitter::ColorConfig;
 
+use log::debug;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -174,6 +175,15 @@ impl CodeSuggestion {
 
         self.substitutions
             .iter()
+            .filter(|subst| {
+                // Suggestions coming from macros can have malformed spans. This is a heavy
+                // handed approach to avoid ICEs by ignoring the suggestion outright.
+                let invalid = subst.parts.iter().any(|item| cm.is_valid_span(item.span).is_err());
+                if invalid {
+                    debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
+                }
+                !invalid
+            })
             .cloned()
             .map(|mut substitution| {
                 // Assumption: all spans are in the same file, and all spans
