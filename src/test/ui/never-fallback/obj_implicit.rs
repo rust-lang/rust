@@ -10,7 +10,7 @@ fn unconstrained_return<T>() -> Result<T, String> {
 }
 
 fn foo() {
-    let a = || { 
+    let a = || {
         match unconstrained_return() { //~ ERROR Fallback to `!` may introduce undefined behavior
             Ok(x) => x,  // `x` has type `_`, which is unconstrained
             Err(s) => panic!(s),  // … except for unifying with the type of `panic!()`
@@ -18,7 +18,7 @@ fn foo() {
             // Therefore `_` resolves to `!` and we "return" an `Ok(!)` value.
         }
     };
-    
+
     let cast: &dyn FnOnce() -> _ = &a;
     println!("Return type: {:?}", get_type(cast));
 }
