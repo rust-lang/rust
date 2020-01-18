@@ -11,8 +11,6 @@ use rustc_span::Span;
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
 
-use rustc_error_codes::*;
-
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
 

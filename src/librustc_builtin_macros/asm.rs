@@ -12,8 +12,6 @@ use syntax::ptr::P;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{self, TokenStream};
 
-use rustc_error_codes::*;
-
 enum State {
     Asm,
     Outputs,

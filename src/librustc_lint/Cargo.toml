@@ -13,7 +13,6 @@ log = "0.4"
 unicode-security = "0.0.2"
 rustc = { path = "../librustc" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }

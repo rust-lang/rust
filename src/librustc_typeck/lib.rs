@@ -109,8 +109,6 @@ use rustc_hir::Node;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
-use rustc_error_codes::*;
-
 use std::iter;
 
 use astconv::{AstConv, Bounds};

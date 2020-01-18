@@ -65,7 +65,6 @@ use crate::ty::{
     Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_error_codes::*;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;

@@ -30,8 +30,6 @@ use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use syntax::ast;
 
-use rustc_error_codes::*;
-
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,

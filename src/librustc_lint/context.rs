@@ -26,7 +26,6 @@ use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};

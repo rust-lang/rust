@@ -6,7 +6,6 @@ use crate::node_id::NodeId;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc, Once};
-use rustc_error_codes::E0658;
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder};
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};

@@ -659,7 +659,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn error_inclusive_range_with_no_end(&self, span: Span) {
-        use rustc_error_codes::E0586;
         struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
             .span_suggestion_short(
                 span,

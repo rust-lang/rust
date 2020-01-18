@@ -16,8 +16,6 @@ use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
 use std::{any::Any, env, fmt};
 
-use rustc_error_codes::*;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation.

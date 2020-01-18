@@ -28,8 +28,6 @@ use syntax::ast;
 use std::cmp::Ordering;
 use std::fmt;
 
-use rustc_error_codes::*;
-
 #[derive(Clone, Debug)]
 crate enum PatternError {
     AssocConstInPattern(Span),

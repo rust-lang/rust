@@ -18,4 +18,3 @@ rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
-rustc_error_codes = { path = "../librustc_error_codes" }

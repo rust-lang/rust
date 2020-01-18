@@ -47,8 +47,6 @@ use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 
-use rustc_error_codes::*;
-
 struct OnlySelfBounds(bool);
 
 ///////////////////////////////////////////////////////////////////////////

@@ -12,7 +12,6 @@ use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};

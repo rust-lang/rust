@@ -3,7 +3,6 @@ use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 
 use rustc::arena::Arena;
 use rustc::bug;
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

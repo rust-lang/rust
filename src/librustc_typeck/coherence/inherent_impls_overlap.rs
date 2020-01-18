@@ -6,8 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc_error_codes::*;
-
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir().krate();

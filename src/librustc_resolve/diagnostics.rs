@@ -25,8 +25,6 @@ use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, Modu
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
-use rustc_error_codes::*;
-
 type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.
