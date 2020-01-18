@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::hir::map::Map;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc_hir::{AssocItemKind, HirId, ImplItemKind, ImplItemRef, Item, ItemKind, Path};
+use rustc_hir::{AssocItemKind, HirId, ImplItem, ImplItemKind, ImplItemRef, ItemKind, Path};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -40,10 +40,12 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &Item<'_>) {
-        if item.span.from_expansion() {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &ImplItem<'_>) {
+        if impl_item.span.from_expansion() {
             return;
         }
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
+        let item = cx.tcx.hir().expect_item(parent);
         if let ItemKind::Impl {
             of_trait: None,
             items: impl_item_refs,
@@ -56,10 +58,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         kind: AssocItemKind::Method { has_self: true },
                         ..
                     } = impl_item_ref;
-                    let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                     if let ImplItemKind::Method(_, body_id) = &impl_item.kind;
+                    let body = cx.tcx.hir().body(*body_id);
+                    if !body.params.is_empty();
                     then {
-                        let body = cx.tcx.hir().body(*body_id);
                         let self_param = &body.params[0];
                         let self_hir_id = self_param.pat.hir_id;
                         let mut visitor = UnusedSelfVisitor {
@@ -75,7 +77,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                                 self_param.span,
                                 "unused `self` argument",
                                 "consider refactoring to a associated function",
-                            )
+                            );
+                            return;
                         }
                     }
                 }
