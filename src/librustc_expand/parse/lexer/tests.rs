@@ -1,10 +1,10 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{emitter::EmitterWriter, Handler};
 use rustc_parse::lexer::StringReader;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span};
-use syntax::sess::ParseSess;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments::is_doc_comment;
 use syntax::with_default_globals;
