@@ -237,7 +237,7 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
         }
 
         if users.stack_store.is_empty() && users.stack_load.is_empty() {
-            // FIXME make stack_slot zero sized.
+            opt_ctx.ctx.func.stack_slots[stack_slot.0].size = 0;
         }
     }
 
