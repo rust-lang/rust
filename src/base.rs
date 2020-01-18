@@ -678,11 +678,10 @@ pub fn trans_place<'tcx>(
                 // slice[from:-to] in Python terms.
 
                 match cplace.layout().ty.kind {
-                    ty::Array(elem_ty, len) => {
+                    ty::Array(elem_ty, _len) => {
+                        assert!(!from_end, "array subslices are never `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);
                         let ptr = cplace.to_ptr(fx);
-                        let len = crate::constant::force_eval_const(fx, len)
-                            .eval_usize(fx.tcx, ParamEnv::reveal_all());
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
                             fx.layout_of(fx.tcx.mk_array(elem_ty, to as u64 - from as u64)),
