@@ -2286,7 +2286,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type_fallback { self.types.never } else { self.types.unit }
+        self.types.never
+        //if self.features().never_type_fallback { self.types.never } else { self.types.unit }
     }
 
     #[inline]
