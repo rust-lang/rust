@@ -1,10 +1,9 @@
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
-use rustc_data_structures::sync::Once;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{dummy_spanned, SourceMap, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, FileName, Span};
 use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use syntax::ast::{Attribute, GenericArg, MacArgs};
@@ -103,7 +102,7 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
-    injected_crate_name: &Once<Symbol>,
+    has_injected_crate: bool,
 ) -> String {
     let mut s = State {
         s: pp::mk_printer(),
@@ -112,7 +111,7 @@ pub fn print_crate<'a>(
         is_expanded,
     };
 
-    if is_expanded && injected_crate_name.try_get().is_some() {
+    if is_expanded && has_injected_crate {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However, we don't want these attributes in the AST because
