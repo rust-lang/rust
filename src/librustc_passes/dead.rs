@@ -405,10 +405,10 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl(.., ref opt_trait, _, impl_item_refs) => {
-                for impl_item_ref in impl_item_refs {
+            hir::ItemKind::Impl { ref of_trait, items, .. } => {
+                for impl_item_ref in items {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
-                    if opt_trait.is_some()
+                    if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(
                             self.tcx,
                             impl_item.hir_id,
@@ -586,7 +586,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 | hir::ItemKind::Struct(..)
                 | hir::ItemKind::Union(..)
                 | hir::ItemKind::Trait(..)
-                | hir::ItemKind::Impl(..) => {
+                | hir::ItemKind::Impl { .. } => {
                     // FIXME(66095): Because item.span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation

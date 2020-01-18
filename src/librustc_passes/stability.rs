@@ -219,11 +219,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemKind::Impl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl { of_trait: Some(_), .. } => {
                 self.in_trait_impl = true;
             }
             hir::ItemKind::Struct(ref sd, _) => {
@@ -308,7 +308,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {}
 
             _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant()),
         }
@@ -463,9 +463,9 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(.., Some(ref t), _, impl_item_refs) => {
+            hir::ItemKind::Impl { of_trait: Some(ref t), items, .. } => {
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
-                    for impl_item_ref in impl_item_refs {
+                    for impl_item_ref in items {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         let trait_item_def_id = self
                             .tcx

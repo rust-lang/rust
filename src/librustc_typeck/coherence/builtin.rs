@@ -57,7 +57,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
 
     let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).expect("foreign Drop impl on non-ADT");
     let sp = match tcx.hir().expect_item(impl_hir_id).kind {
-        ItemKind::Impl(.., ty, _) => ty.span,
+        ItemKind::Impl { self_ty, .. } => self_ty.span,
         _ => bug!("expected Drop impl item"),
     };
 
@@ -94,7 +94,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.kind {
+            let span = if let ItemKind::Impl { of_trait: Some(ref tr), .. } = item.kind {
                 tr.path.span
             } else {
                 span
@@ -113,7 +113,8 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl(.., ref ty, _) = item.kind { ty.span } else { span };
+            let span =
+                if let ItemKind::Impl { self_ty, .. } = item.kind { self_ty.span } else { span };
 
             struct_span_err!(
                 tcx.sess,
@@ -490,7 +491,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = tcx.hir().expect_item(impl_hir_id);
-                    let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.kind {
+                    let span = if let ItemKind::Impl { of_trait: Some(ref t), .. } = item.kind {
                         t.path.span
                     } else {
                         tcx.hir().span(impl_hir_id)
