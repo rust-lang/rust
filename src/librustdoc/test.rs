@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use syntax::ast;
-use syntax::attr::with_globals;
+use syntax::with_globals;
 use tempfile::Builder as TempFileBuilder;
 use testing;
 
