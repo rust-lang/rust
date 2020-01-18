@@ -22,6 +22,7 @@ pub struct View<'tcx, T> {
 impl<T> Copy for View<'_, T> {}
 
 impl<T> Clone for View<'_, T> {
+    #[inline]
     fn clone(&self) -> Self {
         View { ty: self.ty, _marker: PhantomData }
     }
@@ -49,6 +50,8 @@ where
     T: TyDeref<'tcx>,
 {
     type Target = T;
+
+    #[inline]
     fn deref(&self) -> &Self::Target {
         match T::ty_deref(self.ty) {
             Some(t) => t,
@@ -62,6 +65,7 @@ impl<'tcx, T> View<'tcx, T>
 where
     T: TyDeref<'tcx>,
 {
+    #[inline]
     pub fn new(ty: Ty<'tcx>) -> Option<Self> {
         T::ty_deref(ty)?;
         Some(View { ty, _marker: PhantomData })
@@ -69,6 +73,7 @@ where
 }
 
 impl<'tcx, T> View<'tcx, T> {
+    #[inline]
     pub fn as_ty(&self) -> Ty<'tcx> {
         self.ty
     }
@@ -83,6 +88,7 @@ pub unsafe trait TyDeref<'tcx>: Sized + 'tcx {
 macro_rules! impl_ty_deref {
     ($ty: ty, $variant: ident) => {
         unsafe impl<'tcx> TyDeref<'tcx> for $ty {
+            #[inline]
             fn ty_deref(ty: Ty<'tcx>) -> Option<&'tcx Self> {
                 match &ty.kind {
                     ty::$variant(p) => Some(p),
@@ -129,6 +135,7 @@ pub enum ViewKind<'tcx> {
 }
 
 impl<'tcx> From<Ty<'tcx>> for ViewKind<'tcx> {
+    #[inline]
     fn from(ty: Ty<'tcx>) -> Self {
         match ty.kind {
             ty::RawPtr(tm) => Self::RawPtr(tm),
