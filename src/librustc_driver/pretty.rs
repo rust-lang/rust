@@ -400,7 +400,7 @@ pub fn print_after_parsing(
                 annotation.pp_ann(),
                 false,
                 parse.edition,
-                &parse.injected_crate_name,
+                parse.injected_crate_name.try_get().is_some(),
             )
         })
     } else {
@@ -442,7 +442,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
-                    &parse.injected_crate_name,
+                    parse.injected_crate_name.try_get().is_some(),
                 )
             })
         }
