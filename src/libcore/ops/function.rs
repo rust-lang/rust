@@ -286,3 +286,74 @@ mod impls {
         }
     }
 }
+
+macro_rules! gen_fn_struct_unopt {
+    (impl $imp:ident, $method:ident with $m:ident in $z:ident) => {
+        gen_bit_fn_struct!(impl $imp, $method with $m in $z,
+            #[unstable(feature = $m)]);
+    };
+    (impl $imp:ident, $method:ident with $m:ident in $z:ident, #[$attr:meta]) => {
+        #[$attr]
+        mod $m {
+            use crate::ops::$imp;
+            #[$attr]
+            struct $z<F> {
+                f: F,
+            }
+            #[$attr]
+            impl<A, F: ?Sized> Fn<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                extern "rust-call" fn call(&self, args: A) -> F::Output {
+                    $imp::$method((**self.f).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnMut<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    $imp::$method((**self.f).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnOnce<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                type Output = F::Output;
+
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    $imp::$method((*self).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnMut<A> for &mut $z<F>
+            where
+                F: FnMut<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+                    $imp::$method((*self).call_mut(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnOnce<A> for &mut $z<F>
+            where
+                F: FnMut<A>,
+            {
+                type Output = F::Output;
+                extern "rust-call" fn call_once(self, args: A) -> F::Output {
+                    $imp::$method((*self).call_mut(args))
+                }
+            }
+        }
+    };
+}
+gen_fn_struct_unopt!(impl Not, not with fn_not_impl in FnNot);
+gen_fn_struct_unopt!(impl Neg, neg with fn_neg_impl in FnNot);
