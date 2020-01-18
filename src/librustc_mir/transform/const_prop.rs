@@ -464,11 +464,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         r
     }
 
-    fn eval_constant(
-        &mut self,
-        c: &Constant<'tcx>,
-        source_info: SourceInfo,
-    ) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         self.ecx.tcx.span = c.span;
 
         // FIXME we need to revisit this for #67176
