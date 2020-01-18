@@ -289,7 +289,7 @@ mod impls {
 
 macro_rules! gen_fn_struct_unopt {
     (impl $imp:ident, $method:ident with $m:ident in $z:ident) => {
-        gen_bit_fn_struct!(impl $imp, $method with $m in $z,
+        gen_fn_struct!(impl $imp, $method with $m in $z,
             #[unstable(feature = $m)]);
     };
     (impl $imp:ident, $method:ident with $m:ident in $z:ident, #[$attr:meta]) => {
