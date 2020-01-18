@@ -65,7 +65,7 @@ impl Compiler {
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    syntax::attr::with_default_globals(move || {
+    syntax::with_default_globals(move || {
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {
