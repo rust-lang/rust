@@ -207,7 +207,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             Or(v) => {
-                for (index, inner) in v.iter().enumerate() {
+                for (index, inner) in v.iter().rev().enumerate() {
                     if index > 0 {
                         self.output.push_str(" || ");
                     }
