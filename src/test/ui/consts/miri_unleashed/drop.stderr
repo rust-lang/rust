@@ -7,17 +7,17 @@ LL |     let _v: Vec<i32> = Vec::new();
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
    |
-LL | / unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
+LL | / pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 LL | |     // Code here does not matter - this is replaced by the
 LL | |     // real drop glue by the compiler.
-LL | |     real_drop_in_place(to_drop)
+LL | |     drop_in_place(to_drop)
 LL | | }
    | |_^ calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
    | 
   ::: $DIR/drop.rs:23:1
    |
 LL |   };
-   |   - inside call to `std::ptr::real_drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:23:1
+   |   - inside call to `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:23:1
 
 error: aborting due to previous error
 
