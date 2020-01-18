@@ -1,7 +1,6 @@
 // run-rustfix
 #![allow(unused)]
 #![warn(clippy::all)]
-#![feature(slice_patterns)]
 
 fn main() {
     let v = Some(true);

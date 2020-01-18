@@ -3,7 +3,6 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(rustc_private)]
-#![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
 #![recursion_limit = "512"]
