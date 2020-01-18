@@ -91,7 +91,9 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
 }
 #[cfg(target_env="gnu")]
 pub const MAIN_SEP_STR: &str = "/";
+#[cfg(target_env="gnu")]
 pub const MAIN_SEP: char = '/';
 #[cfg(not(target_env="gnu"))]
 pub const MAIN_SEP_STR: &str = "\\";
+#[cfg(not(target_env="gnu"))]
 pub const MAIN_SEP: char = '\\';
