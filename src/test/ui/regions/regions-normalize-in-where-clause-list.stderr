@@ -67,15 +67,10 @@ LL | | }
               found  `Project<'_, '_>`
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:4
    |
-LL | / fn bar<'a, 'b>()
-LL | |
-LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+LL | fn bar<'a, 'b>()
+   |    ^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
   --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
@@ -88,15 +83,10 @@ note: ...but the lifetime must also be valid for the lifetime `'b` as defined on
 LL | fn bar<'a, 'b>()
    |            ^^
 note: ...so that the types are compatible
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:4
    |
-LL | / fn bar<'a, 'b>()
-LL | |
-LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-LL | | {
-LL | | }
-   | |_^
+LL | fn bar<'a, 'b>()
+   |    ^^^
    = note: expected  `Project<'a, 'b>`
               found  `Project<'_, '_>`
 

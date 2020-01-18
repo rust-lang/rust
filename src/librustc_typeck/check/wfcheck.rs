@@ -219,9 +219,17 @@ fn check_associated_item(
             ty::AssocKind::Method => {
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
-                check_fn_or_method(tcx, fcx, span, sig, item.def_id, &mut implied_bounds);
-                let sig_if_method = sig_if_method.expect("bad signature for method");
-                check_method_receiver(fcx, sig_if_method, &item, self_ty);
+                let hir_sig = sig_if_method.expect("bad signature for method");
+                check_fn_or_method(
+                    tcx,
+                    fcx,
+                    item.ident.span,
+                    sig,
+                    hir_sig,
+                    item.def_id,
+                    &mut implied_bounds,
+                );
+                check_method_receiver(fcx, hir_sig, &item, self_ty);
             }
             ty::AssocKind::Type => {
                 if item.defaultness.has_value() {
@@ -364,7 +372,11 @@ fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
         let sig = fcx.tcx.fn_sig(def_id);
         let sig = fcx.normalize_associated_types_in(item.span, &sig);
         let mut implied_bounds = vec![];
-        check_fn_or_method(tcx, fcx, item.span, sig, def_id, &mut implied_bounds);
+        let hir_sig = match &item.kind {
+            ItemKind::Fn(sig, ..) => sig,
+            _ => bug!("expected `ItemKind::Fn`, found `{:?}`", item.kind),
+        };
+        check_fn_or_method(tcx, fcx, item.ident.span, sig, hir_sig, def_id, &mut implied_bounds);
         implied_bounds
     })
 }
@@ -609,18 +621,23 @@ fn check_fn_or_method<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     sig: ty::PolyFnSig<'tcx>,
+    hir_sig: &hir::FnSig<'_>,
     def_id: DefId,
     implied_bounds: &mut Vec<Ty<'tcx>>,
 ) {
     let sig = fcx.normalize_associated_types_in(span, &sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
-    for input_ty in sig.inputs() {
+    for (input_ty, span) in sig.inputs().iter().zip(hir_sig.decl.inputs.iter().map(|t| t.span)) {
         fcx.register_wf_obligation(&input_ty, span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
-    fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::ReturnType);
+    fcx.register_wf_obligation(
+        sig.output(),
+        hir_sig.decl.output.span(),
+        ObligationCauseCode::ReturnType,
+    );
 
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
