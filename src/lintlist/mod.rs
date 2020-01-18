@@ -1654,7 +1654,7 @@ pub const ALL_LINTS: [Lint; 347] = [
     },
     Lint {
         name: "range_plus_one",
-        group: "complexity",
+        group: "pedantic",
         desc: "`x..(y+1)` reads better as `x..=y`",
         deprecation: None,
         module: "ranges",

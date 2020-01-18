@@ -45,6 +45,10 @@ declare_clippy_lint! {
     /// and ends with a closing one.
     /// I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
     ///
+    /// Also in many cases, inclusive ranges are still slower to run than
+    /// exclusive ranges, because they essentially add an extra branch that
+    /// LLVM may fail to hoist out of the loop.
+    ///
     /// **Example:**
     /// ```rust,ignore
     /// for x..(y+1) { .. }
@@ -54,7 +58,7 @@ declare_clippy_lint! {
     /// for x..=y { .. }
     /// ```
     pub RANGE_PLUS_ONE,
-    complexity,
+    pedantic,
     "`x..(y+1)` reads better as `x..=y`"
 }
 
