@@ -356,4 +356,4 @@ macro_rules! gen_fn_struct_unopt {
     };
 }
 gen_fn_struct_unopt!(impl Not, not with fn_not_impl in FnNot);
-gen_fn_struct_unopt!(impl Neg, neg with fn_neg_impl in FnNot);
+gen_fn_struct_unopt!(impl Neg, neg with fn_neg_impl in FnNeg);
