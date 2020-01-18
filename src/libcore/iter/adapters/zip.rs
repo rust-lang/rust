@@ -305,13 +305,18 @@ where
     type Source = S;
 
     #[inline]
-    fn as_inner(&mut self) -> &mut S {
+    unsafe fn as_inner(&mut self) -> &mut S {
         SourceIter::as_inner(&mut self.a)
     }
 }
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> {}
+// Limited to Item: Copy since interaction between Zip's use of TrustedRandomAccess
+// and Drop implementation of the source is unclear.
+//
+// An additional method returning the number of times the source has been logically advanced
+// (without calling next()) would be needed to properly drop the remainder of the source.
+unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> where A::Item: Copy {}
 
 /// An iterator whose items are random-accessible efficiently
 ///
