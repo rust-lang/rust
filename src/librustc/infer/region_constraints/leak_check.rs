@@ -33,18 +33,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         assert!(self.in_snapshot());
 
-        // If the user gave `-Zno-leak-check`, then skip the leak
-        // check completely. This is wildly unsound and also not
-        // unlikely to cause an ICE or two. It is intended for use
-        // only during a transition period, in which the MIR typeck
-        // uses the "universe-style" check, and the rest of typeck
-        // uses the more conservative leak check.  Since the leak
-        // check is more conservative, we can't test the
-        // universe-style check without disabling it.
-        if tcx.sess.opts.debugging_opts.no_leak_check {
-            return Ok(());
-        }
-
         // Go through each placeholder that we created.
         for (_, &placeholder_region) in placeholder_map {
             // Find the universe this placeholder inhabits.

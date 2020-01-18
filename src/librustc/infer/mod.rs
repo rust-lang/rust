@@ -125,6 +125,13 @@ pub struct InferCtxt<'a, 'tcx> {
     /// order, represented by its upper and lower bounds.
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
+    /// If set, this flag causes us to skip the 'leak check' during
+    /// higher-ranked subtyping operations. This flag is a temporary one used
+    /// to manage the removal of the leak-check: for the time being, we still run the
+    /// leak-check, but we issue warnings. This flag can only be set to true
+    /// when entering a snapshot.
+    skip_leak_check: Cell<bool>,
+
     /// Map from const parameter variable to the kind of const it represents.
     const_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::ConstVid<'tcx>>>>,
 
@@ -550,6 +557,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
+                skip_leak_check: Cell::new(false),
                 region_obligations: RefCell::new(vec![]),
                 universe: Cell::new(ty::UniverseIndex::ROOT),
             })
@@ -593,6 +601,7 @@ pub struct CombinedSnapshot<'a, 'tcx> {
     region_obligations_snapshot: usize,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
+    was_skip_leak_check: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
@@ -720,6 +729,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot: self.region_obligations.borrow().len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
+            was_skip_leak_check: self.skip_leak_check.get(),
             // Borrow tables "in progress" (i.e., during typeck)
             // to ban writes from within a snapshot to them.
             _in_progress_tables: self.in_progress_tables.map(|tables| tables.borrow()),
@@ -738,11 +748,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot,
             universe,
             was_in_snapshot,
+            was_skip_leak_check,
             _in_progress_tables,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
+        self.skip_leak_check.set(was_skip_leak_check);
 
         self.projection_cache.borrow_mut().rollback_to(projection_cache_snapshot);
         self.type_variables.borrow_mut().rollback_to(type_snapshot);
@@ -765,10 +777,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_obligations_snapshot: _,
             universe: _,
             was_in_snapshot,
+            was_skip_leak_check,
             _in_progress_tables,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
+        self.skip_leak_check.set(was_skip_leak_check);
 
         self.projection_cache.borrow_mut().commit(projection_cache_snapshot);
         self.type_variables.borrow_mut().commit(type_snapshot);
@@ -817,6 +831,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
+        let r = f(&snapshot);
+        self.rollback_to("probe", snapshot);
+        r
+    }
+
+    /// Execute `f` then unroll any bindings it creates.
+    pub fn skip_leak_check<R, F>(&self, f: F) -> R
+    where
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
+    {
+        debug!("probe()");
+        let snapshot = self.start_snapshot();
+        self.skip_leak_check.set(true);
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
         r

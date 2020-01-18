@@ -128,6 +128,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         placeholder_map: &PlaceholderMap<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> RelateResult<'tcx, ()> {
+        // If the user gave `-Zno-leak-check`, or we have been
+        // configured to skip the leak check, then skip the leak check
+        // completely. The leak check is deprecated. Any legitimate
+        // subtyping errors that it would have caught will now be
+        // caught later on, during region checking. However, we
+        // continue to use it for a transition period.
+        if self.tcx.sess.opts.debugging_opts.no_leak_check || self.skip_leak_check.get() {
+            return Ok(());
+        }
+
         self.borrow_region_constraints().leak_check(
             self.tcx,
             overly_polymorphic,
