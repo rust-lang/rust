@@ -45,7 +45,7 @@ fn main() {
 // }
 // END rustc.E-V-{{constant}}.mir_map.0.mir
 
-// START rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
+// START rustc.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 //     bb0: {
 //     goto -> bb7;
 // }
@@ -71,7 +71,7 @@ fn main() {
 //     _2 = &mut (*_1);
 //     _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5];
 // }
-// END rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
+// END rustc.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 
 // START rustc.Test-X-{{constructor}}.mir_map.0.mir
 // fn Test::X(_1: usize) -> Test {
