@@ -399,6 +399,11 @@ impl<'tcx> NeverCompatHandler<'tcx> {
     /// We look for any "questionable" calls, generating diagnostic
     /// message for them.
     pub fn post_fallback(self, fcx: &FnCtxt<'a, 'tcx>) {
+        if fcx.tcx.sess.has_errors() {
+            debug!("post_fallback: sess has errors, bailing out");
+            return;
+        }
+
         let tcx = fcx.tcx;
         for (call_id, path) in &self.unresolved_paths {
             debug!(
