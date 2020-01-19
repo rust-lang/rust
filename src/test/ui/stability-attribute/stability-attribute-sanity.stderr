@@ -94,7 +94,7 @@ error[E0544]: multiple stability levels
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Invalid stability or deprecation version found
+error: item has an invalid stability or deprecation version
   --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
