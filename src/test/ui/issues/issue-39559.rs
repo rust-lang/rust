@@ -12,7 +12,7 @@ impl Dim for Dim3 {
 
 pub struct Vector<T, D: Dim> {
     entries: [T; D::dim()],
-    //~^ ERROR type parameters can't appear within an array length expression [E0447]
+    //~^ ERROR type parameters cannot appear within an array length expression [E0747]
     _dummy: D,
 }
 

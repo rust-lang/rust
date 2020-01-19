@@ -1,4 +1,4 @@
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/associated-const-type-parameter-arrays-2.rs:16:23
    |
 LL |     let _array = [4; <A as Foo>::Y];
@@ -6,4 +6,4 @@ LL |     let _array = [4; <A as Foo>::Y];
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0447`.
+For more information about this error, try `rustc --explain E0747`.

@@ -1,4 +1,4 @@
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/issue-39559.rs:14:18
    |
 LL |     entries: [T; D::dim()],
@@ -6,4 +6,4 @@ LL |     entries: [T; D::dim()],
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0447`.
+For more information about this error, try `rustc --explain E0747`.

@@ -204,7 +204,7 @@ enum ResolutionError<'a> {
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant,
-    /// Error E0747: type parameters can't appear within `{}`.
+    /// Error E0747: type parameters cannot appear within `{}`.
     GenericParamsInConst(AnonConstUsage),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
@@ -2367,7 +2367,9 @@ impl<'a> Resolver<'a> {
                                 continue;
                             };
                             match usage {
-                                AnonConstUsage::AssocConstant | AnonConstUsage::GenericArg => {
+                                AnonConstUsage::AssocConstant
+                                | AnonConstUsage::GenericArg
+                                | AnonConstUsage::Typeof => {
                                     // Allowed to use any type parameters.
                                     continue
                                 },

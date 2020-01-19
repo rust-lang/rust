@@ -364,8 +364,8 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0447,
-                    "type parameters can't appear within {}",
+                    E0747,
+                    "type parameters cannot appear within {}",
                     source.descr()
                 );
                 err.span_label(span, "type parameter");

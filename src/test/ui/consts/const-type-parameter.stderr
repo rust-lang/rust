@@ -33,25 +33,25 @@ LL | fn foo<T: Bar>() {
 LL |     static D: usize = T::A;
    |                       ^^^^ use of generic parameter from outer function
 
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/const-type-parameter.rs:17:27
    |
 LL |     let _ = [0; size_of::<T>()];
    |                           ^ type parameter
 
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/const-type-parameter.rs:19:17
    |
 LL |     let _ = [0; T::A];
    |                 ^^^^ type parameter
 
-error[E0447]: type parameters can't appear within an enum discriminant
+error[E0747]: type parameters cannot appear within an enum discriminant
   --> $DIR/const-type-parameter.rs:26:20
    |
 LL |     V1 = size_of::<T>(),
    |                    ^ type parameter
 
-error[E0447]: type parameters can't appear within an enum discriminant
+error[E0747]: type parameters cannot appear within an enum discriminant
   --> $DIR/const-type-parameter.rs:28:10
    |
 LL |     V2 = T::A,
@@ -67,5 +67,5 @@ LL | enum Enum<T: Bar> {
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0392, E0401, E0447.
+Some errors have detailed explanations: E0392, E0401, E0747.
 For more information about an error, try `rustc --explain E0392`.

@@ -1,34 +1,34 @@
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/issue-67945.rs:9:16
    |
 LL |         let x: S = MaybeUninit::uninit();
    |                ^ type parameter
 
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/issue-67945.rs:11:45
    |
 LL |         let b = &*(&x as *const _ as *const S);
    |                                             ^ type parameter
 
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/issue-67945.rs:20:23
    |
 LL |         let x: Option<S> = None;
    |                       ^ type parameter
 
-error[E0447]: type parameters can't appear within an array length expression
+error[E0747]: type parameters cannot appear within an array length expression
   --> $DIR/issue-67945.rs:29:27
    |
 LL |         let x: Option<Box<S>> = None;
    |                           ^ type parameter
 
-error[E0447]: type parameters can't appear within an enum discriminant
+error[E0747]: type parameters cannot appear within an enum discriminant
   --> $DIR/issue-67945.rs:38:16
    |
 LL |         let x: S = 0;
    |                ^ type parameter
 
-error[E0447]: type parameters can't appear within an enum discriminant
+error[E0747]: type parameters cannot appear within an enum discriminant
   --> $DIR/issue-67945.rs:46:14
    |
 LL |     Var = 0: S,
@@ -76,5 +76,5 @@ LL | enum Bug5<S> {
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0392, E0447.
+Some errors have detailed explanations: E0392, E0747.
 For more information about an error, try `rustc --explain E0392`.

@@ -14,7 +14,7 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>() {
     let _array = [4; <A as Foo>::Y];
-    //~^ ERROR type parameters can't appear within an array length expression [E0447]
+    //~^ ERROR type parameters cannot appear within an array length expression [E0747]
 }
 
 fn main() {

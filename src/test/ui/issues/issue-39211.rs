@@ -9,7 +9,7 @@ trait Mat {
 
 fn m<M: Mat>() {
     let a = [3; M::Row::DIM];
-    //~^ ERROR type parameters can't appear within an array length expression [E0447]
+    //~^ ERROR type parameters cannot appear within an array length expression [E0747]
 }
 fn main() {
 }

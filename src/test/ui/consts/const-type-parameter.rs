@@ -15,18 +15,18 @@ fn foo<T: Bar>() {
     //~^ can't use generic parameters from outer function [E0401]
 
     let _ = [0; size_of::<T>()];
-    //~^ ERROR type parameters can't appear within an array length expression [E0447]
+    //~^ ERROR type parameters cannot appear within an array length expression [E0747]
     let _ = [0; T::A];
-    //~^ ERROR type parameters can't appear within an array length expression [E0447]
+    //~^ ERROR type parameters cannot appear within an array length expression [E0747]
 }
 
 #[repr(usize)]
 enum Enum<T: Bar> {
     //~^ ERROR parameter `T` is never used [E0392]
     V1 = size_of::<T>(),
-    //~^ ERROR type parameters can't appear within an enum discriminant [E0447]
+    //~^ ERROR type parameters cannot appear within an enum discriminant [E0747]
     V2 = T::A,
-    //~^ ERROR type parameters can't appear within an enum discriminant [E0447]
+    //~^ ERROR type parameters cannot appear within an enum discriminant [E0747]
 }
 
 fn main() {}

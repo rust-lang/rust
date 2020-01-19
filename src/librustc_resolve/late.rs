@@ -81,18 +81,20 @@ enum PatBoundCtx {
 /// Denotes the location/usage of an anonymous constant.
 #[derive(Copy, Clone, PartialEq, Debug)]
 crate enum AnonConstUsage {
-    /// constant item, e.g., `const _: u8 = X;`.
+    /// Constant item, e.g., `const _: u8 = X;`.
     Constant,
-    /// static item, e.g., `static _: u8 = X;`.
+    /// Static item, e.g., `static _: u8 = X;`.
     Static,
-    /// an array length expression, e.g., `[...; X]`.
+    /// An array length expression, e.g., `[...; X]`.
     ArrayLength,
-    /// an enum discriminant value, e.g., `enum Enum { V = X, }`.
+    /// An enum discriminant value, e.g., `enum Enum { V = X, }`.
     EnumDiscriminant,
-    /// an associated constant in an impl or trait, e.g., `impl A { const _: u8 = X; }`.
+    /// An associated constant in an impl or trait, e.g., `impl A { const _: u8 = X; }`.
     AssocConstant,
-    /// a const generic argument, e.g., `Struct<{X}>`.
+    /// A const generic argument, e.g., `Struct<{X}>`.
     GenericArg,
+    /// A typeof expression, which is an unimplemented feature.
+    Typeof,
 }
 
 impl AnonConstUsage {
@@ -104,6 +106,7 @@ impl AnonConstUsage {
             AnonConstUsage::EnumDiscriminant => "an enum discriminant",
             AnonConstUsage::AssocConstant => "an associated constant",
             AnonConstUsage::GenericArg => "a const generic argument",
+            AnonConstUsage::Typeof => "a typeof expression",
         }
     }
 }
@@ -411,10 +414,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_block(block);
     }
     fn visit_anon_const(&mut self, constant: &'tcx AnonConst) {
-        debug!("visit_anon_const {:?}", constant);
-        self.with_constant_rib(AnonConstUsage::ArrayLength, |this| {
-            visit::walk_anon_const(this, constant);
-        });
+        // All constants should be handled by their parents, so that the applicable `AnonConstUsage`
+        // of the constant can be assigned.
+        bug!("unhandled constant: {:?}", constant);
     }
     fn visit_variant(&mut self, variant: &'tcx Variant) {
         self.visit_variant_data(&variant.data);
@@ -445,6 +447,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         match ty.kind {
             TyKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+                visit::walk_ty(self, ty);
             }
             TyKind::ImplicitSelf => {
                 let self_ty = Ident::with_dummy_span(kw::SelfUpper);
@@ -452,10 +455,21 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     .resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
+                visit::walk_ty(self, ty);
             }
-            _ => (),
-        }
-        visit::walk_ty(self, ty);
+            TyKind::Array(ref element_ty, ref count) => {
+                self.visit_ty(element_ty);
+                self.with_constant_rib(AnonConstUsage::ArrayLength, |this| {
+                    visit::walk_anon_const(this, count);
+                });
+            }
+            TyKind::Typeof(ref constant) => {
+                self.with_constant_rib(AnonConstUsage::Typeof, |this| {
+                    visit::walk_anon_const(this, constant);
+                });
+            }
+            _ => visit::walk_ty(self, ty),
+        };
     }
     fn visit_poly_trait_ref(&mut self, tref: &'tcx PolyTraitRef, m: &'tcx TraitBoundModifier) {
         self.smart_resolve_path(
@@ -598,8 +612,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                         };
 
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
-                            // This must be equivalent to `visit_anon_const`, but we cannot call it
-                            // directly due to visitor lifetimes so we have to copy-paste some code.
                             self.with_constant_rib(AnonConstUsage::GenericArg, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
@@ -2075,6 +2087,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         // Resolve the body
                         this.visit_expr(body);
                     }
+                });
+            }
+            ExprKind::Repeat(ref element, ref count) => {
+                self.visit_expr(element);
+                self.with_constant_rib(AnonConstUsage::ArrayLength, |this| {
+                    visit::walk_anon_const(this, count);
                 });
             }
             _ => {
