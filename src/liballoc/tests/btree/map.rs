@@ -4,6 +4,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
+use std::ops::RangeBounds;
 use std::rc::Rc;
 
 use super::DeterministicRng;
@@ -68,6 +69,11 @@ fn test_basic_small() {
     assert_eq!(map.last_key_value(), None);
     assert_eq!(map.keys().count(), 0);
     assert_eq!(map.values().count(), 0);
+    assert_eq!(map.range(..).next(), None);
+    assert_eq!(map.range(..1).next(), None);
+    assert_eq!(map.range(1..).next(), None);
+    assert_eq!(map.range(1..=1).next(), None);
+    assert_eq!(map.range(1..2).next(), None);
     assert_eq!(map.insert(1, 1), None);
 
     // 1 key-value pair:
@@ -118,6 +124,11 @@ fn test_basic_small() {
     assert_eq!(map.last_key_value(), None);
     assert_eq!(map.keys().count(), 0);
     assert_eq!(map.values().count(), 0);
+    assert_eq!(map.range(..).next(), None);
+    assert_eq!(map.range(..1).next(), None);
+    assert_eq!(map.range(1..).next(), None);
+    assert_eq!(map.range(1..=1).next(), None);
+    assert_eq!(map.range(1..2).next(), None);
     assert_eq!(map.remove(&1), None);
 }
 
@@ -128,7 +139,6 @@ fn test_iter() {
     #[cfg(miri)]
     let size = 200;
 
-    // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
@@ -154,7 +164,6 @@ fn test_iter_rev() {
     #[cfg(miri)]
     let size = 200;
 
-    // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
@@ -275,7 +284,6 @@ fn test_iter_mixed() {
     #[cfg(miri)]
     let size = 200;
 
-    // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
@@ -299,27 +307,147 @@ fn test_iter_mixed() {
     test(size, map.into_iter());
 }
 
-#[test]
-fn test_range_small() {
-    let size = 5;
-
-    // Forwards
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    let mut j = 0;
-    for ((&k, &v), i) in map.range(2..).zip(2..size) {
-        assert_eq!(k, i);
-        assert_eq!(v, i);
-        j += 1;
-    }
-    assert_eq!(j, size - 2);
+fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {
+    map.range(range)
+        .map(|(&k, &v)| {
+            assert_eq!(k, v);
+            k
+        })
+        .collect()
 }
 
 #[test]
-fn test_range_inclusive() {
-    let size = 500;
+fn test_range_small() {
+    let size = 4;
 
-    let map: BTreeMap<_, _> = (0..=size).map(|i| (i, i)).collect();
+    let map: BTreeMap<_, _> = (1..=size).map(|i| (i, i)).collect();
+    let all: Vec<_> = (1..=size).collect();
+    let (first, last) = (vec![all[0]], vec![all[size as usize - 1]]);
+
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(size))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(0), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(0), Included(size))), all);
+    assert_eq!(range_keys(&map, (Included(0), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Included(1), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(1), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(1), Included(size))), all);
+    assert_eq!(range_keys(&map, (Included(1), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Unbounded, Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Unbounded, Included(size))), all);
+    assert_eq!(range_keys(&map, ..), all);
+
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Included(0), Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Unbounded, Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(1))), first);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Included(0), Included(1))), first);
+    assert_eq!(range_keys(&map, (Included(1), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Included(1), Included(1))), first);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Unbounded, Included(1))), first);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Excluded(size + 1))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size + 1))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Unbounded)), last);
+    assert_eq!(range_keys(&map, (Included(size), Excluded(size + 1))), last);
+    assert_eq!(range_keys(&map, (Included(size), Included(size + 1))), last);
+    assert_eq!(range_keys(&map, (Included(size), Included(size))), last);
+    assert_eq!(range_keys(&map, (Included(size), Unbounded)), last);
+    assert_eq!(range_keys(&map, (Excluded(size), Excluded(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(size), Included(size))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(size), Unbounded)), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Excluded(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Included(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Unbounded)), vec![]);
+
+    assert_eq!(range_keys(&map, ..3), vec![1, 2]);
+    assert_eq!(range_keys(&map, 3..), vec![3, 4]);
+    assert_eq!(range_keys(&map, 2..=3), vec![2, 3]);
+}
+
+#[test]
+fn test_range_depth_2() {
+    // Assuming that node.CAPACITY is 11, having 12 pairs implies a depth 2 tree
+    // with 2 leaves. Depending on details we don't want or need to rely upon,
+    // the single key at the root will be 6 or 7.
+
+    let map: BTreeMap<_, _> = (1..=12).map(|i| (i, i)).collect();
+    for &root in &[6, 7] {
+        assert_eq!(range_keys(&map, (Excluded(root), Excluded(root + 1))), vec![]);
+        assert_eq!(range_keys(&map, (Excluded(root), Included(root + 1))), vec![root + 1]);
+        assert_eq!(range_keys(&map, (Included(root), Excluded(root + 1))), vec![root]);
+        assert_eq!(range_keys(&map, (Included(root), Included(root + 1))), vec![root, root + 1]);
+
+        assert_eq!(range_keys(&map, (Excluded(root - 1), Excluded(root))), vec![]);
+        assert_eq!(range_keys(&map, (Included(root - 1), Excluded(root))), vec![root - 1]);
+        assert_eq!(range_keys(&map, (Excluded(root - 1), Included(root))), vec![root]);
+        assert_eq!(range_keys(&map, (Included(root - 1), Included(root))), vec![root - 1, root]);
+    }
+}
+
+#[test]
+fn test_range_large() {
+    let size = 200;
+
+    let map: BTreeMap<_, _> = (1..=size).map(|i| (i, i)).collect();
+    let all: Vec<_> = (1..=size).collect();
+    let (first, last) = (vec![all[0]], vec![all[size as usize - 1]]);
+
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(size))), all);
+    assert_eq!(range_keys(&map, (Excluded(0), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(0), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(0), Included(size))), all);
+    assert_eq!(range_keys(&map, (Included(0), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Included(1), Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(1), Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Included(1), Included(size))), all);
+    assert_eq!(range_keys(&map, (Included(1), Unbounded)), all);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(size + 1))), all);
+    assert_eq!(range_keys(&map, (Unbounded, Included(size + 1))), all);
+    assert_eq!(range_keys(&map, (Unbounded, Included(size))), all);
+    assert_eq!(range_keys(&map, ..), all);
+
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Included(0), Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(1))), vec![]);
+    assert_eq!(range_keys(&map, (Unbounded, Included(0))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(0), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Excluded(0), Included(1))), first);
+    assert_eq!(range_keys(&map, (Included(0), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Included(0), Included(1))), first);
+    assert_eq!(range_keys(&map, (Included(1), Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Included(1), Included(1))), first);
+    assert_eq!(range_keys(&map, (Unbounded, Excluded(2))), first);
+    assert_eq!(range_keys(&map, (Unbounded, Included(1))), first);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Excluded(size + 1))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size + 1))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size))), last);
+    assert_eq!(range_keys(&map, (Excluded(size - 1), Unbounded)), last);
+    assert_eq!(range_keys(&map, (Included(size), Excluded(size + 1))), last);
+    assert_eq!(range_keys(&map, (Included(size), Included(size + 1))), last);
+    assert_eq!(range_keys(&map, (Included(size), Included(size))), last);
+    assert_eq!(range_keys(&map, (Included(size), Unbounded)), last);
+    assert_eq!(range_keys(&map, (Excluded(size), Excluded(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(size), Included(size))), vec![]);
+    assert_eq!(range_keys(&map, (Excluded(size), Unbounded)), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Excluded(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Included(size + 1))), vec![]);
+    assert_eq!(range_keys(&map, (Included(size + 1), Unbounded)), vec![]);
 
     fn check<'a, L, R>(lhs: L, rhs: R)
     where
@@ -331,18 +459,9 @@ fn test_range_inclusive() {
         assert_eq!(lhs, rhs);
     }
 
-    check(map.range(size + 1..=size + 1), vec![]);
-    check(map.range(size..=size), vec![(&size, &size)]);
-    check(map.range(size..=size + 1), vec![(&size, &size)]);
-    check(map.range(0..=0), vec![(&0, &0)]);
-    check(map.range(0..=size - 1), map.range(..size));
-    check(map.range(-1..=-1), vec![]);
-    check(map.range(-1..=size), map.range(..));
-    check(map.range(..=size), map.range(..));
-    check(map.range(..=200), map.range(..201));
+    check(map.range(..=100), map.range(..101));
     check(map.range(5..=8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
-    check(map.range(-1..=0), vec![(&0, &0)]);
-    check(map.range(-1..=2), vec![(&0, &0), (&1, &1), (&2, &2)]);
+    check(map.range(-1..=2), vec![(&1, &1), (&2, &2)]);
 }
 
 #[test]
