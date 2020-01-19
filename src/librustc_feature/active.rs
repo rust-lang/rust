@@ -535,6 +535,10 @@ declare_features! (
     /// For example, you can write `x @ Some(y)`.
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
+    /// Allows patterns with concurrent by-move and by-ref bindings.
+    /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
+    (active, move_ref_pattern, "1.42.0", Some(68354), None),
+
     /// Allows `impl const Trait for T` syntax.
     (active, const_trait_impl, "1.42.0", Some(67792), None),
 
