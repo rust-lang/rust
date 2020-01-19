@@ -7,6 +7,7 @@ use rustc::ty::fold::TypeFolder;
 use rustc::ty::{Ty, TyCtxt, TyVid};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
+use std::borrow::Cow;
 
 /// Code to detect cases where using `!` (never-type) fallback instead of `()` fallback
 /// may result in the introduction of undefined behavior;
@@ -301,6 +302,27 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                         return None;
                     }
                 };
+
+                let args_infer = match path.args.as_ref().unwrap() {
+                    Cow::Borrowed(b) => b.iter().any(|ty| {
+                        fcx.infcx
+                            .unresolved_type_vars(&fcx.infcx.resolve_vars_if_possible(ty))
+                            .is_some()
+                    }),
+                    Cow::Owned(o) => fcx
+                        .infcx
+                        .unresolved_type_vars(&fcx.infcx.resolve_vars_if_possible(o))
+                        .is_some(),
+                };
+
+                if args_infer {
+                    debug!(
+                        "pre_fallback: skipping due to inference vars in fn {:?} args {:?}",
+                        ty_resolved,
+                        path.args.unwrap()
+                    );
+                    return None;
+                }
 
                 // Any method call with inference variables in its substs
                 // could potentially be affected by fallback.
