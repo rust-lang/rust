@@ -1,4 +1,5 @@
 #![feature(bindings_after_at)]
+#![feature(move_ref_pattern)]
 
 enum Option<T> {
     None,
@@ -27,6 +28,9 @@ fn main() {
     //~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable
     fn f3(ref a @ [ref b, ref mut mid @ .., ref c]: [U; 4]) {}
     //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
+    //~| ERROR cannot move out of `b` because it is borrowed
 
     let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
     //~^ ERROR cannot borrow `a` as mutable more than once at a time
