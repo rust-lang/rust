@@ -1149,8 +1149,6 @@ fn typeck_tables_of_with_fallback<'tcx>(
         // See if we can make any more progress.
         fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
-        never_compat.post_fallback(&fcx);
-
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
         fcx.check_casts();
@@ -1167,6 +1165,10 @@ fn typeck_tables_of_with_fallback<'tcx>(
         }
 
         fcx.select_all_obligations_or_error();
+
+        // Report other errors in preference to never-type
+        // fallback errors.
+        never_compat.post_fallback(&fcx);
 
         if fn_decl.is_some() {
             fcx.regionck_fn(id, body);
