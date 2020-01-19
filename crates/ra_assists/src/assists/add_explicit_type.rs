@@ -1,7 +1,6 @@
 use hir::{db::HirDatabase, HirDisplay};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
-    SyntaxKind::EQ,
     TextRange, T,
 };
 
@@ -37,7 +36,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     let name_range = name.syntax().text_range();
     // Assist should only be applicable if cursor is between 'let' and '='
     let stmt_range = stmt.syntax().text_range();
-    let eq_range = stmt.syntax().descendants_with_tokens().find(|t| t.kind() == EQ)?.text_range();
+    let eq_range = stmt.eq_token()?.text_range();
     let let_range = TextRange::from_to(stmt_range.start(), eq_range.start());
     let cursor_in_range = ctx.frange.range.is_subrange(&let_range);
     if !cursor_in_range {
