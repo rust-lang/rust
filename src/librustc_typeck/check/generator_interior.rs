@@ -188,6 +188,16 @@ pub fn resolve_interior<'a, 'tcx>(
 
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
+    let _region_constraints = visitor.fcx.with_region_constraints(|constraints_data| {
+        constraints_data
+            .constraints
+            .keys()
+            .map(|constraints| constraints.to_region_outlives_predicate())
+            .collect::<Vec<_>>()
+    });
+
+    debug!("region outlives inside generator: {:?}", _region_constraints);
+
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
     // Store the generator types and spans into the tables for this generator.

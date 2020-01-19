@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReLateBound, ReVar};
+use rustc_middle::ty::{OutlivesPredicate, ReLateBound, ReVar, RegionKind};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 
@@ -137,12 +137,21 @@ pub enum Constraint<'tcx> {
     RegSubReg(Region<'tcx>, Region<'tcx>),
 }
 
-impl Constraint<'_> {
+impl<'tcx> Constraint<'tcx> {
     pub fn involves_placeholders(&self) -> bool {
         match self {
             Constraint::VarSubVar(_, _) => false,
             Constraint::VarSubReg(_, r) | Constraint::RegSubVar(r, _) => r.is_placeholder(),
             Constraint::RegSubReg(r, s) => r.is_placeholder() || s.is_placeholder(),
+        }
+    }
+
+    pub fn to_region_outlives_predicate(self) -> OutlivesPredicate<RegionKind, RegionKind> {
+        match self {
+            Self::VarSubVar(a, b) => OutlivesPredicate(RegionKind::ReVar(a), RegionKind::ReVar(b)),
+            Self::RegSubVar(a, b) => OutlivesPredicate(*a, RegionKind::ReVar(b)),
+            Self::VarSubReg(a, b) => OutlivesPredicate(RegionKind::ReVar(a), *b),
+            Self::RegSubReg(a, b) => OutlivesPredicate(*a, *b),
         }
     }
 }
