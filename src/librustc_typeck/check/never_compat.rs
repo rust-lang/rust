@@ -209,8 +209,13 @@ fn find_questionable_call<'a, 'tcx>(
     // (e.g. `Box::<_>::new` separately from determining that a method call
     // is occurring). We use this check to skip over `InferredPaths` for
     // non-method-calls (e.g. struct constructors).
-    if let ty::FnDef(_, substs) = ty.kind {
+    if let ty::FnDef(did, substs) = ty.kind {
         debug!("find_questionable_call: Got substs: {:?}", substs);
+
+        if tcx.is_constructor(did) {
+            debug!("find_questionable_call: found constructor {:?}, bailing out", did);
+            return None;
+        }
 
         // See if we can find any arguments that are definitely uninhabited.
         // If we can, we're done - the method call is dead, so fallback
