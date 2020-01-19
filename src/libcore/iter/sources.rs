@@ -208,6 +208,11 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
+#[stable(feature = "iter_empty_send_sync", since = "1.42.0")]
+unsafe impl<T> Send for Empty<T> {}
+#[stable(feature = "iter_empty_send_sync", since = "1.42.0")]
+unsafe impl<T> Sync for Empty<T> {}
+
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
