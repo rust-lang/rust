@@ -26,7 +26,7 @@ use std::iter::{self};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
-    SizedSelf,
+    SizedSelf(Span),
 
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
@@ -42,7 +42,7 @@ pub enum ObjectSafetyViolation {
 impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
-            ObjectSafetyViolation::SizedSelf => {
+            ObjectSafetyViolation::SizedSelf(_) => {
                 "the trait cannot require that `Self : Sized`".into()
             }
             ObjectSafetyViolation::SupertraitSelf => {
@@ -80,6 +80,7 @@ impl ObjectSafetyViolation {
         // diagnostics use a `note` instead of a `span_label`.
         match *self {
             ObjectSafetyViolation::AssocConst(_, span)
+            | ObjectSafetyViolation::SizedSelf(span)
             | ObjectSafetyViolation::Method(_, _, span)
                 if span != DUMMY_SP =>
             {
@@ -179,7 +180,7 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                tcx.struct_span_lint_hir(
+                let mut err = tcx.struct_span_lint_hir(
                     WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
@@ -187,9 +188,12 @@ fn object_safety_violations_for_trait(
                         "the trait `{}` cannot be made into an object",
                         tcx.def_path_str(trait_def_id)
                     ),
-                )
-                .note(&violation.error_msg())
-                .emit();
+                );
+                match violation.span() {
+                    Some(span) => err.span_label(span, violation.error_msg()),
+                    None => err.note(&violation.error_msg()),
+                };
+                err.emit();
                 false
             } else {
                 true
@@ -199,7 +203,8 @@ fn object_safety_violations_for_trait(
 
     // Check the trait itself.
     if trait_has_sized_self(tcx, trait_def_id) {
-        violations.push(ObjectSafetyViolation::SizedSelf);
+        let span = get_sized_bound(tcx, trait_def_id);
+        violations.push(ObjectSafetyViolation::SizedSelf(span));
     }
     if predicates_reference_self(tcx, trait_def_id, false) {
         violations.push(ObjectSafetyViolation::SupertraitSelf);
@@ -217,6 +222,27 @@ fn object_safety_violations_for_trait(
     );
 
     violations
+}
+
+fn get_sized_bound(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Span {
+    tcx.hir()
+        .get_if_local(trait_def_id)
+        .and_then(|node| match node {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., bounds, _), .. }) => bounds
+                .iter()
+                .filter_map(|b| match b {
+                    hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
+                        if Some(trait_ref.trait_ref.trait_def_id())
+                            == tcx.lang_items().sized_trait() =>
+                    {
+                        Some(trait_ref.span)
+                    }
+                    _ => None,
+                })
+                .next(),
+            _ => None,
+        })
+        .unwrap_or(DUMMY_SP)
 }
 
 fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_only: bool) -> bool {
