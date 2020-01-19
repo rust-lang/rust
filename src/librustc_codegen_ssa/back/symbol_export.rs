@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc::session::config;
+use rustc::session::config::{self, Sanitizer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::Instance;
@@ -204,6 +204,12 @@ fn exported_symbols_provider_local(
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
+    }
+
+    if let Some(Sanitizer::Memory) = tcx.sess.opts.debugging_opts.sanitizer {
+        // Similar to profiling, preserve weak msan symbol during LTO.
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("__msan_track_origins"));
+        symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
     if tcx.sess.crate_types.borrow().contains(&config::CrateType::Dylib) {
