@@ -16,7 +16,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use syntax::expand::allocator::ALLOCATOR_METHODS;
 
-pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
+pub type ExportedSymbols = FxHashMap<crate::CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())

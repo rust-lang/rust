@@ -26,7 +26,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
@@ -965,13 +965,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         match sess.lto() {
             Lto::No => None,
             Lto::ThinLocal => {
-                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                exported_symbols.insert(LOCAL_CRATE.into(), copy_symbols(LOCAL_CRATE));
                 Some(Arc::new(exported_symbols))
             }
             Lto::Fat | Lto::Thin => {
-                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                exported_symbols.insert(LOCAL_CRATE.into(), copy_symbols(LOCAL_CRATE));
                 for &cnum in tcx.crates().iter() {
-                    exported_symbols.insert(cnum, copy_symbols(cnum));
+                    exported_symbols.insert(cnum.into(), copy_symbols(cnum));
                 }
                 Some(Arc::new(exported_symbols))
             }
@@ -995,7 +995,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         if link::ignored_for_lto(sess, crate_info, cnum) {
             return;
         }
-        each_linked_rlib_for_lto.push((cnum.into(), path.to_path_buf()));
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
     let assembler_cmd = if modules_config.no_integrated_as {

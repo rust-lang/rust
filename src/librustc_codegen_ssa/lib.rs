@@ -128,11 +128,6 @@ impl From<def_id::CrateNum> for CrateNum {
         CrateNum(crate_num.as_u32())
     }
 }
-impl Into<def_id::CrateNum> for CrateNum {
-    fn into(self) -> def_id::CrateNum {
-        def_id::CrateNum::from_u32(self.0)
-    }
-}
 impl ::std::fmt::Debug for CrateNum {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(fmt, "crate{}", self.0)

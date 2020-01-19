@@ -68,7 +68,10 @@ fn prepare_lto(
     let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
     let mut symbol_white_list = {
         let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbol_white_list");
-        exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
+        exported_symbols[&LOCAL_CRATE.into()]
+            .iter()
+            .filter_map(symbol_filter)
+            .collect::<Vec<CString>>()
     };
     info!("{} symbols to preserve in this crate", symbol_white_list.len());
 
