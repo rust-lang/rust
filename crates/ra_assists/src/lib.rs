@@ -157,7 +157,7 @@ mod assists {
             add_import::add_import,
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
-            inline_local_variable::inline_local_varialbe,
+            inline_local_variable::inline_local_variable,
             move_guard::move_guard_to_arm_body,
             move_guard::move_arm_cond_to_match_guard,
             move_bounds::move_bounds_to_where_clause,

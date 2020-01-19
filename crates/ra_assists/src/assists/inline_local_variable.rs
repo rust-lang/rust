@@ -23,7 +23,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn inline_local_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::BindPat(pat) => pat,
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_inline_let_bind_literal_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn bar(a: usize) {}
 fn foo() {
@@ -151,7 +151,7 @@ fn foo() {
     #[test]
     fn test_inline_let_bind_bin_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn bar(a: usize) {}
 fn foo() {
@@ -185,7 +185,7 @@ fn foo() {
     #[test]
     fn test_inline_let_bind_function_call_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn bar(a: usize) {}
 fn foo() {
@@ -219,7 +219,7 @@ fn foo() {
     #[test]
     fn test_inline_let_bind_cast_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn bar(a: usize): usize { a }
 fn foo() {
@@ -253,7 +253,7 @@ fn foo() {
     #[test]
     fn test_inline_let_bind_block_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = { 10 + 1 };
@@ -285,7 +285,7 @@ fn foo() {
     #[test]
     fn test_inline_let_bind_paren_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = ( 10 + 1 );
@@ -317,7 +317,7 @@ fn foo() {
     #[test]
     fn test_not_inline_mut_variable() {
         check_assist_not_applicable(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let mut a<|> = 1 + 1;
@@ -329,7 +329,7 @@ fn foo() {
     #[test]
     fn test_call_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = bar(10 + 1);
@@ -347,7 +347,7 @@ fn foo() {
     #[test]
     fn test_index_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let x = vec![1, 2, 3];
@@ -367,7 +367,7 @@ fn foo() {
     #[test]
     fn test_method_call_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let bar = vec![1];
@@ -387,7 +387,7 @@ fn foo() {
     #[test]
     fn test_field_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 struct Bar {
     foo: usize
@@ -415,7 +415,7 @@ fn foo() {
     #[test]
     fn test_try_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() -> Option<usize> {
     let bar = Some(1);
@@ -437,7 +437,7 @@ fn foo() -> Option<usize> {
     #[test]
     fn test_ref_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let bar = 10;
@@ -455,7 +455,7 @@ fn foo() {
     #[test]
     fn test_tuple_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = (10, 20);
@@ -471,7 +471,7 @@ fn foo() {
     #[test]
     fn test_array_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = [1, 2, 3];
@@ -487,7 +487,7 @@ fn foo() {
     #[test]
     fn test_paren() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = (10 + 20);
@@ -505,7 +505,7 @@ fn foo() {
     #[test]
     fn test_path_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let d = 10;
@@ -525,7 +525,7 @@ fn foo() {
     #[test]
     fn test_block_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = { 10 };
@@ -543,7 +543,7 @@ fn foo() {
     #[test]
     fn test_used_in_different_expr1() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = 10 + 20;
@@ -565,7 +565,7 @@ fn foo() {
     #[test]
     fn test_used_in_for_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = vec![10, 20];
@@ -581,7 +581,7 @@ fn foo() {
     #[test]
     fn test_used_in_while_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = 1 > 0;
@@ -597,7 +597,7 @@ fn foo() {
     #[test]
     fn test_used_in_break_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = 1 + 1;
@@ -617,7 +617,7 @@ fn foo() {
     #[test]
     fn test_used_in_return_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = 1 > 0;
@@ -633,7 +633,7 @@ fn foo() {
     #[test]
     fn test_used_in_match_expr() {
         check_assist(
-            inline_local_varialbe,
+            inline_local_variable,
             "
 fn foo() {
     let a<|> = 1 > 0;
