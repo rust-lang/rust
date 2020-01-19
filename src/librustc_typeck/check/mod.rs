@@ -1164,11 +1164,12 @@ fn typeck_tables_of_with_fallback<'tcx>(
             fcx.require_type_is_sized(ty, span, code);
         }
 
-        fcx.select_all_obligations_or_error();
-
-        // Report other errors in preference to never-type
-        // fallback errors.
-        never_compat.post_fallback(&fcx);
+        if !fcx.select_all_obligations_or_error() {
+            // If we just reported some errors, don't run
+            // never-type fallbakc - inference variables may
+            // be in a weird state, leading to spurious errors
+            never_compat.post_fallback(&fcx);
+        }
 
         if fn_decl.is_some() {
             fcx.regionck_fn(id, body);
@@ -3473,10 +3474,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn select_all_obligations_or_error(&self) {
+    /// Returns whether or not errors were reported
+    fn select_all_obligations_or_error(&self) -> bool {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
+            true
+        } else {
+            false
         }
     }
 
