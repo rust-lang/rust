@@ -288,8 +288,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 }
 
-type Const<'tcx> = OpTy<'tcx>;
-
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
@@ -387,7 +385,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
+    fn get_const(&self, local: Local) -> Option<OpTy<'tcx>> {
         if local == RETURN_PLACE {
             // Try to read the return place as an immediate so that if it is representable as a
             // scalar, we can handle it as such, but otherwise, just return the value as is.
@@ -466,11 +464,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         r
     }
 
-    fn eval_constant(
-        &mut self,
-        c: &Constant<'tcx>,
-        source_info: SourceInfo,
-    ) -> Option<Const<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         self.ecx.tcx.span = c.span;
 
         // FIXME we need to revisit this for #67176
@@ -510,12 +504,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
+    fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
         self.use_ecx(source_info, |this| this.ecx.eval_place_to_op(place, None))
     }
 
-    fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, source_info),
             Operand::Move(ref place) | Operand::Copy(ref place) => {
@@ -664,7 +658,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn replace_with_const(
         &mut self,
         rval: &mut Rvalue<'tcx>,
-        value: Const<'tcx>,
+        value: OpTy<'tcx>,
         source_info: SourceInfo,
     ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
