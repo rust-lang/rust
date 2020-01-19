@@ -1,4 +1,4 @@
-use crate::utils::{match_type, method_chain_args, paths, snippet_with_applicability, span_lint_and_then};
+use crate::utils::{match_type, method_chain_args, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::*;
@@ -50,28 +50,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
             then {
                 let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
                 let mut applicability = Applicability::MachineApplicable;
-                let trimed_ok_span = op.span.until(op.span.with_lo(ok_span.lo() - BytePos(1)));
+                // ok_span = `ok`
+                // op.span = `x.parse()   .   ok()`
+                // op.span.until(op.span.with_lo(ok_span.lo() - BytePos(1))) = `x.parse()   .`
+                // op.span.with_lo(ok_span.lo() - BytePos(1)) = ` ok()`
+                // op.span.with_hi(ok_span.hi() - BytePos(1)) = `x.parse()   .   o`
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
-                let trimmed_ok = snippet_with_applicability(cx, trimed_ok_span, "", &mut applicability);
+                let trimmed_ok = snippet_with_applicability(cx, op.span.until(ok_span), "", &mut applicability);
                 let sugg = format!(
                     "if let Ok({}) = {}",
                     some_expr_string,
-                    trimmed_ok,
+                    trimmed_ok.trim().trim_end_matches('.'),
                 );
                 if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type {
-                    span_lint_and_then(
+                    span_lint_and_sugg(
                         cx,
                         IF_LET_SOME_RESULT,
-                        expr.span,
+                        expr.span.with_hi(ok_span.hi() + BytePos(2)),
                         "Matching on `Some` with `ok()` is redundant",
-                        |db| {
-                            db.span_suggestion(
-                                expr.span.shrink_to_lo().to(ok_span.with_hi(ok_span.hi() + BytePos(2))),
-                                &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
-                                sugg,
-                                applicability,
-                            );
-                        },
+                        &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
+                        sugg,
+                        applicability,
                     );
                 }
             }

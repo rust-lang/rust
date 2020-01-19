@@ -18,9 +18,10 @@ fn str_to_int_ok(x: &str) -> i32 {
     }
 }
 
-fn nested_some_no_else(x: &str) -> i32 {
+#[rustfmt::skip]
+fn strange_some_no_else(x: &str) -> i32 {
     {
-        if let Some(y) = x.parse().ok() {
+        if let Some(y) = x   .   parse()   .   ok()    {
             return y;
         };
         0
@@ -30,5 +31,5 @@ fn nested_some_no_else(x: &str) -> i32 {
 fn main() {
     let _ = str_to_int("1");
     let _ = str_to_int_ok("2");
-    let _ = nested_some_no_else("3");
+    let _ = strange_some_no_else("3");
 }
