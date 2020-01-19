@@ -614,6 +614,27 @@ fn test() -> bool {
 }
 
 #[test]
+fn infer_shift_op() {
+    assert_snapshot!(
+        infer(r#"
+fn test() {
+    1u32 << 5u8;
+    1u32 >> 5u8;
+}
+"#),
+        @r###"
+    [11; 48) '{     ...5u8; }': ()
+    [17; 21) '1u32': u32
+    [17; 28) '1u32 << 5u8': u32
+    [25; 28) '5u8': u8
+    [34; 38) '1u32': u32
+    [34; 45) '1u32 >> 5u8': u32
+    [42; 45) '5u8': u8
+    "###
+    );
+}
+
+#[test]
 fn infer_field_autoderef() {
     assert_snapshot!(
         infer(r#"

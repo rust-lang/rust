@@ -1,4 +1,4 @@
-//! This module generate AST datatype used by rust-analyzer.
+//! This module generates AST datatype used by rust-analyzer.
 //!
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.

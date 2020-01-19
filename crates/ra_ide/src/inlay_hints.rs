@@ -116,7 +116,7 @@ fn get_param_name_hints(
     let hints = parameters
         .zip(args)
         .filter_map(|(param, arg)| {
-            if arg.syntax().kind() == SyntaxKind::LITERAL {
+            if arg.syntax().kind() == SyntaxKind::LITERAL && !param.is_empty() {
                 Some((arg.syntax().text_range(), param))
             } else {
                 None
@@ -683,12 +683,12 @@ fn main() {
 struct Test {}
 
 impl Test {
-    fn method(&self, param: i32) -> i32 {
+    fn method(&self, mut param: i32) -> i32 {
         param * 2
     }
 }
 
-fn test_func(foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
+fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
     foo + bar
 }
 
@@ -704,37 +704,32 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
-                range: [207; 218),
+                range: [215; 226),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [251; 252),
+                range: [259; 260),
                 kind: ParameterHint,
                 label: "foo",
             },
             InlayHint {
-                range: [254; 255),
+                range: [262; 263),
                 kind: ParameterHint,
                 label: "bar",
             },
             InlayHint {
-                range: [257; 264),
+                range: [265; 272),
                 kind: ParameterHint,
                 label: "msg",
             },
             InlayHint {
-                range: [266; 267),
-                kind: ParameterHint,
-                label: "_",
-            },
-            InlayHint {
-                range: [323; 326),
+                range: [331; 334),
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: [350; 354),
+                range: [358; 362),
                 kind: ParameterHint,
                 label: "param",
             },

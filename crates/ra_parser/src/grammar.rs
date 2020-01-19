@@ -1,7 +1,7 @@
 //! This is the actual "grammar" of the Rust language.
 //!
 //! Each function in this module and its children corresponds
-//! to a production of the format grammar. Submodules roughly
+//! to a production of the formal grammar. Submodules roughly
 //! correspond to different *areas* of the grammar. By convention,
 //! each submodule starts with `use super::*` import and exports
 //! "public" productions via `pub(super)`.

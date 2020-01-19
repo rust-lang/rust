@@ -19,6 +19,26 @@ pub(super) fn expr(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
     expr_bp(p, r, 1)
 }
 
+pub(super) fn expr_with_attrs(p: &mut Parser) -> bool {
+    let m = p.start();
+    let has_attrs = p.at(T![#]);
+    attributes::outer_attributes(p);
+
+    let (cm, _block_like) = expr(p);
+    let success = cm.is_some();
+
+    match (has_attrs, cm) {
+        (true, Some(cm)) => {
+            let kind = cm.kind();
+            cm.undo_completion(p).abandon(p);
+            m.complete(p, kind);
+        }
+        _ => m.abandon(p),
+    }
+
+    success
+}
+
 pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
     let r = Restrictions { forbid_structs: false, prefer_stmt: true };
     expr_bp(p, r, 1)
@@ -540,11 +560,13 @@ fn arg_list(p: &mut Parser) {
     let m = p.start();
     p.bump(T!['(']);
     while !p.at(T![')']) && !p.at(EOF) {
-        if !p.at_ts(EXPR_FIRST) {
-            p.error("expected expression");
+        // test arg_with_attr
+        // fn main() {
+        //     foo(#[attr] 92)
+        // }
+        if !expr_with_attrs(p) {
             break;
         }
-        expr(p);
         if !p.at(T![')']) && !p.expect(T![,]) {
             break;
         }
