@@ -7,6 +7,6 @@ fn main() {}
 trait T {}
 
 fn should_ret_unit() -> impl T {
-    //~^ ERROR the trait bound `(): T` is not satisfied
+    //~^ ERROR the trait bound `!: T` is not satisfied
     panic!()
 }
