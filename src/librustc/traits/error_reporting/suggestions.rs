@@ -12,8 +12,8 @@ use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_span::source_map::SourceMap;
