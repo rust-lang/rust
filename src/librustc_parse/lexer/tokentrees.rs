@@ -1,9 +1,9 @@
 use super::{StringReader, UnmatchedBrace};
 
+use rustc_ast_pretty::pprust::token_to_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
 use rustc_span::Span;
-use syntax::print::pprust::token_to_string;
 use syntax::token::{self, Token};
 use syntax::tokenstream::{
     DelimSpan,

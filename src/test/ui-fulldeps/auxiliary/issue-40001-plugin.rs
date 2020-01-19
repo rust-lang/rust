@@ -1,6 +1,7 @@
 #![feature(box_syntax, plugin, plugin_registrar, rustc_private)]
 #![crate_type = "dylib"]
 
+extern crate rustc_ast_pretty;
 extern crate rustc_driver;
 extern crate rustc_hir;
 #[macro_use] extern crate rustc_lint;
@@ -8,13 +9,13 @@ extern crate rustc_hir;
 extern crate rustc_span;
 extern crate syntax;
 
+use rustc_ast_pretty::pprust;
 use rustc_hir::intravisit;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc_driver::plugin::Registry;
 use rustc_span::source_map;
-use syntax::print::pprust;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

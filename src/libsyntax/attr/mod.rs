@@ -1,23 +1,18 @@
 //! Functions dealing with attributes and meta items.
 
-mod builtin;
-
-pub use crate::ast::Attribute;
-pub use builtin::*;
-pub use IntType::*;
-pub use ReprAttr::*;
-pub use StabilityLevel::*;
-
 use crate::ast;
-use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Ident, Name, Path, PathSegment};
+use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
+use crate::ast::{Ident, Name, Path, PathSegment};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
-use crate::GLOBALS;
 
+use rustc_data_structures::sync::Lock;
+use rustc_index::bit_set::GrowableBitSet;
+use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::source_map::{BytePos, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -25,6 +20,35 @@ use rustc_span::Span;
 use log::debug;
 use std::iter;
 use std::ops::DerefMut;
+
+pub struct Globals {
+    used_attrs: Lock<GrowableBitSet<AttrId>>,
+    known_attrs: Lock<GrowableBitSet<AttrId>>,
+    rustc_span_globals: rustc_span::Globals,
+}
+
+impl Globals {
+    fn new(edition: Edition) -> Globals {
+        Globals {
+            // We have no idea how many attributes there will be, so just
+            // initiate the vectors with 0 bits. We'll grow them as necessary.
+            used_attrs: Lock::new(GrowableBitSet::new_empty()),
+            known_attrs: Lock::new(GrowableBitSet::new_empty()),
+            rustc_span_globals: rustc_span::Globals::new(edition),
+        }
+    }
+}
+
+pub fn with_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
+    let globals = Globals::new(edition);
+    GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
+}
+
+pub fn with_default_globals<R>(f: impl FnOnce() -> R) -> R {
+    with_globals(DEFAULT_EDITION, f)
+}
+
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 pub fn mark_used(attr: &Attribute) {
     debug!("marking {:?} as used", attr);
@@ -382,30 +406,6 @@ pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
-pub fn allow_internal_unstable<'a>(
-    attrs: &[Attribute],
-    span_diagnostic: &'a rustc_errors::Handler,
-) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    find_by_name(attrs, sym::allow_internal_unstable).and_then(|attr| {
-        attr.meta_item_list()
-            .or_else(|| {
-                span_diagnostic
-                    .span_err(attr.span, "allow_internal_unstable expects list of feature names");
-                None
-            })
-            .map(|features| {
-                features.into_iter().filter_map(move |it| {
-                    let name = it.ident().map(|ident| ident.name);
-                    if name.is_none() {
-                        span_diagnostic
-                            .span_err(it.span(), "`allow_internal_unstable` expects feature names")
-                    }
-                    name
-                })
-            })
-    })
-}
-
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
@@ -626,15 +626,15 @@ impl NestedMetaItem {
 }
 
 pub trait HasAttrs: Sized {
-    fn attrs(&self) -> &[ast::Attribute];
-    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F);
+    fn attrs(&self) -> &[Attribute];
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
-    fn attrs(&self) -> &[ast::Attribute] {
+    fn attrs(&self) -> &[Attribute] {
         self.node.attrs()
     }
-    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.node.visit_attrs(f);
     }
 }
@@ -643,7 +643,7 @@ impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         self
     }
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         f(self)
     }
 }
@@ -652,7 +652,7 @@ impl HasAttrs for AttrVec {
     fn attrs(&self) -> &[Attribute] {
         self
     }
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         visit_clobber(self, |this| {
             let mut vec = this.into();
             f(&mut vec);
@@ -665,7 +665,7 @@ impl<T: HasAttrs + 'static> HasAttrs for P<T> {
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
     }
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         (**self).visit_attrs(f);
     }
 }
@@ -683,7 +683,7 @@ impl HasAttrs for StmtKind {
         }
     }
 
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         match self {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Item(..) => {}
@@ -702,18 +702,8 @@ impl HasAttrs for Stmt {
         self.kind.attrs()
     }
 
-    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.kind.visit_attrs(f);
-    }
-}
-
-impl HasAttrs for GenericParam {
-    fn attrs(&self) -> &[ast::Attribute] {
-        &self.attrs
-    }
-
-    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
-        self.attrs.visit_attrs(f);
     }
 }
 
@@ -724,7 +714,7 @@ macro_rules! derive_has_attrs {
                 &self.attrs
             }
 
-            fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+            fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
                 self.attrs.visit_attrs(f);
             }
         }
@@ -733,5 +723,5 @@ macro_rules! derive_has_attrs {
 
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::AssocItem, ast::Arm,
-    ast::Field, ast::FieldPat, ast::Variant, ast::Param
+    ast::Field, ast::FieldPat, ast::Variant, ast::Param, GenericParam
 }

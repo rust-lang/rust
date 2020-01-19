@@ -1,11 +1,11 @@
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 /// Whether the `def_id` counts as const fn in your current crate, considering all active
 /// feature gates

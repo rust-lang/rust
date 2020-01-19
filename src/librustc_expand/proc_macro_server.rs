@@ -1,14 +1,14 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
 use syntax::token;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax::util::comments;

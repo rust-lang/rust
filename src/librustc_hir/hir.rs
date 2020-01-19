@@ -12,20 +12,21 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
-use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use smallvec::SmallVec;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
 use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name, NodeId};
 use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
+use syntax::node_id::NodeMap;
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
+
+use smallvec::SmallVec;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct Lifetime {

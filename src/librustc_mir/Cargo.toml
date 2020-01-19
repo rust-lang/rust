@@ -17,6 +17,8 @@ log = "0.4"
 log_settings = "0.1.1"
 polonius-engine = "0.11.0"
 rustc = { path = "../librustc" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }

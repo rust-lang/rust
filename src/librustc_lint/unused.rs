@@ -1,6 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::ty::adjustment;
 use rustc::ty::{self, Ty};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, Applicability};
 use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -13,7 +14,6 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 use syntax::util::parser;
 
 use log::debug;

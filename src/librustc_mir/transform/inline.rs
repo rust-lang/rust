@@ -16,8 +16,8 @@ use crate::transform::{MirPass, MirSource};
 use std::collections::VecDeque;
 use std::iter;
 
+use rustc_attr as attr;
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;
