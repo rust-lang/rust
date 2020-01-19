@@ -88,6 +88,7 @@ fn main() {
     is_sync_send!((1..));
     is_sync_send!(repeat(1));
     is_sync_send!(empty::<usize>());
+    is_sync_send!(empty::<*mut i32>());
     is_sync_send!(once(1));
 
     // for option.rs
