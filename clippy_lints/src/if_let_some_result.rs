@@ -4,7 +4,6 @@ use rustc_errors::Applicability;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::BytePos;
 
 declare_clippy_lint! {
     /// **What it does:*** Checks for unnecessary `ok()` in if let.
@@ -46,15 +45,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
             if let ExprKind::MethodCall(_, ok_span, ref result_types) = op.kind; //check is expr.ok() has type Result<T,E>.ok()
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
+            let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
+            if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type;
 
             then {
-                let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
                 let mut applicability = Applicability::MachineApplicable;
-                // ok_span = `ok`
-                // op.span = `x.parse()   .   ok()`
-                // op.span.until(op.span.with_lo(ok_span.lo() - BytePos(1))) = `x.parse()   .`
-                // op.span.with_lo(ok_span.lo() - BytePos(1)) = ` ok()`
-                // op.span.with_hi(ok_span.hi() - BytePos(1)) = `x.parse()   .   o`
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
                 let trimmed_ok = snippet_with_applicability(cx, op.span.until(ok_span), "", &mut applicability);
                 let sugg = format!(
@@ -62,17 +57,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
                     some_expr_string,
                     trimmed_ok.trim().trim_end_matches('.'),
                 );
-                if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type {
-                    span_lint_and_sugg(
-                        cx,
-                        IF_LET_SOME_RESULT,
-                        expr.span.with_hi(ok_span.hi() + BytePos(2)),
-                        "Matching on `Some` with `ok()` is redundant",
-                        &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
-                        sugg,
-                        applicability,
-                    );
-                }
+                span_lint_and_sugg(
+                    cx,
+                    IF_LET_SOME_RESULT,
+                    expr.span.with_hi(op.span.hi()),
+                    "Matching on `Some` with `ok()` is redundant",
+                    &format!("Consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
+                    sugg,
+                    applicability,
+                );
             }
         }
     }

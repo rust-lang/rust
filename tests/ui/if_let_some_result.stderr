@@ -13,8 +13,8 @@ LL |     if let Ok(y) = x.parse() {
 error: Matching on `Some` with `ok()` is redundant
   --> $DIR/if_let_some_result.rs:24:9
    |
-LL |         if let Some(y) = x   .   parse()   .   ok()    {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         if let Some(y) = x   .   parse()   .   ok   ()    {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: Consider matching on `Ok(y)` and removing the call to `ok` instead
    |

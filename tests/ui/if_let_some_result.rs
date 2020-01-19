@@ -21,7 +21,7 @@ fn str_to_int_ok(x: &str) -> i32 {
 #[rustfmt::skip]
 fn strange_some_no_else(x: &str) -> i32 {
     {
-        if let Some(y) = x   .   parse()   .   ok()    {
+        if let Some(y) = x   .   parse()   .   ok   ()    {
             return y;
         };
         0
