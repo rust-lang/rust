@@ -1,7 +1,8 @@
 use hir::{db::HirDatabase, HirDisplay};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
-    T,
+    SyntaxKind::EQ,
+    TextRange, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -34,6 +35,14 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     // The binding must have a name
     let name = pat.name()?;
     let name_range = name.syntax().text_range();
+    // Assist should only be applicable if cursor is between 'let' and '='
+    let stmt_range = stmt.syntax().text_range();
+    let eq_range = stmt.syntax().descendants_with_tokens().find(|t| t.kind() == EQ)?.text_range();
+    let let_range = TextRange::from_to(stmt_range.start(), eq_range.start());
+    let cursor_in_range = ctx.frange.range.is_subrange(&let_range);
+    if !cursor_in_range {
+        return None;
+    }
     // Assist not applicable if the type has already been specified
     if stmt.syntax().children_with_tokens().any(|child| child.kind() == T![:]) {
         return None;
@@ -108,5 +117,21 @@ mod tests {
     #[test]
     fn add_explicit_type_not_applicable_if_specified_ty_is_tuple() {
         check_assist_not_applicable(add_explicit_type, "fn f() { let a<|>: (i32, i32) = (3, 4); }");
+    }
+
+    #[test]
+    fn add_explicit_type_not_applicable_if_cursor_after_equals() {
+        check_assist_not_applicable(
+            add_explicit_type,
+            "fn f() {let a =<|> match 1 {2 => 3, 3 => 5};}",
+        )
+    }
+
+    #[test]
+    fn add_explicit_type_not_applicable_if_cursor_before_let() {
+        check_assist_not_applicable(
+            add_explicit_type,
+            "fn f() <|>{let a = match 1 {2 => 3, 3 => 5};}",
+        )
     }
 }
