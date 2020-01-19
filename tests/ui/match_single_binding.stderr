@@ -1,14 +1,21 @@
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:9:5
+  --> $DIR/match_single_binding.rs:11:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => {
 LL | |             println!("{} {} {}", x, y, z);
 LL | |         },
 LL | |     }
-   | |_____^ help: try this: `let (x, y, z) = (a, b, c);`
+   | |_____^
    |
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
+help: consider using `let` statement
+   |
+LL |     let (x, y, z) = (a, b, c);
+LL | {
+LL |     println!("{} {} {}", x, y, z);
+LL | }
+   |
 
 error: aborting due to previous error
 

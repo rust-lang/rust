@@ -775,7 +775,7 @@ pub const ALL_LINTS: [Lint; 351] = [
         group: "style",
         desc: "a `match` statement with a single infallible arm instead of a `let`",
         deprecation: None,
-        module: "infallible_destructuring_match",
+        module: "matches",
     },
     Lint {
         name: "infinite_iter",
@@ -1091,6 +1091,13 @@ pub const ALL_LINTS: [Lint; 351] = [
         desc: "`match` with identical arm bodies",
         deprecation: None,
         module: "copies",
+    },
+    Lint {
+        name: "match_single_binding",
+        group: "complexity",
+        desc: "a match with a single binding instead of using `let` statement",
+        deprecation: None,
+        module: "matches",
     },
     Lint {
         name: "match_wild_err_arm",

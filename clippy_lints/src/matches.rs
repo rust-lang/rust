@@ -5,7 +5,7 @@ use crate::utils::usage::is_unused;
 use crate::utils::{
     span_lint_and_help, span_lint_and_note, 
     expr_block, in_macro, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks,
-    snippet, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then,
+    snippet, snippet_block, snippet_with_applicability,  span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
@@ -14,7 +14,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 use std::collections::Bound;
@@ -246,11 +246,46 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches being used to destructure a single-variant enum
+    /// or tuple struct where a `let` will suffice.
+    ///
+    /// **Why is this bad?** Just readability – `let` doesn't nest, whereas a `match` does.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// enum Wrapper {
+    ///     Data(i32),
+    /// }
+    ///
+    /// let wrapper = Wrapper::Data(42);
+    ///
+    /// let data = match wrapper {
+    ///     Wrapper::Data(i) => i,
+    /// };
+    /// ```
+    ///
+    /// The correct use would be:
+    /// ```rust
+    /// enum Wrapper {
+    ///     Data(i32),
+    /// }
+    ///
+    /// let wrapper = Wrapper::Data(42);
+    /// let Wrapper::Data(data) = wrapper;
+    /// ```
+    pub INFALLIBLE_DESTRUCTURING_MATCH,
+    style,
+    "a `match` statement with a single infallible arm instead of a `let`"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for useless match that binds to only one value.
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** This situation frequently happen in macros, so can't lint there.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
@@ -272,7 +307,12 @@ declare_clippy_lint! {
     "a match with a single binding instead of using `let` statement"
 }
 
-declare_lint_pass!(Matches => [
+#[derive(Default)]
+pub struct Matches {
+    infallible_destructuring_match_linted: bool,
+}
+
+impl_lint_pass!(Matches => [
     SINGLE_MATCH,
     MATCH_REF_PATS,
     MATCH_BOOL,
@@ -283,6 +323,7 @@ declare_lint_pass!(Matches => [
     WILDCARD_ENUM_MATCH_ARM,
     WILDCARD_IN_OR_PATTERNS,
     MATCH_SINGLE_BINDING,
+    INFALLIBLE_DESTRUCTURING_MATCH
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
@@ -298,10 +339,49 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
             check_wild_in_or_pats(cx, arms);
-            check_match_single_binding(cx, ex, arms, expr);
+
+            if self.infallible_destructuring_match_linted {
+                self.infallible_destructuring_match_linted = false;
+            } else {
+                check_match_single_binding(cx, ex, arms, expr);
+            }
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.kind {
             check_match_ref_pats(cx, ex, arms, expr);
+        }
+    }
+
+    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
+        if_chain! {
+            if let Some(ref expr) = local.init;
+            if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
+            if arms.len() == 1 && arms[0].guard.is_none();
+            if let PatKind::TupleStruct(
+                QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pat.kind;
+            if args.len() == 1;
+            if let Some(arg) = get_arg_name(&args[0]);
+            let body = remove_blocks(&arms[0].body);
+            if match_var(body, arg);
+
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                self.infallible_destructuring_match_linted = true;
+                span_lint_and_sugg(
+                    cx,
+                    INFALLIBLE_DESTRUCTURING_MATCH,
+                    local.span,
+                    "you seem to be trying to use `match` to destructure a single infallible pattern. \
+                    Consider using `let`",
+                    "try this",
+                    format!(
+                        "let {}({}) = {};",
+                        snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, target.span, "..", &mut applicability),
+                    ),
+                    applicability,
+                );
+            }
         }
     }
 }
@@ -746,21 +826,31 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
         return;
     }
     if arms.len() == 1 {
-        let bind_names = arms[0].pat.span;
-        let matched_vars = ex.span;
-        span_lint_and_sugg(
-            cx,
-            MATCH_SINGLE_BINDING,
-            expr.span,
-            "this match could be written as a `let` statement",
-            "try this",
-            format!(
-                "let {} = {};",
-                snippet(cx, bind_names, ".."),
-                snippet(cx, matched_vars, "..")
-            ),
-            Applicability::HasPlaceholders,
-        );
+        if is_refutable(cx, arms[0].pat) {
+            return;
+        }
+        match arms[0].pat.kind {
+            PatKind::Binding(..) | PatKind::Tuple(_, _) => {
+                let bind_names = arms[0].pat.span;
+                let matched_vars = ex.span;
+                let match_body = remove_blocks(&arms[0].body);
+                span_lint_and_sugg(
+                    cx,
+                    MATCH_SINGLE_BINDING,
+                    expr.span,
+                    "this match could be written as a `let` statement",
+                    "consider using `let` statement",
+                    format!(
+                        "let {} = {};\n{}",
+                        snippet(cx, bind_names, ".."),
+                        snippet(cx, matched_vars, ".."),
+                        snippet_block(cx, match_body.span, "..")
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            },
+            _ => (),
+        }
     }
 }
 

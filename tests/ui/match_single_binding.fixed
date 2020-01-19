@@ -8,11 +8,10 @@ fn main() {
     let b = 2;
     let c = 3;
     // Lint
-    match (a, b, c) {
-        (x, y, z) => {
-            println!("{} {} {}", x, y, z);
-        },
-    }
+    let (x, y, z) = (a, b, c);
+{
+    println!("{} {} {}", x, y, z);
+}
     // Ok
     match a {
         2 => println!("2"),

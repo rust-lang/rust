@@ -3,7 +3,7 @@
     clippy::borrowed_box,
     clippy::needless_pass_by_value,
     clippy::unused_unit,
-    clippy::redundant_clone
+    clippy::redundant_clone,
 )]
 #![warn(clippy::boxed_local)]
 
