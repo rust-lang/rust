@@ -783,11 +783,7 @@ fn test_into_iter_leak() {
         }
     }
 
-    let v = vec![
-        D(false),
-        D(true),
-        D(false),
-    ];
+    let v = vec![D(false), D(true), D(false)];
 
     catch_unwind(move || drop(v.into_iter())).ok();
 

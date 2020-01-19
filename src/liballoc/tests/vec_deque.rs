@@ -2,7 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::{isize, usize};
 
 use crate::hash;
@@ -1637,7 +1637,8 @@ fn test_drain_leak() {
 
     catch_unwind(AssertUnwindSafe(|| {
         v.drain(1..=4);
-    })).ok();
+    }))
+    .ok();
 
     assert_eq!(unsafe { DROPS }, 4);
     assert_eq!(v.len(), 3);

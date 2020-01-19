@@ -590,13 +590,12 @@ fn drain_filter_pred_panic_leak() {
     q.push_front(D(1));
     q.push_front(D(0));
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|item| if item.0 >= 2 {
-        panic!()
-    } else {
-        true
-    })))).ok();
+    catch_unwind(AssertUnwindSafe(|| {
+        drop(q.drain_filter(|item| if item.0 >= 2 { panic!() } else { true }))
+    }))
+    .ok();
 
-    assert_eq!(unsafe { DROPS }, 2);  // 0 and 1
+    assert_eq!(unsafe { DROPS }, 2); // 0 and 1
     assert_eq!(q.len(), 6);
 }
 
