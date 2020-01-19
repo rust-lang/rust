@@ -2,6 +2,7 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions)]
+#![feature(move_ref_pattern)]
 
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
@@ -290,6 +291,11 @@ fn subslice_mixed_min_lengths(a: &Allocator, c: i32) {
     }
 }
 
+fn move_ref_pattern(a: &Allocator) {
+    let mut tup = (a.alloc(), a.alloc(), a.alloc(), a.alloc());
+    let (ref _a, ref mut _b, _c, mut _d) = tup;
+}
+
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
     // Panic in the drop of `p` or `q` can leak
     let exceptions = vec![8, 9];
@@ -452,6 +458,8 @@ fn main() {
     run_test(|a| subslice_mixed_min_lengths(a, 5));
     run_test(|a| subslice_mixed_min_lengths(a, 6));
     run_test(|a| subslice_mixed_min_lengths(a, 7));
+
+    run_test(|a| move_ref_pattern(a));
 
     run_test(|a| {
         panic_after_return(a);

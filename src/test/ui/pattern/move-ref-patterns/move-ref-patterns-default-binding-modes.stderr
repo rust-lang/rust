@@ -1,0 +1,21 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/move-ref-patterns-default-binding-modes.rs:10:22
+   |
+LL |     let (a, mut b) = &p;
+   |             -----    ^^
+   |             |
+   |             data moved here
+   |             move occurs because `b` has type `main::U`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of a mutable reference
+  --> $DIR/move-ref-patterns-default-binding-modes.rs:14:22
+   |
+LL |     let (a, mut b) = &mut p;
+   |             -----    ^^^^^^
+   |             |
+   |             data moved here
+   |             move occurs because `b` has type `main::U`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

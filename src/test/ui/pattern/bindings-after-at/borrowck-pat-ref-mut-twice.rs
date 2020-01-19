@@ -1,6 +1,7 @@
 // Test that `ref mut x @ ref mut y` and varieties of that are not allowed.
 
 #![feature(bindings_after_at)]
+#![feature(move_ref_pattern)]
 
 fn main() {
     struct U;
@@ -20,6 +21,9 @@ fn main() {
             [..],
         ] : [[U; 4]; 5]
     ) {}
+    fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
+    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~| ERROR cannot move out of `b` because it is borrowed
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow `a` as mutable more than once at a time
@@ -60,18 +64,18 @@ fn main() {
         ) = (u(), [u(), u(), u()]);
 
     let a @ (ref mut b, ref mut c) = (U, U);
-    //~^ ERROR cannot bind by-move with sub-bindings
+    //~^ ERROR borrow of moved value
     //~| ERROR borrow of moved value
     let mut val = (U, [U, U]);
     let a @ (b, [c, d]) = &mut val; // Same as ^--
-    //~^ ERROR cannot bind by-move with sub-bindings
+    //~^ ERROR borrow of moved value
     //~| ERROR borrow of moved value
 
     let a @ &mut ref mut b = &mut U;
-    //~^ ERROR cannot bind by-move with sub-bindings
+    //~^ ERROR borrow of moved value
     //~| ERROR borrow of moved value
     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
-    //~^ ERROR cannot bind by-move with sub-bindings
+    //~^ ERROR borrow of moved value
     //~| ERROR borrow of moved value
 
     match Ok(U) {
