@@ -121,6 +121,24 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         check_for_bindings_named_same_as_variants(self, pat);
     }
 
+    fn lower_pattern<'p>(
+        &self,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        pat: &'tcx hir::Pat<'tcx>,
+        have_errors: &mut bool,
+    ) -> (&'p super::Pat<'tcx>, Ty<'tcx>) {
+        let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.tables);
+        patcx.include_lint_checks();
+        let pattern = patcx.lower_pattern(pat);
+        let pattern_ty = pattern.ty;
+        let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+        if !patcx.errors.is_empty() {
+            *have_errors = true;
+            patcx.report_inlining_errors(pat.span);
+        }
+        (pattern, pattern_ty)
+    }
+
     fn check_match(
         &mut self,
         scrut: &hir::Expr<'_>,
@@ -139,14 +157,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let inlined_arms: Vec<_> = arms
                 .iter()
                 .map(|arm| {
-                    let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.tables);
-                    patcx.include_lint_checks();
-                    let pattern = patcx.lower_pattern(&arm.pat);
-                    let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
-                    if !patcx.errors.is_empty() {
-                        patcx.report_inlining_errors(arm.pat.span);
-                        have_errors = true;
-                    }
+                    let (pattern, _) = self.lower_pattern(cx, &arm.pat, &mut have_errors);
                     (pattern, &*arm.pat, arm.guard.is_some())
                 })
                 .collect();
@@ -171,11 +182,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
         let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
-            let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.tables);
-            patcx.include_lint_checks();
-            let pattern = patcx.lower_pattern(pat);
-            let pattern_ty = pattern.ty;
-            let pattern = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+            let (pattern, pattern_ty) = self.lower_pattern(cx, pat, &mut false);
             let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
 
             let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
