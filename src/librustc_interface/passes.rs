@@ -173,7 +173,11 @@ pub fn register_plugins<'a>(
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
-    let crate_types = util::collect_crate_types(sess, &krate.attrs);
+    let mut crate_types = util::collect_crate_types(sess, &krate.attrs);
+    // This makes sure that `--crate-type rlib --crate-type rlib` doesn't end up
+    // causing us issues down the line.
+    crate_types.sort();
+    crate_types.dedup();
     sess.crate_types.set(crate_types);
 
     let disambiguator = util::compute_crate_disambiguator(sess);
