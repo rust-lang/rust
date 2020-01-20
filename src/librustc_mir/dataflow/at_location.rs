@@ -4,7 +4,6 @@
 use rustc::mir::{BasicBlock, Location};
 use rustc_index::bit_set::{BitIter, BitSet, HybridBitSet};
 
-use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
 use crate::dataflow::{BitDenotation, DataflowResults, GenKillSet};
 
 use std::borrow::Borrow;
@@ -166,45 +165,5 @@ where
 
     fn apply_local_effect(&mut self, _loc: Location) {
         self.stmt_trans.apply(&mut self.curr_state)
-    }
-}
-
-impl<'tcx, T, DR> FlowAtLocation<'tcx, T, DR>
-where
-    T: HasMoveData<'tcx> + BitDenotation<'tcx, Idx = MovePathIndex>,
-    DR: Borrow<DataflowResults<'tcx, T>>,
-{
-    pub fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
-        // We process `mpi` before the loop below, for two reasons:
-        // - it's a little different from the loop case (we don't traverse its
-        //   siblings);
-        // - ~99% of the time the loop isn't reached, and this code is hot, so
-        //   we don't want to allocate `todo` unnecessarily.
-        if self.contains(mpi) {
-            return Some(mpi);
-        }
-        let move_data = self.operator().move_data();
-        let move_path = &move_data.move_paths[mpi];
-        let mut todo = if let Some(child) = move_path.first_child {
-            vec![child]
-        } else {
-            return None;
-        };
-
-        while let Some(mpi) = todo.pop() {
-            if self.contains(mpi) {
-                return Some(mpi);
-            }
-            let move_path = &move_data.move_paths[mpi];
-            if let Some(child) = move_path.first_child {
-                todo.push(child);
-            }
-            // After we've processed the original `mpi`, we should always
-            // traverse the siblings of any of its children.
-            if let Some(sibling) = move_path.next_sibling {
-                todo.push(sibling);
-            }
-        }
-        return None;
     }
 }
