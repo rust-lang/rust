@@ -5,7 +5,7 @@ LL |     let _ = (0..3).map(|x| x + 2).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::suspicious-map` implied by `-D warnings`
-   = help: make sure you did not confuse `map` with `filter`
+   = help: make sure you did not confuse `map` with `filter` or `for_each`
 
 error: aborting due to previous error
 
