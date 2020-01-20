@@ -830,6 +830,10 @@ impl Session {
         // then try to skip it where possible.
         dbg_opts.plt.unwrap_or(needs_plt || !full_relro)
     }
+
+    pub fn insert_sideeffect(&self) -> bool {
+        self.opts.debugging_opts.insert_sideeffect.unwrap_or(true)
+    }
 }
 
 pub fn build_session(

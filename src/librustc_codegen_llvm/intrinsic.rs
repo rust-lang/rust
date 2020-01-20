@@ -799,7 +799,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn sideeffect(&mut self) {
-        if self.tcx.sess.opts.debugging_opts.insert_sideeffect {
+        if self.tcx.sess.insert_sideeffect() {
             let fnname = self.get_intrinsic(&("llvm.sideeffect"));
             self.call(fnname, &[], None);
         }

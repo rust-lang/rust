@@ -945,7 +945,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "which mangling version to use for symbol names"),
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info"),
-    insert_sideeffect: bool = (false, parse_bool, [TRACKED],
+    insert_sideeffect: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "fix undefined behavior when a thread doesn't eventually make progress \
          (such as entering an empty infinite loop) by inserting llvm.sideeffect"),
     deduplicate_diagnostics: Option<bool> = (None, parse_opt_bool, [UNTRACKED],

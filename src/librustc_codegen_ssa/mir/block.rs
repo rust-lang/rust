@@ -153,7 +153,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {
-        if bx.tcx().sess.opts.debugging_opts.insert_sideeffect {
+        if bx.tcx().sess.insert_sideeffect() {
             if targets.iter().any(|&target| {
                 target <= self.bb
                     && target.start_location().is_predecessor_of(self.bb.start_location(), mir)
