@@ -140,7 +140,9 @@ impl ExpnId {
         loop {
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
-            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
+            if expn_data.is_root()
+                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+            {
                 break;
             }
             self = expn_data.call_site.ctxt().outer_expn();
@@ -717,7 +719,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
