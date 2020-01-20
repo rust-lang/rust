@@ -3,11 +3,10 @@
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, Ui};
-use crate::common::{Codegen, CodegenUnits, Rustdoc};
+use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
-use crate::common::{DebugInfoCdb, DebugInfoGdb, DebugInfoGdbLldb, DebugInfoLldb};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
@@ -192,7 +191,7 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
 
         _ => {
             // android has its own gdb handling
-            if config.mode == DebugInfoGdb && config.gdb.is_none() {
+            if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
                 panic!("gdb not available but debuginfo gdb debuginfo test requested");
             }
         }
@@ -234,21 +233,25 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
 
-    if config.mode == DebugInfoCdb {
-        config.cdb.hash(&mut hash);
-    }
+    match config.debugger {
+        Some(Debugger::Cdb) => {
+            config.cdb.hash(&mut hash);
+        }
 
-    if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {
-        match config.gdb {
-            None => env::var_os("PATH").hash(&mut hash),
-            Some(ref s) if s.is_empty() => env::var_os("PATH").hash(&mut hash),
-            Some(ref s) => s.hash(&mut hash),
-        };
-    }
+        Some(Debugger::Gdb) => {
+            config.gdb.hash(&mut hash);
+            env::var_os("PATH").hash(&mut hash);
+            env::var_os("PYTHONPATH").hash(&mut hash);
+        }
 
-    if config.mode == DebugInfoLldb || config.mode == DebugInfoGdbLldb {
-        env::var_os("PATH").hash(&mut hash);
-        env::var_os("PYTHONPATH").hash(&mut hash);
+        Some(Debugger::Lldb) => {
+            config.lldb_python.hash(&mut hash);
+            config.lldb_python_dir.hash(&mut hash);
+            env::var_os("PATH").hash(&mut hash);
+            env::var_os("PYTHONPATH").hash(&mut hash);
+        }
+
+        None => {}
     }
 
     if let Ui = config.mode {
@@ -309,13 +312,7 @@ impl<'test> TestCx<'test> {
             RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
-            DebugInfoGdbLldb => {
-                self.run_debuginfo_gdb_test();
-                self.run_debuginfo_lldb_test();
-            }
-            DebugInfoCdb => self.run_debuginfo_cdb_test(),
-            DebugInfoGdb => self.run_debuginfo_gdb_test(),
-            DebugInfoLldb => self.run_debuginfo_lldb_test(),
+            DebugInfo => self.run_debuginfo_test(),
             Codegen => self.run_codegen_test(),
             Rustdoc => self.run_rustdoc_test(),
             CodegenUnits => self.run_codegen_units_test(),
@@ -680,13 +677,20 @@ impl<'test> TestCx<'test> {
         self.compose_and_run_compiler(rustc, Some(src))
     }
 
+    fn run_debuginfo_test(&self) {
+        match self.config.debugger.unwrap() {
+            Debugger::Cdb => self.run_debuginfo_cdb_test(),
+            Debugger::Gdb => self.run_debuginfo_gdb_test(),
+            Debugger::Lldb => self.run_debuginfo_lldb_test(),
+        }
+    }
+
     fn run_debuginfo_cdb_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            mode: DebugInfoCdb,
             ..self.config.clone()
         };
 
@@ -765,7 +769,6 @@ impl<'test> TestCx<'test> {
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            mode: DebugInfoGdb,
             ..self.config.clone()
         };
 
@@ -999,7 +1002,6 @@ impl<'test> TestCx<'test> {
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            mode: DebugInfoLldb,
             ..self.config.clone()
         };
 
@@ -1887,8 +1889,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb
-            | DebugInfoLldb | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RunMake
+            | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
