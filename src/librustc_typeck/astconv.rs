@@ -402,10 +402,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             err.emit();
 
-            (
-                provided > required, // `suppress_error`
-                potential_assoc_types,
-            )
+            (true, potential_assoc_types)
         };
 
         if reported_late_bound_region_err.is_none()
