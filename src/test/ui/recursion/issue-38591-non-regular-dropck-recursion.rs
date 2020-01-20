@@ -1,6 +1,6 @@
 // Dropck shouldn't hit a recursion limit from checking `S<u32>` since it has
 // no free regions or type parameters.
-// Codegen however, has to error for the infinitely many `real_drop_in_place`
+// Codegen however, has to error for the infinitely many `drop_in_place`
 // functions it has been asked to create.
 // build-fail
 

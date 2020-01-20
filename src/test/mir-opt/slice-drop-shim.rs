@@ -6,7 +6,7 @@ fn main() {
 
 // END RUST SOURCE
 
-// START rustc.ptr-real_drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir
+// START rustc.ptr-drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir
 // let mut _2: usize;
 // let mut _3: usize;
 // let mut _4: usize;
@@ -87,4 +87,4 @@ fn main() {
 //     _3 = Len((*_1));
 //     switchInt(move _2) -> [0usize: bb8, otherwise: bb14];
 // }
-// END rustc.ptr-real_drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir
+// END rustc.ptr-drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir

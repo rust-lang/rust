@@ -5,11 +5,11 @@
 #![deny(dead_code)]
 #![feature(start)]
 
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::Root[0]> @@ transitive_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::Root[0]> @@ transitive_drop_glue-cgu.0[Internal]
 struct Root(Intermediate);
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::Intermediate[0]> @@ transitive_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::Intermediate[0]> @@ transitive_drop_glue-cgu.0[Internal]
 struct Intermediate(Leaf);
-//~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::Leaf[0]> @@ transitive_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::Leaf[0]> @@ transitive_drop_glue-cgu.0[Internal]
 struct Leaf;
 
 impl Drop for Leaf {
@@ -30,15 +30,15 @@ impl<T> Drop for LeafGen<T> {
 fn start(_: isize, _: *const *const u8) -> isize {
     let _ = Root(Intermediate(Leaf));
 
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::RootGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::IntermediateGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::LeafGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::RootGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::IntermediateGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::LeafGen[0]<u32>> @@ transitive_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn transitive_drop_glue::{{impl}}[1]::drop[0]<u32>
     let _ = RootGen(IntermediateGen(LeafGen(0u32)));
 
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::RootGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::IntermediateGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
-    //~ MONO_ITEM fn core::ptr[0]::real_drop_in_place[0]<transitive_drop_glue::LeafGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::RootGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::IntermediateGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
+    //~ MONO_ITEM fn core::ptr[0]::drop_in_place[0]<transitive_drop_glue::LeafGen[0]<i16>> @@ transitive_drop_glue-cgu.0[Internal]
     //~ MONO_ITEM fn transitive_drop_glue::{{impl}}[1]::drop[0]<i16>
     let _ = RootGen(IntermediateGen(LeafGen(0i16)));
 
