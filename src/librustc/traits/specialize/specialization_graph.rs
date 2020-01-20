@@ -163,7 +163,7 @@ impl<'tcx> Children {
                         tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
                     {
                         match overlap_kind {
-                            ty::ImplOverlapKind::Permitted => {}
+                            ty::ImplOverlapKind::Permitted { marker: _ } => {}
                             ty::ImplOverlapKind::Issue33140 => {
                                 last_lint = Some(FutureCompatOverlapError {
                                     error: overlap_error(overlap),

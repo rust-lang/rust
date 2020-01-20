@@ -2591,7 +2591,12 @@ impl<'tcx> ::std::ops::Deref for Attributes<'tcx> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
-    Permitted,
+    Permitted {
+        /// Whether or not the impl is permitted due to the trait being
+        /// a marker trait (a trait with #[marker], or a trait with
+        /// no associated items and #![feature(overlapping_marker_traits)] enabled)
+        marker: bool,
+    },
     /// These impls are allowed to overlap, but that raises
     /// an issue #33140 future-compatibility warning.
     ///
@@ -2711,7 +2716,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error())
             || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error())
         {
-            return Some(ImplOverlapKind::Permitted);
+            return Some(ImplOverlapKind::Permitted { marker: false });
         }
 
         match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
@@ -2721,7 +2726,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (reservations)",
                     def_id1, def_id2
                 );
-                return Some(ImplOverlapKind::Permitted);
+                return Some(ImplOverlapKind::Permitted { marker: false });
             }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
@@ -2757,7 +2762,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 "impls_are_allowed_to_overlap({:?}, {:?}) = Some(Permitted) (marker overlap)",
                 def_id1, def_id2
             );
-            Some(ImplOverlapKind::Permitted)
+            Some(ImplOverlapKind::Permitted { marker: true })
         } else {
             if let Some(self_ty1) = self.issue33140_self_ty(def_id1) {
                 if let Some(self_ty2) = self.issue33140_self_ty(def_id2) {

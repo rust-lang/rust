@@ -1417,6 +1417,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("winnowed to {} candidates for {:?}: {:?}", candidates.len(), stack, candidates);
 
+        let needs_infer = stack.obligation.predicate.needs_infer();
+
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
@@ -1424,7 +1426,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut i = 0;
             while i < candidates.len() {
                 let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                    self.candidate_should_be_dropped_in_favor_of(&candidates[i], &candidates[j])
+                    self.candidate_should_be_dropped_in_favor_of(
+                        &candidates[i],
+                        &candidates[j],
+                        needs_infer,
+                    )
                 });
                 if is_dup {
                     debug!("Dropping candidate #{}/{}: {:?}", i, candidates.len(), candidates[i]);
@@ -2258,6 +2264,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         victim: &EvaluatedCandidate<'tcx>,
         other: &EvaluatedCandidate<'tcx>,
+        needs_infer: bool,
     ) -> bool {
         if victim.candidate == other.candidate {
             return true;
@@ -2339,10 +2346,55 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match victim.candidate {
                         ImplCandidate(victim_def) => {
                             let tcx = self.tcx();
-                            return tcx.specializes((other_def, victim_def))
-                                || tcx
-                                    .impls_are_allowed_to_overlap(other_def, victim_def)
-                                    .is_some();
+                            if tcx.specializes((other_def, victim_def)) {
+                                return true;
+                            }
+                            return match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
+                                Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
+                                    // Subtle: If the predicate we are evaluating has inference
+                                    // variables, do *not* allow discarding candidates due to
+                                    // marker trait impls.
+                                    //
+                                    // Without this restriction, we could end up accidentally
+                                    // constrainting inference variables based on an arbitrarily
+                                    // chosen trait impl.
+                                    //
+                                    // Imagine we have the following code:
+                                    //
+                                    // ```rust
+                                    // #[marker] trait MyTrait {}
+                                    // impl MyTrait for u8 {}
+                                    // impl MyTrait for bool {}
+                                    // ```
+                                    //
+                                    // And we are evaluating the predicate `<_#0t as MyTrait>`.
+                                    //
+                                    // During selection, we will end up with one candidate for each
+                                    // impl of `MyTrait`. If we were to discard one impl in favor
+                                    // of the other, we would be left with one candidate, causing
+                                    // us to "successfully" select the predicate, unifying
+                                    // _#0t with (for example) `u8`.
+                                    //
+                                    // However, we have no reason to believe that this unification
+                                    // is correct - we've essentially just picked an arbitrary
+                                    // *possibility* for _#0t, and required that this be the *only*
+                                    // possibility.
+                                    //
+                                    // Eventually, we will either:
+                                    // 1) Unify all inference variables in the predicate through
+                                    // some other means (e.g. type-checking of a function). We will
+                                    // then be in a position to drop marker trait candidates
+                                    // without constraining inference variables (since there are
+                                    // none left to constrin)
+                                    // 2) Be left with some unconstrained inference variables. We
+                                    // will then correctly report an inference error, since the
+                                    // existence of multiple marker trait impls tells us nothing
+                                    // about which one should actually apply.
+                                    !needs_infer
+                                }
+                                Some(_) => true,
+                                None => false,
+                            };
                         }
                         ParamCandidate(ref cand) => {
                             // Prefer the impl to a global where clause candidate.
