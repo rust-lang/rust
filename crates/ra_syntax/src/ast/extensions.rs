@@ -234,6 +234,10 @@ impl ast::LetStmt {
             Some(node) => node.kind() == T![;],
         }
     }
+
+    pub fn eq_token(&self) -> Option<SyntaxToken> {
+        self.syntax().children_with_tokens().find(|t| t.kind() == EQ).and_then(|it| it.into_token())
+    }
 }
 
 impl ast::ExprStmt {
