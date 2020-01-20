@@ -35,6 +35,8 @@
 use std::io;
 
 use rustc::mir::{self, BasicBlock, Location};
+use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -166,6 +168,22 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     );
+
+    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
+    ///
+    /// This is functionally equivalent to calling the appropriate `Engine` constructor. It should
+    /// not be overridden. Its purpose is to allow consumers of this API to use method-chaining.
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_generic(tcx, body, def_id, self)
+    }
 }
 
 /// A gen/kill dataflow problem.
@@ -271,6 +289,18 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
+    }
+
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_gen_kill(tcx, body, def_id, self)
     }
 }
 

@@ -22,6 +22,7 @@ use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use dataflow::Analysis;
 
 pub type IndirectlyMutableResults<'mir, 'tcx> =
     old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
@@ -33,10 +34,10 @@ struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
 
 impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
     pub fn new(q: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        let analysis = FlowSensitiveAnalysis::new(q, item);
-        let results = dataflow::Engine::new_generic(item.tcx, &item.body, item.def_id, analysis)
-            .iterate_to_fixpoint();
-        let cursor = dataflow::ResultsCursor::new(*item.body, results);
+        let cursor = FlowSensitiveAnalysis::new(q, item)
+            .into_engine(item.tcx, &item.body, item.def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*item.body);
 
         let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
         for (local, decl) in item.body.local_decls.iter_enumerated() {
