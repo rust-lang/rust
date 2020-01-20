@@ -713,7 +713,8 @@ fn visit_instance_use<'tcx>(
 // need a mono item.
 fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::Item(def_id) | ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+
         ty::InstanceDef::VtableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
@@ -725,12 +726,14 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     };
 
     if tcx.is_foreign_item(def_id) {
-        // We can always link to foreign items.
+        // Foreign items are always linked against, there's no way of
+        // instantiating them.
         return false;
     }
 
     if def_id.is_local() {
-        // Local items cannot be referred to locally without monomorphizing them locally.
+        // Local items cannot be referred to locally without
+        // monomorphizing them locally.
         return true;
     }
 
@@ -745,6 +748,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     if !tcx.is_mir_available(def_id) {
         bug!("cannot create local mono-item for {:?}", def_id)
     }
+
     return true;
 
     fn is_available_upstream_generic<'tcx>(

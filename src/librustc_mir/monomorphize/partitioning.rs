@@ -324,7 +324,7 @@ fn mono_item_visibility(
     };
 
     let def_id = match instance.def {
-        InstanceDef::Item(def_id) => def_id,
+        InstanceDef::Item(def_id) | InstanceDef::DropGlue(def_id, Some(_)) => def_id,
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VtableShim(..)
