@@ -20,8 +20,8 @@ use std::str::FromStr;
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
 use crate::util as mir_util;
@@ -149,7 +149,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) -> NllOutput<'tcx> {

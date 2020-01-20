@@ -8,9 +8,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
 use std::rc::Rc;
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::indexes::MovePathIndex;
-use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
+use crate::dataflow::move_paths::{HasMoveData, MoveData};
+use crate::dataflow::MaybeInitializedPlaces;
 
 use crate::borrow_check::{
     region_infer::values::{self, PointIndex, RegionValueElements},
@@ -38,7 +39,7 @@ pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     live_locals: Vec<Local>,
     polonius_drop_used: Option<Vec<(Local, Location)>>,
@@ -85,7 +86,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'flow, 'tcx>>,
+    flow_inits: &'me mut ResultsCursor<'flow, 'tcx, MaybeInitializedPlaces<'flow, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -389,23 +390,26 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 }
 
 impl LivenessContext<'_, '_, '_, 'tcx> {
+    /// Returns `true` if the local variable (or some part of it) is initialized at the current
+    /// cursor position. Callers should call one of the `seek` methods immediately before to point
+    /// the cursor to the desired location.
+    fn initialized_at_curr_loc(&self, mpi: MovePathIndex) -> bool {
+        let state = self.flow_inits.get();
+        if state.contains(mpi) {
+            return true;
+        }
+
+        let move_paths = &self.flow_inits.analysis().move_data().move_paths;
+        move_paths[mpi].find_descendant(&move_paths, |mpi| state.contains(mpi)).is_some()
+    }
+
     /// Returns `true` if the local variable (or some part of it) is initialized in
     /// the terminator of `block`. We need to check this to determine if a
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        // Compute the set of initialized paths at terminator of block
-        // by resetting to the start of the block and then applying
-        // the effects of all statements. This is the only way to get
-        // "just ahead" of a terminator.
-        self.flow_inits.reset_to_entry_of(block);
-        for statement_index in 0..self.body[block].statements.len() {
-            let location = Location { block, statement_index };
-            self.flow_inits.reconstruct_statement_effect(location);
-            self.flow_inits.apply_local_effect(location);
-        }
-
-        self.flow_inits.has_any_child_of(mpi).is_some()
+        self.flow_inits.seek_before(self.body.terminator_loc(block));
+        self.initialized_at_curr_loc(mpi)
     }
 
     /// Returns `true` if the path `mpi` (or some part of it) is initialized at
@@ -414,8 +418,8 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.reset_to_exit_of(block);
-        self.flow_inits.has_any_child_of(mpi).is_some()
+        self.flow_inits.seek_after(self.body.terminator_loc(block));
+        self.initialized_at_curr_loc(mpi)
     }
 
     /// Stores the result that all regions in `value` are live for the
