@@ -21,6 +21,7 @@ use crate::{
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::io;
@@ -346,15 +347,15 @@ pub trait Emitter {
             for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
                 // Only show macro locations that are local
                 // and display them like a span_note
-                if trace.def_site_span.is_dummy() {
+                if trace.def_site.is_dummy() {
                     continue;
                 }
                 if always_backtrace {
                     new_labels.push((
-                        trace.def_site_span,
+                        trace.def_site,
                         format!(
                             "in this expansion of `{}`{}",
-                            trace.macro_decl_name,
+                            trace.kind.descr(),
                             if backtrace_len > 2 {
                                 // if backtrace_len == 1 it'll be pointed
                                 // at by "in this macro invocation"
@@ -366,9 +367,8 @@ pub trait Emitter {
                     ));
                 }
                 // Check to make sure we're not in any <*macros>
-                if !sm.span_to_filename(trace.def_site_span).is_macros()
-                    && !trace.macro_decl_name.starts_with("desugaring of ")
-                    && !trace.macro_decl_name.starts_with("#[")
+                if !sm.span_to_filename(trace.def_site).is_macros()
+                    && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
                     || always_backtrace
                 {
                     new_labels.push((

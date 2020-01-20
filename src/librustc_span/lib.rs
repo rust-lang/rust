@@ -445,7 +445,7 @@ impl Span {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
 
-    pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
+    pub fn macro_backtrace(mut self) -> Vec<ExpnData> {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];
         loop {
@@ -455,11 +455,7 @@ impl Span {
             }
             // Don't print recursive invocations.
             if !expn_data.call_site.source_equal(&prev_span) {
-                result.push(MacroBacktrace {
-                    call_site: expn_data.call_site,
-                    macro_decl_name: expn_data.kind.descr(),
-                    def_site_span: expn_data.def_site,
-                });
+                result.push(expn_data.clone());
             }
 
             prev_span = self;
@@ -1500,18 +1496,6 @@ pub struct FileLines {
 
 pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
     AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-
-#[derive(Debug)]
-pub struct MacroBacktrace {
-    /// span where macro was applied to generate this code
-    pub call_site: Span,
-
-    /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
-    pub macro_decl_name: String,
-
-    /// span where macro was defined (possibly dummy)
-    pub def_site_span: Span,
-}
 
 // _____________________________________________________________________________
 // SpanLinesError, SpanSnippetError, DistinctSources, MalformedSourceMapPositions
