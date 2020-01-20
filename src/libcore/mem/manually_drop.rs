@@ -87,27 +87,28 @@ impl<T> ManuallyDrop<T> {
         slot.value
     }
 
-    /// Takes the contained value out.
+    /// Takes the value from the `ManuallyDrop<T>` container out.
     ///
     /// This method is primarily intended for moving out values in drop.
     /// Instead of using [`ManuallyDrop::drop`] to manually drop the value,
     /// you can use this method to take the value and use it however desired.
-    /// `Drop` will be invoked on the returned value following normal end-of-scope rules.
     ///
-    /// If you have ownership of the container, you can use [`ManuallyDrop::into_inner`] instead.
+    /// Whenever possible, it is preferrable to use [`into_inner`][`ManuallyDrop::into_inner`]
+    /// instead, which prevents duplicating the content of the `ManuallyDrop<T>`.
     ///
     /// # Safety
     ///
-    /// This function semantically moves out the contained value without preventing further usage.
-    /// It is up to the user of this method to ensure that this container is not used again.
+    /// This function semantically moves out the contained value without preventing further usage,
+    /// leaving the state of this container unchanged.
+    /// It is your responsibility to ensure that this `ManuallyDrop` is not used again.
     ///
     /// [`ManuallyDrop::drop`]: #method.drop
     /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
-    #[unstable(feature = "manually_drop_take", issue = "55422")]
+    #[stable(feature = "manually_drop_take", since = "1.42.0")]
     #[inline]
     pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
-        ManuallyDrop::into_inner(ptr::read(slot))
+        ptr::read(&slot.value)
     }
 }
 
