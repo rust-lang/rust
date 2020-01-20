@@ -286,7 +286,27 @@ struct MissingStabilityAnnotations<'a, 'tcx> {
 
 impl<'a, 'tcx> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, hir_id: HirId, span: Span, name: &str) {
-        let stab = self.tcx.stability().local_stability(hir_id);
+        let stability = self.tcx.stability();
+        // Get the stability attribute of the current node, if it has none and it is part of an
+        // ADT, climb up until the item's def to get the whole's ADT's stability if present.
+        let stab = stability.local_stability(hir_id).or_else(|| {
+            let parent_id = self.tcx.hir().get_parent_node(hir_id);
+            let node = self.tcx.hir().find(parent_id);
+            match node {
+                // For enum/union variants we check first the variant's stability and if none, we
+                // check the whole ADT.
+                Some(hir::Node::Variant(_)) => stability.local_stability(parent_id).or_else(|| {
+                    let parent_id = self.tcx.hir().get_parent_node(hir_id);
+                    stability.local_stability(parent_id)
+                }),
+                Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(..), .. }))
+                | Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(..), .. }))
+                | Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(..), .. })) => {
+                    stability.local_stability(parent_id)
+                }
+                _ => None,
+            }
+        });
         let is_error =
             !self.tcx.sess.opts.test && stab.is_none() && self.access_levels.is_reachable(hir_id);
         if is_error {

@@ -1,8 +1,0 @@
-error: field has missing stability attribute
-  --> $DIR/stability-attribute-issue-43027.rs:5:23
-   |
-LL | pub struct Reverse<T>(pub T);
-   |                       ^^^^^
-
-error: aborting due to previous error
-
