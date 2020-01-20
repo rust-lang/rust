@@ -16,5 +16,4 @@ rustc_typeck = { path = "../librustc_typeck" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_error_codes = { path = "../librustc_error_codes" }
 log = "0.4"

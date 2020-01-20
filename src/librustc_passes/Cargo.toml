@@ -20,4 +20,3 @@ rustc_session = { path = "../librustc_session" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
-rustc_error_codes = { path = "../librustc_error_codes" }

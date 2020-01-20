@@ -23,7 +23,6 @@ extern crate getopts;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
-extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;

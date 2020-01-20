@@ -6,7 +6,6 @@ use crate::{PathResult, PathSource, Segment};
 
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_error_codes::*;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind};

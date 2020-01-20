@@ -61,8 +61,6 @@ use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameReso
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{LegacyBinding, LegacyScope};
 
-use rustc_error_codes::*;
-
 type Res = def::Res<NodeId>;
 
 mod build_reduced_graph;

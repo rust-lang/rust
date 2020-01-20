@@ -10,7 +10,6 @@
 
 use crate::{parse_in, validate_attr};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_error_codes::*;
 use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{

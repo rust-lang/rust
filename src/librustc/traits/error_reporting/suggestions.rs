@@ -20,8 +20,6 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
-use rustc_error_codes::*;
-
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     crate fn suggest_restricting_param_bound(
         &self,

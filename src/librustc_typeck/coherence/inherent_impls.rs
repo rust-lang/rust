@@ -16,8 +16,6 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::Span;
 use syntax::ast;
 
-use rustc_error_codes::*;
-
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);

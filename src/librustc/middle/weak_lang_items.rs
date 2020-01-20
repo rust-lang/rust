@@ -15,8 +15,6 @@ use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 
-use rustc_error_codes::*;
-
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
 

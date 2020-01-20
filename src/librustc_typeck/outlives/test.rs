@@ -4,8 +4,6 @@ use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::sym;
 
-use rustc_error_codes::*;
-
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     tcx.hir().krate().visit_all_item_likes(&mut OutlivesTest { tcx });
 }

@@ -6,7 +6,6 @@ use crate::require_same_types;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_span::symbol::Symbol;

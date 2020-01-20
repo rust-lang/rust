@@ -25,4 +25,3 @@ rustc_span = { path = "../librustc_span" }
 rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-rustc_error_codes = { path = "../librustc_error_codes" }

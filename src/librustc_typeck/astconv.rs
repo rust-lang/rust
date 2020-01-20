@@ -39,7 +39,6 @@ use std::iter;
 use std::slice;
 
 use rustc::mir::interpret::LitToConstInput;
-use rustc_error_codes::*;
 
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);

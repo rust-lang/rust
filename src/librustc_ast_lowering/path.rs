@@ -3,7 +3,6 @@ use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
 use rustc::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc::span_bug;
-use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};

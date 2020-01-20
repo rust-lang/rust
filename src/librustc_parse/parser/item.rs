@@ -3,7 +3,6 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
 use rustc_span::source_map::{self, respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};

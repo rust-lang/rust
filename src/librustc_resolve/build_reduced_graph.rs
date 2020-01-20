@@ -21,7 +21,6 @@ use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
 use rustc_data_structures::sync::Lrc;
-use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;

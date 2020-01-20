@@ -399,8 +399,5 @@ macro_rules! struct_span_err {
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:ident) => {{
-        let _ = $code;
-        $crate::DiagnosticId::Error(stringify!($code).to_owned())
-    }};
+    ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
 }

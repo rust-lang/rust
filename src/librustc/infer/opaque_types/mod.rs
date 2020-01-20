@@ -15,8 +15,6 @@ use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::Node;
 use rustc_span::Span;
 
-use rustc_error_codes::*;
-
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
 /// Information about the opaque types whose values we

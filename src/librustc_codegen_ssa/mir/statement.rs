@@ -7,8 +7,6 @@ use super::OperandValue;
 use crate::traits::BuilderMethods;
 use crate::traits::*;
 
-use rustc_error_codes::*;
-
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(&mut self, mut bx: Bx, statement: &mir::Statement<'tcx>) -> Bx {
         debug!("codegen_statement(statement={:?})", statement);

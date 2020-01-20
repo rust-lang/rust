@@ -6,7 +6,6 @@ use rustc::lint::{LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};

@@ -49,8 +49,6 @@ use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast;
 
-use rustc_error_codes::*;
-
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {

@@ -15,8 +15,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 
-use rustc_error_codes::*;
-
 fn new_lib_features() -> LibFeatures {
     LibFeatures { stable: Default::default(), unstable: Default::default() }
 }

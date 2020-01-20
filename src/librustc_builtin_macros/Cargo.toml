@@ -22,4 +22,3 @@ smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_span = { path = "../librustc_span" }
-rustc_error_codes = { path = "../librustc_error_codes" }

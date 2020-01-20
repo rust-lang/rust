@@ -8,7 +8,6 @@ use crate::hir::map::Map;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
