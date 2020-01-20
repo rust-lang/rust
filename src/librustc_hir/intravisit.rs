@@ -462,8 +462,7 @@ pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body<'v>) {
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
-    // Intentionally visiting the expr first - the initialization expr
-    // dominates the local's definition.
+    // Visit the expr first. The initialization expr dominates the local's definition.
     walk_list!(visitor, visit_expr, &local.init);
     walk_list!(visitor, visit_attribute, local.attrs.iter());
     visitor.visit_id(local.hir_id);
@@ -1081,6 +1080,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::DropTemps(ref subexpression) => {
             visitor.visit_expr(subexpression);
+        }
+        ExprKind::Let(ref pat, ref expr) => {
+            // Visit the expr first. The initialization expr dominates the `let`'s definition.
+            // This is the same logic in `walk_local`.
+            visitor.visit_expr(expr);
+            visitor.visit_pat(pat);
         }
         ExprKind::Loop(ref block, ref opt_label, _) => {
             walk_list!(visitor, visit_label, opt_label);

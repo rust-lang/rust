@@ -103,7 +103,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             let param_place = self.mc.cat_rvalue(param.hir_id, param.pat.span, param_ty);
 
-            self.walk_irrefutable_pat(&param_place, &param.pat);
+            self.walk_pat(&param_place, &param.pat);
         }
 
         self.consume_expr(&body.value);
@@ -198,13 +198,17 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::Match(ref discr, arms, _) => {
-                let discr_place = return_if_err!(self.mc.cat_expr(&discr));
-                self.borrow_expr(&discr, ty::ImmBorrow);
+            hir::ExprKind::Let(ref pat, ref scrutinee) => {
+                self.walk_local(scrutinee, pat);
+            }
 
-                // treatment of the discriminant is handled while walking the arms.
+            hir::ExprKind::Match(ref scrutinee, arms, _) => {
+                let scrut_place = return_if_err!(self.mc.cat_expr(&scrutinee));
+                self.borrow_expr(&scrutinee, ty::ImmBorrow);
+
+                // Treatment of the scrutinee is handled while walking the arms.
                 for arm in arms {
-                    self.walk_arm(&discr_place, arm);
+                    self.walk_arm(&scrut_place, arm);
                 }
             }
 
@@ -297,10 +301,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
-        match stmt.kind {
-            hir::StmtKind::Local(ref local) => {
-                self.walk_local(&local);
+        match &stmt.kind {
+            hir::StmtKind::Local(hir::Local { pat, init: Some(scrutinee), .. }) => {
+                self.walk_local(scrutinee, pat);
             }
+            hir::StmtKind::Local(_) => {}
 
             hir::StmtKind::Item(_) => {
                 // We don't visit nested items in this visitor,
@@ -313,16 +318,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_local(&mut self, local: &hir::Local<'_>) {
-        if let Some(ref expr) = local.init {
-            // Variable declarations with
-            // initializers are considered
-            // "assigns", which is handled by
-            // `walk_pat`:
-            self.walk_expr(&expr);
-            let init_place = return_if_err!(self.mc.cat_expr(&expr));
-            self.walk_irrefutable_pat(&init_place, &local.pat);
-        }
+    fn walk_local(&mut self, scrutinee: &hir::Expr<'_>, pat: &hir::Pat<'_>) {
+        // Variable declarations with initializers are considered
+        // "assigns", which is handled by `walk_pat`:
+        self.walk_expr(&scrutinee);
+        let scrut_place = return_if_err!(self.mc.cat_expr(&scrutinee));
+        self.walk_pat(&scrut_place, &pat);
     }
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
@@ -455,8 +456,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_arm(&mut self, discr_place: &Place<'tcx>, arm: &hir::Arm<'_>) {
-        self.walk_pat(discr_place, &arm.pat);
+    fn walk_arm(&mut self, scrut_place: &Place<'tcx>, arm: &hir::Arm<'_>) {
+        self.walk_pat(scrut_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
             self.consume_expr(e)
@@ -465,19 +466,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.consume_expr(&arm.body);
     }
 
-    /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
-    /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat<'_>) {
-        self.walk_pat(discr_place, pat);
-    }
-
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat<'_>) {
-        debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
+    fn walk_pat(&mut self, scrut_place: &Place<'tcx>, pat: &hir::Pat<'_>) {
+        debug!("walk_pat(scrut_place={:?}, pat={:?})", scrut_place, pat);
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate } = *self;
-        return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
+        return_if_err!(mc.cat_pattern(scrut_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
                 if let Some(bm) = mc.tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {

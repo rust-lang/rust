@@ -1037,28 +1037,44 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
-    pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr<'_>, prec: i8) {
-        let needs_par = expr.precedence().order() < prec;
-        if needs_par {
-            self.popen();
-        }
-        self.print_expr(expr);
-        if needs_par {
-            self.pclose();
-        }
+    /// Print a `let pat = scrutinee` expression.
+    fn print_let(&mut self, pat: &hir::Pat<'_>, scrutinee: &hir::Expr<'_>) {
+        self.s.word("let ");
+
+        self.print_pat(pat);
+        self.s.space();
+
+        self.word_space("=");
+        self.print_expr_cond_paren(
+            scrutinee,
+            Self::cond_needs_par(scrutinee)
+                || parser::needs_par_as_let_scrutinee(scrutinee.precedence().order()),
+        )
     }
 
-    /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
+    /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
-    pub fn print_expr_as_cond(&mut self, expr: &hir::Expr<'_>) {
-        let needs_par = match expr.kind {
+    fn print_expr_as_cond(&mut self, expr: &hir::Expr<'_>) {
+        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr))
+    }
+
+    fn print_expr_maybe_paren(&mut self, expr: &hir::Expr<'_>, prec: i8) {
+        self.print_expr_cond_paren(expr, expr.precedence().order() < prec)
+    }
+
+    /// Does `expr` need parenthesis when printed in a condition position?
+    fn cond_needs_par(expr: &hir::Expr<'_>) -> bool {
+        match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             hir::ExprKind::Closure(..) | hir::ExprKind::Ret(..) | hir::ExprKind::Break(..) => true,
 
             _ => contains_exterior_struct_lit(expr),
-        };
+        }
+    }
 
+    /// Prints `expr` or `(expr)` when `needs_par` holds.
+    fn print_expr_cond_paren(&mut self, expr: &hir::Expr<'_>, needs_par: bool) {
         if needs_par {
             self.popen();
         }
@@ -1178,6 +1194,9 @@ impl<'a> State<'a> {
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
             (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Lt)
             | (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            (&hir::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
+                parser::PREC_FORCE_PAREN
+            }
             _ => left_prec,
         };
 
@@ -1284,6 +1303,9 @@ impl<'a> State<'a> {
 
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
+            }
+            hir::ExprKind::Let(ref pat, ref scrutinee) => {
+                self.print_let(pat, scrutinee);
             }
             hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {

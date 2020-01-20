@@ -248,11 +248,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
+            ExprKind::Let(ref pat, ref scrutinee) => self.check_expr_let(pat, scrutinee),
             ExprKind::Loop(ref body, _, source) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
-            ExprKind::Match(ref discrim, ref arms, match_src) => {
-                self.check_match(expr, &discrim, arms, expected, match_src)
+            ExprKind::Match(ref scrutinee, ref arms, match_src) => {
+                self.check_match(expr, &scrutinee, arms, expected, match_src)
             }
             ExprKind::Closure(capture, ref decl, body_id, _, gen) => {
                 self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
@@ -800,6 +801,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.mk_unit()
         }
+    }
+
+    fn check_expr_let(&self, pat: &'tcx hir::Pat<'tcx>, scrut: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
+        let scrut_ty = self.demand_scrutinee_type(core::iter::once(pat), scrut);
+        self.check_pat_top(pat, scrut_ty, Some(scrut.span), true);
+        self.tcx.types.bool
     }
 
     fn check_expr_loop(

@@ -28,9 +28,8 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
         Some(id) => tcx.hir().body_owned_by(id),
     };
 
-    let mut visitor =
-        MatchVisitor { tcx, tables: tcx.body_tables(body_id), param_env: tcx.param_env(def_id) };
-    visitor.visit_body(tcx.hir().body(body_id));
+    MatchVisitor { tcx, tables: tcx.body_tables(body_id), param_env: tcx.param_env(def_id) }
+        .visit_body(tcx.hir().body(body_id));
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
@@ -53,6 +52,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
 
+        // FIXME(let_chains): Deal with `::Let`.
         if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.kind {
             self.check_match(scrut, arms, source);
         }

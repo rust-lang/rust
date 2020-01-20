@@ -367,7 +367,7 @@ pub fn prec_let_scrutinee_needs_par() -> usize {
 ///
 /// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
 /// Can we print this as `let _ = a OP b`?
-crate fn needs_par_as_let_scrutinee(order: i8) -> bool {
+pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
     order <= prec_let_scrutinee_needs_par() as i8
 }
 

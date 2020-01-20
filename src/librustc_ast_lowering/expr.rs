@@ -243,10 +243,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    /// Emit an error and lower `ast::ExprKind::Let(pat, scrutinee)` into:
-    /// ```rust
-    /// match scrutinee { pats => true, _ => false }
-    /// ```
     fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind<'hir> {
         // If we got here, the `let` expression is not allowed.
 
@@ -263,31 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .emit();
         }
 
-        // For better recovery, we emit:
-        // ```
-        // match scrutinee { pat => true, _ => false }
-        // ```
-        // While this doesn't fully match the user's intent, it has key advantages:
-        // 1. We can avoid using `abort_if_errors`.
-        // 2. We can typeck both `pat` and `scrutinee`.
-        // 3. `pat` is allowed to be refutable.
-        // 4. The return type of the block is `bool` which seems like what the user wanted.
-        let scrutinee = self.lower_expr(scrutinee);
-        let then_arm = {
-            let pat = self.lower_pat(pat);
-            let expr = self.expr_bool(span, true);
-            self.arm(pat, expr)
-        };
-        let else_arm = {
-            let pat = self.pat_wild(span);
-            let expr = self.expr_bool(span, false);
-            self.arm(pat, expr)
-        };
-        hir::ExprKind::Match(
-            scrutinee,
-            arena_vec![self; then_arm, else_arm],
-            hir::MatchSource::Normal,
-        )
+        hir::ExprKind::Let(self.lower_pat(pat), self.lower_expr(scrutinee))
     }
 
     fn lower_expr_if(

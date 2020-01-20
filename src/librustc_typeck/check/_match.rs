@@ -39,7 +39,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(60707): Consider removing hack with principled solution.
             self.check_expr_has_type_or_error(scrut, self.tcx.types.bool, |_| {})
         } else {
-            self.demand_scrutinee_type(arms, scrut)
+            self.demand_scrutinee_type(arms.iter().map(|a| a.pat), scrut)
         };
 
         // If there are no arms, that is a diverging match; a special case.
@@ -370,9 +370,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    fn demand_scrutinee_type(
+    pub(super) fn demand_scrutinee_type(
         &self,
-        arms: &'tcx [hir::Arm<'tcx>],
+        pats: impl Iterator<Item = &'tcx hir::Pat<'tcx>>,
         scrut: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
@@ -427,10 +427,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (once introduced) is populated by the time we get here.
         //
         // See #44848.
-        let contains_ref_bindings = arms
-            .iter()
-            .filter_map(|a| a.pat.contains_explicit_ref_binding())
-            .max_by_key(|m| match *m {
+        let contains_ref_bindings =
+            pats.filter_map(|p| p.contains_explicit_ref_binding()).max_by_key(|m| match *m {
                 hir::Mutability::Mut => 1,
                 hir::Mutability::Not => 0,
             });

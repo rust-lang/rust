@@ -443,8 +443,38 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             },
             Err(err) => bug!("invalid loop id for continue: {}", err),
         },
-        hir::ExprKind::Match(ref discr, ref arms, _) => ExprKind::Match {
-            scrutinee: discr.to_ref(),
+        hir::ExprKind::Let(ref pat, ref scrutinee) => {
+            // FIXME(let_chains, Centril): Temporary solution while we cannot lower these to MIR.
+            //
+            // If we got here, the `let` expression is not allowed
+            // and we have emitted an error in HIR lowering.
+            //
+            // For better recovery, we emit:
+            // ```
+            // match scrutinee { pat => true, _ => false }
+            // ```
+            // While this doesn't fully match the user's intent, it has key advantages:
+            // 1. We can avoid using `abort_if_errors`.
+            // 2. We can typeck both `pat` and `scrutinee`.
+            // 3. `pat` is allowed to be refutable.
+            // 4. The return type of the block is `bool` which seems like what the user wanted.
+            let span = expr.span;
+            let pat = cx.pattern_from_hir(pat);
+            let arm = |pattern, val| {
+                let literal = Const::from_bool(cx.tcx, val);
+                let kind = ExprKind::Literal { literal, user_ty: None };
+                let body = Expr { temp_lifetime, ty: expr_ty, span, kind }.to_ref();
+                let scope =
+                    region::Scope { id: expr.hir_id.local_id, data: region::ScopeData::Node };
+                let lint_level = LintLevel::Inherited;
+                Arm { pattern, guard: None, body, lint_level, scope, span }
+            };
+            let else_arm = arm(Pat::wildcard_from_ty(pat.ty), false);
+            let then_arm = arm(pat, true);
+            ExprKind::Match { scrutinee: scrutinee.to_ref(), arms: vec![then_arm, else_arm] }
+        }
+        hir::ExprKind::Match(ref scrutinee, ref arms, _) => ExprKind::Match {
+            scrutinee: scrutinee.to_ref(),
             arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
         },
         hir::ExprKind::Loop(ref body, _, _) => {
