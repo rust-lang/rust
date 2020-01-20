@@ -41,7 +41,7 @@ pub fn render_with_highlighting(
     let fm = sess
         .source_map()
         .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src.to_owned());
-    let highlight_result = {
+    let highlight_result = rustc_driver::catch_fatal_errors(|| {
         let lexer = lexer::StringReader::new(&sess, fm, None);
         let mut classifier = Classifier::new(lexer, sess.source_map());
 
@@ -51,7 +51,8 @@ pub fn render_with_highlighting(
         } else {
             Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
         }
-    };
+    })
+    .unwrap_or(Err(()));
 
     match highlight_result {
         Ok(highlighted_source) => {
