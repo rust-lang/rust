@@ -5521,7 +5521,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
     }
 }
 
-#[stable(feature = "array_from_single", since = "1.42")]
+#[stable(feature = "array_from_single", since = "1.42.0")]
 impl<T> From<T> for [T; 1] {
     fn from(val: T) -> [T; 1] {
         [val]
