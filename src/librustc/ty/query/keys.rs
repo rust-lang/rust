@@ -125,15 +125,6 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (DefId, SubstsRef<'tcx>, traits::TraitQueryMode) {
-    fn query_crate(&self) -> CrateNum {
-        self.0.krate
-    }
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.0.default_span(tcx)
-    }
-}
-
 impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     fn query_crate(&self) -> CrateNum {
         self.1.def_id().krate

@@ -1,7 +1,6 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
 use crate::session::config::OptLevel;
-use crate::traits::TraitQueryMode;
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_data_structures::base_n;
@@ -168,9 +167,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        // We shouldn't encounter any overflow here, so we use TraitQueryMode::Standard\
-        // to report an error if overflow somehow occurs.
-        tcx.substitute_normalize_and_test_predicates((def_id, &substs, TraitQueryMode::Standard))
+        tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
     pub fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {

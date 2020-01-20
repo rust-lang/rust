@@ -1,59 +1,59 @@
 warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:8:14
+  --> $DIR/promoted_errors.rs:9:14
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/promoted_errors.rs:4:9
+  --> $DIR/promoted_errors.rs:5:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:10:20
+  --> $DIR/promoted_errors.rs:11:20
    |
 LL |     println!("{}", 1 / (1 - 1));
    |                    ^^^^^^^^^^^
 
 warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:10:20
+  --> $DIR/promoted_errors.rs:11:20
    |
 LL |     println!("{}", 1 / (1 - 1));
    |                    ^^^^^^^^^^^ dividing by zero
 
 warning: erroneous constant used
-  --> $DIR/promoted_errors.rs:10:20
+  --> $DIR/promoted_errors.rs:11:20
    |
 LL |     println!("{}", 1 / (1 - 1));
    |                    ^^^^^^^^^^^ referenced constant has errors
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:14:14
+  --> $DIR/promoted_errors.rs:15:14
    |
 LL |     let _x = 1 / (1 - 1);
    |              ^^^^^^^^^^^
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:16:20
+  --> $DIR/promoted_errors.rs:17:20
    |
 LL |     println!("{}", 1 / (false as u32));
    |                    ^^^^^^^^^^^^^^^^^^
 
 warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:16:20
+  --> $DIR/promoted_errors.rs:17:20
    |
 LL |     println!("{}", 1 / (false as u32));
    |                    ^^^^^^^^^^^^^^^^^^ dividing by zero
 
 warning: erroneous constant used
-  --> $DIR/promoted_errors.rs:16:20
+  --> $DIR/promoted_errors.rs:17:20
    |
 LL |     println!("{}", 1 / (false as u32));
    |                    ^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:20:14
+  --> $DIR/promoted_errors.rs:21:14
    |
 LL |     let _x = 1 / (false as u32);
    |              ^^^^^^^^^^^^^^^^^^
