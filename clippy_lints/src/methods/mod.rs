@@ -1041,7 +1041,8 @@ declare_clippy_lint! {
     /// **What it does:** Checks for calls to `map` followed by a `count`.
     ///
     /// **Why is this bad?** It looks suspicious. Maybe `map` was confused with `filter`.
-    /// If the `map` call is intentional, this should be rewritten.
+    /// If the `map` call is intentional, this should be rewritten. Or, if you intend to
+    /// drive the iterator to completion, you can just use `for_each` instead.
     ///
     /// **Known problems:** None
     ///
@@ -3014,7 +3015,7 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         SUSPICIOUS_MAP,
         expr.span,
         "this call to `map()` won't have an effect on the call to `count()`",
-        "make sure you did not confuse `map` with `filter`",
+        "make sure you did not confuse `map` with `filter` or `for_each`",
     );
 }
 
