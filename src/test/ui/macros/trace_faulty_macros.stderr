@@ -20,7 +20,7 @@ LL |     my_faulty_macro!();
    = note: to `my_faulty_macro ! (bcd) ;`
    = note: expanding `my_faulty_macro! { bcd }`
 
-error: recursion limit reached while expanding the macro `my_recursive_macro`
+error: recursion limit reached while expanding `my_recursive_macro!`
   --> $DIR/trace_faulty_macros.rs:22:9
    |
 LL |         my_recursive_macro!();

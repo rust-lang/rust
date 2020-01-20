@@ -1,4 +1,4 @@
-error: recursion limit reached while expanding the macro `recursive`
+error: recursion limit reached while expanding `recursive!`
   --> $DIR/infinite-macro-expansion.rs:2:12
    |
 LL |     () => (recursive!())

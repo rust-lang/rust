@@ -455,19 +455,9 @@ impl Span {
             }
             // Don't print recursive invocations.
             if !expn_data.call_site.source_equal(&prev_span) {
-                let (pre, post) = match expn_data.kind {
-                    ExpnKind::Root => break,
-                    ExpnKind::Desugaring(..) => ("desugaring of ", ""),
-                    ExpnKind::AstPass(..) => ("", ""),
-                    ExpnKind::Macro(macro_kind, _) => match macro_kind {
-                        MacroKind::Bang => ("", "!"),
-                        MacroKind::Attr => ("#[", "]"),
-                        MacroKind::Derive => ("#[derive(", ")]"),
-                    },
-                };
                 result.push(MacroBacktrace {
                     call_site: expn_data.call_site,
-                    macro_decl_name: format!("{}{}{}", pre, expn_data.kind.descr(), post),
+                    macro_decl_name: expn_data.kind.descr(),
                     def_site_span: expn_data.def_site,
                 });
             }
