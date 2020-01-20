@@ -14,7 +14,7 @@ use rustc::mir::{
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
-use rustc::traits::TraitQueryMode;
+use rustc::traits;
 use rustc::ty::layout::{
     HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
 };
@@ -90,28 +90,28 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // If there are unsatisfiable where clauses, then all bets are
         // off, and we just give up.
         //
-        // Note that we use TraitQueryMode::Canonical here, which causes
-        // us to treat overflow like any other error. This is because we
-        // are "speculatively" evaluating this item with the default substs.
-        // While this usually succeeds, it may fail with tricky impls
-        // (e.g. the typenum crate). Const-propagation is fundamentally
-        // "best-effort", and does not affect correctness in any way.
-        // Therefore, it's perfectly fine to just "give up" if we're
-        // unable to check the bounds with the default substs.
+        // We manually filter the predicates, skipping anything that's not
+        // "global". We are in a potentially generic context
+        // (e.g. we are evaluating a function without substituting generic
+        // parameters, so this filtering serves two purposes:
         //
-        // False negatives (failing to run const-prop on something when we actually
-        // could) are fine. However, false positives (running const-prop on
-        // an item with unsatisfiable bounds) can lead to us generating invalid
-        // MIR.
-        if !tcx.substitute_normalize_and_test_predicates((
-            source.def_id(),
-            InternalSubsts::identity_for_item(tcx, source.def_id()),
-            TraitQueryMode::Canonical,
-        )) {
-            trace!(
-                "ConstProp skipped for item with unsatisfiable predicates: {:?}",
-                source.def_id()
-            );
+        // 1. We skip evaluating any predicates that we would
+        // never be able prove are unsatisfiable (e.g. `<T as Foo>`
+        // 2. We avoid trying to normalize predicates involving generic
+        // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
+        // the normalization code (leading to cycle errors), since
+        // it's usually never invoked in this way.
+        let predicates = tcx
+            .predicates_of(source.def_id())
+            .predicates
+            .iter()
+            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None })
+            .collect();
+        if !traits::normalize_and_test_predicates(
+            tcx,
+            traits::elaborate_predicates(tcx, predicates).collect(),
+        ) {
+            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", source.def_id());
             return;
         }
 

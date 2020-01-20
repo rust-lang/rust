@@ -95,7 +95,7 @@ pub enum IntercrateMode {
 }
 
 /// The mode that trait queries run in.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TraitQueryMode {
     // Standard/un-canonicalized queries get accurate
     // spans etc. passed in and hence can do reasonable
@@ -1014,17 +1014,16 @@ where
 /// environment. If this returns false, then either normalize
 /// encountered an error or one of the predicates did not hold. Used
 /// when creating vtables to check for unsatisfiable methods.
-fn normalize_and_test_predicates<'tcx>(
+pub fn normalize_and_test_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
-    mode: TraitQueryMode,
 ) -> bool {
-    debug!("normalize_and_test_predicates(predicates={:?}, mode={:?})", predicates, mode);
+    debug!("normalize_and_test_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::reveal_all();
-        let mut selcx = SelectionContext::with_query_mode(&infcx, mode);
-        let mut fulfill_cx = FulfillmentContext::with_query_mode(mode);
+        let mut selcx = SelectionContext::new(&infcx);
+        let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
         let Normalized { value: predicates, obligations } =
             normalize(&mut selcx, param_env, cause.clone(), &predicates);
@@ -1044,12 +1043,12 @@ fn normalize_and_test_predicates<'tcx>(
 
 fn substitute_normalize_and_test_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (DefId, SubstsRef<'tcx>, TraitQueryMode),
+    key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
     debug!("substitute_normalize_and_test_predicates(key={:?})", key);
 
     let predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-    let result = normalize_and_test_predicates(tcx, predicates, key.2);
+    let result = normalize_and_test_predicates(tcx, predicates);
 
     debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}", key, result);
     result
@@ -1102,10 +1101,7 @@ fn vtable_methods<'tcx>(
             // Note that this method could then never be called, so we
             // do not want to try and codegen it, in that case (see #23435).
             let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            // We don't expect overflow here, so report an error if it somehow ends
-            // up happening.
-            if !normalize_and_test_predicates(tcx, predicates.predicates, TraitQueryMode::Standard)
-            {
+            if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("vtable_methods: predicates do not hold");
                 return None;
             }
