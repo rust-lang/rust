@@ -276,7 +276,8 @@ fn cursor_seek() {
     let body = &body;
     let analysis = MockAnalysis { body };
 
-    let mut cursor = Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_cursor(body);
+    let mut cursor =
+        Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_results_cursor(body);
 
     // Sanity check: the mock call return effect is unique and actually being applied.
     let call_terminator_loc = Location { block: BasicBlock::from_usize(2), statement_index: 2 };

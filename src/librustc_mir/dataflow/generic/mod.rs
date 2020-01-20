@@ -60,11 +60,13 @@ impl<A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn into_cursor(self, body: &'mir mir::Body<'tcx>) -> ResultsCursor<'mir, 'tcx, A> {
+    /// Creates a `ResultsCursor` that can inspect these `Results`.
+    pub fn into_results_cursor(self, body: &'mir mir::Body<'tcx>) -> ResultsCursor<'mir, 'tcx, A> {
         ResultsCursor::new(body, self)
     }
 
-    pub fn on_block_entry(&self, block: BasicBlock) -> &BitSet<A::Idx> {
+    /// Gets the entry set for the given block.
+    pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
         &self.entry_sets[block]
     }
 }
@@ -288,12 +290,14 @@ pub trait GenKill<T> {
     /// Removes `elem` from the state vector.
     fn kill(&mut self, elem: T);
 
+    /// Calls `gen` for each element in `elems`.
     fn gen_all(&mut self, elems: impl IntoIterator<Item = T>) {
         for elem in elems {
             self.gen(elem);
         }
     }
 
+    /// Calls `kill` for each element in `elems`.
     fn kill_all(&mut self, elems: impl IntoIterator<Item = T>) {
         for elem in elems {
             self.kill(elem);
@@ -304,7 +308,7 @@ pub trait GenKill<T> {
 /// Stores a transfer function for a gen/kill problem.
 ///
 /// Calling `gen`/`kill` on a `GenKillSet` will "build up" a transfer function so that it can be
-/// applied to a state vector efficiently. When there are multiple calls to `gen` and/or `kill` for
+/// applied multiple times efficiently. When there are multiple calls to `gen` and/or `kill` for
 /// the same element, the most recent one takes precedence.
 #[derive(Clone)]
 pub struct GenKillSet<T: Idx> {

@@ -121,11 +121,17 @@ where
         }
     }
 
+    /// Signals that we do not want dataflow state to propagate across unwind edges for these
+    /// `BasicBlock`s.
+    ///
+    /// You must take care that `dead_unwinds` does not contain a `BasicBlock` that *can* actually
+    /// unwind during execution. Otherwise, your dataflow results will not be correct.
     pub fn dead_unwinds(mut self, dead_unwinds: &'a BitSet<BasicBlock>) -> Self {
         self.dead_unwinds = Some(dead_unwinds);
         self
     }
 
+    /// Computes the fixpoint for this dataflow problem and returns it.
     pub fn iterate_to_fixpoint(mut self) -> Results<'tcx, A> {
         let mut temp_state = BitSet::new_empty(self.bits_per_block);
 
