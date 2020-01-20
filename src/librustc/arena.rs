@@ -123,6 +123,9 @@ macro_rules! arena_types {
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
 
+            // Interned types
+            [] tys: rustc::ty::TyS<$tcx>,
+
             // HIR types
             [few] hir_forest: rustc::hir::map::Forest<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
@@ -176,7 +179,7 @@ macro_rules! declare_arena {
     ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
         #[derive(Default)]
         pub struct Arena<$tcx> {
-            dropless: DroplessArena,
+            pub dropless: DroplessArena,
             drop: DropArena,
             $($name: arena_for_type!($a[$ty]),)*
         }

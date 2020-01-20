@@ -245,7 +245,7 @@ impl LintStore {
 
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
-            Some(&Id(lint_id)) => lint_id.clone(),
+            Some(&Id(lint_id)) => lint_id,
             _ => bug!("invalid lint renaming of {} to {}", old_name, new_name),
         };
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));

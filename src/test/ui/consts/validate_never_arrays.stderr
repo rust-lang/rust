@@ -1,11 +1,27 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/validate_never_arrays.rs:3:1
    |
-LL | const FOO: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at .<deref>
+LL | const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at .<deref>
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-error: aborting due to previous error
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/validate_never_arrays.rs:6:1
+   |
+LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at .<deref>[0]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/validate_never_arrays.rs:7:1
+   |
+LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of an uninhabited type at .<deref>[0]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

@@ -339,7 +339,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, ..) => {
+            ast::ItemKind::Impl { polarity, defaultness, .. } => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(
                         &self,
@@ -413,7 +413,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 self.check_extern(bare_fn_ty.ext);
             }
             ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span, "The `!` type is experimental");
+                gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
             }
             _ => {}
         }
@@ -470,29 +470,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_expr(self, e)
     }
 
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
-    }
-
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
-            PatKind::Slice(pats) => {
-                for pat in &*pats {
-                    let span = pat.span;
-                    let inner_pat = match &pat.kind {
-                        PatKind::Ident(.., Some(pat)) => pat,
-                        _ => pat,
-                    };
-                    if inner_pat.is_rest() {
-                        gate_feature_post!(
-                            &self,
-                            slice_patterns,
-                            span,
-                            "subslice patterns are unstable"
-                        );
-                    }
-                }
-            }
             PatKind::Box(..) => {
                 gate_feature_post!(
                     &self,

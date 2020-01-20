@@ -558,27 +558,27 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.trait_aliases.push(t);
             }
 
-            hir::ItemKind::Impl(
+            hir::ItemKind::Impl {
                 unsafety,
                 polarity,
                 defaultness,
                 ref generics,
-                ref trait_,
-                for_,
-                ref item_ids,
-            ) => {
+                ref of_trait,
+                self_ty,
+                ref items,
+            } => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
-                if !self.inlining && trait_.is_none() {
+                if !self.inlining && of_trait.is_none() {
                     let items =
-                        item_ids.iter().map(|ii| self.cx.tcx.hir().impl_item(ii.id)).collect();
+                        items.iter().map(|item| self.cx.tcx.hir().impl_item(item.id)).collect();
                     let i = Impl {
                         unsafety,
                         polarity,
                         defaultness,
                         generics,
-                        trait_,
-                        for_,
+                        trait_: of_trait,
+                        for_: self_ty,
                         items,
                         attrs: &item.attrs,
                         id: item.hir_id,

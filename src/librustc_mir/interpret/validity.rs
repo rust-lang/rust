@@ -114,14 +114,11 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
-            Deref =>
-            // This does not match Rust syntax, but it is more readable for long paths -- and
+            // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
             // some of the other items here also are not Rust syntax.  Actually we can't
             // even use the usual syntax because we are just showing the projections,
             // not the root.
-            {
-                write!(out, ".<deref>")
-            }
+            Deref => write!(out, ".<deref>"),
             Tag => write!(out, ".<enum-tag>"),
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
@@ -206,9 +203,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in*a variant.
                 match layout.variants {
-                    layout::Variants::Single { index } =>
-                    // Inside a variant
-                    {
+                    layout::Variants::Single { index } => {
+                        // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
                     _ => bug!(),
@@ -587,12 +583,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // padding.
                     match tys.kind {
                         ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
-                        ty::Tuple(tys) if tys.len() == 0 => true,
-                        ty::Adt(adt_def, _)
-                            if adt_def.is_struct() && adt_def.all_fields().next().is_none() =>
-                        {
-                            true
-                        }
                         _ => false,
                     }
                 } =>
@@ -609,11 +599,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
                 // This is the element type size.
                 let layout = self.ecx.layout_of(tys)?;
-                // Empty tuples and fieldless structs (the only ZSTs that allow reaching this code)
-                // have no data to be checked.
-                if layout.is_zst() {
-                    return Ok(());
-                }
                 // This is the size in bytes of the whole array.
                 let size = layout.size * len;
                 // Size is not 0, get a pointer.
@@ -655,6 +640,13 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         }
                     }
                 }
+            }
+            // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
+            // of an array and not all of them, because there's only a single value of a specific
+            // ZST type, so either validation fails for all elements or none.
+            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
+                // Validate just the first element
+                self.walk_aggregate(op, fields.take(1))?
             }
             _ => {
                 self.walk_aggregate(op, fields)? // default handler

@@ -473,20 +473,23 @@ impl SourceMap {
         lo.line != hi.line
     }
 
-    pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
-        debug!("span_to_lines(sp={:?})", sp);
-
+    pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {
         let lo = self.lookup_char_pos(sp.lo());
         debug!("span_to_lines: lo={:?}", lo);
         let hi = self.lookup_char_pos(sp.hi());
         debug!("span_to_lines: hi={:?}", hi);
-
         if lo.file.start_pos != hi.file.start_pos {
             return Err(SpanLinesError::DistinctSources(DistinctSources {
                 begin: (lo.file.name.clone(), lo.file.start_pos),
                 end: (hi.file.name.clone(), hi.file.start_pos),
             }));
         }
+        Ok((lo, hi))
+    }
+
+    pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
+        debug!("span_to_lines(sp={:?})", sp);
+        let (lo, hi) = self.is_valid_span(sp)?;
         assert!(hi.line >= lo.line);
 
         let mut lines = Vec::with_capacity(hi.line - lo.line + 1);

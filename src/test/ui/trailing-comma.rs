@@ -1,8 +1,6 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-#![feature(slice_patterns)]
-
 fn f<T,>(_: T,) {}
 
 struct Foo<T,>(T);

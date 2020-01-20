@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:9:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:7:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -13,7 +13,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:18:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:16:13
    |
 LL |     let mut f = || {
    |                 -- mutable borrow occurs here
@@ -27,7 +27,7 @@ LL |     f();
    |     - mutable borrow later used here
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-closures-slice-patterns.rs:27:5
+  --> $DIR/borrowck-closures-slice-patterns.rs:25:5
    |
 LL | fn arr_by_move(x: [String; 3]) {
    |                - move occurs because `x` has type `[std::string::String; 3]`, which does not implement the `Copy` trait
@@ -40,7 +40,7 @@ LL |     &x;
    |     ^^ value borrowed here after move
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:35:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:33:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -54,7 +54,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/borrowck-closures-slice-patterns.rs:44:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:42:13
    |
 LL |     let mut f = || {
    |                 -- closure construction occurs here
@@ -68,7 +68,7 @@ LL |     f();
    |     - first borrow later used here
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-closures-slice-patterns.rs:53:5
+  --> $DIR/borrowck-closures-slice-patterns.rs:51:5
    |
 LL | fn arr_box_by_move(x: Box<[String; 3]>) {
    |                    - move occurs because `x` has type `std::boxed::Box<[std::string::String; 3]>`, which does not implement the `Copy` trait
@@ -81,7 +81,7 @@ LL |     &x;
    |     ^^ value borrowed here after move
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:61:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:59:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -95,7 +95,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/borrowck-closures-slice-patterns.rs:70:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:68:13
    |
 LL |     let mut f = || {
    |                 -- closure construction occurs here

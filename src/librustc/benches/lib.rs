@@ -1,4 +1,4 @@
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(test)]
 
 extern crate test;

@@ -1,5 +1,3 @@
-#![feature(slice_patterns)]
-
 fn array() -> [(String, String); 3] {
     Default::default()
 }

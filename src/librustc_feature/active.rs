@@ -262,9 +262,6 @@ declare_features! (
     /// Allows using non lexical lifetimes (RFC 2094).
     (active, nll, "1.0.0", Some(43234), None),
 
-    /// Allows using slice patterns.
-    (active, slice_patterns, "1.0.0", Some(62254), None),
-
     /// Allows the definition of `const` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(57563), None),
 
@@ -333,7 +330,7 @@ declare_features! (
     (active, abi_ptx, "1.15.0", Some(38788), None),
 
     /// Allows the `#[repr(i128)]` attribute for enums.
-    (active, repr128, "1.16.0", Some(35118), None),
+    (active, repr128, "1.16.0", Some(56071), None),
 
     /// Allows `#[link(kind="static-nobundle"...)]`.
     (active, static_nobundle, "1.16.0", Some(37403), None),
@@ -481,7 +478,7 @@ declare_features! (
     (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
 
     /// Allows `impl Trait` with multiple unrelated lifetimes.
-    (active, member_constraints, "1.37.0", Some(61977), None),
+    (active, member_constraints, "1.37.0", Some(61997), None),
 
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),

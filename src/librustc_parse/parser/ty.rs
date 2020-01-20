@@ -500,7 +500,7 @@ impl<'a> Parser<'a> {
             err.span_suggestion_short(
                 lo.to(self.prev_span),
                 "remove the parentheses",
-                snippet.to_owned(),
+                snippet,
                 Applicability::MachineApplicable,
             );
         }

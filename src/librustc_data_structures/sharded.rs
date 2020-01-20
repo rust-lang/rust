@@ -137,6 +137,20 @@ impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {
     }
 }
 
+pub trait IntoPointer {
+    /// Returns a pointer which outlives `self`.
+    fn into_pointer(&self) -> *const ();
+}
+
+impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
+    pub fn contains_pointer_to<T: Hash + IntoPointer>(&self, value: &T) -> bool {
+        let hash = make_hash(&value);
+        let shard = self.get_shard_by_hash(hash).lock();
+        let value = value.into_pointer();
+        shard.raw_entry().from_hash(hash, |entry| entry.into_pointer() == value).is_some()
+    }
+}
+
 #[inline]
 fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
     let mut state = FxHasher::default();

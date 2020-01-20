@@ -81,6 +81,15 @@ pub struct Adjustment<'tcx> {
     pub target: Ty<'tcx>,
 }
 
+impl Adjustment<'tcx> {
+    pub fn is_region_borrow(&self) -> bool {
+        match self.kind {
+            Adjust::Borrow(AutoBorrow::Ref(..)) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum Adjust<'tcx> {
     /// Go from ! to any type.

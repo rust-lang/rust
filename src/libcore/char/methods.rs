@@ -3,7 +3,7 @@
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
-use crate::unicode::tables::{conversions, derived_property, general_category, property};
+use crate::unicode::{self, conversions};
 
 use super::*;
 
@@ -552,7 +552,7 @@ impl char {
     pub fn is_alphabetic(self) -> bool {
         match self {
             'a'..='z' | 'A'..='Z' => true,
-            c => c > '\x7f' && derived_property::Alphabetic(c),
+            c => c > '\x7f' && unicode::Alphabetic(c),
         }
     }
 
@@ -583,7 +583,7 @@ impl char {
     pub fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
-            c => c > '\x7f' && derived_property::Lowercase(c),
+            c => c > '\x7f' && unicode::Lowercase(c),
         }
     }
 
@@ -614,7 +614,7 @@ impl char {
     pub fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
-            c => c > '\x7f' && derived_property::Uppercase(c),
+            c => c > '\x7f' && unicode::Uppercase(c),
         }
     }
 
@@ -642,7 +642,7 @@ impl char {
     pub fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09'..='\x0d' => true,
-            c => c > '\x7f' && property::White_Space(c),
+            c => c > '\x7f' && unicode::White_Space(c),
         }
     }
 
@@ -693,7 +693,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_control(self) -> bool {
-        general_category::Cc(self)
+        unicode::Cc(self)
     }
 
     /// Returns `true` if this `char` has the `Grapheme_Extend` property.
@@ -707,7 +707,7 @@ impl char {
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        derived_property::Grapheme_Extend(self)
+        unicode::Grapheme_Extend(self)
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.
@@ -739,7 +739,7 @@ impl char {
     pub fn is_numeric(self) -> bool {
         match self {
             '0'..='9' => true,
-            c => c > '\x7f' && general_category::N(c),
+            c => c > '\x7f' && unicode::N(c),
         }
     }
 

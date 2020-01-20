@@ -1219,7 +1219,7 @@ pub fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: DefId, opaque_hir_id: hir
     let res = hir_id == scope;
     trace!(
         "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir().get(hir_id),
+        tcx.hir().find(hir_id),
         tcx.hir().get(opaque_hir_id),
         res
     );

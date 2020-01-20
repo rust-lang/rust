@@ -1,4 +1,4 @@
-// error-pattern: duplicate lang item found: `panic_impl`.
+// error-pattern: found duplicate lang item `panic_impl`
 
 
 use std::panic::PanicInfo;

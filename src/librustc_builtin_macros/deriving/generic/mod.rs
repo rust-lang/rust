@@ -705,15 +705,15 @@ impl<'a> TraitDef<'a> {
             self.span,
             Ident::invalid(),
             a,
-            ast::ItemKind::Impl(
+            ast::ItemKind::Impl {
                 unsafety,
-                ast::ImplPolarity::Positive,
-                ast::Defaultness::Final,
-                trait_generics,
-                opt_trait_ref,
-                self_type,
-                methods.into_iter().chain(associated_types).collect(),
-            ),
+                polarity: ast::ImplPolarity::Positive,
+                defaultness: ast::Defaultness::Final,
+                generics: trait_generics,
+                of_trait: opt_trait_ref,
+                self_ty: self_type,
+                items: methods.into_iter().chain(associated_types).collect(),
+            },
         )
     }
 
@@ -1608,7 +1608,7 @@ impl<'a> TraitDef<'a> {
                 } else {
                     ast::BindingMode::ByRef(mutbl)
                 };
-                cx.pat(path.span, PatKind::Ident(binding_mode, (*path).clone(), None))
+                cx.pat(path.span, PatKind::Ident(binding_mode, *path, None))
             })
             .collect()
     }

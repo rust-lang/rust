@@ -251,7 +251,7 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
-            ast::ItemKind::Impl(ast::Unsafety::Unsafe, ..) => {
+            ast::ItemKind::Impl { unsafety: ast::Unsafety::Unsafe, .. } => {
                 self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
@@ -431,7 +431,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 "a trait"
             }
             hir::ItemKind::TyAlias(..) => "a type alias",
-            hir::ItemKind::Impl(.., Some(ref trait_ref), _, impl_item_refs) => {
+            hir::ItemKind::Impl { of_trait: Some(ref trait_ref), items, .. } => {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
@@ -439,7 +439,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                     match cx.tcx.hir().find(hir_id) {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
-                                for impl_item_ref in impl_item_refs {
+                                for impl_item_ref in items {
                                     self.private_traits.insert(impl_item_ref.id.hir_id);
                                 }
                             }
@@ -657,7 +657,7 @@ impl EarlyLintPass for AnonymousParameters {
                                 )
                                 .span_suggestion(
                                     arg.pat.span,
-                                    "Try naming the parameter or explicitly \
+                                    "try naming the parameter or explicitly \
                                     ignoring it",
                                     format!("_: {}", ty_snip),
                                     appl,
@@ -1934,21 +1934,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             use rustc::ty::TyKind::*;
             match ty.kind {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some((format!("References must be non-null"), None)),
+                Ref(..) => Some((format!("references must be non-null"), None)),
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
-                FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
-                Never => Some((format!("The never type (`!`) has no valid value"), None)),
+                FnPtr(..) => Some((format!("function pointers must be non-null"), None)),
+                Never => Some((format!("the `!` type has no valid value"), None)),
                 RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some((format!("The vtable of a wide raw pointer must be non-null"), None))
+                    Some((format!("the vtable of a wide raw pointer must be non-null"), None))
                 }
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit => {
-                    Some((format!("Booleans must be `true` or `false`"), None))
+                    Some((format!("booleans must be either `true` or `false`"), None))
                 }
                 Char if init == InitKind::Uninit => {
-                    Some((format!("Characters must be a valid unicode codepoint"), None))
+                    Some((format!("characters must be a valid Unicode codepoint"), None))
                 }
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
@@ -1959,13 +1959,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
                         (Bound::Included(lo), _) if lo > 0 => {
-                            return Some((format!("{} must be non-null", ty), None));
+                            return Some((format!("`{}` must be non-null", ty), None));
                         }
                         (Bound::Included(_), _) | (_, Bound::Included(_))
                             if init == InitKind::Uninit =>
                         {
                             return Some((
-                                format!("{} must be initialized inside its custom valid range", ty),
+                                format!(
+                                    "`{}` must be initialized inside its custom valid range",
+                                    ty,
+                                ),
                                 None,
                             ));
                         }
@@ -1973,7 +1976,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     }
                     // Now, recurse.
                     match adt_def.variants.len() {
-                        0 => Some((format!("0-variant enums have no valid value"), None)),
+                        0 => Some((format!("enums with no variants have no valid value"), None)),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.

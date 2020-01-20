@@ -87,12 +87,12 @@ error[E0597]: `ap1` does not live long enough
   --> $DIR/variadic-ffi-4.rs:24:11
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                                    - let's call the lifetime of this reference `'1`
+   |                                                    - let's call the lifetime of this reference `'3`
 LL |     ap0 = &mut ap1;
    |     ------^^^^^^^^
    |     |     |
    |     |     borrowed value does not live long enough
-   |     assignment requires that `ap1` is borrowed for `'1`
+   |     assignment requires that `ap1` is borrowed for `'3`
 ...
 LL | }
    | - `ap1` dropped here while still borrowed

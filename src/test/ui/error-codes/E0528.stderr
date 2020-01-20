@@ -1,5 +1,5 @@
 error[E0528]: pattern requires at least 3 elements but array has 2
-  --> $DIR/E0528.rs:6:10
+  --> $DIR/E0528.rs:4:10
    |
 LL |         &[a, b, c, rest @ ..] => {
    |          ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 2 elements

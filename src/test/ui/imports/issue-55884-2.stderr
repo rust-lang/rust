@@ -1,8 +1,14 @@
-error[E0603]: struct `ParseOptions` is private
+error[E0603]: struct import `ParseOptions` is private
   --> $DIR/issue-55884-2.rs:12:17
    |
 LL | pub use parser::ParseOptions;
-   |                 ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^ this struct import is private
+   |
+note: the struct import `ParseOptions` is defined here
+  --> $DIR/issue-55884-2.rs:9:9
+   |
+LL |     use ParseOptions;
+   |         ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

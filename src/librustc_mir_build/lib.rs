@@ -5,7 +5,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(bool_to_option)]
 #![recursion_limit = "256"]
 

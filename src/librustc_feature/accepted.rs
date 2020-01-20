@@ -257,6 +257,8 @@ declare_features! (
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437), None),
+    /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
+    (accepted, slice_patterns, "1.42.0", Some(62254), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

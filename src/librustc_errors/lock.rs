@@ -12,31 +12,14 @@
 use std::any::Any;
 
 #[cfg(windows)]
-#[allow(nonstandard_style)]
 pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;
 
-    type LPSECURITY_ATTRIBUTES = *mut u8;
-    type BOOL = i32;
-    type LPCSTR = *const u8;
-    type HANDLE = *mut u8;
-    type DWORD = u32;
-
-    const INFINITE: DWORD = !0;
-    const WAIT_OBJECT_0: DWORD = 0;
-    const WAIT_ABANDONED: DWORD = 0x00000080;
-
-    extern "system" {
-        fn CreateMutexA(
-            lpMutexAttributes: LPSECURITY_ATTRIBUTES,
-            bInitialOwner: BOOL,
-            lpName: LPCSTR,
-        ) -> HANDLE;
-        fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
-        fn ReleaseMutex(hMutex: HANDLE) -> BOOL;
-        fn CloseHandle(hObject: HANDLE) -> BOOL;
-    }
+    use winapi::shared::ntdef::HANDLE;
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::synchapi::{CreateMutexA, ReleaseMutex, WaitForSingleObject};
+    use winapi::um::winbase::{INFINITE, WAIT_ABANDONED, WAIT_OBJECT_0};
 
     struct Handle(HANDLE);
 
@@ -65,7 +48,7 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
         //
         // This will silently create one if it doesn't already exist, or it'll
         // open up a handle to one if it already exists.
-        let mutex = CreateMutexA(std::ptr::null_mut(), 0, cname.as_ptr() as *const u8);
+        let mutex = CreateMutexA(std::ptr::null_mut(), 0, cname.as_ptr());
         if mutex.is_null() {
             panic!(
                 "failed to create global mutex named `{}`: {}",

@@ -32,6 +32,6 @@ pub use self::visitor::{MutValueVisitor, ValueVisitor};
 
 pub use self::validity::RefTracking;
 
-pub use self::intern::intern_const_alloc_recursive;
+pub use self::intern::{intern_const_alloc_recursive, InternKind};
 
 crate use self::intrinsics::eval_nullary_intrinsic;

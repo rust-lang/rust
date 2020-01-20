@@ -1,9 +1,9 @@
 use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InterpCx,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar, ScalarMaybeUndef,
-    StackPopCleanup,
+    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InternKind,
+    InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
+    ScalarMaybeUndef, StackPopCleanup,
 };
 use rustc::mir;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
@@ -56,9 +56,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
+    let intern_kind = match tcx.static_mutability(cid.instance.def_id()) {
+        Some(m) => InternKind::Static(m),
+        None if cid.promoted.is_some() => InternKind::Promoted,
+        _ => InternKind::Constant,
+    };
     intern_const_alloc_recursive(
         ecx,
-        tcx.static_mutability(cid.instance.def_id()),
+        intern_kind,
         ret,
         body.ignore_interior_mut_in_const_validation,
     )?;

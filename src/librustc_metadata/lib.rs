@@ -10,7 +10,7 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustc_private)]
-#![feature(slice_patterns)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(specialization)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "256"]

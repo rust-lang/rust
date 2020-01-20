@@ -340,19 +340,17 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     fn current_dll_path() -> Option<PathBuf> {
         use std::ffi::OsString;
         use std::os::windows::prelude::*;
+        use std::ptr;
 
-        extern "system" {
-            fn GetModuleHandleExW(dwFlags: u32, lpModuleName: usize, phModule: *mut usize) -> i32;
-            fn GetModuleFileNameW(hModule: usize, lpFilename: *mut u16, nSize: u32) -> u32;
-        }
-
-        const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 0x00000004;
+        use winapi::um::libloaderapi::{
+            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+        };
 
         unsafe {
-            let mut module = 0;
+            let mut module = ptr::null_mut();
             let r = GetModuleHandleExW(
                 GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                current_dll_path as usize,
+                current_dll_path as usize as *mut _,
                 &mut module,
             );
             if r == 0 {

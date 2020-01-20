@@ -309,7 +309,11 @@ fn check_terminator(
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
-        TerminatorKind::Goto { .. } | TerminatorKind::Return | TerminatorKind::Resume => Ok(()),
+        TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::FalseUnwind { .. }
+        | TerminatorKind::Goto { .. }
+        | TerminatorKind::Return
+        | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => check_place(tcx, location, span, def_id, body),
         TerminatorKind::DropAndReplace { location, value, .. } => {
@@ -317,13 +321,10 @@ fn check_terminator(
             check_operand(tcx, value, span, def_id, body)
         }
 
-        TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. }
-            if !feature_allowed(tcx, def_id, sym::const_if_match) =>
-        {
+        TerminatorKind::SwitchInt { .. } if !feature_allowed(tcx, def_id, sym::const_if_match) => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
-        TerminatorKind::FalseEdges { .. } => Ok(()),
         TerminatorKind::SwitchInt { discr, switch_ty: _, values: _, targets: _ } => {
             check_operand(tcx, discr, span, def_id, body)
         }
@@ -366,14 +367,6 @@ fn check_terminator(
 
         TerminatorKind::Assert { cond, expected: _, msg: _, target: _, cleanup: _ } => {
             check_operand(tcx, cond, span, def_id, body)
-        }
-
-        TerminatorKind::FalseUnwind { .. } if feature_allowed(tcx, def_id, sym::const_loop) => {
-            Ok(())
-        }
-
-        TerminatorKind::FalseUnwind { .. } => {
-            Err((span, "loops are not allowed in const fn".into()))
         }
     }
 }

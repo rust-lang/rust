@@ -8,7 +8,13 @@ error[E0603]: constant `FOO` is private
   --> $DIR/error-festival.rs:22:10
    |
 LL |     foo::FOO;
-   |          ^^^
+   |          ^^^ this constant is private
+   |
+note: the constant `FOO` is defined here
+  --> $DIR/error-festival.rs:7:5
+   |
+LL |     const FOO: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
   --> $DIR/error-festival.rs:12:5

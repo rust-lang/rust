@@ -273,6 +273,22 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
     clean::Typedef {
         type_: cx.tcx.type_of(did).clean(cx),
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
+        item_type: build_type_alias_type(cx, did),
+    }
+}
+
+fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
+    let type_ = cx.tcx.type_of(did).clean(cx);
+    type_.def_id().and_then(|did| build_ty(cx, did))
+}
+
+pub fn build_ty(cx: &DocContext, did: DefId) -> Option<clean::Type> {
+    match cx.tcx.def_kind(did)? {
+        DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
+            Some(cx.tcx.type_of(did).clean(cx))
+        }
+        DefKind::TyAlias => build_type_alias_type(cx, did),
+        _ => None,
     }
 }
 
@@ -331,7 +347,7 @@ pub fn build_impl(
 
     let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
         match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl(.., ref t, _) => t.clean(cx),
+            hir::ItemKind::Impl { self_ty, .. } => self_ty.clean(cx),
             _ => panic!("did given to build_impl was not an impl"),
         }
     } else {
@@ -351,9 +367,9 @@ pub fn build_impl(
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
         match tcx.hir().expect_item(hir_id).kind {
-            hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => (
-                item_ids.iter().map(|ii| tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>(),
-                gen.clean(cx),
+            hir::ItemKind::Impl { ref generics, ref items, .. } => (
+                items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
+                generics.clean(cx),
             ),
             _ => panic!("did given to build_impl was not an impl"),
         }

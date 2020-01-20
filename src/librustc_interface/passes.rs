@@ -15,7 +15,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::steal::Steal;
-use rustc::ty::{self, AllArenas, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_builtin_macros;
 use rustc_codegen_ssa::back::link::emit_metadata;
@@ -680,6 +680,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_passes::provide(providers);
     rustc_resolve::provide(providers);
     rustc_traits::provide(providers);
+    rustc_ty::provide(providers);
     rustc_metadata::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
@@ -714,7 +715,6 @@ pub fn create_global_ctxt<'tcx>(
     outputs: OutputFilenames,
     crate_name: &str,
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
-    all_arenas: &'tcx AllArenas,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
@@ -745,7 +745,6 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 local_providers,
                 extern_providers,
-                &all_arenas,
                 arena,
                 resolver_outputs,
                 hir_map,

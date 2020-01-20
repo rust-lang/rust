@@ -76,7 +76,7 @@ error[E0720]: opaque type expands to a recursive type
 LL | fn generator_capture() -> impl Sized {
    |                           ^^^^^^^^^^ expands to a recursive type
    |
-   = note: expanded type is `[generator@$DIR/recursive-impl-trait-type-indirect.rs:50:5: 50:26 x:impl Sized {()}]`
+   = note: expanded type is `[generator@$DIR/recursive-impl-trait-type-indirect.rs:50:5: 50:26 x:impl Sized {(), ()}]`
 
 error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type-indirect.rs:53:26
@@ -92,7 +92,7 @@ error[E0720]: opaque type expands to a recursive type
 LL | fn generator_hold() -> impl Sized {
    |                        ^^^^^^^^^^ expands to a recursive type
    |
-   = note: expanded type is `[generator@$DIR/recursive-impl-trait-type-indirect.rs:58:5: 62:6 {impl Sized, ()}]`
+   = note: expanded type is `[generator@$DIR/recursive-impl-trait-type-indirect.rs:58:5: 62:6 {impl Sized, (), ()}]`
 
 error[E0720]: opaque type expands to a recursive type
   --> $DIR/recursive-impl-trait-type-indirect.rs:69:26

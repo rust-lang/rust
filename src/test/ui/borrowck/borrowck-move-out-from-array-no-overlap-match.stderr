@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:19:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:17:11
    |
 LL |         [_, _, _x] => {}
    |                -- value moved here
@@ -10,7 +10,7 @@ LL |     match a {
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:30:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:28:11
    |
 LL |         [_, _, (_x, _)] => {}
    |                 -- value moved here
@@ -21,7 +21,7 @@ LL |     match a {
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:43:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:41:11
    |
 LL |         [_x, _, _] => {}
    |          -- value moved here
@@ -32,7 +32,7 @@ LL |     match a {
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:54:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:52:11
    |
 LL |         [.., _x] => {}
    |              -- value moved here
@@ -43,7 +43,7 @@ LL |     match a {
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:65:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:63:11
    |
 LL |         [(_x, _), _, _] => {}
    |           -- value moved here
@@ -54,7 +54,7 @@ LL |     match a {
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:76:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:74:11
    |
 LL |         [.., (_x, _)] => {}
    |               -- value moved here
@@ -65,7 +65,7 @@ LL |     match a {
    = note: move occurs because `a[..].0` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:87:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:85:11
    |
 LL |         [_, _y @ ..] => {}
    |             ------- value moved here
@@ -76,7 +76,7 @@ LL |     match a {
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:98:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:96:11
    |
 LL |         [_y @ .., _] => {}
    |          ------- value moved here
@@ -87,7 +87,7 @@ LL |     match a {
    = note: move occurs because `a[..]` has type `(std::string::String, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:111:11
+  --> $DIR/borrowck-move-out-from-array-no-overlap-match.rs:109:11
    |
 LL |         [x @ .., _, _] => {}
    |          ------ value moved here

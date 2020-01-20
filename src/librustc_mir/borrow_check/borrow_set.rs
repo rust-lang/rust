@@ -200,8 +200,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 region,
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: borrowed_place.clone(),
-                assigned_place: assigned_place.clone(),
+                borrowed_place: *borrowed_place,
+                assigned_place: *assigned_place,
             };
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);

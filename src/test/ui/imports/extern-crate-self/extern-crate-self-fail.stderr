@@ -4,7 +4,7 @@ error: `extern crate self;` requires renaming
 LL | extern crate self;
    | ^^^^^^^^^^^^^^^^^^ help: try: `extern crate self as name;`
 
-error: `macro_use` is not supported on `extern crate self`
+error: `#[macro_use]` is not supported on `extern crate self`
   --> $DIR/extern-crate-self-fail.rs:3:1
    |
 LL | #[macro_use]

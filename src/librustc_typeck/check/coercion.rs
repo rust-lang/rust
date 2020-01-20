@@ -50,10 +50,12 @@
 //! sort of a minor point so I've opted to leave it for later -- after all,
 //! we may want to adjust precisely when coercions occur.
 
+use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{Coercion, InferOk, InferResult};
 use rustc::session::parse::feature_err;
+use rustc::traits::object_safety_violations;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -67,8 +69,8 @@ use rustc_error_codes::*;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_span;
 use rustc_span::symbol::sym;
+use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -1222,6 +1224,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 };
 
                 let mut err;
+                let mut unsized_return = false;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
@@ -1243,6 +1246,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             parent_id,
                             expression.map(|expr| (expr, blk_id)),
                         );
+                        if !fcx.tcx.features().unsized_locals {
+                            unsized_return = self.is_return_ty_unsized(fcx, blk_id);
+                        }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
                         err = self.report_return_mismatched_types(
@@ -1254,6 +1260,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             id,
                             None,
                         );
+                        if !fcx.tcx.features().unsized_locals {
+                            let id = fcx.tcx.hir().get_parent_node(id);
+                            unsized_return = self.is_return_ty_unsized(fcx, id);
+                        }
                     }
                     _ => {
                         err = fcx.report_mismatched_types(cause, expected, found, coercion_error);
@@ -1282,7 +1292,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     .filter(|e| fcx.is_assign_to_bool(e, self.expected_ty()))
                     .is_some();
 
-                err.emit_unless(assign_to_bool);
+                err.emit_unless(assign_to_bool || unsized_return);
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
@@ -1302,7 +1312,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;
-        let mut return_sp = None;
+        let mut fn_output = None;
 
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
@@ -1339,17 +1349,96 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 );
             }
             if !pointing_at_return_type {
-                return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
+                fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
-        if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
-            err.span_label(return_sp, "expected because this return type...");
-            err.span_label( *sp, format!(
-                "...is found to be `{}` here",
-                fcx.resolve_vars_with_obligations(expected),
-            ));
+        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.borrow().as_ref(), fn_output) {
+            self.add_impl_trait_explanation(&mut err, fcx, expected, *sp, fn_output);
         }
         err
+    }
+
+    fn add_impl_trait_explanation<'a>(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        fcx: &FnCtxt<'a, 'tcx>,
+        expected: Ty<'tcx>,
+        sp: Span,
+        fn_output: &hir::FunctionRetTy<'_>,
+    ) {
+        let return_sp = fn_output.span();
+        err.span_label(return_sp, "expected because this return type...");
+        err.span_label(
+            sp,
+            format!("...is found to be `{}` here", fcx.resolve_vars_with_obligations(expected)),
+        );
+        let impl_trait_msg = "for information on `impl Trait`, see \
+                <https://doc.rust-lang.org/book/ch10-02-traits.html\
+                #returning-types-that-implement-traits>";
+        let trait_obj_msg = "for information on trait objects, see \
+                <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
+                #using-trait-objects-that-allow-for-values-of-different-types>";
+        err.note("to return `impl Trait`, all returned values must be of the same type");
+        err.note(impl_trait_msg);
+        let snippet = fcx
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(return_sp)
+            .unwrap_or_else(|_| "dyn Trait".to_string());
+        let mut snippet_iter = snippet.split_whitespace();
+        let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
+        // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
+        let mut is_object_safe = false;
+        if let hir::FunctionRetTy::Return(ty) = fn_output {
+            // Get the return type.
+            if let hir::TyKind::Def(..) = ty.kind {
+                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                // Get the `impl Trait`'s `DefId`.
+                if let ty::Opaque(def_id, _) = ty.kind {
+                    let hir_id = fcx.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
+                    // get the `Trait`'s `DefId`.
+                    if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =
+                        fcx.tcx.hir().expect_item(hir_id).kind
+                    {
+                        // Are of this `impl Trait`'s traits object safe?
+                        is_object_safe = bounds.iter().all(|bound| {
+                            bound.trait_def_id().map_or(false, |def_id| {
+                                object_safety_violations(fcx.tcx, def_id).is_empty()
+                            })
+                        })
+                    }
+                }
+            }
+        };
+        if has_impl {
+            if is_object_safe {
+                err.help(&format!(
+                    "you can instead return a boxed trait object using `Box<dyn {}>`",
+                    &snippet[5..]
+                ));
+            } else {
+                err.help(&format!(
+                    "if the trait `{}` were object safe, you could return a boxed trait object",
+                    &snippet[5..]
+                ));
+            }
+            err.note(trait_obj_msg);
+        }
+        err.help("alternatively, create a new `enum` with a variant for each returned type");
+    }
+
+    fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
+        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
+            if let hir::FunctionRetTy::Return(ty) = fn_decl.output {
+                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                if let ty::Dynamic(..) = ty.kind {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {

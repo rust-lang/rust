@@ -25,3 +25,11 @@ pub fn quux() {}
 /// \_
 /// ```
 pub fn ok() {}
+
+// @has bad_codeblock_syntax/fn.escape.html
+// @has - '//*[@class="docblock"]/pre/code' '\_ <script>alert("not valid Rust");</script>'
+/// ```
+/// \_
+/// <script>alert("not valid Rust");</script>
+/// ```
+pub fn escape() {}

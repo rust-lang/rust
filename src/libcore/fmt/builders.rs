@@ -159,6 +159,62 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         self
     }
 
+    /// Marks the struct as non-exhaustive, indicating to the reader that there are some other
+    /// fields that are not shown in the debug representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(debug_non_exhaustive)]
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     hidden: f32,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_struct("Bar")
+    ///            .field("bar", &self.bar)
+    ///            .finish_non_exhaustive() // Show that some other field(s) exist.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, hidden: 1.0 }),
+    ///     "Bar { bar: 10, .. }",
+    /// );
+    /// ```
+    #[unstable(feature = "debug_non_exhaustive", issue = "67364")]
+    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
+        self.result = self.result.and_then(|_| {
+            // Draw non-exhaustive dots (`..`), and open brace if necessary (no fields).
+            if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str(" {\n")?;
+                }
+                let mut slot = None;
+                let mut state = Default::default();
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                writer.write_str("..\n")?;
+            } else {
+                if self.has_fields {
+                    self.fmt.write_str(", ..")?;
+                } else {
+                    self.fmt.write_str(" { ..")?;
+                }
+            }
+            if self.is_pretty() {
+                self.fmt.write_str("}")?
+            } else {
+                self.fmt.write_str(" }")?;
+            }
+            Ok(())
+        });
+        self.result
+    }
+
     /// Finishes output and returns any error encountered.
     ///
     /// # Examples

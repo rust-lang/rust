@@ -1,4 +1,4 @@
-error[E0152]: duplicate lang item found: `panic_impl`.
+error[E0152]: found duplicate lang item `panic_impl`
   --> $DIR/panic-handler-std.rs:7:1
    |
 LL | / fn panic(info: PanicInfo) -> ! {
@@ -6,7 +6,7 @@ LL | |     loop {}
 LL | | }
    | |_^
    |
-   = note: first defined in crate `std` (which `panic_handler_std` depends on).
+   = note: first defined in crate `std` (which `panic_handler_std` depends on)
 
 error: argument should be `&PanicInfo`
   --> $DIR/panic-handler-std.rs:7:16

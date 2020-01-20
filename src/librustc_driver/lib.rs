@@ -514,15 +514,10 @@ fn stdout_isatty() -> bool {
 
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
-    type DWORD = u32;
-    type BOOL = i32;
-    type HANDLE = *mut u8;
-    type LPDWORD = *mut u32;
-    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
-    extern "system" {
-        fn GetStdHandle(which: DWORD) -> HANDLE;
-        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
-    }
+    use winapi::um::consoleapi::GetConsoleMode;
+    use winapi::um::processenv::GetStdHandle;
+    use winapi::um::winbase::STD_OUTPUT_HANDLE;
+
     unsafe {
         let handle = GetStdHandle(STD_OUTPUT_HANDLE);
         let mut out = 0;
@@ -1214,11 +1209,8 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     #[cfg(windows)]
     unsafe {
         if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-            extern "system" {
-                fn DebugBreak();
-            }
             // Trigger a debugger if we crashed during bootstrap
-            DebugBreak();
+            winapi::um::debugapi::DebugBreak();
         }
     }
 }

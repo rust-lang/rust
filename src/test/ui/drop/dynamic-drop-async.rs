@@ -7,7 +7,6 @@
 // edition:2018
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(slice_patterns)]
 #![allow(unused)]
 
 use std::{

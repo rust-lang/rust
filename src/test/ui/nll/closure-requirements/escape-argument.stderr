@@ -1,4 +1,4 @@
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-argument.rs:26:38
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
@@ -9,7 +9,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed('r)) mut &ReLateBound(DebruijnIndex(0), BrNamed('s)) i32, &ReLateBound(DebruijnIndex(0), BrNamed('s)) i32)),
            ]
 
-note: No external requirements
+note: no external requirements
   --> $DIR/escape-argument.rs:20:1
    |
 LL | / fn test() {

@@ -2,7 +2,14 @@ error[E0603]: constant `baz` is private
   --> $DIR/macro-local-data-key-priv.rs:8:10
    |
 LL |     bar::baz.with(|_| ());
-   |          ^^^
+   |          ^^^ this constant is private
+   |
+note: the constant `baz` is defined here
+  --> $DIR/macro-local-data-key-priv.rs:4:5
+   |
+LL |     thread_local!(static baz: f64 = 0.0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error
 

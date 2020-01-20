@@ -1,7 +1,5 @@
 // Ensure that we cannot move out of a reference to a fixed-size array
 
-#![feature(slice_patterns)]
-
 struct D { _x: u8 }
 
 impl Drop for D { fn drop(&mut self) { } }

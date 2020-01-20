@@ -254,7 +254,7 @@ fn emit_msg_span(
 
 fn item_scope_tag(item: &hir::Item<'_>) -> &'static str {
     match item.kind {
-        hir::ItemKind::Impl(..) => "impl",
+        hir::ItemKind::Impl { .. } => "impl",
         hir::ItemKind::Struct(..) => "struct",
         hir::ItemKind::Union(..) => "union",
         hir::ItemKind::Enum(..) => "enum",
@@ -2008,7 +2008,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 TypeError::IntrinsicCast => {
                     Error0308("cannot coerce intrinsics to function pointers")
                 }
-                TypeError::ObjectUnsafeCoercion(did) => Error0038(did.clone()),
+                TypeError::ObjectUnsafeCoercion(did) => Error0038(*did),
                 _ => Error0308("mismatched types"),
             },
         }

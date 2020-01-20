@@ -268,19 +268,27 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx
     }
 }
 
+pub enum InternKind {
+    /// The `mutability` of the static, ignoring the type which may have interior mutability.
+    Static(hir::Mutability),
+    Constant,
+    Promoted,
+    ConstProp,
+}
+
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
-    // The `mutability` of the place, ignoring the type.
-    place_mut: Option<hir::Mutability>,
+    intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
     ignore_interior_mut_in_const_validation: bool,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
-    let (base_mutability, base_intern_mode) = match place_mut {
+    let (base_mutability, base_intern_mode) = match intern_kind {
         // `static mut` doesn't care about interior mutability, it's mutable anyway
-        Some(mutbl) => (mutbl, InternMode::Static),
-        // consts, promoteds. FIXME: what about array lengths, array initializers?
-        None => (Mutability::Not, InternMode::ConstBase),
+        InternKind::Static(mutbl) => (mutbl, InternMode::Static),
+        // FIXME: what about array lengths, array initializers?
+        InternKind::Constant | InternKind::ConstProp => (Mutability::Not, InternMode::ConstBase),
+        InternKind::Promoted => (Mutability::Not, InternMode::ConstBase),
     };
 
     // Type based interning.
@@ -338,10 +346,24 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
-            match base_intern_mode {
-                InternMode::Static => {}
-                InternMode::Const | InternMode::ConstBase => {
-                    // If it's not a static, it *must* be immutable.
+            match intern_kind {
+                // Statics may contain mutable allocations even behind relocations.
+                // Even for immutable statics it would be ok to have mutable allocations behind
+                // raw pointers, e.g. for `static FOO: *const AtomicUsize = &AtomicUsize::new(42)`.
+                InternKind::Static(_) => {}
+                // Raw pointers in promoteds may only point to immutable things so we mark
+                // everything as immutable.
+                // It is UB to mutate through a raw pointer obtained via an immutable reference.
+                // Since all references and pointers inside a promoted must by their very definition
+                // be created from an immutable reference (and promotion also excludes interior
+                // mutability), mutating through them would be UB.
+                // There's no way we can check whether the user is using raw pointers correctly,
+                // so all we can do is mark this as immutable here.
+                InternKind::Promoted => {
+                    alloc.mutability = Mutability::Not;
+                }
+                InternKind::Constant | InternKind::ConstProp => {
+                    // If it's a constant, it *must* be immutable.
                     // We cannot have mutable memory inside a constant.
                     // We use `delay_span_bug` here, because this can be reached in the presence
                     // of fancy transmutes.
@@ -364,6 +386,8 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
         } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
+            // We have hit an `AllocId` that is neither in local or global memory and isn't marked
+            // as dangling by local memory.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
