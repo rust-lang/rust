@@ -5,14 +5,16 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
+use crate::diagnostics::{
+    add_missing_lifetime_specifiers_label, report_missing_lifetime_specifiers,
+};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
-use rustc::session::Session;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -1320,9 +1322,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
     {
-        let LifetimeContext { tcx, map, lifetime_uses, missing_named_lifetime_spots, .. } = self;
+        let LifetimeContext { tcx, map, lifetime_uses, .. } = self;
         let labels_in_fn = take(&mut self.labels_in_fn);
         let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
+        let missing_named_lifetime_spots = take(&mut self.missing_named_lifetime_spots);
         let mut this = LifetimeContext {
             tcx: *tcx,
             map: map,
@@ -1332,7 +1335,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             labels_in_fn,
             xcrate_object_lifetime_defaults,
             lifetime_uses,
-            missing_named_lifetime_spots: missing_named_lifetime_spots.to_vec(),
+            missing_named_lifetime_spots,
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
@@ -1340,6 +1343,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         debug!("exiting scope {:?}", this.scope);
         self.labels_in_fn = this.labels_in_fn;
         self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
+        self.missing_named_lifetime_spots = this.missing_named_lifetime_spots;
     }
 
     /// helper method to determine the span to remove when suggesting the
@@ -2891,77 +2895,6 @@ fn insert_late_bound_lifetimes(
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name.modern());
-        }
-    }
-}
-
-fn report_missing_lifetime_specifiers(
-    sess: &Session,
-    span: Span,
-    count: usize,
-) -> DiagnosticBuilder<'_> {
-    struct_span_err!(sess, span, E0106, "missing lifetime specifier{}", pluralize!(count))
-}
-
-fn add_missing_lifetime_specifiers_label(
-    err: &mut DiagnosticBuilder<'_>,
-    span: Span,
-    count: usize,
-    lifetime_names: &FxHashSet<ast::Ident>,
-    snippet: Option<&str>,
-    missing_named_lifetime_spots: &[&hir::Generics<'_>],
-) {
-    if count > 1 {
-        err.span_label(span, format!("expected {} lifetime parameters", count));
-    } else {
-        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
-            err.span_suggestion(
-                span,
-                "consider using the named lifetime",
-                sugg,
-                Applicability::MaybeIncorrect,
-            );
-        };
-        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg| {
-            err.span_label(span, "expected named lifetime parameter");
-
-            if let Some(generics) = missing_named_lifetime_spots.iter().last() {
-                let mut introduce_suggestion = vec![];
-                introduce_suggestion.push(match &generics.params {
-                    [] => (generics.span, "<'lifetime>".to_string()),
-                    [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
-                });
-                introduce_suggestion.push((span, sugg));
-                err.multipart_suggestion(
-                    "consider introducing a named lifetime parameter",
-                    introduce_suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        };
-
-        match (lifetime_names.len(), lifetime_names.iter().next(), snippet) {
-            (1, Some(name), Some("&")) => {
-                suggest_existing(err, format!("&{} ", name));
-            }
-            (1, Some(name), Some("'_")) => {
-                suggest_existing(err, name.to_string());
-            }
-            (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
-                suggest_existing(err, format!("{}<{}>", snippet, name));
-            }
-            (0, _, Some("&")) => {
-                suggest_new(err, "&'lifetime ".to_string());
-            }
-            (0, _, Some("'_")) => {
-                suggest_new(err, "'lifetime".to_string());
-            }
-            (0, _, Some(snippet)) if !snippet.ends_with(">") => {
-                suggest_new(err, format!("{}<'lifetime>", snippet));
-            }
-            _ => {
-                err.span_label(span, "expected lifetime parameter");
-            }
         }
     }
 }
