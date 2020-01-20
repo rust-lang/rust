@@ -31,9 +31,13 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
-        ty::InstanceDef::VtableShim(def_id) => {
-            build_call_shim(tcx, instance, Adjustment::DerefMove, CallKind::Direct(def_id), None)
-        }
+        ty::InstanceDef::VtableShim(def_id) => build_call_shim(
+            tcx,
+            instance,
+            Some(Adjustment::DerefMove),
+            CallKind::Direct(def_id),
+            None,
+        ),
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.lang_items().fn_trait_kind(trait_) {
@@ -50,7 +54,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
             let arg_tys = sig.inputs();
 
-            build_call_shim(tcx, instance, adjustment, CallKind::Indirect, Some(arg_tys))
+            build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect, Some(arg_tys))
         }
         // We are generating a call back to our def-id, which the
         // codegen backend knows to turn to an actual call, be it
@@ -58,7 +62,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         // indirect calls must be codegen'd differently than direct ones
         // (such as `#[track_caller]`).
         ty::InstanceDef::ReifyShim(def_id) => {
-            build_call_shim(tcx, instance, Adjustment::Identity, CallKind::Direct(def_id), None)
+            build_call_shim(tcx, instance, None, CallKind::Direct(def_id), None)
         }
         ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
@@ -68,7 +72,13 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 .unwrap()
                 .def_id;
 
-            build_call_shim(tcx, instance, Adjustment::RefMut, CallKind::Direct(call_mut), None)
+            build_call_shim(
+                tcx,
+                instance,
+                Some(Adjustment::RefMut),
+                CallKind::Direct(call_mut),
+                None,
+            )
         }
         ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
         ty::InstanceDef::CloneShim(def_id, ty) => {
@@ -648,7 +658,7 @@ impl CloneShimBuilder<'tcx> {
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
-    rcvr_adjustment: Adjustment,
+    rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind,
     untuple_args: Option<&[Ty<'tcx>]>,
 ) -> BodyAndCache<'tcx> {
@@ -680,14 +690,16 @@ fn build_call_shim<'tcx>(
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
 
-    let rcvr_arg = Local::new(1 + 0);
-    let rcvr_l = Place::from(rcvr_arg);
+    let rcvr_place = || {
+        assert!(rcvr_adjustment.is_some());
+        Place::from(Local::new(1 + 0))
+    };
     let mut statements = vec![];
 
-    let rcvr = match rcvr_adjustment {
-        Adjustment::Identity => Operand::Move(rcvr_l),
-        Adjustment::Deref => Operand::Copy(tcx.mk_place_deref(rcvr_l)),
-        Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_l)),
+    let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
+        Adjustment::Identity => Operand::Move(rcvr_place()),
+        Adjustment::Deref => Operand::Copy(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(temp_decl(
@@ -703,15 +715,15 @@ fn build_call_shim<'tcx>(
                 source_info,
                 kind: StatementKind::Assign(box (
                     Place::from(ref_rcvr),
-                    Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_l),
+                    Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
                 )),
             });
             Operand::Move(Place::from(ref_rcvr))
         }
-    };
+    });
 
     let (callee, mut args) = match call_kind {
-        CallKind::Indirect => (rcvr, vec![]),
+        CallKind::Indirect => (rcvr.unwrap(), vec![]),
         CallKind::Direct(def_id) => {
             let ty = tcx.type_of(def_id);
             (
@@ -720,21 +732,35 @@ fn build_call_shim<'tcx>(
                     user_ty: None,
                     literal: ty::Const::zero_sized(tcx, ty),
                 }),
-                vec![rcvr],
+                rcvr.into_iter().collect::<Vec<_>>(),
             )
         }
     };
 
-    if let Some(untuple_args) = untuple_args {
-        args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            let arg_place = Place::from(Local::new(1 + 1));
-            Operand::Move(tcx.mk_place_field(arg_place, Field::new(i), *ity))
-        }));
-    } else {
-        args.extend((1..sig.inputs().len()).map(|i| Operand::Move(Place::from(Local::new(1 + i)))));
+    let mut arg_range = 0..sig.inputs().len();
+
+    // Take the `self` ("receiver") argument out of the range (it's adjusted above).
+    if rcvr_adjustment.is_some() {
+        arg_range.start += 1;
     }
 
-    let n_blocks = if let Adjustment::RefMut = rcvr_adjustment { 5 } else { 2 };
+    // Take the last argument, if we need to untuple it (handled below).
+    if untuple_args.is_some() {
+        arg_range.end -= 1;
+    }
+
+    // Pass all of the non-special arguments directly.
+    args.extend(arg_range.map(|i| Operand::Move(Place::from(Local::new(1 + i)))));
+
+    // Untuple the last argument, if we have to.
+    if let Some(untuple_args) = untuple_args {
+        let tuple_arg = Local::new(1 + (sig.inputs().len() - 1));
+        args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
+            Operand::Move(tcx.mk_place_field(Place::from(tuple_arg), Field::new(i), *ity))
+        }));
+    }
+
+    let n_blocks = if let Some(Adjustment::RefMut) = rcvr_adjustment { 5 } else { 2 };
     let mut blocks = IndexVec::with_capacity(n_blocks);
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData {
@@ -752,7 +778,7 @@ fn build_call_shim<'tcx>(
             func: callee,
             args,
             destination: Some((Place::return_place(), BasicBlock::new(1))),
-            cleanup: if let Adjustment::RefMut = rcvr_adjustment {
+            cleanup: if let Some(Adjustment::RefMut) = rcvr_adjustment {
                 Some(BasicBlock::new(3))
             } else {
                 None
@@ -762,13 +788,13 @@ fn build_call_shim<'tcx>(
         false,
     );
 
-    if let Adjustment::RefMut = rcvr_adjustment {
+    if let Some(Adjustment::RefMut) = rcvr_adjustment {
         // BB #1 - drop for Self
         block(
             &mut blocks,
             vec![],
             TerminatorKind::Drop {
-                location: Place::from(rcvr_arg),
+                location: rcvr_place(),
                 target: BasicBlock::new(2),
                 unwind: None,
             },
@@ -777,13 +803,13 @@ fn build_call_shim<'tcx>(
     }
     // BB #1/#2 - return
     block(&mut blocks, vec![], TerminatorKind::Return, false);
-    if let Adjustment::RefMut = rcvr_adjustment {
+    if let Some(Adjustment::RefMut) = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(
             &mut blocks,
             vec![],
             TerminatorKind::Drop {
-                location: Place::from(rcvr_arg),
+                location: rcvr_place(),
                 target: BasicBlock::new(4),
                 unwind: None,
             },
