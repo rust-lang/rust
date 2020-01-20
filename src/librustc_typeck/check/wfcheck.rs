@@ -10,10 +10,10 @@ use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use syntax::ast;
 
@@ -176,7 +176,72 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None,
     };
+    check_bare_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+}
+
+fn could_be_self(trait_name: Ident, ty: &hir::Ty<'_>) -> bool {
+    match ty.kind {
+        hir::TyKind::TraitObject([trait_ref], ..) => {
+            let mut p = trait_ref.trait_ref.path.segments.iter().map(|s| s.ident);
+            match (p.next(), p.next()) {
+                (Some(ident), None) => ident == trait_name,
+                _ => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+/// Detect when an object unsafe trait is referring to itself in one of its associated items.
+/// When this is done, suggest using `Self` instead.
+fn check_bare_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
+    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id)) {
+        hir::Node::Item(item) => match item.kind {
+            hir::ItemKind::Trait(..) => (item.ident, tcx.hir().local_def_id(item.hir_id)),
+            _ => return,
+        },
+        _ => return,
+    };
+    let mut trait_should_be_self = vec![];
+    match &item.kind {
+        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
+            if could_be_self(trait_name, ty) =>
+        {
+            trait_should_be_self.push(ty.span)
+        }
+        hir::TraitItemKind::Method(sig, _) => {
+            for ty in sig.decl.inputs {
+                if could_be_self(trait_name, ty) {
+                    trait_should_be_self.push(ty.span);
+                }
+            }
+            match sig.decl.output {
+                hir::FunctionRetTy::Return(ty) if could_be_self(trait_name, ty) => {
+                    trait_should_be_self.push(ty.span);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    if !trait_should_be_self.is_empty() {
+        if rustc::traits::object_safety_violations(tcx, trait_def_id).is_empty() {
+            return;
+        }
+        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
+        let mut err = tcx.sess.struct_span_err(
+            trait_should_be_self,
+            "associated item referring to unboxed trait object for its own trait",
+        );
+        err.span_label(trait_name.span, "in this trait");
+        err.multipart_suggestion(
+            "you might have meant to use `Self` to refer to the materialized type",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+    }
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {

@@ -1,0 +1,47 @@
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/object-unsafe-trait-should-use-self.rs:3:13
+   |
+LL | trait A: Sized {
+   |       - in this trait
+LL |     fn f(a: A) -> A;
+   |             ^     ^
+   |
+help: you might have meant to use `Self` to refer to the materialized type
+   |
+LL |     fn f(a: Self) -> Self;
+   |             ^^^^     ^^^^
+
+error[E0038]: the trait `A` cannot be made into an object
+  --> $DIR/object-unsafe-trait-should-use-self.rs:3:13
+   |
+LL | trait A: Sized {
+   |          ----- the trait cannot require that `Self : Sized`
+LL |     fn f(a: A) -> A;
+   |             ^ the trait `A` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/object-unsafe-trait-should-use-self.rs:8:13
+   |
+LL | trait B {
+   |       - in this trait
+LL |     fn f(a: B) -> B;
+   |             ^     ^
+   |
+help: you might have meant to use `Self` to refer to the materialized type
+   |
+LL |     fn f(a: Self) -> Self;
+   |             ^^^^     ^^^^
+
+error[E0038]: the trait `B` cannot be made into an object
+  --> $DIR/object-unsafe-trait-should-use-self.rs:8:13
+   |
+LL |     fn f(a: B) -> B;
+   |        -    ^ the trait `B` cannot be made into an object
+   |        |
+   |        associated function `f` has no `self` parameter
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
