@@ -45,9 +45,12 @@ use crate::dataflow::BottomValue;
 mod cursor;
 mod engine;
 mod graphviz;
+mod visitor;
 
 pub use self::cursor::{ResultsCursor, ResultsRefCursor};
 pub use self::engine::Engine;
+pub use self::visitor::{visit_results, ResultsVisitor};
+pub use self::visitor::{BorrowckFlowState, BorrowckResults};
 
 /// A dataflow analysis that has converged to fixpoint.
 pub struct Results<'tcx, A>
