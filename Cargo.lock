@@ -3763,6 +3763,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "serialize",
