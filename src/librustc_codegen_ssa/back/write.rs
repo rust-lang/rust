@@ -2,7 +2,7 @@ use super::command::Command;
 use super::link::{self, get_linker, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
-use super::symbol_export::ExportedSymbols;
+use super::symbol_export::{symbol_name_for_instance_in_crate, ExportedSymbols};
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
     RLIB_BYTECODE_EXTENSION,
@@ -956,7 +956,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             let symbols = tcx
                 .exported_symbols(cnum)
                 .iter()
-                .map(|&(s, lvl)| (s.symbol_name(tcx).to_string(), lvl))
+                .map(|&(s, lvl)| (symbol_name_for_instance_in_crate(tcx, s, cnum), lvl))
                 .collect();
             Arc::new(symbols)
         };

@@ -91,8 +91,9 @@ use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::query::Providers;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Instance, TyCtxt};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Node;
 
 use rustc_span::symbol::Symbol;
@@ -102,15 +103,70 @@ use log::debug;
 mod legacy;
 mod v0;
 
-pub fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        symbol_name: |tcx, instance| ty::SymbolName { name: symbol_name(tcx, instance) },
-
-        ..*providers
-    };
+/// This function computes the symbol name for the given `instance` and the
+/// given instantiating crate. That is, if you know that instance X is
+/// instantiated in crate Y, this is the symbol name this instance would have.
+pub fn symbol_name_for_instance_in_crate(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    instantiating_crate: CrateNum,
+) -> String {
+    compute_symbol_name(tcx, instance, || instantiating_crate)
 }
 
-fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+}
+
+// The `symbol_name` query provides the symbol name for calling a given
+// instance from the local crate. In particular, it will also look up the
+// correct symbol name of instances from upstream crates.
+fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
+    let symbol_name = compute_symbol_name(tcx, instance, || {
+        // This closure determines the instantiating crate for instances that
+        // need an instantiating-crate-suffix for their symbol name, in order
+        // to differentiate between local copies.
+        //
+        // For generics we might find re-usable upstream instances. For anything
+        // else we rely on their being a local copy available.
+
+        if is_generic(instance.substs) {
+            let def_id = instance.def_id();
+
+            if !def_id.is_local() && tcx.sess.opts.share_generics() {
+                // If we are re-using a monomorphization from another crate,
+                // we have to compute the symbol hash accordingly.
+                let upstream_monomorphizations = tcx.upstream_monomorphizations_for(def_id);
+
+                upstream_monomorphizations
+                    .and_then(|monos| monos.get(&instance.substs).cloned())
+                    // If there is no instance available upstream, there'll be
+                    // one in the current crate.
+                    .unwrap_or(LOCAL_CRATE)
+            } else {
+                // For generic functions defined in the current crate, there
+                // can be no upstream instances. Also, if we don't share
+                // generics, we'll instantiate a local copy too.
+                LOCAL_CRATE
+            }
+        } else {
+            // For non-generic things that need to avoid naming conflicts, we
+            // always instantiate a copy in the local crate.
+            LOCAL_CRATE
+        }
+    });
+
+    ty::SymbolName { name: Symbol::intern(&symbol_name) }
+}
+
+/// Computes the symbol name for the given instance. This function will call
+/// `compute_instantiating_crate` if it needs to factor the instantiating crate
+/// into the symbol name.
+fn compute_symbol_name(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    compute_instantiating_crate: impl FnOnce() -> CrateNum,
+) -> String {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -121,11 +177,11 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_plugin_registrar_symbol(disambiguator));
+            return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
         if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator));
+            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
     }
 
@@ -162,29 +218,28 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
             || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
         {
             if let Some(name) = attrs.link_name {
-                return name;
+                return name.to_string();
             }
-            return tcx.item_name(def_id);
+            return tcx.item_name(def_id).to_string();
         }
     }
 
     if let Some(name) = attrs.export_name {
         // Use provided name
-        return name;
+        return name.to_string();
     }
 
     if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
-        return tcx.item_name(def_id);
+        return tcx.item_name(def_id).to_string();
     }
 
-    let is_generic = substs.non_erasable_generics().next().is_some();
     let avoid_cross_crate_conflicts =
         // If this is an instance of a generic function, we also hash in
         // the ID of the instantiating crate. This avoids symbol conflicts
         // in case the same instances is emitted in two crates of the same
         // project.
-        is_generic ||
+        is_generic(substs) ||
 
         // If we're dealing with an instance of a function that's inlined from
         // another crate but we're marking it as globally shared to our
@@ -197,25 +252,8 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
             _ => false,
         };
 
-    let instantiating_crate = if avoid_cross_crate_conflicts {
-        Some(if is_generic {
-            if !def_id.is_local() && tcx.sess.opts.share_generics() {
-                // If we are re-using a monomorphization from another crate,
-                // we have to compute the symbol hash accordingly.
-                let upstream_monomorphizations = tcx.upstream_monomorphizations_for(def_id);
-
-                upstream_monomorphizations
-                    .and_then(|monos| monos.get(&substs).cloned())
-                    .unwrap_or(LOCAL_CRATE)
-            } else {
-                LOCAL_CRATE
-            }
-        } else {
-            LOCAL_CRATE
-        })
-    } else {
-        None
-    };
+    let instantiating_crate =
+        if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };
 
     // Pick the crate responsible for the symbol mangling version, which has to:
     // 1. be stable for each instance, whether it's being defined or imported
@@ -232,10 +270,12 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
         tcx.symbol_mangling_version(mangling_version_crate)
     };
 
-    let mangled = match mangling_version {
+    match mangling_version {
         SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
         SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
-    };
+    }
+}
 
-    Symbol::intern(&mangled)
+fn is_generic(substs: SubstsRef<'_>) -> bool {
+    substs.non_erasable_generics().next().is_some()
 }
