@@ -3,10 +3,10 @@
 //! There is another interface for dataflow in the compiler in `librustc_mir/dataflow/mod.rs`. The
 //! interface in this module will eventually [replace that one][design-meeting].
 //!
-//! To actually use this framework, you must implement either the `Analysis` or the
-//! `GenKillAnalysis` trait. If your transfer function can be expressed with only gen/kill
-//! operations, prefer `GenKillAnalysis` as it will perform better. Create an `Engine` using the
-//! appropriate constructor and call `iterate_to_fixpoint`. You can use a `ResultsCursor` to
+//! To actually use this framework, you must implement either the `Analysis` or the `GenKillAnalysis`
+//! trait. If your transfer function can be expressed with only gen/kill operations, prefer
+//! `GenKillAnalysis` since it will run faster while iterating to fixpoint. Create an `Engine` using
+//! the appropriate constructor and call `iterate_to_fixpoint`. You can use a `ResultsCursor` to
 //! inspect the fixpoint solution to your dataflow problem.
 //!
 //! ```ignore(cross-crate-imports)
@@ -273,6 +273,14 @@ where
 }
 
 /// The legal operations for a transfer function in a gen/kill problem.
+///
+/// This abstraction exists because there are two different contexts in which we call the methods in
+/// `GenKillAnalysis`. Sometimes we need to store a single transfer function that can be efficiently
+/// applied multiple times, such as when computing the cumulative transfer function for each block.
+/// These cases require a `GenKillSet`, which in turn requires two `BitSet`s of storage. Oftentimes,
+/// however, we only need to apply an effect once. In *these* cases, it is more efficient to pass the
+/// `BitSet` representing the state vector directly into the `*_effect` methods as opposed to
+/// building up a `GenKillSet` and then throwing it away.
 pub trait GenKill<T> {
     /// Inserts `elem` into the state vector.
     fn gen(&mut self, elem: T);
