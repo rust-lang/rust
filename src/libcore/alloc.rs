@@ -525,7 +525,8 @@ pub unsafe trait GlobalAlloc {
     /// The memory may or may not have been deallocated,
     /// and should be considered unusable (unless of course it was
     /// transferred back to the caller again via the return value of
-    /// this method).
+    /// this method). The new memory block is allocated with `layout`, but
+    /// with the `size` updated to `new_size`.
     ///
     /// If this method returns null, then ownership of the memory
     /// block has not been transferred to this allocator, and the
