@@ -141,7 +141,12 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.codegen_fn_attrs(self.def_id()).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+        match *self {
+            InstanceDef::Item(def_id) => {
+                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+            }
+            _ => false,
+        }
     }
 }
 
