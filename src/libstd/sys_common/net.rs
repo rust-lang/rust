@@ -44,6 +44,7 @@ cfg_if::cfg_if! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris"))] {
+        use libc::c_uchar;
         type IpV4MultiCastType = c_uchar;
     } else {
         type IpV4MultiCastType = c_int;
