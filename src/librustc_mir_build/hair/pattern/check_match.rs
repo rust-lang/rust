@@ -67,18 +67,13 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
-
-        // Check legality of move bindings and `@` patterns.
         self.check_patterns(false, &loc.pat);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        intravisit::walk_body(self, body);
-
-        for param in body.params {
-            self.check_irrefutable(&param.pat, "function argument", None);
-            self.check_patterns(false, &param.pat);
-        }
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        intravisit::walk_param(self, param);
+        self.check_irrefutable(&param.pat, "function argument", None);
+        self.check_patterns(false, &param.pat);
     }
 }
 
@@ -123,6 +118,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         if !self.tcx.features().bindings_after_at {
             check_legality_of_bindings_in_at_patterns(self, pat);
         }
+        check_for_bindings_named_same_as_variants(self, pat);
     }
 
     fn check_match(
@@ -132,11 +128,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         source: hir::MatchSource,
     ) {
         for arm in arms {
-            // First, check legality of move bindings.
+            // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(arm.guard.is_some(), &arm.pat);
-
-            // Second, perform some lints.
-            check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
         let module = self.tcx.hir().get_module_parent(scrut.hir_id);
