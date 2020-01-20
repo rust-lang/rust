@@ -63,7 +63,7 @@ LL |     assert!(C, "C message");
    |
    = help: use `panic!("C message")` or `unreachable!("C message")`
 
-error: `assert!(true)` will be optimized out by the compiler
+error: `debug_assert!(true)` will be optimized out by the compiler
   --> $DIR/assertions_on_constants.rs:24:5
    |
 LL |     debug_assert!(true);

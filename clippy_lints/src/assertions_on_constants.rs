@@ -33,12 +33,16 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        let lint_true = || {
+        let lint_true = |is_debug: bool| {
             span_help_and_lint(
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,
-                "`assert!(true)` will be optimized out by the compiler",
+                if is_debug {
+                    "`debug_assert!(true)` will be optimized out by the compiler"
+                } else {
+                    "`assert!(true)` will be optimized out by the compiler"
+                },
                 "remove it",
             );
         };
@@ -70,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit);
                 if is_true;
                 then {
-                    lint_true();
+                    lint_true(true);
                 }
             };
         } else if let Some(assert_span) = is_direct_expn_of(e.span, "assert") {
@@ -81,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 match assert_match {
                     // matched assert but not message
                     AssertKind::WithoutMessage(false) => lint_false_without_message(),
-                    AssertKind::WithoutMessage(true) | AssertKind::WithMessage(_, true) => lint_true(),
+                    AssertKind::WithoutMessage(true) | AssertKind::WithMessage(_, true) => lint_true(false),
                     AssertKind::WithMessage(panic_message, false) => lint_false_with_message(panic_message),
                 };
             }
