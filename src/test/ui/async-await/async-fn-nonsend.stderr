@@ -62,27 +62,5 @@ LL |     }
 LL | }
    | - `f` is later dropped here
 
-error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:54:5
-   |
-LL | fn assert_send(_: impl Send) {}
-   |    -----------         ---- required by this bound in `assert_send`
-...
-LL |     assert_send(non_sync_with_method_call());
-   |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
-   |
-   = help: within `std::fmt::ArgumentV1<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
-note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:43:9
-   |
-LL |     let f: &mut std::fmt::Formatter = panic!();
-   |         - has type `&mut std::fmt::Formatter<'_>`
-LL |     if non_sync().fmt(f).unwrap() == () {
-LL |         fut().await;
-   |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later
-LL |     }
-LL | }
-   | - `f` is later dropped here
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

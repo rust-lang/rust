@@ -2,15 +2,15 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-use std::{
-    cell::RefCell,
-    fmt::Debug,
-    rc::Rc,
-};
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
-fn non_sync() -> impl Debug { RefCell::new(()) }
+fn non_sync() -> impl Debug {
+    RefCell::new(())
+}
 
-fn non_send() -> impl Debug { Rc::new(()) }
+fn non_send() -> impl Debug {
+    Rc::new(())
+}
 
 fn take_ref<T>(_: &T) {}
 
@@ -53,5 +53,4 @@ pub fn pass_assert() {
     //~^ ERROR future cannot be sent between threads safely
     assert_send(non_sync_with_method_call());
     //~^ ERROR future cannot be sent between threads safely
-    //~^^ ERROR future cannot be sent between threads safely
 }
