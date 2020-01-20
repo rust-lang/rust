@@ -1,0 +1,20 @@
+error: called `skip_while(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(!p)` instead.
+  --> $DIR/skip_while_next.rs:14:13
+   |
+LL |     let _ = v.iter().skip_while(|&x| *x < 0).next();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::skip-while-next` implied by `-D warnings`
+
+error: called `skip_while(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(!p)` instead.
+  --> $DIR/skip_while_next.rs:17:13
+   |
+LL |       let _ = v.iter().skip_while(|&x| {
+   |  _____________^
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next();
+   | |___________________________^
+
+error: aborting due to 2 previous errors
+

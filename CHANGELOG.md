@@ -1285,6 +1285,7 @@ Released 2018-09-13
 [`single_char_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_pattern
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match
 [`single_match_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match_else
+[`skip_while_next`]: https://rust-lang.github.io/rust-clippy/master/index.html#skip_while_next
 [`slow_vector_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#slow_vector_initialization
 [`str_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#str_to_string
 [`string_add`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_add
