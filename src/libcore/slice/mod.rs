@@ -5521,6 +5521,13 @@ impl<T: PartialOrd> PartialOrd for [T] {
     }
 }
 
+#[unstable(feature = "array_from_single", reason = "newly added", issue = "none")]
+impl<T> From<T> for [T; 1] {
+    fn from(val: T) -> [T; 1] {
+        [val]
+    }
+}
+
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialEq
 trait SlicePartialEq<B> {
