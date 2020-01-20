@@ -30,8 +30,6 @@ use syntax::walk_list;
 
 use log::debug;
 
-use rustc_error_codes::*;
-
 // This counts the no of times a lifetime is used
 #[derive(Clone, Copy, Debug)]
 pub enum LifetimeUseSet<'tcx> {

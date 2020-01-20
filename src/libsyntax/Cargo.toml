@@ -21,5 +21,4 @@ rustc_index = { path = "../librustc_index" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_macros = { path = "../librustc_macros" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_session = { path = "../librustc_session" }

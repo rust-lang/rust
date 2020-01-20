@@ -7,8 +7,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc_error_codes::*;
-
 pub fn check(tcx: TyCtxt<'_>) {
     let mut orphan = OrphanChecker { tcx };
     tcx.hir().krate().visit_all_item_likes(&mut orphan);

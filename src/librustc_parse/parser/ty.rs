@@ -3,7 +3,6 @@ use super::{Parser, PathStyle, PrevTokenKind, TokenType};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
-use rustc_error_codes::*;
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym};

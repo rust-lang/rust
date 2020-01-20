@@ -25,8 +25,6 @@ use rustc_span::DUMMY_SP;
 use super::util::impl_trait_ref_and_oblig;
 use super::{FulfillmentContext, SelectionContext};
 
-use rustc_error_codes::*;
-
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
 pub struct OverlapError {

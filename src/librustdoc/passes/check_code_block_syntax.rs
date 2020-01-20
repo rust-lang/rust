@@ -40,7 +40,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             dox[code_block.code].to_owned(),
         );
 
-        let validation_status = {
+        let validation_status = rustc_driver::catch_fatal_errors(|| {
             let mut has_syntax_errors = false;
             let mut only_whitespace = true;
             // even if there is a syntax error, we need to run the lexer over the whole file
@@ -61,7 +61,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             } else {
                 None
             }
-        };
+        })
+        .unwrap_or(Some(CodeBlockInvalid::SyntaxError));
 
         if let Some(code_block_invalid) = validation_status {
             let mut diag = if let Some(sp) =

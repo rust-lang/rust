@@ -23,8 +23,6 @@ use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
 
-use rustc_error_codes::*;
-
 /// A syntactic context that disallows certain kinds of bounds (e.g., `?Trait` or `?const Trait`).
 #[derive(Clone, Copy)]
 enum BoundContext {

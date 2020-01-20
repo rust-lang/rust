@@ -11,8 +11,6 @@ use rustc_index::vec::Idx;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 
-use rustc_error_codes::*;
-
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx }.as_deep_visitor());
 }

@@ -21,8 +21,6 @@ use rustc_span::{source_map, FileName, Span};
 use syntax::ast;
 use syntax::util::lev_distance;
 
-use rustc_error_codes::*;
-
 use std::cmp::Ordering;
 
 use super::probe::Mode;

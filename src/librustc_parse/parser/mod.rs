@@ -33,8 +33,6 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::{cmp, mem, slice};
 
-use rustc_error_codes::*;
-
 bitflags::bitflags! {
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;

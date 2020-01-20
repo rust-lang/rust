@@ -29,8 +29,6 @@ use syntax::ast::{Ident, Name, NodeId};
 use syntax::unwrap_or;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_error_codes::*;
-
 use log::*;
 
 use std::cell::Cell;

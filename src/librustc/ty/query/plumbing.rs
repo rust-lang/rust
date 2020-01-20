@@ -25,8 +25,6 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ptr;
 
-use rustc_error_codes::*;
-
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,

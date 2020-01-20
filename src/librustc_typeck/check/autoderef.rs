@@ -13,8 +13,6 @@ use rustc_hir as hir;
 use rustc_span::Span;
 use syntax::ast::Ident;
 
-use rustc_error_codes::*;
-
 use std::iter;
 
 #[derive(Copy, Clone, Debug)]

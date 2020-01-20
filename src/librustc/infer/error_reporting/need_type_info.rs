@@ -13,8 +13,6 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
 
-use rustc_error_codes::*;
-
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,

@@ -38,8 +38,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_error_codes::*;
-
 use std::fmt::Display;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {

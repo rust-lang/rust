@@ -5,8 +5,6 @@ use crate::ty;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::{FunctionRetTy, TyKind};
 
-use rustc_error_codes::*;
-
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.

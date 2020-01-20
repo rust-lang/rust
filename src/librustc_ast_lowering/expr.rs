@@ -2,7 +2,6 @@ use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericAr
 
 use rustc::bug;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;

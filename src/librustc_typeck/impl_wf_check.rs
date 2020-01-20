@@ -20,8 +20,6 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use rustc_span::Span;
 
-use rustc_error_codes::*;
-
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self type (or are constrained by a
 /// where-clause). These rules are needed to ensure that, given a

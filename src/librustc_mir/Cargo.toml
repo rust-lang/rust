@@ -29,4 +29,3 @@ syntax = { path = "../libsyntax" }
 rustc_span = { path = "../librustc_span" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-rustc_error_codes = { path = "../librustc_error_codes" }

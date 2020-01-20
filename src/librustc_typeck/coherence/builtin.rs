@@ -12,7 +12,6 @@ use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_error_codes::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

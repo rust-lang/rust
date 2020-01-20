@@ -18,8 +18,6 @@ use syntax::ast;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 
-use rustc_error_codes::*;
-
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
 ///

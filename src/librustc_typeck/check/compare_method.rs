@@ -15,8 +15,6 @@ use rustc_span::Span;
 
 use super::{potentially_plural_count, FnCtxt, Inherited};
 
-use rustc_error_codes::*;
-
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
 ///

@@ -132,3 +132,18 @@ LL | ///     \____/
    |
    = note: error from rustc: unknown start of token: \
 
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:97:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | /// "invalid
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unterminated double quote string
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |     ^^^^^^^
+

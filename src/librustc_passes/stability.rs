@@ -26,8 +26,6 @@ use std::cmp::Ordering;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
-use rustc_error_codes::*;
-
 #[derive(PartialEq)]
 enum AnnotationKind {
     // Annotation is required if not inherited from unstable parents

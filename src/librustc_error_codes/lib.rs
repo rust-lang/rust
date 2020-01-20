@@ -6,16 +6,8 @@ macro_rules! register_diagnostics {
         pub static DIAGNOSTICS: &[(&str, &str)] = &[
             $( (stringify!($ecode), $message), )*
         ];
-
-        $(
-            pub const $ecode: () = ();
-        )*
-        $(
-            pub const $code: () = ();
-        )*
     )
 }
 
 mod error_codes;
-
-pub use error_codes::*;
+pub use error_codes::DIAGNOSTICS;

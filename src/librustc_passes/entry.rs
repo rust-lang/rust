@@ -12,8 +12,6 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::attr;
 use syntax::entry::EntryPointType;
 
-use rustc_error_codes::*;
-
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 

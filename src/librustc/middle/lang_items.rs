@@ -24,8 +24,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
 
-use rustc_error_codes::*;
-
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {

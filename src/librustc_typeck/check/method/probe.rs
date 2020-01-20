@@ -38,8 +38,6 @@ use std::ops::Deref;
 use syntax::ast;
 use syntax::util::lev_distance::{find_best_match_for_name, lev_distance};
 
-use rustc_error_codes::*;
-
 use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;

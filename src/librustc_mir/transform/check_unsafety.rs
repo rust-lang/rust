@@ -18,8 +18,6 @@ use std::ops::Bound;
 use crate::const_eval::{is_const_fn, is_min_const_fn};
 use crate::util;
 
-use rustc_error_codes::*;
-
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     const_context: bool,

@@ -43,7 +43,7 @@ pub fn run(options: Options) -> i32 {
     let crate_types = if options.proc_macro_crate {
         vec![config::CrateType::ProcMacro]
     } else {
-        vec![config::CrateType::Dylib]
+        vec![config::CrateType::Rlib]
     };
 
     let sessopts = config::Options {
@@ -117,12 +117,16 @@ pub fn run(options: Options) -> i32 {
                     intravisit::walk_crate(this, krate);
                 });
             });
+            compiler.session().abort_if_errors();
 
             let ret: Result<_, ErrorReported> = Ok(collector.tests);
             ret
         })
-    })
-    .expect("compiler aborted in rustdoc!");
+    });
+    let tests = match tests {
+        Ok(tests) => tests,
+        Err(ErrorReported) => return 1,
+    };
 
     test_args.insert(0, "rustdoctest".to_string());
 

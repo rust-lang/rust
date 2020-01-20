@@ -13,8 +13,6 @@ use rustc_hir::def_id::DefId;
 use crate::traits::BuilderMethods;
 use rustc_hir as hir;
 
-use rustc_error_codes::*;
-
 pub enum IntPredicate {
     IntEQ,
     IntNE,

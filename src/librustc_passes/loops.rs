@@ -1,7 +1,5 @@
 use Context::*;
 
-use rustc::session::Session;
-
 use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -10,9 +8,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Destination, Movability, Node};
+use rustc_session::Session;
 use rustc_span::Span;
-
-use rustc_error_codes::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {

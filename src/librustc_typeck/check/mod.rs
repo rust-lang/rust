@@ -133,8 +133,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::util::parser::ExprPrecedence;
 
-use rustc_error_codes::*;
-
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::cmp;
 use std::collections::hash_map::Entry;
