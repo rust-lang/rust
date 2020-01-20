@@ -1254,7 +1254,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 | GenericBound::Trait(ref ty, TraitBoundModifier::MaybeConst) => {
                                     Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
                                 }
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                                GenericBound::Trait(_, TraitBoundModifier::Maybe)
+                                | GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
+                                    None
+                                }
                                 GenericBound::Outlives(ref lifetime) => {
                                     if lifetime_bound.is_none() {
                                         lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -2297,8 +2300,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifier(&mut self, f: TraitBoundModifier) -> hir::TraitBoundModifier {
         match f {
             TraitBoundModifier::None => hir::TraitBoundModifier::None,
-            TraitBoundModifier::Maybe => hir::TraitBoundModifier::Maybe,
             TraitBoundModifier::MaybeConst => hir::TraitBoundModifier::MaybeConst,
+            TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
+                hir::TraitBoundModifier::Maybe
+            }
         }
     }
 

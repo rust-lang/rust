@@ -27,17 +27,13 @@ struct BoundModifiers {
 }
 
 impl BoundModifiers {
-    fn to_trait_bound_modifier(&self) -> Result<TraitBoundModifier, &'static str> {
-        let modifier = match (self.maybe, self.maybe_const) {
+    fn to_trait_bound_modifier(&self) -> TraitBoundModifier {
+        match (self.maybe, self.maybe_const) {
             (None, None) => TraitBoundModifier::None,
             (Some(_), None) => TraitBoundModifier::Maybe,
             (None, Some(_)) => TraitBoundModifier::MaybeConst,
-            (Some(_), Some(_)) => {
-                return Err("`?const` and `?` are mutually exclusive");
-            }
-        };
-
-        Ok(modifier)
+            (Some(_), Some(_)) => TraitBoundModifier::MaybeConstMaybe,
+        }
     }
 }
 
@@ -563,16 +559,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren))?;
         }
 
-        let modifier = match modifiers.to_trait_bound_modifier() {
-            Ok(m) => m,
-            Err(msg) => {
-                self.struct_span_err(lo.to(self.prev_span), msg).emit();
-
-                // Continue compilation as if the user had written `?Trait`.
-                TraitBoundModifier::Maybe
-            }
-        };
-
+        let modifier = modifiers.to_trait_bound_modifier();
         let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
         Ok(GenericBound::Trait(poly_trait, modifier))
     }

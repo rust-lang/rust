@@ -917,11 +917,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound) {
-        if let GenericBound::Trait(_, TraitBoundModifier::MaybeConst) = bound {
-            if let Some(ctx) = self.bound_context {
-                let msg = format!("`?const` is not permitted in {}", ctx.description());
-                self.err_handler().span_err(bound.span(), &msg);
+        match bound {
+            GenericBound::Trait(_, TraitBoundModifier::MaybeConst) => {
+                if let Some(ctx) = self.bound_context {
+                    let msg = format!("`?const` is not permitted in {}", ctx.description());
+                    self.err_handler().span_err(bound.span(), &msg);
+                }
             }
+
+            GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
+                self.err_handler()
+                    .span_err(bound.span(), "`?const` and `?` are mutually exclusive");
+            }
+
+            _ => {}
         }
 
         visit::walk_param_bound(self, bound)

@@ -279,6 +279,11 @@ pub enum TraitBoundModifier {
 
     /// `?const Trait`
     MaybeConst,
+
+    /// `?const ?Trait`
+    //
+    // This parses but will be rejected during AST validation.
+    MaybeConstMaybe,
 }
 
 /// The AST represents all type param bounds as types.
