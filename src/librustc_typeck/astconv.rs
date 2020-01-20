@@ -287,7 +287,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         position: GenericArgPosition,
         has_self: bool,
         infer_args: bool,
-    ) -> (bool, Option<Vec<Span>>) {
+    ) -> (bool, Vec<Span>) {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
         // arguments in order to validate them with respect to the generic parameters.
@@ -341,104 +341,110 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let check_kind_count = |kind, required, permitted, provided, offset| {
-            debug!(
-                "check_kind_count: kind: {} required: {} permitted: {} provided: {} offset: {}",
-                kind, required, permitted, provided, offset
-            );
-            // We enforce the following: `required` <= `provided` <= `permitted`.
-            // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
-            // For other kinds (i.e., types), `permitted` may be greater than `required`.
-            if required <= provided && provided <= permitted {
-                return (reported_late_bound_region_err.unwrap_or(false), None);
-            }
-
-            // Unfortunately lifetime and type parameter mismatches are typically styled
-            // differently in diagnostics, which means we have a few cases to consider here.
-            let (bound, quantifier) = if required != permitted {
-                if provided < required {
-                    (required, "at least ")
-                } else {
-                    // provided > permitted
-                    (permitted, "at most ")
+        let check_kind_count =
+            |kind, required, permitted, provided, offset, unexpected_spans: &mut Vec<Span>| {
+                debug!(
+                    "check_kind_count: kind: {} required: {} permitted: {} provided: {} offset: {}",
+                    kind, required, permitted, provided, offset
+                );
+                // We enforce the following: `required` <= `provided` <= `permitted`.
+                // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
+                // For other kinds (i.e., types), `permitted` may be greater than `required`.
+                if required <= provided && provided <= permitted {
+                    return false;
                 }
-            } else {
-                (required, "")
-            };
 
-            let mut potential_assoc_types: Option<Vec<Span>> = None;
-            let (spans, label) = if required == permitted && provided > permitted {
-                // In the case when the user has provided too many arguments,
-                // we want to point to the unexpected arguments.
-                let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
-                    .iter()
-                    .map(|arg| arg.span())
-                    .collect();
-                potential_assoc_types = Some(spans.clone());
-                (spans, format!("unexpected {} argument", kind))
-            } else {
-                (
-                    vec![span],
-                    format!(
-                        "expected {}{} {} argument{}",
-                        quantifier,
-                        bound,
-                        kind,
-                        pluralize!(bound),
+                // Unfortunately lifetime and type parameter mismatches are typically styled
+                // differently in diagnostics, which means we have a few cases to consider here.
+                let (bound, quantifier) = if required != permitted {
+                    if provided < required {
+                        (required, "at least ")
+                    } else {
+                        // provided > permitted
+                        (permitted, "at most ")
+                    }
+                } else {
+                    (required, "")
+                };
+
+                let (spans, label) = if required == permitted && provided > permitted {
+                    // In the case when the user has provided too many arguments,
+                    // we want to point to the unexpected arguments.
+                    let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
+                        .iter()
+                        .map(|arg| arg.span())
+                        .collect();
+                    unexpected_spans.extend(spans.clone());
+                    (spans, format!("unexpected {} argument", kind))
+                } else {
+                    (
+                        vec![span],
+                        format!(
+                            "expected {}{} {} argument{}",
+                            quantifier,
+                            bound,
+                            kind,
+                            pluralize!(bound),
+                        ),
+                    )
+                };
+
+                let mut err = tcx.sess.struct_span_err_with_code(
+                    spans.clone(),
+                    &format!(
+                        "wrong number of {} arguments: expected {}{}, found {}",
+                        kind, quantifier, bound, provided,
                     ),
-                )
+                    DiagnosticId::Error("E0107".into()),
+                );
+                for span in spans {
+                    err.span_label(span, label.as_str());
+                }
+                err.emit();
+
+                true
             };
 
-            let mut err = tcx.sess.struct_span_err_with_code(
-                spans.clone(),
-                &format!(
-                    "wrong number of {} arguments: expected {}{}, found {}",
-                    kind, quantifier, bound, provided,
-                ),
-                DiagnosticId::Error("E0107".into()),
-            );
-            for span in spans {
-                err.span_label(span, label.as_str());
-            }
-            err.emit();
-
-            (true, potential_assoc_types)
-        };
+        let mut arg_count_mismatch = reported_late_bound_region_err.unwrap_or(false);
+        let mut unexpected_spans = vec![];
 
         if reported_late_bound_region_err.is_none()
             && (!infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes)
         {
-            check_kind_count(
+            arg_count_mismatch |= check_kind_count(
                 "lifetime",
                 param_counts.lifetimes,
                 param_counts.lifetimes,
                 arg_counts.lifetimes,
                 0,
+                &mut unexpected_spans,
             );
         }
         // FIXME(const_generics:defaults)
         if !infer_args || arg_counts.consts > param_counts.consts {
-            check_kind_count(
+            arg_count_mismatch |= check_kind_count(
                 "const",
                 param_counts.consts,
                 param_counts.consts,
                 arg_counts.consts,
                 arg_counts.lifetimes + arg_counts.types,
+                &mut unexpected_spans,
             );
         }
         // Note that type errors are currently be emitted *after* const errors.
         if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
         {
-            check_kind_count(
+            arg_count_mismatch |= check_kind_count(
                 "type",
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
                 arg_counts.types,
                 arg_counts.lifetimes,
-            )
-        } else {
-            (reported_late_bound_region_err.unwrap_or(false), None)
+                &mut unexpected_spans,
+            );
         }
+
+        (arg_count_mismatch, unexpected_spans)
     }
 
     /// Creates the relevant generic argument substitutions
@@ -627,7 +633,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Vec<Span>) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
@@ -922,7 +928,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
-    ) -> Option<Vec<Span>> {
+    ) -> Vec<Span> {
         let trait_def_id = trait_ref.trait_def_id();
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
@@ -968,6 +974,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             "instantiate_poly_trait_ref({:?}, bounds={:?}) -> {:?}",
             trait_ref, bounds, poly_trait_ref
         );
+
         potential_assoc_types
     }
 
@@ -996,7 +1003,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         constness: Constness,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
-    ) -> Option<Vec<Span>> {
+    ) -> Vec<Span> {
         self.instantiate_poly_trait_ref_inner(
             &poly_trait_ref.trait_ref,
             poly_trait_ref.span,
@@ -1085,7 +1092,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment<'a>,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Vec<Span>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})", trait_segment);
 
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
@@ -1436,7 +1443,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 dummy_self,
                 &mut bounds,
             );
-            potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
+            potential_assoc_types.extend(cur_potential_assoc_types.into_iter());
         }
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
