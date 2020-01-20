@@ -17,8 +17,6 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use syntax::expand::allocator::ALLOCATOR_METHODS;
 
-pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
-
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
 }
@@ -96,7 +94,7 @@ fn reachable_non_generics_provider(
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
                         // with "internal" linkage and are never exported.
-                        !Instance::mono(tcx, def_id).def.requires_local(tcx)
+                        !Instance::mono(tcx, def_id).def.generates_cgu_internal_copy(tcx)
                     {
                         Some(def_id)
                     } else {
