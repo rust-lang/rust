@@ -114,7 +114,12 @@ impl<'tcx> InstanceDef<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
+    /// Returns `true` if the LLVM version of this instance is unconditionally
+    /// marked with `inline`. This implies that a copy of this instance is
+    /// generated in every codegen unit.
+    /// Note that this is only a hint. See the documentation for
+    /// `generates_cgu_internal_copy` for more information.
+    pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
@@ -127,8 +132,15 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local(&self, tcx: TyCtxt<'tcx>) -> bool {
-        if self.is_inline(tcx) {
+    /// Returns `true` if the machine code for this instance is instantiated in
+    /// each codegen unit that references it.
+    /// Note that this is only a hint! The compiler can globally decide to *not*
+    /// do this in order to speed up compilation. CGU-internal copies are
+    /// only exist to enable inlining. If inlining is not performed (e.g. at
+    /// `-Copt-level=0`) then the time for generating them is wasted and it's
+    /// better to create a single copy with external linkage.
+    pub fn generates_cgu_internal_copy(&self, tcx: TyCtxt<'tcx>) -> bool {
+        if self.requires_inline(tcx) {
             return true;
         }
         if let ty::InstanceDef::DropGlue(..) = *self {

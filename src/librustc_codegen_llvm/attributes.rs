@@ -246,7 +246,7 @@ pub fn from_fn_attrs(
     }
 
     // FIXME(eddyb) consolidate these two `inline` calls (and avoid overwrites).
-    if instance.def.is_inline(cx.tcx) {
+    if instance.def.requires_inline(cx.tcx) {
         inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
