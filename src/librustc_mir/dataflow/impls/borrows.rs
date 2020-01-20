@@ -4,11 +4,9 @@ use rustc::ty::TyCtxt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
 
 use crate::borrow_check::{
-    places_conflict, BorrowData, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext,
-    ToRegionVid,
+    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
 };
 use crate::dataflow::generic::{self, GenKill};
 use crate::dataflow::BottomValue;
@@ -159,10 +157,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             borrows_out_of_scope_at_location,
             _nonlexical_regioncx: nonlexical_regioncx,
         }
-    }
-
-    crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> {
-        &self.borrow_set.borrows
     }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
