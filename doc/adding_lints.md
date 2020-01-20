@@ -55,7 +55,7 @@ we want to check. The output of Clippy is compared against a `.stderr` file.
 Note that you don't have to create this file yourself, we'll get to
 generating the `.stderr` files further down.
 
-We start by opening the test file created at `tests/ui/foo_functions.rs`. 
+We start by opening the test file created at `tests/ui/foo_functions.rs`.
 
 Update the file with some examples to get started:
 
@@ -102,7 +102,7 @@ Once we are satisfied with the output, we need to run
 `tests/ui/update-all-references.sh` to update the `.stderr` file for our lint.
 Please note that, we should run `TESTNAME=foo_functions cargo uitest`
 every time before running `tests/ui/update-all-references.sh`.
-Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit 
+Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too.
 
 ### Rustfix tests
@@ -133,7 +133,7 @@ With tests in place, let's have a look at implementing our lint now.
 
 ### Lint declaration
 
-Let's start by opening the new file created in the `clippy_lints` crate 
+Let's start by opening the new file created in the `clippy_lints` crate
 at `clippy_lints/src/foo_functions.rs`. That's the crate where all the
 lint code is. This file has already imported some initial things we will need:
 
@@ -178,7 +178,7 @@ state the thing that is being checked for and read well when used with
 * The last part should be a text that explains what exactly is wrong with the
   code
 
-The rest of this file contains an empty implementation for our lint pass, 
+The rest of this file contains an empty implementation for our lint pass,
 which in this case is `EarlyLintPass` and should look like this:
 
 ```rust
@@ -194,7 +194,7 @@ impl EarlyLintPass for FooFunctions {}
 Don't worry about the `name` method here. As long as it includes the name of the
 lint pass it should be fine.
 
-The new lint automation runs `update_lints`, which automates some things, but it 
+The new lint automation runs `update_lints`, which automates some things, but it
 doesn't automate everything. We will have to register our lint pass manually in
 the `register_plugins` function in `clippy_lints/src/lib.rs`:
 

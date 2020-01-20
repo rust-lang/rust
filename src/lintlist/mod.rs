@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 347] = [
+pub const ALL_LINTS: [Lint; 348] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1861,6 +1861,13 @@ pub const ALL_LINTS: [Lint; 347] = [
         desc: "a `match` statement with two arms where the second arm\'s pattern is a placeholder instead of a specific match pattern",
         deprecation: None,
         module: "matches",
+    },
+    Lint {
+        name: "skip_while_next",
+        group: "complexity",
+        desc: "using `skip_while(p).next()`, which is more succinctly expressed as `.find(!p)`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "slow_vector_initialization",
