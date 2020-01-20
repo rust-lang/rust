@@ -2563,9 +2563,13 @@ fn lint_skip_while_next<'a, 'tcx>(
 ) {
     // lint if caller of `.skip_while().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `skip_while(p).next()` on an `Iterator`. \
-                   This is more succinctly expressed by calling `.find(!p)` instead.";
-        span_lint(cx, SKIP_WHILE_NEXT, expr.span, msg);
+        span_help_and_lint(
+            cx,
+            SKIP_WHILE_NEXT,
+            expr.span,
+            "called `skip_while(p).next()` on an `Iterator`",
+            "this is more succinctly expressed by calling `.find(!p)` instead",
+        );
     }
 }
 
