@@ -2321,8 +2321,8 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         "{}{}{}{}{:#}fn {}{:#}",
         it.visibility.print_with_space(),
         f.header.constness.print_with_space(),
-        f.header.unsafety.print_with_space(),
         f.header.asyncness.print_with_space(),
+        f.header.unsafety.print_with_space(),
         print_abi_with_space(f.header.abi),
         it.name.as_ref().unwrap(),
         f.generics.print()
@@ -2332,12 +2332,12 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     render_attributes(w, it, false);
     write!(
         w,
-        "{vis}{constness}{unsafety}{asyncness}{abi}fn \
+        "{vis}{constness}{asyncness}{unsafety}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
-        unsafety = f.header.unsafety.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
+        unsafety = f.header.unsafety.print_with_space(),
         abi = print_abi_with_space(f.header.abi),
         name = it.name.as_ref().unwrap(),
         generics = f.generics.print(),
@@ -2832,8 +2832,8 @@ fn render_assoc_item(
             "{}{}{}{}{}{:#}fn {}{:#}",
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
-            header.unsafety.print_with_space(),
             header.asyncness.print_with_space(),
+            header.unsafety.print_with_space(),
             print_default_space(meth.is_default()),
             print_abi_with_space(header.abi),
             name,
@@ -2854,8 +2854,8 @@ fn render_assoc_item(
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
-            header.unsafety.print_with_space(),
             header.asyncness.print_with_space(),
+            header.unsafety.print_with_space(),
             print_default_space(meth.is_default()),
             print_abi_with_space(header.abi),
             href = href,
