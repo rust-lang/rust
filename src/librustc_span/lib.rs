@@ -445,23 +445,26 @@ impl Span {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
 
-    pub fn macro_backtrace(mut self) -> Vec<ExpnData> {
+    pub fn macro_backtrace(mut self) -> impl Iterator<Item = ExpnData> {
         let mut prev_span = DUMMY_SP;
-        let mut result = vec![];
-        loop {
-            let expn_data = self.ctxt().outer_expn_data();
-            if expn_data.is_root() {
-                break;
-            }
-            // Don't print recursive invocations.
-            if !expn_data.call_site.source_equal(&prev_span) {
-                result.push(expn_data.clone());
-            }
+        std::iter::from_fn(move || {
+            loop {
+                let expn_data = self.ctxt().outer_expn_data();
+                if expn_data.is_root() {
+                    return None;
+                }
 
-            prev_span = self;
-            self = expn_data.call_site;
-        }
-        result
+                let is_recursive = expn_data.call_site.source_equal(&prev_span);
+
+                prev_span = self;
+                self = expn_data.call_site;
+
+                // Don't print recursive invocations.
+                if !is_recursive {
+                    return Some(expn_data);
+                }
+            }
+        })
     }
 
     /// Returns a `Span` that would enclose both `self` and `end`.

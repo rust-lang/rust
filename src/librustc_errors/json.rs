@@ -309,7 +309,7 @@ impl DiagnosticSpan {
         // backtrace ourselves, but the `macro_backtrace` helper makes
         // some decision, such as dropping some frames, and I don't
         // want to duplicate that logic here.
-        let backtrace = span.macro_backtrace().into_iter();
+        let backtrace = span.macro_backtrace();
         DiagnosticSpan::from_span_full(span, is_primary, label, suggestion, backtrace, je)
     }
 
@@ -318,7 +318,7 @@ impl DiagnosticSpan {
         is_primary: bool,
         label: Option<String>,
         suggestion: Option<(&String, Applicability)>,
-        mut backtrace: vec::IntoIter<ExpnData>,
+        mut backtrace: impl Iterator<Item = ExpnData>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         let start = je.sm.lookup_char_pos(span.lo());

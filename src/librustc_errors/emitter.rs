@@ -343,8 +343,9 @@ pub trait Emitter {
             if call_sp != *sp && !always_backtrace {
                 before_after.push((*sp, call_sp));
             }
-            let backtrace_len = sp.macro_backtrace().len();
-            for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
+            let macro_backtrace: Vec<_> = sp.macro_backtrace().collect();
+            let backtrace_len = macro_backtrace.len();
+            for (i, trace) in macro_backtrace.iter().rev().enumerate() {
                 // Only show macro locations that are local
                 // and display them like a span_note
                 if trace.def_site.is_dummy() {
@@ -398,8 +399,7 @@ pub trait Emitter {
                 continue;
             }
             if sm.span_to_filename(sp_label.span.clone()).is_macros() && !always_backtrace {
-                let v = sp_label.span.macro_backtrace();
-                if let Some(use_site) = v.last() {
+                if let Some(use_site) = sp_label.span.macro_backtrace().last() {
                     before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
                 }
             }
