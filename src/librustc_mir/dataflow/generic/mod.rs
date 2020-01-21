@@ -35,7 +35,8 @@
 use std::io;
 
 use rustc::mir::{self, BasicBlock, Location};
-use rustc::ty::TyCtxt;
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
@@ -172,7 +173,22 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         return_place: &mir::Place<'tcx>,
     );
 
-    /// Calls the appropriate `Engine` constructor to find the fixpoint for this dataflow problem.
+    /// Updates the current dataflow state with the effect of taking a particular branch in a
+    /// `SwitchInt` terminator.
+    ///
+    /// Much like `apply_call_return_effect`, this effect is only propagated along a single
+    /// outgoing edge from this basic block.
+    fn apply_discriminant_switch_effect(
+        &self,
+        _state: &mut BitSet<Self::Idx>,
+        _block: BasicBlock,
+        _enum_place: &mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        _variant: VariantIdx,
+    ) {
+    }
+
+    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
     ///
     /// You shouldn't need to override this outside this module, since the combination of the
     /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
@@ -249,6 +265,17 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     );
+
+    /// See `Analysis::apply_discriminant_switch_effect`.
+    fn discriminant_switch_effect(
+        &self,
+        _state: &mut impl GenKill<Self::Idx>,
+        _block: BasicBlock,
+        _enum_place: &mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        _variant: VariantIdx,
+    ) {
+    }
 }
 
 impl<A> Analysis<'tcx> for A
@@ -300,6 +327,17 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
+    }
+
+    fn apply_discriminant_switch_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        block: BasicBlock,
+        enum_place: &mir::Place<'tcx>,
+        adt: &ty::AdtDef,
+        variant: VariantIdx,
+    ) {
+        self.discriminant_switch_effect(state, block, enum_place, adt, variant);
     }
 
     fn into_engine(

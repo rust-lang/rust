@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use rustc::mir::{self, traversal, BasicBlock, Location};
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -238,10 +238,15 @@ where
                 }
             }
 
-            SwitchInt { ref targets, .. } => {
-                for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
-                }
+            SwitchInt { ref targets, ref values, ref discr, .. } => {
+                self.propagate_bits_into_switch_int_successors(
+                    in_out,
+                    (bb, bb_data),
+                    dirty_list,
+                    discr,
+                    &*values,
+                    &*targets,
+                );
             }
 
             Call { cleanup, ref destination, ref func, ref args, .. } => {
@@ -285,6 +290,66 @@ where
         let set_changed = self.analysis.join(entry_set, &in_out);
         if set_changed {
             dirty_queue.insert(bb);
+        }
+    }
+
+    fn propagate_bits_into_switch_int_successors(
+        &mut self,
+        in_out: &mut BitSet<A::Idx>,
+        (bb, bb_data): (BasicBlock, &mir::BasicBlockData<'tcx>),
+        dirty_list: &mut WorkQueue<BasicBlock>,
+        switch_on: &mir::Operand<'tcx>,
+        values: &[u128],
+        targets: &[BasicBlock],
+    ) {
+        match bb_data.statements.last().map(|stmt| &stmt.kind) {
+            // Look at the last statement to see if it is an assignment of an enum discriminant to
+            // the local that determines the target of a `SwitchInt` like so:
+            //   _42 = discriminant(..)
+            //   SwitchInt(_42, ..)
+            Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(enum_))))
+                if Some(lhs) == switch_on.place() =>
+            {
+                let adt = match enum_.ty(self.body, self.tcx).ty.kind {
+                    ty::Adt(def, _) => def,
+                    _ => bug!("Switch on discriminant of non-ADT"),
+                };
+
+                // MIR building adds discriminants to the `values` array in the same order as they
+                // are yielded by `AdtDef::discriminants`. We rely on this to match each
+                // discriminant in `values` to its corresponding variant in linear time.
+                let mut tmp = BitSet::new_empty(in_out.domain_size());
+                let mut discriminants = adt.discriminants(self.tcx);
+                for (value, target) in values.iter().zip(targets.iter().copied()) {
+                    let (variant_idx, _) =
+                        discriminants.find(|&(_, discr)| discr.val == *value).expect(
+                            "Order of `AdtDef::discriminants` differed \
+                                 from that of `SwitchInt::values`",
+                        );
+
+                    tmp.overwrite(in_out);
+                    self.analysis.apply_discriminant_switch_effect(
+                        &mut tmp,
+                        bb,
+                        enum_,
+                        adt,
+                        variant_idx,
+                    );
+                    self.propagate_bits_into_entry_set_for(&tmp, target, dirty_list);
+                }
+
+                std::mem::drop(tmp);
+
+                // Propagate dataflow state along the "otherwise" edge.
+                let otherwise = targets.last().copied().unwrap();
+                self.propagate_bits_into_entry_set_for(&in_out, otherwise, dirty_list);
+            }
+
+            _ => {
+                for target in targets.iter().copied() {
+                    self.propagate_bits_into_entry_set_for(&in_out, target, dirty_list);
+                }
+            }
         }
     }
 }
