@@ -610,13 +610,6 @@ where
     let mut line_break_inserted = false;
 
     for idx in elems {
-        if first {
-            first = false;
-        } else {
-            write!(w, "{}", sep)?;
-            curr_line_width += sep_width;
-        }
-
         buf.clear();
         analysis.pretty_print_idx(&mut buf, idx)?;
         let idx_str =
@@ -624,11 +617,18 @@ where
         let escaped = dot::escape_html(idx_str);
         let escaped_width = escaped.chars().count();
 
-        if let Some(line_break) = &line_break {
-            if curr_line_width + sep_width + escaped_width > line_break.limit {
-                write!(w, "{}", line_break.sequence)?;
-                line_break_inserted = true;
-                curr_line_width = 0;
+        if first {
+            first = false;
+        } else {
+            write!(w, "{}", sep)?;
+            curr_line_width += sep_width;
+
+            if let Some(line_break) = &line_break {
+                if curr_line_width + sep_width + escaped_width > line_break.limit {
+                    write!(w, "{}", line_break.sequence)?;
+                    line_break_inserted = true;
+                    curr_line_width = 0;
+                }
             }
         }
 
