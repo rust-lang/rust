@@ -1,0 +1,15 @@
+error[E0080]: could not evaluate float literal (see issue #31407)
+  --> $DIR/issue-68396-let-float-bug.rs:2:9
+   |
+LL |     let 1234567890123456789012345678901234567890e-340: f64 = 0.0;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: could not evaluate float literal (see issue #31407)
+  --> $DIR/issue-68396-let-float-bug.rs:5:14
+   |
+LL |     fn param(1234567890123456789012345678901234567890e-340: f64) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
