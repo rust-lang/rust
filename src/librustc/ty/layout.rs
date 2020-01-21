@@ -2651,6 +2651,7 @@ where
                 .map(|(i, ty)| arg_of(ty, Some(i)))
                 .collect(),
             c_variadic: sig.c_variadic,
+            fixed_count: inputs.len(),
             conv,
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
