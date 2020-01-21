@@ -75,8 +75,7 @@ Misc
   should be compiled the 2018 edition of Rust.
 - [You can now provide custom themes to rustdoc with `--theme`, and check the
   current theme with `--check-theme`.][54733]
-- [You can use `#[doc(cfg(item))]` to document that a item is only available with
-  certain features.][61351]
+- [You can use `#[cfg(doc)]` to compile an item when building documentation.][61351]
 
 Compatibility Notes
 -------------------
