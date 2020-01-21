@@ -1,4 +1,7 @@
-use std::iter::{repeat, FromIterator};
+use std::{
+    hint::black_box,
+    iter::{repeat, FromIterator},
+};
 use test::Bencher;
 
 #[bench]
@@ -165,14 +168,31 @@ fn bench_from_iter_1000(b: &mut Bencher) {
 }
 
 fn do_bench_extend(b: &mut Bencher, dst_len: usize, src_len: usize) {
-    let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
     let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    do_bench_extend_iter(b, dst_len, src_len, src)
+}
+
+fn do_bench_extend_chain(b: &mut Bencher, dst_len: usize, src_len: usize) {
+    let fst = Vec::from_iter(dst_len..dst_len + src_len / 2);
+    let snd = Vec::from_iter(dst_len + src_len / 2..dst_len + src_len);
+    let src = fst.iter().cloned().chain(snd.iter().cloned());
+    do_bench_extend_iter(b, dst_len, src_len, src)
+}
+
+#[inline(never)]
+fn do_bench_extend_iter(
+    b: &mut Bencher,
+    dst_len: usize,
+    src_len: usize,
+    src: impl IntoIterator<Item = usize> + Clone,
+) {
+    let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
 
     b.bytes = src_len as u64;
 
     b.iter(|| {
-        let mut dst = dst.clone();
-        dst.extend(src.clone());
+        let mut dst = black_box(dst.clone());
+        dst.extend(black_box(src.clone()));
         assert_eq!(dst.len(), dst_len + src_len);
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
     });
@@ -211,6 +231,41 @@ fn bench_extend_0100_0100(b: &mut Bencher) {
 #[bench]
 fn bench_extend_1000_1000(b: &mut Bencher) {
     do_bench_extend(b, 1000, 1000)
+}
+
+#[bench]
+fn bench_extend_chain_0000_0000(b: &mut Bencher) {
+    do_bench_extend_chain(b, 0, 0)
+}
+
+#[bench]
+fn bench_extend_chain_0000_0010(b: &mut Bencher) {
+    do_bench_extend_chain(b, 0, 10)
+}
+
+#[bench]
+fn bench_extend_chain_0000_0100(b: &mut Bencher) {
+    do_bench_extend_chain(b, 0, 100)
+}
+
+#[bench]
+fn bench_extend_chain_0000_1000(b: &mut Bencher) {
+    do_bench_extend_chain(b, 0, 1000)
+}
+
+#[bench]
+fn bench_extend_chain_0010_0010(b: &mut Bencher) {
+    do_bench_extend_chain(b, 10, 10)
+}
+
+#[bench]
+fn bench_extend_chain_0100_0100(b: &mut Bencher) {
+    do_bench_extend_chain(b, 100, 100)
+}
+
+#[bench]
+fn bench_extend_chain_1000_1000(b: &mut Bencher) {
+    do_bench_extend_chain(b, 1000, 1000)
 }
 
 fn do_bench_push_all(b: &mut Bencher, dst_len: usize, src_len: usize) {
