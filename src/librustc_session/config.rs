@@ -447,9 +447,8 @@ impl Input {
 #[derive(Clone, Hash)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
-    out_filestem: String,
+    filestem: String,
     pub single_output_file: Option<PathBuf>,
-    extra: String,
     pub outputs: OutputTypes,
 }
 
@@ -465,7 +464,12 @@ impl OutputFilenames {
         extra: String,
         outputs: OutputTypes,
     ) -> Self {
-        OutputFilenames { out_directory, out_filestem, single_output_file, extra, outputs }
+        OutputFilenames {
+            out_directory,
+            single_output_file,
+            outputs,
+            filestem: format!("{}{}", out_filestem, extra),
+        }
     }
 
     pub fn path(&self, flavor: OutputType) -> PathBuf {
@@ -487,7 +491,7 @@ impl OutputFilenames {
     /// Like temp_path, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
-        let base = self.out_directory.join(&self.filestem());
+        let base = self.out_directory.join(&self.filestem);
 
         let mut extension = String::new();
 
@@ -505,16 +509,11 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        let path = base.with_extension(&extension[..]);
-        path
+        base.with_extension(extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.out_directory.join(&self.filestem()).with_extension(extension)
-    }
-
-    pub fn filestem(&self) -> String {
-        format!("{}{}", self.out_filestem, self.extra)
+        self.out_directory.join(&self.filestem).with_extension(extension)
     }
 }
 
