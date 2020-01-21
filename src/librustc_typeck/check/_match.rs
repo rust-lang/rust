@@ -50,10 +50,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.warn_arms_when_scrutinee_diverges(arms, match_src);
 
-        // Otherwise, we have to union together the types that the
-        // arms produce and so forth.
-        let scrut_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
+        // Otherwise, we have to union together the types that the arms produce and so forth.
+        let scrut_diverges = self.diverges.replace(Diverges::Maybe);
 
         // rust-lang/rust#55810: Typecheck patterns first (via eager
         // collection into `Vec`), so we get types for all bindings.
