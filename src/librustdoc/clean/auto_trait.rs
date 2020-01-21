@@ -462,7 +462,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .filter(|p| {
                 !orig_bounds.contains(p)
                     || match p {
-                        &&ty::Predicate::Trait(pred) => pred.def_id() == sized_trait,
+                        ty::Predicate::Trait(pred, _) => pred.def_id() == sized_trait,
                         _ => false,
                     }
             })

@@ -58,9 +58,10 @@ unsafe fn configure_llvm(sess: &Session) {
 
     let cg_opts = sess.opts.cg.llvm_args.iter();
     let tg_opts = sess.target.target.options.llvm_args.iter();
+    let sess_args = cg_opts.chain(tg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        cg_opts.chain(tg_opts).map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
+        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -107,7 +108,7 @@ unsafe fn configure_llvm(sess: &Session) {
         // during inlining. Unfortunately these may block other optimizations.
         add("-preserve-alignment-assumptions-during-inlining=false", false);
 
-        for arg in &sess.opts.cg.llvm_args {
+        for arg in sess_args {
             add(&(*arg), true);
         }
     }

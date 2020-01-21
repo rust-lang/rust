@@ -12,7 +12,7 @@ use super::elaborate_predicates;
 
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -234,7 +234,7 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
         .map(|(predicate, _)| predicate.subst_supertrait(tcx, &trait_ref))
         .any(|predicate| {
             match predicate {
-                ty::Predicate::Trait(ref data) => {
+                ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
                     data.skip_binder().input_types().skip(1).any(has_self_ty)
                 }
@@ -285,7 +285,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates).any(|predicate| match predicate {
-        ty::Predicate::Trait(ref trait_pred) => {
+        ty::Predicate::Trait(ref trait_pred, _) => {
             trait_pred.def_id() == sized_def_id && trait_pred.skip_binder().self_ty().is_param(0)
         }
         ty::Predicate::Projection(..)
@@ -585,6 +585,7 @@ fn receiver_is_dispatchable<'tcx>(
             def_id: unsize_did,
             substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
         }
+        .without_const()
         .to_predicate();
 
         // U: Trait<Arg1, ..., ArgN>
@@ -598,7 +599,7 @@ fn receiver_is_dispatchable<'tcx>(
                     }
                 });
 
-            ty::TraitRef { def_id: unsize_did, substs }.to_predicate()
+            ty::TraitRef { def_id: unsize_did, substs }.without_const().to_predicate()
         };
 
         let caller_bounds: Vec<Predicate<'tcx>> = param_env
@@ -620,6 +621,7 @@ fn receiver_is_dispatchable<'tcx>(
             def_id: dispatch_from_dyn_did,
             substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
         }
+        .without_const()
         .to_predicate();
 
         Obligation::new(ObligationCause::dummy(), param_env, predicate)

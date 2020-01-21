@@ -1249,10 +1249,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(
                             |bound| match *bound {
-                                GenericBound::Trait(ref ty, TraitBoundModifier::None) => {
+                                GenericBound::Trait(ref ty, TraitBoundModifier::None)
+                                | GenericBound::Trait(ref ty, TraitBoundModifier::MaybeConst) => {
                                     Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
                                 }
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                                // `?const ?Bound` will cause an error during AST validation
+                                // anyways, so treat it like `?Bound` as compilation proceeds.
+                                GenericBound::Trait(_, TraitBoundModifier::Maybe)
+                                | GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
+                                    None
+                                }
                                 GenericBound::Outlives(ref lifetime) => {
                                     if lifetime_bound.is_none() {
                                         lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -2157,10 +2163,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::PolyTraitRef<'hir> {
-        if p.trait_ref.constness.is_some() {
-            self.diagnostic().span_err(p.span, "`?const` on trait bounds is not yet implemented");
-        }
-
         let bound_generic_params = self.lower_generic_params(
             &p.bound_generic_params,
             &NodeMap::default(),
@@ -2299,7 +2301,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifier(&mut self, f: TraitBoundModifier) -> hir::TraitBoundModifier {
         match f {
             TraitBoundModifier::None => hir::TraitBoundModifier::None,
-            TraitBoundModifier::Maybe => hir::TraitBoundModifier::Maybe,
+            TraitBoundModifier::MaybeConst => hir::TraitBoundModifier::MaybeConst,
+
+            // `MaybeConstMaybe` will cause an error during AST validation, but we need to pick a
+            // placeholder for compilation to proceed.
+            TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
+                hir::TraitBoundModifier::Maybe
+            }
         }
     }
 

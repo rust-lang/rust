@@ -312,6 +312,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             unsafety: _,
             polarity: _,
             defaultness: _,
+            constness: _,
             ref generics,
             ref of_trait,
             ref self_ty,

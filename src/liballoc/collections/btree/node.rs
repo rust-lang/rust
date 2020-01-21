@@ -54,10 +54,8 @@ pub const CAPACITY: usize = 2 * B - 1;
 /// `NodeHeader` because we do not want unnecessary padding between `len` and the keys.
 /// Crucially, `NodeHeader` can be safely transmuted to different K and V. (This is exploited
 /// by `as_header`.)
-/// See `into_key_slice` for an explanation of K2. K2 cannot be safely transmuted around
-/// because the size of `NodeHeader` depends on its alignment!
 #[repr(C)]
-struct NodeHeader<K, V, K2 = ()> {
+struct NodeHeader<K, V> {
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
     /// This either points to an actual node or is null.
     parent: *const InternalNode<K, V>,
@@ -72,9 +70,6 @@ struct NodeHeader<K, V, K2 = ()> {
     /// This next to `parent_idx` to encourage the compiler to join `len` and
     /// `parent_idx` into the same 32-bit word, reducing space overhead.
     len: u16,
-
-    /// See `into_key_slice`.
-    keys_start: [K2; 0],
 }
 #[repr(C)]
 struct LeafNode<K, V> {
@@ -128,7 +123,7 @@ unsafe impl Sync for NodeHeader<(), ()> {}
 // We use just a header in order to save space, since no operation on an empty tree will
 // ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: NodeHeader<(), ()> =
-    NodeHeader { parent: ptr::null(), parent_idx: MaybeUninit::uninit(), len: 0, keys_start: [] };
+    NodeHeader { parent: ptr::null(), parent_idx: MaybeUninit::uninit(), len: 0 };
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
@@ -390,14 +385,13 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Borrows a view into the keys stored in the node.
-    /// Works on all possible nodes, including the shared root.
-    pub fn keys(&self) -> &[K] {
+    /// The caller must ensure that the node is not the shared root.
+    pub unsafe fn keys(&self) -> &[K] {
         self.reborrow().into_key_slice()
     }
 
     /// Borrows a view into the values stored in the node.
     /// The caller must ensure that the node is not the shared root.
-    /// This function is not public, so doesn't have to support shared roots like `keys` does.
     fn vals(&self) -> &[V] {
         self.reborrow().into_val_slice()
     }
@@ -515,7 +509,6 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     /// The caller must ensure that the node is not the shared root.
-    /// This function is not public, so doesn't have to support shared roots like `keys` does.
     fn keys_mut(&mut self) -> &mut [K] {
         unsafe { self.reborrow_mut().into_key_slice_mut() }
     }
@@ -527,48 +520,11 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    fn into_key_slice(self) -> &'a [K] {
-        // We have to be careful here because we might be pointing to the shared root.
-        // In that case, we must not create an `&LeafNode`.  We could just return
-        // an empty slice whenever the length is 0 (this includes the shared root),
-        // but we want to avoid that run-time check.
-        // Instead, we create a slice pointing into the node whenever possible.
-        // We can sometimes do this even for the shared root, as the slice will be
-        // empty and `NodeHeader` contains an empty `keys_start` array.
-        // We cannot *always* do this because:
-        // - `keys_start` is not correctly typed because we want `NodeHeader`'s size to
-        //   not depend on the alignment of `K` (needed because `as_header` should be safe).
-        //   For this reason, `NodeHeader` has this `K2` parameter (that's usually `()`
-        //   and hence just adds a size-0-align-1 field, not affecting layout).
-        //   If the correctly typed header is more highly aligned than the allocated header,
-        //   we cannot transmute safely.
-        // - Even if we can transmute, the offset of a correctly typed `keys_start` might
-        //   be different and outside the bounds of the allocated header!
-        // So we do an alignment check and a size check first, that will be evaluated
-        // at compile-time, and only do any run-time check in the rare case that
-        // the compile-time checks signal danger.
-        if (mem::align_of::<NodeHeader<K, V, K>>() > mem::align_of::<NodeHeader<K, V>>()
-            || mem::size_of::<NodeHeader<K, V, K>>() != mem::size_of::<NodeHeader<K, V>>())
-            && self.is_shared_root()
-        {
-            &[]
-        } else {
-            // If we are a `LeafNode<K, V>`, we can always transmute to
-            // `NodeHeader<K, V, K>` and `keys_start` always has the same offset
-            // as the actual `keys`.
-            // Thanks to the checks above, we know that we can transmute to
-            // `NodeHeader<K, V, K>` and that `keys_start` will be
-            // in-bounds of some allocation even if this is the shared root!
-            // (We might be one-past-the-end, but that is allowed by LLVM.)
-            // Thus we can use `NodeHeader<K, V, K>`
-            // to compute the pointer where the keys start.
-            // This entire hack will become unnecessary once
-            // <https://github.com/rust-lang/rfcs/pull/2582> lands, then we can just take a raw
-            // pointer to the `keys` field of `*const InternalNode<K, V>`.
-            let header = self.as_header() as *const _ as *const NodeHeader<K, V, K>;
-            let keys = unsafe { &(*header).keys_start as *const _ as *const K };
-            unsafe { slice::from_raw_parts(keys, self.len()) }
-        }
+    /// The caller must ensure that the node is not the shared root.
+    unsafe fn into_key_slice(self) -> &'a [K] {
+        debug_assert!(!self.is_shared_root());
+        // We cannot be the shared root, so `as_leaf` is okay.
+        slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len())
     }
 
     /// The caller must ensure that the node is not the shared root.
@@ -578,9 +534,10 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
     }
 
+    /// The caller must ensure that the node is not the shared root.
     fn into_slices(self) -> (&'a [K], &'a [V]) {
         let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice(), self.into_val_slice())
+        (unsafe { k.into_key_slice() }, self.into_val_slice())
     }
 }
 

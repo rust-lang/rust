@@ -564,7 +564,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                ty::Predicate::Trait(ref tr, _) if traits.contains(&tr.def_id()) => {
                     if unsize_did == tr.def_id() {
                         let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
                         if let ty::Tuple(..) = sty {

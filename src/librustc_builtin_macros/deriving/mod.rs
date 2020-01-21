@@ -160,6 +160,7 @@ fn inject_impl_of_structural_trait(
             unsafety: ast::Unsafety::Normal,
             polarity: ast::ImplPolarity::Positive,
             defaultness: ast::Defaultness::Final,
+            constness: ast::Constness::NotConst,
             generics,
             of_trait: Some(trait_ref),
             self_ty: self_type,

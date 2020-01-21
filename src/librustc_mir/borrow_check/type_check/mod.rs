@@ -32,6 +32,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::{Span, DUMMY_SP};
+use syntax::ast;
 
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
@@ -1930,12 +1931,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,
-                                    ty::Predicate::Trait(ty::Binder::bind(ty::TraitPredicate {
-                                        trait_ref: ty::TraitRef::new(
-                                            self.tcx().lang_items().copy_trait().unwrap(),
-                                            tcx.mk_substs_trait(ty, &[]),
-                                        ),
-                                    })),
+                                    ty::Predicate::Trait(
+                                        ty::Binder::bind(ty::TraitPredicate {
+                                            trait_ref: ty::TraitRef::new(
+                                                self.tcx().lang_items().copy_trait().unwrap(),
+                                                tcx.mk_substs_trait(ty, &[]),
+                                            ),
+                                        }),
+                                        ast::Constness::NotConst,
+                                    ),
                                 ),
                                 &traits::SelectionError::Unimplemented,
                                 false,
@@ -2573,7 +2577,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) {
         self.prove_predicates(
-            Some(ty::Predicate::Trait(trait_ref.to_poly_trait_ref().to_poly_trait_predicate())),
+            Some(ty::Predicate::Trait(
+                trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
+                ast::Constness::NotConst,
+            )),
             locations,
             category,
         );

@@ -90,6 +90,7 @@ pub mod writeback;
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -112,7 +113,7 @@ use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSel
 use rustc::ty::util::{Discr, IntTypeExt, Representability};
 use rustc::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType,
+    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
 };
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1421,7 +1422,7 @@ fn check_fn<'a, 'tcx>(
                 inherited.register_predicate(traits::Obligation::new(
                     cause,
                     param_env,
-                    trait_ref.to_predicate(),
+                    trait_ref.without_const().to_predicate(),
                 ));
             }
         }
@@ -2610,6 +2611,16 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         None
     }
 
+    fn default_constness_for_trait_bounds(&self) -> ast::Constness {
+        // FIXME: refactor this into a method
+        let node = self.tcx.hir().get(self.body_id);
+        if let Some(fn_like) = FnLikeNode::from_node(node) {
+            fn_like.constness()
+        } else {
+            ast::Constness::NotConst
+        }
+    }
+
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -2621,7 +2632,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(self.param_env.caller_bounds.iter().filter_map(
                 |&predicate| match predicate {
-                    ty::Predicate::Trait(ref data)
+                    ty::Predicate::Trait(ref data, _)
                         if data.skip_binder().self_ty().is_param(index) =>
                     {
                         // HACK(eddyb) should get the original `Span`.
@@ -3693,7 +3704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Predicate::Projection(ref data) => {
                     Some((data.to_poly_trait_ref(self.tcx), obligation))
                 }
-                ty::Predicate::Trait(ref data) => Some((data.to_poly_trait_ref(), obligation)),
+                ty::Predicate::Trait(ref data, _) => Some((data.to_poly_trait_ref(), obligation)),
                 ty::Predicate::Subtype(..) => None,
                 ty::Predicate::RegionOutlives(..) => None,
                 ty::Predicate::TypeOutlives(..) => None,
@@ -3996,7 +4007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+            if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
                 let mut referenced_in = final_arg_types
@@ -4040,7 +4051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                        if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
                             for arg in path

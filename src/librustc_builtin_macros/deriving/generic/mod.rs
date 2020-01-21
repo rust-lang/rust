@@ -709,6 +709,7 @@ impl<'a> TraitDef<'a> {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
+                constness: ast::Constness::NotConst,
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,

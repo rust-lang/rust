@@ -94,7 +94,7 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
         use rustc::ty::Predicate;
 
         match self {
-            Predicate::Trait(predicate) => predicate.lower(),
+            Predicate::Trait(predicate, _) => predicate.lower(),
             Predicate::RegionOutlives(predicate) => predicate.lower(),
             Predicate::TypeOutlives(predicate) => predicate.lower(),
             Predicate::Projection(predicate) => predicate.lower(),

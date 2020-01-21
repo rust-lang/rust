@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::attr;
+use syntax::{ast, attr};
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
@@ -27,12 +27,19 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     bug!("closure kind predicate on function: {:#?}", predicate)
                 }
                 Predicate::Subtype(_) => bug!("subtype predicate on function: {:#?}", predicate),
-                Predicate::Trait(pred) => {
+                Predicate::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
                     match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
+                            // Allow `T: ?const Trait`
+                            if *constness == ast::Constness::NotConst
+                                && feature_allowed(tcx, def_id, sym::const_trait_bound_opt_out)
+                            {
+                                continue;
+                            }
+
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
                             let span = tcx.def_span(def.def_id);

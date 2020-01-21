@@ -2,7 +2,7 @@ use rustc::hir::map as hir_map;
 use rustc::session::CrateDisambiguator;
 use rustc::traits::{self};
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -58,6 +58,7 @@ fn sized_constraint_for_ty(tcx: TyCtxt<'tcx>, adtdef: &ty::AdtDef, ty: Ty<'tcx>)
                 def_id: sized_trait,
                 substs: tcx.mk_substs_trait(ty, &[]),
             })
+            .without_const()
             .to_predicate();
             let predicates = tcx.predicates_of(adtdef.did).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }

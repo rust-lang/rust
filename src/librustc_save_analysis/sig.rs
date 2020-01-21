@@ -486,6 +486,7 @@ impl Sig for ast::Item {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 ref generics,
                 ref of_trait,
                 ref self_ty,
@@ -499,6 +500,9 @@ impl Sig for ast::Item {
                     text.push_str("unsafe ");
                 }
                 text.push_str("impl");
+                if constness == ast::Constness::Const {
+                    text.push_str(" const");
+                }
 
                 let generics_sig = generics.make(offset + text.len(), id, scx)?;
                 text.push_str(&generics_sig.text);

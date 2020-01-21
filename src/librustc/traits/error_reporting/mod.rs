@@ -19,7 +19,9 @@ use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFolder;
 use crate::ty::SubtypePredicate;
-use crate::ty::{self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{
+    self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -128,7 +130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let (cond, error) = match (cond, error) {
-            (&ty::Predicate::Trait(..), &ty::Predicate::Trait(ref error)) => (cond, error),
+            (&ty::Predicate::Trait(..), &ty::Predicate::Trait(ref error, _)) => (cond, error),
             _ => {
                 // FIXME: make this work in other cases too.
                 return false;
@@ -136,7 +138,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         for implication in super::elaborate_predicates(self.tcx, vec![cond.clone()]) {
-            if let ty::Predicate::Trait(implication) = implication {
+            if let ty::Predicate::Trait(implication, _) = implication {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
                 // FIXME: I'm just not taking associated types at all here.
@@ -528,7 +530,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     return;
                 }
                 match obligation.predicate {
-                    ty::Predicate::Trait(ref trait_predicate) => {
+                    ty::Predicate::Trait(ref trait_predicate, _) => {
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
@@ -581,7 +583,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             "{}",
                             message.unwrap_or_else(|| format!(
                                 "the trait bound `{}` is not satisfied{}",
-                                trait_ref.to_predicate(),
+                                trait_ref.without_const().to_predicate(),
                                 post_message,
                             ))
                         );
@@ -693,7 +695,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 trait_pred
                             });
                             let unit_obligation = Obligation {
-                                predicate: ty::Predicate::Trait(predicate),
+                                predicate: ty::Predicate::Trait(
+                                    predicate,
+                                    ast::Constness::NotConst,
+                                ),
                                 ..obligation.clone()
                             };
                             if self.predicate_may_hold(&unit_obligation) {
@@ -986,7 +991,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let new_trait_ref =
             ty::TraitRef { def_id, substs: self.tcx.mk_substs_trait(output_ty, &[]) };
-        Obligation::new(cause, param_env, new_trait_ref.to_predicate())
+        Obligation::new(cause, param_env, new_trait_ref.without_const().to_predicate())
     }
 }
 
@@ -1074,7 +1079,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let mut err = match predicate {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
                 debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind, trait_ref);
@@ -1267,8 +1272,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             )
             .value;
 
-            let obligation =
-                Obligation::new(ObligationCause::dummy(), param_env, cleaned_pred.to_predicate());
+            let obligation = Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                cleaned_pred.without_const().to_predicate(),
+            );
 
             self.predicate_may_hold(&obligation)
         })

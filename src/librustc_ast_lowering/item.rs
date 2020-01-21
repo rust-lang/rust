@@ -66,9 +66,8 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl { ref of_trait, .. } = item.kind {
-                    if of_trait.as_ref().map(|tr| tr.constness.is_some()).unwrap_or(false) {
-                        this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
+                if let ItemKind::Impl { constness, ref of_trait, .. } = item.kind {
+                    if constness == Constness::Const {
                         this.lctx
                             .diagnostic()
                             .span_err(item.span, "const trait impls are not yet implemented");
@@ -365,6 +364,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unsafety,
                 polarity,
                 defaultness,
+                constness,
                 generics: ref ast_generics,
                 of_trait: ref trait_ref,
                 self_ty: ref ty,
@@ -421,6 +421,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     unsafety,
                     polarity,
                     defaultness: self.lower_defaultness(defaultness, true /* [1] */),
+                    constness,
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,

@@ -582,15 +582,12 @@ crate struct MatchCheckCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    crate fn create_and_enter<F, R>(
+    crate fn create_and_enter<R>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         module: DefId,
-        f: F,
-    ) -> R
-    where
-        F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R,
-    {
+        f: impl for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R,
+    ) -> R {
         let pattern_arena = TypedArena::default();
 
         f(MatchCheckCtxt { tcx, param_env, module, pattern_arena: &pattern_arena })

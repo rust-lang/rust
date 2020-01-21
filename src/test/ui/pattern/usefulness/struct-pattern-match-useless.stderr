@@ -1,8 +1,10 @@
 error: unreachable pattern
   --> $DIR/struct-pattern-match-useless.rs:12:9
    |
+LL |         Foo { x: _x, y: _y } => (),
+   |         -------------------- matches any value
 LL |         Foo { .. } => ()
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^ unreachable pattern
    |
 note: lint level defined here
   --> $DIR/struct-pattern-match-useless.rs:1:9

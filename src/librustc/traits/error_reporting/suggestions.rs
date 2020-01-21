@@ -6,7 +6,7 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::object_safety::object_safety_violations;
 use crate::ty::TypeckTables;
-use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
@@ -48,7 +48,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             } else {
                                 " where"
                             },
-                            trait_ref.to_predicate(),
+                            trait_ref.without_const().to_predicate(),
                         ),
                         Applicability::MachineApplicable,
                     );
@@ -338,8 +338,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let new_self_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, self_ty);
             let substs = self.tcx.mk_substs_trait(new_self_ty, &[]);
             let new_trait_ref = ty::TraitRef::new(obligation.parent_trait_ref.def_id(), substs);
-            let new_obligation =
-                Obligation::new(ObligationCause::dummy(), param_env, new_trait_ref.to_predicate());
+            let new_obligation = Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                new_trait_ref.without_const().to_predicate(),
+            );
             if self.predicate_must_hold_modulo_regions(&new_obligation) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     // We have a very specific type of error, where just borrowing this argument
@@ -1120,7 +1123,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // the type. The last generator has information about where the bound was introduced. At
         // least one generator should be present for this diagnostic to be modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate {
-            ty::Predicate::Trait(p) => {
+            ty::Predicate::Trait(p, _) => {
                 (Some(p.skip_binder().trait_ref), Some(p.skip_binder().self_ty()))
             }
             _ => (None, None),
@@ -1543,7 +1546,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note(&format!("required because it appears within the type `{}`", ty));
                 obligated_types.push(ty);
 
-                let parent_predicate = parent_trait_ref.to_predicate();
+                let parent_predicate = parent_trait_ref.without_const().to_predicate();
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
                     self.note_obligation_cause_code(
                         err,
@@ -1560,7 +1563,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     parent_trait_ref.print_only_trait_path(),
                     parent_trait_ref.skip_binder().self_ty()
                 ));
-                let parent_predicate = parent_trait_ref.to_predicate();
+                let parent_predicate = parent_trait_ref.without_const().to_predicate();
                 self.note_obligation_cause_code(
                     err,
                     &parent_predicate,

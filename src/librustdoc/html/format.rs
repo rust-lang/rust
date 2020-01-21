@@ -361,6 +361,7 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
+                    hir::TraitBoundModifier::MaybeConst => "?const",
                 };
                 if f.alternate() {
                     write!(f, "{}{:#}", modifier_str, ty.print())

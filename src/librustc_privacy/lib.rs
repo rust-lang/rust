@@ -91,7 +91,7 @@ where
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
-                ty::Predicate::Trait(poly_predicate) => {
+                ty::Predicate::Trait(poly_predicate, _) => {
                     let ty::TraitPredicate { trait_ref } = *poly_predicate.skip_binder();
                     if self.visit_trait(trait_ref) {
                         return true;
@@ -1235,7 +1235,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             // The traits' privacy in bodies is already checked as a part of trait object types.
             let bounds = rustc_typeck::hir_trait_to_predicates(self.tcx, trait_ref);
 
-            for (trait_predicate, _) in bounds.trait_bounds {
+            for (trait_predicate, _, _) in bounds.trait_bounds {
                 if self.visit_trait(*trait_predicate.skip_binder()) {
                     return;
                 }
