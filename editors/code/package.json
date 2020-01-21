@@ -25,7 +25,7 @@
     "dependencies": {
         "jsonc-parser": "^2.1.0",
         "seedrandom": "^3.0.5",
-        "vscode-languageclient": "^6.0.0"
+        "vscode-languageclient": "^6.0.1"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.0",
