@@ -58,7 +58,7 @@ enum LIUState {
 fn line_is_url(columns: usize, line: &str) -> bool {
     // more basic check for error_codes.rs, to avoid complexity in implementing two state machines
     if columns == ERROR_CODE_COLS {
-        return line.starts_with("[") && line.contains("]:") && line.contains("http");
+        return line.starts_with('[') && line.contains("]:") && line.contains("http");
     }
 
     use self::LIUState::*;
