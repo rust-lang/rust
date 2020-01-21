@@ -52,7 +52,7 @@ use std::ops::Deref;
 use std::ops::Range;
 use std::slice;
 use std::{mem, ptr};
-use syntax::ast::{self, Ident, Name, NodeId};
+use syntax::ast::{self, Constness, Ident, Name, NodeId};
 use syntax::attr;
 
 pub use self::sty::BoundRegion::*;
@@ -1068,7 +1068,11 @@ pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
-    Trait(PolyTraitPredicate<'tcx>),
+    ///
+    /// A trait predicate will have `Constness::Const` if it originates
+    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
+    /// `const fn foobar<Foo: Bar>() {}`).
+    Trait(PolyTraitPredicate<'tcx>, Constness),
 
     /// `where 'a: 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
@@ -1191,8 +1195,8 @@ impl<'tcx> Predicate<'tcx> {
 
         let substs = &trait_ref.skip_binder().substs;
         match *self {
-            Predicate::Trait(ref binder) => {
-                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)))
+            Predicate::Trait(ref binder, constness) => {
+                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
             }
             Predicate::Subtype(ref binder) => {
                 Predicate::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
@@ -1336,15 +1340,33 @@ pub trait ToPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx>;
 }
 
-impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.clone() }))
+        ty::Predicate::Trait(
+            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value.clone() }),
+            self.constness,
+        )
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for PolyTraitRef<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.to_poly_trait_predicate())
+        ty::Predicate::Trait(
+            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value.clone() }),
+            self.constness,
+        )
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
+        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
+        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
     }
 }
 
@@ -1413,7 +1435,7 @@ impl<'tcx> Predicate<'tcx> {
     /// with depth 0 are bound by the predicate.
     pub fn walk_tys(&'a self) -> impl Iterator<Item = Ty<'tcx>> + 'a {
         match *self {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 WalkTysIter::InputTypes(data.skip_binder().input_types())
             }
             ty::Predicate::Subtype(binder) => {
@@ -1439,7 +1461,7 @@ impl<'tcx> Predicate<'tcx> {
 
     pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
         match *self {
-            Predicate::Trait(ref t) => Some(t.to_poly_trait_ref()),
+            Predicate::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
             Predicate::Projection(..)
             | Predicate::Subtype(..)
             | Predicate::RegionOutlives(..)
@@ -1699,6 +1721,33 @@ impl<'tcx> ParamEnv<'tcx> {
         }
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ConstnessAnd<T> {
+    pub constness: Constness,
+    pub value: T,
+}
+
+// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate()` to ensure that
+// the constness of trait bounds is being propagated correctly.
+pub trait WithConstness: Sized {
+    #[inline]
+    fn with_constness(self, constness: Constness) -> ConstnessAnd<Self> {
+        ConstnessAnd { constness, value: self }
+    }
+
+    #[inline]
+    fn with_const(self) -> ConstnessAnd<Self> {
+        self.with_constness(Constness::Const)
+    }
+
+    #[inline]
+    fn without_const(self) -> ConstnessAnd<Self> {
+        self.with_constness(Constness::NotConst)
+    }
+}
+
+impl<T> WithConstness for T {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {

@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::ty::outlives::Component;
 use crate::ty::subst::{GenericArg, Subst, SubstsRef};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -13,8 +13,8 @@ use super::{Normalized, Obligation, ObligationCause, PredicateObligation, Select
 
 fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
     match *pred {
-        ty::Predicate::Trait(ref data) => {
-            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data))
+        ty::Predicate::Trait(ref data, constness) => {
+            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data), constness)
         }
 
         ty::Predicate::RegionOutlives(ref data) => {
@@ -99,14 +99,14 @@ pub fn elaborate_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Elaborator<'tcx> {
-    elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
+    elaborate_predicates(tcx, vec![trait_ref.without_const().to_predicate()])
 }
 
 pub fn elaborate_trait_refs<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate()).collect();
+    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate()).collect();
     elaborate_predicates(tcx, predicates)
 }
 
@@ -127,7 +127,7 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
         let tcx = self.visited.tcx;
         match *predicate {
-            ty::Predicate::Trait(ref data) => {
+            ty::Predicate::Trait(ref data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -358,7 +358,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
     fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.tcx;
         let trait_ref = item.trait_ref();
-        let pred = trait_ref.to_predicate();
+        let pred = trait_ref.without_const().to_predicate();
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
@@ -370,13 +370,9 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, &pred);
-        if item
-            .path
-            .iter()
-            .rev()
-            .skip(1)
-            .any(|(tr, _)| anonymize_predicate(tcx, &tr.to_predicate()) == anon_pred)
-        {
+        if item.path.iter().rev().skip(1).any(|(tr, _)| {
+            anonymize_predicate(tcx, &tr.without_const().to_predicate()) == anon_pred
+        }) {
             return false;
         }
 
@@ -471,7 +467,7 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(pred) = self.base_iterator.next() {
-            if let ty::Predicate::Trait(data) = pred {
+            if let ty::Predicate::Trait(data, _) = pred {
                 return Some(data.to_poly_trait_ref());
             }
         }
@@ -545,7 +541,12 @@ pub fn predicate_for_trait_ref<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     recursion_depth: usize,
 ) -> PredicateObligation<'tcx> {
-    Obligation { cause, param_env, recursion_depth, predicate: trait_ref.to_predicate() }
+    Obligation {
+        cause,
+        param_env,
+        recursion_depth,
+        predicate: trait_ref.without_const().to_predicate(),
+    }
 }
 
 pub fn predicate_for_trait_def(

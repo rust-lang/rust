@@ -25,6 +25,7 @@ use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
     self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    WithConstness,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -824,7 +825,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: do we want to commit to this behavior for param bounds?
 
         let bounds = self.param_env.caller_bounds.iter().filter_map(|predicate| match *predicate {
-            ty::Predicate::Trait(ref trait_predicate) => {
+            ty::Predicate::Trait(ref trait_predicate, _) => {
                 match trait_predicate.skip_binder().trait_ref.self_ty().kind {
                     ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
                     _ => None,
@@ -1394,7 +1395,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 TraitCandidate(trait_ref) => {
-                    let predicate = trait_ref.to_predicate();
+                    let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
@@ -1428,7 +1429,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    if let &ty::Predicate::Trait(ref pred) = &o.predicate {
+                    if let &ty::Predicate::Trait(ref pred, _) = &o.predicate {
                         possibly_unsatisfied_predicates.push(pred.skip_binder().trait_ref);
                     }
                 }

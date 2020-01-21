@@ -337,7 +337,10 @@ impl AutoTraitFinder<'tcx> {
                 &Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds, ty::Predicate::Trait(pred));
+                        self.add_user_pred(
+                            &mut user_computed_preds,
+                            ty::Predicate::Trait(pred, ast::Constness::NotConst),
+                        );
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -405,7 +408,7 @@ impl AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             match (&new_pred, old_pred) {
-                (&ty::Predicate::Trait(new_trait), ty::Predicate::Trait(old_trait)) => {
+                (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) => {
                     if new_trait.def_id() == old_trait.def_id() {
                         let new_substs = new_trait.skip_binder().trait_ref.substs;
                         let old_substs = old_trait.skip_binder().trait_ref.substs;
@@ -627,7 +630,7 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
             match &predicate {
-                &ty::Predicate::Trait(p) => {
+                &ty::Predicate::Trait(p, _) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred

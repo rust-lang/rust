@@ -3,6 +3,8 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
+// ignore-tidy-filelength
+
 use crate::collect::PlaceholderHirTyCollector;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
@@ -17,7 +19,7 @@ use rustc::traits::astconv_object_safety_violations;
 use rustc::traits::error_reporting::report_object_safety_error;
 use rustc::traits::wf::object_region_bounds;
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
@@ -31,7 +33,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
-use syntax::ast;
+use syntax::ast::{self, Constness};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::collections::BTreeSet;
@@ -47,6 +49,8 @@ pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn item_def_id(&self) -> Option<DefId>;
+
+    fn default_constness_for_trait_bounds(&self) -> Constness;
 
     /// Returns predicates in scope of the form `X: Foo`, where `X` is
     /// a type parameter `X` with the given id `def_id`. This is a
@@ -918,6 +922,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         trait_ref: &hir::TraitRef<'_>,
         span: Span,
+        constness: Constness,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
@@ -946,7 +951,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
         let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
 
-        bounds.trait_bounds.push((poly_trait_ref, span));
+        bounds.trait_bounds.push((poly_trait_ref, span, constness));
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
@@ -992,12 +997,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn instantiate_poly_trait_ref(
         &self,
         poly_trait_ref: &hir::PolyTraitRef<'_>,
+        constness: Constness,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
     ) -> Option<Vec<Span>> {
         self.instantiate_poly_trait_ref_inner(
             &poly_trait_ref.trait_ref,
             poly_trait_ref.span,
+            constness,
             self_ty,
             bounds,
             false,
@@ -1180,18 +1187,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut trait_bounds = Vec::new();
         let mut region_bounds = Vec::new();
 
+        let constness = self.default_constness_for_trait_bounds();
         for ast_bound in ast_bounds {
             match *ast_bound {
                 hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => {
-                    trait_bounds.push(b)
+                    trait_bounds.push((b, constness))
+                }
+                hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::MaybeConst) => {
+                    trait_bounds.push((b, Constness::NotConst))
                 }
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
             }
         }
 
-        for bound in trait_bounds {
-            let _ = self.instantiate_poly_trait_ref(bound, param_ty, bounds);
+        for (bound, constness) in trait_bounds {
+            let _ = self.instantiate_poly_trait_ref(bound, constness, param_ty, bounds);
         }
 
         bounds.region_bounds.extend(
@@ -1225,7 +1236,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
 
         self.add_bounds(param_ty, ast_bounds, &mut bounds);
-        bounds.trait_bounds.sort_by_key(|(t, _)| t.def_id());
+        bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
             if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
@@ -1416,15 +1427,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
         for trait_bound in trait_bounds.iter().rev() {
-            let cur_potential_assoc_types =
-                self.instantiate_poly_trait_ref(trait_bound, dummy_self, &mut bounds);
+            let cur_potential_assoc_types = self.instantiate_poly_trait_ref(
+                trait_bound,
+                Constness::NotConst,
+                dummy_self,
+                &mut bounds,
+            );
             potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
         }
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits =
-            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().cloned());
+        let expanded_traits = traits::expand_trait_aliases(
+            tcx,
+            bounds.trait_bounds.iter().map(|&(a, b, _)| (a.clone(), b)),
+        );
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
@@ -1480,16 +1497,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let regular_traits_refs_spans = bounds
             .trait_bounds
             .into_iter()
-            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
+            .filter(|(trait_ref, _, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-        for (base_trait_ref, span) in regular_traits_refs_spans {
+        for (base_trait_ref, span, constness) in regular_traits_refs_spans {
+            assert_eq!(constness, ast::Constness::NotConst);
+
             for trait_ref in traits::elaborate_trait_ref(tcx, base_trait_ref) {
                 debug!(
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     trait_ref
                 );
                 match trait_ref {
-                    ty::Predicate::Trait(pred) => {
+                    ty::Predicate::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .filter(|item| item.kind == ty::AssocKind::Type)
@@ -2948,7 +2967,7 @@ pub struct Bounds<'tcx> {
 
     /// A list of trait bounds. So if you had `T: Debug` this would be
     /// `T: Debug`. Note that the self-type is explicit here.
-    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span, Constness)>,
 
     /// A list of projection equality bounds. So if you had `T:
     /// Iterator<Item = u32>` this would include `<T as
@@ -2979,7 +2998,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.to_predicate(), span)
+                (trait_ref.without_const().to_predicate(), span)
             })
         });
 
@@ -2996,11 +3015,10 @@ impl<'tcx> Bounds<'tcx> {
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
                         (ty::Binder::bind(outlives).to_predicate(), span)
                     })
-                    .chain(
-                        self.trait_bounds
-                            .iter()
-                            .map(|&(bound_trait_ref, span)| (bound_trait_ref.to_predicate(), span)),
-                    )
+                    .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
+                        let predicate = bound_trait_ref.with_constness(constness).to_predicate();
+                        (predicate, span)
+                    }))
                     .chain(
                         self.projection_bounds
                             .iter()

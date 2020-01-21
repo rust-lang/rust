@@ -5,7 +5,7 @@ use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc::ty::{self, TraitRef, Ty, TyCtxt};
+use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -122,8 +122,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
-        let obligation =
-            traits::Obligation::new(cause.clone(), self.param_env, trait_ref.to_predicate());
+        let obligation = traits::Obligation::new(
+            cause.clone(),
+            self.param_env,
+            trait_ref.without_const().to_predicate(),
+        );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;

@@ -150,6 +150,15 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 }
 
+impl TypeFoldable<'tcx> for syntax::ast::Constness {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
+    }
+}
+
 /// The `TypeFolder` trait defines the actual *folding*. There is a
 /// method defined for every foldable type. Each of these has a
 /// default implementation that does an "identity" fold. Within each

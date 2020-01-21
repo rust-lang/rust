@@ -1,6 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
-use crate::ty::{self, ToPredicate, Ty, TyCtxt};
+use crate::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_hir::def_id::DefId;
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
@@ -33,7 +33,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: trait_ref.to_predicate(),
+                predicate: trait_ref.without_const().to_predicate(),
             },
         );
     }

@@ -203,6 +203,7 @@ pub struct Impl<'hir> {
     pub unsafety: hir::Unsafety,
     pub polarity: hir::ImplPolarity,
     pub defaultness: hir::Defaultness,
+    pub constness: ast::Constness,
     pub generics: &'hir hir::Generics<'hir>,
     pub trait_: &'hir Option<hir::TraitRef<'hir>>,
     pub for_: &'hir hir::Ty<'hir>,

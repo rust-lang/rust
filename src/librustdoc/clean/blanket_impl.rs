@@ -1,7 +1,7 @@
 use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::subst::Subst;
-use rustc::ty::ToPredicate;
+use rustc::ty::{ToPredicate, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::DUMMY_SP;
@@ -64,7 +64,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         match infcx.evaluate_obligation(&traits::Obligation::new(
                             cause,
                             param_env,
-                            trait_ref.to_predicate(),
+                            trait_ref.without_const().to_predicate(),
                         )) {
                             Ok(eval_result) => eval_result.may_apply(),
                             Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no

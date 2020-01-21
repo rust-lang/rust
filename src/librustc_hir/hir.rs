@@ -364,6 +364,7 @@ impl GenericArgs<'_> {
 pub enum TraitBoundModifier {
     None,
     Maybe,
+    MaybeConst,
 }
 
 /// The AST represents all type param bounds as types.
@@ -2440,6 +2441,7 @@ pub enum ItemKind<'hir> {
         unsafety: Unsafety,
         polarity: ImplPolarity,
         defaultness: Defaultness,
+        constness: Constness,
         generics: Generics<'hir>,
 
         /// The trait being implemented, if any.

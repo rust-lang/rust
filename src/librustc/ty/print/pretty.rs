@@ -1791,7 +1791,12 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match *self {
-            ty::Predicate::Trait(ref data) => p!(print(data)),
+            ty::Predicate::Trait(ref data, constness) => {
+                if let ast::Constness::Const = constness {
+                    p!(write("const "));
+                }
+                p!(print(data))
+            }
             ty::Predicate::Subtype(ref predicate) => p!(print(predicate)),
             ty::Predicate::RegionOutlives(ref predicate) => p!(print(predicate)),
             ty::Predicate::TypeOutlives(ref predicate) => p!(print(predicate)),

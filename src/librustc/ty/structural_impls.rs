@@ -15,6 +15,7 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
+use syntax::ast;
 
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -234,7 +235,12 @@ impl fmt::Debug for ty::ProjectionPredicate<'tcx> {
 impl fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::Predicate::Trait(ref a) => a.fmt(f),
+            ty::Predicate::Trait(ref a, constness) => {
+                if let ast::Constness::Const = constness {
+                    write!(f, "const ")?;
+                }
+                a.fmt(f)
+            }
             ty::Predicate::Subtype(ref pair) => pair.fmt(f),
             ty::Predicate::RegionOutlives(ref pair) => pair.fmt(f),
             ty::Predicate::TypeOutlives(ref pair) => pair.fmt(f),
@@ -474,7 +480,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
     type Lifted = ty::Predicate<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
-            ty::Predicate::Trait(ref binder) => tcx.lift(binder).map(ty::Predicate::Trait),
+            ty::Predicate::Trait(ref binder, constness) => {
+                tcx.lift(binder).map(|binder| ty::Predicate::Trait(binder, constness))
+            }
             ty::Predicate::Subtype(ref binder) => tcx.lift(binder).map(ty::Predicate::Subtype),
             ty::Predicate::RegionOutlives(ref binder) => {
                 tcx.lift(binder).map(ty::Predicate::RegionOutlives)

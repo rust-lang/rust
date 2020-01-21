@@ -482,7 +482,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
         use rustc::ty::Predicate;
 
         match *self {
-            Predicate::Trait(ref pred) => Some(pred.clean(cx)),
+            Predicate::Trait(ref pred, _) => Some(pred.clean(cx)),
             Predicate::Subtype(ref pred) => Some(pred.clean(cx)),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),

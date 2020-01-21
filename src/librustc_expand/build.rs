@@ -110,7 +110,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
-        ast::TraitRef { path, constness: None, ref_id: ast::DUMMY_NODE_ID }
+        ast::TraitRef { path, ref_id: ast::DUMMY_NODE_ID }
     }
 
     pub fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {

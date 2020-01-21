@@ -266,12 +266,24 @@ pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
-/// A modifier on a bound, currently this is only used for `?Sized`, where the
-/// modifier is `Maybe`. Negative bounds should also be handled here.
+/// A modifier on a bound, e.g., `?Sized` or `?const Trait`.
+///
+/// Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitBoundModifier {
+    /// No modifiers
     None,
+
+    /// `?Trait`
     Maybe,
+
+    /// `?const Trait`
+    MaybeConst,
+
+    /// `?const ?Trait`
+    //
+    // This parses but will be rejected during AST validation.
+    MaybeConstMaybe,
 }
 
 /// The AST represents all type param bounds as types.
@@ -1033,7 +1045,7 @@ impl Expr {
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(Vec::new(), path.clone(), None, self.span),
+                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
             _ => None,
@@ -2158,7 +2170,8 @@ impl IsAsync {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum Constness {
     Const,
     NotConst,
@@ -2376,15 +2389,6 @@ pub enum AttrKind {
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
-
-    /// The `const` modifier, if any, that appears before this trait.
-    ///
-    /// |                | `constness`                 |
-    /// |----------------|-----------------------------|
-    /// | `Trait`        | `None`                      |
-    /// | `const Trait`  | `Some(Constness::Const)`    |
-    /// | `?const Trait` | `Some(Constness::NotConst)` |
-    pub constness: Option<Constness>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2399,15 +2403,10 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(
-        generic_params: Vec<GenericParam>,
-        path: Path,
-        constness: Option<Constness>,
-        span: Span,
-    ) -> Self {
+    pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
-            trait_ref: TraitRef { path, constness, ref_id: DUMMY_NODE_ID },
+            trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
         }
     }
@@ -2618,6 +2617,7 @@ pub enum ItemKind {
         unsafety: Unsafety,
         polarity: ImplPolarity,
         defaultness: Defaultness,
+        constness: Constness,
         generics: Generics,
 
         /// The trait being implemented, if any.
