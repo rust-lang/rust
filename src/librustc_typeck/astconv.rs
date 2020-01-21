@@ -481,6 +481,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
+        arg_count_mismatch: bool,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
         provided_kind: impl Fn(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
         mut inferred_kind: impl FnMut(
@@ -504,7 +505,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // methods in `subst.rs`, so that we can iterate over the arguments and
         // parameters in lock-step linearly, instead of trying to match each pair.
         let mut substs: SmallVec<[subst::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
-
         // Iterate over each segment of the path.
         while let Some((def_id, defs)) = stack.pop() {
             let mut params = defs.params.iter().peekable();
@@ -541,6 +541,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut args =
                 generic_args.iter().flat_map(|generic_args| generic_args.args.iter()).peekable();
 
+            let arg_kind = |arg| match arg {
+                &GenericArg::Lifetime(_) => "lifetime",
+                &GenericArg::Type(_) => "type",
+                &GenericArg::Const(_) => "constant",
+            };
+
+            // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
+            // If we later encounter a lifetime, we know that the arguments were provided in the
+            // wrong order. `force_infer_lt` records the type or const that forced lifetimes to be
+            // inferred, so we can use it for diagnostics later.
+            let mut force_infer_lt = None;
+
             loop {
                 // We're going to iterate through the generic arguments that the user
                 // provided, matching them with the generic parameters we expect.
@@ -561,28 +573,74 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
                                 substs.push(inferred_kind(None, param, infer_args));
+                                force_infer_lt = Some(arg);
                                 params.next();
                             }
-                            (_, _) => {
+                            (_, kind) => {
                                 // We expected one kind of parameter, but the user provided
-                                // another. This is an error, but we need to handle it
-                                // gracefully so we can report sensible errors.
-                                // In this case, we're simply going to infer this argument.
-                                args.next();
+                                // another. This is an error. However, if we already know that
+                                // the arguments don't match up with the parameters, we won't issue
+                                // an additional error, as the user already knows what's wrong.
+                                if !arg_count_mismatch {
+                                    let param_kind = match kind {
+                                        GenericParamDefKind::Lifetime => "lifetime",
+                                        GenericParamDefKind::Type { .. } => "type",
+                                        GenericParamDefKind::Const => "constant",
+                                    };
+                                    struct_span_err!(
+                                        tcx.sess,
+                                        arg.span(),
+                                        E0747,
+                                        "{} provided when a {} was expected",
+                                        arg_kind(arg),
+                                        param_kind,
+                                    )
+                                    .emit();
+                                }
+
+                                // We've reported the error, but we want to make sure that this
+                                // problem doesn't bubble down and create additional, irrelevant
+                                // errors. In this case, we're simply going to ignore the argument
+                                // and any following arguments. The rest of the parameters will be
+                                // inferred.
+                                while args.next().is_some() {}
                             }
                         }
                     }
-                    (Some(_), None) => {
+                    (Some(&arg), None) => {
                         // We should never be able to reach this point with well-formed input.
-                        // Getting to this point means the user supplied more arguments than
-                        // there are parameters.
-                        args.next();
+                        // There are two situations in which we can encounter this issue.
+                        //
+                        //  1.  The number of arguments is incorrect. In this case, an error
+                        //      will already have been emitted, and we can ignore it. This case
+                        //      also occurs when late-bound lifetime parameters are present, yet
+                        //      the lifetime arguments have also been explicitly specified by the
+                        //      user.
+                        //  2.  We've inferred some lifetimes, which have been provided later (i.e.
+                        //      after a type or const). We want to throw an error in this case.
+
+                        if !arg_count_mismatch {
+                            let kind = arg_kind(arg);
+                            assert_eq!(kind, "lifetime");
+                            let provided =
+                                force_infer_lt.expect("lifetimes ought to have been inferred");
+                            struct_span_err!(
+                                tcx.sess,
+                                provided.span(),
+                                E0747,
+                                "{} provided when a {} was expected",
+                                arg_kind(provided),
+                                kind,
+                            )
+                            .emit();
+                        }
+
+                        break;
                     }
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
                         substs.push(inferred_kind(Some(&substs), param, infer_args));
-                        args.next();
                         params.next();
                     }
                     (None, None) => break,
@@ -658,7 +716,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert!(self_ty.is_none() && parent_substs.is_empty());
         }
 
-        let (_, potential_assoc_types) = Self::check_generic_arg_count(
+        let (arg_count_mismatch, potential_assoc_types) = Self::check_generic_arg_count(
             tcx,
             span,
             &generic_params,
@@ -691,6 +749,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             parent_substs,
             self_ty.is_some(),
             self_ty,
+            arg_count_mismatch,
             // Provide the generic args, and whether types should be inferred.
             |did| {
                 if did == def_id {

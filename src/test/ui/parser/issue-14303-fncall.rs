@@ -11,7 +11,7 @@ fn foo<'a, 'b>(start: &'a usize, end: &'a usize) {
     let _x = (*start..*end)
         .map(|x| S { a: start, b: end })
         .collect::<Vec<S<_, 'a>>>();
-        //~^ ERROR lifetime arguments must be declared prior to type arguments
+        //~^ ERROR type provided when a lifetime was expected
 }
 
 fn main() {}

@@ -594,23 +594,15 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-enum GenericPosition {
-    Param,
-    Arg,
-}
-
-fn validate_generics_order<'a>(
+fn validate_generic_param_order<'a>(
     sess: &Session,
     handler: &rustc_errors::Handler,
     generics: impl Iterator<Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>)>,
-    pos: GenericPosition,
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
-    let mut found_type = false;
-    let mut found_const = false;
 
     for (kind, bounds, span, ident) in generics {
         if let Some(ident) = ident {
@@ -624,11 +616,6 @@ fn validate_generics_order<'a>(
             }
             Some(_) | None => *max_param = Some(kind),
         };
-        match kind {
-            ParamKindOrd::Type => found_type = true,
-            ParamKindOrd::Const => found_const = true,
-            _ => {}
-        }
     }
 
     let mut ordered_params = "<".to_string();
@@ -651,41 +638,25 @@ fn validate_generics_order<'a>(
     }
     ordered_params += ">";
 
-    let pos_str = match pos {
-        GenericPosition::Param => "parameter",
-        GenericPosition::Arg => "argument",
-    };
-
     for (param_ord, (max_param, spans)) in &out_of_order {
-        let mut err = handler.struct_span_err(
-            spans.clone(),
-            &format!(
-                "{} {pos}s must be declared prior to {} {pos}s",
-                param_ord,
-                max_param,
-                pos = pos_str,
-            ),
-        );
-        if let GenericPosition::Param = pos {
-            err.span_suggestion(
-                span,
+        let mut err =
+            handler.struct_span_err(
+                spans.clone(),
                 &format!(
-                    "reorder the {}s: lifetimes, then types{}",
-                    pos_str,
-                    if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                    "{} parameters must be declared prior to {} parameters",
+                    param_ord, max_param,
                 ),
-                ordered_params.clone(),
-                Applicability::MachineApplicable,
             );
-        }
+        err.span_suggestion(
+            span,
+            &format!(
+                "reorder the parameters: lifetimes, then types{}",
+                if sess.features_untracked().const_generics { ", then consts" } else { "" },
+            ),
+            ordered_params.clone(),
+            Applicability::MachineApplicable,
+        );
         err.emit();
-    }
-
-    // FIXME(const_generics): we shouldn't have to abort here at all, but we currently get ICEs
-    // if we don't. Const parameters and type parameters can currently conflict if they
-    // are out-of-order.
-    if !out_of_order.is_empty() && found_type && found_const {
-        FatalError.raise();
     }
 }
 
@@ -1000,24 +971,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 walk_list!(self, visit_generic_arg, &data.args);
-                validate_generics_order(
-                    self.session,
-                    self.err_handler(),
-                    data.args.iter().map(|arg| {
-                        (
-                            match arg {
-                                GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
-                                GenericArg::Type(..) => ParamKindOrd::Type,
-                                GenericArg::Const(..) => ParamKindOrd::Const,
-                            },
-                            None,
-                            arg.span(),
-                            None,
-                        )
-                    }),
-                    GenericPosition::Arg,
-                    generic_args.span(),
-                );
 
                 // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
@@ -1054,7 +1007,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        validate_generics_order(
+        validate_generic_param_order(
             self.session,
             self.err_handler(),
             generics.params.iter().map(|param| {
@@ -1069,7 +1022,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 };
                 (kind, Some(&*param.bounds), param.ident.span, ident)
             }),
-            GenericPosition::Param,
             generics.span,
         );
 
