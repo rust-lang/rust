@@ -624,7 +624,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match self.length {
             0 => None,
             _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().first_kv(),
+                handle: unsafe { self.root.as_mut().first_kv() },
                 length: &mut self.length,
                 _marker: PhantomData,
             }),
@@ -686,7 +686,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match self.length {
             0 => None,
             _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().last_kv(),
+                handle: unsafe { self.root.as_mut().last_kv() },
                 length: &mut self.length,
                 _marker: PhantomData,
             }),
@@ -1052,7 +1052,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     Ok(left) => left,
                     Err(_) => unreachable!(),
                 };
-                last_kv.bulk_steal_left(node::MIN_LEN - right_child_len);
+                unsafe { last_kv.bulk_steal_left(node::MIN_LEN - right_child_len) };
                 last_edge = last_kv.right_edge();
             }
 
@@ -1118,7 +1118,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     GoDown(handle) => handle,
                 };
 
-                split_edge.move_suffix(&mut right_node);
+                unsafe { split_edge.move_suffix(&mut right_node) };
 
                 match (split_edge.force(), right_node.force()) {
                     (Internal(edge), Internal(node)) => {
@@ -1188,7 +1188,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     break;
                 }
             }
-            self.root.pop_level();
+            unsafe { self.root.pop_level() };
         }
     }
 
@@ -1199,15 +1199,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
             let mut cur_node = self.root.as_mut();
 
             while let Internal(node) = cur_node.force() {
-                let mut last_kv = node.last_kv();
+                let mut last_kv = unsafe { node.last_kv() };
 
                 if last_kv.can_merge() {
-                    cur_node = last_kv.merge().descend();
+                    cur_node = unsafe { last_kv.merge() }.descend();
                 } else {
                     let right_len = last_kv.reborrow().right_edge().descend().len();
                     // `MINLEN + 1` to avoid readjust if merge happens on the next level.
                     if right_len < node::MIN_LEN + 1 {
-                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                        unsafe { last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len) };
                     }
                     cur_node = last_kv.right_edge().descend();
                 }
@@ -1225,14 +1225,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
             let mut cur_node = self.root.as_mut();
 
             while let Internal(node) = cur_node.force() {
-                let mut first_kv = node.first_kv();
+                let mut first_kv = unsafe { node.first_kv() };
 
                 if first_kv.can_merge() {
-                    cur_node = first_kv.merge().descend();
+                    cur_node = unsafe { first_kv.merge().descend() };
                 } else {
                     let left_len = first_kv.reborrow().left_edge().descend().len();
                     if left_len < node::MIN_LEN + 1 {
-                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                        unsafe { first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len) };
                     }
                     cur_node = first_kv.left_edge().descend();
                 }
@@ -2614,7 +2614,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
                 Merged(parent) => {
                     if parent.len() == 0 {
                         // We must be at the root
-                        parent.into_root_mut().pop_level();
+                        unsafe { parent.into_root_mut().pop_level() };
                         break;
                     } else {
                         cur_node = parent.forget_type();
@@ -2655,7 +2655,7 @@ fn handle_underfull_node<K, V>(
     };
 
     if handle.can_merge() {
-        Merged(handle.merge().into_node())
+        Merged(unsafe { handle.merge() }.into_node())
     } else {
         if is_left {
             handle.steal_left();
