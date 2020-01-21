@@ -183,16 +183,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
-        if self.diverges.get().is_always() {
-            use hir::MatchSource::*;
-            let msg = match source {
-                IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
-                WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
-                _ => "arm",
-            };
-            for arm in arms {
-                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
-            }
+        use hir::MatchSource::*;
+        let msg = match source {
+            IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
+            WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
+            _ => "arm",
+        };
+        for arm in arms {
+            self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
         }
     }
 
