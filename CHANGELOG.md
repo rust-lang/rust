@@ -203,29 +203,29 @@ Released 2019-07-04
 
 [eb9f9b1...082cfa7](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...082cfa7)
 
- * New lints: [`find_map`], [`filter_map_next`] [#4039](https://github.com/rust-lang/rust-clippy/pull/4039)
- * New lint: [`path_buf_push_overwrite`] [#3954](https://github.com/rust-lang/rust-clippy/pull/3954)
- * Move `path_buf_push_overwrite` to the nursery [#4013](https://github.com/rust-lang/rust-clippy/pull/4013)
- * Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
- * Allow allowing of [`toplevel_ref_arg`] lint [#4007](https://github.com/rust-lang/rust-clippy/pull/4007)
- * Fix false negative in [`or_fun_call`] pertaining to nested constructors [#4084](https://github.com/rust-lang/rust-clippy/pull/4084)
- * Fix false positive in [`or_fn_call`] pertaining to enum variant constructors [#4018](https://github.com/rust-lang/rust-clippy/pull/4018)
- * Fix false positive in [`useless_let_if_seq`] pertaining to interior mutability [#4035](https://github.com/rust-lang/rust-clippy/pull/4035)
- * Fix false positive in [`redundant_closure`] pertaining to non-function types [#4008](https://github.com/rust-lang/rust-clippy/pull/4008)
- * Fix false positive in [`let_and_return`] pertaining to attributes on `let`s [#4024](https://github.com/rust-lang/rust-clippy/pull/4024)
- * Fix false positive in [`module_name_repetitions`] lint pertaining to attributes [#4006](https://github.com/rust-lang/rust-clippy/pull/4006)
- * Fix false positive on [`assertions_on_constants`] pertaining to `debug_assert!` [#3989](https://github.com/rust-lang/rust-clippy/pull/3989)
- * Improve suggestion in [`map_clone`] to suggest `.copied()` where applicable  [#3970](https://github.com/rust-lang/rust-clippy/pull/3970) [#4043](https://github.com/rust-lang/rust-clippy/pull/4043)
- * Improve suggestion for [`search_is_some`] [#4049](https://github.com/rust-lang/rust-clippy/pull/4049)
- * Improve suggestion applicability for [`naive_bytecount`] [#3984](https://github.com/rust-lang/rust-clippy/pull/3984)
- * Improve suggestion applicability for [`while_let_loop`] [#3975](https://github.com/rust-lang/rust-clippy/pull/3975)
- * Improve diagnostics for [`too_many_arguments`] [#4053](https://github.com/rust-lang/rust-clippy/pull/4053)
- * Improve diagnostics for [`cast_lossless`] [#4021](https://github.com/rust-lang/rust-clippy/pull/4021)
- * Deal with macro checks in desugarings better [#4082](https://github.com/rust-lang/rust-clippy/pull/4082)
- * Add macro check for [`unnecessary_cast`]  [#4026](https://github.com/rust-lang/rust-clippy/pull/4026)
- * Remove [`approx_constant`]'s documentation's "Known problems" section. [#4027](https://github.com/rust-lang/rust-clippy/pull/4027)
- * Fix ICE in [`suspicious_else_formatting`] [#3960](https://github.com/rust-lang/rust-clippy/pull/3960)
- * Fix ICE in [`decimal_literal_representation`] [#3931](https://github.com/rust-lang/rust-clippy/pull/3931)
+* New lints: [`find_map`], [`filter_map_next`] [#4039](https://github.com/rust-lang/rust-clippy/pull/4039)
+* New lint: [`path_buf_push_overwrite`] [#3954](https://github.com/rust-lang/rust-clippy/pull/3954)
+* Move `path_buf_push_overwrite` to the nursery [#4013](https://github.com/rust-lang/rust-clippy/pull/4013)
+* Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
+* Allow allowing of [`toplevel_ref_arg`] lint [#4007](https://github.com/rust-lang/rust-clippy/pull/4007)
+* Fix false negative in [`or_fun_call`] pertaining to nested constructors [#4084](https://github.com/rust-lang/rust-clippy/pull/4084)
+* Fix false positive in [`or_fun_call`] pertaining to enum variant constructors [#4018](https://github.com/rust-lang/rust-clippy/pull/4018)
+* Fix false positive in [`useless_let_if_seq`] pertaining to interior mutability [#4035](https://github.com/rust-lang/rust-clippy/pull/4035)
+* Fix false positive in [`redundant_closure`] pertaining to non-function types [#4008](https://github.com/rust-lang/rust-clippy/pull/4008)
+* Fix false positive in [`let_and_return`] pertaining to attributes on `let`s [#4024](https://github.com/rust-lang/rust-clippy/pull/4024)
+* Fix false positive in [`module_name_repetitions`] lint pertaining to attributes [#4006](https://github.com/rust-lang/rust-clippy/pull/4006)
+* Fix false positive on [`assertions_on_constants`] pertaining to `debug_assert!` [#3989](https://github.com/rust-lang/rust-clippy/pull/3989)
+* Improve suggestion in [`map_clone`] to suggest `.copied()` where applicable  [#3970](https://github.com/rust-lang/rust-clippy/pull/3970) [#4043](https://github.com/rust-lang/rust-clippy/pull/4043)
+* Improve suggestion for [`search_is_some`] [#4049](https://github.com/rust-lang/rust-clippy/pull/4049)
+* Improve suggestion applicability for [`naive_bytecount`] [#3984](https://github.com/rust-lang/rust-clippy/pull/3984)
+* Improve suggestion applicability for [`while_let_loop`] [#3975](https://github.com/rust-lang/rust-clippy/pull/3975)
+* Improve diagnostics for [`too_many_arguments`] [#4053](https://github.com/rust-lang/rust-clippy/pull/4053)
+* Improve diagnostics for [`cast_lossless`] [#4021](https://github.com/rust-lang/rust-clippy/pull/4021)
+* Deal with macro checks in desugarings better [#4082](https://github.com/rust-lang/rust-clippy/pull/4082)
+* Add macro check for [`unnecessary_cast`]  [#4026](https://github.com/rust-lang/rust-clippy/pull/4026)
+* Remove [`approx_constant`]'s documentation's "Known problems" section. [#4027](https://github.com/rust-lang/rust-clippy/pull/4027)
+* Fix ICE in [`suspicious_else_formatting`] [#3960](https://github.com/rust-lang/rust-clippy/pull/3960)
+* Fix ICE in [`decimal_literal_representation`] [#3931](https://github.com/rust-lang/rust-clippy/pull/3931)
 
 
 ## Rust 1.35
@@ -234,27 +234,27 @@ Released 2019-05-20
 
 [1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
 
- * New lint: [`drop_bounds`] to detect `T: Drop` bounds
- * Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
- * Rename `cyclomatic_complexity` to [`cognitive_complexity`], start work on making lint more practical for Rust code
- * Move [`get_unwrap`] to the restriction category
- * Improve suggestions for [`iter_cloned_collect`]
- * Improve suggestions for [`cast_lossless`] to suggest suffixed literals
- * Fix false positives in [`print_with_newline`] and [`write_with_newline`] pertaining to raw strings
- * Fix false positive in [`needless_range_loop`] pertaining to structs without a `.iter()`
- * Fix false positive in [`bool_comparison`] pertaining to non-bool types
- * Fix false positive in [`redundant_closure`] pertaining to differences in borrows
- * Fix false positive in [`option_map_unwrap_or`] on non-copy types
- * Fix false positives in [`missing_const_for_fn`] pertaining to macros and trait method impls
- * Fix false positive in [`needless_pass_by_value`] pertaining to procedural macros
- * Fix false positive in [`needless_continue`] pertaining to loop labels
- * Fix false positive for [`boxed_local`] pertaining to arguments moved into closures
- * Fix false positive for [`use_self`] in nested functions
- * Fix suggestion for [`expect_fun_call`] (https://github.com/rust-lang/rust-clippy/pull/3846)
- * Fix suggestion for [`explicit_counter_loop`] to deal with parenthesizing range variables
- * Fix suggestion for [`single_char_pattern`] to correctly escape single quotes
- * Avoid triggering [`redundant_closure`] in macros
- * ICE fixes: [#3805](https://github.com/rust-lang/rust-clippy/pull/3805), [#3772](https://github.com/rust-lang/rust-clippy/pull/3772), [#3741](https://github.com/rust-lang/rust-clippy/pull/3741)
+* New lint: [`drop_bounds`] to detect `T: Drop` bounds
+* Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
+* Rename `cyclomatic_complexity` to [`cognitive_complexity`], start work on making lint more practical for Rust code
+* Move [`get_unwrap`] to the restriction category
+* Improve suggestions for [`iter_cloned_collect`]
+* Improve suggestions for [`cast_lossless`] to suggest suffixed literals
+* Fix false positives in [`print_with_newline`] and [`write_with_newline`] pertaining to raw strings
+* Fix false positive in [`needless_range_loop`] pertaining to structs without a `.iter()`
+* Fix false positive in [`bool_comparison`] pertaining to non-bool types
+* Fix false positive in [`redundant_closure`] pertaining to differences in borrows
+* Fix false positive in [`option_map_unwrap_or`] on non-copy types
+* Fix false positives in [`missing_const_for_fn`] pertaining to macros and trait method impls
+* Fix false positive in [`needless_pass_by_value`] pertaining to procedural macros
+* Fix false positive in [`needless_continue`] pertaining to loop labels
+* Fix false positive for [`boxed_local`] pertaining to arguments moved into closures
+* Fix false positive for [`use_self`] in nested functions
+* Fix suggestion for [`expect_fun_call`] (https://github.com/rust-lang/rust-clippy/pull/3846)
+* Fix suggestion for [`explicit_counter_loop`] to deal with parenthesizing range variables
+* Fix suggestion for [`single_char_pattern`] to correctly escape single quotes
+* Avoid triggering [`redundant_closure`] in macros
+* ICE fixes: [#3805](https://github.com/rust-lang/rust-clippy/pull/3805), [#3772](https://github.com/rust-lang/rust-clippy/pull/3772), [#3741](https://github.com/rust-lang/rust-clippy/pull/3741)
 
 ## Rust 1.34
 
@@ -551,7 +551,7 @@ Released 2018-09-13
 ## 0.0.181
 * Rustup to *rustc 1.25.0-nightly (97520ccb1 2018-01-21)*
 * New lints: [`else_if_without_else`], [`option_option`], [`unit_arg`], [`unnecessary_fold`]
-* Removed [`unit_expr`]
+* Removed `unit_expr`
 * Various false positive fixes for [`needless_pass_by_value`]
 
 ## 0.0.180
@@ -597,11 +597,13 @@ Released 2018-09-13
 
 ## 0.0.167
 * Rustup to *rustc 1.23.0-nightly (90ef3372e 2017-10-29)*
-* New lints: [`const_static_lifetime`], [`erasing_op`], [`fallible_impl_from`], [`println_empty_string`], [`useless_asref`]
+* New lints: `const_static_lifetime`, [`erasing_op`], [`fallible_impl_from`], [`println_empty_string`], [`useless_asref`]
 
 ## 0.0.166
 * Rustup to *rustc 1.22.0-nightly (b7960878b 2017-10-18)*
-* New lints: [`explicit_write`], [`identity_conversion`], [`implicit_hasher`], [`invalid_ref`], [`option_map_or_none`], [`range_minus_one`], [`range_plus_one`], [`transmute_int_to_bool`], [`transmute_int_to_char`], [`transmute_int_to_float`]
+* New lints: [`explicit_write`], [`identity_conversion`], [`implicit_hasher`], [`invalid_ref`], [`option_map_or_none`],
+  [`range_minus_one`], [`range_plus_one`], [`transmute_int_to_bool`], [`transmute_int_to_char`],
+  [`transmute_int_to_float`]
 
 ## 0.0.165
 * Rust upgrade to rustc 1.22.0-nightly (0e6f4cf51 2017-09-27)
@@ -636,7 +638,7 @@ Released 2018-09-13
 
 ## 0.0.157 - 2017-09-04
 * Update to *rustc 1.22.0-nightly (981ce7d8d 2017-09-03)*
-* New lint: [`unit_expr`]
+* New lint: `unit_expr`
 
 ## 0.0.156 - 2017-09-03
 * Update to *rustc 1.22.0-nightly (744dd6c1d 2017-09-02)*
@@ -884,7 +886,7 @@ Released 2018-09-13
   lint groups: [`filter_next`], [`for_loop_over_option`],
   [`for_loop_over_result`] and [`match_overlapping_arm`]. You should now be
   able to `#[allow/deny]` them individually and they are available directly
-  through [`cargo clippy`].
+  through `cargo clippy`.
 
 ## 0.0.87 — 2016-08-31
 * Rustup to *rustc 1.13.0-nightly (eac41469d 2016-08-30)*
@@ -897,7 +899,7 @@ Released 2018-09-13
 
 ## 0.0.85 — 2016-08-19
 * Fix ICE with [`useless_attribute`]
-* [`useless_attribute`] ignores [`unused_imports`] on `use` statements
+* [`useless_attribute`] ignores `unused_imports` on `use` statements
 
 ## 0.0.84 — 2016-08-18
 * Rustup to *rustc 1.13.0-nightly (aef6971ca 2016-08-17)*
@@ -936,7 +938,7 @@ Released 2018-09-13
 
 ## 0.0.77 — 2016-06-21
 * Rustup to *rustc 1.11.0-nightly (5522e678b 2016-06-20)*
-* New lints: [`stutter`] and [`iter_nth`]
+* New lints: `stutter` and [`iter_nth`]
 
 ## 0.0.76 — 2016-06-10
 * Rustup to *rustc 1.11.0-nightly (7d2f75a95 2016-06-09)*
@@ -1056,6 +1058,7 @@ Released 2018-09-13
 [pull3665]: https://github.com/rust-lang/rust-clippy/pull/3665
 [adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
 
+<!-- lint disable no-unused-definitions -->
 <!-- begin autogenerated links to lint list -->
 [`absurd_extreme_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#absurd_extreme_comparisons
 [`almost_swapped`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_swapped

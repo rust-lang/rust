@@ -167,12 +167,12 @@ declare_clippy_lint! {
 ```
 
 * The section of lines prefixed with `///` constitutes the lint documentation
-section. This is the default documentation style and will be displayed at
-https://rust-lang.github.io/rust-clippy/master/index.html.
+  section. This is the default documentation style and will be displayed at
+  https://rust-lang.github.io/rust-clippy/master/index.html.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the [lint naming
-guidelines][lint_naming] here when naming your lint. In short, the name should
-state the thing that is being checked for and read well when used with
-`allow`/`warn`/`deny`.
+  guidelines][lint_naming] here when naming your lint. In short, the name should
+  state the thing that is being checked for and read well when used with
+  `allow`/`warn`/`deny`.
 * `pedantic` sets the lint level to `Allow`.
   The exact mapping can be found [here][category_level_mapping]
 * The last part should be a text that explains what exactly is wrong with the
@@ -443,7 +443,6 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 [category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/bd23cb89ec0ea63403a17d3fc5e50c88e38dd54f/clippy_lints/src/lib.rs#L43
 [declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/a71acac1da7eaf667ab90a1d65d10e5cc4b80191/clippy_lints/src/lib.rs#L39
-[compilation_stages]: https://rust-lang.github.io/rustc-guide/high-level-overview.html#the-main-stages-of-compilation
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.EarlyLintPass.html#method.check_fn
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.LateLintPass.html

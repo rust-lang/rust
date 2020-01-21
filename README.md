@@ -30,7 +30,9 @@ Only the following of those categories are enabled by default:
 
 Other categories need to be enabled in order for their lints to be executed.
 
-The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used very selectively, if at all.
+The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are
+for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used
+very selectively, if at all.
 
 Table of contents:
 
@@ -140,15 +142,16 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 
 ## Configuration
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable = value` mapping eg.
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
+value` mapping eg.
 
 ```toml
 blacklisted-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
 
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the
-meaning of the variables.
+See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
+lints can be configured and the meaning of the variables.
 
 To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
@@ -169,7 +172,10 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 Note: `deny` produces errors instead of warnings.
 
-If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra flags to Clippy during the run: `cargo clippy -- -A clippy::lint_name` will run Clippy with `lint_name` disabled and `cargo clippy -- -W clippy::lint_name` will run it with that enabled. This also works with lint groups. For example you can run Clippy with warnings for all lints enabled: `cargo clippy -- -W clippy::pedantic`
+If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra
+flags to Clippy during the run: `cargo clippy -- -A clippy::lint_name` will run Clippy with `lint_name` disabled and
+`cargo clippy -- -W clippy::lint_name` will run it with that enabled. This also works with lint groups. For example you
+can run Clippy with warnings for all lints enabled: `cargo clippy -- -W clippy::pedantic`
 
 ## Contributing
 
