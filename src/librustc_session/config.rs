@@ -447,9 +447,9 @@ impl Input {
 #[derive(Clone, Hash)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
-    pub out_filestem: String,
+    out_filestem: String,
     pub single_output_file: Option<PathBuf>,
-    pub extra: String,
+    extra: String,
     pub outputs: OutputTypes,
 }
 
@@ -458,6 +458,16 @@ impl_stable_hash_via_hash!(OutputFilenames);
 pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
+    pub fn new(
+        out_directory: PathBuf,
+        out_filestem: String,
+        single_output_file: Option<PathBuf>,
+        extra: String,
+        outputs: OutputTypes,
+    ) -> Self {
+        OutputFilenames { out_directory, out_filestem, single_output_file, extra, outputs }
+    }
+
     pub fn path(&self, flavor: OutputType) -> PathBuf {
         self.outputs
             .get(&flavor)
