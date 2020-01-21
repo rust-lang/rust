@@ -3,7 +3,6 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use std::cmp;
 use std::mem;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
@@ -41,43 +40,6 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 tcx.symbol_name(ty::Instance::new(def_id, substs))
             }
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
-        }
-    }
-
-    pub fn compare_stable(&self, tcx: TyCtxt<'tcx>, other: &ExportedSymbol<'tcx>) -> cmp::Ordering {
-        match *self {
-            ExportedSymbol::NonGeneric(self_def_id) => match *other {
-                ExportedSymbol::NonGeneric(other_def_id) => {
-                    tcx.def_path_hash(self_def_id).cmp(&tcx.def_path_hash(other_def_id))
-                }
-                ExportedSymbol::Generic(..) | ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
-            },
-            ExportedSymbol::Generic(self_def_id, self_substs) => match *other {
-                ExportedSymbol::NonGeneric(_) => cmp::Ordering::Greater,
-                ExportedSymbol::Generic(other_def_id, other_substs) => {
-                    // We compare the symbol names because they are cached as query
-                    // results which makes them relatively cheap to access repeatedly.
-                    //
-                    // It might be even faster to build a local cache of stable IDs
-                    // for sorting. Exported symbols are really only sorted once
-                    // in order to make the `exported_symbols` query result stable.
-                    let self_symbol_name =
-                        tcx.symbol_name(ty::Instance::new(self_def_id, self_substs));
-                    let other_symbol_name =
-                        tcx.symbol_name(ty::Instance::new(other_def_id, other_substs));
-
-                    self_symbol_name.cmp(&other_symbol_name)
-                }
-                ExportedSymbol::NoDefId(_) => cmp::Ordering::Less,
-            },
-            ExportedSymbol::NoDefId(self_symbol_name) => match *other {
-                ExportedSymbol::NonGeneric(_) | ExportedSymbol::Generic(..) => {
-                    cmp::Ordering::Greater
-                }
-                ExportedSymbol::NoDefId(ref other_symbol_name) => {
-                    self_symbol_name.cmp(other_symbol_name)
-                }
-            },
         }
     }
 }
