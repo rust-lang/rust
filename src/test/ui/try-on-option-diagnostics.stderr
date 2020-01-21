@@ -27,6 +27,32 @@ LL | |     };
    = help: the trait `std::ops::Try` is not implemented for `{integer}`
    = note: required by `std::ops::Try::from_error`
 
-error: aborting due to 2 previous errors
+error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/try-on-option-diagnostics.rs:26:13
+   |
+LL | /         fn a_method() {
+LL | |             let x: Option<u32> = None;
+LL | |             x?;
+   | |             ^^ cannot use the `?` operator in a method that returns `()`
+LL | |         }
+   | |_________- this function should return `Result` or `Option` to accept `?`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/try-on-option-diagnostics.rs:39:13
+   |
+LL | /         fn a_trait_method() {
+LL | |             let x: Option<u32> = None;
+LL | |             x?;
+   | |             ^^ cannot use the `?` operator in a trait method that returns `()`
+LL | |         }
+   | |_________- this function should return `Result` or `Option` to accept `?`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
