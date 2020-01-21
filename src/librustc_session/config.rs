@@ -491,8 +491,6 @@ impl OutputFilenames {
     /// Like temp_path, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
-        let base = self.out_directory.join(&self.filestem);
-
         let mut extension = String::new();
 
         if let Some(codegen_unit_name) = codegen_unit_name {
@@ -509,11 +507,13 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        base.with_extension(extension)
+        self.with_extension(&extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.out_directory.join(&self.filestem).with_extension(extension)
+        let mut path = self.out_directory.join(&self.filestem);
+        path.set_extension(extension);
+        path
     }
 }
 
