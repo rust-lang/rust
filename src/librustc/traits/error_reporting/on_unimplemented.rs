@@ -67,6 +67,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "a function"
                 })
             })
+        } else if let hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)),
+            ..
+        }) = &node
+        {
+            self.describe_generator(*body_id).or_else(|| Some("a trait method"))
+        } else if let hir::Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Method(sig, body_id),
+            ..
+        }) = &node
+        {
+            self.describe_generator(*body_id).or_else(|| {
+                Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {
+                    "an async method"
+                } else {
+                    "a method"
+                })
+            })
         } else if let hir::Node::Expr(hir::Expr {
             kind: hir::ExprKind::Closure(_is_move, _, body_id, _, gen_movability),
             ..
