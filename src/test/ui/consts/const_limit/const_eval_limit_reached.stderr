@@ -1,0 +1,6 @@
+warning: Constant evaluating a complex constant, this might take some time
+  --> $DIR/const_eval_limit_reached.rs:6:1
+   |
+LL | const CONSTANT: usize = limit();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

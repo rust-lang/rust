@@ -4,7 +4,7 @@ error[E0658]: the `#[const_eval_limit]` attribute is an experimental feature
 LL | #![const_eval_limit="42"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67217
+   = note: see issue #67217 <https://github.com/rust-lang/rust/issues/67217> for more information
    = help: add `#![feature(const_eval_limit)]` to the crate attributes to enable
 
 error: aborting due to previous error

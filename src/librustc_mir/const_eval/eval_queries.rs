@@ -89,7 +89,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     InterpCx::new(
         tcx.at(span),
         param_env,
-        CompileTimeInterpreter::new(),
+        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
         MemoryExtra { can_access_statics },
     )
 }
@@ -297,7 +297,7 @@ pub fn const_eval_raw_provider<'tcx>(
     let mut ecx = InterpCx::new(
         tcx.at(span),
         key.param_env,
-        CompileTimeInterpreter::new(),
+        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
         MemoryExtra { can_access_statics: is_static },
     );
 

@@ -3,6 +3,7 @@ use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::{self, Ty};
 use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::Entry;
+use std::convert::TryFrom;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -85,9 +86,6 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     }
 }
 
-/// Number of steps until the detector even starts doing anything.
-/// Also, a warning is shown to the user when this number is reached.
-const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// The number of steps between loop detector snapshots.
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
@@ -100,6 +98,8 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// detector period.
     pub(super) steps_since_detector_enabled: isize,
 
+    pub(super) is_detector_enabled: bool,
+
     /// Extra state to detect loops.
     pub(super) loop_detector: snapshot::InfiniteLoopDetector<'mir, 'tcx>,
 }
@@ -111,10 +111,14 @@ pub struct MemoryExtra {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(const_eval_limit: usize) -> Self {
+        let steps_until_detector_enabled =
+            isize::try_from(const_eval_limit).unwrap_or(std::isize::MAX);
+
         CompileTimeInterpreter {
             loop_detector: Default::default(),
-            steps_since_detector_enabled: -STEPS_UNTIL_DETECTOR_ENABLED,
+            steps_since_detector_enabled: -steps_until_detector_enabled,
+            is_detector_enabled: const_eval_limit != 0,
         }
     }
 }
@@ -343,6 +347,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        if !ecx.machine.is_detector_enabled {
+            return Ok(());
+        }
+
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
