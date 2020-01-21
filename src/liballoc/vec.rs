@@ -1559,8 +1559,8 @@ impl<T: Default> Vec<T> {
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     #[rustc_deprecated(
         reason = "This is moving towards being removed in favor \
-        of `.resize_with(Default::default)`.  If you disagree, please comment \
-        in the tracking issue.",
+                  of `.resize_with(Default::default)`.  If you disagree, please comment \
+                  in the tracking issue.",
         since = "1.33.0"
     )]
     pub fn resize_default(&mut self, new_len: usize) {
@@ -2122,7 +2122,7 @@ where
 }
 
 impl<T> Vec<T> {
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, iterator: I) {
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
         // This function should be the moral equivalent of:
@@ -2132,8 +2132,34 @@ impl<T> Vec<T> {
         //      }
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
-
-        iterator.for_each(|element| self.push(element));
+        loop {
+            let cap = self.capacity();
+            let result = iterator.by_ref().try_fold((), |(), element| {
+                let len = self.len();
+                if len == cap {
+                    Err(element)
+                } else {
+                    unsafe {
+                        ptr::write(self.get_unchecked_mut(len), element);
+                        self.set_len(len + 1);
+                        Ok(())
+                    }
+                }
+            });
+            match result {
+                Ok(()) => return,
+                Err(element) => {
+                    let (lower, _) = iterator.size_hint();
+                    self.reserve(lower.saturating_add(1));
+                    unsafe {
+                        let len = self.len();
+                        ptr::write(self.get_unchecked_mut(len), element);
+                        // NB can't overflow since we would have had to alloc the address space
+                        self.set_len(len + 1);
+                    }
+                }
+            }
+        }
     }
 
     /// Creates a splicing iterator that replaces the specified range in the vector
