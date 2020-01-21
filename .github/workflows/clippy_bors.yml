@@ -1,0 +1,146 @@
+name: Clippy Test (bors)
+
+on:
+  push:
+    branches: [auto, try]
+    # Don't run Clippy tests, when only textfiles were modified
+    paths-ignore:
+    - 'COPYRIGHT'
+    - 'LICENSE-*'
+    - '**.md'
+    - '**.txt'
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TARGET_DIR: '${{ github.workspace }}/target'
+  GHA_CI: 1
+
+jobs:
+  base:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        host: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]
+        exclude:
+        - os: ubuntu-latest
+          host: x86_64-apple-darwin
+        - os: ubuntu-latest
+          host: x86_64-pc-windows-msvc
+        - os: macos-latest
+          host: x86_64-unknown-linux-gnu
+        - os: macos-latest
+          host: i686-unknown-linux-gnu
+        - os: macos-latest
+          host: x86_64-pc-windows-msvc
+        - os: windows-latest
+          host: x86_64-unknown-linux-gnu
+        - os: windows-latest
+          host: i686-unknown-linux-gnu
+        - os: windows-latest
+          host: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Install dependencies (Linux-i686)
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
+      if: matrix.host == 'i686-unknown-linux-gnu'
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: ${{ matrix.host }}
+        profile: minimal
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-${{ matrix.host }}
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+      env:
+        HOST_TOOLCHAIN: ${{ matrix.host }}
+      shell: bash
+
+    - name: Set LD_LIBRARY_PATH (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        echo "::set-env name=LD_LIBRARY_PATH::${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"
+    - name: Link rustc dylib (MacOS)
+      if: runner.os == 'macOS'
+      run: |
+        SYSROOT=$(rustc --print sysroot)
+        sudo mkdir -p /usr/local/lib
+        sudo find "${SYSROOT}/lib" -maxdepth 1 -name '*dylib' -exec ln -s {} /usr/local/lib \;
+    - name: Set PATH (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        $sysroot = rustc --print sysroot
+        $env:PATH += ';' + $sysroot + '\bin'
+        echo "::set-env name=PATH::$env:PATH"
+    - name: Build
+      run: cargo build --features deny-warnings
+      shell: bash
+    - name: Test
+      run: cargo test --features deny-warnings
+      shell: bash
+    - name: Test clippy_lints
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: clippy_lints
+    - name: Test rustc_tools_util
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: rustc_tools_util
+    - name: Test clippy_dev
+      run: cargo test --features deny-warnings
+      shell: bash
+      working-directory: clippy_dev
+    - name: Test cargo-clippy
+      run: ../target/debug/cargo-clippy
+      shell: bash
+      working-directory: clippy_workspace_tests
+    - name: Test clippy-driver
+      run: |
+        (
+          set -ex
+          # Check sysroot handling
+          sysroot=$(./target/debug/clippy-driver --print sysroot)
+          test "$sysroot" = "$(rustc --print sysroot)"
+
+          if [[ ${{ runner.os }} == "Windows" ]]; then
+            desired_sysroot=C:/tmp
+          else
+            desired_sysroot=/tmp
+          fi
+          sysroot=$(./target/debug/clippy-driver --sysroot $desired_sysroot --print sysroot)
+          test "$sysroot" = $desired_sysroot
+
+          sysroot=$(SYSROOT=$desired_sysroot ./target/debug/clippy-driver --print sysroot)
+          test "$sysroot" = $desired_sysroot
+
+          # Make sure this isn't set - clippy-driver should cope without it
+          unset CARGO_MANIFEST_DIR
+
+          # Run a lint and make sure it produces the expected output. It's also expected to exit with code 1
+          # FIXME: How to match the clippy invocation in compile-test.rs?
+          ./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cstring.rs 2> cstring.stderr && exit 1
+          sed -e 's,tests/ui,$DIR,' -e '/= help/d' cstring.stderr > normalized.stderr
+          diff normalized.stderr tests/ui/cstring.stderr
+
+          # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR
+        )
+      shell: bash
+
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo install cargo-cache --debug
+        /usr/bin/find ~/.cargo/bin ! -type d -exec strip {} \;
+        cargo cache --autoclean
+      shell: bash
