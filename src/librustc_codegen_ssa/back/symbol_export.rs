@@ -208,8 +208,12 @@ fn exported_symbols_provider_local(
 
     if let Some(Sanitizer::Memory) = tcx.sess.opts.debugging_opts.sanitizer {
         // Similar to profiling, preserve weak msan symbol during LTO.
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("__msan_track_origins"));
-        symbols.push((exported_symbol, SymbolExportLevel::C));
+        const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];
+
+        symbols.extend(MSAN_WEAK_SYMBOLS.iter().map(|sym| {
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            (exported_symbol, SymbolExportLevel::C)
+        }));
     }
 
     if tcx.sess.crate_types.borrow().contains(&config::CrateType::Dylib) {
