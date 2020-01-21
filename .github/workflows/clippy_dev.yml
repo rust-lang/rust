@@ -1,0 +1,44 @@
+name: Clippy Dev Test
+
+on:
+  # Only run on paths, that get checked by the clippy_dev tool
+  push:
+    paths:
+    - 'CAHNGELOG.md'
+    - 'README.md'
+    - '**.stderr'
+    - '**.rs'
+  pull_request:
+    paths:
+    - 'CAHNGELOG.md'
+    - 'README.md'
+    - '**.stderr'
+    - '**.rs'
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  clippy_dev:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+        components: rustfmt
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Build
+      run: cargo build --features deny-warnings
+      working-directory: clippy_dev
+    - name: Test limit-stderr-length
+      run: cargo dev --limit-stderr-length
+    - name: Test update_lints
+      run: cargo dev update_lints --check
+    - name: Test fmt
+      run: cargo dev fmt --check
