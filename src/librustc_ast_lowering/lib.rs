@@ -1254,6 +1254,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 | GenericBound::Trait(ref ty, TraitBoundModifier::MaybeConst) => {
                                     Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
                                 }
+                                // `?const ?Bound` will cause an error during AST validation
+                                // anyways, so treat it like `?Bound` as compilation proceeds.
                                 GenericBound::Trait(_, TraitBoundModifier::Maybe)
                                 | GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
                                     None
@@ -2301,6 +2303,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match f {
             TraitBoundModifier::None => hir::TraitBoundModifier::None,
             TraitBoundModifier::MaybeConst => hir::TraitBoundModifier::MaybeConst,
+
+            // `MaybeConstMaybe` will cause an error during AST validation, but we need to pick a
+            // placeholder for compilation to proceed.
             TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
                 hir::TraitBoundModifier::Maybe
             }
