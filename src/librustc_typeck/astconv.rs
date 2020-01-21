@@ -313,9 +313,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         // Prohibit explicit lifetime arguments if late-bound lifetime parameters are present.
-        let mut reported_late_bound_region_err = None;
+        let mut reported_late_bound_region_err = false;
         if !infer_lifetimes {
             if let Some(span_late) = def.has_late_bound_regions {
+                reported_late_bound_region_err = true;
                 let msg = "cannot specify lifetime arguments explicitly \
                            if late bound lifetime parameters are present";
                 let note = "the late bound lifetime parameter is introduced here";
@@ -326,7 +327,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let mut err = tcx.sess.struct_span_err(span, msg);
                     err.span_note(span_late, note);
                     err.emit();
-                    reported_late_bound_region_err = Some(true);
                 } else {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
@@ -336,7 +336,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         multispan,
                         |lint| lint.build(msg).emit(),
                     );
-                    reported_late_bound_region_err = Some(false);
                 }
             }
         }
@@ -405,10 +404,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 true
             };
 
-        let mut arg_count_mismatch = reported_late_bound_region_err.unwrap_or(false);
+        let mut arg_count_mismatch = reported_late_bound_region_err;
         let mut unexpected_spans = vec![];
 
-        if reported_late_bound_region_err.is_none()
+        if !reported_late_bound_region_err
             && (!infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes)
         {
             arg_count_mismatch |= check_kind_count(
