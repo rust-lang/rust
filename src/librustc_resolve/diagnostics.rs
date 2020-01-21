@@ -5,8 +5,9 @@ use rustc::bug;
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -1442,6 +1443,77 @@ crate fn show_candidates(
         for candidate in path_strings {
             msg.push('\n');
             msg.push_str(&candidate);
+        }
+    }
+}
+
+crate fn report_missing_lifetime_specifiers(
+    sess: &Session,
+    span: Span,
+    count: usize,
+) -> DiagnosticBuilder<'_> {
+    struct_span_err!(sess, span, E0106, "missing lifetime specifier{}", pluralize!(count))
+}
+
+crate fn add_missing_lifetime_specifiers_label(
+    err: &mut DiagnosticBuilder<'_>,
+    span: Span,
+    count: usize,
+    lifetime_names: &FxHashSet<ast::Ident>,
+    snippet: Option<&str>,
+    missing_named_lifetime_spots: &[&hir::Generics<'_>],
+) {
+    if count > 1 {
+        err.span_label(span, format!("expected {} lifetime parameters", count));
+    } else {
+        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_suggestion(
+                span,
+                "consider using the named lifetime",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        };
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_label(span, "expected named lifetime parameter");
+
+            if let Some(generics) = missing_named_lifetime_spots.iter().last() {
+                let mut introduce_suggestion = vec![];
+                introduce_suggestion.push(match &generics.params {
+                    [] => (generics.span, "<'lifetime>".to_string()),
+                    [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+                });
+                introduce_suggestion.push((span, sugg));
+                err.multipart_suggestion(
+                    "consider introducing a named lifetime parameter",
+                    introduce_suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+
+        match (lifetime_names.len(), lifetime_names.iter().next(), snippet) {
+            (1, Some(name), Some("&")) => {
+                suggest_existing(err, format!("&{} ", name));
+            }
+            (1, Some(name), Some("'_")) => {
+                suggest_existing(err, name.to_string());
+            }
+            (1, Some(name), Some(snippet)) if !snippet.ends_with(">") => {
+                suggest_existing(err, format!("{}<{}>", snippet, name));
+            }
+            (0, _, Some("&")) => {
+                suggest_new(err, "&'lifetime ".to_string());
+            }
+            (0, _, Some("'_")) => {
+                suggest_new(err, "'lifetime".to_string());
+            }
+            (0, _, Some(snippet)) if !snippet.ends_with(">") => {
+                suggest_new(err, format!("{}<'lifetime>", snippet));
+            }
+            _ => {
+                err.span_label(span, "expected lifetime parameter");
+            }
         }
     }
 }

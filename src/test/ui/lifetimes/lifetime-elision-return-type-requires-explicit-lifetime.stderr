@@ -10,17 +10,25 @@ error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:7:33
    |
 LL | fn g(_x: &isize, _y: &isize) -> &isize {
-   |                                 ^ expected lifetime parameter
+   |                                 ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `_x` or `_y`
+help: consider introducing a named lifetime parameter
+   |
+LL | fn g<'lifetime>(_x: &isize, _y: &isize) -> &'lifetime isize {
+   |     ^^^^^^^^^^^                            ^^^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:17:19
    |
 LL | fn h(_x: &Foo) -> &isize {
-   |                   ^ expected lifetime parameter
+   |                   ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `_x`'s 2 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL | fn h<'lifetime>(_x: &Foo) -> &'lifetime isize {
+   |     ^^^^^^^^^^^              ^^^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:21:20

@@ -3,34 +3,67 @@ error[E0261]: use of undeclared lifetime name `'b`
    |
 LL |     fn m4(&self, arg: &'b isize) { }
    |                        ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      ^^^
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m4<'b>(&self, arg: &'b isize) { }
+   |          ^^^^
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:16:12
    |
 LL |     fn m5(&'b self) { }
    |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      ^^^
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m5<'b>(&'b self) { }
+   |          ^^^^
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:17:27
    |
 LL |     fn m6(&self, arg: Foo<'b>) { }
    |                           ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      ^^^
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m6<'b>(&self, arg: Foo<'b>) { }
+   |          ^^^^
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:25:22
    |
 LL |     type X = Option<&'a isize>;
-   |                      ^^ undeclared lifetime
+   |           -          ^^ undeclared lifetime
+   |           |
+   |           help: consider introducing lifetime `'a` here: `<'a>`
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:27:13
    |
+LL |     enum E {
+   |           - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         E1(&'a isize)
    |             ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:30:13
    |
+LL |     struct S {
+   |             - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         f: &'a isize
    |             ^^ undeclared lifetime
 
@@ -38,13 +71,17 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:32:14
    |
 LL |     fn f(a: &'a isize) { }
-   |              ^^ undeclared lifetime
+   |         -    ^^ undeclared lifetime
+   |         |
+   |         help: consider introducing lifetime `'a` here: `<'a>`
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:40:17
    |
 LL | fn fn_types(a: &'a isize,
-   |                 ^^ undeclared lifetime
+   |            -    ^^ undeclared lifetime
+   |            |
+   |            help: consider introducing lifetime `'a` here: `<'a>`
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:42:36
@@ -61,6 +98,9 @@ LL | ...                   &'b isize)>,
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:46:17
    |
+LL | fn fn_types(a: &'a isize,
+   |            - help: consider introducing lifetime `'a` here: `<'a>`
+...
 LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
 

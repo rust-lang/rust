@@ -1,6 +1,8 @@
 error[E0261]: use of undeclared lifetime name `'test`
   --> $DIR/no_introducing_in_band_in_locals.rs:5:13
    |
+LL | fn foo(x: &u32) {
+   |       - help: consider introducing lifetime `'test` here: `<'test>`
 LL |     let y: &'test u32 = x;
    |             ^^^^^ undeclared lifetime
 

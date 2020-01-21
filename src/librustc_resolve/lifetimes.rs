@@ -5,14 +5,16 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
+use crate::diagnostics::{
+    add_missing_lifetime_specifiers_label, report_missing_lifetime_specifiers,
+};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
-use rustc::session::Session;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -181,6 +183,10 @@ struct LifetimeContext<'a, 'tcx> {
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
 
     lifetime_uses: &'a mut DefIdMap<LifetimeUseSet<'tcx>>,
+
+    /// When encountering an undefined named lifetime, we will suggest introducing it in these
+    /// places.
+    missing_named_lifetime_spots: Vec<&'tcx hir::Generics<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -340,6 +346,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
             labels_in_fn: vec![],
             xcrate_object_lifetime_defaults: Default::default(),
             lifetime_uses: &mut Default::default(),
+            missing_named_lifetime_spots: vec![],
         };
         for (_, item) in &krate.items {
             visitor.visit_item(item);
@@ -382,9 +389,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
+                self.missing_named_lifetime_spots.push(generics);
                 self.visit_early_late(None, &sig.decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
 
             hir::ItemKind::ExternCrate(_)
@@ -415,6 +424,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
             | hir::ItemKind::Impl { ref generics, .. } => {
+                self.missing_named_lifetime_spots.push(generics);
+
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
                 let track_lifetime_uses = match item.kind {
@@ -452,6 +463,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.check_lifetime_params(old_scope, &generics.params);
                     intravisit::walk_item(this, item);
                 });
+                self.missing_named_lifetime_spots.pop();
             }
         }
     }
@@ -684,6 +696,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
+        self.missing_named_lifetime_spots.push(&trait_item.generics);
         match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -735,10 +748,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 intravisit::walk_trait_item(self, trait_item);
             }
         }
+        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
+        self.missing_named_lifetime_spots.push(&impl_item.generics);
         match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -822,6 +837,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 intravisit::walk_impl_item(self, impl_item);
             }
         }
+        self.missing_named_lifetime_spots.pop();
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
@@ -1307,6 +1323,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let LifetimeContext { tcx, map, lifetime_uses, .. } = self;
         let labels_in_fn = take(&mut self.labels_in_fn);
         let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
+        let missing_named_lifetime_spots = take(&mut self.missing_named_lifetime_spots);
         let mut this = LifetimeContext {
             tcx: *tcx,
             map: map,
@@ -1315,7 +1332,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             is_in_fn_syntax: self.is_in_fn_syntax,
             labels_in_fn,
             xcrate_object_lifetime_defaults,
-            lifetime_uses: lifetime_uses,
+            lifetime_uses,
+            missing_named_lifetime_spots,
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
@@ -1323,6 +1341,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         debug!("exiting scope {:?}", this.scope);
         self.labels_in_fn = this.labels_in_fn;
         self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
+        self.missing_named_lifetime_spots = this.missing_named_lifetime_spots;
     }
 
     /// helper method to determine the span to remove when suggesting the
@@ -1805,15 +1824,29 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             self.insert_lifetime(lifetime_ref, def);
         } else {
-            struct_span_err!(
+            let mut err = struct_span_err!(
                 self.tcx.sess,
                 lifetime_ref.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref
-            )
-            .span_label(lifetime_ref.span, "undeclared lifetime")
-            .emit();
+            );
+            err.span_label(lifetime_ref.span, "undeclared lifetime");
+            if !self.is_in_fn_syntax {
+                for generics in &self.missing_named_lifetime_spots {
+                    let (span, sugg) = match &generics.params {
+                        [] => (generics.span, format!("<{}>", lifetime_ref)),
+                        [param, ..] => (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref)),
+                    };
+                    err.span_suggestion(
+                        span,
+                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            err.emit();
         }
     }
 
@@ -2367,6 +2400,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_refs.len(),
                 &lifetime_names,
                 self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
+                &self.missing_named_lifetime_spots,
             );
         }
 
@@ -2860,36 +2894,5 @@ fn insert_late_bound_lifetimes(
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name.modern());
         }
-    }
-}
-
-fn report_missing_lifetime_specifiers(
-    sess: &Session,
-    span: Span,
-    count: usize,
-) -> DiagnosticBuilder<'_> {
-    struct_span_err!(sess, span, E0106, "missing lifetime specifier{}", pluralize!(count))
-}
-
-fn add_missing_lifetime_specifiers_label(
-    err: &mut DiagnosticBuilder<'_>,
-    span: Span,
-    count: usize,
-    lifetime_names: &FxHashSet<ast::Ident>,
-    snippet: Option<&str>,
-) {
-    if count > 1 {
-        err.span_label(span, format!("expected {} lifetime parameters", count));
-    } else if let (1, Some(name), Some("&")) =
-        (lifetime_names.len(), lifetime_names.iter().next(), snippet)
-    {
-        err.span_suggestion(
-            span,
-            "consider using the named lifetime",
-            format!("&{} ", name),
-            Applicability::MaybeIncorrect,
-        );
-    } else {
-        err.span_label(span, "expected lifetime parameter");
     }
 }

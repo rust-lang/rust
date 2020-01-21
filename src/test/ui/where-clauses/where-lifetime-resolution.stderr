@@ -1,6 +1,9 @@
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/where-lifetime-resolution.rs:6:38
    |
+LL | fn f() where
+   |     - help: consider introducing lifetime `'a` here: `<'a>`
+LL |     for<'a> dyn Trait1<'a>: Trait1<'a>, // OK
 LL |     (dyn for<'a> Trait1<'a>): Trait1<'a>,
    |                                      ^^ undeclared lifetime
 
@@ -13,6 +16,9 @@ LL |     for<'a> dyn for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/where-lifetime-resolution.rs:8:52
    |
+LL | fn f() where
+   |     - help: consider introducing lifetime `'b` here: `<'b>`
+...
 LL |     for<'a> dyn for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
    |                                                    ^^ undeclared lifetime
 

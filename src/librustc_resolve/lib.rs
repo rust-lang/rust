@@ -11,6 +11,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![recursion_limit = "256"]
 
 pub use rustc_hir::def::{Namespace, PerNS};
