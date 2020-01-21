@@ -387,7 +387,6 @@ pub struct SimpleDiff<T: Idx> {
 }
 
 impl<T: Idx> SimpleDiff<T> {
-    #![allow(unused)]
     pub fn new(bits_per_block: usize) -> Self {
         SimpleDiff { prev_state: BitSet::new_empty(bits_per_block), prev_loc: Location::START }
     }
@@ -434,7 +433,6 @@ pub struct TwoPhaseDiff<T: Idx> {
 }
 
 impl<T: Idx> TwoPhaseDiff<T> {
-    #![allow(unused)]
     pub fn new(bits_per_block: usize) -> Self {
         TwoPhaseDiff { prev_state: BitSet::new_empty(bits_per_block), prev_loc: Location::START }
     }
@@ -492,7 +490,6 @@ pub struct BlockTransferFunc<'a, 'tcx, T: Idx> {
 }
 
 impl<T: Idx> BlockTransferFunc<'mir, 'tcx, T> {
-    #![allow(unused)]
     pub fn new(
         body: &'mir mir::Body<'tcx>,
         trans_for_block: IndexVec<BasicBlock, GenKillSet<T>>,
