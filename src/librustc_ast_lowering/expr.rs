@@ -848,10 +848,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_catch_scope<T>(&mut self, catch_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let len = self.catch_scopes.len();
         self.catch_scopes.push(catch_id);
 
@@ -867,10 +864,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_loop_scope<T>(&mut self, loop_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         // We're no longer in the base loop's condition; we're in another loop.
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -892,10 +886,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
+    fn with_loop_condition_scope<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = true;
 
