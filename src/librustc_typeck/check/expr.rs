@@ -165,10 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Hide the outer diverging and has_errors flags.
-        let old_diverges = self.diverges.get();
-        let old_has_errors = self.has_errors.get();
-        self.diverges.set(Diverges::Maybe);
-        self.has_errors.set(false);
+        let old_diverges = self.diverges.replace(Diverges::Maybe);
+        let old_has_errors = self.has_errors.replace(false);
 
         let ty = self.check_expr_kind(expr, expected, needs);
 
