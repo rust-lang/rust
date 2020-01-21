@@ -336,17 +336,14 @@ def children_of_node(boxed_node, height, want_values):
     head = node_ptr.dereference()
     length = int(head['len'])
     if length > 0:
-        type_name = str(node_ptr.type.target()) # alloc::...::NodeHeader<K, V, K2>
-        assert type_name.endswith(", ()>")
-        type_name = type_name[:-5] + ">"
         if height > 0:
-            type_name = type_name.replace('NodeHeader', 'InternalNode', 1)
+            type_name = str(node_ptr.type.target()).replace('NodeHeader', 'InternalNode', 1)
             node_type = gdb.lookup_type(type_name)
             node_ptr = node_ptr.cast(node_type.pointer())
             leaf = node_ptr['data']
             edges = node_ptr['edges']
         else:
-            type_name = type_name.replace('NodeHeader', 'LeafNode', 1)
+            type_name = str(node_ptr.type.target()).replace('NodeHeader', 'LeafNode', 1)
             node_type = gdb.lookup_type(type_name)
             node_ptr = node_ptr.cast(node_type.pointer())
             leaf = node_ptr.dereference()
