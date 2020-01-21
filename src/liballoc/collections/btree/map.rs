@@ -156,10 +156,10 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
 
                         let mut in_edge = leaf.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
-                            let (k, v) = kv.into_kv();
+                            let (k, v) = unsafe { kv.into_kv() };
                             in_edge = kv.right_edge();
 
-                            out_node.push(k.clone(), v.clone());
+                            unsafe { out_node.push(k.clone(), v.clone()) };
                             out_tree.length += 1;
                         }
                     }
@@ -170,10 +170,10 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                     let mut out_tree = clone_subtree(internal.first_edge().descend());
 
                     {
-                        let mut out_node = out_tree.root.push_level();
+                        let mut out_node = unsafe { out_tree.root.push_level() };
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
-                            let (k, v) = kv.into_kv();
+                            let (k, v) = unsafe { kv.into_kv() };
                             in_edge = kv.right_edge();
 
                             let k = (*k).clone();
@@ -189,7 +189,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                                 (root, length)
                             };
 
-                            out_node.push(k, v, subroot);
+                            unsafe { out_node.push(k, v, subroot) };
                             out_tree.length += 1 + sublength;
                         }
                     }
@@ -218,7 +218,7 @@ where
 
     fn get(&self, key: &Q) -> Option<&K> {
         match search::search_tree(self.root.as_ref(), key) {
-            Found(handle) => Some(handle.into_kv().0),
+            Found(handle) => Some(unsafe { handle.into_kv().0 }),
             GoDown(_) => None,
         }
     }
@@ -237,7 +237,7 @@ where
     fn replace(&mut self, key: K) -> Option<K> {
         self.ensure_root_is_owned();
         match search::search_tree::<marker::Mut<'_>, K, (), K>(self.root.as_mut(), &key) {
-            Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
+            Found(handle) => Some(mem::replace(unsafe { handle.into_kv_mut().0 }, key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, length: &mut self.length, _marker: PhantomData }
                     .insert(());
@@ -536,7 +536,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         match search::search_tree(self.root.as_ref(), key) {
-            Found(handle) => Some(handle.into_kv().1),
+            Found(handle) => Some(unsafe { handle.into_kv().1 }),
             GoDown(_) => None,
         }
     }
@@ -563,7 +563,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         match search::search_tree(self.root.as_ref(), k) {
-            Found(handle) => Some(handle.into_kv()),
+            Found(handle) => Some(unsafe { handle.into_kv() }),
             GoDown(_) => None,
         }
     }
@@ -592,7 +592,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<T>,
     {
         let front = first_leaf_edge(self.root.as_ref());
-        front.right_kv().ok().map(Handle::into_kv)
+        let handle = front.right_kv().ok()?;
+        Some(unsafe { handle.into_kv() })
     }
 
     /// Returns the first entry in the map for in-place manipulation.
@@ -653,7 +654,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<T>,
     {
         let back = last_leaf_edge(self.root.as_ref());
-        back.left_kv().ok().map(Handle::into_kv)
+        let handle = back.left_kv().ok()?;
+        unsafe { Some(handle.into_kv()) }
     }
 
     /// Returns the last entry in the map for in-place manipulation.
@@ -744,7 +746,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         Q: Ord,
     {
         match search::search_tree(self.root.as_mut(), key) {
-            Found(handle) => Some(handle.into_kv_mut().1),
+            Found(handle) => Some(unsafe { handle.into_kv_mut().1 }),
             GoDown(_) => None,
         }
     }
@@ -995,7 +997,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
             if cur_node.len() < node::CAPACITY {
-                cur_node.push(key, value);
+                unsafe { cur_node.push(key, value) };
             } else {
                 // No space left, go up and push there.
                 let mut open_node;
@@ -1015,7 +1017,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                         }
                         Err(node) => {
                             // We are at the top, create a new root node and push there.
-                            open_node = node.into_root_mut().push_level();
+                            open_node = unsafe { node.into_root_mut().push_level() };
                             break;
                         }
                     }
@@ -1025,9 +1027,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 let tree_height = open_node.height() - 1;
                 let mut right_tree = node::Root::new_leaf();
                 for _ in 0..tree_height {
-                    right_tree.push_level();
+                    unsafe { right_tree.push_level() };
                 }
-                open_node.push(key, value, right_tree);
+                unsafe { open_node.push(key, value, right_tree) };
 
                 // Go down to the right-most leaf again.
                 cur_node = last_leaf_edge(open_node.forget_type()).into_node();
@@ -1102,7 +1104,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut right = Self::new();
         right.root = node::Root::new_leaf();
         for _ in 0..(self.root.as_ref().height()) {
-            right.root.push_level();
+            unsafe { right.root.push_level() };
         }
 
         {
@@ -2387,7 +2389,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         let mut ins_edge;
 
         let mut cur_parent = match self.handle.insert(self.key, value) {
-            (Fit(handle), _) => return handle.into_kv_mut().1,
+            (Fit(handle), _) => return unsafe { handle.into_kv_mut().1 },
             (Split(left, k, v, right), ptr) => {
                 ins_k = k;
                 ins_v = v;
@@ -2409,7 +2411,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                     }
                 },
                 Err(root) => {
-                    root.push_level().push(ins_k, ins_v, ins_edge);
+                    unsafe { root.push_level().push(ins_k, ins_v, ins_edge) };
                     return unsafe { &mut *out_ptr };
                 }
             }
@@ -2431,7 +2433,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
-        self.handle.reborrow().into_kv().0
+        unsafe { self.handle.reborrow().into_kv().0 }
     }
 
     /// Take ownership of the key and value from the map.
@@ -2475,7 +2477,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
-        self.handle.reborrow().into_kv().1
+        unsafe { self.handle.reborrow().into_kv().1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
@@ -2506,7 +2508,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
-        self.handle.kv_mut().1
+        unsafe { self.handle.kv_mut().1 }
     }
 
     /// Converts the entry into a mutable reference to its value.
@@ -2532,7 +2534,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
-        self.handle.into_kv_mut().1
+        unsafe { self.handle.into_kv_mut().1 }
     }
 
     /// Sets the value of the entry with the `OccupiedEntry`'s key,
@@ -2584,17 +2586,17 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
         let (small_leaf, old_key, old_val) = match self.handle.force() {
             Leaf(leaf) => {
-                let (hole, old_key, old_val) = leaf.remove();
+                let (hole, old_key, old_val) = unsafe { leaf.remove() };
                 (hole.into_node(), old_key, old_val)
             }
             Internal(mut internal) => {
-                let key_loc = internal.kv_mut().0 as *mut K;
-                let val_loc = internal.kv_mut().1 as *mut V;
+                let key_loc = unsafe { internal.kv_mut().0 as *mut K };
+                let val_loc = unsafe { internal.kv_mut().1 as *mut V };
 
                 let to_remove = first_leaf_edge(internal.right_edge().descend()).right_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
-                let (hole, key, val) = to_remove.remove();
+                let (hole, key, val) = unsafe { to_remove.remove() };
 
                 let old_key = unsafe { mem::replace(&mut *key_loc, key) };
                 let old_val = unsafe { mem::replace(&mut *val_loc, val) };
