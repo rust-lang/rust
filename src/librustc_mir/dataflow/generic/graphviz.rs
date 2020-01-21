@@ -418,7 +418,7 @@ where
 
         self.prev_loc = location;
         write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
-        results.seek_before(location);
+        results.seek_after(location);
         let curr_state = results.get();
         write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
         self.prev_state.overwrite(curr_state);
@@ -445,7 +445,7 @@ where
     A: Analysis<'tcx>,
 {
     fn column_names(&self) -> &[&str] {
-        &["ENTRY", " EXIT"]
+        &["BEFORE", " AFTER"]
     }
 
     fn write_state_for_location(
@@ -465,7 +465,7 @@ where
 
         self.prev_loc = location;
 
-        // Entry
+        // Before
 
         write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
         results.seek_before(location);
@@ -474,7 +474,7 @@ where
         self.prev_state.overwrite(curr_state);
         write!(w, "</td>")?;
 
-        // Exit
+        // After
 
         write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
         results.seek_after(location);
