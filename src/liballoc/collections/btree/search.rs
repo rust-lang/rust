@@ -64,9 +64,9 @@ where
     // Using `keys()` is fine here even if BorrowType is mutable, as all we return
     // is an index -- not a reference.
     let len = node.len();
-    // Skip search for empty nodes because `keys()` does not work on shared roots.
     if len > 0 {
-        for (i, k) in node.keys().iter().enumerate() {
+        let keys = unsafe { node.keys() }; // safe because a non-empty node cannot be the shared root
+        for (i, k) in keys.iter().enumerate() {
             match key.cmp(k.borrow()) {
                 Ordering::Greater => {}
                 Ordering::Equal => return (i, true),

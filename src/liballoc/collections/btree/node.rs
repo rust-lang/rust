@@ -386,7 +386,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
 
     /// Borrows a view into the keys stored in the node.
     /// The caller must ensure that the node is not the shared root.
-    pub fn keys(&self) -> &[K] {
+    pub unsafe fn keys(&self) -> &[K] {
         self.reborrow().into_key_slice()
     }
 
@@ -521,10 +521,10 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// The caller must ensure that the node is not the shared root.
-    fn into_key_slice(self) -> &'a [K] {
+    unsafe fn into_key_slice(self) -> &'a [K] {
         debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf` is okay.
-        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len()) }
+        slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len())
     }
 
     /// The caller must ensure that the node is not the shared root.
@@ -537,7 +537,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// The caller must ensure that the node is not the shared root.
     fn into_slices(self) -> (&'a [K], &'a [V]) {
         let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice(), self.into_val_slice())
+        (unsafe { k.into_key_slice() }, self.into_val_slice())
     }
 }
 
