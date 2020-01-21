@@ -3,7 +3,7 @@ use std::process::Command;
 
 #[test]
 fn fmt() {
-    if option_env!("RUSTC_TEST_SUITE").is_some() {
+    if option_env!("RUSTC_TEST_SUITE").is_some() || option_env!("GHA_CI").is_some() {
         return;
     }
 
