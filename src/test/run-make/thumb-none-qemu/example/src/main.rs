@@ -1,4 +1,3 @@
-// #![feature(stdsimd)]
 #![no_main]
 #![no_std]
 use core::fmt::Write;
@@ -6,12 +5,9 @@ use cortex_m::asm;
 use cortex_m_rt::entry;
 use cortex_m_semihosting as semihosting;
 
-//FIXME: This imports the provided #[panic_handler].
-#[allow(rust_2018_idioms)]
-extern crate panic_halt;
+use panic_halt as _;
 
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     let x = 42;
 
