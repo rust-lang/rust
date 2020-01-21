@@ -171,10 +171,19 @@ where
         //   | | (on successful return)           | +_4        |
         //   +-+----------------------------------+------------+
 
-        write!(
-            w,
-            r#"<table border="1" cellborder="1" cellspacing="0" cellpadding="3" sides="rb">"#,
-        )?;
+        // N.B., Some attributes (`align`, `balign`) are repeated on parent elements and their
+        // children. This is because `xdot` seemed to have a hard time correctly propagating
+        // attributes. Make sure to test the output before trying to remove the redundancy.
+        // Notably, `align` was found to have no effect when applied only to <table>.
+
+        let table_fmt = concat!(
+            " border=\"1\"",
+            " cellborder=\"1\"",
+            " cellspacing=\"0\"",
+            " cellpadding=\"3\"",
+            " sides=\"rb\"",
+        );
+        write!(w, r#"<table{fmt}>"#, fmt = table_fmt)?;
 
         // A + B: Block header
         if self.state_formatter.column_names().is_empty() {
@@ -186,7 +195,7 @@ where
         // C: Entry state
         self.bg = Background::Light;
         self.results.seek_to_block_start(block);
-        self.write_row_with_full_state(w, "", "(on_entry)")?;
+        self.write_row_with_full_state(w, "", "(on entry)")?;
 
         // D: Statement transfer functions
         for (i, statement) in body[block].statements.iter().enumerate() {
@@ -212,7 +221,7 @@ where
             self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                 write!(
                     w,
-                    r#"<td colspan="{colspan}" {fmt} align="left">"#,
+                    r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
                     colspan = num_state_columns,
                     fmt = fmt,
                 )?;
@@ -311,7 +320,9 @@ where
         f: impl FnOnce(&mut Self, &mut W, &str) -> io::Result<()>,
     ) -> io::Result<()> {
         let bg = self.toggle_background();
-        let fmt = format!("sides=\"tl\" {}", bg.attr());
+        let valign = if mir.starts_with("(on ") && mir != "(on entry)" { "bottom" } else { "top" };
+
+        let fmt = format!("valign=\"{}\" sides=\"tl\" {}", valign, bg.attr());
 
         write!(
             w,
@@ -345,7 +356,7 @@ where
                 colspan = this.num_state_columns(),
                 fmt = fmt,
             )?;
-            pretty_print_state_elems(w, analysis, state.iter(), ",", LIMIT_40_ALIGN_1)?;
+            pretty_print_state_elems(w, analysis, state.iter(), ", ", LIMIT_30_ALIGN_1)?;
             write!(w, "}}</td>")
         })
     }
@@ -416,7 +427,7 @@ where
         }
 
         self.prev_loc = location;
-        write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
+        write!(w, r#"<td {fmt} balign="left" align="left">"#, fmt = fmt)?;
         results.seek_after(location);
         let curr_state = results.get();
         write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
@@ -524,12 +535,12 @@ where
         for set in &[&block_trans.gen, &block_trans.kill] {
             write!(
                 w,
-                r#"<td {fmt} rowspan="{rowspan}" align="center">"#,
+                r#"<td {fmt} rowspan="{rowspan}" balign="left" align="left">"#,
                 fmt = fmt,
                 rowspan = rowspan
             )?;
 
-            pretty_print_state_elems(&mut w, results.analysis(), set.iter(), "\n", None)?;
+            pretty_print_state_elems(&mut w, results.analysis(), set.iter(), BR_LEFT, None)?;
             write!(w, "</td>")?;
         }
 
@@ -561,25 +572,28 @@ fn write_diff<A: Analysis<'tcx>>(
 
     if !set.is_empty() {
         write!(w, r#"<font color="darkgreen">+"#)?;
-        pretty_print_state_elems(w, analysis, set.iter(), ",", LIMIT_40_ALIGN_1)?;
+        pretty_print_state_elems(w, analysis, set.iter(), ", ", LIMIT_30_ALIGN_1)?;
         write!(w, r#"</font>"#)?;
     }
 
     if !set.is_empty() && !clear.is_empty() {
-        write!(w, "<br/>")?;
+        write!(w, "{}", BR_LEFT)?;
     }
 
     if !clear.is_empty() {
         write!(w, r#"<font color="red">-"#)?;
-        pretty_print_state_elems(w, analysis, clear.iter(), ",", LIMIT_40_ALIGN_1)?;
+        pretty_print_state_elems(w, analysis, clear.iter(), ", ", LIMIT_30_ALIGN_1)?;
         write!(w, r#"</font>"#)?;
     }
 
     Ok(())
 }
 
+const BR_LEFT: &'static str = r#"<br align="left"/>"#;
+const BR_LEFT_SPACE: &'static str = r#"<br align="left"/> "#;
+
 /// Line break policy that breaks at 40 characters and starts the next line with a single space.
-const LIMIT_40_ALIGN_1: Option<LineBreak> = Some(LineBreak { sequence: "<br/> ", limit: 40 });
+const LIMIT_30_ALIGN_1: Option<LineBreak> = Some(LineBreak { sequence: BR_LEFT_SPACE, limit: 30 });
 
 struct LineBreak {
     sequence: &'static str,
