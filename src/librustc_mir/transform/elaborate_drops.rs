@@ -284,6 +284,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.env.param_env
     }
 
+    // FIXME(ecstaticmorse): This duplicates `dataflow::ResultsCursor` but hardcodes the transfer
+    // function for `Maybe{Un,}InitializedPlaces` directly. It should be replaced by a a pair of
+    // `ResultsCursor`s.
     fn initialization_data_at(&self, loc: Location) -> InitializationData {
         let mut data = InitializationData {
             live: self.flow_inits.entry_set_for_block(loc.block).to_owned(),
