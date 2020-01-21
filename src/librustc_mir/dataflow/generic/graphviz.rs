@@ -1,13 +1,14 @@
+//! A helpful diagram for debugging dataflow problems.
+
 use std::cell::RefCell;
-use std::io::{self, Write};
-use std::{ops, str};
+use std::{io, ops, str};
 
 use rustc::mir::{self, BasicBlock, Body, Location};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 
-use super::{Analysis, Results, ResultsRefCursor};
+use super::{Analysis, GenKillSet, Results, ResultsRefCursor};
 use crate::util::graphviz_safe_def_name;
 
 pub struct Formatter<'a, 'tcx, A>
@@ -25,11 +26,16 @@ impl<A> Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn new(body: &'a Body<'tcx>, def_id: DefId, results: &'a Results<'tcx, A>) -> Self {
+    pub fn new(
+        body: &'a Body<'tcx>,
+        def_id: DefId,
+        results: &'a Results<'tcx, A>,
+        state_formatter: &'a mut dyn StateFormatter<'tcx, A>,
+    ) -> Self {
         let block_formatter = BlockFormatter {
             bg: Background::Light,
-            prev_state: BitSet::new_empty(results.analysis.bits_per_block(body)),
             results: ResultsRefCursor::new(body, results),
+            state_formatter,
         };
 
         Formatter { body, def_id, block_formatter: RefCell::new(block_formatter) }
@@ -117,15 +123,21 @@ struct BlockFormatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    prev_state: BitSet<A::Idx>,
     results: ResultsRefCursor<'a, 'a, 'tcx, A>,
     bg: Background,
+    state_formatter: &'a mut dyn StateFormatter<'tcx, A>,
 }
 
 impl<A> BlockFormatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
+    const HEADER_COLOR: &'static str = "#a0a0a0";
+
+    fn num_state_columns(&self) -> usize {
+        std::cmp::max(1, self.state_formatter.column_names().len())
+    }
+
     fn toggle_background(&mut self) -> Background {
         let bg = self.bg;
         self.bg = !bg;
@@ -164,196 +176,470 @@ where
             r#"<table border="1" cellborder="1" cellspacing="0" cellpadding="3" sides="rb">"#,
         )?;
 
-        // A: Block info
-        write!(
-            w,
-            r#"<tr>
-                 <td colspan="{num_headers}" sides="tl">bb{block_id}</td>
-               </tr>"#,
-            num_headers = 3,
-            block_id = block.index(),
-        )?;
-
-        // B: Column headings
-        write!(
-            w,
-            r#"<tr>
-                 <td colspan="2" {fmt}>MIR</td>
-                 <td {fmt}>STATE</td>
-               </tr>"#,
-            fmt = r##"bgcolor="#a0a0a0" sides="tl""##,
-        )?;
+        // A + B: Block header
+        if self.state_formatter.column_names().is_empty() {
+            self.write_block_header_simple(w, block)?;
+        } else {
+            self.write_block_header_with_state_columns(w, block)?;
+        }
 
         // C: Entry state
         self.bg = Background::Light;
         self.results.seek_to_block_start(block);
-        self.write_row_with_curr_state(w, "", "(on entry)")?;
-        self.prev_state.overwrite(self.results.get());
+        self.write_row_with_full_state(w, "", "(on_entry)")?;
 
         // D: Statement transfer functions
         for (i, statement) in body[block].statements.iter().enumerate() {
             let location = Location { block, statement_index: i };
-
-            let mir_col = format!("{:?}", statement);
-            let i_col = i.to_string();
-
-            self.results.seek_after(location);
-            self.write_row_with_curr_diff(w, &i_col, &mir_col)?;
-            self.prev_state.overwrite(self.results.get());
+            let statement_str = format!("{:?}", statement);
+            self.write_row_for_location(w, &i.to_string(), &statement_str, location)?;
         }
 
         // E: Terminator transfer function
         let terminator = body[block].terminator();
-        let location = body.terminator_loc(block);
+        let terminator_loc = body.terminator_loc(block);
+        let mut terminator_str = String::new();
+        terminator.kind.fmt_head(&mut terminator_str).unwrap();
 
-        let mut mir_col = String::new();
-        terminator.kind.fmt_head(&mut mir_col).unwrap();
-
-        self.results.seek_after(location);
-        self.write_row_with_curr_diff(w, "T", &mir_col)?;
-        self.prev_state.overwrite(self.results.get());
+        self.write_row_for_location(w, "T", &terminator_str, terminator_loc)?;
 
         // F: Exit state
+        self.results.seek_after(terminator_loc);
         if let mir::TerminatorKind::Call { destination: Some(_), .. } = &terminator.kind {
-            self.write_row_with_curr_state(w, "", "(on unwind)")?;
+            self.write_row_with_full_state(w, "", "(on unwind)")?;
 
-            self.results.seek_after_assume_call_returns(location);
-            self.write_row_with_curr_diff(w, "", "(on successful return)")?;
+            let num_state_columns = self.num_state_columns();
+            self.write_row(w, "", "(on successful return)", |this, w, fmt| {
+                write!(
+                    w,
+                    r#"<td colspan="{colspan}" {fmt} align="left">"#,
+                    colspan = num_state_columns,
+                    fmt = fmt,
+                )?;
+
+                let state_on_unwind = this.results.get().clone();
+                this.results.seek_after_assume_call_returns(terminator_loc);
+                write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
+
+                write!(w, "</td>")
+            })?;
         } else {
-            self.write_row_with_curr_state(w, "", "(on exit)")?;
+            self.write_row_with_full_state(w, "", "(on exit)")?;
         }
 
         write!(w, "</table>")
     }
 
-    fn write_row_with_curr_state(
+    fn write_block_header_simple(
         &mut self,
         w: &mut impl io::Write,
-        i: &str,
-        mir: &str,
+        block: BasicBlock,
     ) -> io::Result<()> {
-        let bg = self.toggle_background();
+        //   +-------------------------------------------------+
+        // A |                      bb4                        |
+        //   +-----------------------------------+-------------+
+        // B |                MIR                |    STATE    |
+        //   +-+---------------------------------+-------------+
+        //   | |              ...                |             |
 
-        let mut out = Vec::new();
-        write!(&mut out, "{{")?;
-        pretty_print_state_elems(&mut out, self.results.analysis(), self.results.get().iter())?;
-        write!(&mut out, "}}")?;
-
+        // A
         write!(
             w,
-            r#"<tr>
-                 <td {fmt} align="right">{i}</td>
-                 <td {fmt} align="left">{mir}</td>
-                 <td {fmt} align="left">{state}</td>
-               </tr>"#,
-            fmt = &["sides=\"tl\"", bg.attr()].join(" "),
-            i = i,
-            mir = dot::escape_html(mir),
-            state = dot::escape_html(str::from_utf8(&out).unwrap()),
+            concat!("<tr>", r#"<td colspan="3" sides="tl">bb{block_id}</td>"#, "</tr>",),
+            block_id = block.index(),
+        )?;
+
+        // B
+        write!(
+            w,
+            concat!(
+                "<tr>",
+                r#"<td colspan="2" {fmt}>MIR</td>"#,
+                r#"<td {fmt}>STATE</td>"#,
+                "</tr>",
+            ),
+            fmt = format!("bgcolor=\"{}\" sides=\"tl\"", Self::HEADER_COLOR),
         )
     }
 
-    fn write_row_with_curr_diff(
+    fn write_block_header_with_state_columns(
+        &mut self,
+        w: &mut impl io::Write,
+        block: BasicBlock,
+    ) -> io::Result<()> {
+        //   +------------------------------------+-------------+
+        // A |                bb4                 |    STATE    |
+        //   +------------------------------------+------+------+
+        // B |                MIR                 |  GEN | KILL |
+        //   +-+----------------------------------+------+------+
+        //   | |              ...                 |      |      |
+
+        let state_column_names = self.state_formatter.column_names();
+
+        // A
+        write!(
+            w,
+            concat!(
+                "<tr>",
+                r#"<td {fmt} colspan="2">bb{block_id}</td>"#,
+                r#"<td {fmt} colspan="{num_state_cols}">STATE</td>"#,
+                "</tr>",
+            ),
+            fmt = "sides=\"tl\"",
+            num_state_cols = state_column_names.len(),
+            block_id = block.index(),
+        )?;
+
+        // B
+        let fmt = format!("bgcolor=\"{}\" sides=\"tl\"", Self::HEADER_COLOR);
+        write!(w, concat!("<tr>", r#"<td colspan="2" {fmt}>MIR</td>"#,), fmt = fmt,)?;
+
+        for name in state_column_names {
+            write!(w, "<td {fmt}>{name}</td>", fmt = fmt, name = name)?;
+        }
+
+        write!(w, "</tr>")
+    }
+
+    /// Write a row with the given index and MIR, using the function argument to fill in the
+    /// "STATE" column(s).
+    fn write_row<W: io::Write>(
+        &mut self,
+        w: &mut W,
+        i: &str,
+        mir: &str,
+        f: impl FnOnce(&mut Self, &mut W, &str) -> io::Result<()>,
+    ) -> io::Result<()> {
+        let bg = self.toggle_background();
+        let fmt = format!("sides=\"tl\" {}", bg.attr());
+
+        write!(
+            w,
+            concat!(
+                "<tr>",
+                r#"<td {fmt} align="right">{i}</td>"#,
+                r#"<td {fmt} align="left">{mir}</td>"#,
+            ),
+            i = i,
+            fmt = fmt,
+            mir = dot::escape_html(mir),
+        )?;
+
+        f(self, w, &fmt)?;
+        write!(w, "</tr>")
+    }
+
+    fn write_row_with_full_state(
         &mut self,
         w: &mut impl io::Write,
         i: &str,
         mir: &str,
     ) -> io::Result<()> {
-        let bg = self.toggle_background();
-        let analysis = self.results.analysis();
+        self.write_row(w, i, mir, |this, w, fmt| {
+            let state = this.results.get();
+            let analysis = this.results.analysis();
 
-        let diff = BitSetDiff::compute(&self.prev_state, self.results.get());
-
-        let mut set = Vec::new();
-        pretty_print_state_elems(&mut set, analysis, diff.set.iter())?;
-
-        let mut clear = Vec::new();
-        pretty_print_state_elems(&mut clear, analysis, diff.clear.iter())?;
-
-        write!(
-            w,
-            r#"<tr>
-                 <td {fmt} align="right">{i}</td>
-                 <td {fmt} align="left">{mir}</td>
-                 <td {fmt} align="left">"#,
-            i = i,
-            fmt = &["sides=\"tl\"", bg.attr()].join(" "),
-            mir = dot::escape_html(mir),
-        )?;
-
-        if !set.is_empty() {
             write!(
                 w,
-                r#"<font color="darkgreen">+{}</font>"#,
-                dot::escape_html(str::from_utf8(&set).unwrap()),
+                r#"<td colspan="{colspan}" {fmt} align="left">{{"#,
+                colspan = this.num_state_columns(),
+                fmt = fmt,
             )?;
-        }
+            pretty_print_state_elems(w, analysis, state.iter(), ",", LIMIT_40_ALIGN_1)?;
+            write!(w, "}}</td>")
+        })
+    }
 
-        if !set.is_empty() && !clear.is_empty() {
-            write!(w, "  ")?;
-        }
-
-        if !clear.is_empty() {
-            write!(
-                w,
-                r#"<font color="red">-{}</font>"#,
-                dot::escape_html(str::from_utf8(&clear).unwrap()),
-            )?;
-        }
-
-        write!(w, "</td></tr>")
+    fn write_row_for_location(
+        &mut self,
+        w: &mut impl io::Write,
+        i: &str,
+        mir: &str,
+        location: Location,
+    ) -> io::Result<()> {
+        self.write_row(w, i, mir, |this, w, fmt| {
+            this.state_formatter.write_state_for_location(w, fmt, &mut this.results, location)
+        })
     }
 }
 
-/// The operations required to transform one `BitSet` into another.
-struct BitSetDiff<T: Idx> {
-    set: HybridBitSet<T>,
-    clear: HybridBitSet<T>,
+/// Controls what gets printed under the `STATE` header.
+pub trait StateFormatter<'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    /// The columns that will get printed under `STATE`.
+    fn column_names(&self) -> &[&str];
+
+    fn write_state_for_location(
+        &mut self,
+        w: &mut dyn io::Write,
+        fmt: &str,
+        results: &mut ResultsRefCursor<'_, '_, 'tcx, A>,
+        location: Location,
+    ) -> io::Result<()>;
 }
 
-impl<T: Idx> BitSetDiff<T> {
-    fn compute(from: &BitSet<T>, to: &BitSet<T>) -> Self {
-        assert_eq!(from.domain_size(), to.domain_size());
-        let len = from.domain_size();
+/// Prints a single column containing the state vector immediately *after* each statement.
+pub struct SimpleDiff<T: Idx> {
+    prev_state: BitSet<T>,
+    prev_loc: Location,
+}
 
-        let mut set = HybridBitSet::new_empty(len);
-        let mut clear = HybridBitSet::new_empty(len);
-
-        // FIXME: This could be made faster if `BitSet::xor` were implemented.
-        for i in (0..len).map(|i| T::new(i)) {
-            match (from.contains(i), to.contains(i)) {
-                (false, true) => set.insert(i),
-                (true, false) => clear.insert(i),
-                _ => continue,
-            };
-        }
-
-        BitSetDiff { set, clear }
+impl<T: Idx> SimpleDiff<T> {
+    #![allow(unused)]
+    pub fn new(bits_per_block: usize) -> Self {
+        SimpleDiff { prev_state: BitSet::new_empty(bits_per_block), prev_loc: Location::START }
     }
 }
 
-/// Formats each `elem` using the pretty printer provided by `analysis` into a comma-separated
-/// list.
+impl<A> StateFormatter<'tcx, A> for SimpleDiff<A::Idx>
+where
+    A: Analysis<'tcx>,
+{
+    fn column_names(&self) -> &[&str] {
+        &[]
+    }
+
+    fn write_state_for_location(
+        &mut self,
+        mut w: &mut dyn io::Write,
+        fmt: &str,
+        results: &mut ResultsRefCursor<'_, '_, 'tcx, A>,
+        location: Location,
+    ) -> io::Result<()> {
+        if location.statement_index == 0 {
+            results.seek_to_block_start(location.block);
+            self.prev_state.overwrite(results.get());
+        } else {
+            // Ensure that we are visiting statements in order, so `prev_state` is correct.
+            assert_eq!(self.prev_loc.successor_within_block(), location);
+        }
+
+        self.prev_loc = location;
+        write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
+        results.seek_before(location);
+        let curr_state = results.get();
+        write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
+        self.prev_state.overwrite(curr_state);
+        write!(w, "</td>")
+    }
+}
+
+/// Prints two state columns, one containing only the "before" effect of each statement and one
+/// containing the full effect.
+pub struct TwoPhaseDiff<T: Idx> {
+    prev_state: BitSet<T>,
+    prev_loc: Location,
+}
+
+impl<T: Idx> TwoPhaseDiff<T> {
+    #![allow(unused)]
+    pub fn new(bits_per_block: usize) -> Self {
+        TwoPhaseDiff { prev_state: BitSet::new_empty(bits_per_block), prev_loc: Location::START }
+    }
+}
+
+impl<A> StateFormatter<'tcx, A> for TwoPhaseDiff<A::Idx>
+where
+    A: Analysis<'tcx>,
+{
+    fn column_names(&self) -> &[&str] {
+        &["ENTRY", " EXIT"]
+    }
+
+    fn write_state_for_location(
+        &mut self,
+        mut w: &mut dyn io::Write,
+        fmt: &str,
+        results: &mut ResultsRefCursor<'_, '_, 'tcx, A>,
+        location: Location,
+    ) -> io::Result<()> {
+        if location.statement_index == 0 {
+            results.seek_to_block_start(location.block);
+            self.prev_state.overwrite(results.get());
+        } else {
+            // Ensure that we are visiting statements in order, so `prev_state` is correct.
+            assert_eq!(self.prev_loc.successor_within_block(), location);
+        }
+
+        self.prev_loc = location;
+
+        // Entry
+
+        write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
+        results.seek_before(location);
+        let curr_state = results.get();
+        write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
+        self.prev_state.overwrite(curr_state);
+        write!(w, "</td>")?;
+
+        // Exit
+
+        write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
+        results.seek_after(location);
+        let curr_state = results.get();
+        write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
+        self.prev_state.overwrite(curr_state);
+        write!(w, "</td>")
+    }
+}
+
+/// Prints the gen/kill set for the entire block.
+pub struct BlockTransferFunc<'a, 'tcx, T: Idx> {
+    body: &'a mir::Body<'tcx>,
+    trans_for_block: IndexVec<BasicBlock, GenKillSet<T>>,
+}
+
+impl<T: Idx> BlockTransferFunc<'mir, 'tcx, T> {
+    #![allow(unused)]
+    pub fn new(
+        body: &'mir mir::Body<'tcx>,
+        trans_for_block: IndexVec<BasicBlock, GenKillSet<T>>,
+    ) -> Self {
+        BlockTransferFunc { body, trans_for_block }
+    }
+}
+
+impl<A> StateFormatter<'tcx, A> for BlockTransferFunc<'mir, 'tcx, A::Idx>
+where
+    A: Analysis<'tcx>,
+{
+    fn column_names(&self) -> &[&str] {
+        &["GEN", "KILL"]
+    }
+
+    fn write_state_for_location(
+        &mut self,
+        mut w: &mut dyn io::Write,
+        fmt: &str,
+        results: &mut ResultsRefCursor<'_, '_, 'tcx, A>,
+        location: Location,
+    ) -> io::Result<()> {
+        // Only print a single row.
+        if location.statement_index != 0 {
+            return Ok(());
+        }
+
+        let block_trans = &self.trans_for_block[location.block];
+        let rowspan = self.body.basic_blocks()[location.block].statements.len();
+
+        for set in &[&block_trans.gen, &block_trans.kill] {
+            write!(
+                w,
+                r#"<td {fmt} rowspan="{rowspan}" align="center">"#,
+                fmt = fmt,
+                rowspan = rowspan
+            )?;
+
+            pretty_print_state_elems(&mut w, results.analysis(), set.iter(), "\n", None)?;
+            write!(w, "</td>")?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Writes two lines, one containing the added bits and one the removed bits.
+fn write_diff<A: Analysis<'tcx>>(
+    w: &mut impl io::Write,
+    analysis: &A,
+    from: &BitSet<A::Idx>,
+    to: &BitSet<A::Idx>,
+) -> io::Result<()> {
+    assert_eq!(from.domain_size(), to.domain_size());
+    let len = from.domain_size();
+
+    let mut set = HybridBitSet::new_empty(len);
+    let mut clear = HybridBitSet::new_empty(len);
+
+    // FIXME: Implement a lazy iterator over the symmetric difference of two bitsets.
+    for i in (0..len).map(|i| A::Idx::new(i)) {
+        match (from.contains(i), to.contains(i)) {
+            (false, true) => set.insert(i),
+            (true, false) => clear.insert(i),
+            _ => continue,
+        };
+    }
+
+    if !set.is_empty() {
+        write!(w, r#"<font color="darkgreen">+"#)?;
+        pretty_print_state_elems(w, analysis, set.iter(), ",", LIMIT_40_ALIGN_1)?;
+        write!(w, r#"</font>"#)?;
+    }
+
+    if !set.is_empty() && !clear.is_empty() {
+        write!(w, "<br/>")?;
+    }
+
+    if !clear.is_empty() {
+        write!(w, r#"<font color="red">-"#)?;
+        pretty_print_state_elems(w, analysis, clear.iter(), ",", LIMIT_40_ALIGN_1)?;
+        write!(w, r#"</font>"#)?;
+    }
+
+    Ok(())
+}
+
+/// Line break policy that breaks at 40 characters and starts the next line with a single space.
+const LIMIT_40_ALIGN_1: Option<LineBreak> = Some(LineBreak { sequence: "<br/> ", limit: 40 });
+
+struct LineBreak {
+    sequence: &'static str,
+    limit: usize,
+}
+
+/// Formats each `elem` using the pretty printer provided by `analysis` into a list with the given
+/// separator (`sep`).
+///
+/// Optionally, it will break lines using the given character sequence (usually `<br/>`) and
+/// character limit.
 fn pretty_print_state_elems<A>(
     w: &mut impl io::Write,
     analysis: &A,
     elems: impl Iterator<Item = A::Idx>,
-) -> io::Result<()>
+    sep: &str,
+    line_break: Option<LineBreak>,
+) -> io::Result<bool>
 where
     A: Analysis<'tcx>,
 {
+    let sep_width = sep.chars().count();
+
+    let mut buf = Vec::new();
+
     let mut first = true;
+    let mut curr_line_width = 0;
+    let mut line_break_inserted = false;
+
     for idx in elems {
         if first {
             first = false;
         } else {
-            write!(w, ",")?;
+            write!(w, "{}", sep)?;
+            curr_line_width += sep_width;
         }
 
-        analysis.pretty_print_idx(w, idx)?;
+        buf.clear();
+        analysis.pretty_print_idx(&mut buf, idx)?;
+        let idx_str =
+            str::from_utf8(&buf).expect("Output of `pretty_print_idx` must be valid UTF-8");
+        let escaped = dot::escape_html(idx_str);
+        let escaped_width = escaped.chars().count();
+
+        if let Some(line_break) = &line_break {
+            if curr_line_width + sep_width + escaped_width > line_break.limit {
+                write!(w, "{}", line_break.sequence)?;
+                line_break_inserted = true;
+                curr_line_width = 0;
+            }
+        }
+
+        write!(w, "{}", escaped)?;
+        curr_line_width += escaped_width;
     }
 
-    Ok(())
+    Ok(line_break_inserted)
 }
 
 /// The background color used for zebra-striping the table.
