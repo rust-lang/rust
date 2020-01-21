@@ -693,7 +693,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty.is_some(),
             self_ty,
             // Provide the generic args, and whether types should be inferred.
-            |_| (Some(generic_args), infer_args),
+            |did| {
+                if did == def_id {
+                    (Some(generic_args), infer_args)
+                } else {
+                    // The last component of this tuple is unimportant.
+                    (None, false)
+                }
+            },
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| match (&param.kind, arg) {
                 (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {

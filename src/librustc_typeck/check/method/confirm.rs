@@ -314,9 +314,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             false,
             None,
             // Provide the generic args, and whether types should be inferred.
-            |_| {
-                // The last argument of the returned tuple here is unimportant.
-                if let Some(ref data) = seg.args { (Some(data), false) } else { (None, false) }
+            |def_id| {
+                // The last component of the returned tuple here is unimportant.
+                if def_id == pick.item.def_id {
+                    if let Some(ref data) = seg.args {
+                        return (Some(data), false);
+                    }
+                }
+                (None, false)
             },
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| match (&param.kind, arg) {
