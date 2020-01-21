@@ -1,6 +1,7 @@
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
 
 use crate::borrow_check::diagnostics::UseSpans;
@@ -395,6 +396,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         if is_option { "Option" } else { "Result" }
                     ),
                     format!("{}.as_ref()", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if span.is_desugaring(DesugaringKind::ForLoop)
+                && move_ty.starts_with("std::vec::Vec")
+            {
+                // FIXME: suggest for anything that implements `IntoIterator`.
+                err.span_suggestion(
+                    span,
+                    "consider iterating over a slice of the `Vec`'s content",
+                    format!("&{}", snippet),
                     Applicability::MaybeIncorrect,
                 );
             }
