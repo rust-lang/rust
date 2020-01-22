@@ -41,8 +41,8 @@ where
     K: Borrow<Q>,
 {
     match search_linear(&node, key) {
-        (idx, true) => Found(Handle::new_kv(node, idx)),
-        (idx, false) => SearchResult::GoDown(Handle::new_edge(node, idx)),
+        (idx, true) => Found(unsafe { Handle::new_kv(node, idx) }),
+        (idx, false) => SearchResult::GoDown(unsafe { Handle::new_edge(node, idx) }),
     }
 }
 

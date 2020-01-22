@@ -263,10 +263,10 @@ impl<K, V> Root<K, V> {
 
     /// Removes the root node, using its first child as the new root. This cannot be called when
     /// the tree consists only of a leaf node. As it is intended only to be called when the root
-    /// has only one edge, no cleanup is done on any of the other children are elements of the root.
+    /// has only one edge, no cleanup is done on any of the other children of the root.
     /// This decreases the height by 1 and is the opposite of `push_level`.
     pub fn pop_level(&mut self) {
-        debug_assert!(self.height > 0);
+        assert!(self.height > 0);
 
         let top = self.node.ptr;
 
@@ -344,6 +344,9 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Finds the length of the node. This is the number of keys or values. In an
     /// internal node, the number of edges is `len() + 1`.
+    /// For any node, the number of possible edge handles is also `len() + 1`.
+    /// Note that, despite being safe, calling this function can have the side effect
+    /// of invalidating mutable references that unsafe code has created.
     pub fn len(&self) -> usize {
         self.as_header().len as usize
     }
@@ -369,7 +372,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// If the node is a leaf, this function simply opens up its data.
     /// If the node is an internal node, so not a leaf, it does have all the data a leaf has
     /// (header, keys and values), and this function exposes that.
-    /// See `NodeRef` on why the node may not be a shared root.
+    /// Unsafe because the node must not be the shared root. For more information,
+    /// see the `NodeRef` comments.
     unsafe fn as_leaf(&self) -> &LeafNode<K, V> {
         debug_assert!(!self.is_shared_root());
         self.node.as_ref()
@@ -385,14 +389,14 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Borrows a view into the keys stored in the node.
-    /// The caller must ensure that the node is not the shared root.
+    /// Unsafe because the caller must ensure that the node is not the shared root.
     pub unsafe fn keys(&self) -> &[K] {
         self.reborrow().into_key_slice()
     }
 
     /// Borrows a view into the values stored in the node.
-    /// The caller must ensure that the node is not the shared root.
-    fn vals(&self) -> &[V] {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn vals(&self) -> &[V] {
         self.reborrow().into_val_slice()
     }
 
@@ -424,25 +428,26 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     pub fn first_edge(self) -> Handle<Self, marker::Edge> {
-        Handle::new_edge(self, 0)
+        unsafe { Handle::new_edge(self, 0) }
     }
 
     pub fn last_edge(self) -> Handle<Self, marker::Edge> {
         let len = self.len();
-        Handle::new_edge(self, len)
+        unsafe { Handle::new_edge(self, len) }
     }
 
     /// Note that `self` must be nonempty.
     pub fn first_kv(self) -> Handle<Self, marker::KV> {
-        debug_assert!(self.len() > 0);
-        Handle::new_kv(self, 0)
+        let len = self.len();
+        assert!(len > 0);
+        unsafe { Handle::new_kv(self, 0) }
     }
 
     /// Note that `self` must be nonempty.
     pub fn last_kv(self) -> Handle<Self, marker::KV> {
         let len = self.len();
-        debug_assert!(len > 0);
-        Handle::new_kv(self, len - 1)
+        assert!(len > 0);
+        unsafe { Handle::new_kv(self, len - 1) }
     }
 }
 
@@ -453,7 +458,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     pub unsafe fn deallocate_and_ascend(
         self,
     ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
-        debug_assert!(!self.is_shared_root());
+        assert!(!self.is_shared_root());
         let node = self.node;
         let ret = self.ascend().ok();
         Global.dealloc(node.cast(), Layout::new::<LeafNode<K, V>>());
@@ -508,36 +513,36 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         self.node.as_ptr()
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn keys_mut(&mut self) -> &mut [K] {
-        unsafe { self.reborrow_mut().into_key_slice_mut() }
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn keys_mut(&mut self) -> &mut [K] {
+        self.reborrow_mut().into_key_slice_mut()
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn vals_mut(&mut self) -> &mut [V] {
-        unsafe { self.reborrow_mut().into_val_slice_mut() }
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn vals_mut(&mut self) -> &mut [V] {
+        self.reborrow_mut().into_val_slice_mut()
     }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    /// The caller must ensure that the node is not the shared root.
+    /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_key_slice(self) -> &'a [K] {
         debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf` is okay.
         slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len())
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_val_slice(self) -> &'a [V] {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_val_slice(self) -> &'a [V] {
         debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf` is okay.
-        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
+        slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len())
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_slices(self) -> (&'a [K], &'a [V]) {
-        let k = unsafe { ptr::read(&self) };
-        (unsafe { k.into_key_slice() }, self.into_val_slice())
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_slices(self) -> (&'a [K], &'a [V]) {
+        let k = ptr::read(&self);
+        (k.into_key_slice(), self.into_val_slice())
     }
 }
 
@@ -548,54 +553,45 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         unsafe { &mut *(self.root as *mut Root<K, V>) }
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_key_slice_mut(mut self) -> &'a mut [K] {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_key_slice_mut(mut self) -> &'a mut [K] {
         debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf_mut` is okay.
-        unsafe {
-            slice::from_raw_parts_mut(
-                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
-                self.len(),
-            )
-        }
+        slice::from_raw_parts_mut(
+            MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
+            self.len(),
+        )
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_val_slice_mut(mut self) -> &'a mut [V] {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_val_slice_mut(mut self) -> &'a mut [V] {
         debug_assert!(!self.is_shared_root());
-        unsafe {
-            slice::from_raw_parts_mut(
-                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
-                self.len(),
-            )
-        }
+        slice::from_raw_parts_mut(
+            MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
+            self.len(),
+        )
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
         debug_assert!(!self.is_shared_root());
         // We cannot use the getters here, because calling the second one
         // invalidates the reference returned by the first.
         // More precisely, it is the call to `len` that is the culprit,
         // because that creates a shared reference to the header, which *can*
         // overlap with the keys (and even the values, for ZST keys).
-        unsafe {
-            let len = self.len();
-            let leaf = self.as_leaf_mut();
-            let keys =
-                slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len);
-            let vals =
-                slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len);
-            (keys, vals)
-        }
+        let len = self.len();
+        let leaf = self.as_leaf_mut();
+        let keys = slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len);
+        let vals = slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len);
+        (keys, vals)
     }
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair the end of the node.
     pub fn push(&mut self, key: K, val: V) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() < CAPACITY);
+        assert!(self.len() < CAPACITY);
         debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
@@ -610,8 +606,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
 
     /// Adds a key/value pair to the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() < CAPACITY);
+        assert!(self.len() < CAPACITY);
         debug_assert!(!self.is_shared_root());
 
         unsafe {
@@ -627,9 +622,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Adds a key/value pair and an edge to go to the right of that pair to
     /// the end of the node.
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(edge.height == self.height - 1);
-        debug_assert!(self.len() < CAPACITY);
+        assert!(edge.height == self.height - 1);
+        assert!(self.len() < CAPACITY);
         debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
@@ -645,23 +639,25 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         }
     }
 
-    fn correct_childrens_parent_links(&mut self, first: usize, after_last: usize) {
+    // Unsafe because 'first' and 'after_last' must be in range
+    unsafe fn correct_childrens_parent_links(&mut self, first: usize, after_last: usize) {
+        debug_assert!(first <= self.len());
+        debug_assert!(after_last <= self.len() + 1);
         for i in first..after_last {
-            Handle::new_edge(unsafe { self.reborrow_mut() }, i).correct_parent_link();
+            Handle::new_edge(self.reborrow_mut(), i).correct_parent_link();
         }
     }
 
     fn correct_all_childrens_parent_links(&mut self) {
         let len = self.len();
-        self.correct_childrens_parent_links(0, len + 1);
+        unsafe { self.correct_childrens_parent_links(0, len + 1) };
     }
 
     /// Adds a key/value pair and an edge to go to the left of that pair to
     /// the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(edge.height == self.height - 1);
-        debug_assert!(self.len() < CAPACITY);
+        assert!(edge.height == self.height - 1);
+        assert!(self.len() < CAPACITY);
         debug_assert!(!self.is_shared_root());
 
         unsafe {
@@ -687,8 +683,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Removes a key/value pair from the end of this node. If this is an internal node,
     /// also removes the edge that was to the right of that pair.
     pub fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() > 0);
+        assert!(self.len() > 0);
 
         let idx = self.len() - 1;
 
@@ -714,8 +709,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Removes a key/value pair from the beginning of this node. If this is an internal node,
     /// also removes the edge that was to the left of that pair.
     pub fn pop_front(&mut self) -> (K, V, Option<Root<K, V>>) {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(self.len() > 0);
+        assert!(self.len() > 0);
 
         let old_len = self.len();
 
@@ -750,8 +744,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         }
     }
 
-    /// The caller must ensure that the node is not the shared root.
-    fn into_kv_pointers_mut(mut self) -> (*mut K, *mut V) {
+    /// Unsafe because the caller must ensure that the node is not the shared root.
+    unsafe fn into_kv_pointers_mut(mut self) -> (*mut K, *mut V) {
         (self.keys_mut().as_mut_ptr(), self.vals_mut().as_mut_ptr())
     }
 }
@@ -813,20 +807,20 @@ impl<Node, Type> Handle<Node, Type> {
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
-    /// Creates a new handle to a key/value pair in `node`. `idx` must be less than `node.len()`.
-    pub fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
-        // Necessary for correctness, but in a private module
+    /// Creates a new handle to a key/value pair in `node`.
+    /// Unsafe because the caller must ensure that `idx < node.len()`.
+    pub unsafe fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
         debug_assert!(idx < node.len());
 
         Handle { node, idx, _marker: PhantomData }
     }
 
     pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
-        Handle::new_edge(self.node, self.idx)
+        unsafe { Handle::new_edge(self.node, self.idx) }
     }
 
     pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
-        Handle::new_edge(self.node, self.idx + 1)
+        unsafe { Handle::new_edge(self.node, self.idx + 1) }
     }
 }
 
@@ -868,21 +862,28 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
-    /// Creates a new handle to an edge in `node`. `idx` must be less than or equal to
-    /// `node.len()`.
-    pub fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
-        // Necessary for correctness, but in a private module
+    /// Creates a new handle to an edge in `node`.
+    /// Unsafe because the caller must ensure that `idx <= node.len()`.
+    pub unsafe fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
         debug_assert!(idx <= node.len());
 
         Handle { node, idx, _marker: PhantomData }
     }
 
     pub fn left_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
-        if self.idx > 0 { Ok(Handle::new_kv(self.node, self.idx - 1)) } else { Err(self) }
+        if self.idx > 0 {
+            Ok(unsafe { Handle::new_kv(self.node, self.idx - 1) })
+        } else {
+            Err(self)
+        }
     }
 
     pub fn right_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
-        if self.idx < self.node.len() { Ok(Handle::new_kv(self.node, self.idx)) } else { Err(self) }
+        if self.idx < self.node.len() {
+            Ok(unsafe { Handle::new_kv(self.node, self.idx) })
+        } else {
+            Err(self)
+        }
     }
 }
 
@@ -914,9 +915,10 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     pub fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
         if self.node.len() < CAPACITY {
             let ptr = self.insert_fit(key, val);
-            (InsertResult::Fit(Handle::new_kv(self.node, self.idx)), ptr)
+            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
+            (InsertResult::Fit(kv), ptr)
         } else {
-            let middle = Handle::new_kv(self.node, B);
+            let middle = unsafe { Handle::new_kv(self.node, B) };
             let (mut left, k, v, mut right) = middle.split();
             let ptr = if self.idx <= B {
                 unsafe { Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val) }
@@ -991,14 +993,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         val: V,
         edge: Root<K, V>,
     ) -> InsertResult<'a, K, V, marker::Internal> {
-        // Necessary for correctness, but this is an internal module
-        debug_assert!(edge.height == self.node.height - 1);
+        assert!(edge.height == self.node.height - 1);
 
         if self.node.len() < CAPACITY {
             self.insert_fit(key, val, edge);
-            InsertResult::Fit(Handle::new_kv(self.node, self.idx))
+            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
+            InsertResult::Fit(kv)
         } else {
-            let middle = Handle::new_kv(self.node, B);
+            let middle = unsafe { Handle::new_kv(self.node, B) };
             let (mut left, k, v, mut right) = middle.split();
             if self.idx <= B {
                 unsafe {
@@ -1037,15 +1039,19 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv(self) -> (&'a K, &'a V) {
-        let (keys, vals) = self.node.into_slices();
-        unsafe { (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx)) }
+        unsafe {
+            let (keys, vals) = self.node.into_slices();
+            (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx))
+        }
     }
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
-        let (keys, vals) = self.node.into_slices_mut();
-        unsafe { (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx)) }
+        unsafe {
+            let (keys, vals) = self.node.into_slices_mut();
+            (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
+        }
     }
 }
 
@@ -1067,7 +1073,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     /// - All the key/value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
-        debug_assert!(!self.node.is_shared_root());
+        assert!(!self.node.is_shared_root());
         unsafe {
             let mut new_node = Box::new(LeafNode::new());
 
@@ -1099,7 +1105,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     pub fn remove(
         mut self,
     ) -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
-        debug_assert!(!self.node.is_shared_root());
+        assert!(!self.node.is_shared_root());
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);
@@ -1182,7 +1188,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let right_len = right_node.len();
 
         // necessary for correctness, but in a private module
-        debug_assert!(left_len + right_len + 1 <= CAPACITY);
+        assert!(left_len + right_len + 1 <= CAPACITY);
 
         unsafe {
             ptr::write(
@@ -1281,8 +1287,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let right_len = right_node.len();
 
             // Make sure that we may steal safely.
-            debug_assert!(right_len + count <= CAPACITY);
-            debug_assert!(left_len >= count);
+            assert!(right_len + count <= CAPACITY);
+            assert!(left_len >= count);
 
             let new_left_len = left_len - count;
 
@@ -1338,8 +1344,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let right_len = right_node.len();
 
             // Make sure that we may steal safely.
-            debug_assert!(left_len + count <= CAPACITY);
-            debug_assert!(right_len >= count);
+            assert!(left_len + count <= CAPACITY);
+            assert!(right_len >= count);
 
             let new_right_len = right_len - count;
 
@@ -1447,24 +1453,26 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             let right_new_len = left_node.len() - left_new_len;
             let mut right_node = right.reborrow_mut();
 
-            debug_assert!(right_node.len() == 0);
-            debug_assert!(left_node.height == right_node.height);
+            assert!(right_node.len() == 0);
+            assert!(left_node.height == right_node.height);
 
-            let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
-            let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
+            if right_new_len > 0 {
+                let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
+                let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
 
-            move_kv(left_kv, left_new_len, right_kv, 0, right_new_len);
+                move_kv(left_kv, left_new_len, right_kv, 0, right_new_len);
 
-            (*left_node.reborrow_mut().as_leaf_mut()).len = left_new_len as u16;
-            (*right_node.reborrow_mut().as_leaf_mut()).len = right_new_len as u16;
+                (*left_node.reborrow_mut().as_leaf_mut()).len = left_new_len as u16;
+                (*right_node.reborrow_mut().as_leaf_mut()).len = right_new_len as u16;
 
-            match (left_node.force(), right_node.force()) {
-                (ForceResult::Internal(left), ForceResult::Internal(right)) => {
-                    move_edges(left, left_new_len + 1, right, 1, right_new_len);
-                }
-                (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
-                _ => {
-                    unreachable!();
+                match (left_node.force(), right_node.force()) {
+                    (ForceResult::Internal(left), ForceResult::Internal(right)) => {
+                        move_edges(left, left_new_len + 1, right, 1, right_new_len);
+                    }
+                    (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
+                    _ => {
+                        unreachable!();
+                    }
                 }
             }
         }
