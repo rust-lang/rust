@@ -3,7 +3,7 @@ name: Clippy Test (bors)
 on:
   push:
     branches: [auto, try]
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run tests, when only textfiles were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
@@ -167,3 +167,56 @@ jobs:
         /usr/bin/find ~/.cargo/bin ! -type d -exec strip {} \;
         cargo cache --autoclean
       shell: bash
+  integration:
+    needs: changelog
+    strategy:
+      fail-fast: false
+      matrix:
+        integration:
+        - 'rust-lang/cargo'
+        - 'rust-lang/rls'
+        - 'rust-lang/chalk'
+        - 'rust-lang/rustfmt'
+        - 'Marwes/combine'
+        - 'Geal/nom'
+        - 'rust-lang/stdarch'
+        - 'serde-rs/serde'
+        - 'chronotope/chrono'
+        - 'hyperium/hyper'
+        - 'rust-random/rand'
+        - 'rust-lang/futures-rs'
+        - 'rust-itertools/itertools'
+        - 'rust-lang-nursery/failure'
+        - 'rust-lang/log'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+
+    - name: Build
+      run: cargo build --features integration
+    - name: Test ${{ matrix.integration }}
+      run: cargo test --test integration --features integration
+      env:
+        INTEGRATION: ${{ matrix.integration }}
+
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo install cargo-cache --debug
+        find ~/.cargo/bin ! -type d -exec strip {} \;
+        cargo cache --autoclean
