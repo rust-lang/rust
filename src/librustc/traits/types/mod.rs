@@ -4,6 +4,7 @@
 
 pub mod query;
 pub mod select;
+mod structural_impls;
 
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::fold::{TypeFolder, TypeVisitor};
