@@ -27,7 +27,7 @@ pub use syntax_kind::SyntaxKind;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(pub String);
 
-/// `TokenSource` abstracts the source of the tokens parser operates one.
+/// `TokenSource` abstracts the source of the tokens parser operates on.
 ///
 /// Hopefully this will allow us to treat text and token trees in the same way!
 pub trait TokenSource {
@@ -43,7 +43,7 @@ pub trait TokenSource {
     fn is_keyword(&self, kw: &str) -> bool;
 }
 
-/// `TokenCursor` abstracts the cursor of `TokenSource` operates one.
+/// `Token` abstracts the cursor of `TokenSource` operates on.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Token {
     /// What is the current token?

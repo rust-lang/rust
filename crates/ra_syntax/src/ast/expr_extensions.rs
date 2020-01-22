@@ -305,44 +305,39 @@ impl ast::Literal {
             .unwrap()
     }
 
-    pub fn kind(&self) -> LiteralKind {
-        match self.token().kind() {
-            INT_NUMBER => {
-                let int_suffix_list = [
-                    "isize", "i128", "i64", "i32", "i16", "i8", "usize", "u128", "u64", "u32",
-                    "u16", "u8",
-                ];
+    fn find_suffix(text: &str, possible_suffixes: &[&str]) -> Option<SmolStr> {
+        possible_suffixes
+            .iter()
+            .find(|&suffix| text.ends_with(suffix))
+            .map(|&suffix| SmolStr::new(suffix))
+    }
 
+    pub fn kind(&self) -> LiteralKind {
+        const INT_SUFFIXES: [&'static str; 12] = [
+            "u64", "u32", "u16", "u8", "usize", "isize", "i64", "i32", "i16", "i8", "u128", "i128",
+        ];
+        const FLOAT_SUFFIXES: [&'static str; 2] = ["f32", "f64"];
+
+        let token = self.token();
+
+        match token.kind() {
+            INT_NUMBER => {
+                // FYI: there was a bug here previously, thus an if statement bellow is necessary.
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
-                let float_suffix_list = ["f32", "f64"];
 
-                let text = self.token().text().to_string();
+                let text = token.text();
 
-                let float_suffix = float_suffix_list
-                    .iter()
-                    .find(|&s| text.ends_with(s))
-                    .map(|&suf| SmolStr::new(suf));
-
-                if float_suffix.is_some() {
-                    LiteralKind::FloatNumber { suffix: float_suffix }
+                if let suffix @ Some(_) = Self::find_suffix(&text, &FLOAT_SUFFIXES) {
+                    LiteralKind::FloatNumber { suffix }
                 } else {
-                    let suffix = int_suffix_list
-                        .iter()
-                        .find(|&s| text.ends_with(s))
-                        .map(|&suf| SmolStr::new(suf));
-                    LiteralKind::IntNumber { suffix }
+                    LiteralKind::IntNumber { suffix: Self::find_suffix(&text, &INT_SUFFIXES) }
                 }
             }
             FLOAT_NUMBER => {
-                let allowed_suffix_list = ["f64", "f32"];
-                let text = self.token().text().to_string();
-                let suffix = allowed_suffix_list
-                    .iter()
-                    .find(|&s| text.ends_with(s))
-                    .map(|&suf| SmolStr::new(suf));
-                LiteralKind::FloatNumber { suffix }
+                let text = token.text();
+                LiteralKind::FloatNumber { suffix: Self::find_suffix(&text, &FLOAT_SUFFIXES) }
             }
             STRING | RAW_STRING => LiteralKind::String,
             T![true] | T![false] => LiteralKind::Bool,
