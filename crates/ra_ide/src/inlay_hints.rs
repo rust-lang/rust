@@ -245,6 +245,7 @@ struct Test<K, T = u8> {
 
 fn main() {
     let zz = Test { t: 23, k: 33 };
+    let zz_ref = &zz;
 }"#,
         );
 
@@ -254,6 +255,11 @@ fn main() {
                 range: [69; 71),
                 kind: TypeHint,
                 label: "Test<i32>",
+            },
+            InlayHint {
+                range: [105; 111),
+                kind: TypeHint,
+                label: "&Test<i32>",
             },
         ]
         "###
@@ -374,6 +380,7 @@ fn main() {
 
     let multiply = |a, b, c, d| a * b * c * d;
     let _: i32 = multiply(1, 2, 3, 4);
+    let multiply_ref = &multiply;
 
     let return_42 = || 42;
 }"#,
@@ -417,7 +424,12 @@ fn main() {
                 label: "i32",
             },
             InlayHint {
-                range: [201; 210),
+                range: [200; 212),
+                kind: TypeHint,
+                label: "&|…| -> i32",
+            },
+            InlayHint {
+                range: [235; 244),
                 kind: TypeHint,
                 label: "|| -> i32",
             },

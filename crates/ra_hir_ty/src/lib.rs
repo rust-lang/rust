@@ -855,7 +855,12 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
-                write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
+                let ty_display = if f.omit_verbose_types() {
+                    t.display_truncated(f.db, f.max_size)
+                } else {
+                    t.display(f.db)
+                };
+                write!(f, "&{}{}", m.as_keyword_for_ref(), ty_display)?;
             }
             TypeCtor::Never => write!(f, "!")?,
             TypeCtor::Tuple { .. } => {
