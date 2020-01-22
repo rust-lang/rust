@@ -400,7 +400,7 @@ pub trait Emitter {
             }
             if sm.span_to_filename(sp_label.span.clone()).is_macros() && !always_backtrace {
                 if let Some(use_site) = sp_label.span.macro_backtrace().last() {
-                    before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
+                    before_after.push((sp_label.span, use_site.call_site));
                 }
             }
         }
@@ -1184,13 +1184,13 @@ impl EmitterWriter {
             let level_str = level.to_string();
             // The failure note level itself does not provide any useful diagnostic information
             if *level != Level::FailureNote && !level_str.is_empty() {
-                buffer.append(0, &level_str, Style::Level(level.clone()));
+                buffer.append(0, &level_str, Style::Level(*level));
             }
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
-                buffer.append(0, "[", Style::Level(level.clone()));
-                buffer.append(0, &code, Style::Level(level.clone()));
-                buffer.append(0, "]", Style::Level(level.clone()));
+                buffer.append(0, "[", Style::Level(*level));
+                buffer.append(0, &code, Style::Level(*level));
+                buffer.append(0, "]", Style::Level(*level));
             }
             if *level != Level::FailureNote && !level_str.is_empty() {
                 buffer.append(0, ": ", header_style);
@@ -1495,7 +1495,7 @@ impl EmitterWriter {
         // Render the suggestion message
         let level_str = level.to_string();
         if !level_str.is_empty() {
-            buffer.append(0, &level_str, Style::Level(level.clone()));
+            buffer.append(0, &level_str, Style::Level(*level));
             buffer.append(0, ": ", Style::HeaderMsg);
         }
         self.msg_to_buffer(

@@ -1417,7 +1417,7 @@ impl Clean<Type> for hir::Ty<'_> {
                                         });
                                     if let Some(ty) = type_ {
                                         ty_substs.insert(ty_param_def_id, ty.clean(cx));
-                                    } else if let Some(default) = default.clone() {
+                                    } else if let Some(default) = *default {
                                         ty_substs.insert(ty_param_def_id, default.clean(cx));
                                     }
                                     indices.types += 1;

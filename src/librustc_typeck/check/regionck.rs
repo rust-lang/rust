@@ -306,7 +306,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         let fn_sig = {
             match self.tables.borrow().liberated_fn_sigs().get(id) {
-                Some(f) => f.clone(),
+                Some(f) => *f,
                 None => {
                     bug!("No fn-sig entry for id={:?}", id);
                 }

@@ -39,7 +39,7 @@ impl<'tcx> CFG<'tcx> {
     ) {
         self.push(
             block,
-            Statement { source_info, kind: StatementKind::Assign(box (place.clone(), rvalue)) },
+            Statement { source_info, kind: StatementKind::Assign(box (*place, rvalue)) },
         );
     }
 

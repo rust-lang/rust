@@ -884,7 +884,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 VarBindingForm {
                                     binding_mode,
                                     opt_ty_info,
-                                    opt_match_place: Some((Some(place.clone()), span)),
+                                    opt_match_place: Some((Some(place), span)),
                                     pat_span: span,
                                 },
                             )))
@@ -939,12 +939,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {
         match self.unit_temp {
-            Some(ref tmp) => tmp.clone(),
+            Some(tmp) => tmp,
             None => {
                 let ty = self.hir.unit_ty();
                 let fn_span = self.fn_span;
                 let tmp = self.temp(ty, fn_span);
-                self.unit_temp = Some(tmp.clone());
+                self.unit_temp = Some(tmp);
                 tmp
             }
         }

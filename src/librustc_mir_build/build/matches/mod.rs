@@ -166,7 +166,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .zip(candidate_pre_binding_blocks.by_ref())
                     .map(|(pattern, pre_binding_block)| Candidate {
                         span: pattern.span,
-                        match_pairs: smallvec![MatchPair::new(scrutinee.clone(), pattern)],
+                        match_pairs: smallvec![MatchPair::new(*scrutinee, pattern)],
                         bindings: vec![],
                         ascriptions: vec![],
                         otherwise_block: if arm_has_guard {
@@ -427,7 +427,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
-            match_pairs: smallvec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
+            match_pairs: smallvec![MatchPair::new(*initializer, &irrefutable_pat)],
             bindings: vec![],
             ascriptions: vec![],
 
@@ -469,7 +469,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ..
                 }))) = self.local_decls[local].local_info
                 {
-                    *match_place = Some(initializer.clone());
+                    *match_place = Some(*initializer);
                 } else {
                     bug!("Let binding to non-user variable.")
                 }
@@ -890,7 +890,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let proj_base = &source.projection[..i];
 
                     fake_borrows.insert(Place {
-                        local: source.local.clone(),
+                        local: source.local,
                         projection: self.hir.tcx().intern_place_elems(proj_base),
                     });
                 }
@@ -1084,7 +1084,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let mut test = self.test(match_pair);
-        let match_place = match_pair.place.clone();
+        let match_place = match_pair.place;
 
         // most of the time, the test to perform is simply a function
         // of the main candidate; but for a test like SwitchInt, we
@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .into_iter()
             .map(|matched_place_ref| {
                 let matched_place = Place {
-                    local: matched_place_ref.local.clone(),
+                    local: *matched_place_ref.local,
                     projection: tcx.intern_place_elems(matched_place_ref.projection),
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
@@ -1416,7 +1416,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for (place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place.clone());
+                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, *place);
                 self.cfg.push_assign(block, scrutinee_source_info, &Place::from(*temp), borrow);
             }
 
@@ -1514,7 +1514,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Statement {
                     source_info,
                     kind: StatementKind::AscribeUserType(
-                        box (ascription.source.clone(), user_ty),
+                        box (ascription.source, user_ty),
                         ascription.variance,
                     ),
                 },
@@ -1540,7 +1540,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.storage_live_binding(block, binding.var_id, binding.span, RefWithinGuard);
             match binding.binding_mode {
                 BindingMode::ByValue => {
-                    let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source.clone());
+                    let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(borrow_kind) => {
@@ -1551,7 +1551,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         OutsideGuard,
                     );
 
-                    let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source.clone());
+                    let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source);
                     self.cfg.push_assign(block, source_info, &value_for_arm, rvalue);
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
                     self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
@@ -1581,7 +1581,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Rvalue::Use(self.consume_by_copy_or_move(binding.source.clone()))
                 }
                 BindingMode::ByRef(borrow_kind) => {
-                    Rvalue::Ref(re_erased, borrow_kind, binding.source.clone())
+                    Rvalue::Ref(re_erased, borrow_kind, binding.source)
                 }
             };
             self.cfg.push_assign(block, source_info, &local, rvalue);

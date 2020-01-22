@@ -535,7 +535,7 @@ impl AutoTraitFinder<'tcx> {
         }
 
         while !vid_map.is_empty() {
-            let target = vid_map.keys().next().expect("Keys somehow empty").clone();
+            let target = *vid_map.keys().next().expect("Keys somehow empty");
             let deps = vid_map.remove(&target).expect("Entry somehow missing");
 
             for smaller in deps.smaller.iter() {

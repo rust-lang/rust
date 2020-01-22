@@ -377,7 +377,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let normalized_ty = normalize_projection_type(
                     self.selcx,
                     self.param_env,
-                    data.clone(),
+                    *data,
                     self.cause.clone(),
                     self.depth,
                     &mut self.obligations,
@@ -433,7 +433,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
     opt_normalize_projection_type(
         selcx,
         param_env,
-        projection_ty.clone(),
+        projection_ty,
         cause.clone(),
         depth,
         obligations,

@@ -228,7 +228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination: if expr.ty.is_never() {
                                 None
                             } else {
-                                Some((destination.clone(), success))
+                                Some((*destination, success))
                             },
                             from_hir_call,
                         },

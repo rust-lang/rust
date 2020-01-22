@@ -572,7 +572,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    tr.clone()
+                    *tr
                 }
                 _ => {
                     coercion.obligations.push(obligation);

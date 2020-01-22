@@ -318,11 +318,11 @@ impl<'tcx> Scopes<'tcx> {
                 if scope.break_destination != Place::return_place() {
                     span_bug!(span, "`return` in item with no return scope");
                 }
-                (scope.break_block, scope.region_scope, Some(scope.break_destination.clone()))
+                (scope.break_block, scope.region_scope, Some(scope.break_destination))
             }
             BreakableTarget::Break(scope) => {
                 let scope = get_scope(scope);
-                (scope.break_block, scope.region_scope, Some(scope.break_destination.clone()))
+                (scope.break_block, scope.region_scope, Some(scope.break_destination))
             }
             BreakableTarget::Continue(scope) => {
                 let scope = get_scope(scope);

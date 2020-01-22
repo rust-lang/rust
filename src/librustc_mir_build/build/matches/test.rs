@@ -209,12 +209,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    &discr,
-                    Rvalue::Discriminant(place.clone()),
-                );
+                self.cfg.push_assign(block, source_info, &discr, Rvalue::Discriminant(*place));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(
                     block,
@@ -240,7 +235,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         };
                         TerminatorKind::if_(
                             self.hir.tcx(),
-                            Operand::Copy(place.clone()),
+                            Operand::Copy(*place),
                             true_bb,
                             false_bb,
                         )
@@ -251,7 +246,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
                     TerminatorKind::SwitchInt {
-                        discr: Operand::Copy(place.clone()),
+                        discr: Operand::Copy(*place),
                         switch_ty,
                         values: options.clone().into(),
                         targets: target_blocks,
@@ -276,7 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let [success, fail] = *make_target_blocks(self) {
                         assert_eq!(value.ty, ty);
                         let expect = self.literal_operand(test.span, value);
-                        let val = Operand::Copy(place.clone());
+                        let val = Operand::Copy(*place);
                         self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                     } else {
                         bug!("`TestKind::Eq` should have two target blocks");
@@ -291,7 +286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, lo);
                 let hi = self.literal_operand(test.span, hi);
-                let val = Operand::Copy(place.clone());
+                let val = Operand::Copy(*place);
 
                 if let [success, fail] = *target_blocks {
                     self.compare(
@@ -320,7 +315,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
-                self.cfg.push_assign(block, source_info, &actual, Rvalue::Len(place.clone()));
+                self.cfg.push_assign(block, source_info, &actual, Rvalue::Len(*place));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -382,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         use rustc::middle::lang_items::EqTraitLangItem;
 
         let mut expect = self.literal_operand(source_info.span, value);
-        let mut val = Operand::Copy(place.clone());
+        let mut val = Operand::Copy(*place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
@@ -457,7 +452,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     literal: method,
                 }),
                 args: vec![val, expect],
-                destination: Some((eq_result.clone(), eq_block)),
+                destination: Some((eq_result, eq_block)),
                 cleanup: Some(cleanup),
                 from_hir_call: false,
             },

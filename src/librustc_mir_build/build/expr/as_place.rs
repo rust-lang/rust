@@ -219,7 +219,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             kind: StatementKind::AscribeUserType(
                                 box (
-                                    Place::from(temp.clone()),
+                                    Place::from(temp),
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
                                 ),
                                 Variance::Invariant,
@@ -347,11 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             &lt,
-            Rvalue::BinaryOp(
-                BinOp::Lt,
-                Operand::Copy(Place::from(index)),
-                Operand::Copy(len.clone()),
-            ),
+            Rvalue::BinaryOp(BinOp::Lt, Operand::Copy(Place::from(index)), Operand::Copy(len)),
         );
         let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
         // assert!(lt, "...")
@@ -396,7 +392,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,
-                                Place { local: base_place.local.clone(), projection },
+                                Place { local: base_place.local, projection },
                             ),
                         );
                         fake_borrow_temps.push(fake_borrow_temp);

@@ -125,7 +125,7 @@ impl<'tcx> DocContext<'tcx> {
 
         let mut fake_ids = self.fake_def_ids.borrow_mut();
 
-        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id).clone();
+        let def_id = *fake_ids.entry(crate_num).or_insert(start_def_id);
         fake_ids.insert(
             crate_num,
             DefId { krate: crate_num, index: DefIndex::from(def_id.index.index() + 1) },
@@ -137,7 +137,7 @@ impl<'tcx> DocContext<'tcx> {
 
         self.all_fake_def_ids.borrow_mut().insert(def_id);
 
-        def_id.clone()
+        def_id
     }
 
     /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.

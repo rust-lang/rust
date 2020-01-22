@@ -319,7 +319,7 @@ pub fn strip_path(path: &Path) -> Path {
         })
         .collect();
 
-    Path { global: path.global, res: path.res.clone(), segments }
+    Path { global: path.global, res: path.res, segments }
 }
 
 pub fn qpath_to_string(p: &hir::QPath) -> String {

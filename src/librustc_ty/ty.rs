@@ -263,7 +263,7 @@ fn crate_disambiguator(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateDisambiguat
 
 fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
     assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.crate_name.clone()
+    tcx.crate_name
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
