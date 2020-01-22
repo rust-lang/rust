@@ -1815,8 +1815,14 @@ where
     }
 
     #[inline]
-    fn count(self) -> usize {
-        self.iter.count().saturating_sub(self.n)
+    fn count(mut self) -> usize {
+        if self.n > 0 {
+            // nth(n) skips n+1
+            if self.iter.nth(self.n - 1).is_none() {
+                return 0;
+            }
+        }
+        self.iter.count()
     }
 
     #[inline]
