@@ -104,7 +104,7 @@ Usage: x.py <subcommand> [options] [<paths>...]
 Subcommands:
     build       Compile either the compiler or libraries
     check       Compile either the compiler or libraries, using cargo check
-    clippy      Run clippy
+    clippy      Run clippy (uses rustup/cargo-installed clippy binary)
     fix         Run cargo fix
     fmt         Run rustfmt
     test        Build and run some test suites
