@@ -252,6 +252,7 @@ macro_rules! int_impl {
 Basic usage:
 
 ```
+#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
 $EndFeature, "
 ```"),
@@ -267,6 +268,7 @@ $EndFeature, "
 Basic usage:
 
 ```
+#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
 $EndFeature, "
 ```"),
@@ -2361,6 +2363,7 @@ macro_rules! uint_impl {
 Basic usage:
 
 ```
+#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
             #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
@@ -2375,6 +2378,7 @@ Basic usage:
 Basic usage:
 
 ```
+#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
 $EndFeature, "
 ```"),
