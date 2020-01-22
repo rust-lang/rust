@@ -2,6 +2,8 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 
+pub mod select;
+
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 use crate::ty::subst::SubstsRef;
@@ -14,6 +16,8 @@ use syntax::ast;
 
 use std::fmt::Debug;
 use std::rc::Rc;
+
+pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
