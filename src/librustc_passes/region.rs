@@ -159,7 +159,11 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
+fn resolve_arm<'tcx>(
+    visitor: &mut RegionResolutionVisitor<'tcx>,
+    arm: &'tcx hir::Arm<'tcx>,
+    hack_for_let: impl FnOnce(&mut RegionResolutionVisitor<'tcx>),
+) {
     let prev_cx = visitor.cx;
 
     visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node });
@@ -171,7 +175,11 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
         visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
-    intravisit::walk_arm(visitor, arm);
+    // HACK(let_chains, Centril): See `resolve_expr` below wrt. `::Let`.
+    // The goal here is to visit the `pat` in `let pat = _` as-if it were part of the `arm`.
+    hack_for_let(visitor);
+    // HACK(let_chains, Centril: Restore to the following when we can!
+    //intravisit::walk_arm(visitor, arm);
 
     visitor.cx = prev_cx;
 }
@@ -390,6 +398,28 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             }
         }
 
+        hir::ExprKind::Match(
+            hir::Expr { kind: hir::ExprKind::Let(ref pat, ref scrutinee), .. },
+            [ref then_arm, ref else_arm],
+            hir::MatchSource::IfLetDesugar { .. },
+        ) => {
+            // HACK(let_chains, Centril): In HAIR lowering we currently adjust this
+            // to `match scrutinee { pat => then_arm.body, _ => else_arm.body }`.
+            // For consistency, we have to adjust the scopes here as well wrt. `pat`.
+            // Moreover, we need to replicate the visiting order in
+            // `intravisit::walk_expr` with respect to `ExprKind::Match`.
+            visitor.visit_expr(scrutinee);
+            // This is for the `then_arm`. NOTE(Centril): Preserve the order in `intravisit`!
+            resolve_arm(visitor, then_arm, |visitor| {
+                visitor.visit_id(then_arm.hir_id);
+                // NOTE(Centril): We are using `pat` here as opposed to `then_arm.pat`!
+                visitor.visit_pat(pat);
+                assert!(then_arm.guard.is_none());
+                visitor.visit_expr(&then_arm.body);
+                walk_list!(visitor, visit_attribute, then_arm.attrs);
+            });
+            visitor.visit_arm(else_arm);
+        }
         _ => intravisit::walk_expr(visitor, expr),
     }
 
@@ -775,7 +805,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
 
     fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
-        resolve_arm(self, a);
+        resolve_arm(self, a, |this| intravisit::walk_arm(this, a));
     }
     fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
         resolve_pat(self, p);
