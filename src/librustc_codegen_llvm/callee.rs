@@ -130,12 +130,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
                     } else {
                         // This is a monomorphization of a generic function
                         // defined in an upstream crate.
-                        if cx
-                            .tcx
-                            .upstream_monomorphizations_for(instance_def_id)
-                            .map(|set| set.contains_key(instance.substs))
-                            .unwrap_or(false)
-                        {
+                        if instance.upstream_monomorphization(tcx).is_some() {
                             // This is instantiated in another crate. It cannot
                             // be `hidden`.
                         } else {

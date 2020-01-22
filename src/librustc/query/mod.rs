@@ -776,13 +776,47 @@ rustc_queries! {
     }
 
     Codegen {
+        /// The entire set of monomorphizations the local crate can safely link
+        /// to because they are exported from upstream crates. Do not depend on
+        /// this directly, as its value changes anytime a monomorphization gets
+        /// added or removed in any upstream crate. Instead use the narrower
+        /// `upstream_monomorphizations_for`, `upstream_drop_glue_for`, or, even
+        /// better, `Instance::upstream_monomorphization()`.
         query upstream_monomorphizations(
             k: CrateNum
         ) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
             desc { "collecting available upstream monomorphizations `{:?}`", k }
         }
+
+        /// Returns the set of upstream monomorphizations available for the
+        /// generic function identified by the given `def_id`. The query makes
+        /// sure to make a stable selection if the same monomorphization is
+        /// available in multiple upstream crates.
+        ///
+        /// You likely want to call `Instance::upstream_monomorphization()`
+        /// instead of invoking this query directly.
         query upstream_monomorphizations_for(_: DefId)
             -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {}
+
+        /// Returns the upstream crate that exports drop-glue for the given
+        /// type (`substs` is expected to be a single-item list containing the
+        /// type one wants drop-glue for).
+        ///
+        /// This is a subset of `upstream_monomorphizations_for` in order to
+        /// increase dep-tracking granularity. Otherwise adding or removing any
+        /// type with drop-glue in any upstream crate would invalidate all
+        /// functions calling drop-glue of an upstream type.
+        ///
+        /// You likely want to call `Instance::upstream_monomorphization()`
+        /// instead of invoking this query directly.
+        ///
+        /// NOTE: This query could easily be extended to also support other
+        ///       common functions that have are large set of monomorphizations
+        ///       (like `Clone::clone` for example).
+        query upstream_drop_glue_for(substs: SubstsRef<'tcx>) -> Option<CrateNum> {
+            desc { "available upstream drop-glue for `{:?}`", substs }
+            no_force
+        }
     }
 
     Other {

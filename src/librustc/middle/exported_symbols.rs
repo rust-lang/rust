@@ -1,9 +1,7 @@
-use crate::ich::StableHashingContext;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, TyCtxt};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use std::mem;
+use rustc_macros::HashStable;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -23,10 +21,11 @@ impl SymbolExportLevel {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
     Generic(DefId, SubstsRef<'tcx>),
+    DropGlue(Ty<'tcx>),
     NoDefId(ty::SymbolName),
 }
 
@@ -39,6 +38,9 @@ impl<'tcx> ExportedSymbol<'tcx> {
             ExportedSymbol::Generic(def_id, substs) => {
                 tcx.symbol_name(ty::Instance::new(def_id, substs))
             }
+            ExportedSymbol::DropGlue(ty) => {
+                tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
+            }
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
         }
     }
@@ -50,22 +52,4 @@ pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
         tcx.original_crate_name(LOCAL_CRATE),
         tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex()
     )
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            ExportedSymbol::NonGeneric(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            ExportedSymbol::Generic(def_id, substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
-            ExportedSymbol::NoDefId(symbol_name) => {
-                symbol_name.hash_stable(hcx, hasher);
-            }
-        }
-    }
 }

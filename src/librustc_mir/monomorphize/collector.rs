@@ -737,9 +737,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id)
-        || is_available_upstream_generic(tcx, def_id, instance.substs)
-    {
+    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
         // We can link to the item in question, no instance needed
         // in this crate.
         return false;
@@ -750,34 +748,6 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     }
 
     return true;
-
-    fn is_available_upstream_generic<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
-    ) -> bool {
-        debug_assert!(!def_id.is_local());
-
-        // If we are not in share generics mode, we don't link to upstream
-        // monomorphizations but always instantiate our own internal versions
-        // instead.
-        if !tcx.sess.opts.share_generics() {
-            return false;
-        }
-
-        // If this instance has non-erasable parameters, it cannot be a shared
-        // monomorphization. Non-generic instances are already handled above
-        // by `is_reachable_non_generic()`.
-        if substs.non_erasable_generics().next().is_none() {
-            return false;
-        }
-
-        // Take a look at the available monomorphizations listed in the metadata
-        // of upstream crates.
-        tcx.upstream_monomorphizations_for(def_id)
-            .map(|set| set.contains_key(substs))
-            .unwrap_or(false)
-    }
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
