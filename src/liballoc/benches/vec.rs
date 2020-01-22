@@ -173,9 +173,34 @@ fn do_bench_extend(b: &mut Bencher, dst_len: usize, src_len: usize) {
 }
 
 fn do_bench_extend_chain(b: &mut Bencher, dst_len: usize, src_len: usize) {
-    let fst = Vec::from_iter(dst_len..dst_len + src_len / 2);
-    let snd = Vec::from_iter(dst_len + src_len / 2..dst_len + src_len);
-    let src = fst.iter().cloned().chain(snd.iter().cloned());
+    let src = Vec::from_iter(dst_len..dst_len + src_len);
+    let x1;
+    let x2;
+    let x3;
+    let x4;
+    let x5;
+
+    if src.len() / 5 == 0 {
+        x1 = &[][..];
+        x2 = &[][..];
+        x3 = &[][..];
+        x4 = &[][..];
+        x5 = &[][..];
+    } else {
+        let mut iter = src.chunks_exact(src.len() / 5);
+        x1 = iter.next().unwrap_or(&[][..]);
+        x2 = iter.next().unwrap_or(&[][..]);
+        x3 = iter.next().unwrap_or(&[][..]);
+        x4 = iter.next().unwrap_or(&[][..]);
+        x5 = iter.next().unwrap_or(&[][..]);
+    }
+    let src = x1
+        .iter()
+        .cloned()
+        .chain(x2.iter().cloned())
+        .chain(x3.iter().cloned())
+        .chain(x4.iter().cloned())
+        .chain(x5.iter().cloned());
     do_bench_extend_iter(b, dst_len, src_len, src)
 }
 
