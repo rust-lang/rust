@@ -2121,6 +2121,21 @@ where
     }
 }
 
+fn extend_fold<T>(self_: &mut Vec<T>) -> impl FnMut((), T) -> Result<(), T> + '_ {
+    move |(), element| {
+        let len = self_.len();
+        if len < self_.capacity() {
+            unsafe {
+                ptr::write(self_.get_unchecked_mut(len), element);
+                self_.set_len(len + 1);
+                Ok(())
+            }
+        } else {
+            Err(element)
+        }
+    }
+}
+
 impl<T> Vec<T> {
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
@@ -2133,21 +2148,8 @@ impl<T> Vec<T> {
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
         loop {
-            let cap = self.capacity();
-            let result = iterator.try_fold((), |(), element| {
-                let len = self.len();
-                if len == cap {
-                    Err(element)
-                } else {
-                    unsafe {
-                        ptr::write(self.get_unchecked_mut(len), element);
-                        self.set_len(len + 1);
-                        Ok(())
-                    }
-                }
-            });
-            match result {
-                Ok(()) => return,
+            match iterator.try_fold((), extend_fold(self)) {
+                Ok(_) => return,
                 Err(element) => {
                     let (lower, _) = iterator.size_hint();
                     self.reserve(lower.saturating_add(1));
