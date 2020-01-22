@@ -204,6 +204,10 @@ declare_features! (
     /// Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
 
+    /// Allows `#[repr(no_niche)]` (an implementation detail of `rustc`,
+    /// it is not on path for eventual stabilization).
+    (active, no_niche, "1.42.0", None, None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
