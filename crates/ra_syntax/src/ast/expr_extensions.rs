@@ -322,7 +322,7 @@ impl ast::Literal {
 
         match token.kind() {
             INT_NUMBER => {
-                // FYI: there was a bug here previously, thus an if statement here is necessary.
+                // FYI: there was a bug here previously, thus an if statement bellow is necessary.
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
