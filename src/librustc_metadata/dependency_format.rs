@@ -83,14 +83,17 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
     }
 
     let preferred_linkage = match ty {
-        // cdylibs must have all static dependencies.
-        config::CrateType::Cdylib => Linkage::Static,
-
         // Generating a dylib without `-C prefer-dynamic` means that we're going
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
-        config::CrateType::Dylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
-        config::CrateType::Dylib => Linkage::Dynamic,
+        //
+        // Treat cdylibs similarly. If `-C prefer-dynamic` is set, the caller may
+        // be code-size conscious, but without it, it makes sense to statically
+        // link a cdylib.
+        config::CrateType::Dylib | config::CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => {
+            Linkage::Static
+        }
+        config::CrateType::Dylib | config::CrateType::Cdylib => Linkage::Dynamic,
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
@@ -122,10 +125,9 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
             return v;
         }
 
-        // Staticlibs, cdylibs, and static executables must have all static
-        // dependencies. If any are not found, generate some nice pretty errors.
-        if ty == config::CrateType::Cdylib
-            || ty == config::CrateType::Staticlib
+        // Staticlibs and static executables must have all static dependencies.
+        // If any are not found, generate some nice pretty errors.
+        if ty == config::CrateType::Staticlib
             || (ty == config::CrateType::Executable
                 && sess.crt_static()
                 && !sess.target.target.options.crt_static_allows_dylibs)
