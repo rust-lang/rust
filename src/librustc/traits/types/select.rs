@@ -265,6 +265,13 @@ pub struct EvaluationCache<'tcx> {
     >,
 }
 
+impl<'tcx> EvaluationCache<'tcx> {
+    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
+    pub fn clear(&self) {
+        *self.hashmap.borrow_mut() = Default::default();
+    }
+}
+
 #[derive(Clone, Eq, PartialEq)]
 pub struct WithDepNode<T> {
     dep_node: DepNodeIndex,
