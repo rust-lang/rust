@@ -25,9 +25,10 @@ extern crate rustc_macros;
 extern crate log;
 
 pub mod abi;
+pub mod asm;
 pub mod spec;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc_middle.
-pub trait HashStableContext {}
+pub trait HashStableContext: rustc_span::HashStableContext {}
