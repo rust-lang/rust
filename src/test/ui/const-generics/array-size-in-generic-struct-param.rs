@@ -1,10 +1,9 @@
-// run-pass
-
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
 #[allow(dead_code)]
-struct ArithArrayLen<const N: usize>([u32; 0 + N]); // ok
+struct ArithArrayLen<const N: usize>([u32; 0 + N]);
+//~^ ERROR constant expression depends on a generic parameter
 
 #[derive(PartialEq, Eq)]
 struct Config {
@@ -12,7 +11,7 @@ struct Config {
 }
 
 struct B<const CFG: Config> {
-    arr: [u8; CFG.arr_size], // ok
+    arr: [u8; CFG.arr_size], //~ ERROR constant expression depends on a generic parameter
 }
 
 const C: Config = Config { arr_size: 5 };
