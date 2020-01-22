@@ -9,8 +9,8 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
-cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/", default-features = false, features = ["std"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/cranelift/" }
+cranelift-frontend = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-module = { git = "https://github.com/bytecodealliance/cranelift/" }
 cranelift-object = { git = "https://github.com/bytecodealliance/cranelift/" }
 target-lexicon = "0.10.0"
@@ -31,8 +31,8 @@ features = ["write"] # We don't need read support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/bytecodealliance/cranelift/"]
-#cranelift-codegen = { path = "../cranelift/cranelift-codegen", default-features = false, features = ["std"] }
-#cranelift-frontend = { path = "../cranelift/cranelift-frontend", default-features = false, features = ["std"] }
+#cranelift-codegen = { path = "../cranelift/cranelift-codegen" }
+#cranelift-frontend = { path = "../cranelift/cranelift-frontend" }
 #cranelift-module = { path = "../cranelift/cranelift-module" }
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
 #cranelift-object = { path = "../cranelift/cranelift-object" }
