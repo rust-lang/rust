@@ -1558,6 +1558,7 @@ mod avx2 {
 
     impl Default for ProcessedUtfBytes {
         fn default() -> Self {
+            // DOCUMENT
             unsafe {
                 ProcessedUtfBytes {
                     rawbytes: _mm256_setzero_si256(),
@@ -1572,8 +1573,11 @@ mod avx2 {
         #[inline]
         fn count_nibbles(&mut self, bytes: __m256i) {
             self.rawbytes = bytes;
+
             self.high_nibbles =
-                unsafe { _mm256_and_si256(_mm256_srli_epi16(bytes, 4), _mm256_set1_epi8(0xF)) };
+                        // DOCUMENT
+
+             unsafe { _mm256_and_si256(_mm256_srli_epi16(bytes, 4), _mm256_set1_epi8(0xF)) };
         }
     }
 
@@ -1587,6 +1591,7 @@ mod avx2 {
         fn default() -> Self {
             State {
                 previous: ProcessedUtfBytes::default(),
+                // DOCUMENT
                 has_error: unsafe { _mm256_setzero_si256() },
             }
         }
@@ -1618,6 +1623,7 @@ mod avx2 {
         // at the end of the function, previous gets updated
         fn check_bytes_ascii_path(&mut self, current_bytes: __m256i) {
             if no_most_significant_bits(current_bytes) {
+                // DOCUMENT
                 unsafe {
                     // Fast ascii path
                     self.has_error = _mm256_or_si256(
@@ -1639,6 +1645,7 @@ mod avx2 {
 
         #[inline]
         fn check_continuations(&mut self, initial_lengths: __m256i, carries: __m256i) {
+            // DOCUMENT
             unsafe {
                 // overlap || underlap
                 // carry > length && length > 0 || !(carry > length) && !(length > 0)
@@ -1660,6 +1667,7 @@ mod avx2 {
             current_bytes: __m256i,
             off1_current_bytes: __m256i,
         ) {
+            // DOCUMENT
             unsafe {
                 let mask_ed =
                     _mm256_cmpeq_epi8(off1_current_bytes, _mm256_set1_epi8(0xEDi32 as i8));
@@ -1692,6 +1700,7 @@ mod avx2 {
             hibits: __m256i,
             previous_hibits: __m256i,
         ) {
+            // DOCUMENT
             unsafe {
                 let off1_hibits = push_last_byte_of_a_to_b(previous_hibits, hibits);
                 let initial_mins = _mm256_shuffle_epi8(
@@ -1778,6 +1787,7 @@ mod avx2 {
         // all byte values must be no larger than 0xF4
         #[inline]
         fn check_smaller_than_0xf4(&mut self, current_bytes: __m256i) {
+            // DOCUMENT
             unsafe {
                 // unsigned, saturates to 0 below max
                 self.has_error = _mm256_or_si256(
@@ -1789,6 +1799,7 @@ mod avx2 {
 
         #[inline]
         fn is_erroneous(&mut self) -> bool {
+            // DOCUMENT
             unsafe { _mm256_testz_si256(self.has_error, self.has_error) != 0 }
         }
     }
@@ -1797,11 +1808,13 @@ mod avx2 {
     /// set to `1`.
     #[inline]
     fn no_most_significant_bits(bytes: __m256i) -> bool {
+        // DOCUMENT
         unsafe { _mm256_testz_si256(bytes, _mm256_set1_epi8(0x80i32 as i8)) != 0 }
     }
 
     #[inline]
     fn push_last_byte_of_a_to_b(a: __m256i, b: __m256i) -> __m256i {
+        // DOCUMENT
         unsafe {
             return _mm256_alignr_epi8(b, _mm256_permute2x128_si256(a, b, 0x21), 15);
         }
@@ -1809,6 +1822,7 @@ mod avx2 {
 
     #[inline]
     fn push_last_2bytes_of_a_to_b(a: __m256i, b: __m256i) -> __m256i {
+        // DOCUMENT
         unsafe {
             return _mm256_alignr_epi8(b, _mm256_permute2x128_si256(a, b, 0x21), 14);
         }
@@ -1816,6 +1830,7 @@ mod avx2 {
 
     #[inline]
     fn continuation_lengths(high_nibbles: __m256i) -> __m256i {
+        // DOCUMENT
         unsafe {
             return _mm256_shuffle_epi8(
                 _mm256_setr_epi8(
@@ -1829,6 +1844,7 @@ mod avx2 {
 
     #[inline]
     fn carry_continuations(initial_lengths: __m256i, previous_carries: __m256i) -> __m256i {
+        // DOCUMENT
         unsafe {
             let right1 = _mm256_subs_epu8(
                 push_last_byte_of_a_to_b(previous_carries, initial_lengths),
@@ -1851,6 +1867,7 @@ mod avx2 {
 
         if len >= 32 {
             while i <= len - 32 {
+                // DOCUMENT
                 let current_bytes = unsafe {
                     _mm256_loadu_si256(bytes.as_ptr().offset(i as isize) as *const __m256i)
                 };
@@ -1860,6 +1877,7 @@ mod avx2 {
         }
         // last part
         if i < len {
+            // DOCUMENT
             unsafe {
                 let mut buffer = [0; 32];
                 ptr::write_bytes(buffer.as_mut_ptr(), 0, 32);
@@ -1868,6 +1886,7 @@ mod avx2 {
                 state.check_bytes(current_bytes_0);
             }
         } else {
+            // DOCUMENT
             unsafe {
                 state.has_error = _mm256_or_si256(
                     _mm256_cmpgt_epi8(
@@ -1884,49 +1903,6 @@ mod avx2 {
 
         state.is_erroneous()
     }
-
-    /*
-    pub fn is_utf8(bytes: &[u8]) -> bool {
-        let len = bytes.len();
-        let mut i = 0;
-
-        let mut state = State::default();
-
-        if len >= 32 {
-            while i <= len - 32 {
-                let current_bytes = unsafe {
-                    _mm256_loadu_si256(bytes.as_ptr().offset(i as isize) as *const __m256i)
-                };
-                state.check_bytes(current_bytes);
-                i += 32
-            }
-        }
-        // last part
-        if i < len {
-            let mut buffer = [0; 32];
-            unsafe {
-                ptr::copy(bytes.as_ptr().offset(i as isize), buffer.as_mut_ptr(), len - i);
-                let current_bytes_0 = _mm256_loadu_si256(buffer.as_mut_ptr() as *const __m256i);
-                state.check_bytes(current_bytes_0);
-            }
-        } else {
-            unsafe {
-                state.has_error = _mm256_or_si256(
-                    _mm256_cmpgt_epi8(
-                        state.previous.carried_continuations,
-                        _mm256_setr_epi8(
-                            9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-                            9, 9, 9, 9, 9, 9, 9, 1,
-                        ),
-                    ),
-                    state.has_error,
-                )
-            }
-        }
-
-        state.is_erroneous()
-    }
-    */
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
