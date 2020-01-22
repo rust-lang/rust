@@ -1,3 +1,5 @@
+pub mod canonical;
+
 use crate::ty::Region;
 use crate::ty::Ty;
 use rustc_data_structures::sync::Lrc;
