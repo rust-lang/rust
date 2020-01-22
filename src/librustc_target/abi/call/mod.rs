@@ -309,7 +309,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
                 // Helper for computing `homogenous_aggregate`, allowing a custom
-                // starting offset (TODO(eddyb): use this to handle variants).
+                // starting offset (used below for handling variants).
                 let from_fields_at =
                     |layout: Self,
                      start: Size|
@@ -354,6 +354,32 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                     };
 
                 let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
+
+                match &self.variants {
+                    abi::Variants::Single { .. } => {}
+                    abi::Variants::Multiple { variants, .. } => {
+                        // Treat enum variants like union members.
+                        // HACK(eddyb) pretend the `enum` field (discriminant)
+                        // is at the start of every variant (otherwise the gap
+                        // at the start of all variants would disqualify them).
+                        //
+                        // NB: for all tagged `enum`s (which include all non-C-like
+                        // `enum`s with defined FFI representation), this will
+                        // match the homogenous computation on the equivalent
+                        // `struct { tag; union { variant1; ... } }` and/or
+                        // `union { struct { tag; variant1; } ... }`
+                        // (the offsets of variant fields should be identical
+                        // between the two for either to be a homogenous aggregate).
+                        let variant_start = total;
+                        for variant_idx in variants.indices() {
+                            let (variant_result, variant_total) =
+                                from_fields_at(self.for_variant(cx, variant_idx), variant_start)?;
+
+                            result = result.merge(variant_result)?;
+                            total = total.max(variant_total);
+                        }
+                    }
+                }
 
                 // There needs to be no padding.
                 if total != self.size {
