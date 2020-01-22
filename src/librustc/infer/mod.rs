@@ -61,6 +61,7 @@ pub mod region_constraints;
 pub mod resolve;
 mod sub;
 pub mod type_variable;
+mod types;
 pub mod unify_key;
 
 #[must_use]
