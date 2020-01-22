@@ -73,7 +73,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ohs = self.lower_expr(ohs);
                 hir::ExprKind::AddrOf(k, m, ohs)
             }
-            ExprKind::Let(ref pat, ref scrutinee) => self.lower_expr_let(e.span, pat, scrutinee),
+            ExprKind::Let(ref pat, ref scrutinee) => {
+                hir::ExprKind::Let(self.lower_pat(pat), self.lower_expr(scrutinee))
+            }
             ExprKind::If(ref cond, ref then, ref else_opt) => {
                 self.lower_expr_if(e.span, cond, then, else_opt.as_deref())
             }
@@ -243,25 +245,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind<'hir> {
-        // If we got here, the `let` expression is not allowed.
-
-        if self.sess.opts.unstable_features.is_nightly_build() {
-            self.sess
-                .struct_span_err(span, "`let` expressions are not supported here")
-                .note("only supported directly in conditions of `if`- and `while`-expressions")
-                .note("as well as when nested within `&&` and parenthesis in those conditions")
-                .emit();
-        } else {
-            self.sess
-                .struct_span_err(span, "expected expression, found statement (`let`)")
-                .note("variable declaration using `let` is a statement")
-                .emit();
-        }
-
-        hir::ExprKind::Let(self.lower_pat(pat), self.lower_expr(scrutinee))
-    }
-
     fn lower_expr_if(
         &mut self,
         span: Span,
@@ -269,40 +252,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        // FIXME(#53667): handle lowering of && and parens.
+        // Lower the `cond` expression.
+        let cond_expr = self.lower_expr(cond);
+        // Normally, the `cond` of `if cond` will drop temporaries before evaluating the blocks.
+        // This is achieved by using `drop-temps { cond }`, equivalent to `{ let _t = $cond; _t }`.
+        // However, for backwards compatibility reasons, `if let pat = scrutinee`, like `match`
+        // does not drop the temporaries of `scrutinee` before evaluating the blocks.
+        let contains_else_clause = else_opt.is_some();
+        let (scrutinee, desugar) = match cond.kind {
+            ExprKind::Let(..) => {
+                (cond_expr, hir::MatchSource::IfLetDesugar { contains_else_clause })
+            }
+            _ => {
+                let span =
+                    self.mark_span_with_reason(DesugaringKind::CondTemporary, cond_expr.span, None);
+                let cond_expr = self.expr_drop_temps(span, cond_expr, ThinVec::new());
+                (cond_expr, hir::MatchSource::IfDesugar { contains_else_clause })
+            }
+        };
+
+        // `true => $then`:
+        let then_expr = self.lower_block_expr(then);
+        let then_pat = self.pat_bool(span, true);
+        let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         // `_ => else_block` where `else_block` is `{}` if there's `None`:
         let else_pat = self.pat_wild(span);
-        let (else_expr, contains_else_clause) = match else_opt {
-            None => (self.expr_block_empty(span), false),
-            Some(els) => (self.lower_expr(els), true),
+        let else_expr = match else_opt {
+            None => self.expr_block_empty(span),
+            Some(els) => self.lower_expr(els),
         };
         let else_arm = self.arm(else_pat, else_expr);
-
-        // Handle then + scrutinee:
-        let then_expr = self.lower_block_expr(then);
-        let (then_pat, scrutinee, desugar) = match cond.kind {
-            // `<pat> => <then>`:
-            ExprKind::Let(ref pat, ref scrutinee) => {
-                let scrutinee = self.lower_expr(scrutinee);
-                let pat = self.lower_pat(pat);
-                (pat, scrutinee, hir::MatchSource::IfLetDesugar { contains_else_clause })
-            }
-            // `true => <then>`:
-            _ => {
-                // Lower condition:
-                let cond = self.lower_expr(cond);
-                let span_block =
-                    self.mark_span_with_reason(DesugaringKind::CondTemporary, cond.span, None);
-                // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
-                // to preserve drop semantics since `if cond { ... }` does not
-                // let temporaries live outside of `cond`.
-                let cond = self.expr_drop_temps(span_block, cond, ThinVec::new());
-                let pat = self.pat_bool(span, true);
-                (pat, cond, hir::MatchSource::IfDesugar { contains_else_clause })
-            }
-        };
-        let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         hir::ExprKind::Match(scrutinee, arena_vec![self; then_arm, else_arm], desugar)
     }
