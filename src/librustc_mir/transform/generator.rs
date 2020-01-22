@@ -117,7 +117,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 place,
                 Place {
                     local: self_arg(),
-                    projection: self.tcx().intern_place_elems(&vec![ProjectionElem::Deref]),
+                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Deref]),
                 },
                 self.tcx,
             );
@@ -153,7 +153,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 place,
                 Place {
                     local: self_arg(),
-                    projection: self.tcx().intern_place_elems(&vec![ProjectionElem::Field(
+                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
                         Field::new(0),
                         self.ref_gen_ty,
                     )]),
