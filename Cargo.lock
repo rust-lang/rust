@@ -3631,6 +3631,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_macros",
  "rustc_span",
+ "rustc_target",
  "scoped-tls",
  "serialize",
  "smallvec 1.4.0",
@@ -3678,6 +3679,7 @@ dependencies = [
  "log",
  "rustc_ast",
  "rustc_span",
+ "rustc_target",
 ]
 
 [[package]]

@@ -34,6 +34,7 @@ use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::asm::{InlineAsmOptions, InlineAsmTemplatePiece};
 
 use std::convert::TryFrom;
 use std::fmt;
@@ -1121,7 +1122,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::InlineAsm(..) | ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1250,6 +1251,8 @@ pub enum ExprKind {
     /// A `return`, with an optional value to be returned.
     Ret(Option<P<Expr>>),
 
+    /// Output of the `asm!()` macro.
+    InlineAsm(InlineAsm),
     /// Output of the `llvm_asm!()` macro.
     LlvmInlineAsm(P<LlvmInlineAsm>),
 
@@ -1862,6 +1865,58 @@ impl TyKind {
 pub enum TraitObjectSyntax {
     Dyn,
     None,
+}
+
+/// Inline assembly operand explicit register or register class.
+///
+/// E.g., `"eax"` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmRegOrRegClass {
+    Reg(Symbol),
+    RegClass(Symbol),
+}
+
+/// Inline assembly operand.
+///
+/// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmOperand {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: P<Expr>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<P<Expr>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: P<Expr>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: P<Expr>,
+        out_expr: Option<P<Expr>>,
+    },
+    Const {
+        expr: P<Expr>,
+    },
+    Sym {
+        expr: P<Expr>,
+    },
+}
+
+/// Inline assembly.
+///
+/// E.g., `asm!("NOP");`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct InlineAsm {
+    pub template: Vec<InlineAsmTemplatePiece>,
+    pub operands: Vec<(InlineAsmOperand, Span)>,
+    pub options: InlineAsmOptions,
 }
 
 /// Inline assembly dialect.
