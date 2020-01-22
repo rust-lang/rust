@@ -73,6 +73,15 @@ macro_rules! check_if_named_foo {
     )
 }
 
+macro_rules! bool_macro {
+    ($expression:expr) => {
+        true
+    };
+}
+
+#[allow(clippy::short_circuit_statement)]
 fn check_ignore_macro() {
     check_if_named_foo!(foo);
+    // checks if the lint ignores macros with `!` operator
+    !bool_macro!(1) && !bool_macro!("");
 }

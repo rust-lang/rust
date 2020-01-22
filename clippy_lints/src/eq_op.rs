@@ -1,4 +1,6 @@
-use crate::utils::{implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
+use crate::utils::{
+    implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
+};
 use rustc_errors::Applicability;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -51,6 +53,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(op, ref left, ref right) = e.kind {
             if e.span.from_expansion() {
+                return;
+            }
+            let macro_with_not_op = |expr_kind: &ExprKind<'_>| {
+                if let ExprKind::Unary(_, ref expr) = *expr_kind {
+                    in_macro(expr.span)
+                } else {
+                    false
+                }
+            };
+            if macro_with_not_op(&left.kind) || macro_with_not_op(&right.kind) {
                 return;
             }
             if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
