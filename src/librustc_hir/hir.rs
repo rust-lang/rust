@@ -298,6 +298,14 @@ impl GenericArg<'_> {
             _ => false,
         }
     }
+
+    pub fn descr(&self) -> &'static str {
+        match self {
+            GenericArg::Lifetime(_) => "lifetime",
+            GenericArg::Type(_) => "type",
+            GenericArg::Const(_) => "constant",
+        }
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]

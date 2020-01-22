@@ -931,6 +931,16 @@ pub enum GenericParamDefKind {
     Const,
 }
 
+impl GenericParamDefKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            GenericParamDefKind::Lifetime => "lifetime",
+            GenericParamDefKind::Type { .. } => "type",
+            GenericParamDefKind::Const => "constant",
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericParamDef {
     pub name: Symbol,

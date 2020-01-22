@@ -19,12 +19,7 @@ use std::sync::Arc;
 
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let type_name = match self.kind {
-            ty::GenericParamDefKind::Lifetime => "Lifetime",
-            ty::GenericParamDefKind::Type { .. } => "Type",
-            ty::GenericParamDefKind::Const => "Const",
-        };
-        write!(f, "{}({}, {:?}, {})", type_name, self.name, self.def_id, self.index)
+        write!(f, "{}({}, {:?}, {})", self.kind.descr(), self.name, self.def_id, self.index)
     }
 }
 

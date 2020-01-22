@@ -12,7 +12,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc::session::parse::feature_err;
+use rustc::session::{parse::feature_err, Session};
 use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
@@ -446,6 +446,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         (arg_count_mismatch, unexpected_spans)
     }
 
+    /// Report an error that a generic argument did not match the generic parameter that was
+    /// expected.
+    fn generic_arg_mismatch_err(sess: &Session, arg: &GenericArg<'_>, kind: &'static str) {
+        struct_span_err!(
+            sess,
+            arg.span(),
+            E0747,
+            "{} provided when a {} was expected",
+            arg.descr(),
+            kind,
+        )
+        .emit();
+    }
+
     /// Creates the relevant generic argument substitutions
     /// corresponding to a set of generic parameters. This is a
     /// rather complex function. Let us try to explain the role
@@ -541,12 +555,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut args =
                 generic_args.iter().flat_map(|generic_args| generic_args.args.iter()).peekable();
 
-            let arg_kind = |arg| match arg {
-                &GenericArg::Lifetime(_) => "lifetime",
-                &GenericArg::Type(_) => "type",
-                &GenericArg::Const(_) => "constant",
-            };
-
             // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
             // If we later encounter a lifetime, we know that the arguments were provided in the
             // wrong order. `force_infer_lt` records the type or const that forced lifetimes to be
@@ -582,20 +590,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // the arguments don't match up with the parameters, we won't issue
                                 // an additional error, as the user already knows what's wrong.
                                 if !arg_count_mismatch {
-                                    let param_kind = match kind {
-                                        GenericParamDefKind::Lifetime => "lifetime",
-                                        GenericParamDefKind::Type { .. } => "type",
-                                        GenericParamDefKind::Const => "constant",
-                                    };
-                                    struct_span_err!(
-                                        tcx.sess,
-                                        arg.span(),
-                                        E0747,
-                                        "{} provided when a {} was expected",
-                                        arg_kind(arg),
-                                        param_kind,
-                                    )
-                                    .emit();
+                                    Self::generic_arg_mismatch_err(tcx.sess, arg, kind.descr());
                                 }
 
                                 // We've reported the error, but we want to make sure that this
@@ -607,6 +602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             }
                         }
                     }
+
                     (Some(&arg), None) => {
                         // We should never be able to reach this point with well-formed input.
                         // There are two situations in which we can encounter this issue.
@@ -620,29 +616,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         //      after a type or const). We want to throw an error in this case.
 
                         if !arg_count_mismatch {
-                            let kind = arg_kind(arg);
+                            let kind = arg.descr();
                             assert_eq!(kind, "lifetime");
                             let provided =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            struct_span_err!(
-                                tcx.sess,
-                                provided.span(),
-                                E0747,
-                                "{} provided when a {} was expected",
-                                arg_kind(provided),
-                                kind,
-                            )
-                            .emit();
+                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind);
                         }
 
                         break;
                     }
+
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
                         substs.push(inferred_kind(Some(&substs), param, infer_args));
                         params.next();
                     }
+
                     (None, None) => break,
                 }
             }
