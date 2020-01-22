@@ -4,7 +4,7 @@ warning: unknown lint: `x5400`
 LL | #![warn(x5400)]
    |         ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:36:28
    |
 LL | #![warn(unused_attributes, unknown_lints)]
@@ -250,7 +250,7 @@ warning: unused attribute
 LL |     #[macro_use] fn f() { }
    |     ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:36:9
    |
 LL | #![warn(unused_attributes, unknown_lints)]

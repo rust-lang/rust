@@ -195,7 +195,7 @@ error: `...` range patterns are deprecated
 LL |     if let 0...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/recover-range-pats.rs:8:9
    |
 LL | #![deny(ellipsis_inclusive_range_patterns)]

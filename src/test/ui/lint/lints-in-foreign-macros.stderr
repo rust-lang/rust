@@ -7,7 +7,7 @@ LL |     () => {use std::string::ToString;}
 LL | mod a { foo!(); }
    |         ------- in this macro invocation
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lints-in-foreign-macros.rs:4:9
    |
 LL | #![warn(unused_imports)]
@@ -37,7 +37,7 @@ LL | |
 LL | | fn main() {}
    | |____________^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lints-in-foreign-macros.rs:5:9
    |
 LL | #![warn(missing_docs)]

@@ -204,17 +204,17 @@ impl LanguageItemCollector<'tcx> {
                     },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
-                    err.span_note(span, "first defined here");
+                    err.span_note(span, "the lang item is first defined here");
                 } else {
                     match self.tcx.extern_crate(original_def_id) {
                         Some(ExternCrate {dependency_of, ..}) => {
                             err.note(&format!(
-                            "first defined in crate `{}` (which `{}` depends on)",
+                            "the lang item is first defined in crate `{}` (which `{}` depends on)",
                                       self.tcx.crate_name(original_def_id.krate),
                                       self.tcx.crate_name(*dependency_of)));
                         },
                         _ => {
-                            err.note(&format!("first defined in crate `{}`.",
+                            err.note(&format!("the lang item is first defined in crate `{}`.",
                                       self.tcx.crate_name(original_def_id.krate)));
                         }
                     }

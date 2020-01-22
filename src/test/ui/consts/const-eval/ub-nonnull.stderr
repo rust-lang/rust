@@ -18,7 +18,7 @@ LL | |     mem::transmute(out_of_bounds_ptr)
 LL | | } };
    | |____-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/ub-nonnull.rs:14:8
    |
 LL | #[deny(const_err)] // this triggers a `const_err` so validation does not even happen

@@ -4,7 +4,7 @@ error: use of deprecated item 'deprecation_lint::deprecated': text
 LL |         deprecated();
    |         ^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/deprecation-lint.rs:4:9
    |
 LL | #![deny(deprecated)]

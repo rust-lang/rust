@@ -4,7 +4,7 @@ error: use of deprecated item 'cross_crate::lint_stability_fields::Deprecated': 
 LL |         let x = Deprecated {
    |                 ^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-stability-fields-deprecated.rs:3:9
    |
 LL | #![deny(deprecated)]

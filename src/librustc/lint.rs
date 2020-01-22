@@ -259,7 +259,7 @@ pub fn struct_lint_level<'a>(
                 &mut err,
                 DiagnosticMessageId::from(lint),
                 src,
-                "lint level defined here",
+                "the lint level is defined here",
             );
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();

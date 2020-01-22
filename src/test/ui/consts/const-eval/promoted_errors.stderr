@@ -4,7 +4,7 @@ warning: this expression will panic at runtime
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/promoted_errors.rs:5:9
    |
 LL | #![warn(const_err)]

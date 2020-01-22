@@ -12,7 +12,7 @@ warning: literal out of range for `i8`
 LL |     128 > bar()
    |     ^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-type-limits2.rs:2:9
    |
 LL | #![warn(overflowing_literals)]

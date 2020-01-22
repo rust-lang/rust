@@ -4,7 +4,7 @@ error: identifier contains non-ASCII characters
 LL | const חלודה: usize = 2;
    |       ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-non-ascii-idents.rs:2:9
    |
 LL | #![deny(non_ascii_idents)]

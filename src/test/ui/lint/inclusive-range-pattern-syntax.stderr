@@ -4,7 +4,7 @@ warning: `...` range patterns are deprecated
 LL |         1...2 => {}
    |          ^^^ help: use `..=` for an inclusive range
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/inclusive-range-pattern-syntax.rs:4:9
    |
 LL | #![warn(ellipsis_inclusive_range_patterns)]

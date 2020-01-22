@@ -4,7 +4,7 @@ error: function is never used: `dead`
 LL | fn dead() {}
    |    ^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/test-warns-dead-code.rs:3:9
    |
 LL | #![deny(dead_code)]

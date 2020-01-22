@@ -30,7 +30,7 @@ error: item is named 'lintme'
 LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-plugin-forbid-attrs.rs:7:11
    |
 LL | #![forbid(test_lint)]

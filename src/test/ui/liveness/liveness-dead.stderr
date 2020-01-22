@@ -4,7 +4,7 @@ error: value assigned to `x` is never read
 LL |     let mut x: isize = 3;
    |             ^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/liveness-dead.rs:2:9
    |
 LL | #![deny(unused_assignments)]

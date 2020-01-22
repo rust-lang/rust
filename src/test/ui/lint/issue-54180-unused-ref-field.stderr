@@ -6,7 +6,7 @@ LL |         E::Variant { ref field } => (),
    |                      |
    |                      help: try ignoring the field: `field: _`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-54180-unused-ref-field.rs:3:9
    |
 LL | #![deny(unused)]

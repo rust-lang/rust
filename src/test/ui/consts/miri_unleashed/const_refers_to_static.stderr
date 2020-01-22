@@ -64,7 +64,7 @@ LL | |
 LL | | };
    | |__-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:2:9
    |
 LL | #![warn(const_err)]

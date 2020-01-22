@@ -4,7 +4,7 @@ error: type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` 
 LL | pub enum A {}
    | ^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/missing_debug_impls.rs:2:9
    |
 LL | #![deny(missing_debug_implementations)]

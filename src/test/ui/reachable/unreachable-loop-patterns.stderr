@@ -4,7 +4,7 @@ error: unreachable pattern
 LL |     for _ in unimplemented!() as Void {}
    |         ^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable-loop-patterns.rs:5:9
    |
 LL | #![deny(unreachable_patterns)]
