@@ -14,6 +14,7 @@ lazy_static = "1.0"
 log = "0.4"
 env_logger = { version = "0.7", default-features = false }
 rustc = { path = "../librustc" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_target = { path = "../librustc_target" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_data_structures = { path = "../librustc_data_structures" }

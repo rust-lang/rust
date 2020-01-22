@@ -3097,6 +3097,7 @@ dependencies = [
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3362,6 +3363,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -3378,6 +3380,8 @@ name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
  "log",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3388,11 +3392,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_ast_pretty"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc_data_structures",
+ "rustc_span",
+ "syntax",
+]
+
+[[package]]
+name = "rustc_attr"
+version = "0.0.0"
+dependencies = [
+ "rustc_ast_pretty",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_macros",
+ "rustc_session",
+ "rustc_span",
+ "serialize",
+ "smallvec 1.0.0",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_builtin_macros"
 version = "0.0.0"
 dependencies = [
  "fmt_macros",
  "log",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -3415,6 +3447,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc-demangle",
+ "rustc_attr",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
@@ -3445,6 +3478,7 @@ dependencies = [
  "num_cpus",
  "rustc",
  "rustc_apfloat",
+ "rustc_attr",
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
@@ -3509,6 +3543,7 @@ dependencies = [
  "lazy_static 1.3.0",
  "log",
  "rustc",
+ "rustc_ast_pretty",
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_error_codes",
@@ -3555,6 +3590,8 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc_ast_passes",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3584,11 +3621,11 @@ version = "0.0.0"
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
+ "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_index",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "serialize",
@@ -3631,6 +3668,7 @@ dependencies = [
  "rustc-rayon",
  "rustc_ast_lowering",
  "rustc_ast_passes",
+ "rustc_attr",
  "rustc_builtin_macros",
  "rustc_codegen_llvm",
  "rustc_codegen_ssa",
@@ -3675,6 +3713,8 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3715,6 +3755,8 @@ dependencies = [
  "log",
  "memmap",
  "rustc",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -3742,6 +3784,8 @@ dependencies = [
  "polonius-engine",
  "rustc",
  "rustc_apfloat",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -3764,6 +3808,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_apfloat",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -3783,6 +3828,8 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "log",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3800,6 +3847,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3830,6 +3878,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -3847,6 +3896,8 @@ dependencies = [
  "log",
  "rustc",
  "rustc_ast_lowering",
+ "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -3867,6 +3918,7 @@ dependencies = [
  "rls-data",
  "rls-span",
  "rustc",
+ "rustc_ast_pretty",
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_hir",
@@ -3890,6 +3942,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "serialize",
+ "syntax",
 ]
 
 [[package]]
@@ -3964,6 +4017,7 @@ dependencies = [
  "arena",
  "log",
  "rustc",
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4484,12 +4538,9 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc_data_structures",
- "rustc_errors",
- "rustc_feature",
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "scoped-tls",
  "serialize",

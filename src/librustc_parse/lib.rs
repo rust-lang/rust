@@ -4,15 +4,14 @@
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(bootstrap, feature(slice_patterns))]
 
-use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
-use syntax::token::{self, Nonterminal};
-use syntax::tokenstream::{self, TokenStream, TokenTree};
-
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
+use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
+use syntax::ast;
+use syntax::token::{self, Nonterminal};
+use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use std::borrow::Cow;
 use std::path::Path;

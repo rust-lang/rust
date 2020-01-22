@@ -141,7 +141,7 @@ pub fn run(options: Options) -> i32 {
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
-    use syntax::print::pprust;
+    use rustc_ast_pretty::pprust;
 
     let mut opts =
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
@@ -395,8 +395,8 @@ pub fn make_test(
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
-            use syntax::sess::ParseSess;
 
             let filename = FileName::anon_source_code(s);
             let source = crates + &everything_else;

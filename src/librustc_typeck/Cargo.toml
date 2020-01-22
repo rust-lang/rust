@@ -14,6 +14,7 @@ doctest = false
 arena = { path = "../libarena" }
 log = "0.4"
 rustc = { path = "../librustc" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }

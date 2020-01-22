@@ -2,9 +2,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_lexer::unescape;
 use rustc_lexer::Base;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
-use syntax::sess::ParseSess;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::comments;
 

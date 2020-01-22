@@ -18,8 +18,8 @@ use crate::hair::{self, *};
 use rustc::mir::interpret::truncate;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
+use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
-use syntax::attr::{SignedInt, UnsignedInt};
 
 use std::mem;
 

@@ -5,14 +5,13 @@ use rustc::session::config::{Input, PpMode, PpSourceMode};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::print as pprust_hir;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-
 use rustc_span::FileName;
 use syntax::ast;
-use syntax::print::pprust;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -392,14 +391,16 @@ pub fn print_after_parsing(
         call_with_pp_support(&s, sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
+            let parse = &sess.parse_sess;
             *out = pprust::print_crate(
                 sess.source_map(),
-                &sess.parse_sess,
                 krate,
                 src_name,
                 src,
                 annotation.pp_ann(),
                 false,
+                parse.edition,
+                parse.injected_crate_name.try_get().is_some(),
             )
         })
     } else {
@@ -432,14 +433,16 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
+                let parse = &sess.parse_sess;
                 *out = pprust::print_crate(
                     sess.source_map(),
-                    &sess.parse_sess,
                     krate,
                     src_name,
                     src,
                     annotation.pp_ann(),
                     true,
+                    parse.edition,
+                    parse.injected_crate_name.try_get().is_some(),
                 )
             })
         }
@@ -449,14 +452,8 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                *out = pprust_hir::print_crate(
-                    sess.source_map(),
-                    &sess.parse_sess,
-                    krate,
-                    src_name,
-                    src,
-                    annotation.pp_ann(),
-                )
+                let cm = sess.source_map();
+                *out = pprust_hir::print_crate(cm, krate, src_name, src, annotation.pp_ann())
             })
         }
 

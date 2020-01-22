@@ -1,20 +1,19 @@
-use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use crate::ast::{Attribute, GenericArg, MacArgs};
-use crate::ast::{GenericBound, SelfKind, TraitBoundModifier};
-use crate::attr;
-use crate::print::pp::Breaks::{Consistent, Inconsistent};
-use crate::print::pp::{self, Breaks};
-use crate::ptr::P;
-use crate::sess::ParseSess;
-use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use crate::tokenstream::{self, TokenStream, TokenTree};
-use crate::util::classify;
-use crate::util::comments;
-use crate::util::parser::{self, AssocOp, Fixity};
+use crate::pp::Breaks::{Consistent, Inconsistent};
+use crate::pp::{self, Breaks};
 
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{dummy_spanned, SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, FileName, Span};
+use syntax::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use syntax::ast::{Attribute, GenericArg, MacArgs};
+use syntax::ast::{GenericBound, SelfKind, TraitBoundModifier};
+use syntax::attr;
+use syntax::ptr::P;
+use syntax::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use syntax::tokenstream::{self, TokenStream, TokenTree};
+use syntax::util::parser::{self, AssocOp, Fixity};
+use syntax::util::{classify, comments};
 
 use std::borrow::Cow;
 
@@ -54,13 +53,8 @@ pub struct Comments<'a> {
 }
 
 impl<'a> Comments<'a> {
-    pub fn new(
-        cm: &'a SourceMap,
-        sess: &ParseSess,
-        filename: FileName,
-        input: String,
-    ) -> Comments<'a> {
-        let comments = comments::gather_comments(sess, filename, input);
+    pub fn new(cm: &'a SourceMap, filename: FileName, input: String) -> Comments<'a> {
+        let comments = comments::gather_comments(cm, filename, input);
         Comments { cm, comments, current: 0 }
     }
 
@@ -102,21 +96,22 @@ crate const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
     cm: &'a SourceMap,
-    sess: &ParseSess,
     krate: &ast::Crate,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
     is_expanded: bool,
+    edition: Edition,
+    has_injected_crate: bool,
 ) -> String {
     let mut s = State {
         s: pp::mk_printer(),
-        comments: Some(Comments::new(cm, sess, filename, input)),
+        comments: Some(Comments::new(cm, filename, input)),
         ann,
         is_expanded,
     };
 
-    if is_expanded && sess.injected_crate_name.try_get().is_some() {
+    if is_expanded && has_injected_crate {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However, we don't want these attributes in the AST because
@@ -130,7 +125,7 @@ pub fn print_crate<'a>(
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
         // root, so this is not needed, and actually breaks things.
-        if sess.edition == rustc_span::edition::Edition::Edition2015 {
+        if edition == Edition::Edition2015 {
             // `#![no_std]`
             let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
             let fake_attr = attr::mk_attr_inner(no_std_meta);
@@ -144,10 +139,7 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
-pub fn to_string<F>(f: F) -> String
-where
-    F: FnOnce(&mut State<'_>),
-{
+pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
     let mut printer =
         State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false };
     f(&mut printer);

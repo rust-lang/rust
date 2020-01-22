@@ -2,13 +2,13 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::check_builtin_macro_attribute;
 
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 
 use std::iter;
 

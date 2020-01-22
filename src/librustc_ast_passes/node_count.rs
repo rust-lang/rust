@@ -1,8 +1,8 @@
 // Simply gives a rought count of the number of nodes in an AST.
 
-use crate::ast::*;
-use crate::visit::*;
 use rustc_span::Span;
+use syntax::ast::*;
+use syntax::visit::*;
 
 pub struct NodeCounter {
     pub count: usize,

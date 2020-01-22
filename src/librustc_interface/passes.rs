@@ -40,7 +40,6 @@ use rustc_span::FileName;
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::mut_visit::MutVisitor;
-use syntax::util::node_count::NodeCounter;
 use syntax::{self, ast, visit};
 
 use rustc_serialize::json;
@@ -83,7 +82,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
-    let mut counter = NodeCounter::new();
+    let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
     visit::walk_crate(&mut counter, krate);
     counter.count
 }

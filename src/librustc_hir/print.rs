@@ -1,12 +1,11 @@
+use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
+use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::{self, Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::kw;
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pp::{self, Breaks};
-use syntax::print::pprust::{self, Comments, PrintState};
-use syntax::sess::ParseSess;
 use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;
@@ -142,13 +141,12 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
     cm: &'a SourceMap,
-    sess: &ParseSess,
     krate: &hir::Crate<'_>,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(cm, sess, filename, input, ann);
+    let mut s = State::new_from_input(cm, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -161,12 +159,11 @@ pub fn print_crate<'a>(
 impl<'a> State<'a> {
     pub fn new_from_input(
         cm: &'a SourceMap,
-        sess: &ParseSess,
         filename: FileName,
         input: String,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, sess, filename, input)), ann }
+        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, filename, input)), ann }
     }
 }
 
