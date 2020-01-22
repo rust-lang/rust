@@ -444,7 +444,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             Err(err) => bug!("invalid loop id for continue: {}", err),
         },
         hir::ExprKind::Let(ref pat, ref scrutinee) => {
-            // FIXME(let_chains, Centril): Temporary solution while we cannot lower these to MIR.
+            // HACK(let_chains, Centril): Temporary solution while we cannot lower these to MIR.
             //
             // If we got here, the `let` expression is not allowed
             // and we have emitted an error in HIR lowering.
@@ -471,6 +471,21 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             };
             let else_arm = arm(Pat::wildcard_from_ty(pat.ty), false);
             let then_arm = arm(pat, true);
+            ExprKind::Match { scrutinee: scrutinee.to_ref(), arms: vec![then_arm, else_arm] }
+        }
+        hir::ExprKind::Match(
+            hir::Expr { kind: hir::ExprKind::Let(ref pat, ref scrutinee), .. },
+            [ref then_arm, ref else_arm],
+            hir::MatchSource::IfLetDesugar { .. },
+        ) => {
+            // HACK(let_chains, Centril): This is the desugaring for `if let`.
+            // We do not yet have `hair::ExprKind::Let`.
+            // Therefore, we lower: `match (let pat = scrutinee) { true => then, _ => elze }`,
+            // into: `match scrutinee { pat => then, _ => elze }`.
+            let mut then_arm = convert_arm(cx, then_arm);
+            let mut else_arm = convert_arm(cx, else_arm);
+            then_arm.pattern = cx.pattern_from_hir(pat);
+            else_arm.pattern = Pat::wildcard_from_ty(then_arm.pattern.ty);
             ExprKind::Match { scrutinee: scrutinee.to_ref(), arms: vec![then_arm, else_arm] }
         }
         hir::ExprKind::Match(ref scrutinee, ref arms, _) => ExprKind::Match {
