@@ -51,7 +51,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
                     if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
-                        place.projection = self.tcx().intern_place_elems(&vec![proj_r.clone()]);
+                        place.projection = self.tcx().intern_place_elems(&[proj_r.clone()]);
 
                         Place {
                             // Replace with dummy
