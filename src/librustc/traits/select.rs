@@ -3560,13 +3560,6 @@ impl<'tcx> TraitObligation<'tcx> {
     }
 }
 
-impl<'tcx> EvaluationCache<'tcx> {
-    /// Actually frees the underlying memory in contrast to what stdlib containers do on `clear`
-    pub fn clear(&self) {
-        *self.hashmap.borrow_mut() = Default::default();
-    }
-}
-
 impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
     fn list(&'o self) -> TraitObligationStackList<'o, 'tcx> {
         TraitObligationStackList::with(self)
