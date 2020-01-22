@@ -2533,19 +2533,11 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end == usize::max_value() {
-                None
-            } else {
-                (..self.end + 1).get(slice)
-            }
+            if self.end == usize::max_value() { None } else { (..self.end + 1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end == usize::max_value() {
-                None
-            } else {
-                (..self.end + 1).get_mut(slice)
-            }
+            if self.end == usize::max_value() { None } else { (..self.end + 1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -4290,7 +4282,7 @@ impl str {
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
             j = b; // Remember earliest known match, correct it below if
-                   // last match is different
+            // last match is different
         }
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
