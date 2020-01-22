@@ -11,7 +11,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 
 use self::analyze::CleanupKind;
-use self::debuginfo::FunctionDebugContext;
+use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::place::PlaceRef;
 use rustc::mir::traversal;
 
@@ -74,9 +74,10 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// notably `expect`.
     locals: IndexVec<mir::Local, LocalRef<'tcx, Bx::Value>>,
 
-    /// All `VarDebuginfo` from the MIR body, partitioned by `Local`.
-    /// This is `None` if no variable debuginfo/names are needed.
-    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'tcx mir::VarDebugInfo<'tcx>>>>,
+    /// All `VarDebugInfo` from the MIR body, partitioned by `Local`.
+    /// This is `None` if no var`#[non_exhaustive]`iable debuginfo/names are needed.
+    per_local_var_debug_info:
+        Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>>,
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
@@ -178,9 +179,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         funclets,
         locals: IndexVec::new(),
         debug_context,
-        per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir_body),
+        per_local_var_debug_info: None,
         caller_location: None,
     };
+
+    fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
