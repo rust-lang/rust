@@ -557,16 +557,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 }
 
-impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
-    }
-}
-
 impl<'tcx, T> InferOk<'tcx, T> {
     pub fn unit(self) -> InferOk<'tcx, ()> {
         InferOk { value: (), obligations: self.obligations }
