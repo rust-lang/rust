@@ -50,30 +50,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.warn_arms_when_scrutinee_diverges(arms, match_src);
 
-        // Otherwise, we have to union together the types that the
-        // arms produce and so forth.
-        let scrut_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
+        // Otherwise, we have to union together the types that the arms produce and so forth.
+        let scrut_diverges = self.diverges.replace(Diverges::Maybe);
 
-        // rust-lang/rust#55810: Typecheck patterns first (via eager
-        // collection into `Vec`), so we get types for all bindings.
-        let all_arm_pats_diverge: Vec<_> = arms
-            .iter()
-            .map(|arm| {
-                let mut all_pats_diverge = Diverges::WarnedAlways;
-                self.diverges.set(Diverges::Maybe);
-                self.check_pat_top(&arm.pat, scrut_ty, Some(scrut.span), true);
-                all_pats_diverge &= self.diverges.get();
-
-                // As discussed with @eddyb, this is for disabling unreachable_code
-                // warnings on patterns (they're now subsumed by unreachable_patterns
-                // warnings).
-                match all_pats_diverge {
-                    Diverges::Maybe => Diverges::Maybe,
-                    Diverges::Always { .. } | Diverges::WarnedAlways => Diverges::WarnedAlways,
-                }
-            })
-            .collect();
+        // #55810: Type check patterns first so we get types for all bindings.
+        for arm in arms {
+            self.check_pat_top(&arm.pat, scrut_ty, Some(scrut.span), true);
+        }
 
         // Now typecheck the blocks.
         //
@@ -104,11 +87,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };
 
-        let mut other_arms = vec![]; // used only for diagnostics
+        let mut other_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm_ty = None;
-        for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
+        for (i, arm) in arms.iter().enumerate() {
             if let Some(g) = &arm.guard {
-                self.diverges.set(pats_diverge);
+                self.diverges.set(Diverges::Maybe);
                 match g {
                     hir::Guard::If(e) => {
                         self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {})
@@ -116,7 +99,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
 
-            self.diverges.set(pats_diverge);
+            self.diverges.set(Diverges::Maybe);
             let arm_ty = if source_if
                 && if_no_else
                 && i != 0
@@ -200,16 +183,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
-        if self.diverges.get().is_always() {
-            use hir::MatchSource::*;
-            let msg = match source {
-                IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
-                WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
-                _ => "arm",
-            };
-            for arm in arms {
-                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
-            }
+        use hir::MatchSource::*;
+        let msg = match source {
+            IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
+            WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
+            _ => "arm",
+        };
+        for arm in arms {
+            self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
         }
     }
 

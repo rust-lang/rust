@@ -4429,10 +4429,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
 
         // Hide the outer diverging and `has_errors` flags.
-        let old_diverges = self.diverges.get();
-        let old_has_errors = self.has_errors.get();
-        self.diverges.set(Diverges::Maybe);
-        self.has_errors.set(false);
+        let old_diverges = self.diverges.replace(Diverges::Maybe);
+        let old_has_errors = self.has_errors.replace(false);
 
         match stmt.kind {
             hir::StmtKind::Local(ref l) => {
@@ -4442,7 +4440,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
                     self.suggest_semicolon_at_end(expr.span, err);
                 });
