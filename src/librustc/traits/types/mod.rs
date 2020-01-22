@@ -2,6 +2,7 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 
+pub mod query;
 pub mod select;
 
 use crate::mir::interpret::ErrorHandled;

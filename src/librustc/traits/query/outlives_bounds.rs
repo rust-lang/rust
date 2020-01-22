@@ -6,43 +6,7 @@ use crate::ty::{self, Ty};
 use rustc_hir as hir;
 use rustc_span::source_map::Span;
 
-use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use std::mem;
-
-/// Outlives bounds are relationships between generic parameters,
-/// whether they both be regions (`'a: 'b`) or whether types are
-/// involved (`T: 'a`). These relationships can be extracted from the
-/// full set of predicates we understand or also from types (in which
-/// case they are called implied bounds). They are fed to the
-/// `OutlivesEnv` which in turn is supplied to the region checker and
-/// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable, Lift)]
-pub enum OutlivesBound<'tcx> {
-    RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
-    RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
-    RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            OutlivesBound::RegionSubRegion(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubParam(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubProjection(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
+pub use rustc::traits::query::OutlivesBound;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Implied bounds are region relationships that we deduce

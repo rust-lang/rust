@@ -1,10 +1,11 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferOk;
-use crate::ty::subst::GenericArg;
-use crate::ty::{self, Ty, TyCtxt};
-use rustc_span::source_map::Span;
-use std::iter::FromIterator;
+
+use rustc::ty::subst::GenericArg;
+use rustc::ty::{self, Ty, TyCtxt};
+
+pub use rustc::traits::query::{DropckOutlivesResult, DtorckConstraint};
 
 impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
@@ -62,76 +63,6 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
         tcx.sess.delay_span_bug(span, "dtorck encountered internal error");
 
         InferOk { value: vec![], obligations: vec![] }
-    }
-}
-
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
-pub struct DropckOutlivesResult<'tcx> {
-    pub kinds: Vec<GenericArg<'tcx>>,
-    pub overflows: Vec<Ty<'tcx>>,
-}
-
-impl<'tcx> DropckOutlivesResult<'tcx> {
-    pub fn report_overflows(&self, tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
-        if let Some(overflow_ty) = self.overflows.iter().next() {
-            rustc_errors::struct_span_err!(
-                tcx.sess,
-                span,
-                E0320,
-                "overflow while adding drop-check rules for {}",
-                ty,
-            )
-            .note(&format!("overflowed on {}", overflow_ty))
-            .emit();
-        }
-    }
-
-    pub fn into_kinds_reporting_overflows(
-        self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-        ty: Ty<'tcx>,
-    ) -> Vec<GenericArg<'tcx>> {
-        self.report_overflows(tcx, span, ty);
-        let DropckOutlivesResult { kinds, overflows: _ } = self;
-        kinds
-    }
-}
-
-/// A set of constraints that need to be satisfied in order for
-/// a type to be valid for destruction.
-#[derive(Clone, Debug, HashStable)]
-pub struct DtorckConstraint<'tcx> {
-    /// Types that are required to be alive in order for this
-    /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
-
-    /// Types that could not be resolved: projections and params.
-    pub dtorck_types: Vec<Ty<'tcx>>,
-
-    /// If, during the computation of the dtorck constraint, we
-    /// overflow, that gets recorded here. The caller is expected to
-    /// report an error.
-    pub overflows: Vec<Ty<'tcx>>,
-}
-
-impl<'tcx> DtorckConstraint<'tcx> {
-    pub fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
-    }
-}
-
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
-    fn from_iter<I: IntoIterator<Item = DtorckConstraint<'tcx>>>(iter: I) -> Self {
-        let mut result = Self::empty();
-
-        for DtorckConstraint { outlives, dtorck_types, overflows } in iter {
-            result.outlives.extend(outlives);
-            result.dtorck_types.extend(dtorck_types);
-            result.overflows.extend(overflows);
-        }
-
-        result
     }
 }
 

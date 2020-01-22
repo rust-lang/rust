@@ -2,16 +2,7 @@ use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Predicate, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
-pub struct ProvePredicate<'tcx> {
-    pub predicate: Predicate<'tcx>,
-}
-
-impl<'tcx> ProvePredicate<'tcx> {
-    pub fn new(predicate: Predicate<'tcx>) -> Self {
-        ProvePredicate { predicate }
-    }
-}
+pub use rustc::traits::query::type_op::ProvePredicate;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();
