@@ -9,7 +9,7 @@ LL |         v.push(shared.len());
    |         |
    |         mutable borrow occurs here
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/two-phase-reservation-sharing-interference-future-compat-lint.rs:18:13
    |
 LL |     #![warn(mutable_borrow_reservation_conflict)]
@@ -28,7 +28,7 @@ LL |         v.push(shared.len());
    |         |
    |         mutable borrow occurs here
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/two-phase-reservation-sharing-interference-future-compat-lint.rs:31:13
    |
 LL |     #![deny(mutable_borrow_reservation_conflict)]

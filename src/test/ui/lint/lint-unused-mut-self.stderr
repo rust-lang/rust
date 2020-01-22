@@ -6,7 +6,7 @@ LL |     fn foo(mut self) {}
    |            |
    |            help: remove this `mut`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-unused-mut-self.rs:4:9
    |
 LL | #![deny(unused_mut)]

@@ -6,7 +6,7 @@ LL |     match () { () => return }
 LL |     println!("I am dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/expr_match.rs:4:9
    |
 LL | #![deny(unreachable_code)]

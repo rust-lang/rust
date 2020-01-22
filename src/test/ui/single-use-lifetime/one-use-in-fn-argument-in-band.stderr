@@ -7,7 +7,7 @@ LL | fn a(x: &'a u32, y: &'b u32) {
    |          this lifetime is only used here
    |          help: elide the single-use lifetime
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/one-use-in-fn-argument-in-band.rs:4:9
    |
 LL | #![deny(single_use_lifetimes)]

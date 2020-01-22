@@ -7,7 +7,7 @@ LL |     fn a(&self) {}
 LL |     b.a::<'_, T>();
    |           ^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-60622.rs:3:9
    |
 LL | #![deny(warnings)]

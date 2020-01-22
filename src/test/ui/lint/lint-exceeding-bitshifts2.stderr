@@ -4,7 +4,7 @@ error: attempt to shift left with overflow
 LL |       let n = 1u8 << (4+4);
    |               ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-exceeding-bitshifts2.rs:4:9
    |
 LL | #![deny(exceeding_bitshifts, const_err)]

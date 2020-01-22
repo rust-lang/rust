@@ -4,7 +4,7 @@ error: private type `types::Priv` in public interface (error E0446)
 LL |     pub type Alias = Priv;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/private-in-public-warn.rs:5:9
    |
 LL | #![deny(private_in_public)]

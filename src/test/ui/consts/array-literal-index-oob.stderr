@@ -4,7 +4,7 @@ warning: index out of bounds: the len is 3 but the index is 4
 LL |     &{ [1, 2, 3][4] };
    |        ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/array-literal-index-oob.rs:4:9
    |
 LL | #![warn(const_err)]

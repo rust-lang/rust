@@ -6,7 +6,7 @@ LL |     pub use std::fmt;
    |     |
    |     help: consider restricting its visibility: `pub(crate)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable_pub-pub_crate.rs:10:9
    |
 LL | #![warn(unreachable_pub)]

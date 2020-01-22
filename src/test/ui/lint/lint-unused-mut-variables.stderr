@@ -6,7 +6,7 @@ LL |     mut a: i32,
    |     |
    |     help: remove this `mut`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-unused-mut-variables.rs:5:9
    |
 LL | #![deny(unused_mut)]
@@ -212,7 +212,7 @@ LL |     let mut b = vec![2];
    |         |
    |         help: remove this `mut`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-unused-mut-variables.rs:198:8
    |
 LL | #[deny(unused_mut)]

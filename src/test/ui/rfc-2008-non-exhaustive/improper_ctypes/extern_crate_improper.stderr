@@ -4,7 +4,7 @@ error: `extern` block uses type `types::NonExhaustiveEnum`, which is not FFI-saf
 LL |     pub fn non_exhaustive_enum(_: NonExhaustiveEnum);
    |                                   ^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/extern_crate_improper.rs:2:9
    |
 LL | #![deny(improper_ctypes)]

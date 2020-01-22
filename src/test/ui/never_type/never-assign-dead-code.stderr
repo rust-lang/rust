@@ -6,7 +6,7 @@ LL |     let x: ! = panic!("aah");
 LL |     drop(x);
    |     ^^^^^^^^ unreachable statement
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/never-assign-dead-code.rs:6:9
    |
 LL | #![warn(unused)]
@@ -28,7 +28,7 @@ warning: unused variable: `x`
 LL |     let x: ! = panic!("aah");
    |         ^ help: consider prefixing with an underscore: `_x`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/never-assign-dead-code.rs:6:9
    |
 LL | #![warn(unused)]

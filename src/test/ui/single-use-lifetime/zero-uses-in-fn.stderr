@@ -4,7 +4,7 @@ error: lifetime parameter `'a` never used
 LL | fn september<'a>() {}
    |             -^^- help: elide the unused lifetime
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/zero-uses-in-fn.rs:5:9
    |
 LL | #![deny(unused_lifetimes)]

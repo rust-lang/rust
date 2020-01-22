@@ -4,7 +4,7 @@ error: hidden lifetime parameters in types are deprecated
 LL | fn foo(x: &Foo) {
    |            ^^^- help: indicate the anonymous lifetime: `<'_>`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/elided-lifetimes.rs:5:9
    |
 LL | #![deny(elided_lifetimes_in_paths)]

@@ -6,7 +6,7 @@ LL | /// foo
 LL | mac!();
    | ------- rustdoc does not generate documentation for macro expansions
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/useless-comment.rs:3:9
    |
 LL | #![deny(unused_doc_comments)]

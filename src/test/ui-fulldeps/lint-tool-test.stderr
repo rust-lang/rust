@@ -70,7 +70,7 @@ error: item is named 'lintme'
 LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-tool-test.rs:13:9
    |
 LL | #![deny(clippy_group)]
@@ -83,7 +83,7 @@ error: item is named 'lintmetoo'
 LL |     fn lintmetoo() { }
    |     ^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-tool-test.rs:13:9
    |
 LL | #![deny(clippy_group)]

@@ -4,7 +4,7 @@ error: lifetime parameter `'a` never used
 LL | impl<'a> Foo {}
    |     -^^- help: elide the unused lifetime
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/zero-uses-in-impl.rs:3:9
    |
 LL | #![deny(unused_lifetimes)]
