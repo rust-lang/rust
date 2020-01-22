@@ -371,6 +371,7 @@ where
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
+                    let mut issue_num = None;
                     let mut is_soft = false;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
@@ -389,6 +390,37 @@ where
                                     if !get(mi, &mut issue) {
                                         continue 'outer;
                                     }
+
+                                    // These unwraps are safe because `get` ensures the meta item
+                                    // is a name/value pair string literal.
+                                    issue_num = match &*issue.unwrap().as_str() {
+                                        "none" => None,
+                                        issue => {
+                                            match issue.parse() {
+                                                Ok(num) => {
+                                                    // FIXME(rossmacarthur): disallow 0
+                                                    // Disallowing this requires updates to
+                                                    // some submodules
+                                                    NonZeroU32::new(num)
+                                                }
+                                                Err(err) => {
+                                                    struct_span_err!(
+                                                        diagnostic,
+                                                        mi.span,
+                                                        E0545,
+                                                        "`issue` must be a numeric string \
+                                                        or \"none\"",
+                                                    )
+                                                    .span_label(
+                                                        mi.name_value_literal().unwrap().span,
+                                                        &err.to_string(),
+                                                    )
+                                                    .emit();
+                                                    continue 'outer;
+                                                }
+                                            }
+                                        }
+                                    };
                                 }
                                 sym::soft => {
                                     if !mi.is_word() {
@@ -420,27 +452,8 @@ where
                     }
 
                     match (feature, reason, issue) {
-                        (Some(feature), reason, Some(issue)) => {
-                            let issue = match &*issue.as_str() {
-                                "none" => None,
-                                issue => {
-                                    if let Ok(num) = issue.parse() {
-                                        // FIXME(rossmacarthur): disallow 0
-                                        // Disallowing this requires updates to some submodules
-                                        NonZeroU32::new(num)
-                                    } else {
-                                        struct_span_err!(
-                                            diagnostic,
-                                            attr.span,
-                                            E0545,
-                                            "incorrect 'issue'"
-                                        )
-                                        .emit();
-                                        continue;
-                                    }
-                                }
-                            };
-                            let level = Unstable { reason, issue, is_soft };
+                        (Some(feature), reason, Some(_)) => {
+                            let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
                                 stab = Some(Stability { level, feature, rustc_depr: None });
                             } else {

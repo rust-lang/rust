@@ -9,5 +9,5 @@ fn unstable_issue_0() {}
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 fn unstable_issue_none() {}
 
-#[unstable(feature = "unstable_test_feature", issue = "something")] //~ ERROR incorrect 'issue'
-fn unstable_issue_not_allowed() {}
+#[unstable(feature = "unstable_test_feature", issue = "something")]
+fn unstable_issue_not_allowed() {} //~^ ERROR `issue` must be a numeric string or "none"
