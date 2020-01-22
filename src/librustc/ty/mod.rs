@@ -2041,7 +2041,8 @@ bitflags! {
         const IS_TRANSPARENT     = 1 << 2;
         // Internal only for now. If true, don't reorder fields.
         const IS_LINEAR          = 1 << 3;
-
+        // If true, don't expose any niche to type's context.
+        const HIDE_NICHE         = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
                                    ReprFlags::IS_SIMD.bits |
@@ -2078,6 +2079,7 @@ impl ReprOptions {
                         ReprFlags::empty()
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
+                    attr::ReprNoNiche => ReprFlags::HIDE_NICHE,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
                         size = Some(i);
@@ -2117,6 +2119,10 @@ impl ReprOptions {
     #[inline]
     pub fn linear(&self) -> bool {
         self.flags.contains(ReprFlags::IS_LINEAR)
+    }
+    #[inline]
+    pub fn hide_niche(&self) -> bool {
+        self.flags.contains(ReprFlags::HIDE_NICHE)
     }
 
     pub fn discr_type(&self) -> attr::IntType {
