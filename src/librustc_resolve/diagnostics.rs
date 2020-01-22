@@ -1415,11 +1415,15 @@ crate fn show_candidates(
     better: bool,
     found_use: bool,
 ) {
+    if candidates.is_empty() {
+        return;
+    }
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
         candidates.into_iter().map(|c| path_names_to_string(&c.path)).collect();
     path_strings.sort();
+    path_strings.dedup();
 
     let better = if better { "better " } else { "" };
     let msg_diff = match path_strings.len() {
@@ -1444,6 +1448,7 @@ crate fn show_candidates(
             msg.push('\n');
             msg.push_str(&candidate);
         }
+        err.note(&msg);
     }
 }
 

@@ -4,11 +4,7 @@ error[E0425]: cannot find function `f` in this scope
 LL |         f();
    |         ^ not found in this scope
    |
-help: possible candidates are found in other modules, you can import them into scope
-   |
-LL | use foo::f;
-   |
-LL | use foo::f;
+help: possible candidate is found in another module, you can import it into scope
    |
 LL | use foo::f;
    |
@@ -32,11 +28,8 @@ LL | use bar::g;
    |
 LL | use foo::test2::test::g;
    |
-LL | use foo::test2::test::g;
-   |
 LL | use foo::test::g;
    |
-     and 2 other candidates
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:61:12
@@ -46,6 +39,9 @@ LL | n!(f);
 ...
 LL |         n!(f);
    |            ^ not found in this scope
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           foo::f
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:65:17
@@ -55,6 +51,9 @@ LL | n!(f);
 ...
 LL |                 f
    |                 ^ not found in this scope
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           foo::f
 
 error: aborting due to 4 previous errors
 
