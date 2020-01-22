@@ -9,7 +9,7 @@ pub struct HirFormatter<'a, 'b, DB> {
     fmt: &'a mut fmt::Formatter<'b>,
     buf: String,
     curr_size: usize,
-    max_size: Option<usize>,
+    pub(crate) max_size: Option<usize>,
     omit_verbose_types: bool,
 }
 
