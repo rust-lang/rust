@@ -44,53 +44,16 @@ index f6dee7c..0c6a8c0 100644
  #[unstable(feature = "coerce_unsized", issue = "27732")]
  impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
  
-diff --git a/src/libstd/sys_common/at_exit_imp.rs b/src/libstd/sys_common/at_exit_imp.rs
-index 1181b86..20f9251 100644
---- a/src/libstd/sys_common/at_exit_imp.rs
-+++ b/src/libstd/sys_common/at_exit_imp.rs
-@@ -38,6 +38,7 @@ unsafe fn init() -> bool {
-     true
- }
- 
-+/*
- pub fn cleanup() {
-     for i in 1..=ITERS {
-         unsafe {
-@@ -60,6 +61,7 @@ pub fn cleanup() {
-         }
-     }
- }
-+*/
- 
- pub fn push(f: Box<dyn FnOnce()>) -> bool {
-     unsafe {
-diff --git a/src/libstd/sys_common/mod.rs b/src/libstd/sys_common/mod.rs
-index 6260c3b..611ed7e 100644
---- a/src/libstd/sys_common/mod.rs
-+++ b/src/libstd/sys_common/mod.rs
-@@ -127,7 +127,6 @@ pub fn cleanup() {
-     CLEANUP.call_once(|| unsafe {
-         sys::args::cleanup();
-         sys::stack_overflow::cleanup();
--        at_exit_imp::cleanup();
-     });
- }
- 
 diff --git a/src/libstd/sys_common/thread.rs b/src/libstd/sys_common/thread.rs
 index b2142e7..718bb1c 100644
 --- a/src/libstd/sys_common/thread.rs
 +++ b/src/libstd/sys_common/thread.rs
-@@ -6,12 +6,7 @@ use crate::sys::thread as imp;
+@@ -6,7 +6,7 @@ pub unsafe fn start_thread(main: *mut u8) {
+     let _handler = stack_overflow::Handler::new();
  
- #[allow(dead_code)]
- pub unsafe fn start_thread(main: *mut u8) {
--    // Next, set up our stack overflow handler which may get triggered if we run
--    // out of stack.
--    let _handler = stack_overflow::Handler::new();
--
--    // Finally, let's run some code.
+     // Finally, let's run some code.
 -    Box::from_raw(main as *mut Box<dyn FnOnce()>)()
-+    panic!("Threads are not yet supported, because cranelift doesn't support atomics.");
++    Box::from_raw(main as *mut Box<dyn FnBox()>)()
  }
  
  pub fn min_stack() -> usize {
@@ -101,7 +64,7 @@ index f4a1783..362b537 100644
 @@ -40,5 +40,7 @@ impl Thread {
      // unsafe: see thread::Builder::spawn_unchecked for safety requirements
      pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-+        panic!("Threads are not yet supported, because cranelift doesn't support atomics.");
++        panic!("Warning: Threads are not yet fully supported, because cranelift doesn't support atomics.");
 +
          let p = box p;
          let mut native: libc::pthread_t = mem::zeroed();
