@@ -117,6 +117,12 @@ bitflags::bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
+/// Note: though `CrateNum` is only meaningful within the same tcx, information within `CrateInfo`
+/// is self-contained. `CrateNum` can be viewed as a unique identifier within a `CrateInfo`, where
+/// `used_crate_source` contains all `CrateSource` of the dependents, and maintains a mapping from
+/// identifiers (`CrateNum`) to `CrateSource`. The other fields map `CrateNum` to the crate's own
+/// additional properties, so that effectively we can retrieve each dependent crate's `CrateSource`
+/// and the corresponding properties without referencing information outside of a `CrateInfo`.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,

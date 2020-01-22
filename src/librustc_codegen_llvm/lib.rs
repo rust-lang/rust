@@ -301,6 +301,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         }
 
         if sess.opts.debugging_opts.no_link {
+            // FIXME: use a binary format to encode the `.rlink` file
             let rlink_data = json::encode(&codegen_results).map_err(|err| {
                 sess.fatal(&format!("failed to encode rlink: {}", err));
             })?;

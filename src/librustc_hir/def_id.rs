@@ -87,6 +87,8 @@ impl fmt::Display for CrateNum {
     }
 }
 
+/// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
+/// Therefore, make sure to include the context when encode a `CrateNum`.
 impl rustc_serialize::UseSpecializedEncodable for CrateNum {
     fn default_encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_u32(self.as_u32())
