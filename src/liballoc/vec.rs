@@ -2134,7 +2134,7 @@ impl<T> Vec<T> {
         self.reserve(lower);
         loop {
             let cap = self.capacity();
-            let result = iterator.by_ref().try_fold((), |(), element| {
+            let result = iterator.try_fold((), |(), element| {
                 let len = self.len();
                 if len == cap {
                     Err(element)
