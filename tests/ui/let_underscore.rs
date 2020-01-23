@@ -1,5 +1,12 @@
 #![warn(clippy::let_underscore_must_use)]
 
+// Debug implementations can fire this lint,
+// so we shouldn't lint external macros
+#[derive(Debug)]
+struct Foo {
+    field: i32,
+}
+
 #[must_use]
 fn f() -> u32 {
     0
