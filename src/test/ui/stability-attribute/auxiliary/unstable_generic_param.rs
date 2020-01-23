@@ -14,3 +14,22 @@ pub trait Trait2<T = ()> {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
     fn foo() -> T;
 }
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Struct1<#[unstable(feature = "unstable_default", issue = "none")] T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub field: T,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Struct2<T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub field: T,
+}
+
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const STRUCT1: Struct1 = Struct1 { field: 1 };
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const STRUCT2: Struct2 = Struct2 { field: 1 };
