@@ -31,7 +31,7 @@ const fn size_align<T>() -> (usize, usize) {
 ///
 /// (Note however that layouts are *not* required to have positive
 /// size, even though many allocators require that all memory
-/// requests have positive size. A caller to the `Alloc::alloc`
+/// requests have positive size. A caller to the `AllocRef::alloc`
 /// method must either ensure that conditions like this are met, or
 /// use specific allocators with looser requirements.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
@@ -364,8 +364,8 @@ impl fmt::Display for AllocErr {
 /// [`shrink_in_place`] were unable to reuse the given memory block for
 /// a requested layout.
 ///
-/// [`grow_in_place`]: ./trait.Alloc.html#method.grow_in_place
-/// [`shrink_in_place`]: ./trait.Alloc.html#method.shrink_in_place
+/// [`grow_in_place`]: ./trait.AllocRef.html#method.grow_in_place
+/// [`shrink_in_place`]: ./trait.AllocRef.html#method.shrink_in_place
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
@@ -580,8 +580,13 @@ pub unsafe trait GlobalAlloc {
     }
 }
 
-/// An implementation of `Alloc` can allocate, reallocate, and
+/// An implementation of `AllocRef` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
+///
+/// `AllocRef` is designed to be implemented on ZSTs, references, or
+/// smart pointers because having an allocator like `MyAlloc([u8; N])`
+/// cannot be moved, without updating the pointers to the allocated
+/// memory.
 ///
 /// Some of the methods require that a memory block be *currently
 /// allocated* via an allocator. This means that:
@@ -598,7 +603,7 @@ pub unsafe trait GlobalAlloc {
 ///   passed to a reallocation method (see above) that returns `Ok`.
 ///
 /// A note regarding zero-sized types and zero-sized layouts: many
-/// methods in the `Alloc` trait state that allocation requests
+/// methods in the `AllocRef` trait state that allocation requests
 /// must be non-zero size, or else undefined behavior can result.
 ///
 /// * However, some higher-level allocation methods (`alloc_one`,
@@ -606,7 +611,7 @@ pub unsafe trait GlobalAlloc {
 ///   optionally support them: it is left up to the implementor
 ///   whether to return `Err`, or to return `Ok` with some pointer.
 ///
-/// * If an `Alloc` implementation chooses to return `Ok` in this
+/// * If an `AllocRef` implementation chooses to return `Ok` in this
 ///   case (i.e., the pointer denotes a zero-sized inaccessible block)
 ///   then that returned pointer must be considered "currently
 ///   allocated". On such an allocator, *all* methods that take
@@ -646,12 +651,15 @@ pub unsafe trait GlobalAlloc {
 ///
 /// # Safety
 ///
-/// The `Alloc` trait is an `unsafe` trait for a number of reasons, and
+/// The `AllocRef` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
 ///
 /// * Pointers returned from allocation functions must point to valid memory and
-///   retain their validity until at least the instance of `Alloc` is dropped
+///   retain their validity until at least one instance of `AllocRef` is dropped
 ///   itself.
+///
+/// * Cloning or moving the allocator must not invalidate pointers returned
+///   from this allocator. Cloning must return a reference to the same allocator.
 ///
 /// * `Layout` queries and calculations in general must be correct. Callers of
 ///   this trait are allowed to rely on the contracts defined on each method,
@@ -660,7 +668,7 @@ pub unsafe trait GlobalAlloc {
 /// Note that this list may get tweaked over time as clarifications are made in
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait Alloc {
+pub unsafe trait AllocRef {
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
     // e.g., in C, `malloc` of 0 will either return a null pointer or a
@@ -1042,7 +1050,7 @@ pub unsafe trait Alloc {
     /// must be considered "currently allocated" and must be
     /// acceptable input to methods such as `realloc` or `dealloc`,
     /// *even if* `T` is a zero-sized type. In other words, if your
-    /// `Alloc` implementation overrides this method in a manner
+    /// `AllocRef` implementation overrides this method in a manner
     /// that can return a zero-sized `ptr`, then all reallocation and
     /// deallocation methods need to be similarly overridden to accept
     /// such values as input.
@@ -1106,7 +1114,7 @@ pub unsafe trait Alloc {
     /// must be considered "currently allocated" and must be
     /// acceptable input to methods such as `realloc` or `dealloc`,
     /// *even if* `T` is a zero-sized type. In other words, if your
-    /// `Alloc` implementation overrides this method in a manner
+    /// `AllocRef` implementation overrides this method in a manner
     /// that can return a zero-sized `ptr`, then all reallocation and
     /// deallocation methods need to be similarly overridden to accept
     /// such values as input.
@@ -1219,3 +1227,10 @@ pub unsafe trait Alloc {
         }
     }
 }
+
+// In order to rename `Alloc` to `AllocRef`, some submoduleshas to be updated as well. The CI fails
+// if either of the submodules fails to compile. The submodules have their own CI depending on a
+// specific Rust version, which don't have `AllocRef` yet. This alias is used to make the submodules
+// compile and pass the CI.
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub use self::AllocRef as Alloc;

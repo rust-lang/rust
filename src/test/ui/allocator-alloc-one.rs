@@ -4,7 +4,7 @@
 
 #![feature(allocator_api, nonnull)]
 
-use std::alloc::{Alloc, Global, Layout, handle_alloc_error};
+use std::alloc::{AllocRef, Global, Layout, handle_alloc_error};
 
 fn main() {
     unsafe {

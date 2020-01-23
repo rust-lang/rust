@@ -145,7 +145,7 @@ use core::ptr::{self, NonNull, Unique};
 use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, Alloc, Global};
+use crate::alloc::{self, AllocRef, Global};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 use crate::vec::Vec;

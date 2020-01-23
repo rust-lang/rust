@@ -252,7 +252,7 @@ use core::ptr::{self, NonNull};
 use core::slice::{self, from_raw_parts_mut};
 use core::usize;
 
-use crate::alloc::{box_free, handle_alloc_error, Alloc, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
 use crate::string::String;
 use crate::vec::Vec;
 
