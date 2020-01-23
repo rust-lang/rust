@@ -1,7 +1,8 @@
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
+use rustc_serialize::{Decoder, Encoder};
 use std::fmt;
-use std::u32;
+use std::{u32, u64};
 
 rustc_index::newtype_index! {
     pub struct CrateId {
@@ -86,8 +87,18 @@ impl fmt::Display for CrateNum {
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for CrateNum {}
-impl rustc_serialize::UseSpecializedDecodable for CrateNum {}
+/// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
+/// Therefore, make sure to include the context when encode a `CrateNum`.
+impl rustc_serialize::UseSpecializedEncodable for CrateNum {
+    fn default_encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        e.emit_u32(self.as_u32())
+    }
+}
+impl rustc_serialize::UseSpecializedDecodable for CrateNum {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
+        Ok(CrateNum::from_u32(d.read_u32()?))
+    }
+}
 
 rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
@@ -135,8 +146,21 @@ impl DefId {
     }
 }
 
-impl rustc_serialize::UseSpecializedEncodable for DefId {}
-impl rustc_serialize::UseSpecializedDecodable for DefId {}
+impl rustc_serialize::UseSpecializedEncodable for DefId {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        let krate = u64::from(self.krate.as_u32());
+        let index = u64::from(self.index.as_u32());
+        s.emit_u64((krate << 32) | index)
+    }
+}
+impl rustc_serialize::UseSpecializedDecodable for DefId {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefId, D::Error> {
+        let def_id = d.read_u64()?;
+        let krate = CrateNum::from_u32((def_id >> 32) as u32);
+        let index = DefIndex::from_u32((def_id & 0xffffffff) as u32);
+        Ok(DefId { krate, index })
+    }
+}
 
 pub fn default_def_id_debug(def_id: DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("DefId").field("krate", &def_id.krate).field("index", &def_id.index).finish()

@@ -992,13 +992,11 @@ themePicker.onblur = handleThemeButtonsBlur;
             writeln!(v, "{}", *implementor).unwrap();
         }
         v.push_str(
-            r"
-            if (window.register_implementors) {
-                window.register_implementors(implementors);
-            } else {
-                window.pending_implementors = implementors;
-            }
-        ",
+            "if (window.register_implementors) {\
+                 window.register_implementors(implementors);\
+             } else {\
+                 window.pending_implementors = implementors;\
+             }",
         );
         v.push_str("})()");
         cx.shared.fs.write(&mydst, &v)?;
@@ -2353,6 +2351,7 @@ fn render_implementor(
     implementor: &Impl,
     w: &mut Buffer,
     implementor_dups: &FxHashMap<&str, (DefId, bool)>,
+    aliases: &[String],
 ) {
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
@@ -2375,6 +2374,7 @@ fn render_implementor(
         Some(use_absolute),
         false,
         false,
+        aliases,
     );
 }
 
@@ -2396,6 +2396,7 @@ fn render_impls(cx: &Context, w: &mut Buffer, traits: &[&&Impl], containing_item
                 None,
                 false,
                 true,
+                &[],
             );
             buffer.into_inner()
         })
@@ -2597,8 +2598,6 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All);
 
-    let mut synthetic_types = Vec::new();
-
     if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -2649,6 +2648,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
                     None,
                     true,
                     false,
+                    &[],
                 );
             }
             write_loading_content(w, "");
@@ -2661,7 +2661,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
             "<div class='item-list' id='implementors-list'>",
         );
         for implementor in concrete {
-            render_implementor(cx, implementor, w, &implementor_dups);
+            render_implementor(cx, implementor, w, &implementor_dups, &[]);
         }
         write_loading_content(w, "</div>");
 
@@ -2673,9 +2673,13 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
                 "<div class='item-list' id='synthetic-implementors-list'>",
             );
             for implementor in synthetic {
-                synthetic_types
-                    .extend(collect_paths_for_type(implementor.inner_impl().for_.clone()));
-                render_implementor(cx, implementor, w, &implementor_dups);
+                render_implementor(
+                    cx,
+                    implementor,
+                    w,
+                    &implementor_dups,
+                    &collect_paths_for_type(implementor.inner_impl().for_.clone()),
+                );
             }
             write_loading_content(w, "</div>");
         }
@@ -2700,17 +2704,12 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
             write_loading_content(w, "</div>");
         }
     }
-    write!(
-        w,
-        r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
-        serde_json::to_string(&synthetic_types).unwrap(),
-    );
 
     write!(
         w,
-        r#"<script type="text/javascript" async
-                         src="{root_path}/implementors/{path}/{ty}.{name}.js">
-                 </script>"#,
+        "<script type=\"text/javascript\" \
+                 src=\"{root_path}/implementors/{path}/{ty}.{name}.js\" async>\
+         </script>",
         root_path = vec![".."; cx.current.len()].join("/"),
         path = if it.def_id.is_local() {
             cx.current.join("/")
@@ -3392,6 +3391,7 @@ fn render_assoc_items(
                 None,
                 false,
                 true,
+                &[],
             );
         }
     }
@@ -3602,6 +3602,9 @@ fn render_impl(
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
     show_default_items: bool,
+    // This argument is used to reference same type with different pathes to avoid duplication
+    // in documentation pages for trait with automatic implementations like "Send" and "Sync".
+    aliases: &[String],
 ) {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
@@ -3614,8 +3617,13 @@ fn render_impl(
             }
             None => "impl".to_string(),
         });
+        let aliases = if aliases.is_empty() {
+            String::new()
+        } else {
+            format!(" aliases=\"{}\"", aliases.join(","))
+        };
         if let Some(use_absolute) = use_absolute {
-            write!(w, "<h3 id='{}' class='impl'><code class='in-band'>", id);
+            write!(w, "<h3 id='{}' class='impl'{}><code class='in-band'>", id, aliases);
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute);
             if show_def_docs {
                 for it in &i.inner_impl().items {
@@ -3637,8 +3645,9 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "<h3 id='{}' class='impl'><code class='in-band'>{}</code>",
+                "<h3 id='{}' class='impl'{}><code class='in-band'>{}</code>",
                 id,
+                aliases,
                 i.inner_impl().print()
             );
         }

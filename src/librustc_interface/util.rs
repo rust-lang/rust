@@ -550,13 +550,13 @@ pub fn build_output_filenames(
                 .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
                 .unwrap_or_else(|| input.filestem().to_owned());
 
-            OutputFilenames {
-                out_directory: dirpath,
-                out_filestem: stem,
-                single_output_file: None,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
+            OutputFilenames::new(
+                dirpath,
+                stem,
+                None,
+                sess.opts.cg.extra_filename.clone(),
+                sess.opts.output_types.clone(),
+            )
         }
 
         Some(ref out_file) => {
@@ -578,18 +578,13 @@ pub fn build_output_filenames(
                 sess.warn("ignoring --out-dir flag due to -o flag");
             }
 
-            OutputFilenames {
-                out_directory: out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_filestem: out_file
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-                single_output_file: ofile,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
+            OutputFilenames::new(
+                out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
+                out_file.file_stem().unwrap_or_default().to_str().unwrap().to_string(),
+                ofile,
+                sess.opts.cg.extra_filename.clone(),
+                sess.opts.output_types.clone(),
+            )
         }
     }
 }

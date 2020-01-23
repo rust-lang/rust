@@ -10,10 +10,7 @@
 # - thumbv7em-none-eabihf (Bare Cortex-M4F, M7F, FPU, hardfloat)
 # - thumbv7m-none-eabi (Bare Cortex-M3)
 
-# only-thumbv6m-none-eabi
-# only-thumbv7em-none-eabi
-# only-thumbv7em-none-eabihf
-# only-thumbv7m-none-eabi
+# only-thumb
 
 # For cargo setting
 RUSTC := $(RUSTC_ORIGINAL)
@@ -27,7 +24,8 @@ CRATE := cortex-m
 CRATE_URL := https://github.com/rust-embedded/cortex-m
 CRATE_SHA1 := a448e9156e2cb1e556e5441fd65426952ef4b927 # 0.5.0
 
-export RUSTFLAGS := --cap-lints=allow
+# Don't make lints fatal, but they need to at least warn or they break Cargo's target info parsing.
+export RUSTFLAGS := --cap-lints=warn
 
 all:
 	env

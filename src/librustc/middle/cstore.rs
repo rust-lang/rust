@@ -27,7 +27,7 @@ pub use rustc_session::utils::NativeLibraryKind;
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable)]
+#[derive(PartialEq, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -75,7 +75,7 @@ impl DepKind {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum LibSource {
     Some(PathBuf),
     MetadataOnly,
@@ -160,6 +160,7 @@ pub enum ExternCrateSource {
     Path,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct EncodedMetadata {
     pub raw_data: Vec<u8>,
 }

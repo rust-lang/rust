@@ -472,6 +472,9 @@ supported_targets! {
     ("thumbv8m.main-none-eabi", thumbv8m_main_none_eabi),
     ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
+    ("armv7a-none-eabi", armv7a_none_eabi),
+    ("armv7a-none-eabihf", armv7a_none_eabihf),
+
     ("msp430-none-elf", msp430_none_elf),
 
     ("aarch64-unknown-cloudabi", aarch64_unknown_cloudabi),
