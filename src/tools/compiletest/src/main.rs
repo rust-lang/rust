@@ -8,9 +8,7 @@
 extern crate test;
 
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
-use crate::common::{CompareMode, PassMode};
-use crate::common::{Config, TestPaths};
-use crate::common::{DebugInfoCdb, DebugInfoGdb, DebugInfoGdbLldb, DebugInfoLldb, Mode, Pretty};
+use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
 use env_logger;
 use getopts;
@@ -26,7 +24,7 @@ use std::time::SystemTime;
 use test::ColorConfig;
 use walkdir::WalkDir;
 
-use self::header::{EarlyProps, Ignore};
+use self::header::EarlyProps;
 
 #[cfg(test)]
 mod tests;
@@ -50,7 +48,7 @@ fn main() {
     }
 
     log_config(&config);
-    run_tests(&config);
+    run_tests(config);
 }
 
 pub fn parse_config(args: Vec<String>) -> Config {
@@ -199,6 +197,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
+        debugger: None,
         run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
@@ -293,61 +292,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
     }
 }
 
-pub fn run_tests(config: &Config) {
-    if config.target.contains("android") {
-        if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {
-            println!(
-                "{} debug-info test uses tcp 5039 port.\
-                 please reserve it",
-                config.target
-            );
-
-            // android debug-info test uses remote debugger so, we test 1 thread
-            // at once as they're all sharing the same TCP port to communicate
-            // over.
-            //
-            // we should figure out how to lift this restriction! (run them all
-            // on different ports allocated dynamically).
-            env::set_var("RUST_TEST_THREADS", "1");
-        }
-    }
-
-    match config.mode {
-        // Note that we don't need to emit the gdb warning when
-        // DebugInfoGdbLldb, so it is ok to list that here.
-        DebugInfoGdbLldb | DebugInfoLldb => {
-            if let Some(lldb_version) = config.lldb_version.as_ref() {
-                if is_blacklisted_lldb_version(&lldb_version[..]) {
-                    println!(
-                        "WARNING: The used version of LLDB ({}) has a \
-                         known issue that breaks debuginfo tests. See \
-                         issue #32520 for more information. Skipping all \
-                         LLDB-based tests!",
-                        lldb_version
-                    );
-                    return;
-                }
-            }
-
-            // Some older versions of LLDB seem to have problems with multiple
-            // instances running in parallel, so only run one test thread at a
-            // time.
-            env::set_var("RUST_TEST_THREADS", "1");
-        }
-
-        DebugInfoGdb => {
-            if config.remote_test_client.is_some() && !config.target.contains("android") {
-                println!(
-                    "WARNING: debuginfo tests are not available when \
-                     testing with remote"
-                );
-                return;
-            }
-        }
-
-        DebugInfoCdb | _ => { /* proceed */ }
-    }
-
+pub fn run_tests(config: Config) {
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
     if let Mode::CodegenUnits = config.mode {
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
@@ -366,8 +311,6 @@ pub fn run_tests(config: &Config) {
         }
     }
 
-    let opts = test_opts(config);
-    let tests = make_tests(config);
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
@@ -381,6 +324,25 @@ pub fn run_tests(config: &Config) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
+    let opts = test_opts(&config);
+
+    let mut configs = Vec::new();
+    if let Mode::DebugInfo = config.mode {
+        // Debugging emscripten code doesn't make sense today
+        if !config.target.contains("emscripten") {
+            configs.extend(configure_cdb(&config));
+            configs.extend(configure_gdb(&config));
+            configs.extend(configure_lldb(&config));
+        }
+    } else {
+        configs.push(config);
+    };
+
+    let mut tests = Vec::new();
+    for c in &configs {
+        make_tests(c, &mut tests);
+    }
+
     let res = test::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}
@@ -389,6 +351,76 @@ pub fn run_tests(config: &Config) {
             println!("I/O failure during tests: {:?}", e);
         }
     }
+}
+
+fn configure_cdb(config: &Config) -> Option<Config> {
+    if config.cdb.is_none() {
+        return None;
+    }
+
+    Some(Config { debugger: Some(Debugger::Cdb), ..config.clone() })
+}
+
+fn configure_gdb(config: &Config) -> Option<Config> {
+    if config.gdb_version.is_none() {
+        return None;
+    }
+
+    if util::matches_env(&config.target, "msvc") {
+        return None;
+    }
+
+    if config.remote_test_client.is_some() && !config.target.contains("android") {
+        println!(
+            "WARNING: debuginfo tests are not available when \
+             testing with remote"
+        );
+        return None;
+    }
+
+    if config.target.contains("android") {
+        println!(
+            "{} debug-info test uses tcp 5039 port.\
+             please reserve it",
+            config.target
+        );
+
+        // android debug-info test uses remote debugger so, we test 1 thread
+        // at once as they're all sharing the same TCP port to communicate
+        // over.
+        //
+        // we should figure out how to lift this restriction! (run them all
+        // on different ports allocated dynamically).
+        env::set_var("RUST_TEST_THREADS", "1");
+    }
+
+    Some(Config { debugger: Some(Debugger::Gdb), ..config.clone() })
+}
+
+fn configure_lldb(config: &Config) -> Option<Config> {
+    if config.lldb_python_dir.is_none() {
+        return None;
+    }
+
+    if let Some(lldb_version) = config.lldb_version.as_ref() {
+        if is_blacklisted_lldb_version(&lldb_version) {
+            println!(
+                "WARNING: The used version of LLDB ({}) has a \
+                 known issue that breaks debuginfo tests. See \
+                 issue #32520 for more information. Skipping all \
+                 LLDB-based tests!",
+                lldb_version
+            );
+            return None;
+        }
+    }
+
+    // Some older versions of LLDB seem to have problems with multiple
+    // instances running in parallel, so only run one test thread at a
+    // time.
+    env::set_var("RUST_TEST_THREADS", "1");
+
+    Some(Config { debugger: Some(Debugger::Lldb), ..config.clone() })
 }
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
@@ -415,20 +447,18 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
+pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
-    let mut tests = Vec::new();
     collect_tests_from_dir(
         config,
         &config.src_base,
         &config.src_base,
         &PathBuf::new(),
         &inputs,
-        &mut tests,
+        tests,
     )
     .expect(&format!("Could not read tests from {}", config.src_base.display()));
-    tests
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -570,13 +600,7 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
     revisions
         .into_iter()
         .map(|revision| {
-            let ignore = early_props.ignore == Ignore::Ignore
-                // Debugging emscripten code doesn't make sense today
-                || ((config.mode == DebugInfoGdbLldb || config.mode == DebugInfoCdb ||
-                     config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
-                    && config.target.contains("emscripten"))
-                || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
-                || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb())
+            let ignore = early_props.ignore
                 // Ignore tests that already run and are up to date with respect to inputs.
                 || is_up_to_date(
                     config,
@@ -593,7 +617,7 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
                     allow_fail: false,
                     test_type: test::TestType::Unknown,
                 },
-                testfn: make_test_closure(config, early_props.ignore, testpaths, revision),
+                testfn: make_test_closure(config, testpaths, revision),
             }
         })
         .collect()
@@ -686,13 +710,19 @@ fn make_test_name(
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
+    let debugger = match config.debugger {
+        Some(d) => format!("-{}", d),
+        None => String::new(),
+    };
     let mode_suffix = match config.compare_mode {
         Some(ref mode) => format!(" ({})", mode.to_str()),
         None => String::new(),
     };
+
     test::DynTestName(format!(
-        "[{}{}] {}{}",
+        "[{}{}{}] {}{}",
         config.mode,
+        debugger,
         mode_suffix,
         path.display(),
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
@@ -701,21 +731,10 @@ fn make_test_name(
 
 fn make_test_closure(
     config: &Config,
-    ignore: Ignore,
     testpaths: &TestPaths,
     revision: Option<&String>,
 ) -> test::TestFn {
-    let mut config = config.clone();
-    if config.mode == DebugInfoGdbLldb {
-        // If both gdb and lldb were ignored, then the test as a whole
-        // would be ignored.
-        if !ignore.can_run_gdb() {
-            config.mode = DebugInfoLldb;
-        } else if !ignore.can_run_lldb() {
-            config.mode = DebugInfoGdb;
-        }
-    }
-
+    let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
     test::DynTestFn(Box::new(move || {

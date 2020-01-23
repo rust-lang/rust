@@ -957,14 +957,6 @@ impl Step for Compiletest {
         }
 
         if suite == "debuginfo" {
-            let msvc = builder.config.build.contains("msvc");
-            if mode == "debuginfo" {
-                return builder.ensure(Compiletest {
-                    mode: if msvc { "debuginfo-cdb" } else { "debuginfo-gdb+lldb" },
-                    ..self
-                });
-            }
-
             builder
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }

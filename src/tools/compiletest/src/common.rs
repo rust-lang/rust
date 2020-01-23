@@ -14,10 +14,7 @@ pub enum Mode {
     RunFail,
     RunPassValgrind,
     Pretty,
-    DebugInfoCdb,
-    DebugInfoGdbLldb,
-    DebugInfoGdb,
-    DebugInfoLldb,
+    DebugInfo,
     Codegen,
     Rustdoc,
     CodegenUnits,
@@ -32,13 +29,9 @@ pub enum Mode {
 impl Mode {
     pub fn disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
-        // they need to keep their output segregated. Same is true for debuginfo tests that
-        // can be run on cdb, gdb, and lldb.
+        // they need to keep their output segregated.
         match self {
             Pretty => ".pretty",
-            DebugInfoCdb => ".cdb",
-            DebugInfoGdb => ".gdb",
-            DebugInfoLldb => ".lldb",
             _ => "",
         }
     }
@@ -52,10 +45,7 @@ impl FromStr for Mode {
             "run-fail" => Ok(RunFail),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
-            "debuginfo-cdb" => Ok(DebugInfoCdb),
-            "debuginfo-gdb+lldb" => Ok(DebugInfoGdbLldb),
-            "debuginfo-lldb" => Ok(DebugInfoLldb),
-            "debuginfo-gdb" => Ok(DebugInfoGdb),
+            "debuginfo" => Ok(DebugInfo),
             "codegen" => Ok(Codegen),
             "rustdoc" => Ok(Rustdoc),
             "codegen-units" => Ok(CodegenUnits),
@@ -77,10 +67,7 @@ impl fmt::Display for Mode {
             RunFail => "run-fail",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
-            DebugInfoCdb => "debuginfo-cdb",
-            DebugInfoGdbLldb => "debuginfo-gdb+lldb",
-            DebugInfoGdb => "debuginfo-gdb",
-            DebugInfoLldb => "debuginfo-lldb",
+            DebugInfo => "debuginfo",
             Codegen => "codegen",
             Rustdoc => "rustdoc",
             CodegenUnits => "codegen-units",
@@ -155,6 +142,29 @@ impl CompareMode {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Debugger {
+    Cdb,
+    Gdb,
+    Lldb,
+}
+
+impl Debugger {
+    fn to_str(&self) -> &'static str {
+        match self {
+            Debugger::Cdb => "cdb",
+            Debugger::Gdb => "gdb",
+            Debugger::Lldb => "lldb",
+        }
+    }
+}
+
+impl fmt::Display for Debugger {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.to_str(), f)
+    }
+}
+
 /// Configuration for compiletest
 #[derive(Clone)]
 pub struct Config {
@@ -207,6 +217,9 @@ pub struct Config {
 
     /// The test mode, compile-fail, run-fail, ui
     pub mode: Mode,
+
+    /// The debugger to use in debuginfo mode. Unset otherwise.
+    pub debugger: Option<Debugger>,
 
     /// Run ignored tests
     pub run_ignored: bool,
@@ -362,9 +375,11 @@ pub fn output_testname_unique(
     revision: Option<&str>,
 ) -> PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
+    let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
     PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(revision.unwrap_or(""))
         .with_extra_extension(mode)
+        .with_extra_extension(debugger)
 }
 
 /// Absolute path to the directory where all output for the given
