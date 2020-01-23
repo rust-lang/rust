@@ -242,6 +242,7 @@ use crate::ops::{self, Deref, DerefMut};
 /// [`Err`]: enum.Result.html#variant.Err
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
+#[rustc_diagnostic_item = "result_type"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
     /// Contains the success value

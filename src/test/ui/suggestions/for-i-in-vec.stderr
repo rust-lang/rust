@@ -5,7 +5,7 @@ LL |         for _ in self.v {
    |                  ^^^^^^
    |                  |
    |                  move occurs because `self.v` has type `std::vec::Vec<u32>`, which does not implement the `Copy` trait
-   |                  help: consider iterating over a slice of the `Vec`'s content: `&self.v`
+   |                  help: consider iterating over a slice of the `Vec<_>`'s content: `&self.v`
 
 error: aborting due to previous error
 
