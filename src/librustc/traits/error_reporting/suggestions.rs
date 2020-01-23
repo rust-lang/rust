@@ -606,11 +606,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
 
         let mut ret_types = visitor.0.iter().filter_map(|expr| tables.node_type_opt(expr.hir_id));
-        let (last_ty, all_returns_have_same_type) =
-            ret_types.clone().fold((None, true), |(last_ty, mut same), returned_ty| {
-                same &= last_ty.map_or(true, |ty| ty == returned_ty);
-                (Some(returned_ty), same)
-            });
+        let (last_ty, all_returns_have_same_type) = ret_types.clone().fold(
+            (None, true),
+            |(last_ty, mut same): (std::option::Option<Ty<'_>>, bool), ty| {
+                same &= last_ty.map_or(true, |last_ty| last_ty == ty) && ty.kind != ty::Error;
+                (Some(ty), same)
+            },
+        );
         let all_returns_conform_to_trait =
             if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
                 match ty_ret_ty.kind {
@@ -625,7 +627,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             })
                         })
                     }
-                    _ => true,
+                    _ => false,
                 }
             } else {
                 true

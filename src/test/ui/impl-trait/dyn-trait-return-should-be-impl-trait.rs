@@ -22,6 +22,32 @@ fn bal() -> dyn Trait { //~ ERROR E0746
     }
     42
 }
+fn bam() -> Box<dyn Trait> {
+    if true {
+        return Struct; //~ ERROR mismatched types
+    }
+    42 //~ ERROR mismatched types
+}
+fn baq() -> Box<dyn Trait> {
+    if true {
+        return 0; //~ ERROR mismatched types
+    }
+    42 //~ ERROR mismatched types
+}
+fn baz() -> Box<dyn Trait> {
+    if true {
+        Struct //~ ERROR mismatched types
+    } else {
+        42 //~ ERROR mismatched types
+    }
+}
+fn baw() -> Box<dyn Trait> {
+    if true {
+        0 //~ ERROR mismatched types
+    } else {
+        42 //~ ERROR mismatched types
+    }
+}
 
 // Suggest using `impl Trait`
 fn bat() -> dyn Trait { //~ ERROR E0746
@@ -29,6 +55,13 @@ fn bat() -> dyn Trait { //~ ERROR E0746
         return 0;
     }
     42
+}
+fn bay() -> dyn Trait { //~ ERROR E0746
+    if true {
+        0u32
+    } else {
+        42u32
+    }
 }
 
 fn main() {}
