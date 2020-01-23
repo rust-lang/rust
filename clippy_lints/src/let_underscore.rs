@@ -1,4 +1,5 @@
 use if_chain::if_chain;
+use rustc::lint::in_external_macro;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -33,6 +34,10 @@ declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &Stmt<'_>) {
+        if in_external_macro(cx.tcx.sess, stmt.span) {
+            return;
+        }
+
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.kind;
             if let PatKind::Wild = local.pat.kind;
