@@ -52,7 +52,7 @@ impl<'a, O: ForestObligation + 'a> dot::Labeller<'a> for &'a ObligationForest<O>
 
     fn node_label(&self, index: &Self::Node) -> dot::LabelText<'_> {
         let node = &self.nodes[*index];
-        let label = format!("{:?} ({:?})", node.obligation.as_predicate(), node.state.get());
+        let label = format!("{:?} ({:?})", node.obligation.as_cache_key(), node.state.get());
 
         dot::LabelText::LabelStr(label.into())
     }
