@@ -30,6 +30,7 @@
         - [`LintStore`](./diagnostics/lintstore.md)
         - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
     - [ICE-breaker teams](ice-breaker/about.md)
+        - ["Cleanup Crew" ICE-breakers](ice-breaker/cleanup-crew.md)
         - [LLVM ICE-breakers](ice-breaker/llvm.md)
 - [Part 2: How rustc works](./part-2-intro.md)
     - [High-level overview of the compiler source](./high-level-overview.md)
