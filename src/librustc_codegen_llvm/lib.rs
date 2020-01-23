@@ -32,7 +32,7 @@ use syntax::expand::allocator::AllocatorKind;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{OptLevel, OutputFilenames, PrintRequest};
+use rustc::session::config::{self, OptLevel, OutputFilenames, PrintRequest};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -301,7 +301,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             let rlink_data = json::encode(&codegen_results).map_err(|err| {
                 sess.fatal(&format!("failed to encode rlink: {}", err));
             })?;
-            let rlink_file = outputs.with_extension("rlink");
+            let rlink_file = outputs.with_extension(config::RLINK_EXT);
             fs::write(&rlink_file, rlink_data).map_err(|err| {
                 sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
             })?;
