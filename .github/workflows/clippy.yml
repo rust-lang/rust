@@ -28,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.3
       with:

@@ -20,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
     - name: Checkout
       uses: actions/checkout@v2.0.0
       with:
@@ -65,6 +68,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
     - name: Install dependencies (Linux-i686)
       run: |
         sudo dpkg --add-architecture i386
@@ -192,6 +198,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.3
       with:
