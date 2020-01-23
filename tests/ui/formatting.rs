@@ -143,4 +143,15 @@ fn main() {
         true
         | false,
     ];
+
+    // don't lint if the indentation suggests not to
+    let _ = &[
+        1 + 2, 3 
+                - 4, 5
+    ];
+    // lint if it doesnt
+    let _ = &[
+        -1
+        -4,
+    ];
 }

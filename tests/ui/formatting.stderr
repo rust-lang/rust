@@ -115,5 +115,13 @@ LL |         -1, -2, -3 // <= no comma here
    |
    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 13 previous errors
+error: possibly missing a comma here
+  --> $DIR/formatting.rs:154:11
+   |
+LL |         -1
+   |           ^
+   |
+   = note: to remove this lint, add a comma or write the expr in a single line
+
+error: aborting due to 14 previous errors
 
