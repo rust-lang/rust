@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.com/rust-lang/rust-clippy.svg?branch=master)](https://travis-ci.com/rust-lang/rust-clippy)
 [![Windows Build status](https://ci.appveyor.com/api/projects/status/id677xpw1dguo7iw?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/rust-clippy)
+[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test/badge.svg?branch=master&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test%22+event%3Apush+branch%3Amaster)
 [![License: MIT OR Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
