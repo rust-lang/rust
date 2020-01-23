@@ -83,7 +83,7 @@ where
 /// due to the search functionality located there.
 /// Later, this trait should be removed completely and the search functionality moved to a separate crate,
 /// accessible from the ra_assists crate.
-pub trait ImportsLocator<'a> {
+pub trait ImportsLocator {
     /// Finds all imports for the given name and the module that contains this name.
     fn find_imports(
         &mut self,
@@ -97,14 +97,14 @@ pub trait ImportsLocator<'a> {
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists_with_imports_locator<'a, H, F: 'a>(
+pub fn assists_with_imports_locator<H, F>(
     db: &H,
     range: FileRange,
     mut imports_locator: F,
 ) -> Vec<ResolvedAssist>
 where
     H: HirDatabase + 'static,
-    F: ImportsLocator<'a>,
+    F: ImportsLocator,
 {
     AssistCtx::with_ctx(db, range, true, |ctx| {
         let mut assists = assists::all()
@@ -222,7 +222,7 @@ mod assists {
         ]
     }
 
-    pub(crate) fn all_with_imports_locator<'a, DB: HirDatabase, F: ImportsLocator<'a>>(
+    pub(crate) fn all_with_imports_locator<'a, DB: HirDatabase, F: ImportsLocator>(
     ) -> &'a [fn(AssistCtx<DB>, &mut F) -> Option<Assist>] {
         &[auto_import::auto_import]
     }
@@ -264,7 +264,7 @@ mod helpers {
         assert_eq_text!(after, &actual);
     }
 
-    pub(crate) fn check_assist_with_imports_locator<'a, F: ImportsLocator<'a>>(
+    pub(crate) fn check_assist_with_imports_locator<F: ImportsLocator>(
         assist: fn(AssistCtx<TestDB>, &mut F) -> Option<Assist>,
         imports_locator: &mut F,
         before: &str,
@@ -366,7 +366,7 @@ mod helpers {
         assert!(assist.is_none());
     }
 
-    pub(crate) fn check_assist_with_imports_locator_not_applicable<'a, F: ImportsLocator<'a>>(
+    pub(crate) fn check_assist_with_imports_locator_not_applicable<F: ImportsLocator>(
         assist: fn(AssistCtx<TestDB>, &mut F) -> Option<Assist>,
         imports_locator: &mut F,
         before: &str,

@@ -28,7 +28,7 @@ use crate::{
 //     let map = HashMap<|>::new();
 // }
 // ```
-pub(crate) fn auto_import<'a, F: ImportsLocator<'a>>(
+pub(crate) fn auto_import<F: ImportsLocator>(
     ctx: AssistCtx<impl HirDatabase>,
     imports_locator: &mut F,
 ) -> Option<Assist> {
@@ -108,7 +108,7 @@ mod tests {
         }
     }
 
-    impl<'a> ImportsLocator<'_> for TestImportsLocator<'_> {
+    impl<'a> ImportsLocator for TestImportsLocator<'a> {
         fn find_imports(
             &mut self,
             _: hir::InFile<&ast::NameRef>,

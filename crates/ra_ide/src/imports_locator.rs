@@ -82,7 +82,7 @@ impl<'a> ImportsLocatorIde<'a> {
     }
 }
 
-impl<'a> ImportsLocator<'a> for ImportsLocatorIde<'a> {
+impl<'a> ImportsLocator for ImportsLocatorIde<'a> {
     fn find_imports(
         &mut self,
         name_to_import: InFile<&NameRef>,
