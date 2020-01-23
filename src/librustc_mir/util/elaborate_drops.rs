@@ -472,7 +472,7 @@ where
                 }
                 let (normal, _) = self.drop_ladder(fields, succ, unwind);
                 normal_blocks.push(normal);
-            } else {
+            } else if !adt.variants[variant_index].fields.is_empty() {
                 have_otherwise = true;
             }
         }
