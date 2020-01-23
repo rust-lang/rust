@@ -35,14 +35,14 @@ impl<'a> ImportsLocatorIde<'a> {
         let project_results = {
             let mut query = Query::new(name_to_import.to_string());
             query.exact();
-            query.limit(10);
+            query.limit(40);
             symbol_index::world_symbols(db, query)
         };
         let lib_results = {
             let mut query = Query::new(name_to_import.to_string());
             query.libs();
             query.exact();
-            query.limit(10);
+            query.limit(40);
             symbol_index::world_symbols(db, query)
         };
 
@@ -59,6 +59,7 @@ impl<'a> ImportsLocatorIde<'a> {
             })
             .filter(|use_path| !use_path.segments.is_empty())
             .unique()
+            .take(20)
             .collect()
     }
 
