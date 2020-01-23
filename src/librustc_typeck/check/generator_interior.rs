@@ -222,8 +222,6 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-
         match &expr.kind {
             ExprKind::Call(callee, args) => match &callee.kind {
                 ExprKind::Path(qpath) => {
@@ -249,19 +247,12 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
                 _ => intravisit::walk_expr(self, expr),
             },
-            ExprKind::Path(qpath) => {
-                let res = self.fcx.tables.borrow().qpath_res(qpath, expr.hir_id);
-                if let Res::Def(DefKind::Static, def_id) = res {
-                    // Statics are lowered to temporary references or
-                    // pointers in MIR, so record that type.
-                    let ptr_ty = self.fcx.tcx.static_ptr_ty(def_id);
-                    self.record(ptr_ty, scope, Some(expr), expr.span);
-                }
-            }
             _ => intravisit::walk_expr(self, expr),
         }
 
         self.expr_count += 1;
+
+        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.

@@ -233,28 +233,30 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if let (local, []) = (&place.local, proj_base) {
                 let decl = &self.body.local_decls[*local];
                 if decl.internal {
-                    // Internal locals are used in the `move_val_init` desugaring.
-                    // We want to check unsafety against the source info of the
-                    // desugaring, rather than the source info of the RHS.
-                    self.source_info = self.body.local_decls[*local].source_info;
-                } else if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
-                    if self.tcx.is_mutable_static(def_id) {
-                        self.require_unsafe(
-                            "use of mutable static",
-                            "mutable statics can be mutated by multiple threads: aliasing \
-                        violations or data races will cause undefined behavior",
-                            UnsafetyViolationKind::General,
-                        );
-                        return;
-                    } else if self.tcx.is_foreign_item(def_id) {
-                        self.require_unsafe(
-                            "use of extern static",
-                            "extern statics are not controlled by the Rust type system: \
-                        invalid data, aliasing violations or data races will cause \
-                        undefined behavior",
-                            UnsafetyViolationKind::General,
-                        );
-                        return;
+                    if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
+                        if self.tcx.is_mutable_static(def_id) {
+                            self.require_unsafe(
+                                "use of mutable static",
+                                "mutable statics can be mutated by multiple threads: aliasing \
+                            violations or data races will cause undefined behavior",
+                                UnsafetyViolationKind::General,
+                            );
+                            return;
+                        } else if self.tcx.is_foreign_item(def_id) {
+                            self.require_unsafe(
+                                "use of extern static",
+                                "extern statics are not controlled by the Rust type system: \
+                            invalid data, aliasing violations or data races will cause \
+                            undefined behavior",
+                                UnsafetyViolationKind::General,
+                            );
+                            return;
+                        }
+                    } else {
+                        // Internal locals are used in the `move_val_init` desugaring.
+                        // We want to check unsafety against the source info of the
+                        // desugaring, rather than the source info of the RHS.
+                        self.source_info = self.body.local_decls[*local].source_info;
                     }
                 }
             }
