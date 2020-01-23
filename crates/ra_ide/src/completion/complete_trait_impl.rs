@@ -5,7 +5,7 @@ use hir::{ self, db::HirDatabase, HasSource };
 
 use ra_syntax::{ ast, ast::AstNode };
 
-pub(crate) fn complete_impl_fn(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let impl_trait = ast::ItemList::cast(ctx.token.parent())
         .and_then(|item_list| item_list.syntax().parent())
         .and_then(|item_list_parent| ast::ImplBlock::cast(item_list_parent))
