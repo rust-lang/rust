@@ -129,6 +129,39 @@ impl Completions {
         self.add_function_with_name(ctx, None, func)
     }
 
+    pub(crate) fn add_function_impl(&mut self, ctx: &CompletionContext, func: hir::Function) {
+        use crate::display::FunctionSignature;
+
+        let display = FunctionSignature::from_hir(ctx.db, func.clone());
+
+        let func_name = func.name(ctx.db);
+
+        let mut builder = CompletionItem::new(
+            CompletionKind::Reference, 
+            ctx.source_range(), 
+            format!("fn {}()", func_name.to_string()))
+            .set_documentation(func.docs(ctx.db));
+
+        let completion_kind = if func.has_self_param(ctx.db) {
+            CompletionItemKind::Method
+        } else {
+            CompletionItemKind::Function
+        };
+        
+        let snippet = {
+            let mut s = format!("{}", display);
+            s.push_str(" { $0 }");
+            s
+        };
+
+        builder = builder
+            .insert_text(snippet)
+            .kind(completion_kind)
+            .lookup_by(func_name.to_string());
+
+        self.add(builder.build());
+    }
+
     fn guess_macro_braces(&self, macro_name: &str, docs: &str) -> &'static str {
         let mut votes = [0, 0, 0];
         for (idx, s) in docs.match_indices(&macro_name) {
