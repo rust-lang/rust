@@ -77,8 +77,6 @@ lazy_static! {
     // Pick a "reasonable maximum" if we don't otherwise have
     // a jobserver in our environment, capping out at 32 so we
     // don't take everything down by hogging the process run queue.
-    // The fixed number is used to have deterministic compilation
-    // across machines.
     //
     // Also note that we stick this in a global because there could be
     // multiple rustc instances in this process, and the jobserver is
