@@ -31,6 +31,7 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
+use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull, Unique};
@@ -829,6 +830,14 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
 {
     fn eq(&self, other: &Self) -> bool {
         self.node.node == other.node.node && self.idx == other.idx
+    }
+}
+
+impl<BorrowType, K, V, NodeType, HandleType> PartialOrd
+    for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.node.node == other.node.node { Some(self.idx.cmp(&other.idx)) } else { None }
     }
 }
 
