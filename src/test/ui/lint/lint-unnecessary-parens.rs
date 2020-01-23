@@ -17,6 +17,13 @@ fn unused_parens_around_return_type() -> (u32) { //~ ERROR unnecessary parenthes
     panic!()
 }
 
+fn unused_parens_around_block_return() -> u32 {
+    let foo = {
+        (5) //~ ERROR unnecessary parentheses around block return value
+    };
+    (5) //~ ERROR unnecessary parentheses around block return value
+}
+
 trait Trait {
     fn test(&self);
 }

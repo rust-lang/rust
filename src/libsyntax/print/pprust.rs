@@ -548,11 +548,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         let st = match style {
             ast::StrStyle::Cooked => (format!("\"{}\"", st.escape_debug())),
             ast::StrStyle::Raw(n) => {
-                (format!(
-                    "r{delim}\"{string}\"{delim}",
-                    delim = "#".repeat(n as usize),
-                    string = st
-                ))
+                format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = st)
             }
         };
         self.word(st)

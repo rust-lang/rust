@@ -774,10 +774,10 @@ impl SourceMap {
         // searching forwards for boundaries we've got somewhere to search.
         let snippet = if let Some(ref src) = local_begin.sf.src {
             let len = src.len();
-            (&src[start_index..len])
+            &src[start_index..len]
         } else if let Some(src) = src.get_source() {
             let len = src.len();
-            (&src[start_index..len])
+            &src[start_index..len]
         } else {
             return 1;
         };
