@@ -586,12 +586,14 @@ fn on_notification(
 
 fn on_check_task(
     task: CheckTask,
-    world_state: &WorldState,
+    world_state: &mut WorldState,
     task_sender: &Sender<Task>,
 ) -> Result<()> {
     match task {
         CheckTask::ClearDiagnostics => {
-            let cleared_files = world_state.check_watcher.state.write().clear();
+            let state = Arc::get_mut(&mut world_state.check_watcher.state)
+                .expect("couldn't get check watcher state as mutable");
+            let cleared_files = state.clear();
 
             // Send updated diagnostics for each cleared file
             for url in cleared_files {
@@ -600,11 +602,9 @@ fn on_check_task(
         }
 
         CheckTask::AddDiagnostic(url, diagnostic) => {
-            world_state
-                .check_watcher
-                .state
-                .write()
-                .add_diagnostic_with_fixes(url.clone(), diagnostic);
+            let state = Arc::get_mut(&mut world_state.check_watcher.state)
+                .expect("couldn't get check watcher state as mutable");
+            state.add_diagnostic_with_fixes(url.clone(), diagnostic);
 
             // We manually send a diagnostic update when the watcher asks
             // us to, to avoid the issue of having to change the file to

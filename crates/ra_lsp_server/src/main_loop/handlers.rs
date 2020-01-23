@@ -674,8 +674,7 @@ pub fn handle_code_action(
         res.push(action.into());
     }
 
-    for fix in world.check_watcher.read().fixes_for(&params.text_document.uri).into_iter().flatten()
-    {
+    for fix in world.check_watcher.fixes_for(&params.text_document.uri).into_iter().flatten() {
         let fix_range = fix.location.range.conv_with(&line_index);
         if fix_range.intersection(&range).is_none() {
             continue;
@@ -895,7 +894,7 @@ pub fn publish_diagnostics(
             tags: None,
         })
         .collect();
-    if let Some(check_diags) = world.check_watcher.read().diagnostics_for(&uri) {
+    if let Some(check_diags) = world.check_watcher.diagnostics_for(&uri) {
         diagnostics.extend(check_diags.iter().cloned());
     }
     Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
