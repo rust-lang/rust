@@ -265,8 +265,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return None,
             }
         } else {
-            // Generators cannot have explicit arguments.
-            vec![]
+            // Generators with a `()` resume type may be defined with 0 or 1 explicit arguments,
+            // else they must have exactly 1 argument. For now though, just give up in this case.
+            return None;
         };
 
         let ret_param_ty = projection.skip_binder().ty;
