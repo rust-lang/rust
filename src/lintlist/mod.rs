@@ -529,6 +529,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
+        name: "explicit_deref_method",
+        group: "pedantic",
+        desc: "Explicit use of deref or deref_mut method while not in a method chain.",
+        deprecation: None,
+        module: "dereference",
+    },
+    Lint {
         name: "explicit_into_iter_loop",
         group: "pedantic",
         desc: "for-looping over `_.into_iter()` when `_` would do",

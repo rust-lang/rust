@@ -1,52 +1,52 @@
 error: explicit deref method call
-  --> $DIR/dereference.rs:13:23
+  --> $DIR/dereference.rs:10:19
    |
-13 |         let b: &str = a.deref();
-   |                       ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: &str = a.deref();
+   |                   ^^^^^^^^^ help: try this: `&*a`
    |
    = note: `-D clippy::explicit-deref-method` implied by `-D warnings`
 
 error: explicit deref_mut method call
-  --> $DIR/dereference.rs:17:27
+  --> $DIR/dereference.rs:12:23
    |
-17 |         let b: &mut str = a.deref_mut();
-   |                           ^^^^^^^^^^^^^ help: try this: `&mut *a`
+LL |     let b: &mut str = a.deref_mut();
+   |                       ^^^^^^^^^^^^^ help: try this: `&mut *a`
 
 error: explicit deref method call
-  --> $DIR/dereference.rs:21:25
+  --> $DIR/dereference.rs:14:21
    |
-21 |         let b: String = a.deref().clone();
-   |                         ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: String = a.deref().clone();
+   |                     ^^^^^^^^^ help: try this: `&*a`
 
 error: explicit deref_mut method call
-  --> $DIR/dereference.rs:25:24
+  --> $DIR/dereference.rs:16:20
    |
-25 |         let b: usize = a.deref_mut().len();
-   |                        ^^^^^^^^^^^^^ help: try this: `&mut *a`
+LL |     let b: usize = a.deref_mut().len();
+   |                    ^^^^^^^^^^^^^ help: try this: `&mut *a`
 
 error: explicit deref method call
-  --> $DIR/dereference.rs:29:26
+  --> $DIR/dereference.rs:18:22
    |
-29 |         let b: &usize = &a.deref().len();
-   |                          ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: &usize = &a.deref().len();
+   |                      ^^^^^^^^^ help: try this: `&*a`
 
 error: explicit deref method call
-  --> $DIR/dereference.rs:34:23
+  --> $DIR/dereference.rs:21:19
    |
-34 |         let b: &str = a.deref().deref();
-   |                       ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: &str = a.deref().deref();
+   |                   ^^^^^^^^^ help: try this: `&*a`
 
 error: explicit deref method call
-  --> $DIR/dereference.rs:39:43
+  --> $DIR/dereference.rs:24:39
    |
-39 |         let b: String = format!("{}, {}", a.deref(), a.deref());
-   |                                           ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: String = format!("{}, {}", a.deref(), a.deref());
+   |                                       ^^^^^^^^^ help: try this: `&*a`
 
 error: explicit deref method call
-  --> $DIR/dereference.rs:39:54
+  --> $DIR/dereference.rs:24:50
    |
-39 |         let b: String = format!("{}, {}", a.deref(), a.deref());
-   |                                                      ^^^^^^^^^ help: try this: `&*a`
+LL |     let b: String = format!("{}, {}", a.deref(), a.deref());
+   |                                                  ^^^^^^^^^ help: try this: `&*a`
 
 error: aborting due to 8 previous errors
 
