@@ -13,7 +13,7 @@ use crate::char;
 use crate::fmt::{self, Write};
 use crate::iter::{Chain, FlatMap, Flatten};
 use crate::iter::{Cloned, Filter, FusedIterator, Map, TrustedLen, TrustedRandomAccess};
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(not(target_feature = "avx2"))]
 use crate::mem;
 use crate::ops::Try;
 use crate::option;
@@ -1485,7 +1485,7 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
 #[allow(deprecated)]
 impl FusedIterator for LinesAny<'_> {}
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(target_feature = "avx2"))]
 mod avx2 {
     //!
     //! this is taken from
@@ -1904,7 +1904,7 @@ mod avx2 {
     }
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(any(target_feature = "avx2"))]
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline]
@@ -1919,18 +1919,18 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 /*
 Section: UTF-8 validation
 */
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(not(any(target_feature = "avx2")))]
 // use truncation to fit u64 into usize
 const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(not(any(target_feature = "avx2")))]
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
 fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(not(any(target_feature = "avx2")))]
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline]
