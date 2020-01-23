@@ -10,6 +10,10 @@ pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
     GoDown(Handle<NodeRef<BorrowType, K, V, GoDownType>, marker::Edge>),
 }
 
+/// Looks up a given key in a (sub)tree headed by the given node, recursively.
+/// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
+/// returns a `GoDown` with the handle of the possible leaf edge where the key
+/// belongs.
 pub fn search_tree<BorrowType, K, V, Q: ?Sized>(
     mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     key: &Q,
@@ -32,6 +36,10 @@ where
     }
 }
 
+/// Looks up a given key in a given node, without recursion.
+/// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
+/// returns a `GoDown` with the handle of the edge where the key might be found.
+/// If the node is a leaf, a `GoDown` edge is not an actual edge but a possible edge.
 pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
     node: NodeRef<BorrowType, K, V, Type>,
     key: &Q,
@@ -50,8 +58,8 @@ where
 /// or could exist, and whether it exists in the node itself. If it doesn't
 /// exist in the node itself, it may exist in the subtree with that index
 /// (if the node has subtrees). If the key doesn't exist in node or subtree,
-/// the returned index is the position or subtree to insert at.
-pub fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
+/// the returned index is the position or subtree where the key belongs.
+fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q,
 ) -> (usize, bool)
