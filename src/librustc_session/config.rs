@@ -447,9 +447,8 @@ impl Input {
 #[derive(Clone, Hash)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
-    pub out_filestem: String,
+    filestem: String,
     pub single_output_file: Option<PathBuf>,
-    pub extra: String,
     pub outputs: OutputTypes,
 }
 
@@ -458,6 +457,21 @@ impl_stable_hash_via_hash!(OutputFilenames);
 pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
+    pub fn new(
+        out_directory: PathBuf,
+        out_filestem: String,
+        single_output_file: Option<PathBuf>,
+        extra: String,
+        outputs: OutputTypes,
+    ) -> Self {
+        OutputFilenames {
+            out_directory,
+            single_output_file,
+            outputs,
+            filestem: format!("{}{}", out_filestem, extra),
+        }
+    }
+
     pub fn path(&self, flavor: OutputType) -> PathBuf {
         self.outputs
             .get(&flavor)
@@ -477,8 +491,6 @@ impl OutputFilenames {
     /// Like temp_path, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
-        let base = self.out_directory.join(&self.filestem());
-
         let mut extension = String::new();
 
         if let Some(codegen_unit_name) = codegen_unit_name {
@@ -495,16 +507,13 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        let path = base.with_extension(&extension[..]);
-        path
+        self.with_extension(&extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.out_directory.join(&self.filestem()).with_extension(extension)
-    }
-
-    pub fn filestem(&self) -> String {
-        format!("{}{}", self.out_filestem, self.extra)
+        let mut path = self.out_directory.join(&self.filestem);
+        path.set_extension(extension);
+        path
     }
 }
 
@@ -619,7 +628,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum CrateType {
     Executable,
     Dylib,
