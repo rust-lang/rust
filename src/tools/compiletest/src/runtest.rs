@@ -1872,11 +1872,11 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Zdeduplicate-diagnostics=no");
             }
             MirOpt => {
-                rustc.args(&[
-                    "-Zdump-mir=all",
-                    "-Zmir-opt-level=3",
-                    "-Zdump-mir-exclude-pass-number",
-                ]);
+                if !self.props.compile_flags.iter().any(|s| s.starts_with("-Zmir-opt-level")) {
+                    rustc.arg("-Zmir-opt-level=3");
+                }
+
+                rustc.args(&["-Zdump-mir=all", "-Zdump-mir-exclude-pass-number"]);
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
