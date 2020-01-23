@@ -177,6 +177,7 @@ jobs:
     needs: changelog
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
         integration:
         - 'rust-lang/cargo'
