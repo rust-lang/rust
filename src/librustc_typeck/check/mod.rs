@@ -87,7 +87,7 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use crate::astconv::{AstConv, PathSeg};
+use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
 use crate::middle::lang_items;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
@@ -5454,7 +5454,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // checking here.
             let suppress_errors = AstConv::check_generic_arg_count_for_call(
                 tcx, span, &generics, &seg, false, // `is_method_call`
-            );
+            )
+            .is_err();
             if suppress_errors {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
@@ -5520,7 +5521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                !infer_args_for_err.is_empty(),
+                if infer_args_for_err.is_empty() { Ok(()) } else { Err(GenericArgCountMismatch) },
                 // Provide the generic args, and whether types should be inferred.
                 |def_id| {
                     if let Some(&PathSeg(_, index)) =

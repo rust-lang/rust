@@ -17,12 +17,6 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
-impl fmt::Debug for ty::GenericParamDef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}({}, {:?}, {})", self.kind.descr(), self.name, self.def_id, self.index)
-    }
-}
-
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {

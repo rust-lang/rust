@@ -299,7 +299,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
-        let arg_count_mismatch = AstConv::check_generic_arg_count_for_call(
+        let arg_count_correct = AstConv::check_generic_arg_count_for_call(
             self.tcx, self.span, &generics, &seg, true, // `is_method_call`
         );
 
@@ -313,7 +313,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             parent_substs,
             false,
             None,
-            arg_count_mismatch,
+            arg_count_correct,
             // Provide the generic args, and whether types should be inferred.
             |def_id| {
                 // The last component of the returned tuple here is unimportant.

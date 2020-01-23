@@ -132,6 +132,10 @@ enum GenericArgPosition {
     MethodCall,
 }
 
+/// A marker denoting that the generic arguments that were
+/// provided did not match the respective generic parameters.
+pub struct GenericArgCountMismatch;
+
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn ast_region_to_region(
         &self,
@@ -262,7 +266,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: &ty::Generics,
         seg: &hir::PathSegment<'_>,
         is_method_call: bool,
-    ) -> bool {
+    ) -> Result<(), GenericArgCountMismatch> {
         let empty_args = hir::GenericArgs::none();
         let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
@@ -287,7 +291,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         position: GenericArgPosition,
         has_self: bool,
         infer_args: bool,
-    ) -> (bool, Vec<Span>) {
+    ) -> (Result<(), GenericArgCountMismatch>, Vec<Span>) {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
         // arguments in order to validate them with respect to the generic parameters.
@@ -443,7 +447,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
         }
 
-        (arg_count_mismatch, unexpected_spans)
+        (if arg_count_mismatch { Err(GenericArgCountMismatch) } else { Ok(()) }, unexpected_spans)
     }
 
     /// Report an error that a generic argument did not match the generic parameter that was
@@ -495,7 +499,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        arg_count_mismatch: bool,
+        arg_count_correct: Result<(), GenericArgCountMismatch>,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
         provided_kind: impl Fn(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
         mut inferred_kind: impl FnMut(
@@ -589,7 +593,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
                                 // an additional error, as the user already knows what's wrong.
-                                if !arg_count_mismatch {
+                                if arg_count_correct.is_ok() {
                                     Self::generic_arg_mismatch_err(tcx.sess, arg, kind.descr());
                                 }
 
@@ -615,7 +619,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         //  2.  We've inferred some lifetimes, which have been provided later (i.e.
                         //      after a type or const). We want to throw an error in this case.
 
-                        if !arg_count_mismatch {
+                        if arg_count_correct.is_ok() {
                             let kind = arg.descr();
                             assert_eq!(kind, "lifetime");
                             let provided =
@@ -706,7 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert!(self_ty.is_none() && parent_substs.is_empty());
         }
 
-        let (arg_count_mismatch, potential_assoc_types) = Self::check_generic_arg_count(
+        let (arg_count_correct, potential_assoc_types) = Self::check_generic_arg_count(
             tcx,
             span,
             &generic_params,
@@ -739,7 +743,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             parent_substs,
             self_ty.is_some(),
             self_ty,
-            arg_count_mismatch,
+            arg_count_correct,
             // Provide the generic args, and whether types should be inferred.
             |did| {
                 if did == def_id {

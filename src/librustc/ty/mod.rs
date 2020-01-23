@@ -941,7 +941,7 @@ impl GenericParamDefKind {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericParamDef {
     pub name: Symbol,
     pub def_id: DefId,
