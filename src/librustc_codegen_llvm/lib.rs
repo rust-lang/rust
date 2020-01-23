@@ -33,6 +33,7 @@ use rustc_codegen_ssa::CompiledModule;
 use rustc_errors::{FatalError, Handler};
 use std::any::Any;
 use std::ffi::CStr;
+use std::fs;
 use std::sync::Arc;
 use syntax::expand::allocator::AllocatorKind;
 
@@ -44,6 +45,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_serialize::json;
 
 mod back {
     pub mod archive;
@@ -295,6 +297,18 @@ impl CodegenBackend for LlvmCodegenBackend {
             .keys()
             .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
         {
+            return Ok(());
+        }
+
+        if sess.opts.debugging_opts.no_link {
+            // FIXME: use a binary format to encode the `.rlink` file
+            let rlink_data = json::encode(&codegen_results).map_err(|err| {
+                sess.fatal(&format!("failed to encode rlink: {}", err));
+            })?;
+            let rlink_file = outputs.with_extension("rlink");
+            fs::write(&rlink_file, rlink_data).map_err(|err| {
+                sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
+            })?;
             return Ok(());
         }
 

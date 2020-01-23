@@ -87,7 +87,7 @@ impl<M> ModuleCodegen<M> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
@@ -101,7 +101,7 @@ pub struct CachedModuleCodegen {
     pub source: WorkProduct,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ModuleKind {
     Regular,
     Metadata,
@@ -117,7 +117,14 @@ bitflags::bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
-#[derive(Debug)]
+///
+/// Note: though `CrateNum` is only meaningful within the same tcx, information within `CrateInfo`
+/// is self-contained. `CrateNum` can be viewed as a unique identifier within a `CrateInfo`, where
+/// `used_crate_source` contains all `CrateSource` of the dependents, and maintains a mapping from
+/// identifiers (`CrateNum`) to `CrateSource`. The other fields map `CrateNum` to the crate's own
+/// additional properties, so that effectively we can retrieve each dependent crate's `CrateSource`
+/// and the corresponding properties without referencing information outside of a `CrateInfo`.
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
@@ -135,6 +142,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
