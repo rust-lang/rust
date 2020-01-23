@@ -366,6 +366,10 @@ fn configure_gdb(config: &Config) -> Option<Config> {
         return None;
     }
 
+    if util::matches_env(&config.target, "msvc") {
+        return None;
+    }
+
     if config.remote_test_client.is_some() && !config.target.contains("android") {
         println!(
             "WARNING: debuginfo tests are not available when \
