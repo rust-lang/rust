@@ -586,7 +586,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         module: DefId,
-        f: impl for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R,
+        f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>) -> R,
     ) -> R {
         let pattern_arena = TypedArena::default();
 
