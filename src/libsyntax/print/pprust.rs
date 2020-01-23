@@ -1645,7 +1645,7 @@ impl<'a> State<'a> {
                     self.print_expr_as_cond(i);
                     self.s.space();
                     self.print_block(then);
-                    self.print_else(e.as_ref().map(|e| &**e))
+                    self.print_else(e.as_deref())
                 }
                 // Final `else` block.
                 ast::ExprKind::Block(ref b, _) => {
@@ -1949,7 +1949,7 @@ impl<'a> State<'a> {
                 self.print_let(pat, scrutinee);
             }
             ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
-                self.print_if(test, blk, elseopt.as_ref().map(|e| &**e));
+                self.print_if(test, blk, elseopt.as_deref())
             }
             ast::ExprKind::While(ref test, ref blk, opt_label) => {
                 if let Some(label) = opt_label {
