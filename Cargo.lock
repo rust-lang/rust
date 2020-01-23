@@ -3541,6 +3541,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_ast_pretty",
+ "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_error_codes",
