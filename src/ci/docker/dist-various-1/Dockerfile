@@ -160,6 +160,7 @@ ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
+ENV TARGETS=$TARGETS,armv7a-none-eabi
 
 # riscv targets currently do not need a C compiler, as compiler_builtins
 # doesn't currently have it enabled, and the riscv gcc compiler is not
@@ -173,6 +174,10 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ \
+    CC_armv7a_none_eabi=arm-none-eabi-gcc \
+    CC_armv7a_none_eabihf=arm-none-eabi-gcc \
+    CFLAGS_armv7a_none_eabi=-march=armv7-a \
+    CFLAGS_armv7a_none_eabihf=-march=armv7-a+vfpv3 \
     CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
     AR_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
     CXX_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++ \
