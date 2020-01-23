@@ -919,17 +919,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 report_object_safety_error(self.tcx, span, did, violations)
             }
 
-            // already reported in the query
-            ConstEvalFailure(err) => {
-                if let ErrorHandled::TooGeneric = err {
-                    // Silence this error, as it can be produced during intermediate steps
-                    // when a constant is not yet able to be evaluated (but will be later).
-                    return;
-                }
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    &format!("constant in type had an ignored error: {:?}", err),
-                );
+            ConstEvalFailure(ErrorHandled::TooGeneric) => {
+                // In this instance, we have a const expression containing an unevaluated
+                // generic parameter. We have no idea whether this expression is valid or
+                // not (e.g. it might result in an error), but we don't want to just assume
+                // that it's okay, because that might result in post-monomorphisation time
+                // errors. The onus is really on the caller to provide values that it can
+                // prove are well-formed.
+                let mut err = self
+                    .tcx
+                    .sess
+                    .struct_span_err(span, "constant expression depends on a generic parameter");
+                // FIXME(const_generics): we should suggest to the user how they can resolve this
+                // issue. However, this is currently not actually possible
+                // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+                err.note("this may fail depending on what value the parameter takes");
+                err
+            }
+
+            // Already reported in the query.
+            ConstEvalFailure(ErrorHandled::Reported) => {
+                self.tcx
+                    .sess
+                    .delay_span_bug(span, &format!("constant in type had an ignored error"));
                 return;
             }
 
