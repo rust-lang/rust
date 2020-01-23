@@ -132,7 +132,7 @@ impl<K: Ord, V> SortedMap<K, V> {
         R: RangeBounds<K>,
     {
         let (start, end) = self.range_slice_indices(range);
-        (&self.data[start..end])
+        &self.data[start..end]
     }
 
     #[inline]
