@@ -7,10 +7,12 @@ use errors;
 use getopts;
 use rustc::lint::Level;
 use rustc::session;
-use rustc::session::config::{CrateType, parse_crate_types_from_list, parse_externs};
+use rustc::session::config::{
+    build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
+    nightly_options,
+};
+use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
-use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options, host_triple};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -19,8 +21,8 @@ use syntax::edition::{Edition, DEFAULT_EDITION};
 use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
 use crate::html;
-use crate::html::{static_files};
-use crate::html::markdown::{IdMap};
+use crate::html::markdown::IdMap;
+use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, DefaultPassOption};
 use crate::theme;
@@ -29,7 +31,6 @@ use crate::theme;
 #[derive(Clone)]
 pub struct Options {
     // Basic options / Options passed directly to rustc
-
     /// The crate root or Markdown file to load.
     pub input: PathBuf,
     /// The name of the crate being documented.
@@ -72,7 +73,6 @@ pub struct Options {
     pub lint_cap: Option<Level>,
 
     // Options specific to running doctests
-
     /// Whether we should run doctests instead of generating docs.
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
@@ -94,7 +94,6 @@ pub struct Options {
     pub test_builder: Option<PathBuf>,
 
     // Options that affect the documentation process
-
     /// The selected default set of passes to use.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
@@ -111,7 +110,6 @@ pub struct Options {
     pub show_coverage: bool,
 
     // Options that alter generated documentation pages
-
     /// Crate version to note on the sidebar of generated docs.
     pub crate_version: Option<String>,
     /// Collected options specific to outputting final pages.
@@ -124,9 +122,7 @@ impl fmt::Debug for Options {
 
         impl<'a> fmt::Debug for FmtExterns<'a> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_map()
-                    .entries(self.0.iter())
-                    .finish()
+                f.debug_map().entries(self.0.iter()).finish()
             }
         }
 
@@ -208,7 +204,6 @@ pub struct RenderOptions {
     pub static_root_path: Option<String>,
 
     // Options specific to reading standalone Markdown files
-
     /// Whether to generate a table of contents on the output file when reading a standalone
     /// Markdown file.
     pub markdown_no_toc: bool,
@@ -274,10 +269,12 @@ impl Options {
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
 
-        let diag = new_handler(error_format,
-                               None,
-                               debugging_options.treat_err_as_bug,
-                               debugging_options.ui_testing);
+        let diag = new_handler(
+            error_format,
+            None,
+            debugging_options.treat_err_as_bug,
+            debugging_options.ui_testing,
+        );
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
@@ -317,7 +314,9 @@ impl Options {
         }
         let input = PathBuf::from(&matches.free[0]);
 
-        let libs = matches.opt_strs("L").iter()
+        let libs = matches
+            .opt_strs("L")
+            .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
         let externs = parse_externs(&matches, &debugging_options, error_format);
@@ -330,16 +329,13 @@ impl Options {
         };
 
         let test_args = matches.opt_strs("test-args");
-        let test_args: Vec<String> = test_args.iter()
-                                              .flat_map(|s| s.split_whitespace())
-                                              .map(|s| s.to_string())
-                                              .collect();
+        let test_args: Vec<String> =
+            test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
         let should_test = matches.opt_present("test");
 
-        let output = matches.opt_str("o")
-                            .map(|s| PathBuf::from(&s))
-                            .unwrap_or_else(|| PathBuf::from("doc"));
+        let output =
+            matches.opt_str("o").map(|s| PathBuf::from(&s)).unwrap_or_else(|| PathBuf::from("doc"));
         let cfgs = matches.opt_strs("cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
@@ -355,9 +351,9 @@ impl Options {
         if matches.opt_present("theme") {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
 
-            for (theme_file, theme_s) in matches.opt_strs("theme")
-                                                .iter()
-                                                .map(|s| (PathBuf::from(&s), s.to_owned())) {
+            for (theme_file, theme_s) in
+                matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
+            {
                 if !theme_file.is_file() {
                     diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
                         .help("arguments to --theme must be files")
@@ -365,8 +361,7 @@ impl Options {
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
-                        .emit();
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s)).emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
@@ -374,12 +369,18 @@ impl Options {
                     diag.struct_err(&format!("error loading theme file: \"{}\"", theme_s)).emit();
                     return Err(1);
                 } else if !ret.is_empty() {
-                    diag.struct_warn(&format!("theme file \"{}\" is missing CSS rules from the \
-                                               default theme", theme_s))
-                        .warn("the theme may appear incorrect when loaded")
-                        .help(&format!("to see what rules are missing, call `rustdoc \
-                                        --check-theme \"{}\"`", theme_s))
-                        .emit();
+                    diag.struct_warn(&format!(
+                        "theme file \"{}\" is missing CSS rules from the \
+                                               default theme",
+                        theme_s
+                    ))
+                    .warn("the theme may appear incorrect when loaded")
+                    .help(&format!(
+                        "to see what rules are missing, call `rustdoc \
+                                        --check-theme \"{}\"`",
+                        theme_s
+                    ))
+                    .emit();
                 }
                 themes.push(theme_file);
             }
@@ -400,12 +401,16 @@ impl Options {
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(html::render::initial_ids());
         let external_html = match ExternalHtml::load(
-                &matches.opt_strs("html-in-header"),
-                &matches.opt_strs("html-before-content"),
-                &matches.opt_strs("html-after-content"),
-                &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"),
-                &diag, &mut id_map, edition, &None) {
+            &matches.opt_strs("html-in-header"),
+            &matches.opt_strs("html-before-content"),
+            &matches.opt_strs("html-after-content"),
+            &matches.opt_strs("markdown-before-content"),
+            &matches.opt_strs("markdown-after-content"),
+            &diag,
+            &mut id_map,
+            edition,
+            &None,
+        ) {
             Some(eh) => eh,
             None => return Err(3),
         };
@@ -434,15 +439,14 @@ impl Options {
             }
         }
 
-        let target = matches.opt_str("target").map_or(
-            TargetTriple::from_triple(host_triple()),
-            |target| {
-            if target.ends_with(".json") {
-                TargetTriple::TargetPath(PathBuf::from(target))
-            } else {
-                TargetTriple::TargetTriple(target)
-            }
-        });
+        let target =
+            matches.opt_str("target").map_or(TargetTriple::from_triple(host_triple()), |target| {
+                if target.ends_with(".json") {
+                    TargetTriple::TargetPath(PathBuf::from(target))
+                } else {
+                    TargetTriple::TargetTriple(target)
+                }
+            });
 
         let show_coverage = matches.opt_present("show-coverage");
         let document_private = matches.opt_present("document-private-items");
@@ -462,7 +466,7 @@ impl Options {
 
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
-            Err(e) =>{
+            Err(e) => {
                 diag.struct_err(&format!("unknown crate type: {}", e)).emit();
                 return Err(1);
             }
@@ -547,30 +551,24 @@ impl Options {
                 markdown_playground_url,
                 generate_search_filter,
                 generate_redirect_pages,
-            }
+            },
         })
     }
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub fn markdown_input(&self) -> bool {
-        self.input.extension()
-            .map_or(false, |e| e == "md" || e == "markdown")
+        self.input.extension().map_or(false, |e| e == "md" || e == "markdown")
     }
 }
 
 /// Prints deprecation warnings for deprecated options
 fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
-    let deprecated_flags = [
-       "input-format",
-       "output-format",
-       "no-defaults",
-       "passes",
-    ];
+    let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated",
-                                                    flag));
+            let mut err =
+                diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
             err.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
             if *flag == "no-defaults" {
@@ -581,10 +579,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
         }
     }
 
-    let removed_flags = [
-        "plugins",
-        "plugin-path",
-    ];
+    let removed_flags = ["plugins", "plugin-path"];
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {

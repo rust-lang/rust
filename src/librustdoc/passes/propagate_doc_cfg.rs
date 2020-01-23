@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::clean::{Crate, Item};
 use crate::clean::cfg::Cfg;
+use crate::clean::{Crate, Item};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;

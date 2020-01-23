@@ -1,7 +1,7 @@
 use crate::clean::{self, DocFragment, Item};
 use crate::core::DocContext;
 use crate::fold;
-use crate::fold::{DocFolder};
+use crate::fold::DocFolder;
 use crate::passes::Pass;
 
 use std::mem::take;
@@ -56,10 +56,10 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             if curr_kind == DocFragmentKind::Include || curr_kind != new_kind {
                 match curr_frag {
                     DocFragment::SugaredDoc(_, _, ref mut doc_string)
-                        | DocFragment::RawDoc(_, _, ref mut doc_string) => {
-                            // add a newline for extra padding between segments
-                            doc_string.push('\n');
-                        }
+                    | DocFragment::RawDoc(_, _, ref mut doc_string) => {
+                        // add a newline for extra padding between segments
+                        doc_string.push('\n');
+                    }
                     _ => {}
                 }
                 docs.push(curr_frag);
@@ -67,11 +67,11 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             } else {
                 match curr_frag {
                     DocFragment::SugaredDoc(_, ref mut span, ref mut doc_string)
-                        | DocFragment::RawDoc(_, ref mut span, ref mut doc_string) => {
-                            doc_string.push('\n');
-                            doc_string.push_str(frag.as_str());
-                            *span = span.to(frag.span());
-                        }
+                    | DocFragment::RawDoc(_, ref mut span, ref mut doc_string) => {
+                        doc_string.push('\n');
+                        doc_string.push_str(frag.as_str());
+                        *span = span.to(frag.span());
+                    }
                     _ => unreachable!(),
                 }
                 last_frag = Some(curr_frag);

@@ -15,9 +15,7 @@ struct PrivateItemDocTestLinter<'a, 'tcx> {
 
 impl<'a, 'tcx> PrivateItemDocTestLinter<'a, 'tcx> {
     fn new(cx: &'a DocContext<'tcx>) -> Self {
-        PrivateItemDocTestLinter {
-            cx,
-        }
+        PrivateItemDocTestLinter { cx }
     }
 }
 
