@@ -96,6 +96,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let generator_substs = substs.as_generator();
             self.demand_eqtype(
                 expr.span,
+                self.tcx.mk_unit(),  // WIP
+                generator_substs.resume_ty(expr_def_id, self.tcx),
+            );
+            self.demand_eqtype(
+                expr.span,
                 yield_ty,
                 generator_substs.yield_ty(expr_def_id, self.tcx),
             );
