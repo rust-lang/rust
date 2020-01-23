@@ -7,7 +7,6 @@ use lsp_types::{
     Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -38,7 +37,7 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
-    pub state: Arc<RwLock<CheckState>>,
+    pub state: Arc<CheckState>,
     cmd_send: Option<Sender<CheckCommand>>,
     handle: Option<JoinHandle<()>>,
 }
@@ -46,7 +45,7 @@ pub struct CheckWatcher {
 impl CheckWatcher {
     pub fn new(options: &CheckOptions, workspace_root: PathBuf) -> CheckWatcher {
         let options = options.clone();
-        let state = Arc::new(RwLock::new(CheckState::new()));
+        let state = Arc::new(CheckState::new());
 
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
@@ -59,7 +58,7 @@ impl CheckWatcher {
 
     /// Returns a CheckWatcher that doesn't actually do anything
     pub fn dummy() -> CheckWatcher {
-        let state = Arc::new(RwLock::new(CheckState::new()));
+        let state = Arc::new(CheckState::new());
         CheckWatcher { task_recv: never(), cmd_send: None, handle: None, state }
     }
 
@@ -87,7 +86,7 @@ impl std::ops::Drop for CheckWatcher {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CheckState {
     diagnostic_collection: HashMap<Url, Vec<Diagnostic>>,
     suggested_fix_collection: HashMap<Url, Vec<SuggestedFix>>,

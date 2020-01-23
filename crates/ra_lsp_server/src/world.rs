@@ -63,7 +63,7 @@ pub struct WorldSnapshot {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
-    pub check_watcher: Arc<RwLock<CheckState>>,
+    pub check_watcher: CheckState,
     vfs: Arc<RwLock<Vfs>>,
 }
 
@@ -220,7 +220,7 @@ impl WorldState {
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
-            check_watcher: self.check_watcher.state.clone(),
+            check_watcher: (*self.check_watcher.state).clone(),
         }
     }
 

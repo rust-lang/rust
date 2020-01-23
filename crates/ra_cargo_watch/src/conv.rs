@@ -117,7 +117,7 @@ fn is_deprecated(rd: &RustDiagnostic) -> bool {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SuggestedFix {
     pub title: String,
     pub location: Location,
