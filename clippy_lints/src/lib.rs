@@ -818,7 +818,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
     store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
     store.register_late_pass(|| box utils::author::Author);
-    store.register_late_pass(|| box types::Types);
+    let vec_box_size_threshold = conf.vec_box_size_threshold;
+    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_glob_use::EnumGlobUse);

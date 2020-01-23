@@ -152,6 +152,8 @@ define_Conf! {
     (too_many_lines_threshold, "too_many_lines_threshold", 100 => u64),
     /// Lint: LARGE_STACK_ARRAYS. The maximum allowed size for arrays on the stack
     (array_size_threshold, "array_size_threshold", 512_000 => u64),
+    /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
+    (vec_box_size_threshold, "vec_box_size_threshold", 4096 => u64),
 }
 
 impl Default for Conf {
