@@ -13,6 +13,7 @@ use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
 use rustc::mir::*;
 use rustc::ty::{Ty, TyCtxt};
+use rustc_index::vec::IndexVec;
 use rustc_target::abi::VariantIdx;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
@@ -23,6 +24,19 @@ use rustc_target::abi::VariantIdx;
 /// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
 /// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP;
 /// discriminant(_LOCAL_0) = VAR_IDX;
+/// ```
+///
+/// or
+///
+/// ```rust
+/// StorageLive(_LOCAL_TMP);
+/// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
+/// StorageLive(_LOCAL_TMP_2);
+/// _LOCAL_TMP_2 = _LOCAL_TMP
+/// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP_2;
+/// discriminant(_LOCAL_0) = VAR_IDX;
+/// StorageDead(_LOCAL_TMP_2);
+/// StorageDead(_LOCAL_TMP);
 /// ```
 ///
 /// into:
@@ -36,44 +50,157 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
     fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
-            // Need 3 statements:
-            let (s0, s1, s2) = match &mut *bb.statements {
-                [s0, s1, s2] => (s0, s1, s2),
-                _ => continue,
-            };
-
-            // Pattern match on the form we want:
-            let (local_tmp_s0, local_1, vf_s0) = match match_get_variant_field(s0) {
-                None => continue,
-                Some(x) => x,
-            };
-            let (local_tmp_s1, local_0, vf_s1) = match match_set_variant_field(s1) {
-                None => continue,
-                Some(x) => x,
-            };
-            if local_tmp_s0 != local_tmp_s1
-                // The field-and-variant information match up.
-                || vf_s0 != vf_s1
-                // Source and target locals have the same type.
-                // FIXME(Centril | oli-obk): possibly relax to same layout?
-                || local_decls[local_0].ty != local_decls[local_1].ty
-                // We're setting the discriminant of `local_0` to this variant.
-                || Some((local_0, vf_s0.var_idx)) != match_set_discr(s2)
-            {
-                continue;
+            match &mut *bb.statements {
+                [s0, s1, s2] => match_copypropd_arm([s0, s1, s2], local_decls),
+                other => match_arm(other, local_decls),
             }
-
-            // Right shape; transform!
-            match &mut s0.kind {
-                StatementKind::Assign(box (place, rvalue)) => {
-                    *place = local_0.into();
-                    *rvalue = Rvalue::Use(Operand::Move(local_1.into()));
-                }
-                _ => unreachable!(),
-            }
-            s1.make_nop();
-            s2.make_nop();
         }
+    }
+}
+
+/// Match on:
+/// ```rust
+/// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
+/// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP;
+/// discriminant(_LOCAL_0) = VAR_IDX;
+/// ```
+fn match_copypropd_arm(
+    [s0, s1, s2]: [&mut Statement<'_>; 3],
+    local_decls: &mut IndexVec<Local, LocalDecl<'_>>,
+) {
+    // Pattern match on the form we want:
+    let (local_tmp_s0, local_1, vf_s0) = match match_get_variant_field(s0) {
+        None => return,
+        Some(x) => x,
+    };
+    let (local_tmp_s1, local_0, vf_s1) = match match_set_variant_field(s1) {
+        None => return,
+        Some(x) => x,
+    };
+    if local_tmp_s0 != local_tmp_s1
+        // The field-and-variant information match up.
+        || vf_s0 != vf_s1
+        // Source and target locals have the same type.
+        // FIXME(Centril | oli-obk): possibly relax to same layout?
+        || local_decls[local_0].ty != local_decls[local_1].ty
+        // We're setting the discriminant of `local_0` to this variant.
+        || Some((local_0, vf_s0.var_idx)) != match_set_discr(s2)
+    {
+        return;
+    }
+
+    // Right shape; transform!
+    match &mut s0.kind {
+        StatementKind::Assign(box (place, rvalue)) => {
+            *place = local_0.into();
+            *rvalue = Rvalue::Use(Operand::Move(local_1.into()));
+        }
+        _ => unreachable!(),
+    }
+    s1.make_nop();
+    s2.make_nop();
+}
+
+/// Match on:
+/// ```rust
+/// StorageLive(_LOCAL_TMP);
+/// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
+/// StorageLive(_LOCAL_TMP_2);
+/// _LOCAL_TMP_2 = _LOCAL_TMP
+/// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP_2;
+/// discriminant(_LOCAL_0) = VAR_IDX;
+/// StorageDead(_LOCAL_TMP_2);
+/// StorageDead(_LOCAL_TMP);
+/// ```
+fn match_arm(stmts: &mut [Statement<'_>], local_decls: &mut IndexVec<Local, LocalDecl<'_>>) {
+    if stmts.len() != 8 {
+        return;
+    }
+
+    // StorageLive(_LOCAL_TMP);
+    let local_tmp_live = if let StatementKind::StorageLive(local_tmp_live) = &stmts[0].kind {
+        *local_tmp_live
+    } else {
+        return;
+    };
+
+    // _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
+    let (local_tmp, local_1, vf_1) = match match_get_variant_field(&stmts[1]) {
+        None => return,
+        Some(x) => x,
+    };
+
+    if local_tmp_live != local_tmp {
+        return;
+    }
+
+    // StorageLive(_LOCAL_TMP_2);
+    let local_tmp_2_live = if let StatementKind::StorageLive(local_tmp_2_live) = &stmts[2].kind {
+        *local_tmp_2_live
+    } else {
+        return;
+    };
+
+    // _LOCAL_TMP_2 = _LOCAL_TMP
+    if let StatementKind::Assign(box (lhs, Rvalue::Use(rhs))) = &stmts[3].kind {
+        let lhs = lhs.as_local();
+        if lhs != Some(local_tmp_2_live) {
+            return;
+        }
+        match rhs {
+            Operand::Copy(rhs) | Operand::Move(rhs) => {
+                if rhs.as_local() != Some(local_tmp) {
+                    return;
+                }
+            }
+            _ => return,
+        }
+    } else {
+        return;
+    }
+
+    // ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP_2;
+    let (local_tmp_2, local_0, vf_0) = match match_set_variant_field(&stmts[4]) {
+        None => return,
+        Some(x) => x,
+    };
+
+    if local_tmp_2 != local_tmp_2_live {
+        return;
+    }
+
+    if vf_1 != vf_0 // The field-and-variant information match up.
+        // Source and target locals have the same type.
+        // FIXME(Centril | oli-obk): possibly relax to same layout?
+        || local_decls[local_0].ty != local_decls[local_1].ty
+        // We're setting the discriminant of `local_0` to this variant.
+        || Some((local_0, vf_1.var_idx)) != match_set_discr(&stmts[5])
+    {
+        return;
+    }
+
+    // StorageDead(_LOCAL_TMP_2);
+    // StorageDead(_LOCAL_TMP);
+    match (&stmts[6].kind, &stmts[7].kind) {
+        (
+            StatementKind::StorageDead(local_tmp_2_dead),
+            StatementKind::StorageDead(local_tmp_dead),
+        ) => {
+            if *local_tmp_2_dead != local_tmp_2 || *local_tmp_dead != local_tmp {
+                return;
+            }
+        }
+        _ => return,
+    }
+
+    // Right shape; transform!
+    stmts[0].kind = StatementKind::Assign(Box::new((
+        local_0.into(),
+        Rvalue::Use(Operand::Move(local_1.into())),
+    )));
+
+    for s in &mut stmts[1..] {
+        s.make_nop();
     }
 }
 
