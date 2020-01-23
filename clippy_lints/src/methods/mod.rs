@@ -1189,6 +1189,27 @@ declare_clippy_lint! {
     "`FileType::is_file` is not recommended to test for readable file type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.as_ref().map(Deref::deref)` or it's aliases (such as String::as_str).
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as a
+    /// single method call.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    ///  opt.as_ref().map(String::as_str)
+    /// ```
+    /// Can be written as
+    /// ```rust,ignore
+    ///  opt.as_deref()
+    /// ```
+    pub OPTION_AS_REF_DEREF,
+    complexity,
+    "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -1238,10 +1259,11 @@ declare_lint_pass!(Methods => [
     MANUAL_SATURATING_ARITHMETIC,
     ZST_OFFSET,
     FILETYPE_IS_FILE,
+    OPTION_AS_REF_DEREF,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
-    #[allow(clippy::cognitive_complexity)]
+    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if in_macro(expr.span) {
             return;
@@ -1303,6 +1325,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
+            ["map", "as_ref"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false),
+            ["map", "as_mut"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true),
             _ => {},
         }
 
@@ -3060,6 +3084,83 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         "this call to `map()` won't have an effect on the call to `count()`",
         "make sure you did not confuse `map` with `filter` or `for_each`",
     );
+}
+
+/// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
+fn lint_option_as_ref_deref<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &hir::Expr<'_>,
+    as_ref_args: &[hir::Expr<'_>],
+    map_args: &[hir::Expr<'_>],
+    is_mut: bool,
+) {
+    let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
+    if !match_type(cx, option_ty, &paths::OPTION) {
+        return;
+    }
+
+    let deref_aliases: [&[&str]; 9] = [
+        &paths::DEREF_TRAIT_METHOD,
+        &paths::DEREF_MUT_TRAIT_METHOD,
+        &paths::CSTRING_AS_C_STR,
+        &paths::OS_STRING_AS_OS_STR,
+        &paths::PATH_BUF_AS_PATH,
+        &paths::STRING_AS_STR,
+        &paths::STRING_AS_MUT_STR,
+        &paths::VEC_AS_SLICE,
+        &paths::VEC_AS_MUT_SLICE,
+    ];
+
+    let is_deref = match map_args[1].kind {
+        hir::ExprKind::Path(ref expr_qpath) => deref_aliases.iter().any(|path| match_qpath(expr_qpath, path)),
+        hir::ExprKind::Closure(_, _, body_id, _, _) => {
+            let closure_body = cx.tcx.hir().body(body_id);
+            let closure_expr = remove_blocks(&closure_body.value);
+            if_chain! {
+                if let hir::ExprKind::MethodCall(_, _, args) = &closure_expr.kind;
+                if args.len() == 1;
+                if let hir::ExprKind::Path(qpath) = &args[0].kind;
+                if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
+                if closure_body.params[0].pat.hir_id == local_id;
+                let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
+                then {
+                    let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
+                    deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                } else {
+                    false
+                }
+            }
+        },
+
+        _ => false,
+    };
+
+    if is_deref {
+        let current_method = if is_mut {
+            ".as_mut().map(DerefMut::deref_mut)"
+        } else {
+            ".as_ref().map(Deref::deref)"
+        };
+        let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
+        let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
+        let suggestion = format!("try using {} instead", method_hint);
+
+        let msg = format!(
+            "called `{0}` (or with one of deref aliases) on an Option value. \
+                        This can be done more directly by calling `{1}` instead",
+            current_method, hint
+        );
+        span_lint_and_sugg(
+            cx,
+            OPTION_AS_REF_DEREF,
+            expr.span,
+            &msg,
+            &suggestion,
+            hint,
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
