@@ -52,7 +52,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
             match &mut *bb.statements {
-                [.., s0, s1, s2] => match_copypropd_arm([s0, s1, s2], local_decls),
+                [s0, s1, s2] => match_copypropd_arm([s0, s1, s2], local_decls),
                 _ => {}
             }
 
@@ -141,7 +141,9 @@ fn match_arm<'tcx>(
             if c.literal.ty.is_bool() =>
         {
             match (place.as_local(), c.literal.try_eval_bool(tcx, param_env)) {
-                (Some(local), Some(false)) => (1, Some(local)),
+                (Some(local), Some(false)) if !local_decls[local].is_user_variable() => {
+                    (1, Some(local))
+                }
                 _ => return,
             }
         }
@@ -194,9 +196,9 @@ fn match_arm<'tcx>(
         return;
     }
 
-    if drop_flag == Some(local_0)
-        || drop_flag == Some(local_tmp)
+    if drop_flag == Some(local_tmp)
         || drop_flag == Some(local_tmp_2)
+        || local_decls[local_tmp_2].is_user_variable()
         // The field-and-variant information match up.
         || vf_1 != vf_0
         // Source and target locals have the same type.
@@ -366,17 +368,30 @@ pub struct SinkCommonCodeFromPredecessors;
 
 impl<'tcx> MirPass<'tcx> for SinkCommonCodeFromPredecessors {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
-        for (bb, preds) in body.predecessors().clone().iter_enumerated() {
+        for (bb, mut preds) in body.predecessors().clone().into_iter_enumerated() {
+            if bb == START_BLOCK || preds.len() < 2 {
+                continue;
+            }
+
+            let is_goto = |terminator: &Terminator<'_>| {
+                if let TerminatorKind::Goto { .. } = terminator.kind { true } else { false }
+            };
+            let basic_blocks = body.basic_blocks();
+
+            preds.sort_unstable();
+            preds.dedup();
+            let is_cleanup = basic_blocks[bb].is_cleanup;
             if preds.len() < 2
-                || preds
-                    .iter()
-                    .any(|p| body.basic_blocks()[*p].terminator().successors().count() != 1)
+                || preds.iter().any(|&p| {
+                    p == bb
+                        || basic_blocks[p].is_cleanup != is_cleanup
+                        || !is_goto(basic_blocks[p].terminator())
+                })
             {
                 continue;
             }
 
             let mut matched_stmts = 0;
-            let basic_blocks = body.basic_blocks_mut();
 
             loop {
                 if let Some(stmt) = basic_blocks[preds[0]].statements.iter().nth_back(matched_stmts)
@@ -397,6 +412,8 @@ impl<'tcx> MirPass<'tcx> for SinkCommonCodeFromPredecessors {
             if matched_stmts == 0 {
                 continue;
             }
+
+            let basic_blocks = body.basic_blocks_mut();
 
             for p in &preds[1..] {
                 let stmts = &mut basic_blocks[*p].statements;
