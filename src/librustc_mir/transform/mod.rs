@@ -317,6 +317,7 @@ fn run_optimization_passes<'tcx>(
             &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
             &simplify_try::SimplifyArmIdentity,
             &simplify_try::SimplifyBranchSame,
+            &simplify_try::SinkCommonCodeFromPredecessors,
             &simplify::SimplifyCfg::new("final"),
             &simplify::SimplifyLocals,
             &add_call_guards::CriticalCallEdges,
