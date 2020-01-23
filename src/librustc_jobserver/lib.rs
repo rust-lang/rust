@@ -124,19 +124,18 @@ fn should_notify() -> bool {
 /// have more than one) so the token requesting strategy must likewise be global.
 ///
 /// Usually this doesn't matter too much, as you're not wanting to set the token
-/// requests unless you're in the one-rustc-per-process model, and we help out
-/// here a bit by not resetting it once it's set (i.e., only the first init will
-/// change the value).
+/// requests unless you're in the one-rustc-per-process model. If this is called
+/// twice with different values, then we will panic, as that likely represents a
+/// bug in the calling code.
 pub fn initialize(token_requests: bool) {
     lazy_static::initialize(&GLOBAL_CLIENT);
     lazy_static::initialize(&HELPER);
-    let previous = TOKEN_REQUESTS.compare_and_swap(
-        EMPTY,
-        if token_requests { CARGO_REQUESTED } else { MAKE_REQUESTED },
-        Ordering::SeqCst,
-    );
+    let new = if token_requests { CARGO_REQUESTED } else { MAKE_REQUESTED };
+    let previous = TOKEN_REQUESTS.compare_and_swap(EMPTY, new, Ordering::SeqCst);
     if previous == EMPTY {
         log::info!("initialized rustc jobserver, set token_requests={:?}", token_requests);
+    } else if previous != new {
+        panic!("attempted to initialize jobserver with different token request setting");
     }
 }
 
