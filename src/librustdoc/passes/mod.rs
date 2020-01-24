@@ -2,13 +2,14 @@
 //! process.
 
 use rustc::hir::def_id::DefId;
-use rustc::lint as lint;
+use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
-use syntax_pos::{DUMMY_SP, InnerSpan, Span};
 use std::ops::Range;
+use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
+use self::Condition::*;
 use crate::clean::{self, GetDefId, Item};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
@@ -53,10 +54,28 @@ pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 #[derive(Copy, Clone)]
 pub struct Pass {
     pub name: &'static str,
-    pub pass: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
+    pub run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
     pub description: &'static str,
 }
 
+/// In a list of passes, a pass that may or may not need to be run depending on options.
+#[derive(Copy, Clone)]
+pub struct ConditionalPass {
+    pub pass: Pass,
+    pub condition: Condition,
+}
+
+/// How to decide whether to run a conditional pass.
+#[derive(Copy, Clone)]
+pub enum Condition {
+    Always,
+    /// When `--document-private-items` is passed.
+    WhenDocumentPrivate,
+    /// When `--document-private-items` is not passed.
+    WhenNotDocumentPrivate,
+    /// When `--document-hidden-items` is not passed.
+    WhenNotDocumentHidden,
+}
 
 /// The full list of passes.
 pub const PASSES: &[Pass] = &[
@@ -74,70 +93,58 @@ pub const PASSES: &[Pass] = &[
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    COLLAPSE_DOCS,
-    UNINDENT_COMMENTS,
-    CHECK_PRIVATE_ITEMS_DOC_TESTS,
-    STRIP_HIDDEN,
-    STRIP_PRIVATE,
-    COLLECT_INTRA_DOC_LINKS,
-    CHECK_CODE_BLOCK_SYNTAX,
-    PROPAGATE_DOC_CFG,
-];
-
-/// The list of default passes run with `--document-private-items` is passed to rustdoc.
-pub const DEFAULT_PRIVATE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    COLLAPSE_DOCS,
-    UNINDENT_COMMENTS,
-    CHECK_PRIVATE_ITEMS_DOC_TESTS,
-    STRIP_PRIV_IMPORTS,
-    COLLECT_INTRA_DOC_LINKS,
-    CHECK_CODE_BLOCK_SYNTAX,
-    PROPAGATE_DOC_CFG,
+pub const DEFAULT_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
+    ConditionalPass::always(COLLAPSE_DOCS),
+    ConditionalPass::always(UNINDENT_COMMENTS),
+    ConditionalPass::always(CHECK_PRIVATE_ITEMS_DOC_TESTS),
+    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+    ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
+    ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
+    ConditionalPass::always(PROPAGATE_DOC_CFG),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const DEFAULT_COVERAGE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    STRIP_HIDDEN,
-    STRIP_PRIVATE,
-    CALCULATE_DOC_COVERAGE,
+pub const COVERAGE_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
+    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+    ConditionalPass::always(CALCULATE_DOC_COVERAGE),
 ];
 
-/// The list of default passes run when `--doc-coverage --document-private-items` is passed to
-/// rustdoc.
-pub const PRIVATE_COVERAGE_PASSES: &[Pass] = &[
-    COLLECT_TRAIT_IMPLS,
-    CALCULATE_DOC_COVERAGE,
-];
+impl ConditionalPass {
+    pub const fn always(pass: Pass) -> Self {
+        Self::new(pass, Always)
+    }
+
+    pub const fn new(pass: Pass, condition: Condition) -> Self {
+        ConditionalPass { pass, condition }
+    }
+}
 
 /// A shorthand way to refer to which set of passes to use, based on the presence of
-/// `--no-defaults` or `--document-private-items`.
+/// `--no-defaults` and `--show-coverage`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DefaultPassOption {
     Default,
-    Private,
     Coverage,
-    PrivateCoverage,
     None,
 }
 
 /// Returns the given default set of passes.
-pub fn defaults(default_set: DefaultPassOption) -> &'static [Pass] {
+pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
-        DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
-        DefaultPassOption::Coverage => DEFAULT_COVERAGE_PASSES,
-        DefaultPassOption::PrivateCoverage => PRIVATE_COVERAGE_PASSES,
+        DefaultPassOption::Coverage => COVERAGE_PASSES,
         DefaultPassOption::None => &[],
     }
 }
 
 /// If the given name matches a known pass, returns its information.
-pub fn find_pass(pass_name: &str) -> Option<&'static Pass> {
-    PASSES.iter().find(|p| p.name == pass_name)
+pub fn find_pass(pass_name: &str) -> Option<Pass> {
+    PASSES.iter().find(|p| p.name == pass_name).copied()
 }
 
 struct Stripper<'a> {
@@ -229,9 +236,7 @@ impl<'a> DocFolder for Stripper<'a> {
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
             // Struct variant fields have inherited visibility
-            clean::VariantItem(clean::Variant {
-                kind: clean::VariantKind::Struct(..),
-            }) => true,
+            clean::VariantItem(clean::Variant { kind: clean::VariantKind::Struct(..) }) => true,
             _ => false,
         };
 
@@ -281,8 +286,10 @@ impl<'a> DocFolder for ImplStripper<'a> {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id() {
                         if did.is_local() && !self.retained.contains(&did) {
-                            debug!("ImplStripper: stripped item in trait's generics; \
-                                    removing impl");
+                            debug!(
+                                "ImplStripper: stripped item in trait's generics; \
+                                    removing impl"
+                            );
                             return None;
                         }
                     }
@@ -298,9 +305,7 @@ struct ImportStripper;
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
-            clean::ExternCrateItem(..) | clean::ImportItem(..)
-                if i.visibility != clean::Public =>
-            {
+            clean::ExternCrateItem(..) | clean::ImportItem(..) if i.visibility != clean::Public => {
                 None
             }
             _ => self.fold_item_recur(i),
@@ -332,9 +337,7 @@ pub fn look_for_tests<'tcx>(
         }
     }
 
-    let mut tests = Tests {
-        found_tests: 0,
-    };
+    let mut tests = Tests { found_tests: 0 };
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false);
 
@@ -344,16 +347,19 @@ pub fn look_for_tests<'tcx>(
             lint::builtin::MISSING_DOC_CODE_EXAMPLES,
             hir_id,
             sp,
-            "missing code example in this documentation");
+            "missing code example in this documentation",
+        );
         diag.emit();
-    } else if check_missing_code == false &&
-              tests.found_tests > 0 &&
-              !cx.renderinfo.borrow().access_levels.is_public(item.def_id) {
+    } else if check_missing_code == false
+        && tests.found_tests > 0
+        && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+    {
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,
             span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
-            "documentation test in private item");
+            "documentation test in private item",
+        );
         diag.emit();
     }
 }
@@ -391,11 +397,7 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
-    let snippet = cx
-        .sess()
-        .source_map()
-        .span_to_snippet(span_of_attrs(attrs)?)
-        .ok()?;
+    let snippet = cx.sess().source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();
