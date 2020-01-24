@@ -10,9 +10,9 @@ fn foo() -> impl Trait { Struct }
 
 fn bar() -> impl Trait { //~ ERROR E0746
     if true {
-        return 0;
+        return 0u32;
     }
-    42
+    42u32
 }
 
 fn main() {}

@@ -22,6 +22,13 @@ fn bal() -> dyn Trait { //~ ERROR E0746
     }
     42
 }
+fn bax() -> dyn Trait { //~ ERROR E0746
+    if true {
+        Struct
+    } else {
+        42
+    }
+}
 fn bam() -> Box<dyn Trait> {
     if true {
         return Struct; //~ ERROR mismatched types
@@ -52,9 +59,9 @@ fn baw() -> Box<dyn Trait> {
 // Suggest using `impl Trait`
 fn bat() -> dyn Trait { //~ ERROR E0746
     if true {
-        return 0;
+        return 0u32;
     }
-    42
+    42u32
 }
 fn bay() -> dyn Trait { //~ ERROR E0746
     if true {

@@ -95,8 +95,27 @@ LL |     }
 LL |     Box::new(42)
    |
 
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:13
+   |
+LL | fn bax() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+   = note: if all the returned values were of the same type you could use `impl Trait` as the return type
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: you can create a new `enum` with a variant for each returned type
+help: return a boxed trait object instead
+   |
+LL | fn bax() -> Box<dyn Trait> {
+LL |     if true {
+LL |         Box::new(Struct)
+LL |     } else {
+LL |         Box::new(42)
+   |
+
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:27:16
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:34:16
    |
 LL | fn bam() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -112,7 +131,7 @@ LL |         return Struct;
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:29:5
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:36:5
    |
 LL | fn bam() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -128,7 +147,7 @@ LL |     42
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:33:16
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:40:16
    |
 LL | fn baq() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -144,7 +163,7 @@ LL |         return 0;
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:35:5
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:42:5
    |
 LL | fn baq() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -160,7 +179,7 @@ LL |     42
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:39:9
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:46:9
    |
 LL | fn baz() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -176,7 +195,7 @@ LL |         Struct
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:41:9
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:48:9
    |
 LL | fn baz() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -192,7 +211,7 @@ LL |         42
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:46:9
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:53:9
    |
 LL | fn baw() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -208,7 +227,7 @@ LL |         0
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0308]: mismatched types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:48:9
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:55:9
    |
 LL | fn baw() -> Box<dyn Trait> {
    |             -------------- expected `std::boxed::Box<(dyn Trait + 'static)>` because of return type
@@ -224,38 +243,30 @@ LL |         42
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:53:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:60:13
    |
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
+help: return `impl Trait` instead, as all return paths are of type `u32`, which implements `Trait`
    |
 LL | fn bat() -> impl Trait {
    |             ^^^^^^^^^^
 
 error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:59:13
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:66:13
    |
 LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl Trait` as the return type
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return `impl Trait` instead, as all return paths are of type `u32`, which implements `Trait`
    |
-LL | fn bay() -> Box<dyn Trait> {
-LL |     Box::new(if true {
-LL |         0u32
-LL |     } else {
-LL |         42u32
-LL |     })
-   |
+LL | fn bay() -> impl Trait {
+   |             ^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0746.
 For more information about an error, try `rustc --explain E0277`.

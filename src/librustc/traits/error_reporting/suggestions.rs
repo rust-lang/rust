@@ -600,12 +600,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // Visit to make sure there's a single `return` type to suggest `impl Trait`,
         // otherwise suggest using `Box<dyn Trait>` or an enum.
-        let mut visitor = ReturnsVisitor(vec![]);
+        let mut visitor = ReturnsVisitor::new();
         visitor.visit_body(&body);
 
         let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
 
-        let mut ret_types = visitor.0.iter().filter_map(|expr| tables.node_type_opt(expr.hir_id));
+        let mut ret_types =
+            visitor.returns.iter().filter_map(|expr| tables.node_type_opt(expr.hir_id));
         let (last_ty, all_returns_have_same_type) = ret_types.clone().fold(
             (None, true),
             |(last_ty, mut same): (std::option::Option<Ty<'_>>, bool), ty| {
@@ -677,7 +678,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
                 // Get all the return values and collect their span and suggestion.
                 let mut suggestions = visitor
-                    .0
+                    .returns
                     .iter()
                     .map(|expr| {
                         (
@@ -737,10 +738,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
-            let mut visitor = ReturnsVisitor(vec![]);
+            let mut visitor = ReturnsVisitor::new();
             visitor.visit_body(&body);
             let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
-            for expr in &visitor.0 {
+            for expr in &visitor.returns {
                 if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(&returned_ty);
                     err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
@@ -1691,7 +1692,16 @@ pub fn suggest_constraining_type_param(
 
 /// Collect all the returned expressions within the input expression.
 /// Used to point at the return spans when we want to suggest some change to them.
-struct ReturnsVisitor<'v>(Vec<&'v hir::Expr<'v>>);
+struct ReturnsVisitor<'v> {
+    returns: Vec<&'v hir::Expr<'v>>,
+    in_block_tail: bool,
+}
+
+impl ReturnsVisitor<'_> {
+    fn new() -> Self {
+        ReturnsVisitor { returns: vec![], in_block_tail: false }
+    }
+}
 
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     type Map = rustc::hir::map::Map<'v>;
@@ -1701,20 +1711,41 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        if let hir::ExprKind::Ret(Some(ex)) = ex.kind {
-            self.0.push(ex);
+        match ex.kind {
+            hir::ExprKind::Ret(Some(ex)) => {
+                self.returns.push(ex);
+            }
+            hir::ExprKind::Block(block, _) if self.in_block_tail => {
+                self.in_block_tail = false;
+                for stmt in block.stmts {
+                    hir::intravisit::walk_stmt(self, stmt);
+                }
+                self.in_block_tail = true;
+                if let Some(expr) = block.expr {
+                    self.visit_expr(expr);
+                }
+            }
+            hir::ExprKind::Match(_, arms, _) if self.in_block_tail => {
+                for arm in arms {
+                    self.visit_expr(arm.body);
+                }
+            }
+            // We need to walk to find `return`s in the entire body.
+            _ if !self.in_block_tail => hir::intravisit::walk_expr(self, ex),
+            _ => self.returns.push(ex),
         }
-        hir::intravisit::walk_expr(self, ex);
     }
 
     fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+        let prev = self.in_block_tail;
         if body.generator_kind().is_none() {
             if let hir::ExprKind::Block(block, None) = body.value.kind {
-                if let Some(expr) = block.expr {
-                    self.0.push(expr);
+                if block.expr.is_some() {
+                    self.in_block_tail = true;
                 }
             }
         }
         hir::intravisit::walk_body(self, body);
+        self.in_block_tail = prev;
     }
 }
