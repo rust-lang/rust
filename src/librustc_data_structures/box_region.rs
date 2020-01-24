@@ -25,6 +25,7 @@ pub struct PinnedGenerator<I, A, R> {
 }
 
 impl<I, A, R> PinnedGenerator<I, A, R> {
+    #[cfg(bootstrap)]
     pub fn new<T: Generator<Yield = YieldType<I, A>, Return = R> + 'static>(
         generator: T,
     ) -> (I, Self) {
@@ -39,6 +40,22 @@ impl<I, A, R> PinnedGenerator<I, A, R> {
         (init, result)
     }
 
+    #[cfg(not(bootstrap))]
+    pub fn new<T: Generator<Yield = YieldType<I, A>, Return = R> + 'static>(
+        generator: T,
+    ) -> (I, Self) {
+        let mut result = PinnedGenerator { generator: Box::pin(generator) };
+
+        // Run it to the first yield to set it up
+        let init = match Pin::new(&mut result.generator).resume(()) {
+            GeneratorState::Yielded(YieldType::Initial(y)) => y,
+            _ => panic!(),
+        };
+
+        (init, result)
+    }
+
+    #[cfg(bootstrap)]
     pub unsafe fn access(&mut self, closure: *mut dyn FnMut()) {
         BOX_REGION_ARG.with(|i| {
             i.set(Action::Access(AccessAction(closure)));
@@ -50,11 +67,33 @@ impl<I, A, R> PinnedGenerator<I, A, R> {
         }
     }
 
+    #[cfg(not(bootstrap))]
+    pub unsafe fn access(&mut self, closure: *mut dyn FnMut()) {
+        BOX_REGION_ARG.with(|i| {
+            i.set(Action::Access(AccessAction(closure)));
+        });
+
+        // Call the generator, which in turn will call the closure in BOX_REGION_ARG
+        if let GeneratorState::Complete(_) = Pin::new(&mut self.generator).resume(()) {
+            panic!()
+        }
+    }
+
+    #[cfg(bootstrap)]
     pub fn complete(&mut self) -> R {
         // Tell the generator we want it to complete, consuming it and yielding a result
         BOX_REGION_ARG.with(|i| i.set(Action::Complete));
 
         let result = Pin::new(&mut self.generator).resume();
+        if let GeneratorState::Complete(r) = result { r } else { panic!() }
+    }
+
+    #[cfg(not(bootstrap))]
+    pub fn complete(&mut self) -> R {
+        // Tell the generator we want it to complete, consuming it and yielding a result
+        BOX_REGION_ARG.with(|i| i.set(Action::Complete));
+
+        let result = Pin::new(&mut self.generator).resume(());
         if let GeneratorState::Complete(r) = result { r } else { panic!() }
     }
 }
