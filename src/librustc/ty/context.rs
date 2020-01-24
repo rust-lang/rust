@@ -1518,13 +1518,10 @@ impl<'tcx> TyCtxt<'tcx> {
         &self,
         def_id: crate::hir::def_id::DefId,
     ) -> (&'static str, &'static str) {
-        self.def_kind(def_id).map_or_else(
-            || {
-                // TODO: is it a problem to try to use the ty here?
-                self.type_of(def_id).kind.article_and_description()
-            },
-            |def_kind| (def_kind.article(), def_kind.descr(def_id)),
-        )
+        match self.def_kind(def_id) {
+            Some(def_kind) => (def_kind.article(), def_kind.descr(def_id)),
+            None => self.type_of(def_id).kind.article_and_description(),
+        }
     }
 }
 

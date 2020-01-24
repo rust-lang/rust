@@ -435,7 +435,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
             || (*category == ConstraintCategory::Assignment
                 && self.universal_regions.defining_ty.is_fn_def())
-            || self.universal_regions.defining_ty.is_closure()
+            || self.universal_regions.defining_ty.is_const()
         {
             return self.report_general_error(&ErrorConstraintInfo {
                 fr_is_local: true,
