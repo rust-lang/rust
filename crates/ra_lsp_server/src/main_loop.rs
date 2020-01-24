@@ -210,7 +210,7 @@ pub fn main_loop(
             )?;
         }
     }
-
+    world_state.analysis_host.request_cancellation();
     log::info!("waiting for tasks to finish...");
     task_receiver.into_iter().for_each(|task| {
         on_task(task, &connection.sender, &mut loop_state.pending_requests, &mut world_state)
