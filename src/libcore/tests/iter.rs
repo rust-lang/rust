@@ -1477,6 +1477,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(c.clone().skip(5).size_hint().1, None);
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
+    assert_eq!(c.clone().map_while(|_| None::<()>).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
@@ -1491,6 +1492,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().skip(3).size_hint(), (7, Some(7)));
     assert_eq!(vi.clone().skip(12).size_hint(), (0, Some(0)));
     assert_eq!(vi.clone().take_while(|_| false).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().map_while(|_| None::<()>).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().skip_while(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.clone().chain(v2).size_hint(), (13, Some(13)));
