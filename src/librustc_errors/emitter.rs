@@ -461,7 +461,7 @@ pub const MAX_HIGHLIGHT_LINES: usize = 6;
 /// Maximum number of lines we will print for a multiline suggestion; arbitrary.
 ///
 /// This should be replaced with a more involved mechanism to output multiline suggestions that
-/// more closely mimmics the regular diagnostic output, where irrelevant code lines are ellided.
+/// more closely mimmics the regular diagnostic output, where irrelevant code lines are elided.
 pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 20;
 /// Maximum number of suggestions to be shown
 ///

@@ -10,9 +10,9 @@ fn foo() -> dyn Trait { Struct }
 
 fn bar() -> dyn Trait { //~ ERROR E0746
     if true {
-        return 0u32;
+        return 0;
     }
-    42u32
+    42
 }
 
 fn main() {}

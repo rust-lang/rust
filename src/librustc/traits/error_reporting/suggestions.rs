@@ -600,7 +600,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // Visit to make sure there's a single `return` type to suggest `impl Trait`,
         // otherwise suggest using `Box<dyn Trait>` or an enum.
-        let mut visitor = ReturnsVisitor::new();
+        let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
 
         let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
@@ -742,7 +742,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
-            let mut visitor = ReturnsVisitor::new();
+            let mut visitor = ReturnsVisitor::default();
             visitor.visit_body(&body);
             let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
             for expr in &visitor.returns {
@@ -1696,15 +1696,10 @@ pub fn suggest_constraining_type_param(
 
 /// Collect all the returned expressions within the input expression.
 /// Used to point at the return spans when we want to suggest some change to them.
+#[derive(Default)]
 struct ReturnsVisitor<'v> {
     returns: Vec<&'v hir::Expr<'v>>,
     in_block_tail: bool,
-}
-
-impl ReturnsVisitor<'_> {
-    fn new() -> Self {
-        ReturnsVisitor { returns: vec![], in_block_tail: false }
-    }
 }
 
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
@@ -1715,6 +1710,10 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        // Visit every expression to detect `return` paths, either through the function's tail
+        // expression or `return` statements. We walk all nodes to find `return` statements, but
+        // we only care about tail expressions when `in_block_tail` is `true`, which means that
+        // they're in the return path of the function body.
         match ex.kind {
             hir::ExprKind::Ret(Some(ex)) => {
                 self.returns.push(ex);
@@ -1741,7 +1740,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     }
 
     fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-        let prev = self.in_block_tail;
+        assert!(!self.in_block_tail);
         if body.generator_kind().is_none() {
             if let hir::ExprKind::Block(block, None) = body.value.kind {
                 if block.expr.is_some() {
@@ -1750,6 +1749,5 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
             }
         }
         hir::intravisit::walk_body(self, body);
-        self.in_block_tail = prev;
     }
 }
