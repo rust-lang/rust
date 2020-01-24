@@ -13,13 +13,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_poly(self, def_id: DefId) -> ConstEvalResult<'tcx> {
         // In some situations def_id will have substitutions within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
-        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any og them are
+        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
         let param_env = self.param_env(def_id).with_reveal_all();
-        self.const_eval_validated(param_env.and(cid))
+        self.const_eval_global_id(param_env, cid, None)
     }
 
     /// Resolves and evaluates a constant.
@@ -41,11 +41,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> ConstEvalResult<'tcx> {
         let instance = ty::Instance::resolve(self, param_env, def_id, substs);
         if let Some(instance) = instance {
-            if let Some(promoted) = promoted {
-                self.const_eval_promoted(param_env, instance, promoted)
-            } else {
-                self.const_eval_instance(param_env, instance, span)
-            }
+            let cid = GlobalId { instance, promoted };
+            self.const_eval_global_id(param_env, cid, span)
         } else {
             Err(ErrorHandled::TooGeneric)
         }
@@ -57,22 +54,23 @@ impl<'tcx> TyCtxt<'tcx> {
         instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let cid = GlobalId { instance, promoted: None };
-        if let Some(span) = span {
-            self.at(span).const_eval_validated(param_env.and(cid))
-        } else {
-            self.const_eval_validated(param_env.and(cid))
-        }
+        self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
 
-    /// Evaluate a promoted constant.
-    pub fn const_eval_promoted(
+    /// Evaluate a constant.
+    pub fn const_eval_global_id(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        instance: ty::Instance<'tcx>,
-        promoted: mir::Promoted,
+        cid: GlobalId<'tcx>,
+        span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let cid = GlobalId { instance, promoted: Some(promoted) };
-        self.const_eval_validated(param_env.and(cid))
+        // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
+        // improve caching of queries.
+        let inputs = self.erase_regions(&param_env.and(cid));
+        if let Some(span) = span {
+            self.at(span).const_eval_validated(inputs)
+        } else {
+            self.const_eval_validated(inputs)
+        }
     }
 }
