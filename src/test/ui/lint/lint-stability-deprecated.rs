@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
