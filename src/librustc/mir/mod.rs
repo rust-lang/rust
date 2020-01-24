@@ -1797,8 +1797,8 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
-            PlaceRef { local, projection: &[] }
-            | PlaceRef { local, projection: &[ProjectionElem::Deref] } => Some(local),
+            PlaceRef { local, projection: [] }
+            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
         }
     }
