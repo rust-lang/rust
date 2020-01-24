@@ -81,7 +81,7 @@ impl TreeDiff {
 /// Specifically, returns a map whose keys are descendants of `from` and values
 /// are descendants of `to`, such that  `replace_descendants(from, map) == to`.
 ///
-/// A trivial solution is a singletom map `{ from: to }`, but this function
+/// A trivial solution is a singleton map `{ from: to }`, but this function
 /// tries to find a more fine-grained diff.
 pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     let mut buf = FxHashMap::default();

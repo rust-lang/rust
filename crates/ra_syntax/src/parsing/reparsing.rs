@@ -46,8 +46,7 @@ fn reparse_token<'node>(
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             if token.kind() == WHITESPACE || token.kind() == COMMENT {
                 // removing a new line may extends previous token
-                if token.text().to_string()[edit.delete - token.text_range().start()].contains('\n')
-                {
+                if token.text()[edit.delete - token.text_range().start()].contains('\n') {
                     return None;
                 }
             }

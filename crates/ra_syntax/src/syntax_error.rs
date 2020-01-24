@@ -4,7 +4,7 @@ use std::fmt;
 
 use ra_parser::ParseError;
 
-use crate::{validation::EscapeError, TextRange, TextUnit};
+use crate::{validation::EscapeError, TextRange, TextUnit, TokenizeError};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
@@ -12,6 +12,10 @@ pub struct SyntaxError {
     location: Location,
 }
 
+// FIXME: Location should be just `Location(TextRange)`
+// TextUnit enum member just unnecessarily compicates things,
+// we should'n treat it specially, it just as a `TextRange { start: x, end: x + 1 }`
+// see `location_to_range()` in ra_ide/src/diagnostics
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Location {
     Offset(TextUnit),
@@ -79,6 +83,7 @@ impl fmt::Display for SyntaxError {
 pub enum SyntaxErrorKind {
     ParseError(ParseError),
     EscapeError(EscapeError),
+    TokenizeError(TokenizeError),
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
     InvalidTupleIndexFormat,
