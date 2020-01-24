@@ -831,12 +831,25 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    fn pretty_print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn pretty_print_const(
+        mut self,
+        ct: &'tcx ty::Const<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
             p!(write("Const({:?}: {:?})", ct.val, ct.ty));
             return Ok(self);
+        }
+
+        macro_rules! print_underscore {
+            () => {{
+                p!(write("_"));
+                if print_ty {
+                    p!(write(": "), print(ct.ty));
+                }
+            }};
         }
 
         match (ct.val, &ct.ty.kind) {
@@ -857,22 +870,27 @@ pub trait PrettyPrinter<'tcx>:
                                 {
                                     p!(write("{}", snip))
                                 } else {
-                                    p!(write("_: "), print(ct.ty))
+                                    print_underscore!()
                                 }
                             } else {
-                                p!(write("_: "), print(ct.ty))
+                                print_underscore!()
                             }
                         }
                     }
                 }
             }
-            (ty::ConstKind::Infer(..), _) => p!(write("_: "), print(ct.ty)),
+            (ty::ConstKind::Infer(..), _) => print_underscore!(),
             (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
-            (ty::ConstKind::Value(value), _) => return self.pretty_print_const_value(value, ct.ty),
+            (ty::ConstKind::Value(value), _) => {
+                return self.pretty_print_const_value(value, ct.ty, print_ty);
+            }
 
             _ => {
                 // fallback
-                p!(write("{:?} : ", ct.val), print(ct.ty))
+                p!(write("{:?}", ct.val));
+                if print_ty {
+                    p!(write(" : "), print(ct.ty));
+                }
             }
         };
         Ok(self)
@@ -882,6 +900,7 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         ct: ConstValue<'tcx>,
         ty: Ty<'tcx>,
+        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
@@ -988,7 +1007,10 @@ pub trait PrettyPrinter<'tcx>:
                 };
                 if !printed {
                     // fallback
-                    p!(write("{:?} : ", ct), print(ty))
+                    p!(write("{:?}", ct));
+                    if print_ty {
+                        p!(write(" : "), print(ty));
+                    }
                 }
             }
         };
@@ -1162,7 +1184,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 
     fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct)
+        self.pretty_print_const(ct, true)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {

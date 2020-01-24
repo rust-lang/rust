@@ -237,7 +237,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         // only print integers
         if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { .. })) = ct.val {
             if ct.ty.is_integral() {
-                return self.pretty_print_const(ct);
+                return self.pretty_print_const(ct, true);
             }
         }
         self.write_str("_")?;
