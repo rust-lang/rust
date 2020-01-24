@@ -202,6 +202,9 @@ impl AnalysisHost {
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, ra_prof::Bytes)> {
         self.db.per_query_memory_usage()
     }
+    pub fn request_cancellation(&mut self) {
+        self.db.request_cancellation();
+    }
     pub fn raw_database(
         &self,
     ) -> &(impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {

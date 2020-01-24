@@ -166,13 +166,15 @@ impl LibraryData {
 const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
+    pub(crate) fn request_cancellation(&mut self) {
+        let _p = profile("RootDatabase::request_cancellation");
+        self.salsa_runtime_mut().synthetic_write(Durability::LOW);
+    }
+
     pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         let _p = profile("RootDatabase::apply_change");
+        self.request_cancellation();
         log::info!("apply_change {:?}", change);
-        {
-            let _p = profile("RootDatabase::apply_change/cancellation");
-            self.salsa_runtime_mut().synthetic_write(Durability::LOW);
-        }
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
