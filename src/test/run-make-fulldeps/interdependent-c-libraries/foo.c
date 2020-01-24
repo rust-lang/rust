@@ -1,2 +1,1 @@
-// ignore-license
 void foo() {}

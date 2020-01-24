@@ -1,4 +1,3 @@
-// ignore-license
 void foo();
 
 int main() {
