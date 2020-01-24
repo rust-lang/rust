@@ -510,27 +510,15 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                if obligation.param_env.has_local_value() {
-                    ProcessResult::Unchanged
-                } else {
-                    if !substs.has_local_value() {
-                        match self.selcx.tcx().const_eval_resolve(
-                            obligation.param_env,
-                            def_id,
-                            substs,
-                            None,
-                            Some(obligation.cause.span),
-                        ) {
-                            Ok(_) => ProcessResult::Changed(vec![]),
-                            Err(err) => {
-                                ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err)))
-                            }
-                        }
-                    } else {
-                        pending_obligation.stalled_on =
-                            substs.types().map(|ty| infer_ty(ty)).collect();
-                        ProcessResult::Unchanged
-                    }
+                match self.selcx.infcx().const_eval_resolve(
+                    obligation.param_env,
+                    def_id,
+                    substs,
+                    None,
+                    Some(obligation.cause.span),
+                ) {
+                    Ok(_) => ProcessResult::Changed(vec![]),
+                    Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
                 }
             }
         }
