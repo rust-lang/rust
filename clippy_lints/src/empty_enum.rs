@@ -8,15 +8,28 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks for `enum`s with no variants.
     ///
-    /// **Why is this bad?** Enum's with no variants should be replaced with `!`,
-    /// the uninhabited type,
-    /// or a wrapper around it.
+    /// **Why is this bad?** If you want to introduce a type which
+    /// can't be instantiated, you should use `!` (the never type),
+    /// or a wrapper around it, because `!` has more extensive
+    /// compiler support (type inference, etc...) and wrappers
+    /// around it are the conventional way to define an uninhabited type.
+    /// For further information visit [never type documentation](https://doc.rust-lang.org/std/primitive.never.html)
+    ///
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
+    ///
+    /// Bad:
     /// ```rust
     /// enum Test {}
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![feature(never_type)]
+    ///
+    /// struct Test(!);
     /// ```
     pub EMPTY_ENUM,
     pedantic,
@@ -35,7 +48,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
                 span_lint_and_then(cx, EMPTY_ENUM, item.span, "enum with no variants", |db| {
                     db.span_help(
                         item.span,
-                        "consider using the uninhabited type `!` or a wrapper around it",
+                        "consider using the uninhabited type `!` (never type) or a wrapper \
+                         around it to introduce a type which can't be instantiated",
                     );
                 });
             }
