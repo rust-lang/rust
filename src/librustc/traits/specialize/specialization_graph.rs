@@ -11,6 +11,7 @@ pub use rustc::traits::types::specialization_graph::*;
 pub enum FutureCompatOverlapErrorKind {
     Issue43355,
     Issue33140,
+    LeakCheck,
 }
 
 #[derive(Debug)]
@@ -111,6 +112,7 @@ impl<'tcx> Children {
                 possible_sibling,
                 impl_def_id,
                 traits::IntercrateMode::Issue43355,
+                traits::SkipLeakCheck::default(),
                 |overlap| {
                     if let Some(overlap_kind) =
                         tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
@@ -161,6 +163,7 @@ impl<'tcx> Children {
                         possible_sibling,
                         impl_def_id,
                         traits::IntercrateMode::Fixed,
+                        traits::SkipLeakCheck::default(),
                         |overlap| {
                             last_lint = Some(FutureCompatOverlapError {
                                 error: overlap_error(overlap),
@@ -169,6 +172,23 @@ impl<'tcx> Children {
                         },
                         || (),
                     );
+
+                    if last_lint.is_none() {
+                        traits::overlapping_impls(
+                            tcx,
+                            possible_sibling,
+                            impl_def_id,
+                            traits::IntercrateMode::Fixed,
+                            traits::SkipLeakCheck::Yes,
+                            |overlap| {
+                                last_lint = Some(FutureCompatOverlapError {
+                                    error: overlap_error(overlap),
+                                    kind: FutureCompatOverlapErrorKind::LeakCheck,
+                                });
+                            },
+                            || (),
+                        );
+                    }
                 }
 
                 // no overlap (error bailed already via ?)
@@ -247,7 +267,7 @@ impl<'tcx> Graph {
         if trait_ref.references_error() {
             debug!(
                 "insert: inserting dummy node for erroneous TraitRef {:?}, \
-                    impl_def_id={:?}, trait_def_id={:?}",
+                 impl_def_id={:?}, trait_def_id={:?}",
                 trait_ref, impl_def_id, trait_def_id
             );
 
@@ -326,7 +346,7 @@ impl<'tcx> Graph {
         if self.parent.insert(child, parent).is_some() {
             bug!(
                 "When recording an impl from the crate store, information about its parent \
-                  was already present."
+                 was already present."
             );
         }
 

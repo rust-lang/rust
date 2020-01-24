@@ -19,6 +19,7 @@ use crate::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::DUMMY_SP;
 
@@ -97,7 +98,7 @@ pub fn translate_substs<'a, 'tcx>(
                 |_| {
                     bug!(
                         "When translating substitutions for specialization, the expected \
-                          specialization failed to hold"
+                         specialization failed to hold"
                     )
                 },
             )
@@ -268,7 +269,7 @@ fn fulfill_implication<'a, 'tcx>(
                 // no dice!
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
-                        could not fulfill: {:?} given {:?}",
+                     could not fulfill: {:?} given {:?}",
                     source_trait_ref, target_trait_ref, errors, param_env.caller_bounds
                 );
                 Err(())
@@ -342,6 +343,7 @@ pub(super) fn specialization_graph_provider(
                             FutureCompatOverlapErrorKind::Issue33140 => {
                                 ORDER_DEPENDENT_TRAIT_OBJECTS
                             }
+                            FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
                         };
                         tcx.struct_span_lint_hir(
                             lint,

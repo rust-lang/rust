@@ -7,6 +7,7 @@
 use crate::infer::{CombinedSnapshot, InferOk};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::IntercrateMode;
+use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::Subst;
@@ -53,6 +54,7 @@ pub fn overlapping_impls<F1, F2, R>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
+    skip_leak_check: SkipLeakCheck,
     on_overlap: F1,
     no_overlap: F2,
 ) -> R
@@ -70,7 +72,7 @@ where
 
     let overlaps = tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
-        overlap(selcx, impl1_def_id, impl2_def_id).is_some()
+        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).is_some()
     });
 
     if !overlaps {
@@ -83,7 +85,7 @@ where
     tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
         selcx.enable_tracking_intercrate_ambiguity_causes();
-        on_overlap(overlap(selcx, impl1_def_id, impl2_def_id).unwrap())
+        on_overlap(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).unwrap())
     })
 }
 
@@ -113,12 +115,15 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
+    skip_leak_check: SkipLeakCheck,
     a_def_id: DefId,
     b_def_id: DefId,
 ) -> Option<OverlapResult<'tcx>> {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
 
-    selcx.infcx().probe(|snapshot| overlap_within_probe(selcx, a_def_id, b_def_id, snapshot))
+    selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
+        overlap_within_probe(selcx, a_def_id, b_def_id, snapshot)
+    })
 }
 
 fn overlap_within_probe(
@@ -146,7 +151,9 @@ fn overlap_within_probe(
         .eq_impl_headers(&a_impl_header, &b_impl_header)
     {
         Ok(InferOk { obligations, value: () }) => obligations,
-        Err(_) => return None,
+        Err(_) => {
+            return None;
+        }
     };
 
     debug!("overlap: unification check succeeded");

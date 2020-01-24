@@ -1,5 +1,5 @@
 use crate::namespace::Namespace;
-use rustc::traits::{self, IntercrateMode};
+use rustc::traits::{self, IntercrateMode, SkipLeakCheck};
 use rustc::ty::TyCtxt;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -76,6 +76,9 @@ impl InherentOverlapChecker<'tcx> {
                     impl1_def_id,
                     impl2_def_id,
                     IntercrateMode::Issue43355,
+                    // We go ahead and just skip the leak check for
+                    // inherent impls without warning.
+                    SkipLeakCheck::Yes,
                     |overlap| {
                         self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
                         false
