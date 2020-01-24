@@ -273,8 +273,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let base_static =
-                PlaceRef { local: place.local, projection: &[ProjectionElem::Deref] };
+            let base_static = PlaceRef { local: place.local, projection: &[ProjectionElem::Deref] };
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
