@@ -51,10 +51,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
-
-        // FIXME(let_chains): Deal with `::Let`.
-        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.kind {
-            self.check_match(scrut, arms, source);
+        match &ex.kind {
+            hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, *source),
+            hir::ExprKind::Let(pat, scrut) => self.check_let(pat, scrut),
+            _ => {}
         }
     }
 
@@ -145,6 +145,24 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |cx| f(cx));
     }
 
+    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, scrut: &hir::Expr<'_>) {
+        self.check_patterns(false, pat);
+        // FIXME(let_chains, Centril): Exhaustiveness of `let p = e` is unnecessary for soundness.
+        // Consider dropping the checks here, at least the non-linting part for perf reasons.
+        self.check_in_cx(scrut.hir_id, |ref mut cx| {
+            let mut have_errors = false;
+            let pattern = self.lower_pattern(cx, pat, &mut have_errors).0;
+            if have_errors {
+                return;
+            }
+            let wild = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(pattern.ty));
+            wild.span = pattern.span;
+            let arms = &[(pattern, pat.hir_id, false), (wild, pat.hir_id, false)];
+            let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause: true };
+            self.check_union_irrefutable(cx, scrut, arms, desugar)
+        });
+    }
+
     fn check_match(
         &mut self,
         scrut: &hir::Expr<'_>,
@@ -158,36 +176,47 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
         self.check_in_cx(scrut.hir_id, |ref mut cx| {
             let mut have_errors = false;
-
             let inlined_arms: Vec<_> = arms
                 .iter()
                 .map(|hir::Arm { pat, guard, .. }| {
                     (self.lower_pattern(cx, pat, &mut have_errors).0, pat.hir_id, guard.is_some())
                 })
                 .collect();
-
-            // Bail out early if inlining failed.
             if have_errors {
+                // Inlining failed, bail out early.
                 return;
             }
 
-            // Fourth, check for unreachable arms.
-            let matrix = check_arms(cx, &inlined_arms, source);
-
-            // Fifth, check if the match is exhaustive.
-            let scrut_ty = self.tables.node_type(scrut.hir_id);
-            // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
-            // since an empty matrix can occur when there are arms, if those arms all have guards.
-            let is_empty_match = inlined_arms.is_empty();
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
+            self.check_union_irrefutable(cx, scrut, &inlined_arms, source);
         })
+    }
+
+    fn check_union_irrefutable<'p>(
+        &self,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        scrut: &hir::Expr<'_>,
+        arms: &[(&'p super::Pat<'tcx>, HirId, bool)],
+        source: hir::MatchSource,
+    ) {
+        // Check for unreachable arms.
+        let matrix = check_arms(cx, &arms, source);
+
+        // Check if the match is exhaustive.
+        let scrut_ty = self.tables.node_type(scrut.hir_id);
+        // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
+        // since an empty matrix can occur when there are arms, if those arms all have guards.
+        check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, arms.is_empty());
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
         self.check_in_cx(pat.hir_id, |ref mut cx| {
-            let (pattern, pattern_ty) = self.lower_pattern(cx, pat, &mut false);
-            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
+            let mut has_errors = false;
+            let (pattern, pattern_ty) = self.lower_pattern(cx, pat, &mut has_errors);
+            if has_errors {
+                return;
+            }
 
+            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
             let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
                 Ok(_) => return,
                 Err(err) => err,
