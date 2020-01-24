@@ -59,15 +59,15 @@ fn baw() -> Box<dyn Trait> {
 // Suggest using `impl Trait`
 fn bat() -> dyn Trait { //~ ERROR E0746
     if true {
-        return 0u32;
+        return 0;
     }
-    42u32
+    42
 }
 fn bay() -> dyn Trait { //~ ERROR E0746
     if true {
-        0u32
+        0
     } else {
-        42u32
+        42
     }
 }
 

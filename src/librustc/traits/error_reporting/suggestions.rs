@@ -605,11 +605,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
 
-        let mut ret_types =
-            visitor.returns.iter().filter_map(|expr| tables.node_type_opt(expr.hir_id));
+        let mut ret_types = visitor
+            .returns
+            .iter()
+            .filter_map(|expr| tables.node_type_opt(expr.hir_id))
+            .map(|ty| self.resolve_vars_if_possible(&ty));
         let (last_ty, all_returns_have_same_type) = ret_types.clone().fold(
             (None, true),
             |(last_ty, mut same): (std::option::Option<Ty<'_>>, bool), ty| {
+                let ty = self.resolve_vars_if_possible(&ty);
                 same &= last_ty.map_or(true, |last_ty| last_ty == ty) && ty.kind != ty::Error;
                 (Some(ty), same)
             },

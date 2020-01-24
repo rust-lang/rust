@@ -249,7 +249,7 @@ LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `u32`, which implements `Trait`
+help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bat() -> impl Trait {
    |             ^^^^^^^^^^
@@ -261,7 +261,7 @@ LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `u32`, which implements `Trait`
+help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bay() -> impl Trait {
    |             ^^^^^^^^^^
