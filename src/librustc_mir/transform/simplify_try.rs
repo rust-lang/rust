@@ -52,7 +52,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
             match &mut *bb.statements {
-                [s0, s1, s2] => match_copypropd_arm([s0, s1, s2], local_decls),
+                [s0, s1, s2] => match_copypropd_arm([s0, s1, s2], local_decls, tcx),
                 _ => {}
             }
 
@@ -69,9 +69,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 /// ((_LOCAL_0 as Variant).FIELD: TY) = move _LOCAL_TMP;
 /// discriminant(_LOCAL_0) = VAR_IDX;
 /// ```
-fn match_copypropd_arm(
-    [s0, s1, s2]: [&mut Statement<'_>; 3],
-    local_decls: &mut IndexVec<Local, LocalDecl<'_>>,
+fn match_copypropd_arm<'tcx>(
+    [s0, s1, s2]: [&mut Statement<'tcx>; 3],
+    local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
+    tcx: TyCtxt<'tcx>,
 ) {
     // Pattern match on the form we want:
     let (local_tmp_s0, local_1, vf_s0) = match match_get_variant_field(s0) {
@@ -88,6 +89,8 @@ fn match_copypropd_arm(
         // Source and target locals have the same type.
         // FIXME(Centril | oli-obk): possibly relax to same layout?
         || local_decls[local_0].ty != local_decls[local_1].ty
+        // `match` on a value with dtor will drop the original value.
+        || has_dtor(tcx, local_decls[local_1].ty)
         // We're setting the discriminant of `local_0` to this variant.
         || Some((local_0, vf_s0.var_idx)) != match_set_discr(s2)
     {
@@ -204,6 +207,8 @@ fn match_arm<'tcx>(
         // Source and target locals have the same type.
         // FIXME(Centril | oli-obk): possibly relax to same layout?
         || local_decls[local_0].ty != local_decls[local_1].ty
+        // `match` on a value with dtor will drop the original value.
+        || has_dtor(tcx, local_decls[local_1].ty)
         // We're setting the discriminant of `local_0` to this variant.
         || Some((local_0, vf_1.var_idx)) != match_set_discr(&stmts[idx + 5])
     {
@@ -239,6 +244,10 @@ fn match_arm<'tcx>(
     for s in &mut stmts[idx + 1..] {
         s.make_nop();
     }
+}
+
+fn has_dtor<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.ty_adt_def().map(|def| def.has_dtor(tcx)).unwrap_or(false)
 }
 
 /// Match on:

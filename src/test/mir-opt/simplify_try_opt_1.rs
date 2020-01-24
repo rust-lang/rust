@@ -18,9 +18,30 @@ fn try_identity_drop(x: Result<String, i32>) -> Result<String, i32> {
     }
 }
 
+// Nop-match may actually have to call destructor on the original value.
+// Checks that we don't optimize them.
+
+enum HasDtor {
+    Foo(i32),
+    Bar(u64),
+}
+
+impl Drop for HasDtor {
+    fn drop(&mut self) {}
+}
+
+fn match_dtor(x: HasDtor) -> HasDtor {
+    use HasDtor::*;
+    match x {
+        Foo(x) => Foo(x),
+        Bar(x) => Bar(x),
+    }
+}
+
 fn main() {
     let _ = try_identity(Ok(0));
     let _ = try_identity_drop(Err(0));
+    let _ = match_dtor(HasDtor::Foo(0));
 }
 
 // END RUST SOURCE
@@ -258,3 +279,44 @@ fn main() {
 //     }
 // }
 // END rustc.try_identity_drop.SimplifyCfg-final.after.mir
+
+// START rustc.match_dtor.SimplifyCfg-final.after.mir
+// fn  match_dtor(_1: HasDtor) -> HasDtor {
+//     ...
+//     bb0: {
+//         _2 = discriminant(_1);
+//         switchInt(move _2) -> [0isize: bb2, 1isize: bb3, otherwise: bb1];
+//     }
+//     bb1: {
+//         unreachable;
+//     }
+//     bb2: {
+//         StorageLive(_3);
+//         _3 = ((_1 as Foo).0: i32);
+//         StorageLive(_4);
+//         _4 = _3;
+//         ((_0 as Foo).0: i32) = move _4;
+//         discriminant(_0) = 0;
+//         StorageDead(_4);
+//         StorageDead(_3);
+//         goto -> bb4;
+//     }
+//     bb3: {
+//         StorageLive(_5);
+//         _5 = ((_1 as Bar).0: u64);
+//         StorageLive(_6);
+//         _6 = _5;
+//         ((_0 as Bar).0: u64) = move _6;
+//         discriminant(_0) = 1;
+//         StorageDead(_6);
+//         StorageDead(_5);
+//         goto -> bb4;
+//     }
+//     bb4: {
+//         drop(_1) -> bb5;
+//     }
+//     bb5: {
+//         return;
+//     }
+// }
+// END rustc.match_dtor.SimplifyCfg-final.after.mir
