@@ -2651,7 +2651,6 @@ impl<'test> TestCx<'test> {
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
-            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags)
             // We for sure don't want these tests to run in parallel, so make
             // sure they don't have access to these vars if we run via `make`
             // at the top level

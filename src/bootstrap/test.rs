@@ -1149,7 +1149,6 @@ impl Step for Compiletest {
             // requires that a C++ compiler was configured which isn't always the case.
             if !builder.config.dry_run && suite == "run-make-fulldeps" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
-                let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc")
                     .arg(builder.cc(target))
                     .arg("--cxx")
@@ -1157,9 +1156,7 @@ impl Step for Compiletest {
                     .arg("--cflags")
                     .arg(builder.cflags(target, GitRepo::Rustc).join(" "))
                     .arg("--llvm-components")
-                    .arg(llvm_components.trim())
-                    .arg("--llvm-cxxflags")
-                    .arg(llvm_cxxflags.trim());
+                    .arg(llvm_components.trim());
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
@@ -1197,8 +1194,6 @@ impl Step for Compiletest {
                 .arg("--cflags")
                 .arg("")
                 .arg("--llvm-components")
-                .arg("")
-                .arg("--llvm-cxxflags")
                 .arg("");
         }
 

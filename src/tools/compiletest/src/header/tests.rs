@@ -45,7 +45,6 @@ fn config() -> Config {
         "--cxx=c++",
         "--cflags=",
         "--llvm-components=",
-        "--llvm-cxxflags=",
         "--android-cross-path=",
         "--target=x86_64-unknown-linux-gnu",
     ];
