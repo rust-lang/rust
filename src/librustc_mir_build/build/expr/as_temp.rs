@@ -61,6 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             if let ExprKind::StaticRef { def_id, .. } = expr.kind {
                 let is_thread_local = this.hir.tcx().has_attr(def_id, sym::thread_local);
+                local_decl.internal = true;
                 local_decl.local_info = LocalInfo::StaticRef { def_id, is_thread_local };
             }
             this.local_decls.push(local_decl)
