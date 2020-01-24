@@ -994,29 +994,17 @@ fn weird_bounds() {
     assert_snapshot!(
         infer(r#"
 trait Trait {}
-fn test() {
-    let a: impl Trait + 'lifetime = foo;
-    let b: impl 'lifetime = foo;
-    let b: impl (Trait) = foo;
-    let b: impl ('lifetime) = foo;
-    let d: impl ?Sized = foo;
-    let e: impl Trait + ?Sized = foo;
+fn test(a: impl Trait + 'lifetime, b: impl 'lifetime, c: impl (Trait), d: impl ('lifetime), e: impl ?Sized, f: impl Trait + ?Sized) {
 }
 "#),
         @r###"
-    [26; 237) '{     ...foo; }': ()
-    [36; 37) 'a': impl Trait + {error}
-    [64; 67) 'foo': impl Trait + {error}
-    [77; 78) 'b': impl {error}
-    [97; 100) 'foo': impl {error}
-    [110; 111) 'b': impl Trait
-    [128; 131) 'foo': impl Trait
-    [141; 142) 'b': impl {error}
-    [163; 166) 'foo': impl {error}
-    [176; 177) 'd': impl {error}
-    [193; 196) 'foo': impl {error}
-    [206; 207) 'e': impl Trait + {error}
-    [231; 234) 'foo': impl Trait + {error}
+    [24; 25) 'a': impl Trait + {error}
+    [51; 52) 'b': impl {error}
+    [70; 71) 'c': impl Trait
+    [87; 88) 'd': impl {error}
+    [108; 109) 'e': impl {error}
+    [124; 125) 'f': impl Trait + {error}
+    [148; 151) '{ }': ()
     "###
     );
 }

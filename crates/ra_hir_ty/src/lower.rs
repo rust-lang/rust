@@ -40,8 +40,17 @@ pub struct TyLoweringContext<'a, DB: HirDatabase> {
 
 #[derive(Clone, Debug)]
 pub enum ImplTraitLoweringMode {
+    /// `impl Trait` gets lowered into an opaque type that doesn't unify with
+    /// anything except itself. This is used in places where values flow 'out',
+    /// i.e. for arguments of the function we're currently checking, and return
+    /// types of functions we're calling.
     Opaque,
+    /// `impl Trait` gets lowered into a placeholder that can unify with some
+    /// type. This is used in places where values flow 'in', i.e. for arguments
+    /// of functions we're calling, and the return type of the function we're
+    /// currently checking.
     Placeholder,
+    /// `impl Trait` is disallowed and will be an error.
     Disallowed,
 }
 
@@ -87,12 +96,23 @@ impl Ty {
                 Ty::Dyn(predicates)
             }
             TypeRef::ImplTrait(bounds) => {
-                let self_ty = Ty::Bound(0);
-                let predicates = bounds
-                    .iter()
-                    .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
-                    .collect();
-                Ty::Opaque(predicates)
+                match ctx.impl_trait_mode {
+                    ImplTraitLoweringMode::Opaque => {
+                        let self_ty = Ty::Bound(0);
+                        let predicates = bounds
+                            .iter()
+                            .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
+                            .collect();
+                        Ty::Opaque(predicates)
+                    },
+                    ImplTraitLoweringMode::Placeholder => {
+                        todo!()
+                    },
+                    ImplTraitLoweringMode::Disallowed => {
+                        // FIXME: report error
+                        Ty::Unknown
+                    },
+                }
             }
             TypeRef::Error => Ty::Unknown,
         }
