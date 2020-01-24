@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
-use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::Session;
 use rustc_span::{sym, MultiSpan, Symbol};
 use syntax::ast;
@@ -345,7 +345,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 LintSource::CommandLine(name, _) => name.to_string(),
             };
             let (lint_attr_name, lint_attr_span) = match *src {
-                LintSource::Node(name, span, _) => (name, span),
+                LintSource::Node(name, _, span, _) => (name, span),
                 _ => continue,
             };
             let mut diag_builder = struct_span_err!(
@@ -360,13 +360,13 @@ impl<'a> LintLevelsBuilder<'a> {
             diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
             match forbid_src {
                 LintSource::Default => {}
-                LintSource::Node(_, forbid_source_span, reason) => {
+                LintSource::Node(_, _, forbid_source_span, reason) => {
                     diag_builder.span_label(forbid_source_span, "`forbid` level set here");
                     if let Some(rationale) = reason {
                         diag_builder.note(&rationale.as_str());
                     }
                 }
-                LintSource::CommandLine(_) => {
+                LintSource::CommandLine(_, _) => {
                     diag_builder.note("`forbid` lint level was set on command line");
                 }
             }
@@ -407,7 +407,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let level_str = level.as_str();
             let msg = format!("#[{}({})] has no effect", level_str, name);
             let multi_span = Some((*span).into());
-            let mut err = lint::struct_lint_level(self.sess, unused, lvl, src, multi_span, &msg);
+            let mut err = struct_lint_level(self.sess, unused, lvl, src, multi_span, &msg);
 
             // Add notes about minimum levels and what the user should do here:
             err.note(&format!("the minimum lint level for `{}` is `{}`", name, min_level.as_str()))
@@ -415,7 +415,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 .help(&format!("remove the #[{}({})] directive", level_str, name));
 
             // If it is a future compat lint, warn the user about it.
-            crate::lint::check_future_compatibility(self.sess, lint, &mut err, Some(name));
+            rustc::lint::check_future_compatibility(self.sess, lint, &mut err, Some(name));
 
             err.emit();
         }

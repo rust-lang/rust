@@ -50,7 +50,7 @@ impl Level {
         }
     }
 
-    fn level_to_flag(self) -> &'static str {
+    pub fn level_to_flag(self) -> &'static str {
         match self {
             Level::Warn => "-W",
             Level::Deny => "-D",
@@ -115,6 +115,7 @@ impl Lint {
         Lint {
             name: "",
             default_level: Level::Forbid,
+            min_level: Level::Allow,
             desc: "",
             edition_lint_opts: None,
             is_plugin: false,

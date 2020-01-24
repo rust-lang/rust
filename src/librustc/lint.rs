@@ -191,7 +191,7 @@ fn hyphenate(s: &str) -> String {
 pub fn struct_lint_level<'a>(
     sess: &'a Session,
     lint: &'static Lint,
-    level: Level,
+    orig_level: Level,
     src: LintSource,
     span: Option<MultiSpan>,
     msg: &str,
@@ -242,7 +242,7 @@ pub fn struct_lint_level<'a>(
             sess.diag_note_once(&mut err, diag_msg_id, msg);
             None
         }
-        LintSource::CommandLine(lint_flag_val) => {
+        LintSource::CommandLine(lint_flag_val, pre_warn_level) => {
             let flag = orig_level.level_to_flag();
             let lint_name = hyphenate(&name);
             let msg = if lint_flag_val.as_str() == name {
@@ -254,7 +254,7 @@ pub fn struct_lint_level<'a>(
             sess.diag_note_once(&mut err, diag_msg_id, &msg);
             pre_warn_level
         }
-        LintSource::Node(lint_attr_name, src, reason) => {
+        LintSource::Node(lint_attr_name, pre_warn_level, src, reason) => {
             if orig_level >= level || pre_warn_level.is_some() {
                 if let Some(rationale) = reason {
                     err.note(&rationale.as_str());
@@ -296,12 +296,11 @@ pub fn check_future_compatibility<'a>(
     sess: &'a Session,
     lint: &'static Lint,
     err: &mut DiagnosticBuilder<'_>,
-    name: Option<impl fmt::Display>,
+    name: Option<impl std::fmt::Display>,
 ) {
     // Check for future incompatibility lints and issue a stronger warning.
-    let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
-    let future_incompatible = lints.future_incompatible(lint_id);
+    let future_incompatible = lint.future_incompatible;
     if let Some(future_incompatible) = future_incompatible {
         if lint_id == LintId::of(crate::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
             err.warn(

@@ -80,6 +80,7 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
 }
