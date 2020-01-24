@@ -16,7 +16,15 @@ impl Trait1<usize> for S { //~ ERROR use of unstable library feature 'unstable_d
     fn foo() -> usize { 0 }
 }
 
-impl Trait2<usize> for S {
+impl Trait1<isize> for S { //~ ERROR use of unstable library feature 'unstable_default'
+    fn foo() -> usize { 0 }
+}
+
+impl Trait2<usize> for S { //~ ERROR use of unstable library feature 'unstable_default'
+    fn foo() -> usize { 0 }
+}
+
+impl Trait3<usize> for S {
     fn foo() -> usize { 0 } // ok
 }
 
@@ -25,9 +33,9 @@ fn main() {
 
     let _ = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
     let _: Struct1 = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Struct1<usize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
 
-    let _ = STRUCT1;
+    let _ = STRUCT1; // ok
     let _: Struct1 = STRUCT1; // ok
     let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
     let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
