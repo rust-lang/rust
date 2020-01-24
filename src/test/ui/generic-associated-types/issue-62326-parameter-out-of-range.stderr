@@ -1,4 +1,4 @@
-error[E0280]: the requirement `for<'a> <Self as Iterator>::Item<'a> : 'a` is not satisfied
+error[E0280]: the requirement `for<'a> <Self as Iterator>::Item<'a>: 'a` is not satisfied
   --> $DIR/issue-62326-parameter-out-of-range.rs:6:1
    |
 LL |   trait Iterator {

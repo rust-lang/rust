@@ -4,9 +4,8 @@
 // FIXME(generic-associated-types) Investigate why this doesn't compile.
 
 trait Iterator {
-//~^ ERROR the requirement `for<'a> <Self as Iterator>::Item<'a> : 'a` is not satisfied
+    //~^ ERROR the requirement `for<'a> <Self as Iterator>::Item<'a>: 'a` is not satisfied
     type Item<'a>: 'a;
 }
-
 
 fn main() {}

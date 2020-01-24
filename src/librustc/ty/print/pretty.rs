@@ -889,7 +889,7 @@ pub trait PrettyPrinter<'tcx>:
                 // fallback
                 p!(write("{:?}", ct.val));
                 if print_ty {
-                    p!(write(" : "), print(ct.ty));
+                    p!(write(": "), print(ct.ty));
                 }
             }
         };
@@ -1009,7 +1009,7 @@ pub trait PrettyPrinter<'tcx>:
                     // fallback
                     p!(write("{:?}", ct));
                     if print_ty {
-                        p!(write(" : "), print(ty));
+                        p!(write(": "), print(ty));
                     }
                 }
             }
@@ -1610,7 +1610,7 @@ where
     type Error = P::Error;
     fn print(&self, mut cx: P) -> Result<Self::Output, Self::Error> {
         define_scoped_cx!(cx);
-        p!(print(self.0), write(" : "), print(self.1));
+        p!(print(self.0), write(": "), print(self.1));
         Ok(cx)
     }
 }

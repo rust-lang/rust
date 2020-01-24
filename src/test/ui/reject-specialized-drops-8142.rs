@@ -21,11 +21,11 @@ struct TupleStruct<T>(T);
 union Union<T: Copy> { f: T }
 
 impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
-    //~^ ERROR `Drop` impl requires `'adds_bnd : 'al`
+    //~^ ERROR `Drop` impl requires `'adds_bnd: 'al`
     fn drop(&mut self) { } }
 
 impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
-    //~^ ERROR `Drop` impl requires `'adds_bnd : 'al`
+    //~^ ERROR `Drop` impl requires `'adds_bnd: 'al`
     fn drop(&mut self) { } }
 
 impl<'ml>               Drop for M<'ml>         { fn drop(&mut self) { } } // ACCEPT
@@ -44,7 +44,7 @@ impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
 //~^ ERROR `Drop` impl requires `AddsBnd: Bound`
 
 impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsRBnd : 'rbnd`
+//~^ ERROR `Drop` impl requires `AddsRBnd: 'rbnd`
 
 impl<Bs:Bound>    Drop for S<Bs>          { fn drop(&mut self) { } } // ACCEPT
 
