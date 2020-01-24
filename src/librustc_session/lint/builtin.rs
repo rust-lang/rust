@@ -5,7 +5,7 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use crate::lint::FutureIncompatibleInfo;
-use crate::{declare_lint, declare_lint_pass};
+use crate::{declare_lint, declare_lint_pass, declare_unsuppressable_lint};
 use rustc_span::edition::Edition;
 
 declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
@@ -320,7 +320,7 @@ declare_lint! {
      };
 }
 
-declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
+declare_unsuppressable_lint! {
     pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
     Warn,
     "floating-point literals cannot be used in patterns",

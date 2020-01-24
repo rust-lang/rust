@@ -238,7 +238,7 @@ pub fn struct_lint_level<'a>(
     let diag_msg_id = DiagnosticMessageId::from(lint);
     let pre_warn_level = match src {
         LintSource::Default => {
-            let msg = &format!("#[{}({})] on by default", orig_level.as_str(), name);
+            let msg = &format!("`#[{}({})]` on by default", orig_level.as_str(), name);
             sess.diag_note_once(&mut err, diag_msg_id, msg);
             None
         }
@@ -265,7 +265,7 @@ pub fn struct_lint_level<'a>(
             if lint_attr_name.as_str() != name {
                 let level_str = orig_level.as_str();
                 let msg = format!(
-                    "#[{}({})] implied by #[{}({})]",
+                    "`#[{}({})]` implied by `#[{}({})]`",
                     level_str, name, level_str, lint_attr_name
                 );
                 sess.diag_note_once(&mut err, diag_msg_id, &msg);
@@ -313,19 +313,24 @@ pub fn check_future_compatibility<'a>(
                       and may become a hard error in the future",
             );
         } else {
-            let previously_msg = if let Some(n) = name {
-                format!("`{}` was previously accepted by the compiler but is being phased out", n)
-            } else {
-                format!("this was previously accepted by the compiler but is being phased out")
-            };
-            err.warn(&previously_msg);
-
             let hard_err_msg = if let Some(edition) = future_incompatible.edition {
                 format!("it will become a hard error in the {} edition!", edition)
             } else {
                 format!("it will become a hard error in a future release!")
             };
-            err.warn(&hard_err_msg);
+
+            let previously_msg = if let Some(n) = name {
+                format!(
+                    "`{}` was previously accepted by the compiler but is being phased out; {}",
+                    n, hard_err_msg
+                )
+            } else {
+                format!(
+                    "this was previously accepted by the compiler but is being phased out; {}",
+                    hard_err_msg
+                )
+            };
+            err.warn(&previously_msg);
         }
 
         err.note(&format!("for more information, see {}", future_incompatible.reference));

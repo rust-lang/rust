@@ -343,6 +343,20 @@ macro_rules! declare_unsuppressable_lint {
             report_in_external_macro: false,
         };
     };
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Warn,
+            desc: $desc,
+            edition_lint_opts: None,
+            is_plugin: false,
+            $($v: true,)*
+            $(future_incompatible: Some($fi),)*
+            ..$crate::lint::Lint::default_fields_for_macro()
+        };
+    );
 }
 
 #[macro_export]
