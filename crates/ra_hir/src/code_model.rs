@@ -733,7 +733,8 @@ impl Local {
         let ty = infer[self.pat_id].clone();
         let resolver = def.resolver(db);
         let krate = def.module(db).krate;
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let ctx = hir_ty::TyLoweringContext { db, resolver: &resolver };
+        let environment = TraitEnvironment::lower(&ctx);
         Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 
@@ -789,8 +790,9 @@ impl ImplBlock {
     pub fn target_ty(&self, db: &impl HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db);
-        let environment = TraitEnvironment::lower(db, &resolver);
-        let ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+        let ctx = hir_ty::TyLoweringContext { db, resolver: &resolver };
+        let environment = TraitEnvironment::lower(&ctx);
+        let ty = Ty::from_hir(&ctx, &impl_data.target_type);
         Type {
             krate: self.id.lookup(db).container.module(db).krate,
             ty: InEnvironment { value: ty, environment },
@@ -844,7 +846,8 @@ pub struct Type {
 impl Type {
     fn new(db: &impl HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db);
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let ctx = hir_ty::TyLoweringContext { db, resolver: &resolver };
+        let environment = TraitEnvironment::lower(&ctx);
         Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 

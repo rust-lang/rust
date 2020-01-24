@@ -11,7 +11,7 @@ use hir_expand::name::Name;
 
 use crate::{db::HirDatabase, method_resolution, Substs, Ty, TypeWalk, ValueTyDefId};
 
-use super::{ExprOrPatId, InferenceContext, TraitEnvironment, TraitRef};
+use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(
@@ -39,7 +39,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
+            let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &resolver };
+            let ty = Ty::from_type_relative_path(&ctx, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
                 &path.segments().last().expect("path had at least one segment").name,
@@ -73,7 +74,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         if let Some(self_subst) = self_subst {
             ty = ty.subst(&self_subst);
         }
-        let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+        let substs = Ty::substs_from_path(&ctx, path, typable);
         let ty = ty.subst(&substs);
         Some(ty)
     }
@@ -98,13 +100,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
-                let trait_ref = TraitRef::from_resolved_path(
-                    self.db,
-                    &self.resolver,
-                    trait_.into(),
-                    resolved_segment,
-                    None,
-                );
+                let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+                let trait_ref =
+                    TraitRef::from_resolved_path(&ctx, trait_.into(), resolved_segment, None);
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
@@ -114,9 +112,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // as Iterator>::Item::default`)
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
+                let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
                 let ty = Ty::from_partly_resolved_hir_path(
-                    self.db,
-                    &self.resolver,
+                    &ctx,
                     def,
                     resolved_segment,
                     remaining_segments_for_ty,
@@ -193,14 +191,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
 
         let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
-        let env = TraitEnvironment::lower(self.db, &self.resolver);
         let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db);
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
-            env,
+            self.trait_env.clone(),
             krate,
             &traits_in_scope,
             Some(name),

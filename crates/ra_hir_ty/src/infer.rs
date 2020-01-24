@@ -215,12 +215,13 @@ struct InferenceContext<'a, D: HirDatabase> {
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, owner: DefWithBodyId, resolver: Resolver) -> Self {
+        let ctx = crate::lower::TyLoweringContext { db, resolver: &resolver };
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
-            trait_env: TraitEnvironment::lower(db, &resolver),
+            trait_env: TraitEnvironment::lower(&ctx),
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
@@ -272,12 +273,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        let ty = Ty::from_hir(
-            self.db,
-            // FIXME use right resolver for block
-            &self.resolver,
-            type_ref,
-        );
+        // FIXME use right resolver for block
+        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+        let ty = Ty::from_hir(&ctx, type_ref);
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
     }
@@ -446,17 +444,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
+        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
-                let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
+                let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(strukt.into()))
             }
             Some(TypeNs::EnumVariantId(var)) => {
-                let substs = Ty::substs_from_path(self.db, resolver, path, var.into());
+                let substs = Ty::substs_from_path(&ctx, path, var.into());
                 let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))

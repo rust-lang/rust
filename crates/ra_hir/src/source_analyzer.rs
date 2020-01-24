@@ -178,6 +178,11 @@ impl SourceAnalyzer {
         }
     }
 
+    fn trait_env(&self, db: &impl HirDatabase) -> Arc<TraitEnvironment> {
+        let ctx = hir_ty::TyLoweringContext { db, resolver: &self.resolver };
+        TraitEnvironment::lower(&ctx)
+    }
+
     pub fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
         let expr_id = if let Some(expr) = self.expand_expr(db, InFile::new(self.file_id, expr)) {
             self.body_source_map.as_ref()?.node_expr(expr.as_ref())?
@@ -186,14 +191,14 @@ impl SourceAnalyzer {
         };
 
         let ty = self.infer.as_ref()?[expr_id].clone();
-        let environment = TraitEnvironment::lower(db, &self.resolver);
+        let environment = self.trait_env(db);
         Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
     }
 
     pub fn type_of_pat(&self, db: &impl HirDatabase, pat: &ast::Pat) -> Option<Type> {
         let pat_id = self.pat_id(pat)?;
         let ty = self.infer.as_ref()?[pat_id].clone();
-        let environment = TraitEnvironment::lower(db, &self.resolver);
+        let environment = self.trait_env(db);
         Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
     }
 

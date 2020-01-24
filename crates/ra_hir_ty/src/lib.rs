@@ -60,7 +60,7 @@ use display::{HirDisplay, HirFormatter};
 pub use autoderef::autoderef;
 pub use infer::{do_infer_query, InferTy, InferenceResult};
 pub use lower::CallableDef;
-pub use lower::{callable_item_sig, TyDefId, ValueTyDefId};
+pub use lower::{callable_item_sig, TyDefId, TyLoweringContext, ValueTyDefId};
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
 /// A type constructor or type name: this might be something like the primitive
