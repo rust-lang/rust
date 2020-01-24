@@ -836,14 +836,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    /// Execute `f` then unroll any bindings it creates.
-    pub fn skip_leak_check<R, F>(&self, f: F) -> R
+    /// If `should_skip` is true, then execute `f` then unroll any bindings it creates.
+    pub fn probe_maybe_skip_leak_check<R, F>(&self, should_skip: bool, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
-        self.skip_leak_check.set(true);
+        let skip_leak_check = should_skip || self.skip_leak_check.get();
+        self.skip_leak_check.set(skip_leak_check);
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
         r
