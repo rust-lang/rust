@@ -2,7 +2,8 @@ use super::command::Command;
 use super::link::{self, get_linker, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
-use super::symbol_export::{symbol_name_for_instance_in_crate, ExportedSymbols};
+use super::symbol_export::symbol_name_for_instance_in_crate;
+
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
     RLIB_BYTECODE_EXTENSION,
@@ -12,6 +13,7 @@ use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
 };
@@ -204,6 +206,8 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
         TargetMachineFactory(self.0.clone())
     }
 }
+
+pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]

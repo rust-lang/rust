@@ -713,7 +713,8 @@ fn visit_instance_use<'tcx>(
 // need a mono item.
 fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::Item(def_id) | ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+
         ty::InstanceDef::VtableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
@@ -725,18 +726,18 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     };
 
     if tcx.is_foreign_item(def_id) {
-        // We can always link to foreign items.
+        // Foreign items are always linked against, there's no way of
+        // instantiating them.
         return false;
     }
 
     if def_id.is_local() {
-        // Local items cannot be referred to locally without monomorphizing them locally.
+        // Local items cannot be referred to locally without
+        // monomorphizing them locally.
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id)
-        || is_available_upstream_generic(tcx, def_id, instance.substs)
-    {
+    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
         // We can link to the item in question, no instance needed
         // in this crate.
         return false;
@@ -745,35 +746,8 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     if !tcx.is_mir_available(def_id) {
         bug!("cannot create local mono-item for {:?}", def_id)
     }
+
     return true;
-
-    fn is_available_upstream_generic<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
-    ) -> bool {
-        debug_assert!(!def_id.is_local());
-
-        // If we are not in share generics mode, we don't link to upstream
-        // monomorphizations but always instantiate our own internal versions
-        // instead.
-        if !tcx.sess.opts.share_generics() {
-            return false;
-        }
-
-        // If this instance has non-erasable parameters, it cannot be a shared
-        // monomorphization. Non-generic instances are already handled above
-        // by `is_reachable_non_generic()`.
-        if substs.non_erasable_generics().next().is_none() {
-            return false;
-        }
-
-        // Take a look at the available monomorphizations listed in the metadata
-        // of upstream crates.
-        tcx.upstream_monomorphizations_for(def_id)
-            .map(|set| set.contains_key(substs))
-            .unwrap_or(false)
-    }
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,

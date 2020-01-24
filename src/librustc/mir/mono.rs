@@ -79,7 +79,7 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let inline_in_all_cgus = tcx
+        let generate_cgu_internal_copies = tcx
             .sess
             .opts
             .debugging_opts
@@ -93,7 +93,7 @@ impl<'tcx> MonoItem<'tcx> {
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some()
-                    || !instance.def.requires_local(tcx)
+                    || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
@@ -102,7 +102,7 @@ impl<'tcx> MonoItem<'tcx> {
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
                 // be creating a local copy per CGU
-                if inline_in_all_cgus {
+                if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
 

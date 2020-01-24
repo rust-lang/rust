@@ -4,7 +4,7 @@ use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::HashStable;
 use rustc_target::spec::abi::Abi;
 
@@ -91,6 +91,40 @@ impl<'tcx> Instance<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
         tcx.subst_and_normalize_erasing_regions(self.substs, param_env, &ty)
     }
+
+    /// Finds a crate that contains a monomorphization of this instance that
+    /// can be linked to from the local crate. A return value of `None` means
+    /// no upstream crate provides such an exported monomorphization.
+    ///
+    /// This method already takes into account the global `-Zshare-generics`
+    /// setting, always returning `None` if `share-generics` is off.
+    pub fn upstream_monomorphization(&self, tcx: TyCtxt<'tcx>) -> Option<CrateNum> {
+        // If we are not in share generics mode, we don't link to upstream
+        // monomorphizations but always instantiate our own internal versions
+        // instead.
+        if !tcx.sess.opts.share_generics() {
+            return None;
+        }
+
+        // If this is an item that is defined in the local crate, no upstream
+        // crate can know about it/provide a monomorphization.
+        if self.def_id().is_local() {
+            return None;
+        }
+
+        // If this a non-generic instance, it cannot be a shared monomorphization.
+        if self.substs.non_erasable_generics().next().is_none() {
+            return None;
+        }
+
+        match self.def {
+            InstanceDef::Item(def_id) => tcx
+                .upstream_monomorphizations_for(def_id)
+                .and_then(|monos| monos.get(&self.substs).cloned()),
+            InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.substs),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -114,7 +148,12 @@ impl<'tcx> InstanceDef<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
+    /// Returns `true` if the LLVM version of this instance is unconditionally
+    /// marked with `inline`. This implies that a copy of this instance is
+    /// generated in every codegen unit.
+    /// Note that this is only a hint. See the documentation for
+    /// `generates_cgu_internal_copy` for more information.
+    pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
@@ -127,8 +166,15 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local(&self, tcx: TyCtxt<'tcx>) -> bool {
-        if self.is_inline(tcx) {
+    /// Returns `true` if the machine code for this instance is instantiated in
+    /// each codegen unit that references it.
+    /// Note that this is only a hint! The compiler can globally decide to *not*
+    /// do this in order to speed up compilation. CGU-internal copies are
+    /// only exist to enable inlining. If inlining is not performed (e.g. at
+    /// `-Copt-level=0`) then the time for generating them is wasted and it's
+    /// better to create a single copy with external linkage.
+    pub fn generates_cgu_internal_copy(&self, tcx: TyCtxt<'tcx>) -> bool {
+        if self.requires_inline(tcx) {
             return true;
         }
         if let ty::InstanceDef::DropGlue(..) = *self {
