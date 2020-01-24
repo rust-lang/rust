@@ -34,6 +34,11 @@ pub struct EarlyProps {
 
 impl EarlyProps {
     pub fn from_file(config: &Config, testfile: &Path) -> Self {
+        let file = File::open(testfile).unwrap();
+        Self::from_reader(config, testfile, file)
+    }
+
+    pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
         let mut props = EarlyProps {
             ignore: false,
             should_fail: false,
@@ -45,7 +50,7 @@ impl EarlyProps {
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
 
-        iter_header(testfile, None, &mut |ln| {
+        iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
             // and does not matches the current platform, skip the test
             if !props.ignore {
@@ -392,7 +397,8 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
-        iter_header(testfile, cfg, &mut |ln| {
+        let file = File::open(testfile).unwrap();
+        iter_header(testfile, cfg, file, &mut |ln| {
             if let Some(ep) = config.parse_error_pattern(ln) {
                 self.error_patterns.push(ep);
             }
@@ -617,7 +623,7 @@ impl TestProps {
     }
 }
 
-fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
+fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn FnMut(&str)) {
     if testfile.is_dir() {
         return;
     }
@@ -628,7 +634,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
     // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
     let comment_with_brace = comment.to_string() + "[";
 
-    let mut rdr = BufReader::new(File::open(testfile).unwrap());
+    let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
 
     loop {
