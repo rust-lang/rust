@@ -1,3 +1,46 @@
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:6:7
+   |
+LL |       0.0..=1.0 => {}
+   |       ^^^
+   |
+note: lint level defined here
+  --> $DIR/non-exhaustive-float-range-match.rs:1:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(illegal_floating_point_literal_pattern)] is the minimum lint level
+   = note: the lint level cannot be reduced to `allow`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:6:13
+   |
+LL |       0.0..=1.0 => {}
+   |             ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:11:7
+   |
+LL |       0.0..=1.0 => {}
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:11:13
+   |
+LL |       0.0..=1.0 => {}
+   |             ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/non-exhaustive-float-range-match.rs:10:11
    |
@@ -5,6 +48,42 @@ LL |     match 0.0 {
    |           ^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:6:7
+   |
+LL |       0.0..=1.0 => {}
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:6:13
+   |
+LL |       0.0..=1.0 => {}
+   |             ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:11:7
+   |
+LL |       0.0..=1.0 => {}
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-float-range-match.rs:11:13
+   |
+LL |       0.0..=1.0 => {}
+   |             ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: aborting due to previous error
 

@@ -1,3 +1,19 @@
+warning: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:14
+   |
+LL |     m!(0f32, core::f32::NEG_INFINITY..);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:5:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(illegal_floating_point_literal_pattern)] is the minimum lint level
+   = note: the lint level cannot be reduced to `allow`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:8
    |
@@ -5,6 +21,15 @@ LL |     m!(0f32, core::f32::NEG_INFINITY..);
    |        ^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:16
+   |
+LL |     m!(0f32, ..core::f32::INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:8
@@ -541,6 +566,24 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
    |            ^ pattern `43i128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:14
+   |
+LL |     m!(0f32, core::f32::NEG_INFINITY..);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:16
+   |
+LL |     m!(0f32, ..core::f32::INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: aborting due to 68 previous errors
 
