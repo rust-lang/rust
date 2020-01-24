@@ -529,7 +529,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
         let num_variants = tcx.generator_layout(def_id).variant_fields.len();
-        (VariantIdx::new(0)..VariantIdx::new(num_variants))
+        VariantIdx::new(0)..VariantIdx::new(num_variants)
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is

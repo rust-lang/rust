@@ -1530,7 +1530,7 @@ impl<'tcx> IntRange<'tcx> {
         // 2       --------   // 2 -------
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        (lo == other_hi || hi == other_lo)
+        lo == other_hi || hi == other_lo
     }
 
     fn to_pat(&self, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {

@@ -544,12 +544,20 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
-        if let ast::StmtKind::Local(ref local) = s.kind {
-            self.check_unused_parens_pat(cx, &local.pat, false, false);
+        use ast::StmtKind::*;
 
-            if let Some(ref value) = local.init {
-                self.check_unused_parens_expr(cx, &value, "assigned value", false, None, None);
+        match s.kind {
+            Local(ref local) => {
+                self.check_unused_parens_pat(cx, &local.pat, false, false);
+
+                if let Some(ref value) = local.init {
+                    self.check_unused_parens_expr(cx, &value, "assigned value", false, None, None);
+                }
             }
+            Expr(ref expr) => {
+                self.check_unused_parens_expr(cx, &expr, "block return value", false, None, None);
+            }
+            _ => {}
         }
     }
 
