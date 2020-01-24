@@ -16,4 +16,10 @@ fn unwrap<T: io::Read + io::Write>(s: &mut T) {
     s.read(&mut buf).unwrap();
 }
 
+fn vectored<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
+    s.read_vectored(&mut [io::IoSliceMut::new(&mut [])])?;
+    s.write_vectored(&[io::IoSlice::new(&[])])?;
+    Ok(())
+}
+
 fn main() {}
