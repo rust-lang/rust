@@ -43,7 +43,7 @@ use rustc_hir::Node;
 use rustc_hir::*;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::ExpnKind;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
@@ -1343,4 +1343,14 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
     } else {
         false
     }
+}
+
+pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
+    krate.attrs.iter().any(|attr| {
+        if let ast::AttrKind::Normal(ref attr) = attr.kind {
+            attr.path == symbol::sym::no_std
+        } else {
+            false
+        }
+    })
 }

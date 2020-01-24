@@ -4,9 +4,9 @@ use crate::utils::paths;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_refutable, last_path_segment, match_trait_method, match_type, match_var, multispan_sugg,
-    snippet, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg,
-    span_lint_and_then, SpanlessEq,
+    is_integer_const, is_no_std_crate, is_refutable, last_path_segment, match_trait_method, match_type, match_var,
+    multispan_sugg, snippet, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint,
+    span_lint_and_sugg, span_lint_and_then, SpanlessEq,
 };
 use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
 use if_chain::if_chain;
@@ -502,7 +502,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
             // also check for empty `loop {}` statements
-            if block.stmts.is_empty() && block.expr.is_none() {
+            if block.stmts.is_empty() && block.expr.is_none() && !is_no_std_crate(cx.tcx.hir().krate()) {
                 span_lint(
                     cx,
                     EMPTY_LOOP,
