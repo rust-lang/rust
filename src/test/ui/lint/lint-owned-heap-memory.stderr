@@ -4,7 +4,7 @@ error: type uses owned (Box type) pointers: std::boxed::Box<isize>
 LL |     x: Box<isize>
    |     ^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-owned-heap-memory.rs:2:11
    |
 LL | #![forbid(box_pointers)]

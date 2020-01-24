@@ -4,7 +4,7 @@ error: absolute paths must start with `self`, `super`, `crate`, or an external c
 LL | use foo::{bar::{baz::{}}};
    |     ^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{bar::{baz::{}}}`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/edition-lint-nested-empty-paths.rs:4:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]

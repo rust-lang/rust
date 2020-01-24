@@ -4,7 +4,7 @@ warning: absolute paths must start with `self`, `super`, `crate`, or an external
 LL |     #[foo]
    |     ^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/suggestions-not-always-applicable.rs:8:9
    |
 LL | #![warn(rust_2018_compatibility)]

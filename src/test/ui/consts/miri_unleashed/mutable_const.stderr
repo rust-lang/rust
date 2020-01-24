@@ -16,7 +16,7 @@ LL | |     }
 LL | | };
    | |__-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/mutable_const.rs:5:9
    |
 LL | #![deny(const_err)]

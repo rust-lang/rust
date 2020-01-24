@@ -4,7 +4,7 @@ error: declaration of an `unsafe` function
 LL | unsafe fn baz() {}
    | ^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-unsafe-code.rs:3:9
    |
 LL | #![deny(unsafe_code)]

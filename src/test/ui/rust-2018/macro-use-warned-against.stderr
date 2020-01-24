@@ -4,7 +4,7 @@ warning: deprecated `#[macro_use]` directive used to import macros should be rep
 LL | #[macro_use]
    | ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/macro-use-warned-against.rs:5:9
    |
 LL | #![warn(macro_use_extern_crate, unused)]
@@ -16,7 +16,7 @@ warning: unused `#[macro_use]` import
 LL | #[macro_use]
    | ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/macro-use-warned-against.rs:5:33
    |
 LL | #![warn(macro_use_extern_crate, unused)]

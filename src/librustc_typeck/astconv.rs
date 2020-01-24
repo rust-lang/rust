@@ -2220,7 +2220,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut could_refer_to = |kind: DefKind, def_id, also| {
                 let note_msg = format!(
-                    "`{}` could{} refer to {} defined here",
+                    "`{}` could{} refer to the {} defined here",
                     assoc_ident,
                     also,
                     kind.descr(def_id)

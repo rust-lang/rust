@@ -6,7 +6,7 @@ LL |     call(diverge(),
 LL |          get_u8());
    |          ^^^^^^^^ unreachable expression
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable-in-call.rs:2:9
    |
 LL | #![deny(unreachable_code)]

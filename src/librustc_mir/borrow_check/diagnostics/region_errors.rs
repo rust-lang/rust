@@ -457,7 +457,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             diag.span_label(
                 outlived_fr_span,
                 format!(
-                    "`{}` is declared here, outside of the {} body",
+                    "`{}` declared here, outside of the {} body",
                     outlived_fr_name, escapes_from
                 ),
             );

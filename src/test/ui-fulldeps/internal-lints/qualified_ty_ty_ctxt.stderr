@@ -4,7 +4,7 @@ error: usage of qualified `ty::Ty<'_>`
 LL |     ty_q: ty::Ty<'_>,
    |           ^^^^^^^^^^ help: try using it unqualified: `Ty<'_>`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/qualified_ty_ty_ctxt.rs:4:9
    |
 LL | #![deny(rustc::usage_of_qualified_ty)]

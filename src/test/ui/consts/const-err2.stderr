@@ -4,7 +4,7 @@ error: this expression will panic at runtime
 LL |     let a = -std::i8::MIN;
    |             ^^^^^^^^^^^^^ attempt to negate with overflow
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/const-err2.rs:11:9
    |
 LL | #![deny(const_err)]

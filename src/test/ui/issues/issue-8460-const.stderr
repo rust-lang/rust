@@ -4,7 +4,7 @@ error: attempt to divide with overflow
 LL |     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-8460-const.rs:4:9
    |
 LL | #![deny(const_err)]
