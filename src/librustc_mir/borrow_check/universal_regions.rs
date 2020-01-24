@@ -148,10 +148,10 @@ impl<'tcx> DefiningTy<'tcx> {
 
     pub fn def_id(&self) -> DefId {
         match *self {
-            DefiningTy::Closure(def_id, ..) => def_id,
-            DefiningTy::Generator(def_id, ..) => def_id,
-            DefiningTy::FnDef(def_id, ..) => def_id,
-            DefiningTy::Const(def_id, ..) => def_id,
+            DefiningTy::Closure(def_id, ..)
+            | DefiningTy::Generator(def_id, ..)
+            | DefiningTy::FnDef(def_id, ..)
+            | DefiningTy::Const(def_id, ..) => def_id,
         }
     }
 }
