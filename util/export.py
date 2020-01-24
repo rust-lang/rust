@@ -71,7 +71,9 @@ def main():
 
     outfile = sys.argv[1] if len(sys.argv) > 1 else "util/gh-pages/lints.json"
     with open(outfile, "w") as fp:
-        json.dump(list(lints.values()), fp, indent=2)
+        lints = list(lints.values())
+        lints.sort(key=lambda x: x['id'])
+        json.dump(lints, fp, indent=2)
         log.info("wrote JSON for great justice")
 
 
