@@ -85,7 +85,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
-                let src = LintSource::CommandLine(lint_flag_val);
+                let src = LintSource::CommandLine(lint_flag_val, None);
                 specs.insert(id, (level, src));
             }
         }
@@ -211,7 +211,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span(), reason);
+                        let src = LintSource::Node(name, None, li.span(), reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -223,6 +223,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintSource::Node(
                                     Symbol::intern(complete_name),
+                                    None,
                                     li.span(),
                                     reason,
                                 );
@@ -258,6 +259,7 @@ impl<'a> LintLevelsBuilder<'a> {
 
                                 let src = LintSource::Node(
                                     Symbol::intern(&new_lint_name),
+                                    None,
                                     li.span(),
                                     reason,
                                 );
@@ -328,6 +330,8 @@ impl<'a> LintLevelsBuilder<'a> {
         }
 
         for (id, &(level, ref src)) in specs.iter() {
+            self.lint_higher_minimum_attr_lint(id.lint, level, src, &specs);
+
             if level == Level::Forbid {
                 continue;
             }
@@ -337,8 +341,8 @@ impl<'a> LintLevelsBuilder<'a> {
             };
             let forbidden_lint_name = match forbid_src {
                 LintSource::Default => id.to_string(),
-                LintSource::Node(name, _, _) => name.to_string(),
-                LintSource::CommandLine(name) => name.to_string(),
+                LintSource::Node(name, _, _, _) => name.to_string(),
+                LintSource::CommandLine(name, _) => name.to_string(),
             };
             let (lint_attr_name, lint_attr_span) = match *src {
                 LintSource::Node(name, span, _) => (name, span),
@@ -378,6 +382,43 @@ impl<'a> LintLevelsBuilder<'a> {
         }
 
         BuilderPush { prev: prev, changed: prev != self.cur }
+    }
+
+    /// If we have e.g. `#[allow($some_future_compat_lint)]` this will have
+    /// no effect as `min_level > Allow`. We want to tell the user about this.
+    fn lint_higher_minimum_attr_lint(
+        &self,
+        lint: &'static Lint,
+        level: Level,
+        src: &LintSource,
+        specs: &FxHashMap<LintId, (Level, LintSource)>,
+    ) {
+        let min_level = lint.min_level;
+        if min_level <= level {
+            return;
+        }
+
+        if let LintSource::Node(name, _, span, _) = src {
+            // Get the `unused_attributes` lint specs:
+            let unused = builtin::UNUSED_ATTRIBUTES;
+            let (lvl, src) = self.sets.get_lint_level(unused, self.cur, Some(&specs), &self.sess);
+
+            // Construct base diagnostic for `unused_attributes`:
+            let level_str = level.as_str();
+            let msg = format!("#[{}({})] has no effect", level_str, name);
+            let multi_span = Some((*span).into());
+            let mut err = lint::struct_lint_level(self.sess, unused, lvl, src, multi_span, &msg);
+
+            // Add notes about minimum levels and what the user should do here:
+            err.note(&format!("the minimum lint level for `{}` is `{}`", name, min_level.as_str()))
+                .note(&format!("the lint level cannot be reduced to `{}`", level_str))
+                .help(&format!("remove the #[{}({})] directive", level_str, name));
+
+            // If it is a future compat lint, warn the user about it.
+            crate::lint::check_future_compatibility(self.sess, lint, &mut err, Some(name));
+
+            err.emit();
+        }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.

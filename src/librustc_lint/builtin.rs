@@ -1050,7 +1050,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     }
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     TYPE_ALIAS_BOUNDS,
     Warn,
     "bounds in type aliases are not enforced"

@@ -49,6 +49,15 @@ impl Level {
             _ => None,
         }
     }
+
+    fn level_to_flag(self) -> &'static str {
+        match self {
+            Level::Warn => "-W",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Allow => "-A",
+        }
+    }
 }
 
 /// Specification of a single lint.
@@ -68,6 +77,11 @@ pub struct Lint {
 
     /// Default level for the lint.
     pub default_level: Level,
+
+    /// The minimum level this lint can be loosened to.
+    /// For example, suppose we have `#[allow(my_lint)]` and `min_level == Warn`.
+    /// In that case, a warning will still be emitted.
+    pub min_level: Level,
 
     /// Description of the lint or the issue it detects.
     ///
@@ -277,6 +291,7 @@ macro_rules! declare_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: None,
             is_plugin: false,
@@ -291,12 +306,42 @@ macro_rules! declare_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
             report_in_external_macro: false,
             is_plugin: false,
         };
     );
+}
+
+/// Declares a static item of type `&'static Lint` that is unsuppressable.
+///
+/// This means that the lint will have `Warn` as the minimum lint level.
+/// Therefore, it cannot be `#[allow(..)]`ed.
+///
+/// This lint should be used for C-future-compatibility lints on an opt-in
+/// case-by-case basis.
+///
+/// Note that the default is to use `declare_lint!`. It is recommended that
+/// a lint spend at least one release cycle using `declare_lint!` before
+/// moving to `declare_unsuppressable_lint!`.
+///
+/// Before moving the C-future-compatibility lint into a hard error,
+/// it is also recommended that `declare_unsuppressable_lint!` be used
+/// at least one release cycle.
+#[macro_export]
+macro_rules! declare_unsuppressable_lint {
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => {
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Warn,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: false,
+        };
+    };
 }
 
 #[macro_export]
@@ -320,6 +365,7 @@ macro_rules! declare_tool_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
