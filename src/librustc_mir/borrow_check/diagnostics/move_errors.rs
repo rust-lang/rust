@@ -1,7 +1,8 @@
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_span::Span;
+use rustc_span::source_map::DesugaringKind;
+use rustc_span::{Span, Symbol};
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;
@@ -383,10 +384,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         };
-        let move_ty = format!("{:?}", move_place.ty(*self.body, self.infcx.tcx).ty,);
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let is_option = move_ty.starts_with("std::option::Option");
-            let is_result = move_ty.starts_with("std::result::Result");
+            let def_id = match move_place.ty(*self.body, self.infcx.tcx).ty.kind {
+                ty::Adt(self_def, _) => self_def.did,
+                ty::Foreign(def_id)
+                | ty::FnDef(def_id, _)
+                | ty::Closure(def_id, _)
+                | ty::Generator(def_id, ..)
+                | ty::Opaque(def_id, _) => def_id,
+                _ => return err,
+            };
+            let is_option =
+                self.infcx.tcx.is_diagnostic_item(Symbol::intern("option_type"), def_id);
+            let is_result =
+                self.infcx.tcx.is_diagnostic_item(Symbol::intern("result_type"), def_id);
             if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
                 err.span_suggestion(
                     span,
@@ -395,6 +406,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         if is_option { "Option" } else { "Result" }
                     ),
                     format!("{}.as_ref()", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if span.is_desugaring(DesugaringKind::ForLoop)
+                && self.infcx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id)
+            {
+                // FIXME: suggest for anything that implements `IntoIterator`.
+                err.span_suggestion(
+                    span,
+                    "consider iterating over a slice of the `Vec<_>`'s content",
+                    format!("&{}", snippet),
                     Applicability::MaybeIncorrect,
                 );
             }

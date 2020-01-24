@@ -1673,8 +1673,15 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     ty::Param(_) => true,
                     _ => false,
                 };
-                let bad_substs: Vec<_> =
-                    substs.types().enumerate().filter(|(_, ty)| !is_param(ty)).collect();
+                let bad_substs: Vec<_> = substs
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, k)| {
+                        if let GenericArgKind::Type(ty) = k.unpack() { Some((i, ty)) } else { None }
+                    })
+                    .filter(|(_, ty)| !is_param(ty))
+                    .collect();
+
                 if !bad_substs.is_empty() {
                     let identity_substs = InternalSubsts::identity_for_item(self.tcx, self.def_id);
                     for (i, bad_subst) in bad_substs {
