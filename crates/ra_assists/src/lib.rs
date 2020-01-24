@@ -14,9 +14,9 @@ mod test_db;
 pub mod ast_transform;
 
 use either::Either;
-use hir::{db::HirDatabase, InFile, ModPath, Module};
+use hir::{db::HirDatabase, ModuleDef};
 use ra_db::FileRange;
-use ra_syntax::{ast::NameRef, TextRange, TextUnit};
+use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
@@ -85,11 +85,7 @@ where
 /// accessible from the ra_assists crate.
 pub trait ImportsLocator {
     /// Finds all imports for the given name and the module that contains this name.
-    fn find_imports(
-        &mut self,
-        name_to_import: InFile<&NameRef>,
-        module_with_name_to_import: Module,
-    ) -> Option<Vec<ModPath>>;
+    fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef>;
 }
 
 /// Return all the assists applicable at the given position

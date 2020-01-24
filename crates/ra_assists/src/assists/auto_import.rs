@@ -1,4 +1,4 @@
-use hir::db::HirDatabase;
+use hir::{db::HirDatabase, AsName};
 use ra_syntax::{
     ast::{self, AstNode},
     SmolStr, SyntaxElement,
@@ -41,15 +41,21 @@ pub(crate) fn auto_import<F: ImportsLocator>(
             current_file.syntax().clone()
         }
     };
+    let source_analyzer = ctx.source_analyzer(&position, None);
+    let module_with_name_to_import = source_analyzer.module()?;
+    let path_to_import = ctx.covering_element().ancestors().find_map(ast::Path::cast)?;
+    if source_analyzer.resolve_path(ctx.db, &path_to_import).is_some() {
+        return None;
+    }
 
-    let module_with_name_to_import = ctx.source_analyzer(&position, None).module()?;
-    let name_to_import = hir::InFile {
-        file_id: ctx.frange.file_id.into(),
-        value: &find_applicable_name_ref(ctx.covering_element())?,
-    };
-
-    let proposed_imports =
-        imports_locator.find_imports(name_to_import, module_with_name_to_import)?;
+    let name_to_import = &find_applicable_name_ref(ctx.covering_element())?.as_name();
+    let proposed_imports = imports_locator
+        .find_imports(&name_to_import.to_string())
+        .into_iter()
+        .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
+        .filter(|use_path| !use_path.segments.is_empty())
+        .take(20)
+        .collect::<std::collections::HashSet<_>>();
     if proposed_imports.is_empty() {
         return None;
     }
@@ -57,7 +63,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     ctx.add_assist_group(AssistId("auto_import"), "auto import", || {
         proposed_imports
             .into_iter()
-            .map(|import| import_to_action(import.to_string(), &position, &path))
+            .map(|import| import_to_action(import.to_string(), &position, &path_to_import))
             .collect()
     })
 }
