@@ -212,7 +212,6 @@ pub fn struct_lint_level<'a>(
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
-    let lint_id = LintId::of(lint);
     let future_incompatible = lint.future_incompatible;
 
     // If this code originates in a foreign macro, aka something that this crate
