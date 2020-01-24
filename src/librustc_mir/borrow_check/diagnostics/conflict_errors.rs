@@ -604,8 +604,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     cursor = proj_base;
 
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(*local, proj_base).is_some() => {
-                            return Some((PlaceRef { local: *local, projection: proj_base }, field));
+                        ProjectionElem::Field(field, _)
+                            if union_ty(*local, proj_base).is_some() =>
+                        {
+                            return Some((
+                                PlaceRef { local: *local, projection: proj_base },
+                                field,
+                            ));
                         }
                         _ => {}
                     }
@@ -629,7 +634,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             {
                                 // FIXME when we avoid clone reuse describe_place closure
                                 let describe_base_place = self
-                                    .describe_place(PlaceRef { local: *local, projection: proj_base })
+                                    .describe_place(PlaceRef {
+                                        local: *local,
+                                        projection: proj_base,
+                                    })
                                     .unwrap_or_else(|| "_".to_owned());
 
                                 return Some((
@@ -1513,9 +1521,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(place.local, proj_base, *self.body, tcx)
-                                    .ty
-                                    .is_box(),
+                                Place::ty_from(place.local, proj_base, *self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead

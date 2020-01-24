@@ -414,8 +414,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Field(..) => {
                     let ty =
-                        Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx)
-                            .ty;
+                        Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
                     match ty.kind {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {}
