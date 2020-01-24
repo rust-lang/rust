@@ -78,15 +78,13 @@ declare_lint! {
     Warn,
     "detect assignments that will never be read"
 }
-hings have progressed,
-    //   consider using `declare_unsuppressable_lint!` instead.
 
-declare_lint! {his will t
+declare_lint! {
     Warn,
     "detect unused, unexported items"
 }
 
-declare_lint! {    k// - By default, `udeclare_linbt!` is recommended for use to declare the
+declare_lint! {
     pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
