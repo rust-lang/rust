@@ -153,6 +153,11 @@ fn match_arm<'tcx>(
         _ => (0, None),
     };
 
+    if idx + 8 != stmts.len() {
+        // There should be other 8 statements than the one assigining to drop flag.
+        return;
+    }
+
     // _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
     let (local_tmp, local_1, vf_1) = match match_get_variant_field(&stmts[idx + 1]) {
         None => return,
