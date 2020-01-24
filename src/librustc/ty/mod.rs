@@ -2410,7 +2410,7 @@ impl<'tcx> AdtDef {
 
     #[inline]
     pub fn variant_range(&self) -> Range<VariantIdx> {
-        (VariantIdx::new(0)..VariantIdx::new(self.variants.len()))
+        VariantIdx::new(0)..VariantIdx::new(self.variants.len())
     }
 
     /// Computes the discriminant value used by a specific variant.
