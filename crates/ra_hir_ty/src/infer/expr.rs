@@ -10,7 +10,7 @@ use hir_def::{
     resolver::resolver_for_expr,
     AdtId, AssocContainerId, Lookup, StructFieldId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
 use ra_syntax::ast::RangeOp;
 
 use crate::{
@@ -654,7 +654,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
             for (_id, param) in parent_generics {
-                if param.name == name![Self] {
+                if param.provenance == hir_def::generics::TypeParamProvenance::TraitSelf {
                     substs.push(receiver_ty.clone());
                 } else {
                     substs.push(Ty::Unknown);

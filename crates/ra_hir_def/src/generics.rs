@@ -27,8 +27,16 @@ use crate::{
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeParamData {
-    pub name: Name,
+    pub name: Option<Name>,
     pub default: Option<TypeRef>,
+    pub provenance: TypeParamProvenance,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TypeParamProvenance {
+    TypeParamList,
+    TraitSelf,
+    ArgumentImplTrait,
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
@@ -68,6 +76,11 @@ impl GenericParams {
             GenericDefId::FunctionId(it) => {
                 let src = it.lookup(db).source(db);
                 generics.fill(&mut sm, &src.value);
+                // lower `impl Trait` in arguments
+                let data = db.function_data(it);
+                for param in &data.params {
+                    generics.fill_implicit_impl_trait_args(param);
+                }
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::StructId(it)) => {
@@ -89,8 +102,11 @@ impl GenericParams {
                 let src = it.lookup(db).source(db);
 
                 // traits get the Self type as an implicit first type parameter
-                let self_param_id =
-                    generics.types.alloc(TypeParamData { name: name![Self], default: None });
+                let self_param_id = generics.types.alloc(TypeParamData {
+                    name: Some(name![Self]),
+                    default: None,
+                    provenance: TypeParamProvenance::TraitSelf,
+                });
                 sm.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
@@ -142,7 +158,11 @@ impl GenericParams {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
-            let param = TypeParamData { name: name.clone(), default };
+            let param = TypeParamData {
+                name: Some(name.clone()),
+                default,
+                provenance: TypeParamProvenance::TypeParamList,
+            };
             let param_id = self.types.alloc(param);
             sm.insert(param_id, Either::Right(type_param.clone()));
 
@@ -173,8 +193,23 @@ impl GenericParams {
         self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
+    fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
+        type_ref.walk(&mut |type_ref| {
+            if let TypeRef::ImplTrait(_) = type_ref {
+                let param = TypeParamData {
+                    name: None,
+                    default: None,
+                    provenance: TypeParamProvenance::ArgumentImplTrait,
+                };
+                let _param_id = self.types.alloc(param);
+            }
+        });
+    }
+
     pub fn find_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {
-        self.types.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
+        self.types
+            .iter()
+            .find_map(|(id, p)| if p.name.as_ref() == Some(name) { Some(id) } else { None })
     }
 }
 

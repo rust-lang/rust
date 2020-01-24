@@ -368,7 +368,7 @@ impl Substs {
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub(crate) fn identity(generic_params: &Generics) -> Substs {
         Substs(
-            generic_params.iter().map(|(idx, p)| Ty::Param { idx, name: p.name.clone() }).collect(),
+            generic_params.iter().map(|(idx, p)| Ty::Param { idx, name: p.name.clone().unwrap_or_else(Name::missing) }).collect(),
         )
     }
 

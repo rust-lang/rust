@@ -127,7 +127,8 @@ impl Generics {
         self.find_param(param).0
     }
     pub(crate) fn param_name(&self, param: TypeParamId) -> Name {
-        self.find_param(param).1.name.clone()
+        // FIXME make this return Option
+        self.find_param(param).1.name.clone().unwrap_or_else(Name::missing)
     }
     fn find_param(&self, param: TypeParamId) -> (u32, &TypeParamData) {
         if param.parent == self.def {

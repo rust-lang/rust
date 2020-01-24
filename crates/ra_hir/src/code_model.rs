@@ -755,7 +755,7 @@ pub struct TypeParam {
 impl TypeParam {
     pub fn name(self, db: &impl HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        params.types[self.id.local_id].name.clone()
+        params.types[self.id.local_id].name.clone().unwrap_or_else(Name::missing)
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {

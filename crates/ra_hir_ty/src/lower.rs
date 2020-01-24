@@ -341,6 +341,7 @@ pub(super) fn substs_from_path_segment(
         // Self type as an implicit first type parameter, but it can't be
         // actually provided in the type arguments
         // (well, actually sometimes it can, in the form of type-relative paths: `<Foo as Default>::default()`)
+        // TODO handle this using type param provenance
         substs.push(Ty::Unknown);
     }
     if let Some(generic_args) = &segment.args_and_bindings {
