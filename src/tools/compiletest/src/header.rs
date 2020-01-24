@@ -628,12 +628,18 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
     // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
     let comment_with_brace = comment.to_string() + "[";
 
-    let rdr = BufReader::new(File::open(testfile).unwrap());
-    for ln in rdr.lines() {
+    let mut rdr = BufReader::new(File::open(testfile).unwrap());
+    let mut ln = String::new();
+
+    loop {
+        ln.clear();
+        if rdr.read_line(&mut ln).unwrap() == 0 {
+            break;
+        }
+
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        let ln = ln.unwrap();
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
