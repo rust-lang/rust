@@ -777,7 +777,7 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
             linker.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
             linker.link_dylib(Symbol::intern(&libname));
         }
-        "x86_64-unknown-linux-gnu" => {
+        "x86_64-unknown-linux-gnu" | "x86_64-fuchsia" | "aarch64-fuchsia" => {
             let filename = format!("librustc_rt.{}.a", name);
             let path = default_tlib.join(&filename);
             linker.link_whole_rlib(&path);

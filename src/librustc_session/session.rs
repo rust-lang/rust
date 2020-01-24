@@ -1127,8 +1127,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on some tested platforms.
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
-        const ASAN_SUPPORTED_TARGETS: &[&str] =
-            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+        const ASAN_SUPPORTED_TARGETS: &[&str] = &[
+            "x86_64-unknown-linux-gnu",
+            "x86_64-apple-darwin",
+            "x86_64-fuchsia",
+            "aarch64-fuchsia",
+        ];
         const TSAN_SUPPORTED_TARGETS: &[&str] =
             &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
         const LSAN_SUPPORTED_TARGETS: &[&str] =
