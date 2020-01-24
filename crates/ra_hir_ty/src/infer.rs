@@ -42,7 +42,9 @@ use super::{
     ApplicationTy, GenericPredicate, InEnvironment, ProjectionTy, Substs, TraitEnvironment,
     TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
 };
-use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
+use crate::{
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
+};
 
 pub(crate) use unify::unify;
 
@@ -215,13 +217,12 @@ struct InferenceContext<'a, D: HirDatabase> {
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, owner: DefWithBodyId, resolver: Resolver) -> Self {
-        let ctx = crate::lower::TyLoweringContext { db, resolver: &resolver };
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
-            trait_env: TraitEnvironment::lower(&ctx),
+            trait_env: TraitEnvironment::lower(db, &resolver),
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
@@ -272,12 +273,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.diagnostics.push(diagnostic);
     }
 
-    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
+    fn make_ty_with_mode(
+        &mut self,
+        type_ref: &TypeRef,
+        impl_trait_mode: ImplTraitLoweringMode,
+    ) -> Ty {
         // FIXME use right resolver for block
-        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+        let ctx = crate::lower::TyLoweringContext {
+            db: self.db,
+            resolver: &self.resolver,
+            impl_trait_mode,
+        };
         let ty = Ty::from_hir(&ctx, type_ref);
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
+    }
+
+    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
+        self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Disallowed)
     }
 
     /// Replaces `impl Trait` in `ty` by type variables and obligations for
@@ -444,7 +457,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+        let ctx = crate::lower::TyLoweringContext {
+            db: self.db,
+            resolver: &self.resolver,
+            impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+        };
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
@@ -471,11 +488,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
-            let ty = self.make_ty(type_ref);
+            let ty = self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Opaque);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        let return_ty = self.make_ty(&data.ret_type);
+        let return_ty = self.make_ty_with_mode(&data.ret_type, ImplTraitLoweringMode::Placeholder);
         self.return_ty = self.insert_vars_for_impl_trait(return_ty);
     }
 

@@ -9,7 +9,10 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{db::HirDatabase, method_resolution, Substs, Ty, TypeWalk, ValueTyDefId};
+use crate::{
+    db::HirDatabase, lower::ImplTraitLoweringMode, method_resolution, Substs, Ty, TypeWalk,
+    ValueTyDefId,
+};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -39,7 +42,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &resolver };
+            let ctx = crate::lower::TyLoweringContext {
+                db: self.db,
+                resolver: &resolver,
+                impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+            };
             let ty = Ty::from_type_relative_path(&ctx, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
@@ -74,7 +81,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         if let Some(self_subst) = self_subst {
             ty = ty.subst(&self_subst);
         }
-        let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+        let ctx = crate::lower::TyLoweringContext {
+            db: self.db,
+            resolver: &self.resolver,
+            impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+        };
         let substs = Ty::substs_from_path(&ctx, path, typable);
         let ty = ty.subst(&substs);
         Some(ty)
@@ -100,7 +111,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
-                let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+                let ctx = crate::lower::TyLoweringContext {
+                    db: self.db,
+                    resolver: &self.resolver,
+                    impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+                };
                 let trait_ref =
                     TraitRef::from_resolved_path(&ctx, trait_.into(), resolved_segment, None);
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
@@ -112,7 +127,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // as Iterator>::Item::default`)
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
-                let ctx = crate::lower::TyLoweringContext { db: self.db, resolver: &self.resolver };
+                let ctx = crate::lower::TyLoweringContext {
+                    db: self.db,
+                    resolver: &self.resolver,
+                    impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+                };
                 let ty = Ty::from_partly_resolved_hir_path(
                     &ctx,
                     def,

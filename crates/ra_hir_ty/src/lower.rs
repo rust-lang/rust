@@ -35,6 +35,14 @@ use crate::{
 pub struct TyLoweringContext<'a, DB: HirDatabase> {
     pub db: &'a DB,
     pub resolver: &'a Resolver,
+    pub impl_trait_mode: ImplTraitLoweringMode,
+}
+
+#[derive(Clone, Debug)]
+pub enum ImplTraitLoweringMode {
+    Opaque,
+    Placeholder,
+    Disallowed,
 }
 
 impl Ty {
@@ -484,7 +492,11 @@ pub(crate) fn field_types_query(
         VariantId::EnumVariantId(it) => it.parent.resolver(db),
     };
     let mut res = ArenaMap::default();
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     for (field_id, field_data) in var_data.fields().iter() {
         res.insert(field_id, Ty::from_hir(&ctx, &field_data.type_ref))
     }
@@ -505,7 +517,11 @@ pub(crate) fn generic_predicates_for_param_query(
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -524,11 +540,12 @@ pub(crate) fn generic_predicates_for_param_recover(
 }
 
 impl TraitEnvironment {
-    pub fn lower(ctx: &TyLoweringContext<'_, impl HirDatabase>) -> Arc<TraitEnvironment> {
-        let predicates = ctx
-            .resolver
+    pub fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
+        let ctx =
+            TyLoweringContext { db, resolver, impl_trait_mode: ImplTraitLoweringMode::Disallowed };
+        let predicates = resolver
             .where_predicates_in_scope()
-            .flat_map(|pred| GenericPredicate::from_where_predicate(ctx, pred))
+            .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
             .collect::<Vec<_>>();
 
         Arc::new(TraitEnvironment { predicates })
@@ -541,7 +558,11 @@ pub(crate) fn generic_predicates_query(
     def: GenericDefId,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
@@ -551,7 +572,11 @@ pub(crate) fn generic_predicates_query(
 /// Resolve the default type params from generics
 pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -> Substs {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     let generic_params = generics(db, def.into());
 
     let defaults = generic_params
@@ -565,9 +590,18 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -
 fn fn_sig_for_fn(db: &impl HirDatabase, def: FunctionId) -> FnSig {
     let data = db.function_data(def);
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
-    let params = data.params.iter().map(|tr| Ty::from_hir(&ctx, tr)).collect::<Vec<_>>();
-    let ret = Ty::from_hir(&ctx, &data.ret_type);
+    let ctx_params = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Placeholder,
+    };
+    let params = data.params.iter().map(|tr| Ty::from_hir(&ctx_params, tr)).collect::<Vec<_>>();
+    let ctx_ret = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Opaque,
+    };
+    let ret = Ty::from_hir(&ctx_ret, &data.ret_type);
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -583,7 +617,11 @@ fn type_for_fn(db: &impl HirDatabase, def: FunctionId) -> Ty {
 fn type_for_const(db: &impl HirDatabase, def: ConstId) -> Ty {
     let data = db.const_data(def);
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
 
     Ty::from_hir(&ctx, &data.type_ref)
 }
@@ -592,7 +630,11 @@ fn type_for_const(db: &impl HirDatabase, def: ConstId) -> Ty {
 fn type_for_static(db: &impl HirDatabase, def: StaticId) -> Ty {
     let data = db.static_data(def);
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
 
     Ty::from_hir(&ctx, &data.type_ref)
 }
@@ -612,7 +654,11 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> FnSig 
     let struct_data = db.struct_data(def.into());
     let fields = struct_data.variant_data.fields();
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.into());
@@ -635,7 +681,11 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId
     let var_data = &enum_data.variants[def.local_id];
     let fields = var_data.variant_data.fields();
     let resolver = def.parent.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let generics = generics(db, def.parent.into());
@@ -664,7 +714,11 @@ fn type_for_adt(db: &impl HirDatabase, adt: AdtId) -> Ty {
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAliasId) -> Ty {
     let generics = generics(db, t.into());
     let resolver = t.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     let type_ref = &db.type_alias_data(t).type_ref;
     let substs = Substs::identity(&generics);
     let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));
@@ -747,7 +801,11 @@ pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
 pub(crate) fn impl_self_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> Ty {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     Ty::from_hir(&ctx, &impl_data.target_type)
 }
 
@@ -762,7 +820,11 @@ pub(crate) fn impl_self_ty_recover(
 pub(crate) fn impl_trait_query(db: &impl HirDatabase, impl_id: ImplId) -> Option<TraitRef> {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let ctx = TyLoweringContext { db, resolver: &resolver };
+    let ctx = TyLoweringContext {
+        db,
+        resolver: &resolver,
+        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
+    };
     let self_ty = db.impl_self_ty(impl_id);
     let target_trait = impl_data.target_trait.as_ref()?;
     TraitRef::from_hir(&ctx, target_trait, Some(self_ty.clone()))

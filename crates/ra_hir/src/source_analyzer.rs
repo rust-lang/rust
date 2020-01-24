@@ -179,8 +179,7 @@ impl SourceAnalyzer {
     }
 
     fn trait_env(&self, db: &impl HirDatabase) -> Arc<TraitEnvironment> {
-        let ctx = hir_ty::TyLoweringContext { db, resolver: &self.resolver };
-        TraitEnvironment::lower(&ctx)
+        TraitEnvironment::lower(db, &self.resolver)
     }
 
     pub fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
