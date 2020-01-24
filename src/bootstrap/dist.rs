@@ -253,6 +253,7 @@ fn make_win_dist(
         "libiconv.a",
         "libmoldname.a",
         "libpthread.a",
+        "libntdll.a",
         //Windows import libs
         "libadvapi32.a",
         "libbcrypt.a",
