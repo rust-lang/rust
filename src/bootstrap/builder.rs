@@ -874,7 +874,7 @@ impl<'a> Builder<'a> {
         //
         // Only clear out the directory if we're compiling std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run && mode == Mode::ToolStd && cmd == "build" {
+        if !self.config.dry_run && mode == Mode::Std && cmd == "build" {
             self.clear_if_dirty(&out_dir, &self.rustc(compiler));
         }
 
