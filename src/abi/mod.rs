@@ -363,7 +363,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
                         ParamEnv::reveal_all(),
                         local_decl.source_info.span,
                     );
-                    if local_decl.mutability == mir::Mutability::Not && internally_mutable {
+                    if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
                         // We wont mutate this argument, so it is fine to borrow the backing storage
                         // of this argument, to prevent a copy.
 
