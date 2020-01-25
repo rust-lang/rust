@@ -28,30 +28,60 @@ use crate::{
         variant_data,
     },
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef,
-    Ty, TypeCtor, TypeWalk,
+    Ty, TypeCtor, PolyFnSig, Binders,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TyLoweringContext<'a, DB: HirDatabase> {
     pub db: &'a DB,
     pub resolver: &'a Resolver,
+    /// Note: Conceptually, it's thinkable that we could be in a location where
+    /// some type params are quantified universally (and should be represented
+    /// as placeholders), and others are quantified existentially (and should be
+    /// converted to variables). I think in practice, this isn't possible
+    /// currently, so this should be fine for now.
+    pub type_param_mode: TypeParamLoweringMode,
     pub impl_trait_mode: ImplTraitLoweringMode,
+    pub impl_trait_counter: std::cell::Cell<u16>,
 }
 
-#[derive(Clone, Debug)]
+impl<'a, DB: HirDatabase> TyLoweringContext<'a, DB> {
+    pub fn new(db: &'a DB, resolver: &'a Resolver) -> Self {
+        let impl_trait_counter = std::cell::Cell::new(0);
+        let impl_trait_mode = ImplTraitLoweringMode::Disallowed;
+        let type_param_mode = TypeParamLoweringMode::Placeholder;
+        Self { db, resolver, impl_trait_mode, impl_trait_counter, type_param_mode }
+    }
+
+    pub fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
+        Self { impl_trait_mode, ..self }
+    }
+
+    pub fn with_type_param_mode(self, type_param_mode: TypeParamLoweringMode) -> Self {
+        Self { type_param_mode, ..self }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum ImplTraitLoweringMode {
     /// `impl Trait` gets lowered into an opaque type that doesn't unify with
     /// anything except itself. This is used in places where values flow 'out',
     /// i.e. for arguments of the function we're currently checking, and return
     /// types of functions we're calling.
     Opaque,
-    /// `impl Trait` gets lowered into a placeholder that can unify with some
+    /// `impl Trait` gets lowered into a variable that can unify with some
     /// type. This is used in places where values flow 'in', i.e. for arguments
     /// of functions we're calling, and the return type of the function we're
     /// currently checking.
-    Placeholder,
+    Variable,
     /// `impl Trait` is disallowed and will be an error.
     Disallowed,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum TypeParamLoweringMode {
+    Placeholder,
+    Variable,
 }
 
 impl Ty {
@@ -101,17 +131,25 @@ impl Ty {
                         let self_ty = Ty::Bound(0);
                         let predicates = bounds
                             .iter()
-                            .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
+                            .flat_map(|b| {
+                                GenericPredicate::from_type_bound(ctx, b, self_ty.clone())
+                            })
                             .collect();
                         Ty::Opaque(predicates)
-                    },
-                    ImplTraitLoweringMode::Placeholder => {
-                        todo!()
-                    },
+                    }
+                    ImplTraitLoweringMode::Variable => {
+                        let idx = ctx.impl_trait_counter.get();
+                        ctx.impl_trait_counter.set(idx + 1);
+                        let generics =
+                            generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
+                        let (self_params, list_params, impl_trait_params) = generics.provenance_split();
+                        assert!((idx as usize) < impl_trait_params);
+                        Ty::Bound(idx as u32 + self_params as u32 + list_params as u32)
+                    }
                     ImplTraitLoweringMode::Disallowed => {
                         // FIXME: report error
                         Ty::Unknown
-                    },
+                    }
                 }
             }
             TypeRef::Error => Ty::Unknown,
@@ -205,12 +243,31 @@ impl Ty {
                 let generics =
                     generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
                 let idx = generics.param_idx(param_id);
-                // FIXME: maybe return name in resolution?
-                let name = generics.param_name(param_id);
-                Ty::Param { idx, name }
+                match ctx.type_param_mode {
+                    TypeParamLoweringMode::Placeholder => {
+                        // FIXME: maybe return name in resolution?
+                        let name = generics.param_name(param_id);
+                        Ty::Param { idx, name }
+                    },
+                    TypeParamLoweringMode::Variable => Ty::Bound(idx),
+                }
             }
-            TypeNs::SelfType(impl_id) => ctx.db.impl_self_ty(impl_id).clone(),
-            TypeNs::AdtSelfType(adt) => ctx.db.ty(adt.into()),
+            TypeNs::SelfType(impl_id) => {
+                let generics = generics(ctx.db, impl_id.into());
+                let substs = match ctx.type_param_mode {
+                    TypeParamLoweringMode::Placeholder => Substs::identity(&generics),
+                    TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
+                };
+                ctx.db.impl_self_ty(impl_id).subst(&substs)
+            },
+            TypeNs::AdtSelfType(adt) => {
+                let generics = generics(ctx.db, adt.into());
+                let substs = match ctx.type_param_mode {
+                    TypeParamLoweringMode::Placeholder => Substs::identity(&generics),
+                    TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
+                };
+                ctx.db.ty(adt.into()).subst(&substs)
+            },
 
             TypeNs::AdtId(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
             TypeNs::BuiltinType(it) => Ty::from_hir_path_inner(ctx, resolved_segment, it.into()),
@@ -341,7 +398,7 @@ pub(super) fn substs_from_path_segment(
         // Self type as an implicit first type parameter, but it can't be
         // actually provided in the type arguments
         // (well, actually sometimes it can, in the form of type-relative paths: `<Foo as Default>::default()`)
-        // TODO handle this using type param provenance
+        // TODO handle this using type param provenance (if there's a self param, and not one provided, add unknown)
         substs.push(Ty::Unknown);
     }
     if let Some(generic_args) = &segment.args_and_bindings {
@@ -493,7 +550,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
+pub fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> PolyFnSig {
     match def {
         CallableDef::FunctionId(f) => fn_sig_for_fn(db, f),
         CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
@@ -513,11 +570,7 @@ pub(crate) fn field_types_query(
         VariantId::EnumVariantId(it) => it.parent.resolver(db),
     };
     let mut res = ArenaMap::default();
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
     for (field_id, field_data) in var_data.fields().iter() {
         res.insert(field_id, Ty::from_hir(&ctx, &field_data.type_ref))
     }
@@ -538,11 +591,7 @@ pub(crate) fn generic_predicates_for_param_query(
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -562,8 +611,7 @@ pub(crate) fn generic_predicates_for_param_recover(
 
 impl TraitEnvironment {
     pub fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
-        let ctx =
-            TyLoweringContext { db, resolver, impl_trait_mode: ImplTraitLoweringMode::Disallowed };
+        let ctx = TyLoweringContext::new(db, &resolver);
         let predicates = resolver
             .where_predicates_in_scope()
             .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
@@ -579,11 +627,7 @@ pub(crate) fn generic_predicates_query(
     def: GenericDefId,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
@@ -593,11 +637,7 @@ pub(crate) fn generic_predicates_query(
 /// Resolve the default type params from generics
 pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -> Substs {
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
     let generic_params = generics(db, def.into());
 
     let defaults = generic_params
@@ -608,56 +648,46 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -
     Substs(defaults)
 }
 
-fn fn_sig_for_fn(db: &impl HirDatabase, def: FunctionId) -> FnSig {
+fn fn_sig_for_fn(db: &impl HirDatabase, def: FunctionId) -> PolyFnSig {
     let data = db.function_data(def);
     let resolver = def.resolver(db);
-    let ctx_params = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Placeholder,
-    };
+    let ctx_params = TyLoweringContext::new(db, &resolver)
+        .with_impl_trait_mode(ImplTraitLoweringMode::Variable)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
     let params = data.params.iter().map(|tr| Ty::from_hir(&ctx_params, tr)).collect::<Vec<_>>();
-    let ctx_ret = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Opaque,
-    };
+    let ctx_ret = ctx_params.with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
     let ret = Ty::from_hir(&ctx_ret, &data.ret_type);
-    FnSig::from_params_and_return(params, ret)
+    let generics = generics(db, def.into());
+    let num_binders = generics.len();
+    Binders::new(num_binders, FnSig::from_params_and_return(params, ret))
 }
 
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
-fn type_for_fn(db: &impl HirDatabase, def: FunctionId) -> Ty {
+fn type_for_fn(db: &impl HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db, def.into());
-    let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.into()), substs)
+    let substs = Substs::bound_vars(&generics);
+    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
 }
 
 /// Build the declared type of a const.
-fn type_for_const(db: &impl HirDatabase, def: ConstId) -> Ty {
+fn type_for_const(db: &impl HirDatabase, def: ConstId) -> Binders<Ty> {
     let data = db.const_data(def);
+    let generics = generics(db, def.into());
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
 
-    Ty::from_hir(&ctx, &data.type_ref)
+    Binders::new(generics.len(), Ty::from_hir(&ctx, &data.type_ref))
 }
 
 /// Build the declared type of a static.
-fn type_for_static(db: &impl HirDatabase, def: StaticId) -> Ty {
+fn type_for_static(db: &impl HirDatabase, def: StaticId) -> Binders<Ty> {
     let data = db.static_data(def);
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
 
-    Ty::from_hir(&ctx, &data.type_ref)
+    Binders::new(0, Ty::from_hir(&ctx, &data.type_ref))
 }
 
 /// Build the declared type of a static.
@@ -671,79 +701,71 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
     })
 }
 
-fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> FnSig {
+fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> PolyFnSig {
     let struct_data = db.struct_data(def.into());
     let fields = struct_data.variant_data.fields();
     let resolver = def.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.into());
-    FnSig::from_params_and_return(params, ret)
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
 }
 
 /// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> Ty {
+fn type_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> Binders<Ty> {
     let struct_data = db.struct_data(def.into());
     if struct_data.variant_data.is_unit() {
         return type_for_adt(db, def.into()); // Unit struct
     }
     let generics = generics(db, def.into());
-    let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.into()), substs)
+    let substs = Substs::bound_vars(&generics);
+    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
 }
 
-fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> FnSig {
+fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> PolyFnSig {
     let enum_data = db.enum_data(def.parent);
     let var_data = &enum_data.variants[def.local_id];
     let fields = var_data.variant_data.fields();
     let resolver = def.parent.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver);
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let generics = generics(db, def.parent.into());
-    let substs = Substs::identity(&generics);
+    let substs = Substs::bound_vars(&generics);
     let ret = type_for_adt(db, def.parent.into()).subst(&substs);
-    FnSig::from_params_and_return(params, ret)
+    let num_binders = generics.len();
+    Binders::new(num_binders, FnSig::from_params_and_return(params, ret))
 }
 
 /// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> Ty {
+fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> Binders<Ty> {
     let enum_data = db.enum_data(def.parent);
     let var_data = &enum_data.variants[def.local_id].variant_data;
     if var_data.is_unit() {
         return type_for_adt(db, def.parent.into()); // Unit variant
     }
     let generics = generics(db, def.parent.into());
-    let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(EnumVariantId::from(def).into()), substs)
+    let substs = Substs::bound_vars(&generics);
+    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(EnumVariantId::from(def).into()), substs))
 }
 
-fn type_for_adt(db: &impl HirDatabase, adt: AdtId) -> Ty {
+fn type_for_adt(db: &impl HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db, adt.into());
-    Ty::apply(TypeCtor::Adt(adt), Substs::identity(&generics))
+    let substs = Substs::bound_vars(&generics);
+    Binders::new(substs.len(), Ty::apply(TypeCtor::Adt(adt), substs))
 }
 
-fn type_for_type_alias(db: &impl HirDatabase, t: TypeAliasId) -> Ty {
+fn type_for_type_alias(db: &impl HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let generics = generics(db, t.into());
     let resolver = t.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
     let type_ref = &db.type_alias_data(t).type_ref;
-    let substs = Substs::identity(&generics);
+    let substs = Substs::bound_vars(&generics);
     let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));
-    inner.subst(&substs)
+    Binders::new(substs.len(), inner)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -797,19 +819,20 @@ impl_froms!(ValueTyDefId: FunctionId, StructId, EnumVariantId, ConstId, StaticId
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and
 /// the constructor function `(usize) -> Foo` which lives in the values
 /// namespace.
-pub(crate) fn ty_query(db: &impl HirDatabase, def: TyDefId) -> Ty {
+pub(crate) fn ty_query(db: &impl HirDatabase, def: TyDefId) -> Binders<Ty> {
     match def {
-        TyDefId::BuiltinType(it) => type_for_builtin(it),
+        TyDefId::BuiltinType(it) => Binders::new(0, type_for_builtin(it)),
         TyDefId::AdtId(it) => type_for_adt(db, it),
         TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
     }
 }
 
-pub(crate) fn ty_recover(_db: &impl HirDatabase, _cycle: &[String], _def: &TyDefId) -> Ty {
-    Ty::Unknown
+pub(crate) fn ty_recover(_db: &impl HirDatabase, _cycle: &[String], _def: &TyDefId) -> Binders<Ty> {
+    // TODO still need correct number of binders here
+    Binders::new(0, Ty::Unknown)
 }
 
-pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
+pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
     match def {
         ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
         ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
@@ -819,34 +842,30 @@ pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
     }
 }
 
-pub(crate) fn impl_self_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> Ty {
+pub(crate) fn impl_self_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> Binders<Ty> {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
-    Ty::from_hir(&ctx, &impl_data.target_type)
+    let generics = generics(db, impl_id.into());
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
+    Binders::new(generics.len(), Ty::from_hir(&ctx, &impl_data.target_type))
 }
 
 pub(crate) fn impl_self_ty_recover(
-    _db: &impl HirDatabase,
+    db: &impl HirDatabase,
     _cycle: &[String],
-    _impl_id: &ImplId,
-) -> Ty {
-    Ty::Unknown
+    impl_id: &ImplId,
+) -> Binders<Ty> {
+    let generics = generics(db, (*impl_id).into());
+    Binders::new(generics.len(), Ty::Unknown)
 }
 
 pub(crate) fn impl_trait_query(db: &impl HirDatabase, impl_id: ImplId) -> Option<TraitRef> {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let ctx = TyLoweringContext {
-        db,
-        resolver: &resolver,
-        impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-    };
-    let self_ty = db.impl_self_ty(impl_id);
+    let generics = generics(db, impl_id.into());
+    let ctx = TyLoweringContext::new(db, &resolver);
+    let self_ty = db.impl_self_ty(impl_id).subst(&Substs::identity(&generics));
     let target_trait = impl_data.target_trait.as_ref()?;
     TraitRef::from_hir(&ctx, target_trait, Some(self_ty.clone()))
 }

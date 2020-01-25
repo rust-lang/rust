@@ -279,11 +279,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impl_trait_mode: ImplTraitLoweringMode,
     ) -> Ty {
         // FIXME use right resolver for block
-        let ctx = crate::lower::TyLoweringContext {
-            db: self.db,
-            resolver: &self.resolver,
-            impl_trait_mode,
-        };
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver).with_impl_trait_mode(impl_trait_mode);
         let ty = Ty::from_hir(&ctx, type_ref);
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
@@ -457,24 +453,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let ctx = crate::lower::TyLoweringContext {
-            db: self.db,
-            resolver: &self.resolver,
-            impl_trait_mode: ImplTraitLoweringMode::Disallowed,
-        };
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
                 let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
+                let ty = self.insert_type_vars(ty.subst(&substs));
                 (ty, Some(strukt.into()))
             }
             Some(TypeNs::EnumVariantId(var)) => {
                 let substs = Ty::substs_from_path(&ctx, path, var.into());
                 let ty = self.db.ty(var.parent.into());
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
+                let ty = self.insert_type_vars(ty.subst(&substs));
                 (ty, Some(var.into()))
             }
             Some(_) | None => (Ty::Unknown, None),
@@ -492,7 +484,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        let return_ty = self.make_ty_with_mode(&data.ret_type, ImplTraitLoweringMode::Placeholder);
+        let return_ty = self.make_ty_with_mode(&data.ret_type, ImplTraitLoweringMode::Variable);
         self.return_ty = self.insert_vars_for_impl_trait(return_ty);
     }
 

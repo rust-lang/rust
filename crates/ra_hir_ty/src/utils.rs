@@ -5,7 +5,7 @@ use std::sync::Arc;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
-    generics::{GenericParams, TypeParamData},
+    generics::{GenericParams, TypeParamData, TypeParamProvenance},
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -117,19 +117,31 @@ impl Generics {
     pub(crate) fn len(&self) -> usize {
         self.len_split().0
     }
+
     /// (total, parents, child)
     pub(crate) fn len_split(&self) -> (usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
         let child = self.params.types.len();
         (parent + child, parent, child)
     }
+
+    /// (self, type param list, impl trait)
+    pub(crate) fn provenance_split(&self) -> (usize, usize, usize) {
+        let self_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::TraitSelf).count();
+        let list_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::TypeParamList).count();
+        let impl_trait_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait).count();
+        (self_params, list_params, impl_trait_params)
+    }
+
     pub(crate) fn param_idx(&self, param: TypeParamId) -> u32 {
         self.find_param(param).0
     }
+
     pub(crate) fn param_name(&self, param: TypeParamId) -> Name {
         // FIXME make this return Option
         self.find_param(param).1.name.clone().unwrap_or_else(Name::missing)
     }
+
     fn find_param(&self, param: TypeParamId) -> (u32, &TypeParamData) {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self

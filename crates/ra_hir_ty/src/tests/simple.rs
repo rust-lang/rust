@@ -1220,7 +1220,7 @@ fn test() {
 }
 
 #[test]
-fn infer_impl_generics() {
+fn infer_impl_generics_basic() {
     assert_snapshot!(
         infer(r#"
 struct A<T1, T2> {

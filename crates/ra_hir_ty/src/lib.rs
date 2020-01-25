@@ -453,6 +453,30 @@ impl Deref for Substs {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Binders<T> {
+    pub num_binders: usize,
+    pub value: T,
+}
+
+impl<T> Binders<T> {
+    pub fn new(num_binders: usize, value: T) -> Self { Self { num_binders, value } }
+}
+
+impl<T: TypeWalk> Binders<T> {
+    /// Substitutes all variables.
+    pub fn subst(self, subst: &Substs) -> T {
+        assert_eq!(subst.len(), self.num_binders);
+        self.value.subst_bound_vars(subst)
+    }
+
+    /// Substitutes just a prefix of the variables (shifting the rest).
+    pub fn subst_prefix(self, subst: &Substs) -> Binders<T> {
+        assert!(subst.len() < self.num_binders);
+        Binders::new(self.num_binders - subst.len(), self.value.subst_bound_vars(subst))
+    }
+}
+
 /// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.
 /// Name to be bikeshedded: TraitBound? TraitImplements?
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -552,6 +576,9 @@ pub struct Canonical<T> {
 pub struct FnSig {
     params_and_return: Arc<[Ty]>,
 }
+
+/// A polymorphic function signature.
+pub type PolyFnSig = Binders<FnSig>;
 
 impl FnSig {
     pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty) -> FnSig {
@@ -757,6 +784,9 @@ pub trait TypeWalk {
                 &mut Ty::Bound(idx) => {
                     if idx as usize >= binders && (idx as usize - binders) < substs.len() {
                         *ty = substs.0[idx as usize - binders].clone();
+                    } else if idx as usize >= binders + substs.len() {
+                        // shift free binders
+                        *ty = Ty::Bound(idx - substs.len() as u32);
                     }
                 }
                 _ => {}
@@ -903,8 +933,8 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ">")?;
                 }
                 write!(f, "(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                f.write_joined(sig.value.params(), ", ")?;
+                write!(f, ") -> {}", sig.value.ret().display(f.db))?;
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {

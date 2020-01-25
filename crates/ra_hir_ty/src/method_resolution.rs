@@ -65,7 +65,7 @@ impl CrateImplBlocks {
                     }
                     None => {
                         let self_ty = db.impl_self_ty(impl_id);
-                        if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty) {
+                        if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty.value) {
                             res.impls.entry(self_ty_fp).or_default().push(impl_id);
                         }
                     }
@@ -496,7 +496,7 @@ fn transform_receiver_ty(
         AssocContainerId::ContainerId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
-    Some(sig.params()[0].clone().subst(&substs))
+    Some(sig.value.params()[0].clone().subst_bound_vars(&substs))
 }
 
 pub fn implements_trait(

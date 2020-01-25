@@ -20,7 +20,7 @@ use crate::{
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
     ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
-    TypeCtor, TypeWalk, Uncertain,
+    TypeCtor, TypeWalk, Uncertain, Binders,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -588,10 +588,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.write_method_resolution(tgt_expr, func);
                 (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
             }
-            None => (receiver_ty, Ty::Unknown, None),
+            None => (receiver_ty, Binders::new(0, Ty::Unknown), None),
         };
         let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
-        let method_ty = method_ty.apply_substs(substs);
+        let method_ty = method_ty.subst(&substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
         let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {

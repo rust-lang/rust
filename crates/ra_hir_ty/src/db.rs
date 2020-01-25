@@ -12,8 +12,8 @@ use ra_prof::profile;
 use crate::{
     method_resolution::CrateImplBlocks,
     traits::{chalk, AssocTyValue, Impl},
-    CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
-    ValueTyDefId,
+    CallableDef, PolyFnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
+    ValueTyDefId, Binders,
 };
 
 #[salsa::query_group(HirDatabaseStorage)]
@@ -27,14 +27,14 @@ pub trait HirDatabase: DefDatabase {
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
-    fn ty(&self, def: TyDefId) -> Ty;
+    fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::value_ty_query)]
-    fn value_ty(&self, def: ValueTyDefId) -> Ty;
+    fn value_ty(&self, def: ValueTyDefId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::cycle(crate::lower::impl_self_ty_recover)]
-    fn impl_self_ty(&self, def: ImplId) -> Ty;
+    fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<TraitRef>;
@@ -43,7 +43,7 @@ pub trait HirDatabase: DefDatabase {
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Ty>>;
 
     #[salsa::invoke(crate::callable_item_sig)]
-    fn callable_item_signature(&self, def: CallableDef) -> FnSig;
+    fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
