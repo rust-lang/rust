@@ -176,7 +176,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None,
     };
-    check_bare_self_trait_by_name(tcx, &trait_item);
+    check_object_unsafe_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 }
 
@@ -195,7 +195,7 @@ fn could_be_self(trait_name: Ident, ty: &hir::Ty<'_>) -> bool {
 
 /// Detect when an object unsafe trait is referring to itself in one of its associated items.
 /// When this is done, suggest using `Self` instead.
-fn check_bare_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
+fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
     let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id)) {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Trait(..) => (item.ident, tcx.hir().local_def_id(item.hir_id)),
@@ -230,17 +230,18 @@ fn check_bare_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
             return;
         }
         let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
-        let mut err = tcx.sess.struct_span_err(
-            trait_should_be_self,
-            "associated item referring to unboxed trait object for its own trait",
-        );
-        err.span_label(trait_name.span, "in this trait");
-        err.multipart_suggestion(
-            "you might have meant to use `Self` to refer to the materialized type",
-            sugg,
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        tcx.sess
+            .struct_span_err(
+                trait_should_be_self,
+                "associated item referring to unboxed trait object for its own trait",
+            )
+            .span_label(trait_name.span, "in this trait")
+            .multipart_suggestion(
+                "you might have meant to use `Self` to refer to the implementing type",
+                sugg,
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 }
 

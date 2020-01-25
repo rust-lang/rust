@@ -6,7 +6,7 @@ LL | trait A: Sized {
 LL |     fn f(a: A) -> A;
    |             ^     ^
    |
-help: you might have meant to use `Self` to refer to the materialized type
+help: you might have meant to use `Self` to refer to the implementing type
    |
 LL |     fn f(a: Self) -> Self;
    |             ^^^^     ^^^^
@@ -29,7 +29,7 @@ LL | trait B {
 LL |     fn f(a: B) -> B;
    |             ^     ^
    |
-help: you might have meant to use `Self` to refer to the materialized type
+help: you might have meant to use `Self` to refer to the implementing type
    |
 LL |     fn f(a: Self) -> Self;
    |             ^^^^     ^^^^
