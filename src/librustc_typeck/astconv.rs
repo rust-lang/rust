@@ -317,10 +317,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         // Prohibit explicit lifetime arguments if late-bound lifetime parameters are present.
-        let mut reported_late_bound_region_err = false;
+        let mut explicit_lifetimes = Ok(());
         if !infer_lifetimes {
             if let Some(span_late) = def.has_late_bound_regions {
-                reported_late_bound_region_err = true;
+                explicit_lifetimes = Err(GenericArgCountMismatch);
                 let msg = "cannot specify lifetime arguments explicitly \
                            if late bound lifetime parameters are present";
                 let note = "the late bound lifetime parameter is introduced here";
@@ -354,7 +354,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
                 // For other kinds (i.e., types), `permitted` may be greater than `required`.
                 if required <= provided && provided <= permitted {
-                    return false;
+                    return Ok(());
                 }
 
                 // Unfortunately lifetime and type parameter mismatches are typically styled
@@ -405,49 +405,49 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 err.emit();
 
-                true
+                Err(GenericArgCountMismatch)
             };
 
-        let mut arg_count_mismatch = reported_late_bound_region_err;
+        let mut arg_count_correct = explicit_lifetimes;
         let mut unexpected_spans = vec![];
 
-        if !reported_late_bound_region_err
+        if arg_count_correct.is_ok()
             && (!infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes)
         {
-            arg_count_mismatch |= check_kind_count(
+            arg_count_correct = arg_count_correct.and(check_kind_count(
                 "lifetime",
                 param_counts.lifetimes,
                 param_counts.lifetimes,
                 arg_counts.lifetimes,
                 0,
                 &mut unexpected_spans,
-            );
+            ));
         }
         // FIXME(const_generics:defaults)
         if !infer_args || arg_counts.consts > param_counts.consts {
-            arg_count_mismatch |= check_kind_count(
+            arg_count_correct = arg_count_correct.and(check_kind_count(
                 "const",
                 param_counts.consts,
                 param_counts.consts,
                 arg_counts.consts,
                 arg_counts.lifetimes + arg_counts.types,
                 &mut unexpected_spans,
-            );
+            ));
         }
         // Note that type errors are currently be emitted *after* const errors.
         if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
         {
-            arg_count_mismatch |= check_kind_count(
+            arg_count_correct = arg_count_correct.and(check_kind_count(
                 "type",
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
                 arg_counts.types,
                 arg_counts.lifetimes,
                 &mut unexpected_spans,
-            );
+            ));
         }
 
-        (if arg_count_mismatch { Err(GenericArgCountMismatch) } else { Ok(()) }, unexpected_spans)
+        (arg_count_correct, unexpected_spans)
     }
 
     /// Report an error that a generic argument did not match the generic parameter that was
