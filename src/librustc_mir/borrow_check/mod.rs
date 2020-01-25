@@ -684,7 +684,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 }
             }
 
-            TerminatorKind::Yield { ref value, resume: _, drop: _ } => {
+            TerminatorKind::Yield { ref value, resume: _, ref resume_arg, drop: _ } => {
                 self.consume_operand(loc, (value, span), flow_state);
 
                 if self.movable_generator {
@@ -697,6 +697,8 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                         }
                     });
                 }
+
+                self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
             }
 
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {

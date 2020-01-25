@@ -159,7 +159,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, index);
                 }
             }
-            TerminatorKind::Yield { ref value, resume, drop: _ } => {
+            TerminatorKind::Yield { ref value, resume, resume_arg, drop: _ } => {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places
@@ -170,6 +170,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                         self.all_facts.invalidates.push((resume, i));
                     }
                 }
+
+                self.mutate_place(location, resume_arg, Deep, JustWrite);
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
