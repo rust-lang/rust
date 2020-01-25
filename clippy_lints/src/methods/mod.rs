@@ -2138,7 +2138,7 @@ fn lint_iter_nth<'a, 'tcx>(
         ITER_NTH,
         expr.span,
         &format!("called `.iter{0}().nth()` on a {1}", mut_str, caller_type),
-        &format!("Calling `.get{}()` is both faster and more readable", mut_str),
+        &format!("calling `.get{}()` is both faster and more readable", mut_str),
     );
 }
 
@@ -2247,7 +2247,7 @@ fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
             ITER_SKIP_NEXT,
             expr.span,
             "called `skip(x).next()` on an iterator",
-            "This is more succinctly expressed by calling `nth(x)`.",
+            "this is more succinctly expressed by calling `nth(x)`",
         );
     }
 }
@@ -2309,8 +2309,8 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
             expr.span,
             &format!("used `unwrap()` on `{}` value", kind,),
             &format!(
-                "If you don't want to handle the `{}` case gracefully, consider \
-                using `expect()` to provide a better panic message.",
+                "if you don't want to handle the `{}` case gracefully, consider \
+                using `expect()` to provide a better panic message",
                 none_value,
             ),
         );
@@ -2335,7 +2335,7 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
             lint,
             expr.span,
             &format!("used `expect()` on `{}` value", kind,),
-            &format!("If this value is an `{}`, it will panic.", none_value,),
+            &format!("if this value is an `{}`, it will panic", none_value,),
         );
     }
 }
@@ -2355,7 +2355,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir
                 OK_EXPECT,
                 expr.span,
                 "called `ok().expect()` on a `Result` value",
-                "You can call `expect()` directly on the `Result`",
+                "you can call `expect()` directly on the `Result`",
             );
         }
     }
@@ -2608,7 +2608,7 @@ fn lint_filter_map<'a, 'tcx>(
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an `Iterator`";
-        let hint = "This is more succinctly expressed by calling `.filter_map(..)` instead.";
+        let hint = "this is more succinctly expressed by calling `.filter_map(..)` instead";
         span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
@@ -2648,7 +2648,7 @@ fn lint_find_map<'a, 'tcx>(
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
         let msg = "called `find(p).map(q)` on an `Iterator`";
-        let hint = "This is more succinctly expressed by calling `.find_map(..)` instead.";
+        let hint = "this is more succinctly expressed by calling `.find_map(..)` instead";
         span_help_and_lint(cx, FIND_MAP, expr.span, msg, hint);
     }
 }
@@ -2663,7 +2663,7 @@ fn lint_filter_map_map<'a, 'tcx>(
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).map(q)` on an `Iterator`";
-        let hint = "This is more succinctly expressed by only calling `.filter_map(..)` instead.";
+        let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
         span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
@@ -2678,8 +2678,8 @@ fn lint_filter_flat_map<'a, 'tcx>(
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`";
-        let hint = "This is more succinctly expressed by calling `.flat_map(..)` \
-            and filtering by returning an empty Iterator.";
+        let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
+            and filtering by returning `iter::empty()`";
         span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
@@ -2694,8 +2694,8 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`";
-        let hint = "This is more succinctly expressed by calling `.flat_map(..)` \
-            and filtering by returning an empty Iterator.";
+        let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
+            and filtering by returning `iter::empty()`";
         span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }

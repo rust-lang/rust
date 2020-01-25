@@ -5,7 +5,7 @@ LL |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::ok-expect` implied by `-D warnings`
-   = help: You can call `expect()` directly on the `Result`
+   = help: you can call `expect()` directly on the `Result`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:20:5
@@ -13,7 +13,7 @@ error: called `ok().expect()` on a `Result` value
 LL |     res3.ok().expect("whoof");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: You can call `expect()` directly on the `Result`
+   = help: you can call `expect()` directly on the `Result`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:22:5
@@ -21,7 +21,7 @@ error: called `ok().expect()` on a `Result` value
 LL |     res4.ok().expect("argh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: You can call `expect()` directly on the `Result`
+   = help: you can call `expect()` directly on the `Result`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:24:5
@@ -29,7 +29,7 @@ error: called `ok().expect()` on a `Result` value
 LL |     res5.ok().expect("oops");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: You can call `expect()` directly on the `Result`
+   = help: you can call `expect()` directly on the `Result`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:26:5
@@ -37,7 +37,7 @@ error: called `ok().expect()` on a `Result` value
 LL |     res6.ok().expect("meh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: You can call `expect()` directly on the `Result`
+   = help: you can call `expect()` directly on the `Result`
 
 error: aborting due to 5 previous errors
 
