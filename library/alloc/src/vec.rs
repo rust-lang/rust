@@ -2181,7 +2181,7 @@ impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()) as *mut _);
+            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
         }
     }
 }
