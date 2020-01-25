@@ -66,14 +66,18 @@ pub struct CValue<'tcx>(CValueInner, TyLayout<'tcx>);
 
 #[derive(Debug, Copy, Clone)]
 enum CValueInner {
-    ByRef(Pointer),
+    ByRef(Pointer, Option<Value>),
     ByVal(Value),
     ByValPair(Value, Value),
 }
 
 impl<'tcx> CValue<'tcx> {
     pub fn by_ref(ptr: Pointer, layout: TyLayout<'tcx>) -> CValue<'tcx> {
-        CValue(CValueInner::ByRef(ptr), layout)
+        CValue(CValueInner::ByRef(ptr, None), layout)
+    }
+
+    pub fn by_ref_unsized(ptr: Pointer, meta: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+        CValue(CValueInner::ByRef(ptr, Some(meta)), layout)
     }
 
     pub fn by_val(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
@@ -89,24 +93,24 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Pointer {
+    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Pointer, Option<Value>) {
         let layout = self.1;
         match self.0 {
-            CValueInner::ByRef(ptr) => ptr,
+            CValueInner::ByRef(ptr, meta) => (ptr, meta),
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => {
                 let cplace = CPlace::new_stack_slot(fx, layout);
                 cplace.write_cvalue(fx, self);
-                cplace.to_ptr(fx)
+                (cplace.to_ptr(fx), None)
             }
         }
     }
 
-    pub fn try_to_addr(self) -> Option<Value> {
+    pub fn try_to_addr(self) -> Option<(Value, Option<Value>)> {
         match self.0 {
-            CValueInner::ByRef(ptr) => {
+            CValueInner::ByRef(ptr, meta) => {
                 if let Some((base_addr, offset)) = ptr.try_get_addr_and_offset() {
                     if offset == Offset32::new(0) {
-                        Some(base_addr)
+                        Some((base_addr, meta))
                     } else {
                         None
                     }
@@ -122,7 +126,7 @@ impl<'tcx> CValue<'tcx> {
     pub fn load_scalar<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         let layout = self.1;
         match self.0 {
-            CValueInner::ByRef(ptr) => {
+            CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.abi {
                     layout::Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
                     layout::Abi::Vector { ref element, count } => {
@@ -134,6 +138,7 @@ impl<'tcx> CValue<'tcx> {
                 ptr.load(fx, clif_ty, MemFlags::new())
             }
             CValueInner::ByVal(value) => value,
+            CValueInner::ByRef(_, Some(_)) => bug!("load_scalar for unsized value not allowed"),
             CValueInner::ByValPair(_, _) => bug!("Please use load_scalar_pair for ByValPair"),
         }
     }
@@ -145,7 +150,7 @@ impl<'tcx> CValue<'tcx> {
     ) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
-            CValueInner::ByRef(ptr) => {
+            CValueInner::ByRef(ptr, None) => {
                 let (a_scalar, b_scalar) = match &layout.abi {
                     layout::Abi::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("load_scalar_pair({:?})", self),
@@ -157,6 +162,7 @@ impl<'tcx> CValue<'tcx> {
                 let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, MemFlags::new());
                 (val1, val2)
             }
+            CValueInner::ByRef(_, Some(_)) => bug!("load_scalar_pair for unsized value not allowed"),
             CValueInner::ByVal(_) => bug!("Please use load_scalar for ByVal"),
             CValueInner::ByValPair(val1, val2) => (val1, val2),
         }
@@ -182,10 +188,11 @@ impl<'tcx> CValue<'tcx> {
                     _ => unreachable!("value_field for ByVal with abi {:?}", layout.abi),
                 }
             }
-            CValueInner::ByRef(ptr) => {
+            CValueInner::ByRef(ptr, None) => {
                 let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
                 CValue::by_ref(field_ptr, field_layout)
             }
+            CValueInner::ByRef(_, Some(_)) => todo!(),
             _ => bug!("place_field for {:?}", self),
         }
     }
@@ -495,7 +502,7 @@ impl<'tcx> CPlace<'tcx> {
                     dst_layout.abi
                 );
             }
-            CValueInner::ByRef(from_ptr) => {
+            CValueInner::ByRef(from_ptr, None) => {
                 let from_addr = from_ptr.get_addr(fx);
                 let to_addr = to_ptr.get_addr(fx);
                 let src_layout = from.1;
@@ -511,6 +518,7 @@ impl<'tcx> CPlace<'tcx> {
                     src_align,
                 );
             }
+            CValueInner::ByRef(_, Some(_)) => todo!(),
         }
     }
 

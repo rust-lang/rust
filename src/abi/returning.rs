@@ -9,7 +9,7 @@ pub fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx
     match get_pass_mode(tcx, dest_layout) {
         PassMode::NoPass | PassMode::ByVal(_) => true,
         // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
-        PassMode::ByValPair(_, _) | PassMode::ByRef => false
+        PassMode::ByValPair(_, _) | PassMode::ByRef { sized: _ } => false
     }
 }
 
@@ -33,13 +33,14 @@ pub(super) fn codegen_return_param(
 
             Empty
         }
-        PassMode::ByRef => {
+        PassMode::ByRef { sized: true } => {
             let ret_param = fx.bcx.append_ebb_param(start_ebb, fx.pointer_type);
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::for_ptr(Pointer::new(ret_param), ret_layout));
 
             Single(ret_param)
         }
+        PassMode::ByRef { sized: false } => todo!(),
     };
 
     #[cfg(debug_assertions)]
@@ -65,10 +66,11 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     let output_pass_mode = get_pass_mode(fx.tcx, ret_layout);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
-        PassMode::ByRef => match ret_place {
+        PassMode::ByRef { sized: true } => match ret_place {
             Some(ret_place) => Some(ret_place.to_ptr(fx).get_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
         },
+        PassMode::ByRef { sized: false } => todo!(),
         PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
     };
 
@@ -89,7 +91,8 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
                 ret_place.write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_layout));
             }
         }
-        PassMode::ByRef => {}
+        PassMode::ByRef { sized: true } => {}
+        PassMode::ByRef { sized: false } => todo!(),
     }
 
     (call_inst, meta)
@@ -97,9 +100,10 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
-        PassMode::NoPass | PassMode::ByRef => {
+        PassMode::NoPass | PassMode::ByRef { sized: true } => {
             fx.bcx.ins().return_(&[]);
         }
+        PassMode::ByRef { sized: false } => todo!(),
         PassMode::ByVal(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_scalar(fx);

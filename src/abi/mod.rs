@@ -139,7 +139,7 @@ fn clif_sig_from_fn_sig<'tcx>(
             inputs.map(AbiParam::new).collect(),
             vec![AbiParam::new(ret_ty_a), AbiParam::new(ret_ty_b)],
         ),
-        PassMode::ByRef => {
+        PassMode::ByRef { sized: true } => {
             (
                 Some(pointer_ty(tcx)) // First param is place to put return val
                     .into_iter()
@@ -149,6 +149,7 @@ fn clif_sig_from_fn_sig<'tcx>(
                 vec![],
             )
         }
+        PassMode::ByRef { sized: false } => todo!(),
     };
 
     if requires_caller_location {
@@ -350,9 +351,11 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
 
         let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
 
+        // While this is normally an optimization to prevent an unnecessary copy when an argument is
+        // not mutated by the current function, this is necessary to support unsized arguments.
         match arg_kind {
             ArgKind::Normal(Some(val)) => {
-                if let Some(addr) = val.try_to_addr() {
+                if let Some((addr, meta)) = val.try_to_addr() {
                     let local_decl = &fx.mir.local_decls[local];
                     //                       v this ! is important
                     let internally_mutable = !val.layout().ty.is_freeze(
@@ -364,7 +367,11 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: 
                         // We wont mutate this argument, so it is fine to borrow the backing storage
                         // of this argument, to prevent a copy.
 
-                        let place = CPlace::for_ptr(Pointer::new(addr), val.layout());
+                        let place = if let Some(meta) = meta {
+                            CPlace::for_ptr_with_extra(Pointer::new(addr), meta, val.layout())
+                        } else {
+                            CPlace::for_ptr(Pointer::new(addr), val.layout())
+                        };
 
                         #[cfg(debug_assertions)]
                         self::comments::add_local_place_comments(fx, place, local);

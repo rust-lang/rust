@@ -7,7 +7,7 @@ pub enum PassMode {
     NoPass,
     ByVal(Type),
     ByValPair(Type, Type),
-    ByRef,
+    ByRef { sized: bool },
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -70,14 +70,13 @@ impl PassMode {
             PassMode::NoPass => Empty,
             PassMode::ByVal(clif_type) => Single(clif_type),
             PassMode::ByValPair(a, b) => Pair(a, b),
-            PassMode::ByRef => Single(pointer_ty(tcx)),
+            PassMode::ByRef { sized: true } => Single(pointer_ty(tcx)),
+            PassMode::ByRef { sized: false } => Pair(pointer_ty(tcx), pointer_ty(tcx)),
         }
     }
 }
 
 pub fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMode {
-    assert!(!layout.is_unsized());
-
     if layout.is_zst() {
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
         PassMode::NoPass
@@ -94,16 +93,16 @@ pub fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMod
                     // Returning (i128, i128) by-val-pair would take 4 regs, while only 3 are
                     // available on x86_64. Cranelift gets confused when too many return params
                     // are used.
-                    PassMode::ByRef
+                    PassMode::ByRef { sized: true }
                 } else {
                     PassMode::ByValPair(a, b)
                 }
             }
 
             // FIXME implement Vector Abi in a cg_llvm compatible way
-            layout::Abi::Vector { .. } => PassMode::ByRef,
+            layout::Abi::Vector { .. } => PassMode::ByRef { sized: true },
 
-            layout::Abi::Aggregate { .. } => PassMode::ByRef,
+            &layout::Abi::Aggregate { sized } => PassMode::ByRef { sized },
         }
     }
 }
@@ -119,7 +118,12 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             Pair(a, b)
         }
-        PassMode::ByRef => Single(arg.force_stack(fx).get_addr(fx)),
+        PassMode::ByRef { sized: _ } => {
+            match arg.force_stack(fx) {
+                (ptr, None) => Single(ptr.get_addr(fx)),
+                (ptr, Some(meta)) => Pair(ptr.get_addr(fx), meta),
+            }
+        }
     }
 }
 
@@ -158,6 +162,10 @@ pub(super) fn cvalue_for_param<'tcx>(
             let (a, b) = ebb_params.assert_pair();
             Some(CValue::by_val_pair(a, b, layout))
         }
-        PassMode::ByRef => Some(CValue::by_ref(Pointer::new(ebb_params.assert_single()), layout)),
+        PassMode::ByRef { sized: true } => Some(CValue::by_ref(Pointer::new(ebb_params.assert_single()), layout)),
+        PassMode::ByRef { sized: false } => {
+            let (ptr, meta) = ebb_params.assert_pair();
+            Some(CValue::by_ref_unsized(Pointer::new(ptr), meta, layout))
+        }
     }
 }

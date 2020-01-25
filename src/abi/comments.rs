@@ -77,15 +77,21 @@ pub fn add_local_place_comments<'tcx>(
             ("ssa", std::borrow::Cow::Borrowed(""))
         }
         CPlaceInner::NoPlace => ("zst", "".into()),
-        CPlaceInner::Addr(ptr, None) => match ptr.base_and_offset() {
-            (crate::pointer::PointerBase::Addr(addr), offset) => {
-                ("reuse", format!("storage={}{}", addr, offset).into())
+        CPlaceInner::Addr(ptr, meta) => {
+            let meta = if let Some(meta) = meta {
+                Cow::Owned(format!(",meta={}", meta))
+            } else {
+                Cow::Borrowed("")
+            };
+            match ptr.base_and_offset() {
+                (crate::pointer::PointerBase::Addr(addr), offset) => {
+                    ("reuse", format!("storage={}{}{}", addr, offset, meta).into())
+                }
+                (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
+                    ("stack", format!("storage={}{}{}", stack_slot, offset, meta).into())
+                }
             }
-            (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
-                ("stack", format!("storage={}{}", stack_slot, offset).into())
-            }
-        },
-        CPlaceInner::Addr(_, Some(_)) => unreachable!(),
+        }
     };
 
     fx.add_global_comment(format!(
