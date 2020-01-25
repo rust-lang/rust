@@ -12,6 +12,7 @@ use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, Style,
 };
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -1366,14 +1367,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         if let Some(expr_id) = expr {
             let expr = hir.expect_expr(expr_id);
-            let is_ref = tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
+            debug!("target_ty evaluated from {:?}", expr);
+
             let parent = hir.get_parent_node(expr_id);
             if let Some(hir::Node::Expr(e)) = hir.find(parent) {
-                let method_span = hir.span(parent);
-                if tables.is_method_call(e) && is_ref {
+                let parent_span = hir.span(parent);
+                let parent_did = parent.owner_def_id();
+                // ```rust
+                // impl T {
+                //     fn foo(&self) -> i32 {}
+                // }
+                // T.foo();
+                // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
+                // ```
+                //
+                let is_region_borrow =
+                    tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
+
+                // ```rust
+                // struct Foo(*const u8);
+                // bar(Foo(std::ptr::null())).await;
+                //     ^^^^^^^^^^^^^^^^^^^^^ raw-ptr `*T` created inside this struct ctor.
+                // ```
+                debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
+                let is_raw_borrow_inside_fn_like_call = match self.tcx.def_kind(parent_did) {
+                    Some(DefKind::Fn) | Some(DefKind::Ctor(..)) => target_ty.is_unsafe_ptr(),
+                    _ => false,
+                };
+
+                if (tables.is_method_call(e) && is_region_borrow)
+                    || is_raw_borrow_inside_fn_like_call
+                {
                     err.span_help(
-                        method_span,
-                        "consider moving this method call into a `let` \
+                        parent_span,
+                        "consider moving this into a `let` \
                         binding to create a shorter lived borrow",
                     );
                 }
