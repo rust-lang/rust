@@ -581,9 +581,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             DefiningTy::Generator(def_id, substs, movability) => {
                 assert_eq!(self.mir_def_id, def_id);
+                let resume_ty = substs.as_generator().resume_ty(def_id, tcx);
                 let output = substs.as_generator().return_ty(def_id, tcx);
                 let generator_ty = tcx.mk_generator(def_id, substs, movability);
-                let inputs_and_output = self.infcx.tcx.intern_type_list(&[generator_ty, output]);
+                let inputs_and_output =
+                    self.infcx.tcx.intern_type_list(&[generator_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 

@@ -1120,6 +1120,8 @@ pub enum TerminatorKind<'tcx> {
         value: Operand<'tcx>,
         /// Where to resume to.
         resume: BasicBlock,
+        /// The place to store the resume argument in.
+        resume_arg: Place<'tcx>,
         /// Cleanup to be done if the generator is dropped at this suspend point.
         drop: Option<BasicBlock>,
     },
@@ -2645,9 +2647,12 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 target,
                 unwind,
             },
-            Yield { ref value, resume, drop } => {
-                Yield { value: value.fold_with(folder), resume: resume, drop: drop }
-            }
+            Yield { ref value, resume, ref resume_arg, drop } => Yield {
+                value: value.fold_with(folder),
+                resume,
+                resume_arg: resume_arg.fold_with(folder),
+                drop,
+            },
             Call { ref func, ref args, ref destination, cleanup, from_hir_call } => {
                 let dest =
                     destination.as_ref().map(|&(ref loc, dest)| (loc.fold_with(folder), dest));
