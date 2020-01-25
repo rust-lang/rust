@@ -4,6 +4,7 @@
 
 struct SizedStruct(i32);
 struct UnsizedStruct([i32]);
+struct BigStruct([i32; 10000]);
 
 /// The following should trigger the lint
 mod should_trigger {
@@ -19,9 +20,10 @@ mod should_trigger {
 
 /// The following should not trigger the lint
 mod should_not_trigger {
-    use super::UnsizedStruct;
+    use super::{BigStruct, UnsizedStruct};
 
     struct C(Vec<Box<UnsizedStruct>>);
+    struct D(Vec<Box<BigStruct>>);
 
     struct StructWithVecBoxButItsUnsized {
         unsized_type: Vec<Box<UnsizedStruct>>,

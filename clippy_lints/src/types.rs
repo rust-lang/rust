@@ -167,7 +167,11 @@ declare_clippy_lint! {
     "a borrow of a boxed type"
 }
 
-declare_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
+pub struct Types {
+    vec_box_size_threshold: u64,
+}
+
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     fn check_fn(
@@ -186,35 +190,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
             }
         }
 
-        check_fn_decl(cx, decl);
+        self.check_fn_decl(cx, decl);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField<'_>) {
-        check_ty(cx, &field.ty, false);
+        self.check_ty(cx, &field.ty, false);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &TraitItem<'_>) {
         match item.kind {
-            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
-            TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
+            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_ty(cx, ty, false),
+            TraitItemKind::Method(ref sig, _) => self.check_fn_decl(cx, &sig.decl),
             _ => (),
         }
     }
 
     fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local<'_>) {
         if let Some(ref ty) = local.ty {
-            check_ty(cx, ty, true);
+            self.check_ty(cx, ty, true);
         }
-    }
-}
-
-fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>) {
-    for input in decl.inputs {
-        check_ty(cx, input, false);
-    }
-
-    if let FunctionRetTy::Return(ref ty) = decl.output {
-        check_ty(cx, ty, false);
     }
 }
 
@@ -238,54 +232,71 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&st
     false
 }
 
-/// Recursively check for `TypePass` lints in the given type. Stop at the first
-/// lint found.
-///
-/// The parameter `is_local` distinguishes the context of the type; types from
-/// local bindings should only be checked for the `BORROWED_BOX` lint.
-#[allow(clippy::too_many_lines)]
-fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
-    if hir_ty.span.from_expansion() {
-        return;
+impl Types {
+    pub fn new(vec_box_size_threshold: u64) -> Self {
+        Self { vec_box_size_threshold }
     }
-    match hir_ty.kind {
-        TyKind::Path(ref qpath) if !is_local => {
-            let hir_id = hir_ty.hir_id;
-            let res = qpath_res(cx, qpath, hir_id);
-            if let Some(def_id) = res.opt_def_id() {
-                if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                    if match_type_parameter(cx, qpath, &paths::VEC) {
-                        span_help_and_lint(
-                            cx,
-                            BOX_VEC,
-                            hir_ty.span,
-                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
-                        );
-                        return; // don't recurse into the type
-                    }
-                } else if cx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id) {
-                    if_chain! {
-                        // Get the _ part of Vec<_>
-                        if let Some(ref last) = last_path_segment(qpath).args;
-                        if let Some(ty) = last.args.iter().find_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
-                            _ => None,
-                        });
-                        // ty is now _ at this point
-                        if let TyKind::Path(ref ty_qpath) = ty.kind;
-                        let res = qpath_res(cx, ty_qpath, ty.hir_id);
-                        if let Some(def_id) = res.opt_def_id();
-                        if Some(def_id) == cx.tcx.lang_items().owned_box();
-                        // At this point, we know ty is Box<T>, now get T
-                        if let Some(ref last) = last_path_segment(ty_qpath).args;
-                        if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
-                            _ => None,
-                        });
-                        then {
+
+    fn check_fn_decl(&mut self, cx: &LateContext<'_, '_>, decl: &FnDecl<'_>) {
+        for input in decl.inputs {
+            self.check_ty(cx, input, false);
+        }
+
+        if let FunctionRetTy::Return(ref ty) = decl.output {
+            self.check_ty(cx, ty, false);
+        }
+    }
+
+    /// Recursively check for `TypePass` lints in the given type. Stop at the first
+    /// lint found.
+    ///
+    /// The parameter `is_local` distinguishes the context of the type; types from
+    /// local bindings should only be checked for the `BORROWED_BOX` lint.
+    #[allow(clippy::too_many_lines)]
+    fn check_ty(&mut self, cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
+        if hir_ty.span.from_expansion() {
+            return;
+        }
+        match hir_ty.kind {
+            TyKind::Path(ref qpath) if !is_local => {
+                let hir_id = hir_ty.hir_id;
+                let res = qpath_res(cx, qpath, hir_id);
+                if let Some(def_id) = res.opt_def_id() {
+                    if Some(def_id) == cx.tcx.lang_items().owned_box() {
+                        if match_type_parameter(cx, qpath, &paths::VEC) {
+                            span_help_and_lint(
+                                cx,
+                                BOX_VEC,
+                                hir_ty.span,
+                                "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if cx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id) {
+                        if_chain! {
+                            // Get the _ part of Vec<_>
+                            if let Some(ref last) = last_path_segment(qpath).args;
+                            if let Some(ty) = last.args.iter().find_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                _ => None,
+                            });
+                            // ty is now _ at this point
+                            if let TyKind::Path(ref ty_qpath) = ty.kind;
+                            let res = qpath_res(cx, ty_qpath, ty.hir_id);
+                            if let Some(def_id) = res.opt_def_id();
+                            if Some(def_id) == cx.tcx.lang_items().owned_box();
+                            // At this point, we know ty is Box<T>, now get T
+                            if let Some(ref last) = last_path_segment(ty_qpath).args;
+                            if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                _ => None,
+                            });
                             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
-                            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env) {
+                            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
+                            if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
+                            if ty_ty_size <= self.vec_box_size_threshold;
+                            then {
                                 span_lint_and_sugg(
                                     cx,
                                     VEC_BOX,
@@ -298,137 +309,144 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
                                 return; // don't recurse into the type
                             }
                         }
-                    }
-                } else if match_def_path(cx, def_id, &paths::OPTION) {
-                    if match_type_parameter(cx, qpath, &paths::OPTION) {
-                        span_lint(
+                    } else if match_def_path(cx, def_id, &paths::OPTION) {
+                        if match_type_parameter(cx, qpath, &paths::OPTION) {
+                            span_lint(
+                                cx,
+                                OPTION_OPTION,
+                                hir_ty.span,
+                                "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
+                                enum if you need to distinguish all 3 cases",
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
+                        span_help_and_lint(
                             cx,
-                            OPTION_OPTION,
+                            LINKEDLIST,
                             hir_ty.span,
-                            "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
-                             enum if you need to distinguish all 3 cases",
+                            "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                            "a `VecDeque` might work",
                         );
                         return; // don't recurse into the type
                     }
-                } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
-                    span_help_and_lint(
-                        cx,
-                        LINKEDLIST,
-                        hir_ty.span,
-                        "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                        "a `VecDeque` might work",
-                    );
-                    return; // don't recurse into the type
                 }
-            }
-            match *qpath {
-                QPath::Resolved(Some(ref ty), ref p) => {
-                    check_ty(cx, ty, is_local);
-                    for ty in p.segments.iter().flat_map(|seg| {
-                        seg.args
-                            .as_ref()
-                            .map_or_else(|| [].iter(), |params| params.args.iter())
-                            .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            })
-                    }) {
-                        check_ty(cx, ty, is_local);
-                    }
-                },
-                QPath::Resolved(None, ref p) => {
-                    for ty in p.segments.iter().flat_map(|seg| {
-                        seg.args
-                            .as_ref()
-                            .map_or_else(|| [].iter(), |params| params.args.iter())
-                            .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            })
-                    }) {
-                        check_ty(cx, ty, is_local);
-                    }
-                },
-                QPath::TypeRelative(ref ty, ref seg) => {
-                    check_ty(cx, ty, is_local);
-                    if let Some(ref params) = seg.args {
-                        for ty in params.args.iter().filter_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
-                            _ => None,
+                match *qpath {
+                    QPath::Resolved(Some(ref ty), ref p) => {
+                        self.check_ty(cx, ty, is_local);
+                        for ty in p.segments.iter().flat_map(|seg| {
+                            seg.args
+                                .as_ref()
+                                .map_or_else(|| [].iter(), |params| params.args.iter())
+                                .filter_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    _ => None,
+                                })
                         }) {
-                            check_ty(cx, ty, is_local);
+                            self.check_ty(cx, ty, is_local);
                         }
-                    }
-                },
-            }
-        },
-        TyKind::Rptr(ref lt, ref mut_ty) => check_ty_rptr(cx, hir_ty, is_local, lt, mut_ty),
-        // recurse
-        TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
-            check_ty(cx, ty, is_local)
-        },
-        TyKind::Tup(tys) => {
-            for ty in tys {
-                check_ty(cx, ty, is_local);
-            }
-        },
-        _ => {},
-    }
-}
-
-fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool, lt: &Lifetime, mut_ty: &MutTy<'_>) {
-    match mut_ty.ty.kind {
-        TyKind::Path(ref qpath) => {
-            let hir_id = mut_ty.ty.hir_id;
-            let def = qpath_res(cx, qpath, hir_id);
-            if_chain! {
-                if let Some(def_id) = def.opt_def_id();
-                if Some(def_id) == cx.tcx.lang_items().owned_box();
-                if let QPath::Resolved(None, ref path) = *qpath;
-                if let [ref bx] = *path.segments;
-                if let Some(ref params) = bx.args;
-                if !params.parenthesized;
-                if let Some(inner) = params.args.iter().find_map(|arg| match arg {
-                    GenericArg::Type(ty) => Some(ty),
-                    _ => None,
-                });
-                then {
-                    if is_any_trait(inner) {
-                        // Ignore `Box<Any>` types; see issue #1884 for details.
-                        return;
-                    }
-
-                    let ltopt = if lt.is_elided() {
-                        String::new()
-                    } else {
-                        format!("{} ", lt.name.ident().as_str())
-                    };
-                    let mutopt = if mut_ty.mutbl == Mutability::Mut {
-                        "mut "
-                    } else {
-                        ""
-                    };
-                    let mut applicability = Applicability::MachineApplicable;
-                    span_lint_and_sugg(
-                        cx,
-                        BORROWED_BOX,
-                        hir_ty.span,
-                        "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
-                        "try",
-                        format!(
-                            "&{}{}{}",
-                            ltopt,
-                            mutopt,
-                            &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
-                        ),
-                        Applicability::Unspecified,
-                    );
-                    return; // don't recurse into the type
+                    },
+                    QPath::Resolved(None, ref p) => {
+                        for ty in p.segments.iter().flat_map(|seg| {
+                            seg.args
+                                .as_ref()
+                                .map_or_else(|| [].iter(), |params| params.args.iter())
+                                .filter_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    _ => None,
+                                })
+                        }) {
+                            self.check_ty(cx, ty, is_local);
+                        }
+                    },
+                    QPath::TypeRelative(ref ty, ref seg) => {
+                        self.check_ty(cx, ty, is_local);
+                        if let Some(ref params) = seg.args {
+                            for ty in params.args.iter().filter_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                _ => None,
+                            }) {
+                                self.check_ty(cx, ty, is_local);
+                            }
+                        }
+                    },
                 }
-            };
-            check_ty(cx, &mut_ty.ty, is_local);
-        },
-        _ => check_ty(cx, &mut_ty.ty, is_local),
+            },
+            TyKind::Rptr(ref lt, ref mut_ty) => self.check_ty_rptr(cx, hir_ty, is_local, lt, mut_ty),
+            // recurse
+            TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
+                self.check_ty(cx, ty, is_local)
+            },
+            TyKind::Tup(tys) => {
+                for ty in tys {
+                    self.check_ty(cx, ty, is_local);
+                }
+            },
+            _ => {},
+        }
+    }
+
+    fn check_ty_rptr(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        hir_ty: &hir::Ty<'_>,
+        is_local: bool,
+        lt: &Lifetime,
+        mut_ty: &MutTy<'_>,
+    ) {
+        match mut_ty.ty.kind {
+            TyKind::Path(ref qpath) => {
+                let hir_id = mut_ty.ty.hir_id;
+                let def = qpath_res(cx, qpath, hir_id);
+                if_chain! {
+                    if let Some(def_id) = def.opt_def_id();
+                    if Some(def_id) == cx.tcx.lang_items().owned_box();
+                    if let QPath::Resolved(None, ref path) = *qpath;
+                    if let [ref bx] = *path.segments;
+                    if let Some(ref params) = bx.args;
+                    if !params.parenthesized;
+                    if let Some(inner) = params.args.iter().find_map(|arg| match arg {
+                        GenericArg::Type(ty) => Some(ty),
+                        _ => None,
+                    });
+                    then {
+                        if is_any_trait(inner) {
+                            // Ignore `Box<Any>` types; see issue #1884 for details.
+                            return;
+                        }
+
+                        let ltopt = if lt.is_elided() {
+                            String::new()
+                        } else {
+                            format!("{} ", lt.name.ident().as_str())
+                        };
+                        let mutopt = if mut_ty.mutbl == Mutability::Mut {
+                            "mut "
+                        } else {
+                            ""
+                        };
+                        let mut applicability = Applicability::MachineApplicable;
+                        span_lint_and_sugg(
+                            cx,
+                            BORROWED_BOX,
+                            hir_ty.span,
+                            "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+                            "try",
+                            format!(
+                                "&{}{}{}",
+                                ltopt,
+                                mutopt,
+                                &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
+                            ),
+                            Applicability::Unspecified,
+                        );
+                        return; // don't recurse into the type
+                    }
+                };
+                self.check_ty(cx, &mut_ty.ty, is_local);
+            },
+            _ => self.check_ty(cx, &mut_ty.ty, is_local),
+        }
     }
 }
 
