@@ -133,7 +133,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
+    pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if !self.has_fields {
@@ -330,7 +330,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut DebugTuple<'a, 'b> {
+    pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if self.fields == 0 {
@@ -492,7 +492,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut DebugSet<'a, 'b> {
+    pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
         self.inner.entry(entry);
         self
     }
@@ -521,7 +521,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugSet<'a, 'b>
+    pub fn entries<D, I>(&mut self, entries: I) -> &mut Self
     where
         D: fmt::Debug,
         I: IntoIterator<Item = D>,
@@ -624,7 +624,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut DebugList<'a, 'b> {
+    pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
         self.inner.entry(entry);
         self
     }
@@ -653,7 +653,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugList<'a, 'b>
+    pub fn entries<D, I>(&mut self, entries: I) -> &mut Self
     where
         D: fmt::Debug,
         I: IntoIterator<Item = D>,
@@ -760,7 +760,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+    pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut Self {
         self.key(key).value(value)
     }
 
@@ -797,7 +797,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[unstable(feature = "debug_map_key_value", reason = "recently added", issue = "62482")]
-    pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+    pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             assert!(
                 !self.has_key,
@@ -862,7 +862,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[unstable(feature = "debug_map_key_value", reason = "recently added", issue = "62482")]
-    pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+    pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut Self {
         self.result = self.result.and_then(|_| {
             assert!(self.has_key, "attempted to format a map value before its key");
 
@@ -908,7 +908,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entries<K, V, I>(&mut self, entries: I) -> &mut DebugMap<'a, 'b>
+    pub fn entries<K, V, I>(&mut self, entries: I) -> &mut Self
     where
         K: fmt::Debug,
         V: fmt::Debug,
