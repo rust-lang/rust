@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{remove_file, rename, File, OpenOptions};
+use std::fs::{remove_dir, remove_file, rename, DirBuilder, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -719,6 +719,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let newpath = this.read_os_str_from_c_str(newpath_scalar)?;
 
         let result = rename(oldpath, newpath).map(|_| 0);
+
+        this.try_unwrap_io_result(result)
+    }
+
+    fn mkdir(
+        &mut self,
+        path_op: OpTy<'tcx, Tag>,
+        mode_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("mkdir")?;
+
+        let mode = this.read_scalar(mode_op)?.to_u32()?;
+
+        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+
+        let mut builder = DirBuilder::new();
+        #[cfg(target_family = "unix")]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(mode);
+        }
+        let result = builder.create(path).map(|_| 0i32);
+
+        this.try_unwrap_io_result(result)
+    }
+
+    fn rmdir(
+        &mut self,
+        path_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("rmdir")?;
+
+        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+
+        let result = remove_dir(path).map(|_| 0i32);
 
         this.try_unwrap_io_result(result)
     }
