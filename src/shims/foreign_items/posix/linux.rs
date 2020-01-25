@@ -34,6 +34,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(result, dest)?;
             }
 
+            // The `macos` module has a parallel foreign item, `readdir_r`, which uses a different
+            // struct layout.
+            "readdir64_r" => {
+                let result = this.readdir64_r(args[0], args[1], args[2])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             // Time related shims
 
             // This is a POSIX function but it has only been tested on linux.

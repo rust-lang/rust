@@ -1,7 +1,7 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
-use std::fs::{File, create_dir, remove_dir, remove_dir_all, remove_file, rename};
+use std::fs::{File, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename};
 use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
@@ -199,6 +199,24 @@ fn test_directory() {
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
     assert!(dir_path.metadata().unwrap().is_dir());
+
+    // Create some files inside the directory
+    let f1_path = dir_path.join("f1");
+    drop(File::create(&f1_path).unwrap());
+    let f2_path = dir_path.join("f2");
+    drop(File::create(&f2_path).unwrap());
+    // Test that the files are present inside the directory
+    let mut dir_iter = read_dir(&dir_path).unwrap();
+    let first_dir_entry = dir_iter.next().unwrap().unwrap();
+    let second_dir_entry = dir_iter.next().unwrap().unwrap();
+    assert!(first_dir_entry.file_name() == "f1" || first_dir_entry.file_name() == "f2");
+    assert!(second_dir_entry.file_name() == "f1" || second_dir_entry.file_name() == "f2");
+    assert!(dir_iter.next().is_none());
+    drop(dir_iter);
+    // Clean up the files in the directory
+    remove_file(&f1_path).unwrap();
+    remove_file(&f2_path).unwrap();
+
     // Deleting the directory should succeed.
     remove_dir(&dir_path).unwrap();
     // Reading the metadata of a non-existent file should fail with a "not found" error.

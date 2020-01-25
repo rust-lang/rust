@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, OpenOptions, ReadDir};
+use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -160,6 +160,43 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         let ebadf = this.eval_libc("EBADF")?;
         this.set_last_error(ebadf)?;
         Ok((-1).into())
+    }
+
+    fn file_type_to_d_type(&mut self, file_type: std::io::Result<FileType>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        match file_type {
+            Ok(file_type) => {
+                if file_type.is_dir() {
+                    Ok(this.eval_libc("DT_DIR")?.to_u8()? as i32)
+                } else if file_type.is_file() {
+                    Ok(this.eval_libc("DT_REG")?.to_u8()? as i32)
+                } else if file_type.is_symlink() {
+                    Ok(this.eval_libc("DT_LNK")?.to_u8()? as i32)
+                } else {
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::FileTypeExt;
+                        if file_type.is_block_device() {
+                            Ok(this.eval_libc("DT_BLK")?.to_u8()? as i32)
+                        } else if file_type.is_char_device() {
+                            Ok(this.eval_libc("DT_CHR")?.to_u8()? as i32)
+                        } else if file_type.is_fifo() {
+                            Ok(this.eval_libc("DT_FIFO")?.to_u8()? as i32)
+                        } else if file_type.is_socket() {
+                            Ok(this.eval_libc("DT_SOCK")?.to_u8()? as i32)
+                        } else {
+                            Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()? as i32)
+                        }
+                    }
+                    #[cfg(not(unix))]
+                    Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()? as i32)
+                }
+            }
+            Err(e) => return match e.raw_os_error() {
+                Some(error) => Ok(error),
+                None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
+            }
+        }
     }
 }
 
@@ -798,6 +835,83 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.set_last_error_from_io_error(e)?;
                 Ok(Scalar::from_int(0, this.memory.pointer_size()))
             }
+        }
+    }
+
+    fn readdir64_r(
+        &mut self,
+        dirp_op: OpTy<'tcx, Tag>,
+        entry_op: OpTy<'tcx, Tag>,
+        result_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("readdir64_r")?;
+
+        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+
+        let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
+        let dirent64_layout = this.libc_ty_layout("dirent64")?;
+        this.memory.check_ptr_access(
+            Scalar::Ptr(entry_ptr),
+            dirent64_layout.size,
+            dirent64_layout.align.abi,
+        )?;
+
+        if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
+            match dir_iter.next() {
+                Some(Ok(dir_entry)) => {
+                    // write into entry, write pointer to result, return 0 on success
+                    let entry_place = this.deref_operand(entry_op)?;
+                    let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
+                    let off64_t_layout = this.libc_ty_layout("off64_t")?;
+                    let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
+                    let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
+
+                    let name_offset = dirent64_layout.details.fields.offset(4);
+                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+
+                    #[cfg(unix)]
+                    let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
+                    #[cfg(not(unix))]
+                    let ino = 0;
+
+                    #[cfg(unix)]
+                    let file_name = dir_entry.file_name();
+                    #[cfg(unix)]
+                    let file_name = std::os::unix::ffi::OsStrExt::as_bytes(file_name.as_os_str());
+                    #[cfg(not(unix))]
+                    let file_name = b"";
+
+                    let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+
+                    let imms = [
+                        immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
+                        immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
+                        immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                        immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                    ];
+                    this.write_packed_immediates(entry_place, &imms)?;
+                    this.memory.write_bytes(Scalar::Ptr(name_ptr), file_name.iter().copied())?;
+
+                    let result_place = this.deref_operand(result_op)?;
+                    this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
+
+                    Ok(0)
+                }
+                None => {
+                    // end of stream: return 0, assign *result=NULL
+                    this.write_null(this.deref_operand(result_op)?.into())?;
+                    Ok(0)
+                }
+                Some(Err(e)) => match e.raw_os_error() {
+                    // return positive error number on error
+                    Some(error) => Ok(error),
+                    None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
+                }
+            }
+        } else {
+            throw_unsup_format!("The DIR pointer passed to readdir64_r did not come from opendir")
         }
     }
 
