@@ -201,6 +201,7 @@ impl<'a, 'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 }
 
+#[cfg(debug_assertions)]
 pub fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     postfix: &str,
