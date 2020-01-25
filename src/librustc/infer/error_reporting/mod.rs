@@ -1778,8 +1778,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let mut err = match *sub {
-            ty::ReEarlyBound(_)
-            | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(..), .. }) => {
+            ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
+            | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -1788,7 +1788,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                binding_suggestion(&mut err, type_param_span, bound_kind, sub);
+                // Explicitely use the name instead of `sub`'s `Display` impl. The `Display` impl
+                // for the bound is not suitable for suggestions when `-Zverbose` is set because it
+                // uses `Debug` output, so we handle it specially here so that suggestions are
+                // always correct.
+                binding_suggestion(&mut err, type_param_span, bound_kind, name);
                 err
             }
 

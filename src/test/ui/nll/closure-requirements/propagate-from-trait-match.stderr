@@ -45,7 +45,7 @@ LL | |         require(value);
 LL | |     });
    | |_____^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to previous error
 
