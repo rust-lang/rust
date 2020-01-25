@@ -13,8 +13,7 @@ LL |           dyn Foo(&isize) -> &isize                                   >();
 LL |     eq::< dyn for<'a> Foo<(&'a isize,), Output=(&'a isize, &'a isize)>,
 LL |           dyn Foo(&isize) -> (&isize, &isize)                           >();
 LL | 
-LL |     let _: dyn Foo(&isize, &usize) -> &'lifetime usize;
-   |
+ ...
 
 error: aborting due to previous error
 

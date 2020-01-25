@@ -74,8 +74,7 @@ LL |
 LL |                    as
 LL | 
 LL | 
-LL |                    usize)
-   |
+ ...
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a shift
   --> $DIR/issue-22644.rs:32:31

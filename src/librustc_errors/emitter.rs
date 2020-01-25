@@ -462,7 +462,7 @@ pub const MAX_HIGHLIGHT_LINES: usize = 6;
 ///
 /// This should be replaced with a more involved mechanism to output multiline suggestions that
 /// more closely mimmics the regular diagnostic output, where irrelevant code lines are elided.
-pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 20;
+pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 6;
 /// Maximum number of suggestions to be shown
 ///
 /// Arbitrary, but taken from trait import suggestion limit
