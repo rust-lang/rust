@@ -2086,11 +2086,8 @@ impl<T> Extend<T> for Vec<T> {
             <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
         } else {
             // if self has no allocation then use the more powerful from_iter specializations
-            let other = SpecFrom::from_iter(iter.into_iter());
-            // replace self, don't run drop since self was empty
-            unsafe {
-                ptr::write(self, other);
-            }
+            // and overwrite self
+            *self = SpecFrom::from_iter(iter.into_iter());
         }
     }
 
@@ -2544,11 +2541,8 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
             self.spec_extend(iter.into_iter())
         } else {
             // if self has no allocation then use the more powerful from_iter specializations
-            let other = SpecFrom::from_iter(iter.into_iter());
-            // replace self, don't run drop since self was empty
-            unsafe {
-                ptr::write(self, other);
-            }
+            // and overwrite self
+            *self = SpecFrom::from_iter(iter.into_iter());
         }
     }
 
