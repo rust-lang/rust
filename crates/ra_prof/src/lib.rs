@@ -106,6 +106,21 @@ pub fn profile(desc: &str) -> Profiler {
     })
 }
 
+pub fn print_time(desc: &str) -> impl Drop + '_ {
+    struct Guard<'a> {
+        desc: &'a str,
+        start: Instant,
+    }
+
+    impl Drop for Guard<'_> {
+        fn drop(&mut self) {
+            eprintln!("{}: {:?}", self.desc, self.start.elapsed())
+        }
+    }
+
+    Guard { desc, start: Instant::now() }
+}
+
 pub struct Profiler {
     desc: Option<String>,
 }
