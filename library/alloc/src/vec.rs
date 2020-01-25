@@ -2172,8 +2172,8 @@ struct InPlaceDrop<T> {
 }
 
 impl<T> InPlaceDrop<T> {
-    unsafe fn len(&self) -> usize {
-        self.dst.offset_from(self.inner) as usize
+    fn len(&self) -> usize {
+        unsafe { self.dst.offset_from(self.inner) as usize }
     }
 }
 
