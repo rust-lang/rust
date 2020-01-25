@@ -43,7 +43,7 @@ fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
     let name = fn_def.name()?.text().clone();
     let kind = if name == "main" {
         RunnableKind::Bin
-    } else if fn_def.has_atom_attr("test") {
+    } else if has_test_related_attribute(&fn_def) {
         RunnableKind::Test { name: name.to_string() }
     } else if fn_def.has_atom_attr("bench") {
         RunnableKind::Bench { name: name.to_string() }
@@ -51,6 +51,20 @@ fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
         return None;
     };
     Some(Runnable { range: fn_def.syntax().text_range(), kind })
+}
+
+/// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
+/// `#[test_case(...)]`, `#[tokio::test]` and similar.
+/// Also a regular `#[test]` annotation is supported.
+///
+/// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
+/// but it's better than not to have the runnables for the tests at all.
+fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
+    fn_def
+        .attrs()
+        .filter_map(|attr| attr.path())
+        .map(|path| path.syntax().to_string().to_lowercase())
+        .any(|attribute_text| attribute_text.contains("test"))
 }
 
 fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
