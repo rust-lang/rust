@@ -237,6 +237,20 @@ fn do_bench_extend_from_slice(b: &mut Bencher, dst_len: usize, src_len: usize) {
 }
 
 #[bench]
+fn bench_extend_recycle(b: &mut Bencher) {
+    let mut data = vec![0; 1000];
+
+    b.iter(|| {
+        let tmp = std::mem::replace(&mut data, Vec::new());
+        let mut to_extend = black_box(Vec::new());
+        to_extend.extend(tmp.into_iter());
+        std::mem::replace(&mut data, black_box(to_extend));
+    });
+
+    black_box(data);
+}
+
+#[bench]
 fn bench_extend_from_slice_0000_0000(b: &mut Bencher) {
     do_bench_extend_from_slice(b, 0, 0)
 }
