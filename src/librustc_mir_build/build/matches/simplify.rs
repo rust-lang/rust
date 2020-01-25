@@ -75,6 +75,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    /// Given `candidate` that has a single or-pattern for its match-pairs,
+    /// creates a fresh candidate for each of its input subpatterns passed via
+    /// `pats`.
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,

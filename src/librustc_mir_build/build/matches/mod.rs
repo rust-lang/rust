@@ -274,9 +274,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         end_block.unit()
     }
 
-    /// Binds the variables and ascribes types for a given `match` arm.
+    /// Binds the variables and ascribes types for a given `match` arm or
+    /// `let` binding.
     ///
     /// Also check if the guard matches, if it's provided.
+    /// `arm_scope` should be `Some` if and only if this is called for a
+    /// `match` arm.
     fn bind_pattern(
         &mut self,
         outer_source_info: SourceInfo,
@@ -298,6 +301,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 true,
             )
         } else {
+            // It's helpful to avoid scheduling drops multiple times to save
+            // drop elaboration from having to clean up the extra drops.
+            //
+            // If we are in a `let` then we only schedule drops for the first
+            // candidate.
+            //
+            // If we're in a `match` arm then we could have a case like so:
+            //
+            // Ok(x) | Err(x) if return => { /* ... */ }
+            //
+            // In this case we don't want a drop of `x` scheduled when we
+            // return: it isn't bound by move until right before enter the arm.
+            // To handle this we instead unschedule it's drop after each time
+            // we lower the guard.
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
             // We keep a stack of all of the bindings and type asciptions
@@ -308,7 +325,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 &mut Vec::new(),
                 &mut |leaf_candidate, parent_bindings| {
                     if let Some(arm_scope) = arm_scope {
-                        // Avoid scheduling drops multiple times by unscheduling drops.
                         self.clear_top_scope(arm_scope);
                     }
                     let binding_end = self.bind_and_guard_matched_candidate(
@@ -320,9 +336,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         schedule_drops,
                     );
                     if arm_scope.is_none() {
-                        // If we aren't in a match, then our bindings may not be
-                        // the only thing in the top scope, so only schedule
-                        // them to drop for the first pattern instead.
                         schedule_drops = false;
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
@@ -350,7 +363,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
+                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
                 unpack!(block = self.into(&place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -385,7 +398,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     hair::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
             } => {
                 let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
+                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
                 unpack!(block = self.into(&place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -532,12 +545,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         var: HirId,
         span: Span,
         for_guard: ForGuard,
+        schedule_drop: bool,
     ) -> Place<'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        if schedule_drop {
+            self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        }
         Place::from(local_id)
     }
 
@@ -1060,25 +1076,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///      |
     ///      +----------------------------------------+------------------------------------+
     ///      |                                        |                                    |
+    ///      V                                        V                                    V
     /// [ P matches ]                           [ Q matches ]                        [ otherwise ]
     ///      |                                        |                                    |
+    ///      V                                        V                                    |
     /// [ match R, S ]                          [ match R, S ]                             |
     ///      |                                        |                                    |
     ///      +--------------+------------+            +--------------+------------+        |
     ///      |              |            |            |              |            |        |
+    ///      V              V            V            V              V            V        |
     /// [ R matches ] [ S matches ] [otherwise ] [ R matches ] [ S matches ] [otherwise ]  |
     ///      |              |            |            |              |            |        |
     ///      +--------------+------------|------------+--------------+            |        |
     ///      |                           |                                        |        |
     ///      |                           +----------------------------------------+--------+
     ///      |                           |
+    ///      V                           V
     /// [ Success ]                 [ Failure ]
     /// ```
     ///
     /// In practice there are some complications:
     ///
     /// * If there's a guard, then the otherwise branch of the first match on
-    ///   `R | S` goes to a test for whether `Q` matches.
+    ///   `R | S` goes to a test for whether `Q` matches, and the control flow
+    ///   doesn't merge into a single success block until after the guard is
+    ///   tested.
     /// * If neither `P` or `Q` has any bindings or type ascriptions and there
     ///   isn't a match guard, then we create a smaller CFG like:
     ///
@@ -1658,7 +1680,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .flat_map(|(bindings, _)| bindings)
                 .chain(&candidate.bindings);
 
-            self.bind_matched_candidate_for_guard(block, bindings.clone());
+            self.bind_matched_candidate_for_guard(block, schedule_drops, bindings.clone());
             let guard_frame = GuardFrame {
                 locals: bindings.map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode)).collect(),
             };
@@ -1807,6 +1829,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
+        schedule_drops: bool,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -1825,8 +1848,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // a reference R: &T pointing to the location matched by
             // the pattern, and every occurrence of P within a guard
             // denotes *R.
-            let ref_for_guard =
-                self.storage_live_binding(block, binding.var_id, binding.span, RefWithinGuard);
+            let ref_for_guard = self.storage_live_binding(
+                block,
+                binding.var_id,
+                binding.span,
+                RefWithinGuard,
+                schedule_drops,
+            );
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
@@ -1838,6 +1866,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         binding.var_id,
                         binding.span,
                         OutsideGuard,
+                        schedule_drops,
                     );
 
                     let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source);
@@ -1863,8 +1892,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
             let source_info = self.source_info(binding.span);
-            let local =
-                self.storage_live_binding(block, binding.var_id, binding.span, OutsideGuard);
+            let local = self.storage_live_binding(
+                block,
+                binding.var_id,
+                binding.span,
+                OutsideGuard,
+                schedule_drops,
+            );
             if schedule_drops {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
