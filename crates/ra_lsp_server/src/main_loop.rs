@@ -29,9 +29,6 @@ use crate::{
     Result, ServerConfig,
 };
 
-const THREADPOOL_SIZE: usize = 8;
-const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
-
 #[derive(Debug)]
 pub struct LspError {
     pub code: i32,
@@ -168,7 +165,7 @@ pub fn main_loop(
         )
     };
 
-    let pool = ThreadPool::new(THREADPOOL_SIZE);
+    let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
 
@@ -371,7 +368,8 @@ fn loop_turn(
         loop_state.pending_libraries.extend(changes);
     }
 
-    while loop_state.in_flight_libraries < MAX_IN_FLIGHT_LIBS
+    let max_in_flight_libs = pool.max_count().saturating_sub(2).max(1);
+    while loop_state.in_flight_libraries < max_in_flight_libs
         && !loop_state.pending_libraries.is_empty()
     {
         let (root, files) = loop_state.pending_libraries.pop().unwrap();
