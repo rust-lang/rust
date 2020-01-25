@@ -134,7 +134,8 @@ enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-pub struct GenericArgCountMismatch;
+/// The field indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
+pub struct GenericArgCountMismatch(pub Option<ErrorReported>);
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn ast_region_to_region(
@@ -320,7 +321,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut explicit_lifetimes = Ok(());
         if !infer_lifetimes {
             if let Some(span_late) = def.has_late_bound_regions {
-                explicit_lifetimes = Err(GenericArgCountMismatch);
                 let msg = "cannot specify lifetime arguments explicitly \
                            if late bound lifetime parameters are present";
                 let note = "the late bound lifetime parameter is introduced here";
@@ -328,10 +328,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if position == GenericArgPosition::Value
                     && arg_counts.lifetimes != param_counts.lifetimes
                 {
+                    explicit_lifetimes = Err(GenericArgCountMismatch(Some(ErrorReported)));
                     let mut err = tcx.sess.struct_span_err(span, msg);
                     err.span_note(span_late, note);
                     err.emit();
                 } else {
+                    explicit_lifetimes = Err(GenericArgCountMismatch(None));
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
                     tcx.struct_span_lint_hir(
@@ -405,7 +407,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 err.emit();
 
-                Err(GenericArgCountMismatch)
+                Err(GenericArgCountMismatch(Some(ErrorReported)))
             };
 
         let mut arg_count_correct = explicit_lifetimes;

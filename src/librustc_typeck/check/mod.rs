@@ -5452,11 +5452,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let suppress_errors = AstConv::check_generic_arg_count_for_call(
-                tcx, span, &generics, &seg, false, // `is_method_call`
-            )
-            .is_err();
-            if suppress_errors {
+            if let Err(GenericArgCountMismatch(Some(ErrorReported))) =
+                AstConv::check_generic_arg_count_for_call(
+                    tcx, span, &generics, &seg, false, // `is_method_call`
+                )
+            {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -5521,7 +5521,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                if infer_args_for_err.is_empty() { Ok(()) } else { Err(GenericArgCountMismatch) },
+                if infer_args_for_err.is_empty() {
+                    Ok(())
+                } else {
+                    Err(GenericArgCountMismatch(Some(ErrorReported)))
+                },
                 // Provide the generic args, and whether types should be inferred.
                 |def_id| {
                     if let Some(&PathSeg(_, index)) =
