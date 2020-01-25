@@ -185,16 +185,17 @@ impl CodeSuggestion {
                 !invalid
             })
             .cloned()
-            .map(|mut substitution| {
+            .filter_map(|mut substitution| {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
 
                 // Find the bounding span.
-                let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-                let hi = substitution.parts.iter().map(|part| part.span.hi()).max().unwrap();
+                let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
+                let hi = substitution.parts.iter().map(|part| part.span.hi()).max()?;
                 let bounding_span = Span::with_root_ctxt(lo, hi);
-                let lines = cm.span_to_lines(bounding_span).unwrap();
+                // The different spans might belong to different contexts, if so ignore suggestion.
+                let lines = cm.span_to_lines(bounding_span).ok()?;
                 assert!(!lines.lines.is_empty());
 
                 // To build up the result, we do this for each span:
@@ -244,7 +245,7 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                (buf, substitution.parts, only_capitalization)
+                Some((buf, substitution.parts, only_capitalization))
             })
             .collect()
     }
