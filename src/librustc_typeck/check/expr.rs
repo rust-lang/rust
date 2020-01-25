@@ -1796,9 +1796,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
-        match self.yield_ty {
-            Some(ty) => {
-                self.check_expr_coercable_to_type(&value, ty);
+        match self.resume_yield_tys {
+            Some((resume_ty, yield_ty)) => {
+                self.check_expr_coercable_to_type(&value, yield_ty);
+
+                resume_ty
             }
             // Given that this `yield` expression was generated as a result of lowering a `.await`,
             // we know that the yield type must be `()`; however, the context won't contain this
@@ -1806,6 +1808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // value's type against `()` (this check should always hold).
             None if src == &hir::YieldSource::Await => {
                 self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+                self.tcx.mk_unit()
             }
             _ => {
                 struct_span_err!(
@@ -1815,9 +1818,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "yield expression outside of generator literal"
                 )
                 .emit();
+                self.tcx.mk_unit()
             }
         }
-        self.tcx.mk_unit()
     }
 }
 
