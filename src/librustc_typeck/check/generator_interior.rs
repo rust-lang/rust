@@ -247,6 +247,25 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
                 _ => intravisit::walk_expr(self, expr),
             },
+            ExprKind::Match(
+                Expr { kind: ExprKind::Let(pat, scrutinee), .. },
+                [then_arm, else_arm],
+                hir::MatchSource::IfLetDesugar { .. },
+            ) => {
+                // HACK(let_chains, Centril): In HAIR lowering we currently adjust this
+                // to `match scrutinee { pat => then_arm.body, _ => else_arm.body }`.
+                // For consistency, we need to replicate the visiting order in
+                // `intravisit::walk_expr` with respect to `ExprKind::Match`.
+                self.visit_expr(scrutinee);
+                // This is for the `then_arm`. NOTE(Centril): Preserve the order in `intravisit`!
+                self.visit_id(then_arm.hir_id);
+                // NOTE(Centril): We are using `pat` here as opposed to `then_arm.pat`!
+                self.visit_pat(pat);
+                assert!(then_arm.guard.is_none());
+                self.visit_expr(&then_arm.body);
+                syntax::walk_list!(self, visit_attribute, then_arm.attrs);
+                self.visit_arm(else_arm);
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 
