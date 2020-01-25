@@ -1,0 +1,23 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/issue-57611-trait-alias.rs:17:5
+   |
+LL |     type Bar = impl Baz<Self, Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected signature of `for<'r> fn(&'r X) -> _`
+...
+LL |         |x| x
+   |         ----- found signature of `fn(_) -> _`
+   |
+   = note: the return type of a function must have a statically known size
+
+error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/issue-57611-trait-alias.rs:21:9: 21:14] as std::ops::FnOnce<(&'r X,)>>::Output == &'r X`
+  --> $DIR/issue-57611-trait-alias.rs:17:5
+   |
+LL |     type Bar = impl Baz<Self, Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter, found concrete lifetime
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0631.
+For more information about an error, try `rustc --explain E0271`.
