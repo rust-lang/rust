@@ -10,5 +10,5 @@ fn main() {
     let mut a = || {
         b(yield);
     };
-    Pin::new(&mut a).resume();
+    Pin::new(&mut a).resume(());
 }

@@ -43,7 +43,7 @@ fn yield_during_iter_borrowed_slice_3() {
             yield p;
         }
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn yield_during_iter_borrowed_slice_4() {
@@ -56,7 +56,7 @@ fn yield_during_iter_borrowed_slice_4() {
         }
     };
     println!("{}", x[0]); //~ ERROR
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn yield_during_range_iter() {
@@ -69,7 +69,7 @@ fn yield_during_range_iter() {
             yield x;
         }
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn main() { }

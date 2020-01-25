@@ -75,13 +75,16 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
+                    vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
                 }
                 ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_type(id);
-                    Some(ArgInfo(gen_ty, None, None, None))
+                    vec![
+                        ArgInfo(gen_ty, None, None, None),
+                        ArgInfo(tcx.mk_unit(), None, None, None),
+                    ]
                 }
-                _ => None,
+                _ => vec![],
             };
 
             let safety = match fn_sig.unsafety {

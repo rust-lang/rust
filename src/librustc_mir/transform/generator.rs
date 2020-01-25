@@ -885,6 +885,7 @@ fn create_generator_drop_shim<'tcx>(
     drop_clean: BasicBlock,
 ) -> BodyAndCache<'tcx> {
     let mut body = body.clone();
+    body.arg_count = 1; // make sure the resume argument is not included here
 
     let source_info = source_info(&body);
 
@@ -1164,7 +1165,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Update our MIR struct to reflect the changed we've made
         body.yield_ty = None;
-        body.arg_count = 1;
+        body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
         body.generator_layout = Some(layout);
 

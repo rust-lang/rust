@@ -15,7 +15,7 @@ LL | |    };
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/sized-yield.rs:12:23
    |
-LL |    Pin::new(&mut gen).resume();
+LL |    Pin::new(&mut gen).resume(());
    |                       ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`

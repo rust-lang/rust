@@ -37,7 +37,7 @@ fn main() {
     };
 
     loop {
-        match Pin::new(&mut a).resume() {
+        match Pin::new(&mut a).resume(()) {
             GeneratorState::Complete(()) => break,
             _ => (),
         }

@@ -15,7 +15,7 @@ fn borrow_local_inline() {
         yield();
         println!("{}", a);
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn borrow_local_inline_done() {
@@ -26,7 +26,7 @@ fn borrow_local_inline_done() {
         }
         yield();
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn borrow_local() {
@@ -43,7 +43,7 @@ fn borrow_local() {
             println!("{}", b);
         }
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn main() { }
