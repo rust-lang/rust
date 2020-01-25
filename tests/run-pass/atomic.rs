@@ -1,4 +1,4 @@
-use std::sync::atomic::{fence, AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
+use std::sync::atomic::{compiler_fence, fence, AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
 
 fn main() {
     atomic_bool();
@@ -70,4 +70,8 @@ fn atomic_fences() {
     fence(Release);
     fence(Acquire);
     fence(AcqRel);
+    compiler_fence(SeqCst);
+    compiler_fence(Release);
+    compiler_fence(Acquire);
+    compiler_fence(AcqRel);
 }
