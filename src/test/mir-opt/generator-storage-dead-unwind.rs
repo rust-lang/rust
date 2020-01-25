@@ -31,81 +31,81 @@ fn main() {
 
 // START rustc.main-{{closure}}.StateTransform.before.mir
 // ...
-// let _2: Foo;
+// let _3: Foo;
 // ...
-// let mut _7: Foo;
+// let mut _8: Foo;
 // ...
-// let mut _9: Bar;
+// let mut _10: Bar;
 // scope 1 {
-//     debug a => _2;
-//     let _3: Bar;
+//     debug a => _3;
+//     let _4: Bar;
 //     scope 2 {
-//         debug b => _3;
+//         debug b => _4;
 //     }
 // }
 // bb0: {
-//     StorageLive(_2);
-//     _2 = Foo(const 5i32,);
 //     StorageLive(_3);
-//     _3 = Bar(const 6i32,);
+//     _3 = Foo(const 5i32,);
+//     StorageLive(_4);
+//     _4 = Bar(const 6i32,);
 //     ...
-//     _1 = suspend(move _5) -> [resume: bb2, drop: bb4];
+//     _1 = suspend(move _6) -> [resume: bb2, drop: bb4];
 // }
 // bb1 (cleanup): {
 //     resume;
 // }
 // bb2: {
 //     ...
-//     StorageLive(_6);
 //     StorageLive(_7);
-//     _7 = move _2;
-//     _6 = const take::<Foo>(move _7) -> [return: bb7, unwind: bb9];
+//     StorageLive(_8);
+//     _8 = move _3;
+//     _7 = const take::<Foo>(move _8) -> [return: bb7, unwind: bb9];
 // }
 // bb3 (cleanup): {
-//     StorageDead(_2);
+//     StorageDead(_3);
 //     drop(_1) -> bb1;
 // }
 // bb4: {
 //     ...
-//     StorageDead(_3);
-//     drop(_2) -> [return: bb5, unwind: bb3];
+//     StorageDead(_4);
+//     drop(_3) -> [return: bb5, unwind: bb3];
 // }
 // bb5: {
-//     StorageDead(_2);
+//     StorageDead(_3);
 //     drop(_1) -> [return: bb6, unwind: bb1];
 // }
 // bb6: {
 //     generator_drop;
 // }
 // bb7: {
+//     StorageDead(_8);
 //     StorageDead(_7);
-//     StorageDead(_6);
-//     StorageLive(_8);
 //     StorageLive(_9);
-//     _9 = move _3;
-//     _8 = const take::<Bar>(move _9) -> [return: bb10, unwind: bb11];
+//     StorageLive(_10);
+//     _10 = move _4;
+//     _9 = const take::<Bar>(move _10) -> [return: bb10, unwind: bb11];
 // }
 // bb8 (cleanup): {
+//     StorageDead(_4);
 //     StorageDead(_3);
-//     StorageDead(_2);
 //     drop(_1) -> bb1;
 // }
 // bb9 (cleanup): {
+//     StorageDead(_8);
 //     StorageDead(_7);
-//     StorageDead(_6);
 //     goto -> bb8;
 // }
 // bb10: {
+//     StorageDead(_10);
 //     StorageDead(_9);
-//     StorageDead(_8);
 //     ...
+//     StorageDead(_4);
 //     StorageDead(_3);
-//     StorageDead(_2);
 //     drop(_1) -> [return: bb12, unwind: bb1];
 // }
 // bb11 (cleanup): {
+//     StorageDead(_10);
 //     StorageDead(_9);
-//     StorageDead(_8);
 //     goto -> bb8;
 // }
 // bb12: {
