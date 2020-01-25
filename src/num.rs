@@ -91,7 +91,7 @@ pub fn codegen_binop<'tcx>(
         ty::Uint(_) | ty::Int(_) => crate::num::trans_int_binop(fx, bin_op, in_lhs, in_rhs),
         ty::Float(_) => crate::num::trans_float_binop(fx, bin_op, in_lhs, in_rhs),
         ty::RawPtr(..) | ty::FnPtr(..) => crate::num::trans_ptr_binop(fx, bin_op, in_lhs, in_rhs),
-        _ => unimplemented!(
+        _ => unreachable!(
             "{:?}({:?}, {:?})",
             bin_op,
             in_lhs.layout().ty,

@@ -494,7 +494,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                 "unchecked_rem" => BinOp::Rem,
                 "unchecked_shl" => BinOp::Shl,
                 "unchecked_shr" => BinOp::Shr,
-                _ => unimplemented!("intrinsic {}", intrinsic),
+                _ => unreachable!("intrinsic {}", intrinsic),
             };
             let res = crate::num::trans_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
@@ -505,7 +505,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                 "add_with_overflow" => BinOp::Add,
                 "sub_with_overflow" => BinOp::Sub,
                 "mul_with_overflow" => BinOp::Mul,
-                _ => unimplemented!("intrinsic {}", intrinsic),
+                _ => unreachable!("intrinsic {}", intrinsic),
             };
 
             let res = crate::num::trans_checked_int_binop(
@@ -522,7 +522,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                 "wrapping_add" => BinOp::Add,
                 "wrapping_sub" => BinOp::Sub,
                 "wrapping_mul" => BinOp::Mul,
-                _ => unimplemented!("intrinsic {}", intrinsic),
+                _ => unreachable!("intrinsic {}", intrinsic),
             };
             let res = crate::num::trans_int_binop(
                 fx,
@@ -537,7 +537,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             let bin_op = match intrinsic {
                 "saturating_add" => BinOp::Add,
                 "saturating_sub" => BinOp::Sub,
-                _ => unimplemented!("intrinsic {}", intrinsic),
+                _ => unreachable!("intrinsic {}", intrinsic),
             };
 
             let signed = type_sign(T);
@@ -605,7 +605,8 @@ pub fn codegen_intrinsic_call<'tcx>(
 
         transmute, <src_ty, dst_ty> (c from) {
             assert_eq!(from.layout().ty, src_ty);
-            let addr = from.force_stack(fx);
+            let (addr, meta) = from.force_stack(fx);
+            assert!(meta.is_none());
             let dst_layout = fx.layout_of(dst_ty);
             ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
         };
@@ -805,7 +806,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                         let hi = swap(bcx, hi);
                         bcx.ins().iconcat(hi, lo)
                     }
-                    ty => unimplemented!("bswap {}", ty),
+                    ty => unreachable!("bswap {}", ty),
                 }
             };
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));

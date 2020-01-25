@@ -358,7 +358,7 @@ fn trans_stmt<'tcx>(
                                 ty::Uint(_) | ty::Int(_) => {
                                     CValue::by_val(fx.bcx.ins().bnot(val), layout)
                                 }
-                                _ => unimplemented!("un op Not for {:?}", layout.ty),
+                                _ => unreachable!("un op Not for {:?}", layout.ty),
                             }
                         }
                         UnOp::Neg => match layout.ty.kind {
@@ -369,7 +369,7 @@ fn trans_stmt<'tcx>(
                             ty::Float(_) => {
                                 CValue::by_val(fx.bcx.ins().fneg(val), layout)
                             }
-                            _ => unimplemented!("un op Neg for {:?}", layout.ty),
+                            _ => unreachable!("un op Neg for {:?}", layout.ty),
                         },
                     };
                     lval.write_cvalue(fx, res);
