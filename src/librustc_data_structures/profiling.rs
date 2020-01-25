@@ -128,17 +128,13 @@ bitflags::bitflags! {
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
                         Self::INCR_CACHE_LOADS.bits;
-
-        // empty() and none() aren't const-fns unfortunately
-        const NONE = 0;
-        const ALL  = !Self::NONE.bits;
     }
 }
 
 // keep this in sync with the `-Z self-profile-events` help message in librustc_session/options.rs
 const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
-    ("none", EventFilter::NONE),
-    ("all", EventFilter::ALL),
+    ("none", EventFilter::empty()),
+    ("all", EventFilter::all()),
     ("default", EventFilter::DEFAULT),
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
@@ -180,7 +176,7 @@ impl SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
-            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::NONE);
+            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::empty());
 
         SelfProfilerRef {
             profiler,
