@@ -15,13 +15,13 @@
 	url = https://github.com/rust-lang/book.git
 [submodule "src/tools/rls"]
 	path = src/tools/rls
-	url = https://github.com/rust-lang-nursery/rls.git
+	url = https://github.com/rust-lang/rls.git
 [submodule "src/tools/clippy"]
 	path = src/tools/clippy
-	url = https://github.com/rust-lang-nursery/rust-clippy.git
+	url = https://github.com/rust-lang/rust-clippy.git
 [submodule "src/tools/rustfmt"]
 	path = src/tools/rustfmt
-	url = https://github.com/rust-lang-nursery/rustfmt.git
+	url = https://github.com/rust-lang/rustfmt.git
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/rust-lang/miri.git
