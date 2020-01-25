@@ -92,11 +92,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into(),
             GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
         });
-        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
+        if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
+        {
             let generator_substs = substs.as_generator();
             self.demand_eqtype(
                 expr.span,
-                self.tcx.mk_unit(),  // WIP
+                resume_ty,
                 generator_substs.resume_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
