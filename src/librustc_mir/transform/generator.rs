@@ -192,9 +192,10 @@ const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has been poisoned
 const POISONED: usize = GeneratorSubsts::POISONED;
 
-struct SuspensionPoint {
+struct SuspensionPoint<'tcx> {
     state: usize,
     resume: BasicBlock,
+    resume_arg: Place<'tcx>,
     drop: Option<BasicBlock>,
     storage_liveness: liveness::LiveVarSet,
 }
@@ -216,7 +217,7 @@ struct TransformVisitor<'tcx> {
     storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet>,
 
     // A list of suspension points, generated during the transform
-    suspension_points: Vec<SuspensionPoint>,
+    suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
@@ -303,8 +304,8 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 Operand::Move(Place::from(self.new_ret_local)),
                 None,
             )),
-            TerminatorKind::Yield { ref value, resume, drop } => {
-                Some((VariantIdx::new(0), Some(resume), value.clone(), drop))
+            TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
+                Some((VariantIdx::new(0), Some((resume, resume_arg)), value.clone(), drop))
             }
             _ => None,
         };
@@ -319,13 +320,14 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     self.make_state(state_idx, v),
                 )),
             });
-            let state = if let Some(resume) = resume {
+            let state = if let Some((resume, resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
                     resume,
+                    resume_arg,
                     drop,
                     storage_liveness: self.storage_liveness.get(&block).unwrap().clone(),
                 });
@@ -1063,7 +1065,7 @@ fn create_cases<'tcx, F>(
     target: F,
 ) -> Vec<(usize, BasicBlock)>
 where
-    F: Fn(&SuspensionPoint) -> Option<BasicBlock>,
+    F: Fn(&SuspensionPoint<'tcx>) -> Option<BasicBlock>,
 {
     let source_info = source_info(body);
 
@@ -1084,6 +1086,16 @@ where
                             .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
                     }
                 }
+
+                // Move the resume argument to the destination place of the `Yield` terminator
+                let resume_arg = Local::new(2); // 0 = return, 1 = self
+                statements.push(Statement {
+                    source_info,
+                    kind: StatementKind::Assign(box (
+                        point.resume_arg,
+                        Rvalue::Use(Operand::Move(resume_arg.into())),
+                    )),
+                });
 
                 // Then jump to the real target
                 body.basic_blocks_mut().push(BasicBlockData {
@@ -1163,7 +1175,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
         transform.visit_body(body);
 
-        // Update our MIR struct to reflect the changed we've made
+        // Update our MIR struct to reflect the changes we've made
         body.yield_ty = None;
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
