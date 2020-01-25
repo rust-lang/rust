@@ -364,9 +364,21 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);
         }
-        MonoItem::GlobalAsm(node_id) => tcx
-            .sess
-            .fatal(&format!("Unimplemented global asm mono item {:?}", node_id)),
+        MonoItem::GlobalAsm(hir_id) => {
+            let item = tcx.hir().expect_item(hir_id);
+            if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
+                // FIXME implement global asm using an external assembler
+                if asm.as_str().contains("__rust_probestack") {
+                    return;
+                } else {
+                    tcx
+                        .sess
+                        .fatal(&format!("Unimplemented global asm mono item \"{}\"", asm));
+                }
+            } else {
+                bug!("Expected GlobalAsm found {:?}", item);
+            }
+        }
     }
 }
 
