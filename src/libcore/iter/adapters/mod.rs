@@ -1760,7 +1760,7 @@ where
 /// [`map_while`]: trait.Iterator.html#method.map_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 #[derive(Clone)]
 pub struct MapWhile<I, P> {
     iter: I,
@@ -1774,14 +1774,14 @@ impl<I, P> MapWhile<I, P> {
     }
 }
 
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 impl<I: fmt::Debug, P> fmt::Debug for MapWhile<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MapWhile").field("iter", &self.iter).field("flag", &self.finished).finish()
     }
 }
 
-#[unstable(feature = "iter_map_while", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 impl<B, I: Iterator, P> Iterator for MapWhile<I, P>
 where
     P: FnMut(I::Item) -> Option<B>,

@@ -1117,7 +1117,7 @@ pub trait Iterator {
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     #[inline]
-    #[unstable(feature = "iter_map_while", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
     where
         Self: Sized,
