@@ -68,6 +68,12 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             let fn_sig = cx.tables().liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
+            let safety = match fn_sig.unsafety {
+                hir::Unsafety::Normal => Safety::Safe,
+                hir::Unsafety::Unsafe => Safety::FnUnsafe,
+            };
+
+            let body = tcx.hir().body(body_id);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind {
@@ -77,22 +83,23 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                     abi = Abi::Rust;
                     vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
                 }
-                ty::Generator(..) => {
+                ty::Generator(def_id, substs, _) => {
                     let gen_ty = tcx.body_tables(body_id).node_type(id);
-                    vec![
-                        ArgInfo(gen_ty, None, None, None),
-                        ArgInfo(tcx.mk_unit(), None, None, None),
-                    ]
+                    let resume_ty = substs.as_generator().resume_ty(def_id, tcx);
+
+                    // The resume argument may be missing, in that case we need to provide it here.
+                    if body.params.is_empty() {
+                        vec![
+                            ArgInfo(gen_ty, None, None, None),
+                            ArgInfo(resume_ty, None, None, None),
+                        ]
+                    } else {
+                        vec![ArgInfo(gen_ty, None, None, None)]
+                    }
                 }
                 _ => vec![],
             };
 
-            let safety = match fn_sig.unsafety {
-                hir::Unsafety::Normal => Safety::Safe,
-                hir::Unsafety::Unsafe => Safety::FnUnsafe,
-            };
-
-            let body = tcx.hir().body(body_id);
             let explicit_arguments = body.params.iter().enumerate().map(|(index, arg)| {
                 let owner_id = tcx.hir().body_owner(body_id);
                 let opt_ty_info;
