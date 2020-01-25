@@ -13,7 +13,7 @@ pub fn want_cyclic_generator_return<T>(_: T)
 
 fn supply_cyclic_generator_return() {
     want_cyclic_generator_return(|| {
-        //~^ ERROR closure/generator type that references itself
+        //~^ ERROR type mismatch
         if false { yield None.unwrap(); }
         None.unwrap()
     })
