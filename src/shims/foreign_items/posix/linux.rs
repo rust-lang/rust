@@ -27,6 +27,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            // The only reason this is not in the `posix` module is because the `macos` item has a
+            // different name.
+            "opendir" => {
+                let result = this.opendir(args[0])?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Time related shims
 
             // This is a POSIX function but it has only been tested on linux.

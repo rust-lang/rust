@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{remove_dir, remove_file, rename, DirBuilder, File, OpenOptions};
+use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, OpenOptions, ReadDir};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
@@ -160,6 +161,11 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         this.set_last_error(ebadf)?;
         Ok((-1).into())
     }
+}
+
+#[derive(Debug, Default)]
+pub struct DirHandler {
+    streams: HashMap<Pointer<Tag>, ReadDir>,
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -760,6 +766,55 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let result = remove_dir(path).map(|_| 0i32);
 
         this.try_unwrap_io_result(result)
+    }
+
+    fn opendir(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("opendir")?;
+
+        let name = this.read_os_str_from_c_str(this.read_scalar(name_op)?.not_undef()?)?;
+
+        let result = read_dir(name);
+
+        match result {
+            Ok(dir_iter) => {
+                let size = 1;
+                let kind = MiriMemoryKind::Env;
+                let align = this.min_align(size, kind);
+                let dir_ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into());
+                let prev = this
+                    .machine
+                    .dir_handler
+                    .streams
+                    .insert(dir_ptr, dir_iter);
+                if let Some(_) = prev {
+                    throw_unsup_format!("The pointer allocated for opendir was already registered by a previous call to opendir")
+                } else {
+                    Ok(Scalar::Ptr(dir_ptr))
+                }
+            }
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                Ok(Scalar::from_int(0, this.memory.pointer_size()))
+            }
+        }
+    }
+
+    fn closedir(&mut self, dirp_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("closedir")?;
+
+        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+
+        if let Some(dir_iter) = this.machine.dir_handler.streams.remove(&dirp) {
+            drop(dir_iter);
+            this.memory.deallocate(dirp, None, MiriMemoryKind::Env.into())?;
+            Ok(0)
+        } else {
+            this.handle_not_found()
+        }
     }
 }
 
