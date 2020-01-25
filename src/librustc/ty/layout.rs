@@ -2350,7 +2350,8 @@ impl<'tcx> ty::Instance<'tcx> {
                     ]);
                     let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-                    tcx.mk_fn_sig([env_ty, tcx.mk_unit()].iter(),
+                    tcx.mk_fn_sig(
+                        [env_ty, sig.resume_ty].iter(),
                         &ret_ty,
                         false,
                         hir::Unsafety::Normal,
