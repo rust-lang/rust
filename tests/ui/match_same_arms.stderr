@@ -1,245 +1,139 @@
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:37:14
-   |
-LL |           _ => {
-   |  ______________^
-LL | |             //~ ERROR match arms have same body
-LL | |             foo();
-LL | |             let mut a = 42 + [23].len() as i32;
-...  |
-LL | |             a
-LL | |         },
-   | |_________^
-   |
-   = note: `-D clippy::match-same-arms` implied by `-D warnings`
-note: same as this
-  --> $DIR/match_same_arms.rs:28:15
-   |
-LL |           42 => {
-   |  _______________^
-LL | |             foo();
-LL | |             let mut a = 42 + [23].len() as i32;
-LL | |             if true {
-...  |
-LL | |             a
-LL | |         },
-   | |_________^
-note: `42` has the same arm body as the `_` wildcard, consider removing it
-  --> $DIR/match_same_arms.rs:28:15
-   |
-LL |           42 => {
-   |  _______________^
-LL | |             foo();
-LL | |             let mut a = 42 + [23].len() as i32;
-LL | |             if true {
-...  |
-LL | |             a
-LL | |         },
-   | |_________^
-
-error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:52:14
+  --> $DIR/match_same_arms.rs:13:14
    |
 LL |         _ => 0, //~ ERROR match arms have same body
    |              ^
    |
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
 note: same as this
-  --> $DIR/match_same_arms.rs:50:19
+  --> $DIR/match_same_arms.rs:11:19
    |
 LL |         Abc::A => 0,
    |                   ^
 note: `Abc::A` has the same arm body as the `_` wildcard, consider removing it
-  --> $DIR/match_same_arms.rs:50:19
+  --> $DIR/match_same_arms.rs:11:19
    |
 LL |         Abc::A => 0,
    |                   ^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:57:15
-   |
-LL |         51 => foo(), //~ ERROR match arms have same body
-   |               ^^^^^
-   |
-note: same as this
-  --> $DIR/match_same_arms.rs:56:15
-   |
-LL |         42 => foo(),
-   |               ^^^^^
-help: consider refactoring into `42 | 51`
-  --> $DIR/match_same_arms.rs:56:9
-   |
-LL |         42 => foo(),
-   |         ^^
-
-error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:63:17
-   |
-LL |         None => 24, //~ ERROR match arms have same body
-   |                 ^^
-   |
-note: same as this
-  --> $DIR/match_same_arms.rs:62:20
-   |
-LL |         Some(_) => 24,
-   |                    ^^
-help: consider refactoring into `Some(_) | None`
-  --> $DIR/match_same_arms.rs:62:9
-   |
-LL |         Some(_) => 24,
-   |         ^^^^^^^
-
-error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:85:28
-   |
-LL |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
-   |                            ^^^^^^
-   |
-note: same as this
-  --> $DIR/match_same_arms.rs:84:28
-   |
-LL |         (Some(a), None) => bar(a),
-   |                            ^^^^^^
-help: consider refactoring into `(Some(a), None) | (None, Some(a))`
-  --> $DIR/match_same_arms.rs:84:9
-   |
-LL |         (Some(a), None) => bar(a),
-   |         ^^^^^^^^^^^^^^^
-
-error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:91:26
-   |
-LL |         (.., Some(a)) => bar(a), //~ ERROR match arms have same body
-   |                          ^^^^^^
-   |
-note: same as this
-  --> $DIR/match_same_arms.rs:90:26
-   |
-LL |         (Some(a), ..) => bar(a),
-   |                          ^^^^^^
-help: consider refactoring into `(Some(a), ..) | (.., Some(a))`
-  --> $DIR/match_same_arms.rs:90:9
-   |
-LL |         (Some(a), ..) => bar(a),
-   |         ^^^^^^^^^^^^^
-
-error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:97:20
+  --> $DIR/match_same_arms.rs:18:20
    |
 LL |         (.., 3) => 42, //~ ERROR match arms have same body
    |                    ^^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:96:23
+  --> $DIR/match_same_arms.rs:17:23
    |
 LL |         (1, .., 3) => 42,
    |                       ^^
 help: consider refactoring into `(1, .., 3) | (.., 3)`
-  --> $DIR/match_same_arms.rs:96:9
+  --> $DIR/match_same_arms.rs:17:9
    |
 LL |         (1, .., 3) => 42,
    |         ^^^^^^^^^^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:114:15
+  --> $DIR/match_same_arms.rs:24:15
    |
 LL |         51 => 1, //~ ERROR match arms have same body
    |               ^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:113:15
+  --> $DIR/match_same_arms.rs:23:15
    |
 LL |         42 => 1,
    |               ^
 help: consider refactoring into `42 | 51`
-  --> $DIR/match_same_arms.rs:113:9
+  --> $DIR/match_same_arms.rs:23:9
    |
 LL |         42 => 1,
    |         ^^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:116:15
+  --> $DIR/match_same_arms.rs:26:15
    |
 LL |         52 => 2, //~ ERROR match arms have same body
    |               ^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:115:15
+  --> $DIR/match_same_arms.rs:25:15
    |
 LL |         41 => 2,
    |               ^
 help: consider refactoring into `41 | 52`
-  --> $DIR/match_same_arms.rs:115:9
+  --> $DIR/match_same_arms.rs:25:9
    |
 LL |         41 => 2,
    |         ^^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:122:14
+  --> $DIR/match_same_arms.rs:32:14
    |
 LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |              ^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:121:14
+  --> $DIR/match_same_arms.rs:31:14
    |
 LL |         1 => 2,
    |              ^
 help: consider refactoring into `1 | 2`
-  --> $DIR/match_same_arms.rs:121:9
+  --> $DIR/match_same_arms.rs:31:9
    |
 LL |         1 => 2,
    |         ^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:123:14
+  --> $DIR/match_same_arms.rs:33:14
    |
 LL |         3 => 2, //~ ERROR 3rd matched arms have same body
    |              ^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:121:14
+  --> $DIR/match_same_arms.rs:31:14
    |
 LL |         1 => 2,
    |              ^
 help: consider refactoring into `1 | 3`
-  --> $DIR/match_same_arms.rs:121:9
+  --> $DIR/match_same_arms.rs:31:9
    |
 LL |         1 => 2,
    |         ^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:123:14
+  --> $DIR/match_same_arms.rs:33:14
    |
 LL |         3 => 2, //~ ERROR 3rd matched arms have same body
    |              ^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:122:14
+  --> $DIR/match_same_arms.rs:32:14
    |
 LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |              ^
 help: consider refactoring into `2 | 3`
-  --> $DIR/match_same_arms.rs:122:9
+  --> $DIR/match_same_arms.rs:32:9
    |
 LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |         ^
 
 error: this `match` has identical arm bodies
-  --> $DIR/match_same_arms.rs:140:55
+  --> $DIR/match_same_arms.rs:50:55
    |
 LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |                                                       ^^^^^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/match_same_arms.rs:139:54
+  --> $DIR/match_same_arms.rs:49:54
    |
 LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                                                      ^^^^^^^^^^^^^^^^
 help: consider refactoring into `CommandInfo::BuiltIn { name, .. } | CommandInfo::External { name, .. }`
-  --> $DIR/match_same_arms.rs:139:17
+  --> $DIR/match_same_arms.rs:49:17
    |
 LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 8 previous errors
 
