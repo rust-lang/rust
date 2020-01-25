@@ -369,11 +369,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,
-        place_ref: &mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'_, 'tcx>,
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
-        match self.locals[*place_ref.local] {
+        match self.locals[place_ref.local] {
             LocalRef::Operand(Some(mut o)) => {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
@@ -413,7 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_consume(
         &mut self,
         bx: &mut Bx,
-        place_ref: &mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'_, 'tcx>,
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_consume(place_ref={:?})", place_ref);
 
@@ -444,7 +444,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match *operand {
             mir::Operand::Copy(ref place) | mir::Operand::Move(ref place) => {
-                self.codegen_consume(bx, &place.as_ref())
+                self.codegen_consume(bx, place.as_ref())
             }
 
             mir::Operand::Constant(ref constant) => {

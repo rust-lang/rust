@@ -408,14 +408,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
-        place_ref: &mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'_, 'tcx>,
     ) -> PlaceRef<'tcx, Bx::Value> {
         debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
         let result = match place_ref {
-            mir::PlaceRef { local, projection: [] } => match self.locals[**local] {
+            mir::PlaceRef { local, projection: [] } => match self.locals[local] {
                 LocalRef::Place(place) => {
                     return place;
                 }
@@ -428,13 +428,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             },
             mir::PlaceRef { local, projection: [proj_base @ .., mir::ProjectionElem::Deref] } => {
                 // Load the pointer from its location.
-                self.codegen_consume(bx, &mir::PlaceRef { local, projection: proj_base })
+                self.codegen_consume(bx, mir::PlaceRef { local, projection: proj_base })
                     .deref(bx.cx())
             }
             mir::PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 // FIXME turn this recursion into iteration
                 let cg_base =
-                    self.codegen_place(bx, &mir::PlaceRef { local, projection: proj_base });
+                    self.codegen_place(bx, mir::PlaceRef { local, projection: proj_base });
 
                 match elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -497,7 +497,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         result
     }
 
-    pub fn monomorphized_place_ty(&self, place_ref: &mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
         let place_ty = mir::Place::ty_from(place_ref.local, place_ref.projection, *self.mir, tcx);
         self.monomorphize(&place_ty.ty)

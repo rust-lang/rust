@@ -48,7 +48,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             let proj_base = &self.projection[..i];
 
             if *elem == ProjectionElem::Deref {
-                let ty = Place::ty_from(&self.local, proj_base, body, tcx).ty;
+                let ty = Place::ty_from(self.local, proj_base, body, tcx).ty;
                 match ty.kind {
                     ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {
                         // For references to thread-local statics, we do need

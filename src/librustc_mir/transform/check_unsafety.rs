@@ -215,7 +215,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
             let is_borrow_of_interior_mut = context.is_borrow()
-                && !Place::ty_from(&place.local, proj_base, self.body, self.tcx).ty.is_freeze(
+                && !Place::ty_from(place.local, proj_base, self.body, self.tcx).ty.is_freeze(
                     self.tcx,
                     self.param_env,
                     self.source_info.span,
@@ -260,7 +260,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     }
                 }
             }
-            let base_ty = Place::ty_from(&place.local, proj_base, self.body, self.tcx).ty;
+            let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
             match base_ty.kind {
                 ty::RawPtr(..) => self.require_unsafe(
                     "dereference of raw pointer",
@@ -414,8 +414,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Field(..) => {
                     let ty =
-                        Place::ty_from(&place.local, proj_base, &self.body.local_decls, self.tcx)
-                            .ty;
+                        Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
                     match ty.kind {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {}

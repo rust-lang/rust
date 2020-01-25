@@ -169,10 +169,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Result<(), ()> {
         match place {
             PlaceRef { local, projection: [] } => {
-                self.append_local_to_string(*local, buf)?;
+                self.append_local_to_string(local, buf)?;
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_for_guard() =>
+                if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 self.append_place_to_string(
                     PlaceRef { local: local, projection: &[] },
@@ -182,9 +182,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )?;
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_to_static() =>
+                if self.body.local_decls[local].is_ref_to_static() =>
             {
-                let local_info = &self.body.local_decls[*local].local_info;
+                let local_info = &self.body.local_decls[local].local_info;
                 if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                     buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
                 } else {
@@ -307,7 +307,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // FIXME Place2 Make this work iteratively
         match place {
             PlaceRef { local, projection: [] } => {
-                let local = &self.body.local_decls[*local];
+                let local = &self.body.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field, None)
             }
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {

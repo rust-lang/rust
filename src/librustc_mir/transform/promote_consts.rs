@@ -329,7 +329,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 // FIXME(eddyb) this is probably excessive, with
                                 // the exception of `union` member accesses.
                                 let ty =
-                                    Place::ty_from(&place.local, proj_base, *self.body, self.tcx)
+                                    Place::ty_from(place.local, proj_base, *self.body, self.tcx)
                                         .projection_ty(self.tcx, elem)
                                         .ty;
                                 if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
@@ -475,7 +475,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_place(&self, place: PlaceRef<'_, 'tcx>) -> Result<(), Unpromotable> {
         match place {
-            PlaceRef { local, projection: [] } => self.validate_local(*local),
+            PlaceRef { local, projection: [] } => self.validate_local(local),
             PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
                 match *elem {
                     ProjectionElem::Deref | ProjectionElem::Downcast(..) => {
@@ -589,10 +589,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Raw reborrows can come from reference to pointer coercions,
                 // so are allowed.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         return self.validate_place(PlaceRef {
-                            local: &place.local,
+                            local: place.local,
                             projection: proj_base,
                         });
                     }
@@ -628,9 +628,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Special-case reborrows to be more like a copy of the reference.
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
-                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
-                        place = PlaceRef { local: &place.local, projection: proj_base };
+                        place = PlaceRef { local: place.local, projection: proj_base };
                     }
                 }
 
@@ -640,7 +640,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // `<HasMutInterior as Qualif>::in_projection` from
                 // `check_consts::qualifs` but without recursion.
                 let mut has_mut_interior =
-                    self.qualif_local::<qualifs::HasMutInterior>(*place.local);
+                    self.qualif_local::<qualifs::HasMutInterior>(place.local);
                 if has_mut_interior {
                     let mut place_projection = place.projection;
                     // FIXME(eddyb) use a forward loop instead of a reverse one.

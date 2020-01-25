@@ -274,8 +274,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
-            let base_static =
-                PlaceRef { local: &place.local, projection: &[ProjectionElem::Deref] };
+            let base_static = PlaceRef { local: place.local, projection: &[ProjectionElem::Deref] };
 
             format!(
                 "`{:?}` as `{:?}` is a static item",
@@ -304,17 +303,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let deref_base = match deref_target_place.projection.as_ref() {
             &[ref proj_base @ .., ProjectionElem::Deref] => {
-                PlaceRef { local: &deref_target_place.local, projection: &proj_base }
+                PlaceRef { local: deref_target_place.local, projection: &proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
         if let PlaceRef { local, projection: [] } = deref_base {
-            let decl = &self.body.local_decls[*local];
+            let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
                     span,
-                    &format!("`{}` in pattern guard", self.local_names[*local].unwrap()),
+                    &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
                 );
                 err.note(
                     "variables bound in patterns cannot be moved from \

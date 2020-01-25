@@ -48,7 +48,7 @@ where
 
         match (value, place.as_ref()) {
             (true, mir::PlaceRef { local, .. }) => {
-                self.qualifs_per_local.insert(*local);
+                self.qualifs_per_local.insert(local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
