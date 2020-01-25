@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::iter::InPlaceIterable;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::rc::Rc;
 use std::vec::{Drain, IntoIter};
 
 struct DropCounter<'a> {
@@ -824,6 +825,45 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     let sink = iter.collect::<Vec<_>>();
     let sinkptr = sink.as_ptr();
     assert_eq!(srcptr, sinkptr);
+}
+
+#[test]
+fn test_from_iter_specialization_head_tail_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let srcptr = src.as_ptr();
+    let iter = src.into_iter();
+    let sink: Vec<_> = iter.skip(1).take(1).collect();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr, "specialization was applied");
+    assert_eq!(Rc::strong_count(&drop_count[0]), 1, "front was dropped");
+    assert_eq!(Rc::strong_count(&drop_count[1]), 2, "one element was collected");
+    assert_eq!(Rc::strong_count(&drop_count[2]), 1, "tail was dropped");
+    assert_eq!(sink.len(), 1);
+}
+
+#[test]
+fn test_from_iter_specialization_panic_drop() {
+    let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
+    let src: Vec<_> = drop_count.iter().cloned().collect();
+    let iter = src.into_iter();
+
+    let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        let _ = iter
+            .enumerate()
+            .filter_map(|(i, e)| {
+                if i == 1 {
+                    std::panic!("aborting iteration");
+                }
+                Some(e)
+            })
+            .collect::<Vec<_>>();
+    }));
+
+    assert!(
+        drop_count.iter().map(Rc::strong_count).all(|count| count == 1),
+        "all items were dropped once"
+    );
 }
 
 #[test]
