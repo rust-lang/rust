@@ -19,7 +19,7 @@ fn main() {
     let mut g = || {
         yield;
     };
-    Pin::new(&mut g).resume(); // Yields once.
-    Pin::new(&mut g).resume(); // Completes here.
-    Pin::new(&mut g).resume(); // Panics here.
+    Pin::new(&mut g).resume(()); // Yields once.
+    Pin::new(&mut g).resume(()); // Completes here.
+    Pin::new(&mut g).resume(()); // Panics here.
 }
