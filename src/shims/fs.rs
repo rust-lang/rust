@@ -775,7 +775,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("mkdir")?;
 
+        #[cfg(target_os = "linux")]
         let mode = this.read_scalar(mode_op)?.to_u32()?;
+        #[cfg(not(target_os = "linux"))]
+        let mode = this.read_scalar(mode_op)?.not_undef()?.to_u16()?;
 
         let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
@@ -783,8 +786,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         #[cfg(target_family = "unix")]
         {
             use std::os::unix::fs::DirBuilderExt;
-            builder.mode(mode);
+            builder.mode(mode.into());
         }
+        #[cfg(not(target_family = "unix"))]
+        let _mode = mode;
         let result = builder.create(path).map(|_| 0i32);
 
         this.try_unwrap_io_result(result)
