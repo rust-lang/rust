@@ -576,6 +576,25 @@ impl<W: Write> BufWriter<W> {
         &self.buf
     }
 
+    /// Returns the number of bytes the internal buffer can hold without flushing.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // Check the capacity of the inner buffer
+    /// let capacity = buf_writer.capacity();
+    /// // Calculate how many bytes can be written without flushing
+    /// let without_flush = capacity - buf_writer.buffer().len();
+    /// ```
+    pub fn capacity(&self) -> usize {
+        self.buf.capacity()
+    }
+
     /// Unwraps this `BufWriter<W>`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
