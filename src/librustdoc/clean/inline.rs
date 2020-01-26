@@ -445,12 +445,41 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         for &item in cx.tcx.item_children(did).iter() {
-            let def_id = item.res.def_id();
             if item.vis == ty::Visibility::Public {
-                if did == def_id || !visited.insert(def_id) {
-                    continue;
+                if let Some(def_id) = item.res.mod_def_id() {
+                    if did == def_id || !visited.insert(def_id) {
+                        continue;
+                    }
                 }
-                if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
+                if let Res::PrimTy(p) = item.res {
+                    // Primitive types can't be inlined so generate an import instead.
+                    items.push(clean::Item {
+                        name: None,
+                        attrs: clean::Attributes::default(),
+                        source: clean::Span::empty(),
+                        def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+                        visibility: clean::Public,
+                        stability: None,
+                        deprecation: None,
+                        inner: clean::ImportItem(clean::Import::Simple(
+                            item.ident.to_string(),
+                            clean::ImportSource {
+                                path: clean::Path {
+                                    global: false,
+                                    res: item.res,
+                                    segments: vec![clean::PathSegment {
+                                        name: clean::PrimitiveType::from(p).as_str().to_string(),
+                                        args: clean::GenericArgs::AngleBracketed {
+                                            args: Vec::new(),
+                                            bindings: Vec::new(),
+                                        },
+                                    }],
+                                },
+                                did: None,
+                            },
+                        )),
+                    });
+                } else if let Some(i) = try_inline(cx, item.res, item.ident.name, None, visited) {
                     items.extend(i)
                 }
             }

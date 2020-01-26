@@ -570,14 +570,7 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
     }
 
     let is_generic = match path.res {
-        Res::PrimTy(p) => match p {
-            hir::PrimTy::Str => return Primitive(PrimitiveType::Str),
-            hir::PrimTy::Bool => return Primitive(PrimitiveType::Bool),
-            hir::PrimTy::Char => return Primitive(PrimitiveType::Char),
-            hir::PrimTy::Int(int_ty) => return Primitive(int_ty.into()),
-            hir::PrimTy::Uint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::PrimTy::Float(float_ty) => return Primitive(float_ty.into()),
-        },
+        Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),
         Res::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(kw::SelfUpper.to_string());
         }
