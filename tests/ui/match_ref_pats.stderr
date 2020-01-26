@@ -47,7 +47,7 @@ LL |         None => println!("none"),
    |
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:34:5
+  --> $DIR/match_ref_pats.rs:35:5
    |
 LL | /     if let &None = a {
 LL | |         println!("none");
@@ -60,7 +60,7 @@ LL |     if let None = *a {
    |            ^^^^   ^^
 
 error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/match_ref_pats.rs:39:5
+  --> $DIR/match_ref_pats.rs:40:5
    |
 LL | /     if let &None = &b {
 LL | |         println!("none");
@@ -73,7 +73,7 @@ LL |     if let None = b {
    |            ^^^^   ^
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/match_ref_pats.rs:66:9
+  --> $DIR/match_ref_pats.rs:67:9
    |
 LL | /         match foo_variant!(0) {
 LL | |             &Foo::A => println!("A"),

@@ -3,9 +3,9 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    span_lint_and_help, span_lint_and_note, 
-    expr_block, in_macro, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks,
-    snippet, snippet_block, snippet_with_applicability,  span_lint_and_sugg, span_lint_and_then,
+    expr_block, get_arg_name, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, match_type,
+    match_var, multispan_sugg, remove_blocks, snippet, snippet_block, snippet_with_applicability, span_lint_and_help,
+    span_lint_and_note, span_lint_and_sugg, span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
@@ -822,35 +822,65 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
 }
 
 fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if in_macro(expr.span) {
+    if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
-    if arms.len() == 1 {
-        if is_refutable(cx, arms[0].pat) {
-            return;
+    let matched_vars = ex.span;
+    let bind_names = arms[0].pat.span;
+    let match_body = remove_blocks(&arms[0].body);
+    let mut snippet_body = if match_body.span.from_expansion() {
+        Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
+    } else {
+        snippet_block(cx, match_body.span, "..").to_owned().to_string()
+    };
+
+    // Do we need to add ';' to suggestion ?
+    if_chain! {
+        if let ExprKind::Block(block, _) = &arms[0].body.kind;
+        if block.stmts.len() == 1;
+        if let StmtKind::Semi(s) = block.stmts.get(0).unwrap().kind;
+        then {
+            match s.kind {
+                ExprKind::Block(_, _) => (),
+                _ => {
+                    // expr_ty(body) == ()
+                    if cx.tables.expr_ty(&arms[0].body).is_unit() {
+                        snippet_body.push(';');
+                    }
+                }
+            }
         }
-        match arms[0].pat.kind {
-            PatKind::Binding(..) | PatKind::Tuple(_, _) => {
-                let bind_names = arms[0].pat.span;
-                let matched_vars = ex.span;
-                let match_body = remove_blocks(&arms[0].body);
-                span_lint_and_sugg(
-                    cx,
-                    MATCH_SINGLE_BINDING,
-                    expr.span,
-                    "this match could be written as a `let` statement",
-                    "consider using `let` statement",
-                    format!(
-                        "let {} = {};\n{}",
-                        snippet(cx, bind_names, ".."),
-                        snippet(cx, matched_vars, ".."),
-                        snippet_block(cx, match_body.span, "..")
-                    ),
-                    Applicability::MachineApplicable,
-                );
-            },
-            _ => (),
-        }
+    }
+
+    match arms[0].pat.kind {
+        PatKind::Binding(..) | PatKind::Tuple(_, _) | PatKind::Struct(..) => {
+            span_lint_and_sugg(
+                cx,
+                MATCH_SINGLE_BINDING,
+                expr.span,
+                "this match could be written as a `let` statement",
+                "consider using `let` statement",
+                format!(
+                    "let {} = {};\n{}",
+                    snippet(cx, bind_names, ".."),
+                    snippet(cx, matched_vars, ".."),
+                    snippet_body
+                ),
+                Applicability::MachineApplicable,
+            );
+        },
+        PatKind::Wild => {
+            span_lint_and_sugg(
+                cx,
+                MATCH_SINGLE_BINDING,
+                expr.span,
+                "this match could be replaced by its body itself",
+                "consider using the match body instead",
+                snippet_body,
+                Applicability::MachineApplicable,
+            );
+        },
+        _ => (),
     }
 }
 

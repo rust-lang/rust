@@ -4,6 +4,7 @@
     clippy::needless_pass_by_value,
     clippy::unused_unit,
     clippy::redundant_clone,
+    clippy::match_single_binding
 )]
 #![warn(clippy::boxed_local)]
 

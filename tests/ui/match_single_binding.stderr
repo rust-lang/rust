@@ -1,5 +1,5 @@
 error: this match could be written as a `let` statement
-  --> $DIR/match_single_binding.rs:11:5
+  --> $DIR/match_single_binding.rs:16:5
    |
 LL | /     match (a, b, c) {
 LL | |         (x, y, z) => {
@@ -17,5 +17,124 @@ LL |     println!("{} {} {}", x, y, z);
 LL | }
    |
 
-error: aborting due to previous error
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:22:5
+   |
+LL | /     match (a, b, c) {
+LL | |         (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |     }
+   | |_____^
+   |
+help: consider using `let` statement
+   |
+LL |     let (x, y, z) = (a, b, c);
+LL | println!("{} {} {}", x, y, z);
+   |
+
+error: this match could be replaced by its body itself
+  --> $DIR/match_single_binding.rs:37:5
+   |
+LL | /     match a {
+LL | |         _ => println!("whatever"),
+LL | |     }
+   | |_____^ help: consider using the match body instead: `println!("whatever");`
+
+error: this match could be replaced by its body itself
+  --> $DIR/match_single_binding.rs:41:5
+   |
+LL | /     match a {
+LL | |         _ => {
+LL | |             let x = 29;
+LL | |             println!("x has a value of {}", x);
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     {
+LL |     let x = 29;
+LL |     println!("x has a value of {}", x);
+LL | }
+   |
+
+error: this match could be replaced by its body itself
+  --> $DIR/match_single_binding.rs:48:5
+   |
+LL | /     match a {
+LL | |         _ => {
+LL | |             let e = 5 * a;
+LL | |             if e >= 5 {
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: consider using the match body instead
+   |
+LL |     {
+LL |     let e = 5 * a;
+LL |     if e >= 5 {
+LL |         println!("e is superior to 5");
+LL |     }
+LL | }
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:58:5
+   |
+LL | /     match p {
+LL | |         Point { x, y } => println!("Coords: ({}, {})", x, y),
+LL | |     }
+   | |_____^
+   |
+help: consider using `let` statement
+   |
+LL |     let Point { x, y } = p;
+LL | println!("Coords: ({}, {})", x, y);
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:62:5
+   |
+LL | /     match p {
+LL | |         Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
+LL | |     }
+   | |_____^
+   |
+help: consider using `let` statement
+   |
+LL |     let Point { x: x1, y: y1 } = p;
+LL | println!("Coords: ({}, {})", x1, y1);
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:67:5
+   |
+LL | /     match x {
+LL | |         ref r => println!("Got a reference to {}", r),
+LL | |     }
+   | |_____^
+   |
+help: consider using `let` statement
+   |
+LL |     let ref r = x;
+LL | println!("Got a reference to {}", r);
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:72:5
+   |
+LL | /     match x {
+LL | |         ref mut mr => println!("Got a mutable reference to {}", mr),
+LL | |     }
+   | |_____^
+   |
+help: consider using `let` statement
+   |
+LL |     let ref mut mr = x;
+LL | println!("Got a mutable reference to {}", mr);
+   |
+
+error: aborting due to 9 previous errors
 
