@@ -22,7 +22,7 @@ use syntax::token::{self, Token};
 pub fn render_with_highlighting(
     src: &str,
     class: Option<&str>,
-    extension: Option<&str>,
+    playground_button: Option<&str>,
     tooltip: Option<(&str, &str)>,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
@@ -58,10 +58,7 @@ pub fn render_with_highlighting(
         Ok(highlighted_source) => {
             write_header(class, &mut out).unwrap();
             write!(out, "{}", highlighted_source).unwrap();
-            if let Some(extension) = extension {
-                write!(out, "{}", extension).unwrap();
-            }
-            write_footer(&mut out).unwrap();
+            write_footer(&mut out, playground_button).unwrap();
         }
         Err(()) => {
             // If errors are encountered while trying to highlight, just emit
@@ -433,6 +430,6 @@ fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
     write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
-fn write_footer(out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "</pre></div>\n")
+fn write_footer(out: &mut dyn Write, playground_button: Option<&str>) -> io::Result<()> {
+    write!(out, "</pre>{}</div>\n", if let Some(button) = playground_button { button } else { "" })
 }

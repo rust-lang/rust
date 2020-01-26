@@ -136,7 +136,7 @@ summary {
 	outline: none;
 }
 
-code, pre {
+code, pre, a.test-arrow {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -305,6 +305,7 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
+	position: relative;
 }
 
 .example-wrap {
@@ -878,6 +879,7 @@ a.test-arrow {
 	font-size: 130%;
 	top: 5px;
 	right: 5px;
+	z-index: 1;
 }
 a.test-arrow:hover{
 	text-decoration: none;
