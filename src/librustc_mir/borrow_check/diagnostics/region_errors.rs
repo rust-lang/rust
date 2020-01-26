@@ -427,15 +427,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let (_, escapes_from) =
-            self.infcx.tcx.article_and_description(self.universal_regions.defining_ty.def_id());
+        let (_, escapes_from) = self
+            .infcx
+            .tcx
+            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
             || (*category == ConstraintCategory::Assignment
-                && self.universal_regions.defining_ty.is_fn_def())
-            || self.universal_regions.defining_ty.is_const()
+                && self.regioncx.universal_regions().defining_ty.is_fn_def())
+            || self.regioncx.universal_regions().defining_ty.is_const()
         {
             return self.report_general_error(&ErrorConstraintInfo {
                 fr_is_local: true,

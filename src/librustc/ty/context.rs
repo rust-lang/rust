@@ -5,7 +5,7 @@ use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
 use crate::hir::map as hir_map;
-use crate::hir::map::DefPathHash;
+use crate::hir::map::{DefPathData, DefPathHash};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintSource};
@@ -1513,14 +1513,18 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "closure")`).
-    pub fn article_and_description(
-        &self,
-        def_id: crate::hir::def_id::DefId,
-    ) -> (&'static str, &'static str) {
-        match self.def_kind(def_id) {
-            Some(def_kind) => (def_kind.article(), def_kind.descr(def_id)),
-            None => self.type_of(def_id).kind.article_and_description(),
+    /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
+    pub fn article_and_description(&self, def_id: DefId) -> (&'static str, &'static str) {
+        match self.def_key(def_id).disambiguated_data.data {
+            DefPathData::TypeNs(..) | DefPathData::ValueNs(..) | DefPathData::MacroNs(..) => {
+                let kind = self.def_kind(def_id).unwrap();
+                (kind.article(), kind.descr(def_id))
+            }
+            DefPathData::ClosureExpr => {
+                // TODO
+                todo!();
+            }
+            _ => bug!("article_and_description called on def_id {:?}", def_id),
         }
     }
 }

@@ -132,16 +132,16 @@ impl<'tcx> DefiningTy<'tcx> {
         }
     }
 
-    pub fn is_closure(&self) -> bool {
+    pub fn is_fn_def(&self) -> bool {
         match *self {
-            DefiningTy::Closure(..) => true,
+            DefiningTy::FnDef(..) => true,
             _ => false,
         }
     }
 
-    pub fn is_fn_def(&self) -> bool {
+    pub fn is_const(&self) -> bool {
         match *self {
-            DefiningTy::FnDef(..) => true,
+            DefiningTy::Const(..) => true,
             _ => false,
         }
     }

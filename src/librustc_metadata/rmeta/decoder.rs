@@ -500,7 +500,7 @@ impl MetadataBlob {
     }
 }
 
-impl<'tcx> EntryKind<'tcx> {
+impl EntryKind {
     fn def_kind(&self) -> Option<DefKind> {
         Some(match *self {
             EntryKind::Const(..) => DefKind::Const,
@@ -614,11 +614,11 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
     }
 
-    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind<'tcx>> {
+    fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
         self.root.per_def.kind.get(self, item_id).map(|k| k.decode(self))
     }
 
-    fn kind(&self, item_id: DefIndex) -> EntryKind<'tcx> {
+    fn kind(&self, item_id: DefIndex) -> EntryKind {
         assert!(!self.is_proc_macro(item_id));
         self.maybe_kind(item_id).unwrap_or_else(|| {
             bug!(
@@ -723,7 +723,7 @@ impl<'a, 'tcx> CrateMetadata {
     fn get_variant(
         &self,
         tcx: TyCtxt<'tcx>,
-        kind: &EntryKind<'_>,
+        kind: &EntryKind,
         index: DefIndex,
         parent_did: DefId,
     ) -> ty::VariantDef {
@@ -1390,6 +1390,13 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    fn generator_kind(&self, id: DefIndex) -> Option<hir::GeneratorKind> {
+        match self.kind(id) {
+            EntryKind::Generator(data) => Some(data.decode(self)),
+            _ => None,
+        }
+    }
+
     fn fn_sig(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         self.root.per_def.fn_sig.get(self, id).unwrap().decode((self, tcx))
     }
@@ -1499,8 +1506,8 @@ impl<'a, 'tcx> CrateMetadata {
                     );
                     debug!(
                         "CrateMetaData::imported_source_files alloc \
-                        source_file {:?} original (start_pos {:?} end_pos {:?}) \
-                        translated (start_pos {:?} end_pos {:?})",
+                         source_file {:?} original (start_pos {:?} end_pos {:?}) \
+                         translated (start_pos {:?} end_pos {:?})",
                         local_version.name,
                         start_pos,
                         end_pos,
