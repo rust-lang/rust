@@ -30,6 +30,9 @@ env_logger = { version = "0.7.1", default-features = false }
 ra_cargo_watch = { path = "../ra_cargo_watch" }
 either = "1.5"
 
+[target.'cfg(windows)'.dependencies]
+winapi = "0.3"
+
 [dev-dependencies]
 tempfile = "3"
 test_utils = { path = "../test_utils" }
