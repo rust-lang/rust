@@ -226,15 +226,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let (scope, span) = self.debug_loc(var.source_info);
             if let Some(scope) = scope {
-                bx.declare_local(
+                let dbg_var =
+                    bx.create_dbg_var(debug_context, var.name, layout.ty, scope, kind, span);
+                bx.dbg_var_addr(
                     debug_context,
-                    var.name,
-                    layout.ty,
+                    dbg_var,
                     scope,
                     base.llval,
                     direct_offset,
                     &indirect_offsets,
-                    kind,
                     span,
                 );
             }
