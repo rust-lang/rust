@@ -947,8 +947,7 @@ impl SourceMap {
     }
     pub fn call_span_if_macro(&self, sp: Span) -> Span {
         if self.span_to_filename(sp.clone()).is_macros() {
-            let v = sp.macro_backtrace();
-            if let Some(use_site) = v.last() {
+            if let Some(use_site) = sp.macro_backtrace().last() {
                 return use_site.call_site;
             }
         }

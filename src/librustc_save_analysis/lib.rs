@@ -776,12 +776,19 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
 
-        // Ignore attribute macros, their spans are usually mangled
-        if let ExpnKind::Macro(MacroKind::Attr, _) | ExpnKind::Macro(MacroKind::Derive, _) =
-            callee.kind
-        {
-            return None;
-        }
+        let mac_name = match callee.kind {
+            ExpnKind::Macro(mac_kind, name) => match mac_kind {
+                MacroKind::Bang => name,
+
+                // Ignore attribute macros, their spans are usually mangled
+                // FIXME(eddyb) is this really the case anymore?
+                MacroKind::Attr | MacroKind::Derive => return None,
+            },
+
+            // These are not macros.
+            // FIXME(eddyb) maybe there is a way to handle them usefully?
+            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
+        };
 
         // If the callee is an imported macro from an external crate, need to get
         // the source span and name from the session, as their spans are localized
@@ -799,7 +806,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.kind.descr().to_string(), // FIXME: generate the real qualname
+            qualname: mac_name.to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }

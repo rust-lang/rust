@@ -1,4 +1,4 @@
-error: recursion limit reached while expanding the macro `prob1`
+error: recursion limit reached while expanding `prob1!`
   --> $DIR/issue-16098.rs:7:18
    |
 LL |             $n + prob1!($n - 1);

@@ -21,6 +21,7 @@ use crate::{
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::io;
@@ -342,19 +343,20 @@ pub trait Emitter {
             if call_sp != *sp && !always_backtrace {
                 before_after.push((*sp, call_sp));
             }
-            let backtrace_len = sp.macro_backtrace().len();
-            for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
+            let macro_backtrace: Vec<_> = sp.macro_backtrace().collect();
+            let backtrace_len = macro_backtrace.len();
+            for (i, trace) in macro_backtrace.iter().rev().enumerate() {
                 // Only show macro locations that are local
                 // and display them like a span_note
-                if trace.def_site_span.is_dummy() {
+                if trace.def_site.is_dummy() {
                     continue;
                 }
                 if always_backtrace {
                     new_labels.push((
-                        trace.def_site_span,
+                        trace.def_site,
                         format!(
                             "in this expansion of `{}`{}",
-                            trace.macro_decl_name,
+                            trace.kind.descr(),
                             if backtrace_len > 2 {
                                 // if backtrace_len == 1 it'll be pointed
                                 // at by "in this macro invocation"
@@ -366,9 +368,8 @@ pub trait Emitter {
                     ));
                 }
                 // Check to make sure we're not in any <*macros>
-                if !sm.span_to_filename(trace.def_site_span).is_macros()
-                    && !trace.macro_decl_name.starts_with("desugaring of ")
-                    && !trace.macro_decl_name.starts_with("#[")
+                if !sm.span_to_filename(trace.def_site).is_macros()
+                    && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
                     || always_backtrace
                 {
                     new_labels.push((
@@ -398,8 +399,7 @@ pub trait Emitter {
                 continue;
             }
             if sm.span_to_filename(sp_label.span.clone()).is_macros() && !always_backtrace {
-                let v = sp_label.span.macro_backtrace();
-                if let Some(use_site) = v.last() {
+                if let Some(use_site) = sp_label.span.macro_backtrace().last() {
                     before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
                 }
             }

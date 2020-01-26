@@ -445,37 +445,26 @@ impl Span {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
 
-    pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
+    pub fn macro_backtrace(mut self) -> impl Iterator<Item = ExpnData> {
         let mut prev_span = DUMMY_SP;
-        let mut result = vec![];
-        loop {
-            let expn_data = self.ctxt().outer_expn_data();
-            if expn_data.is_root() {
-                break;
-            }
-            // Don't print recursive invocations.
-            if !expn_data.call_site.source_equal(&prev_span) {
-                let (pre, post) = match expn_data.kind {
-                    ExpnKind::Root => break,
-                    ExpnKind::Desugaring(..) => ("desugaring of ", ""),
-                    ExpnKind::AstPass(..) => ("", ""),
-                    ExpnKind::Macro(macro_kind, _) => match macro_kind {
-                        MacroKind::Bang => ("", "!"),
-                        MacroKind::Attr => ("#[", "]"),
-                        MacroKind::Derive => ("#[derive(", ")]"),
-                    },
-                };
-                result.push(MacroBacktrace {
-                    call_site: expn_data.call_site,
-                    macro_decl_name: format!("{}{}{}", pre, expn_data.kind.descr(), post),
-                    def_site_span: expn_data.def_site,
-                });
-            }
+        std::iter::from_fn(move || {
+            loop {
+                let expn_data = self.ctxt().outer_expn_data();
+                if expn_data.is_root() {
+                    return None;
+                }
 
-            prev_span = self;
-            self = expn_data.call_site;
-        }
-        result
+                let is_recursive = expn_data.call_site.source_equal(&prev_span);
+
+                prev_span = self;
+                self = expn_data.call_site;
+
+                // Don't print recursive invocations.
+                if !is_recursive {
+                    return Some(expn_data);
+                }
+            }
+        })
     }
 
     /// Returns a `Span` that would enclose both `self` and `end`.
@@ -1510,18 +1499,6 @@ pub struct FileLines {
 
 pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
     AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-
-#[derive(Debug)]
-pub struct MacroBacktrace {
-    /// span where macro was applied to generate this code
-    pub call_site: Span,
-
-    /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
-    pub macro_decl_name: String,
-
-    /// span where macro was defined (possibly dummy)
-    pub def_site_span: Span,
-}
 
 // _____________________________________________________________________________
 // SpanLinesError, SpanSnippetError, DistinctSources, MalformedSourceMapPositions

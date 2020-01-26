@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast::{Ident, Item, ItemKind};
 
@@ -226,8 +227,9 @@ impl EarlyLintPass for LintPassImpl {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
                     let call_site = expn_data.call_site;
-                    if expn_data.kind.descr() != sym::impl_lint_pass
-                        && call_site.ctxt().outer_expn_data().kind.descr() != sym::declare_lint_pass
+                    if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
+                        && call_site.ctxt().outer_expn_data().kind
+                            != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
                     {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,

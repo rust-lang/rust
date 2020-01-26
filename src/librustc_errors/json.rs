@@ -17,7 +17,8 @@ use crate::{Applicability, DiagnosticId};
 use crate::{CodeSuggestion, SubDiagnostic};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_span::{MacroBacktrace, MultiSpan, Span, SpanLabel};
+use rustc_span::hygiene::ExpnData;
+use rustc_span::{MultiSpan, Span, SpanLabel};
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -308,7 +309,7 @@ impl DiagnosticSpan {
         // backtrace ourselves, but the `macro_backtrace` helper makes
         // some decision, such as dropping some frames, and I don't
         // want to duplicate that logic here.
-        let backtrace = span.macro_backtrace().into_iter();
+        let backtrace = span.macro_backtrace();
         DiagnosticSpan::from_span_full(span, is_primary, label, suggestion, backtrace, je)
     }
 
@@ -317,7 +318,7 @@ impl DiagnosticSpan {
         is_primary: bool,
         label: Option<String>,
         suggestion: Option<(&String, Applicability)>,
-        mut backtrace: vec::IntoIter<MacroBacktrace>,
+        mut backtrace: impl Iterator<Item = ExpnData>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         let start = je.sm.lookup_char_pos(span.lo());
@@ -325,10 +326,10 @@ impl DiagnosticSpan {
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
             let def_site_span =
-                Self::from_span_full(bt.def_site_span, false, None, None, vec![].into_iter(), je);
+                Self::from_span_full(bt.def_site, false, None, None, vec![].into_iter(), je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
-                macro_decl_name: bt.macro_decl_name,
+                macro_decl_name: bt.kind.descr(),
                 def_site_span,
             })
         });
