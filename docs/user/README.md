@@ -57,7 +57,7 @@ $ cd rust-analyzer
 $ cargo install --path ./crates/ra_lsp_server/ --force --locked
 $ cd ./editors/code
 $ npm install
-$ ./node_modules/vsce/out/vsce package
+$ npm run-script package
 $ code --install-extension ./rust-analyzer-0.1.0.vsix
 ```
 
