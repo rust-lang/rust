@@ -42,7 +42,7 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::*;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
-use rustc_span::hygiene::ExpnKind;
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
@@ -758,14 +758,15 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
         if span.from_expansion() {
             let data = span.ctxt().outer_expn_data();
-            let mac_name = data.kind.descr();
             let new_span = data.call_site;
 
-            if mac_name.as_str() == name {
-                return Some(new_span);
-            } else {
-                span = new_span;
+            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+                if mac_name.as_str() == name {
+                    return Some(new_span);
+                }
             }
+
+            span = new_span;
         } else {
             return None;
         }
@@ -785,17 +786,16 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     if span.from_expansion() {
         let data = span.ctxt().outer_expn_data();
-        let mac_name = data.kind.descr();
         let new_span = data.call_site;
 
-        if mac_name.as_str() == name {
-            Some(new_span)
-        } else {
-            None
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+            if mac_name.as_str() == name {
+                return Some(new_span);
+            }
         }
-    } else {
-        None
     }
+
+    None
 }
 
 /// Convenience function to get the return type of a function.
