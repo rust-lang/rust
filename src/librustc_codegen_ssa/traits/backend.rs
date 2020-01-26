@@ -21,7 +21,10 @@ pub trait BackendTypes {
     type Type: CodegenObject;
     type Funclet;
 
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
     type DIScope: Copy;
+    type DIVariable: Copy;
 }
 
 pub trait Backend<'tcx>:
