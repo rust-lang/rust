@@ -4,7 +4,7 @@
 //! `SyntaxNode`, and a basic traversal API (parent, children, siblings).
 //!
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
-//! modules just wraps its API.
+//! module just wraps its API.
 
 use ra_parser::ParseError;
 use rowan::{GreenNodeBuilder, Language};
@@ -38,14 +38,15 @@ pub type SyntaxElementChildren = rowan::SyntaxElementChildren<RustLanguage>;
 
 pub use rowan::{Direction, NodeOrToken};
 
+#[derive(Default)]
 pub struct SyntaxTreeBuilder {
     errors: Vec<SyntaxError>,
     inner: GreenNodeBuilder<'static>,
 }
 
-impl Default for SyntaxTreeBuilder {
-    fn default() -> SyntaxTreeBuilder {
-        SyntaxTreeBuilder { errors: Vec::new(), inner: GreenNodeBuilder::new() }
+impl SyntaxTreeBuilder {
+    pub fn new(errors: Vec<SyntaxError>) -> Self {
+        Self { errors, inner: GreenNodeBuilder::default() }
     }
 }
 

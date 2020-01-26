@@ -12,7 +12,7 @@ use ra_text_edit::AtomTextEdit;
 use crate::{
     algo,
     parsing::{
-        lexer::{tokenize, Token},
+        lexer::{single_token, tokenize, ParsedTokens, Token},
         text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
     },
@@ -41,36 +41,42 @@ fn reparse_token<'node>(
     root: &'node SyntaxNode,
     edit: &AtomTextEdit,
 ) -> Option<(GreenNode, TextRange)> {
-    let token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
-    match token.kind() {
+    let prev_token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
+    let prev_token_kind = prev_token.kind();
+    match prev_token_kind {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
-            if token.kind() == WHITESPACE || token.kind() == COMMENT {
+            if prev_token_kind == WHITESPACE || prev_token_kind == COMMENT {
                 // removing a new line may extends previous token
-                if token.text()[edit.delete - token.text_range().start()].contains('\n') {
+                let deleted_range = edit.delete - prev_token.text_range().start();
+                if prev_token.text()[deleted_range].contains('\n') {
                     return None;
                 }
             }
 
-            let text = get_text_after_edit(token.clone().into(), &edit);
-            let lex_tokens = tokenize(&text);
-            let lex_token = match lex_tokens[..] {
-                [lex_token] if lex_token.kind == token.kind() => lex_token,
-                _ => return None,
-            };
+            let mut new_text = get_text_after_edit(prev_token.clone().into(), &edit);
+            let new_token_kind = single_token(&new_text)?.token.kind;
 
-            if lex_token.kind == IDENT && is_contextual_kw(&text) {
+            if new_token_kind != prev_token_kind
+                || (new_token_kind == IDENT && is_contextual_kw(&new_text))
+            {
                 return None;
             }
 
-            if let Some(next_char) = root.text().char_at(token.text_range().end()) {
-                let tokens_with_next_char = tokenize(&format!("{}{}", text, next_char));
-                if tokens_with_next_char.len() == 1 {
+            // Check that edited token is not a part of the bigger token.
+            // E.g. if for source code `bruh"str"` the user removed `ruh`, then
+            // `b` no longer remains an identifier, but becomes a part of byte string literal
+            if let Some(next_char) = root.text().char_at(prev_token.text_range().end()) {
+                new_text.push(next_char);
+                let token_with_next_char = single_token(&new_text);
+                if token_with_next_char.is_some() {
                     return None;
                 }
+                new_text.pop();
             }
 
-            let new_token = GreenToken::new(rowan::SyntaxKind(token.kind().into()), text.into());
-            Some((token.replace_with(new_token), token.text_range()))
+            let new_token =
+                GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), new_text.into());
+            Some((prev_token.replace_with(new_token), prev_token.text_range()))
         }
         _ => None,
     }
@@ -82,12 +88,12 @@ fn reparse_block<'node>(
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), &edit);
-    let tokens = tokenize(&text);
+    let ParsedTokens { tokens, errors } = tokenize(&text);
     if !is_balanced(&tokens) {
         return None;
     }
     let mut token_source = TextTokenSource::new(&text, &tokens);
-    let mut tree_sink = TextTreeSink::new(&text, &tokens);
+    let mut tree_sink = TextTreeSink::new(&text, &tokens, errors);
     reparser.parse(&mut token_source, &mut tree_sink);
     let (green, new_errors) = tree_sink.finish();
     Some((node.replace_with(green), new_errors, node.text_range()))
@@ -96,6 +102,9 @@ fn reparse_block<'node>(
 fn get_text_after_edit(element: SyntaxElement, edit: &AtomTextEdit) -> String {
     let edit =
         AtomTextEdit::replace(edit.delete - element.text_range().start(), edit.insert.clone());
+
+    // Note: we could move this match to a method or even further: use enum_dispatch crate
+    // https://crates.io/crates/enum_dispatch
     let text = match element {
         NodeOrToken::Token(token) => token.text().to_string(),
         NodeOrToken::Node(node) => node.text().to_string(),
@@ -112,6 +121,9 @@ fn is_contextual_kw(text: &str) -> bool {
 
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {
     let node = algo::find_covering_element(node, range);
+
+    // Note: we could move this match to a method or even further: use enum_dispatch crate
+    // https://crates.io/crates/enum_dispatch
     let mut ancestors = match node {
         NodeOrToken::Token(it) => it.parent().ancestors(),
         NodeOrToken::Node(it) => it.ancestors(),
@@ -181,6 +193,8 @@ mod tests {
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed: Parse<SourceFile> = {
             let f = SourceFile::parse(&before);
+            // FIXME: it seems this initialization statement is unnecessary (see edit in outer scope)
+            // Investigate whether it should really be removed.
             let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (green, new_errors, range) =
                 incremental_reparse(f.tree().syntax(), &edit, f.errors.to_vec()).unwrap();

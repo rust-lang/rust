@@ -84,6 +84,9 @@ pub enum SyntaxErrorKind {
     ParseError(ParseError),
     EscapeError(EscapeError),
     TokenizeError(TokenizeError),
+    // FIXME: the obvious pattern of this enum dictates that the following enum variants
+    // should be wrapped into something like `SemmanticError(SemmanticError)`
+    // or `ValidateError(ValidateError)` or `SemmanticValidateError(...)`
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
     InvalidTupleIndexFormat,
@@ -106,6 +109,7 @@ impl fmt::Display for SyntaxErrorKind {
             }
             ParseError(msg) => write!(f, "{}", msg.0),
             EscapeError(err) => write!(f, "{}", err),
+            TokenizeError(err) => write!(f, "{}", err),
             VisibilityNotAllowed => {
                 write!(f, "unnecessary visibility qualifier")
             }
@@ -113,6 +117,44 @@ impl fmt::Display for SyntaxErrorKind {
                 write!(f, "An inclusive range must have an end expression")
             }
         }
+    }
+}
+
+impl fmt::Display for TokenizeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let msg = match self {
+            TokenizeError::EmptyInt => "Missing digits after integer base prefix",
+            TokenizeError::EmptyExponent => "Missing digits after the exponent symbol",
+            TokenizeError::UnterminatedBlockComment => {
+                "Missing trailing `*/` symbols to terminate the block comment"
+            }
+            TokenizeError::UnterminatedChar => {
+                "Missing trailing `'` symbol to terminate the character literal"
+            }
+            TokenizeError::UnterminatedByte => {
+                "Missing trailing `'` symbol to terminate the byte literal"
+            }
+            TokenizeError::UnterminatedString => {
+                "Missing trailing `\"` symbol to terminate the string literal"
+            }
+            TokenizeError::UnterminatedByteString => {
+                "Missing trailing `\"` symbol to terminate the byte string literal"
+            }
+            TokenizeError::UnterminatedRawString => {
+                "Missing trailing `\"` with `#` symbols to terminate the raw string literal"
+            }
+            TokenizeError::UnterminatedRawByteString => {
+                "Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"
+            }
+            TokenizeError::UnstartedRawString => {
+                "Missing `\"` symbol after `#` symbols to begin the raw string literal"
+            }
+            TokenizeError::UnstartedRawByteString => {
+                "Missing `\"` symbol after `#` symbols to begin the raw byte string literal"
+            }
+            TokenizeError::LifetimeStartsWithNumber => "Lifetime name cannot start with a number",
+        };
+        write!(f, "{}", msg)
     }
 }
 

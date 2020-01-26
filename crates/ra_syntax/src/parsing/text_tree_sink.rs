@@ -92,14 +92,14 @@ impl<'a> TreeSink for TextTreeSink<'a> {
 }
 
 impl<'a> TextTreeSink<'a> {
-    pub(super) fn new(text: &'a str, tokens: &'a [Token]) -> TextTreeSink<'a> {
-        TextTreeSink {
+    pub(super) fn new(text: &'a str, tokens: &'a [Token], errors: Vec<SyntaxError>) -> Self {
+        Self {
             text,
             tokens,
             text_pos: 0.into(),
             token_pos: 0,
             state: State::PendingStart,
-            inner: SyntaxTreeBuilder::default(),
+            inner: SyntaxTreeBuilder::new(errors),
         }
     }
 
