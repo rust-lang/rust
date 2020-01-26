@@ -328,6 +328,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.stat_or_lstat(false, path_op, buf_op)
     }
 
+    fn fstat(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        buf_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("fstat")?;
+
+        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
+            throw_unsup_format!("The `fstat` shim is only available for `macos` targets.")
+        }
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+
+        let metadata = match FileMetadata::from_fd(this, fd)? {
+            Some(metadata) => metadata,
+            None => return Ok(-1),
+        };
+        stat_write_buf(this, metadata, buf_op)
+    }
+
     fn stat_or_lstat(
         &mut self,
         follow_symlink: bool,
@@ -343,66 +365,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
         let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
 
-        let buf = this.deref_operand(buf_op)?;
-
         let metadata = match FileMetadata::from_path(this, path, follow_symlink)? {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-
-        let mode: u16 = metadata.mode.to_u16()?;
-
-        let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
-        let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
-        let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
-
-        let dev_t_layout = this.libc_ty_layout("dev_t")?;
-        let mode_t_layout = this.libc_ty_layout("mode_t")?;
-        let nlink_t_layout = this.libc_ty_layout("nlink_t")?;
-        let ino_t_layout = this.libc_ty_layout("ino_t")?;
-        let uid_t_layout = this.libc_ty_layout("uid_t")?;
-        let gid_t_layout = this.libc_ty_layout("gid_t")?;
-        let time_t_layout = this.libc_ty_layout("time_t")?;
-        let long_layout = this.libc_ty_layout("c_long")?;
-        let off_t_layout = this.libc_ty_layout("off_t")?;
-        let blkcnt_t_layout = this.libc_ty_layout("blkcnt_t")?;
-        let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
-        let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
-
-        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
-        let pad_layout = if this.tcx.sess.target.ptr_width == 64 {
-            uint32_t_layout
-        } else {
-            this.layout_of(this.tcx.mk_unit())?
-        };
-
-        let imms = [
-            immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
-            immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
-            immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
-            immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
-            immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
-            immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
-            immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
-            immty_from_uint_checked(0u128, pad_layout)?, // padding for 64-bit targets
-            immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
-            immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
-            immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
-            immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
-            immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
-            immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
-            immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
-            immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
-            immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
-            immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
-            immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
-            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
-            immty_from_uint_checked(0u128, uint32_t_layout)?, // st_gen
-        ];
-
-        this.write_packed_immediates(&buf, &imms)?;
-
-        Ok(0)
+        stat_write_buf(this, metadata, buf_op)
     }
 
     fn statx(
@@ -662,4 +629,65 @@ impl FileMetadata {
         // FIXME: Provide more fields using platform specific methods.
         Ok(Some(FileMetadata { mode, size, created, accessed, modified }))
     }
+}
+
+fn stat_write_buf<'tcx, 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    metadata: FileMetadata,
+    buf_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, i32> {
+    let mode: u16 = metadata.mode.to_u16()?;
+
+    let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
+    let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
+    let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
+
+    let dev_t_layout = ecx.libc_ty_layout("dev_t")?;
+    let mode_t_layout = ecx.libc_ty_layout("mode_t")?;
+    let nlink_t_layout = ecx.libc_ty_layout("nlink_t")?;
+    let ino_t_layout = ecx.libc_ty_layout("ino_t")?;
+    let uid_t_layout = ecx.libc_ty_layout("uid_t")?;
+    let gid_t_layout = ecx.libc_ty_layout("gid_t")?;
+    let time_t_layout = ecx.libc_ty_layout("time_t")?;
+    let long_layout = ecx.libc_ty_layout("c_long")?;
+    let off_t_layout = ecx.libc_ty_layout("off_t")?;
+    let blkcnt_t_layout = ecx.libc_ty_layout("blkcnt_t")?;
+    let blksize_t_layout = ecx.libc_ty_layout("blksize_t")?;
+    let uint32_t_layout = ecx.libc_ty_layout("uint32_t")?;
+
+    // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
+    let pad_layout = if ecx.tcx.sess.target.ptr_width == 64 {
+        uint32_t_layout
+    } else {
+        ecx.layout_of(ecx.tcx.mk_unit())?
+    };
+
+    let imms = [
+        immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
+        immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
+        immty_from_uint_checked(0u128, nlink_t_layout)?, // st_nlink
+        immty_from_uint_checked(0u128, ino_t_layout)?, // st_ino
+        immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
+        immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
+        immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
+        immty_from_uint_checked(0u128, pad_layout)?, // padding for 64-bit targets
+        immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
+        immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
+        immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
+        immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
+        immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
+        immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
+        immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
+        immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
+        immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
+        immty_from_uint_checked(0u128, blkcnt_t_layout)?, // st_blocks
+        immty_from_uint_checked(0u128, blksize_t_layout)?, // st_blksize
+        immty_from_uint_checked(0u128, uint32_t_layout)?, // st_flags
+        immty_from_uint_checked(0u128, uint32_t_layout)?, // st_gen
+    ];
+
+    let buf = ecx.deref_operand(buf_op)?;
+    ecx.write_packed_immediates(&buf, &imms)?;
+
+    Ok(0)
 }
