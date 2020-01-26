@@ -1,10 +1,11 @@
-warning: unreachable block in `if` expression
-  --> $DIR/protect-precedences.rs:13:41
+warning: unreachable expression
+  --> $DIR/protect-precedences.rs:13:12
    |
 LL |         if let _ = return true && false {};
-   |                    -------------------- ^^ unreachable block in `if` expression
-   |                    |
-   |                    any code following this expression is unreachable
+   |            ^^^^^^^^--------------------
+   |            |       |
+   |            |       any code following this expression is unreachable
+   |            unreachable expression
    |
    = note: `#[warn(unreachable_code)]` on by default
 
