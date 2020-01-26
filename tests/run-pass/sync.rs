@@ -12,7 +12,9 @@ fn main() {
     {
         let rw = sync::RwLock::new(0);
         drop(rw.read());
+        drop(rw.try_read());
         drop(rw.write());
+        drop(rw.try_write());
         drop(rw);
     }
 }
