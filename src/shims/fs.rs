@@ -345,7 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let buf = this.deref_operand(buf_op)?;
 
-        let metadata = match FileMetadata::new(this, path, follow_symlink)? {
+        let metadata = match FileMetadata::from_path(this, path, follow_symlink)? {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
@@ -454,6 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.read_scalar(flags_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
                 err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
             })?;
+        let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
         // `dirfd` should be a `c_int` but the `syscall` function provides an `isize`.
         let dirfd: i32 =
             this.read_scalar(dirfd_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
@@ -463,7 +464,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // to `dirfd` when the latter is `AT_FDCWD`. The behavior of `statx` with a relative path
         // and a directory file descriptor other than `AT_FDCWD` is specified but it cannot be
         // tested from `libstd`. If you found this error, please open an issue reporting it.
-        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")?) {
+        if !(
+            path.is_absolute() ||
+            dirfd == this.eval_libc_i32("AT_FDCWD")? ||
+            (path.as_os_str().is_empty() && empty_path_flag)
+        ) {
             throw_unsup_format!(
                 "Using statx with a relative path and a file descriptor different from `AT_FDCWD` is not supported"
             )
@@ -480,7 +485,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // symbolic links.
         let follow_symlink = flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? == 0;
 
-        let metadata = match FileMetadata::new(this, path, follow_symlink)? {
+        // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
+        // represented by dirfd, whether it's a directory or otherwise.
+        let metadata = if path.as_os_str().is_empty() && empty_path_flag {
+            FileMetadata::from_fd(this, dirfd)?
+        } else {
+            FileMetadata::from_path(this, path, follow_symlink)?
+        };
+        let metadata = match metadata {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
@@ -589,7 +601,7 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
-    fn new<'tcx, 'mir>(
+    fn from_path<'tcx, 'mir>(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
         path: PathBuf,
         follow_symlink: bool
@@ -600,6 +612,27 @@ impl FileMetadata {
             std::fs::symlink_metadata(path)
         };
 
+        FileMetadata::from_meta(ecx, metadata)
+    }
+
+    fn from_fd<'tcx, 'mir>(
+        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        fd: i32,
+    ) -> InterpResult<'tcx, Option<FileMetadata>> {
+        let option = ecx.machine.file_handler.handles.get(&fd);
+        let handle = match option {
+            Some(handle) => handle,
+            None => return ecx.handle_not_found().map(|_: i32| None),
+        };
+        let metadata = handle.file.metadata();
+
+        FileMetadata::from_meta(ecx, metadata)
+    }
+
+    fn from_meta<'tcx, 'mir>(
+        ecx: &mut MiriEvalContext<'mir, 'tcx>,
+        metadata: Result<std::fs::Metadata, std::io::Error>,
+    ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
