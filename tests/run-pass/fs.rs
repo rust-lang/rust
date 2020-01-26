@@ -2,7 +2,7 @@
 // compile-flags: -Zmiri-disable-isolation
 
 use std::fs::{File, remove_file};
-use std::io::{Read, Write, ErrorKind, Result};
+use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
 fn test_metadata(bytes: &[u8], path: &Path) -> Result<()> {
@@ -37,6 +37,12 @@ fn main() {
     // Reading 0 bytes should not move the file pointer.
     file.read(&mut []).unwrap();
     // Reading until EOF should get the whole text.
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+
+    // Test that seeking to the beginning and reading until EOF gets the text again.
+    file.seek(SeekFrom::Start(0)).unwrap();
+    let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
 
