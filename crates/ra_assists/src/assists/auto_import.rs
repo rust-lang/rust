@@ -55,7 +55,8 @@ pub(crate) fn auto_import<F: ImportsLocator>(
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
         .take(20)
-        .collect::<std::collections::HashSet<_>>();
+        .map(|import| import.to_string())
+        .collect::<std::collections::BTreeSet<_>>();
     if proposed_imports.is_empty() {
         return None;
     }
@@ -63,7 +64,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     ctx.add_assist_group(AssistId("auto_import"), "auto import", || {
         proposed_imports
             .into_iter()
-            .map(|import| import_to_action(import.to_string(), &position, &path_to_import))
+            .map(|import| import_to_action(import, &position, &path_to_import))
             .collect()
     })
 }
