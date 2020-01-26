@@ -1,4 +1,4 @@
-//! Detecting language items.
+//! Defines language items.
 //!
 //! Language items are items that represent concepts intrinsic to the language
 //! itself. Examples are:
