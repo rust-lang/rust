@@ -1520,10 +1520,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 let kind = self.def_kind(def_id).unwrap();
                 (kind.article(), kind.descr(def_id))
             }
-            DefPathData::ClosureExpr => {
-                // TODO
-                todo!();
-            }
+            DefPathData::ClosureExpr => match self.generator_kind(def_id) {
+                None => ("a", "closure"),
+                Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
+                Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
+            },
             _ => bug!("article_and_description called on def_id {:?}", def_id),
         }
     }
