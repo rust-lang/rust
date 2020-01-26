@@ -37,6 +37,7 @@ macro_rules! enum_from_u32 {
 
 pub mod lang_items;
 mod target;
+pub mod weak_lang_items;
 
 pub use lang_items::{LangItem, LanguageItems};
 pub use target::{MethodKind, Target};
