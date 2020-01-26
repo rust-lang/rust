@@ -35,6 +35,23 @@ fn dump() {
         "avx512_vpopcntdq {:?}",
         is_x86_feature_detected!("avx512vpopcntdq")
     );
+    println!("avx512vbmi2 {:?}", is_x86_feature_detected!("avx512vbmi2"));
+    println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
+    println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
+    println!(
+        "avx512vpclmulqdq {:?}",
+        is_x86_feature_detected!("avx512vpclmulqdq")
+    );
+    println!("avx512vnni {:?}", is_x86_feature_detected!("avx512vnni"));
+    println!(
+        "avx512bitalg {:?}",
+        is_x86_feature_detected!("avx512bitalg")
+    );
+    println!("avx512bf16 {:?}", is_x86_feature_detected!("avx512bf16"));
+    println!(
+        "avx512vp2intersect {:?}",
+        is_x86_feature_detected!("avx512vp2intersect")
+    );
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
     println!("abm: {:?}", is_x86_feature_detected!("abm"));
     println!("bmi: {:?}", is_x86_feature_detected!("bmi1"));

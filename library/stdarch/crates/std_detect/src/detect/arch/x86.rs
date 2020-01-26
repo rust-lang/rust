@@ -135,6 +135,22 @@ features! {
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vpopcntdq: "avx512vpopcntdq";
     /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
     /// Quadword)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vbmi2: "avx512vbmi2";
+    /// AVX-512 VBMI2 (Additional byte, word, dword and qword capabilities)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512gfni: "avx512gfni";
+    /// AVX-512 GFNI (Galois Field New Instruction)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vaes: "avx512vaes";
+    /// AVX-512 VAES (Vector AES instruction)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vpclmulqdq: "avx512vpclmulqdq";
+    /// AVX-512 VPCLMULQDQ (Vector PCLMULQDQ instructions)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vnni: "avx512vnni";
+    /// AVX-512 VNNI (Vector Neural Network Instructions)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bitalg: "avx512bitalg";
+    /// AVX-512 BITALG (Support for VPOPCNT[B,W] and VPSHUFBITQMB)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bf16: "avx512bf16";
+    /// AVX-512 BF16 (BFLOAT16 instructions)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vp2intersect: "avx512vp2intersect";
+    /// AVX-512 P2INTERSECT
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";

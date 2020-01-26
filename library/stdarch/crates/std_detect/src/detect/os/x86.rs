@@ -209,6 +209,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(extended_features_ebx, 30, Feature::avx512bw);
                         enable(extended_features_ebx, 31, Feature::avx512vl);
                         enable(extended_features_ecx, 1, Feature::avx512vbmi);
+                        enable(extended_features_ecx, 5, Feature::avx512bf16);
+                        enable(extended_features_ecx, 6, Feature::avx512vbmi2);
+                        enable(extended_features_ecx, 8, Feature::avx512gfni);
+                        enable(extended_features_ecx, 8, Feature::avx512vp2intersect);
+                        enable(extended_features_ecx, 9, Feature::avx512vaes);
+                        enable(extended_features_ecx, 10, Feature::avx512vpclmulqdq);
+                        enable(extended_features_ecx, 11, Feature::avx512vnni);
+                        enable(extended_features_ecx, 12, Feature::avx512bitalg);
                         enable(extended_features_ecx, 14, Feature::avx512vpopcntdq);
                     }
                 }

@@ -173,8 +173,12 @@ jobs:
       run: |
         curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
         echo "##[add-path]$HOME/.cargo/bin"
+        rustup update nightly --no-self-update
+        rustup default nightly
       if: matrix.os == 'macos-latest'
-    - run: rustup target add ${{ matrix.target }}
+    - run: |
+        rustup default nightly
+        rustup target add ${{ matrix.target }}
       if: "!endsWith(matrix.target, 'emulated')"
     - run: cargo generate-lockfile
 
