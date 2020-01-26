@@ -521,6 +521,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            "rename" => {
+                let result = this.rename(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
             "clock_gettime" => {
                 let result = this.clock_gettime(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
