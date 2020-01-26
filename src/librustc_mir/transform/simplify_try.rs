@@ -56,9 +56,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 _ => {}
             }
 
-            if 8 <= bb.statements.len() && bb.statements.len() <= 9 {
-                match_arm(&mut bb.statements, local_decls, tcx, param_env);
-            }
+            match_arm(&mut bb.statements, local_decls, tcx, param_env);
         }
     }
 }
@@ -127,7 +125,10 @@ fn match_arm<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
 ) {
-    if stmts.len() < 8 || stmts.len() > 9 {
+    // This function will match on `Variant(x) => Variant(x)`.
+    // 8 is for the case when `x` does not have a destructor.
+    // 9 is for the case when `x` does have a destructor and there's an assignment to the drop flag.
+    if !(8..=9).contains(&stmts.len()) {
         return;
     }
 
@@ -378,6 +379,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
     }
 }
 
+/// Extracts a common postfix of statements from all predecessors of a basic block,
+/// and inserts these statements at the beginning of the block.
 pub struct SinkCommonCodeFromPredecessors;
 
 impl<'tcx> MirPass<'tcx> for SinkCommonCodeFromPredecessors {
@@ -392,6 +395,7 @@ impl<'tcx> MirPass<'tcx> for SinkCommonCodeFromPredecessors {
             };
             let basic_blocks = body.basic_blocks();
 
+            // `predecessors()` gives non-deduplicated list of predecessors.
             preds.sort_unstable();
             preds.dedup();
             let is_cleanup = basic_blocks[bb].is_cleanup;
@@ -407,6 +411,8 @@ impl<'tcx> MirPass<'tcx> for SinkCommonCodeFromPredecessors {
 
             let mut matched_stmts = 0;
 
+            // This loop goes backwards in all `preds` statements,
+            // and gives the number of statements that are the same.
             loop {
                 if let Some(stmt) = basic_blocks[preds[0]].statements.iter().nth_back(matched_stmts)
                 {
