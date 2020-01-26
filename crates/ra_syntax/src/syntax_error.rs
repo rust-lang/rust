@@ -126,31 +126,31 @@ impl fmt::Display for TokenizeError {
             TokenizeError::EmptyInt => "Missing digits after integer base prefix",
             TokenizeError::EmptyExponent => "Missing digits after the exponent symbol",
             TokenizeError::UnterminatedBlockComment => {
-                "Missing trailing `*/` symbols to terminate the block comment"
+                "Missing trailing */ symbols to terminate the block comment"
             }
             TokenizeError::UnterminatedChar => {
-                "Missing trailing `'` symbol to terminate the character literal"
+                "Missing trailing ' symbol to terminate the character literal"
             }
             TokenizeError::UnterminatedByte => {
-                "Missing trailing `'` symbol to terminate the byte literal"
+                "Missing trailing ' symbol to terminate the byte literal"
             }
             TokenizeError::UnterminatedString => {
-                "Missing trailing `\"` symbol to terminate the string literal"
+                "Missing trailing \" symbol to terminate the string literal"
             }
             TokenizeError::UnterminatedByteString => {
-                "Missing trailing `\"` symbol to terminate the byte string literal"
+                "Missing trailing \" symbol to terminate the byte string literal"
             }
             TokenizeError::UnterminatedRawString => {
-                "Missing trailing `\"` with `#` symbols to terminate the raw string literal"
+                "Missing trailing \" with # symbols to terminate the raw string literal"
             }
             TokenizeError::UnterminatedRawByteString => {
-                "Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"
+                "Missing trailing \" with # symbols to terminate the raw byte string literal"
             }
             TokenizeError::UnstartedRawString => {
-                "Missing `\"` symbol after `#` symbols to begin the raw string literal"
+                "Missing \" symbol after # symbols to begin the raw string literal"
             }
             TokenizeError::UnstartedRawByteString => {
-                "Missing `\"` symbol after `#` symbols to begin the raw byte string literal"
+                "Missing \" symbol after # symbols to begin the raw byte string literal"
             }
             TokenizeError::LifetimeStartsWithNumber => "Lifetime name cannot start with a number",
         };
