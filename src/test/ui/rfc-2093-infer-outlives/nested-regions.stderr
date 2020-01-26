@@ -6,9 +6,9 @@ LL | |     x: &'a &'b T
 LL | | }
    | |_^
    |
-   = note: 'b : 'a
-   = note: T : 'a
-   = note: T : 'b
+   = note: 'b: 'a
+   = note: T: 'a
+   = note: T: 'b
 
 error: aborting due to previous error
 

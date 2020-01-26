@@ -6,7 +6,7 @@ LL | |     field1: dyn Bar<'a, 'b, T>
 LL | | }
    | |_^
    |
-   = note: T : 'a
+   = note: T: 'a
 
 error: aborting due to previous error
 

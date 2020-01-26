@@ -22,19 +22,19 @@ error: Trait bound i32: Z does not depend on any type or lifetime parameters
 LL | fn global_projection() where i32: Z<S = i32> {}
    |                                   ^^^^^^^^^^
 
-error: Lifetime bound i32 : 'static does not depend on any type or lifetime parameters
+error: Lifetime bound i32: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:29:34
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                  ^^^^^^^
 
-error: Lifetime bound &'static str : 'static does not depend on any type or lifetime parameters
+error: Lifetime bound &'static str: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:29:57
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                                         ^^^^^^^
 
-error: Lifetime bound 'static : 'static does not depend on any type or lifetime parameters
+error: Lifetime bound 'static: 'static does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-lint.rs:35:37
    |
 LL | fn global_outlives() where 'static: 'static {}

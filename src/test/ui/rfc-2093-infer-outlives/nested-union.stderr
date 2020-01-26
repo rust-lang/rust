@@ -6,7 +6,7 @@ LL | |     field1: Bar<'a, T>
 LL | | }
    | |_^
    |
-   = note: T : 'a
+   = note: T: 'a
 
 error: aborting due to previous error
 

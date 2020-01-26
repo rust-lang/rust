@@ -6,7 +6,7 @@ LL | |     One(Bar<'a, U>)
 LL | | }
    | |_^
    |
-   = note: U : 'a
+   = note: U: 'a
 
 error: aborting due to previous error
 

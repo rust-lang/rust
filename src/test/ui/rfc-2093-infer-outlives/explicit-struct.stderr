@@ -6,7 +6,7 @@ LL | |     bar: Bar<'b, U>
 LL | | }
    | |_^
    |
-   = note: U : 'b
+   = note: U: 'b
 
 error: aborting due to previous error
 
