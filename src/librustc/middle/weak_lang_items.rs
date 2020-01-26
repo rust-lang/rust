@@ -46,7 +46,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>,
 }
 
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
-    lang_items::extract(attrs).and_then(|(name, _)| {
+    rustc_lang_items::lang_items::extract(attrs).and_then(|(name, _)| {
         $(if name == sym::$name {
             Some(sym::$sym)
         } else)* {

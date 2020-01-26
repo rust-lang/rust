@@ -174,9 +174,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.deduce_sig_from_projection(None, &pb)
                     })
                     .next();
-                let kind = object_type
-                    .principal_def_id()
-                    .and_then(|did| self.tcx.lang_items().fn_trait_kind(did));
+                let kind =
+                    object_type.principal_def_id().and_then(|did| self.tcx.fn_trait_lang_item(did));
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
@@ -214,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // many viable options, so pick the most restrictive.
         let expected_kind = self
             .obligations_for_self_ty(expected_vid)
-            .filter_map(|(tr, _)| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
+            .filter_map(|(tr, _)| self.tcx.fn_trait_lang_item(tr.def_id()))
             .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
 
         (expected_sig, expected_kind)
@@ -237,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
-        let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
+        let is_fn = tcx.fn_trait_lang_item(trait_ref.def_id()).is_some();
         let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
