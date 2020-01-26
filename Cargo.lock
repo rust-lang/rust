@@ -3110,6 +3110,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_lang_items",
  "rustc_macros",
  "rustc_session",
  "rustc_span",
@@ -3710,6 +3711,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_lang_items"
+version = "0.0.0"
+dependencies = [
+ "lazy_static 1.4.0",
+ "rustc_data_structures",
+ "rustc_hir",
+ "rustc_macros",
+ "rustc_span",
+ "serialize",
+ "syntax",
+]
+
+[[package]]
 name = "rustc_lexer"
 version = "0.1.0"
 dependencies = [
@@ -3860,6 +3874,7 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
+ "rustc_lang_items",
  "rustc_session",
  "rustc_span",
  "rustc_target",

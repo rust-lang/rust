@@ -9,7 +9,6 @@
 
 pub use self::LangItem::*;
 
-use crate::hir::check_attr::Target;
 use crate::middle::cstore::ExternCrate;
 use crate::middle::weak_lang_items;
 use crate::ty::{self, TyCtxt};
@@ -19,6 +18,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_lang_items::Target;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
