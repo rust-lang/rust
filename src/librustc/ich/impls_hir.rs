@@ -107,6 +107,8 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 }
 
+impl<'ctx> rustc_lang_items::HashStableContext for StableHashingContext<'ctx> {}
+
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for DefId {
     type KeyType = DefPathHash;
 
@@ -248,12 +250,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::def_id::DefIndex {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
         hcx.local_def_path_hash(*self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::lang_items::LangItem {
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
