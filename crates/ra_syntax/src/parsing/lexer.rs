@@ -53,7 +53,7 @@ pub fn tokenize(text: &str) -> ParsedTokens {
 }
 
 /// Break a string up into its component tokens.
-/// Returns `ParsedTokens` which are basically a pair `(Vec<Token>, Vec<SyntaxError>)`.
+/// Writes to `ParsedTokens` which are basically a pair `(Vec<Token>, Vec<SyntaxError>)`.
 /// Beware that it checks for shebang first and its length contributes to resulting
 /// tokens offsets.
 pub fn tokenize_append(text: &str, parsed: &mut ParsedTokens) {
