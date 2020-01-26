@@ -920,6 +920,83 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    fn readdir_r(
+        &mut self,
+        dirp_op: OpTy<'tcx, Tag>,
+        entry_op: OpTy<'tcx, Tag>,
+        result_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("readdir_r")?;
+
+        let dirp = this.force_ptr(this.read_scalar(dirp_op)?.not_undef()?)?;
+
+        let entry_ptr = this.force_ptr(this.read_scalar(entry_op)?.not_undef()?)?;
+        let dirent_layout = this.libc_ty_layout("dirent")?;
+        this.memory.check_ptr_access(
+            Scalar::Ptr(entry_ptr),
+            dirent_layout.size,
+            dirent_layout.align.abi,
+        )?;
+
+        if let Some(dir_iter) = this.machine.dir_handler.streams.get_mut(&dirp) {
+            match dir_iter.next() {
+                Some(Ok(dir_entry)) => {
+                    // write into entry, write pointer to result, return 0 on success
+                    let entry_place = this.deref_operand(entry_op)?;
+                    let ino_t_layout = this.libc_ty_layout("ino_t")?;
+                    let off_t_layout = this.libc_ty_layout("off_t")?;
+                    let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
+                    let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
+
+                    let name_offset = dirent_layout.details.fields.offset(4);
+                    let name_ptr = entry_ptr.offset(name_offset, this)?;
+
+                    #[cfg(unix)]
+                    let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
+                    #[cfg(not(unix))]
+                    let ino = 0;
+
+                    #[cfg(unix)]
+                    let file_name = dir_entry.file_name();
+                    #[cfg(unix)]
+                    let file_name = std::os::unix::ffi::OsStrExt::as_bytes(file_name.as_os_str());
+                    #[cfg(not(unix))]
+                    let file_name = b"";
+
+                    let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+
+                    let imms = [
+                        immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
+                        immty_from_uint_checked(0u128, off_t_layout)?, // d_off
+                        immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                        immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                    ];
+                    this.write_packed_immediates(entry_place, &imms)?;
+                    this.memory.write_bytes(Scalar::Ptr(name_ptr), file_name.iter().copied())?;
+
+                    let result_place = this.deref_operand(result_op)?;
+                    this.write_scalar(this.read_scalar(entry_op)?, result_place.into())?;
+
+                    Ok(0)
+                }
+                None => {
+                    // end of stream: return 0, assign *result=NULL
+                    this.write_null(this.deref_operand(result_op)?.into())?;
+                    Ok(0)
+                }
+                Some(Err(e)) => match e.raw_os_error() {
+                    // return positive error number on error
+                    Some(error) => Ok(error),
+                    None => throw_unsup_format!("The error {} couldn't be converted to a return value", e),
+                }
+            }
+        } else {
+            throw_unsup_format!("The DIR pointer passed to readdir_r did not come from opendir")
+        }
+    }
+
     fn closedir(&mut self, dirp_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
