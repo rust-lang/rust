@@ -250,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             ExprKind::Match(
                 Expr { kind: ExprKind::Let(pat, scrutinee), .. },
                 [then_arm, else_arm],
-                hir::MatchSource::IfLetDesugar { .. },
+                _,
             ) => {
                 // HACK(let_chains, Centril): In HAIR lowering we currently adjust this
                 // to `match scrutinee { pat => then_arm.body, _ => else_arm.body }`.

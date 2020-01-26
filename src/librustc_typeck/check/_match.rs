@@ -19,11 +19,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        use hir::MatchSource::*;
         let (source_if, if_no_else, force_scrutinee_bool) = match match_src {
-            IfDesugar { contains_else_clause } => (true, !contains_else_clause, true),
-            IfLetDesugar { contains_else_clause } => (true, !contains_else_clause, false),
-            WhileDesugar => (false, false, true),
+            hir::MatchSource::IfDesugar { contains_else_clause: e } => (true, !e, true),
+            hir::MatchSource::WhileDesugar => (false, false, true),
             _ => (false, false, false),
         };
 
@@ -183,10 +181,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
-        use hir::MatchSource::*;
         let msg = match source {
-            IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
-            WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
+            hir::MatchSource::IfDesugar { .. } => "block in `if` expression",
+            hir::MatchSource::WhileDesugar { .. } => "block in `while` expression",
             _ => "arm",
         };
         for arm in arms {

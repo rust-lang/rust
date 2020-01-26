@@ -399,9 +399,9 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         }
 
         hir::ExprKind::Match(
-            hir::Expr { kind: hir::ExprKind::Let(ref pat, ref scrutinee), .. },
+            hir::Expr { kind: hir::ExprKind::Let(ref pat, scrutinee), .. },
             [ref then_arm, ref else_arm],
-            hir::MatchSource::IfLetDesugar { .. },
+            _,
         ) => {
             // HACK(let_chains, Centril): In HAIR lowering we currently adjust this
             // to `match scrutinee { pat => then_arm.body, _ => else_arm.body }`.

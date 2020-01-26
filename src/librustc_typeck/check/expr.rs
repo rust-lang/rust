@@ -822,8 +822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let coerce_to = expected.coercion_target_type(self, body.span);
                 Some(CoerceMany::new(coerce_to))
             }
-
-            hir::LoopSource::While | hir::LoopSource::WhileLet | hir::LoopSource::ForLoop => None,
+            hir::LoopSource::While | hir::LoopSource::ForLoop => None,
         };
 
         let ctxt = BreakableCtxt {

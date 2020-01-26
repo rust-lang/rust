@@ -158,7 +158,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let wild = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(pattern.ty));
             wild.span = pattern.span;
             let arms = &[(pattern, pat.hir_id, false), (wild, pat.hir_id, false)];
-            let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause: true };
+            let desugar = hir::MatchSource::IfDesugar { contains_else_clause: true };
             self.check_union_irrefutable(cx, scrut, arms, desugar)
         });
     }
@@ -364,8 +364,9 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
     let msg = match source {
-        hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
-        hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
+        hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => {
+            "irrefutable `let` pattern"
+        }
         _ => bug!(),
     };
     tcx.lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, msg);
@@ -384,9 +385,7 @@ fn check_arms<'p, 'tcx>(
         match is_useful(cx, &seen, &v, LeaveOutWitness, id, true) {
             NotUseful => {
                 match source {
-                    hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
-
-                    hir::MatchSource::IfLetDesugar { .. } | hir::MatchSource::WhileLetDesugar => {
+                    hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => {
                         // Check which arm we're on.
                         match arm_index {
                             // The arm with the user-specified pattern.

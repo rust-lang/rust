@@ -476,7 +476,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Match(
             hir::Expr { kind: hir::ExprKind::Let(ref pat, ref scrutinee), .. },
             [ref then_arm, ref else_arm],
-            hir::MatchSource::IfLetDesugar { .. },
+            _,
         ) => {
             // HACK(let_chains, Centril): This is the desugaring for `if let`.
             // We do not yet have `hair::ExprKind::Let`.

@@ -100,8 +100,8 @@ pub(super) fn note_and_explain_region(
                 Some(Node::Expr(expr)) => match expr.kind {
                     hir::ExprKind::Call(..) => "call",
                     hir::ExprKind::MethodCall(..) => "method call",
-                    hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                    hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
+                    hir::ExprKind::Match(.., hir::MatchSource::IfDesugar { .. }) => "if",
+                    hir::ExprKind::Match(.., hir::MatchSource::WhileDesugar) => "while",
                     hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
                     hir::ExprKind::Match(..) => "match",
                     _ => "expression",
@@ -610,10 +610,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 scrut_hir_id,
                 ..
             }) => match source {
-                hir::MatchSource::IfLetDesugar { .. } => {
-                    let msg = "`if let` arms have incompatible types";
-                    err.span_label(cause.span, msg);
-                }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
@@ -1985,9 +1981,6 @@ impl<'tcx> ObligationCause<'tcx> {
             CompareImplTypeObligation { .. } => Error0308("type not compatible with trait"),
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => {
                 Error0308(match source {
-                    hir::MatchSource::IfLetDesugar { .. } => {
-                        "`if let` arms have incompatible types"
-                    }
                     hir::MatchSource::TryDesugar => {
                         "try expression alternatives have incompatible types"
                     }
@@ -2023,10 +2016,7 @@ impl<'tcx> ObligationCause<'tcx> {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             CompareImplTypeObligation { .. } => "associated type is compatible with trait",
             ExprAssignable => "expression is assignable",
-            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
-                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
-                _ => "`match` arms have compatible types",
-            },
+            MatchExpressionArm(_) => "`match` arms have compatible types",
             IfExpression { .. } => "`if` and `else` have incompatible types",
             IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
             MainFunctionType => "`main` function has the correct type",

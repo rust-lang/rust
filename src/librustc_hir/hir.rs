@@ -1686,13 +1686,8 @@ pub enum MatchSource {
     Normal,
     /// An `if _ { .. }` (optionally with `else { .. }`).
     IfDesugar { contains_else_clause: bool },
-    /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
-    IfLetDesugar { contains_else_clause: bool },
     /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
     WhileDesugar,
-    /// A `while let _ = _ { .. }` (which was desugared to a
-    /// `loop { match _ { .. } }`).
-    WhileLetDesugar,
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
     /// A desugared `?` operator.
@@ -1706,8 +1701,8 @@ impl MatchSource {
         use MatchSource::*;
         match self {
             Normal => "match",
-            IfDesugar { .. } | IfLetDesugar { .. } => "if",
-            WhileDesugar | WhileLetDesugar => "while",
+            IfDesugar { .. } => "if",
+            WhileDesugar => "while",
             ForLoopDesugar => "for",
             TryDesugar => "?",
             AwaitDesugar => ".await",
@@ -1722,8 +1717,6 @@ pub enum LoopSource {
     Loop,
     /// A `while _ { .. }` loop.
     While,
-    /// A `while let _ = _ { .. }` loop.
-    WhileLet,
     /// A `for _ in _ { .. }` loop.
     ForLoop,
 }
@@ -1732,7 +1725,7 @@ impl LoopSource {
     pub fn name(self) -> &'static str {
         match self {
             LoopSource::Loop => "loop",
-            LoopSource::While | LoopSource::WhileLet => "while",
+            LoopSource::While => "while",
             LoopSource::ForLoop => "for",
         }
     }

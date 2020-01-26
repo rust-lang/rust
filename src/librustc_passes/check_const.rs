@@ -43,18 +43,13 @@ impl NonConstExpr {
         use hir::MatchSource::*;
 
         let gates: &[_] = match self {
-            Self::Match(Normal)
-            | Self::Match(IfDesugar { .. })
-            | Self::Match(IfLetDesugar { .. })
-            | Self::OrPattern => &[sym::const_if_match],
-
+            Self::Match(Normal) | Self::Match(IfDesugar { .. }) | Self::OrPattern => {
+                &[sym::const_if_match]
+            }
             Self::Loop(Loop) => &[sym::const_loop],
-
-            Self::Loop(While)
-            | Self::Loop(WhileLet)
-            | Self::Match(WhileDesugar)
-            | Self::Match(WhileLetDesugar) => &[sym::const_loop, sym::const_if_match],
-
+            Self::Loop(While) | Self::Match(WhileDesugar) => {
+                &[sym::const_loop, sym::const_if_match]
+            }
             // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.
             _ => return None,
@@ -236,10 +231,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             hir::ExprKind::Match(_, _, source) => {
                 let non_const_expr = match source {
                     // These are handled by `ExprKind::Loop` above.
-                    hir::MatchSource::WhileDesugar
-                    | hir::MatchSource::WhileLetDesugar
-                    | hir::MatchSource::ForLoopDesugar => None,
-
+                    hir::MatchSource::WhileDesugar | hir::MatchSource::ForLoopDesugar => None,
                     _ => Some(NonConstExpr::Match(*source)),
                 };
 
