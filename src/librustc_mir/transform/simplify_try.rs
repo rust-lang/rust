@@ -155,7 +155,7 @@ fn match_arm<'tcx>(
     };
 
     if idx + 8 != stmts.len() {
-        // There should be other 8 statements than the one assigining to drop flag.
+        // There should be 8 statements other than the one assigning to the drop flag.
         return;
     }
 
