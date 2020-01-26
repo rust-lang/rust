@@ -1,9 +1,11 @@
-use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_errors::Applicability;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, declare_lint_pass};
-use crate::utils::{in_macro, span_lint_and_sugg};
+use crate::utils::{get_parent_expr, method_calls, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::{Expr, ExprKind, QPath, StmtKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit `deref()` or `deref_mut()` method calls.
@@ -21,7 +23,7 @@ declare_clippy_lint! {
     /// let b = &*a;
     /// let c = &mut *a;
     /// ```
-    /// 
+    ///
     /// This lint excludes
     /// ```rust
     /// let e = d.unwrap().deref();
@@ -36,45 +38,105 @@ declare_lint_pass!(Dereferencing => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if in_macro(expr.span) {
-            return;
-        }
-
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt<'_>) {
         if_chain! {
-            // if this is a method call
-            if let ExprKind::MethodCall(ref method_name, _, ref args) = &expr.kind;
-            // on a Path (i.e. a variable/name, not another method)
-            if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].kind;
+            if let StmtKind::Local(ref local) = stmt.kind;
+            if let Some(ref init) = local.init;
+
             then {
-                let name = method_name.ident.as_str();
-                // alter help slightly to account for _mut
-                match &*name {
-                    "deref" => {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_DEREF_METHOD,
-                            expr.span,
-                            "explicit deref method call",
-                            "try this",
-                            format!("&*{}", path),
-                            Applicability::MachineApplicable
-                        );
-                    },
-                    "deref_mut" => {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_DEREF_METHOD,
-                            expr.span,
-                            "explicit deref_mut method call",
-                            "try this",
-                            format!("&mut *{}", path),
-                            Applicability::MachineApplicable
-                        );
-                    },
+                match init.kind {
+                    ExprKind::Call(ref _method, args) => {
+                        for arg in args {
+                            if_chain! {
+                                // Caller must call only one other function (deref or deref_mut)
+                                // otherwise it can lead to error prone suggestions (ex: &*a.len())
+                                let (method_names, arg_list, _) = method_calls(arg, 2);
+                                if method_names.len() == 1;
+                                // Caller must be a variable
+                                let variables = arg_list[0];
+                                if variables.len() == 1;
+                                if let ExprKind::Path(QPath::Resolved(None, _)) = variables[0].kind;
+
+                                then {
+                                    let name = method_names[0].as_str();
+                                    lint_deref(cx, &*name, variables[0].span, arg.span);
+                                }
+                            }
+                        }
+                    }
+                    ExprKind::MethodCall(ref method_name, _, ref args) => {
+                        if init.span.from_expansion() {
+                            return;
+                        }
+                        if_chain! {
+                            if args.len() == 1;
+                            if let ExprKind::Path(QPath::Resolved(None, _)) = args[0].kind;
+                            // Caller must call only one other function (deref or deref_mut)
+                            // otherwise it can lead to error prone suggestions (ex: &*a.len())
+                            let (method_names, arg_list, _) = method_calls(init, 2);
+                            if method_names.len() == 1;
+                            // Caller must be a variable
+                            let variables = arg_list[0];
+                            if variables.len() == 1;
+                            if let ExprKind::Path(QPath::Resolved(None, _)) = variables[0].kind;
+
+                            then {
+                                let name = method_name.ident.as_str();
+                                lint_deref(cx, &*name, args[0].span, init.span);
+                            }
+                        }
+                    }
                     _ => ()
-                };
+                }
             }
         }
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+        if_chain! {
+            if let ExprKind::MethodCall(ref method_name, _, ref args) = &expr.kind;
+            if args.len() == 1;
+            if let Some(parent) = get_parent_expr(cx, &expr);
+
+            then {
+                // Call and MethodCall exprs are better reported using statements
+                match parent.kind {
+                    ExprKind::Call(_, _) => return,
+                    ExprKind::MethodCall(_, _, _) => return,
+                    _ => {
+                        let name = method_name.ident.as_str();
+                        lint_deref(cx, &*name, args[0].span, expr.span);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn lint_deref(cx: &LateContext<'_, '_>, fn_name: &str, var_span: Span, expr_span: Span) {
+    match fn_name {
+        "deref" => {
+            span_lint_and_sugg(
+                cx,
+                EXPLICIT_DEREF_METHOD,
+                expr_span,
+                "explicit deref method call",
+                "try this",
+                format!("&*{}", &snippet(cx, var_span, "..")),
+                Applicability::MachineApplicable,
+            );
+        },
+        "deref_mut" => {
+            span_lint_and_sugg(
+                cx,
+                EXPLICIT_DEREF_METHOD,
+                expr_span,
+                "explicit deref_mut method call",
+                "try this",
+                format!("&mut *{}", &snippet(cx, var_span, "..")),
+                Applicability::MachineApplicable,
+            );
+        },
+        _ => (),
     }
 }
