@@ -2164,8 +2164,8 @@ where
     }
 }
 
-// A helper struct for in-place iteration that drops the destination slice of iteration.
-// The source slice is dropped by IntoIter
+// A helper struct for in-place iteration that drops the destination slice of iteration,
+// i.e. the head. The source slice (the tail) is dropped by IntoIter.
 struct InPlaceDrop<T> {
     inner: *mut T,
     dst: *mut T,
