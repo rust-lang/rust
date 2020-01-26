@@ -2226,9 +2226,9 @@ where
             return SpecFromNested::from_iter(iterator);
         }
 
-        let (src_buf, src_end) = {
+        let (src_buf, src_end, cap) = {
             let inner = unsafe { iterator.as_inner().as_into_iter() };
-            (inner.buf.as_ptr(), inner.end)
+            (inner.buf.as_ptr(), inner.end, inner.cap)
         };
         let dst = src_buf;
 
@@ -2278,23 +2278,15 @@ where
         debug_assert_eq!(src_buf, src.buf.as_ptr());
         debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
 
-        if mem::needs_drop::<T>() {
-            // drop tail if iterator was only partially exhausted
-            unsafe {
-                ptr::drop_in_place(src.as_mut_slice());
-            }
-        }
+        // drop any remaining values at the tail of the source
+        src.drop_in_place();
+        // but prevent drop of the allocation itself once IntoIter goes out of scope
+        src.forget_in_place();
 
         let vec = unsafe {
             let len = dst.offset_from(src_buf) as usize;
-            Vec::from_raw_parts(src.buf.as_ptr(), len, src.cap)
+            Vec::from_raw_parts(src_buf, len, cap)
         };
-        // prevent drop of the underlying storage by turning the IntoIter into
-        // the equivalent of Vec::new().into_iter()
-        src.cap = 0;
-        src.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
-        src.ptr = src.buf.as_ptr();
-        src.end = src.buf.as_ptr();
 
         vec
     }
@@ -2838,6 +2830,24 @@ impl<T> IntoIter<T> {
 
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
         ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
+    }
+
+    fn drop_in_place(&mut self) {
+        if mem::needs_drop::<T>() {
+            unsafe {
+                ptr::drop_in_place(self.as_mut_slice());
+            }
+        }
+        self.ptr = self.end;
+    }
+
+    /// Relinquishes the backing allocation, equivalent to
+    /// `ptr::write(&mut self, Vec::new().into_iter())`
+    fn forget_in_place(&mut self) {
+        self.cap = 0;
+        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+        self.ptr = self.buf.as_ptr();
+        self.end = self.buf.as_ptr();
     }
 }
 
