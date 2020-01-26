@@ -289,6 +289,23 @@ impl<'tcx> NeverCompatHandler<'tcx> {
     /// all unconstrained inference variables used in method call substs,
     /// so that we can check if any changes occur due to fallback.
     pub fn pre_fallback(fcx: &FnCtxt<'a, 'tcx>) -> NeverCompatHandler<'tcx> {
+        // Collect all divering inference variables, so that we
+        // can later compare them against other inference variables.
+        let unconstrained_diverging: Vec<_> = fcx
+            .unsolved_variables()
+            .iter()
+            .cloned()
+            .filter(|ty| fcx.infcx.type_var_diverges(ty))
+            .collect();
+
+        if unconstrained_diverging.is_empty() {
+            debug!("pre_fallback: no unconstrained diverging variables, bailing out");
+            return NeverCompatHandler {
+                unresolved_paths: Default::default(),
+                unconstrained_diverging: Default::default(),
+            };
+        }
+
         let unresolved_paths: FxHashMap<HirId, InferredPath<'tcx>> = fcx
             .inferred_paths
             .borrow()
@@ -351,15 +368,6 @@ impl<'tcx> NeverCompatHandler<'tcx> {
             })
             .collect();
 
-        // Collect all divering inference variables, so that we
-        // can later compare them against other inference variables.
-        let unconstrained_diverging: Vec<_> = fcx
-            .unsolved_variables()
-            .iter()
-            .cloned()
-            .filter(|ty| fcx.infcx.type_var_diverges(ty))
-            .collect();
-
         NeverCompatHandler { unresolved_paths, unconstrained_diverging }
     }
 
@@ -397,7 +405,14 @@ impl<'tcx> NeverCompatHandler<'tcx> {
                 }
             }
         }
-        bug!("No vars were equated to diverging vars: {:?}", vars)
+
+        match self.unconstrained_diverging.first().unwrap().kind {
+            ty::Infer(ty::InferTy::TyVar(vid)) => {
+                debug!("find_best_vars: Unable to find normal inference variable, using {:?}", vid);
+                VarData { best_var: vid, best_diverging_var: vid }
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// The hook used by typecheck after fallback has been run.
