@@ -56,6 +56,7 @@ pub use hir_def::{
     nameres::ModuleSource,
     path::{ModPath, Path, PathKind},
     type_ref::Mutability,
+    ModuleDefId,
 };
 pub use hir_expand::{
     name::{AsName, Name},

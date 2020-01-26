@@ -100,88 +100,122 @@ mod tests {
     use super::*;
     use crate::helpers::{
         check_assist_with_imports_locator, check_assist_with_imports_locator_not_applicable,
+        TestImportsLocator,
     };
-    use hir::Name;
-
-    #[derive(Clone)]
-    struct TestImportsLocator<'a> {
-        import_path: &'a [Name],
-    }
-
-    impl<'a> TestImportsLocator<'a> {
-        fn new(import_path: &'a [Name]) -> Self {
-            TestImportsLocator { import_path }
-        }
-    }
-
-    impl<'a> ImportsLocator for TestImportsLocator<'a> {
-        fn find_imports(
-            &mut self,
-            _: hir::InFile<&ast::NameRef>,
-            _: hir::Module,
-        ) -> Option<Vec<hir::ModPath>> {
-            if self.import_path.is_empty() {
-                None
-            } else {
-                Some(vec![hir::ModPath {
-                    kind: hir::PathKind::Plain,
-                    segments: self.import_path.to_owned(),
-                }])
-            }
-        }
-    }
 
     #[test]
     fn applicable_when_found_an_import() {
-        let import_path = &[hir::name::known::std, hir::name::known::ops, hir::name::known::Debug];
-        let mut imports_locator = TestImportsLocator::new(import_path);
         check_assist_with_imports_locator(
             auto_import,
-            &mut imports_locator,
-            "
-            fn main() {
+            TestImportsLocator::new,
+            r"
+            PubStruct<|>
+
+            pub mod PubMod {
+                pub struct PubStruct;
             }
+            ",
+            r"
+            use PubMod::PubStruct;
 
-            Debug<|>",
-            &format!(
-                "
-            use {};
+            PubStruct<|>
 
-            fn main() {{
-            }}
+            pub mod PubMod {
+                pub struct PubStruct;
+            }
+            ",
+        );
+    }
 
-            Debug<|>",
-                import_path
-                    .into_iter()
-                    .map(|name| name.to_string())
-                    .collect::<Vec<String>>()
-                    .join("::")
-            ),
+    #[test]
+    fn applicable_when_found_multiple_imports() {
+        check_assist_with_imports_locator(
+            auto_import,
+            TestImportsLocator::new,
+            r"
+            PubStruct<|>
+
+            pub mod PubMod1 {
+                pub struct PubStruct;
+            }
+            pub mod PubMod2 {
+                pub struct PubStruct;
+            }
+            pub mod PubMod3 {
+                pub struct PubStruct;
+            }
+            ",
+            r"
+            use PubMod1::PubStruct;
+
+            PubStruct<|>
+
+            pub mod PubMod1 {
+                pub struct PubStruct;
+            }
+            pub mod PubMod2 {
+                pub struct PubStruct;
+            }
+            pub mod PubMod3 {
+                pub struct PubStruct;
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_already_imported_types() {
+        check_assist_with_imports_locator_not_applicable(
+            auto_import,
+            TestImportsLocator::new,
+            r"
+            use PubMod::PubStruct;
+
+            PubStruct<|>
+
+            pub mod PubMod {
+                pub struct PubStruct;
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_types_with_private_paths() {
+        check_assist_with_imports_locator_not_applicable(
+            auto_import,
+            TestImportsLocator::new,
+            r"
+            PrivateStruct<|>
+
+            pub mod PubMod {
+                struct PrivateStruct;
+            }
+            ",
         );
     }
 
     #[test]
     fn not_applicable_when_no_imports_found() {
-        let mut imports_locator = TestImportsLocator::new(&[]);
         check_assist_with_imports_locator_not_applicable(
             auto_import,
-            &mut imports_locator,
+            TestImportsLocator::new,
             "
-            fn main() {
-            }
-
-            Debug<|>",
+            PubStruct<|>",
         );
     }
 
     #[test]
     fn not_applicable_in_import_statements() {
-        let import_path = &[hir::name::known::std, hir::name::known::ops, hir::name::known::Debug];
-        let mut imports_locator = TestImportsLocator::new(import_path);
         check_assist_with_imports_locator_not_applicable(
             auto_import,
-            &mut imports_locator,
-            "use Debug<|>;",
+            TestImportsLocator::new,
+            r"
+            use PubStruct<|>;
+
+            pub mod PubMod {
+                pub struct PubStruct;
+            }",
         );
     }
 }
