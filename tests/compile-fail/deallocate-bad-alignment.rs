@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use alloc::alloc::Global;
-use std::alloc::*;
+use std::alloc::{AllocRef, Layout};
 
 // error-pattern: incorrect alloc info: expected size 1 and align 2, got size 1 and align 1
 

@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use alloc::alloc::Global;
-use std::alloc::*;
+use std::alloc::{AllocRef, Layout};
 
 // error-pattern: dangling pointer was dereferenced
 
