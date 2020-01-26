@@ -28,7 +28,7 @@ impl Default for FileHandler {
         FileHandler {
             handles: Default::default(),
             // 0, 1 and 2 are reserved for stdin, stdout and stderr.
-            low: 3,
+            low: 2,
         }
     }
 }
@@ -120,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        _arg1_op: Option<OpTy<'tcx, Tag>>,
+        arg_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -139,6 +139,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             } else {
                 this.handle_not_found()
             }
+        } else if cmd == this.eval_libc_i32("F_DUPFD")? || cmd == this.eval_libc_i32("F_DUPFD_CLOEXEC")? {
+            let arg = match arg_op {
+                Some(arg_op) => this.read_scalar(arg_op)?.to_i32()?,
+                None => throw_unsup_format!("fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"),
+            };
+            let fh = &mut this.machine.file_handler;
+            let (file_result, writable) = match fh.handles.get(&fd) {
+                Some(original) => (original.file.try_clone(), original.writable),
+                None => return this.handle_not_found(),
+            };
+            let fd_result = file_result.map(|duplicated| {
+                let new_fd = std::cmp::max(fh.low + 1, arg);
+                fh.low = new_fd;
+                fh.handles.insert(fh.low, FileHandle { file: duplicated, writable }).unwrap_none();
+                new_fd
+            });
+            this.try_unwrap_io_result(fd_result)
         } else {
             throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }

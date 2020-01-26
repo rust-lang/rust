@@ -41,6 +41,8 @@ fn main() {
     // Reading until EOF should get the whole text.
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+    // Cloning a file should be successful
+    file.try_clone().unwrap();
 
     // Test that seeking to the beginning and reading until EOF gets the text again.
     file.seek(SeekFrom::Start(0)).unwrap();
