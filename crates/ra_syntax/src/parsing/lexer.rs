@@ -16,8 +16,8 @@ pub struct Token {
     pub len: TextUnit,
 }
 
-#[derive(Debug)]
 /// Represents the result of parsing one token. Beware that the token may be malformed.
+#[derive(Debug)]
 pub struct ParsedToken {
     /// Parsed token.
     pub token: Token,
