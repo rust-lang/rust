@@ -32,7 +32,7 @@ error[E0309]: the associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r, '_#6r>>::AssocType: ReFree(DefId(0:17 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(DefId(0:18 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]::'a[0]), 'a))`...
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r, '_#6r>>::AssocType: 'a`...
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -67,7 +67,7 @@ error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: 'a`...
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29

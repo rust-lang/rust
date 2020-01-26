@@ -4,7 +4,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | fn no_region<'a, T>(x: Box<T>) -> impl Debug + 'a
    |                                   ^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/impl-trait-outlives.rs:22:42
@@ -12,7 +12,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a
    |                                          ^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to 2 previous errors
 

@@ -31,7 +31,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     with_signature(x, |y| y)
    |                       ^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:41:5
@@ -39,7 +39,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     x
    |     ^
    |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to 2 previous errors
 

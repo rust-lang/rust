@@ -53,7 +53,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:12 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(DefId(0:13 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::'a[0]), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to previous error
 
