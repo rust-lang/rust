@@ -107,9 +107,9 @@ pub fn first_token(text: &str) -> Option<ParsedToken> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenizeError {
     /// Base prefix was provided, but there were no digits
-    /// after it, e.g. `0x`.
+    /// after it, e.g. `0x`, `0b`.
     EmptyInt,
-    /// Float exponent lacks digits e.g. `e+`, `E+`, `e-`, `E-`,
+    /// Float exponent lacks digits e.g. `12.34e+`, `12.3E+`, `12e-`, `1_E-`,
     EmptyExponent,
 
     /// Block comment lacks trailing delimiter `*/`
