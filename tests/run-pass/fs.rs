@@ -209,8 +209,16 @@ fn test_directory() {
     let mut dir_iter = read_dir(&dir_path).unwrap();
     let first_dir_entry = dir_iter.next().unwrap().unwrap();
     let second_dir_entry = dir_iter.next().unwrap().unwrap();
-    assert!(first_dir_entry.file_name() == "f1" || first_dir_entry.file_name() == "f2");
-    assert!(second_dir_entry.file_name() == "f1" || second_dir_entry.file_name() == "f2");
+    assert!(
+        first_dir_entry.file_name() == "f1" || first_dir_entry.file_name() == "f2",
+        "File name was {:?} instead of f1 or f2",
+        first_dir_entry.file_name(),
+    );
+    assert!(
+        second_dir_entry.file_name() == "f1" || second_dir_entry.file_name() == "f2",
+        "File name was {:?} instead of f1 or f2",
+        second_dir_entry.file_name(),
+    );
     assert!(dir_iter.next().is_none());
     drop(dir_iter);
     // Clean up the files in the directory
