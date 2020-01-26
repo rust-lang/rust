@@ -2212,6 +2212,34 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
     }
 }
 
+fn write_in_place<T>(src_end: *const T) -> impl FnMut(*mut T, T) -> Result<*mut T, !> {
+    move |mut dst, item| {
+        unsafe {
+            // the InPlaceIterable contract cannot be verified precisely here since
+            // try_fold has an exclusive reference to the source pointer
+            // all we can do is check if it's still in range
+            debug_assert!(dst as *const _ <= src_end, "InPlaceIterable contract violation");
+            ptr::write(dst, item);
+            dst = dst.add(1);
+        }
+        Ok(dst)
+    }
+}
+
+fn write_in_place_with_drop<T>(
+    src_end: *const T,
+) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
+    move |mut sink, item| {
+        unsafe {
+            // same caveat as above
+            debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
+            ptr::write(sink.dst, item);
+            sink.dst = sink.dst.add(1);
+        }
+        Ok(sink)
+    }
+}
+
 // Further specialization potential once
 // https://github.com/rust-lang/rust/issues/62645 has been solved:
 // T can be split into IN and OUT which only need to have the same size and alignment
@@ -2230,46 +2258,23 @@ where
             let inner = unsafe { iterator.as_inner().as_into_iter() };
             (inner.buf.as_ptr(), inner.end, inner.cap)
         };
-        let dst = src_buf;
 
+        // use try-fold
+        // - it vectorizes better for some iterator adapters
+        // - unlike most internal iteration methods methods it only takes a &mut self
+        // - lets us thread the write pointer through its innards and get it back in the end
         let dst = if mem::needs_drop::<T>() {
-            // special-case drop handling since it prevents vectorization
-            let mut sink = InPlaceDrop { inner: src_buf, dst };
-            let _ = iterator.try_for_each::<_, Result<_, !>>(|item| {
-                unsafe {
-                    debug_assert!(
-                        sink.dst as *const _ <= src_end,
-                        "InPlaceIterable contract violation"
-                    );
-                    ptr::write(sink.dst, item);
-                    sink.dst = sink.dst.add(1);
-                }
-                Ok(())
-            });
+            // special-case drop handling since it forces us to lug that extra field around which
+            // can inhibit optimizations
+            let sink = InPlaceDrop { inner: src_buf, dst: src_buf };
+            let sink = iterator
+                .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(src_end))
+                .unwrap();
             // iteration succeeded, don't drop head
             let sink = mem::ManuallyDrop::new(sink);
             sink.dst
         } else {
-            // use try-fold
-            // - it vectorizes better
-            // - unlike most internal iteration methods methods it only takes a &mut self
-            // - lets us thread the write pointer through its innards and get it back in the end
-            iterator
-                .try_fold::<_, _, Result<_, !>>(dst, move |mut dst, item| {
-                    unsafe {
-                        // the InPlaceIterable contract cannot be verified precisely here since
-                        // try_fold has an exclusive reference to the source pointer
-                        // all we can do is check if it's still in range
-                        debug_assert!(
-                            dst as *const _ <= src_end,
-                            "InPlaceIterable contract violation"
-                        );
-                        ptr::write(dst, item);
-                        dst = dst.add(1);
-                    }
-                    Ok(dst)
-                })
-                .unwrap()
+            iterator.try_fold::<_, _, Result<_, !>>(src_buf, write_in_place(src_end)).unwrap()
         };
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
