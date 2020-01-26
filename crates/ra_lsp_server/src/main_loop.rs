@@ -29,9 +29,6 @@ use crate::{
     Result, ServerConfig,
 };
 
-const THREADPOOL_SIZE: usize = 8;
-const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
-
 #[derive(Debug)]
 pub struct LspError {
     pub code: i32,
@@ -59,6 +56,25 @@ pub fn main_loop(
     connection: Connection,
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
+
+    // Windows scheduler implements priority boosts: if thread waits for an
+    // event (like a condvar), and event fires, priority of the thread is
+    // temporary bumped. This optimization backfires in our case: each time the
+    // `main_loop` schedules a task to run on a threadpool, the worker threads
+    // gets a higher priority, and (on a machine with fewer cores) displaces the
+    // main loop! We work-around this by marking the main loop as a
+    // higher-priority thread.
+    //
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/priority-boosts
+    // https://github.com/rust-analyzer/rust-analyzer/issues/2835
+    #[cfg(windows)]
+    unsafe {
+        use winapi::um::processthreadsapi::*;
+        let thread = GetCurrentThread();
+        let thread_priority_above_normal = 1;
+        SetThreadPriority(thread, thread_priority_above_normal);
+    }
 
     let mut loop_state = LoopState::default();
     let mut world_state = {
@@ -168,7 +184,7 @@ pub fn main_loop(
         )
     };
 
-    let pool = ThreadPool::new(THREADPOOL_SIZE);
+    let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
 
@@ -371,7 +387,8 @@ fn loop_turn(
         loop_state.pending_libraries.extend(changes);
     }
 
-    while loop_state.in_flight_libraries < MAX_IN_FLIGHT_LIBS
+    let max_in_flight_libs = pool.max_count().saturating_sub(2).max(1);
+    while loop_state.in_flight_libraries < max_in_flight_libs
         && !loop_state.pending_libraries.is_empty()
     {
         let (root, files) = loop_state.pending_libraries.pop().unwrap();
