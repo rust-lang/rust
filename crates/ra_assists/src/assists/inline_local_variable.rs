@@ -47,6 +47,9 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<
     };
     let analyzer = ctx.source_analyzer(bind_pat.syntax(), None);
     let refs = analyzer.find_all_refs(&bind_pat);
+    if refs.is_empty() {
+        return None;
+    };
 
     let mut wrap_in_parens = vec![true; refs.len()];
 
@@ -644,5 +647,17 @@ fn foo() {
     <|>match 1 > 0 {}
 }",
         );
+    }
+
+    #[test]
+    fn test_not_applicable_if_variable_unused() {
+        check_assist_not_applicable(
+            inline_local_variable,
+            "
+fn foo() {
+    let <|>a = 0;
+}
+            ",
+        )
     }
 }
