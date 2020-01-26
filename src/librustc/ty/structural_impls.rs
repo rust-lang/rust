@@ -805,8 +805,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_existential_predicates(&v)
+        fold_list(*self, folder, |tcx, v| tcx.intern_existential_predicates(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -816,8 +815,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|t| t.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_type_list(&v)
+        fold_list(*self, folder, |tcx, v| tcx.intern_type_list(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -827,8 +825,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|t| t.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_projs(&v)
+        fold_list(*self, folder, |tcx, v| tcx.intern_projs(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -992,17 +989,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        // This code is hot enough that it's worth specializing for a list of
-        // length 0. (No other length is common enough to be worth singling
-        // out).
-        if self.len() == 0 {
-            self
-        } else {
-            // Don't bother interning if nothing changed, which is the common
-            // case.
-            let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-            if v[..] == self[..] { self } else { folder.tcx().intern_predicates(&v) }
-        }
+        fold_list(*self, folder, |tcx, v| tcx.intern_predicates(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -1073,5 +1060,36 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
         false
+    }
+}
+
+// Does the equivalent of
+// ```
+// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+// folder.tcx().intern_*(&v)
+// ```
+fn fold_list<'tcx, F, T>(
+    list: &'tcx ty::List<T>,
+    folder: &mut F,
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
+) -> &'tcx ty::List<T>
+where
+    F: TypeFolder<'tcx>,
+    T: TypeFoldable<'tcx> + PartialEq + Copy,
+{
+    let mut iter = list.iter();
+    // Look for the first element that changed
+    if let Some((i, new_t)) = iter.by_ref().enumerate().find_map(|(i, t)| {
+        let new_t = t.fold_with(folder);
+        if new_t == *t { None } else { Some((i, new_t)) }
+    }) {
+        // An element changed, prepare to intern the resulting list
+        let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
+        new_list.extend_from_slice(&list[..i]);
+        new_list.push(new_t);
+        new_list.extend(iter.map(|t| t.fold_with(folder)));
+        intern(folder.tcx(), &new_list)
+    } else {
+        list
     }
 }
