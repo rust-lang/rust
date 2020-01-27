@@ -19,7 +19,7 @@ LL | fn g(_x: &isize, _y: &isize) -> &isize {
    |          ^^^^^^      ^^^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn g<'r>(_x: &'r isize, _y: &'r isize) -> &'r isize {
+LL | fn g<'a>(_x: &'a isize, _y: &'a isize) -> &'a isize {
    |     ^^^^     ^^^^^^^^^      ^^^^^^^^^     ^^^
 
 error[E0106]: missing lifetime specifier
@@ -35,7 +35,7 @@ LL | fn h(_x: &Foo) -> &isize {
    |          ^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn h<'r>(_x: &'r Foo) -> &'r isize {
+LL | fn h<'a>(_x: &'a Foo) -> &'a isize {
    |     ^^^^     ^^^^^^^     ^^^
 
 error[E0106]: missing lifetime specifier

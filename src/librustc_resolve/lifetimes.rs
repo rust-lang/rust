@@ -1873,7 +1873,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         err.span_suggestion(
                             *span,
                             &format!(
-                                "consider introducing a Higher-Ranked lifetime `{}` here",
+                                "consider introducing a higher-ranked lifetime `{}` here",
                                 lifetime_ref
                             ),
                             match span_type {
@@ -1884,7 +1884,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                         err.note(
-                            "for more information on Higher-Ranked lifetimes, visit \
+                            "for more information on higher-ranked lifetimes, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                     }

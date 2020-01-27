@@ -2263,7 +2263,7 @@ pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
 
-    /// The `Foo<&'a T>` in `for <'a> Foo<&'a T>`.
+    /// The `Foo<&'a T>` in `for<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef<'hir>,
 
     pub span: Span,

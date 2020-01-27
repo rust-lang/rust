@@ -1498,20 +1498,20 @@ crate fn add_missing_lifetime_specifiers_label(
                         msg = "consider introducing a named lifetime parameter";
                         should_break = true;
                         match &generics.params {
-                            [] => (generics.span, "<'r>".to_string()),
-                            [param, ..] => (param.span.shrink_to_lo(), "'r, ".to_string()),
+                            [] => (generics.span, "<'a>".to_string()),
+                            [param, ..] => (param.span.shrink_to_lo(), "'a, ".to_string()),
                         }
                     }
                     MissingLifetimeSpot::HRLT { span, span_type } => {
-                        msg = "consider introducing a Higher-Ranked lifetime";
+                        msg = "consider introducing a higher-ranked lifetime";
                         should_break = false;
                         err.note(
-                            "for more information on Higher-Ranked lifetimes, visit \
+                            "for more information on higher-ranked lifetimes, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                         let suggestion = match span_type {
-                            HRLTSpanType::Empty => "for<'r> ",
-                            HRLTSpanType::Tail => ", 'r",
+                            HRLTSpanType::Empty => "for<'a> ",
+                            HRLTSpanType::Tail => ", 'a",
                         };
                         (*span, suggestion.to_string())
                     }
@@ -1520,7 +1520,7 @@ crate fn add_missing_lifetime_specifiers_label(
                     if let Ok(snippet) = source_map.span_to_snippet(param.span) {
                         if snippet.starts_with("&") && !snippet.starts_with("&'") {
                             introduce_suggestion
-                                .push((param.span, format!("&'r {}", &snippet[1..])));
+                                .push((param.span, format!("&'a {}", &snippet[1..])));
                         }
                     }
                 }
@@ -1543,13 +1543,13 @@ crate fn add_missing_lifetime_specifiers_label(
                 suggest_existing(err, format!("{}<{}>", snippet, name));
             }
             (0, _, Some("&")) => {
-                suggest_new(err, "&'r ");
+                suggest_new(err, "&'a ");
             }
             (0, _, Some("'_")) => {
-                suggest_new(err, "'r");
+                suggest_new(err, "'a");
             }
             (0, _, Some(snippet)) if !snippet.ends_with(">") => {
-                suggest_new(err, &format!("{}<'r>", snippet));
+                suggest_new(err, &format!("{}<'a>", snippet));
             }
             _ => {
                 err.span_label(span, "expected lifetime parameter");
