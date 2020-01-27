@@ -596,7 +596,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         target_trait_def_id: DefId,
     ) -> ty::PolyTraitRef<'tcx> {
         let upcast_trait_refs =
-            traits::upcast_choices(self.tcx, source_trait_ref.clone(), target_trait_def_id);
+            traits::upcast_choices(self.tcx, source_trait_ref, target_trait_def_id);
 
         // must be exactly one trait ref or we'd get an ambig error etc
         if upcast_trait_refs.len() != 1 {

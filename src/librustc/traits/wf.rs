@@ -318,8 +318,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         if let Elaborate::All = elaborate {
             let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
 
-            let predicates =
-                obligations.iter().map(|obligation| obligation.predicate.clone()).collect();
+            let predicates = obligations.iter().map(|obligation| obligation.predicate).collect();
             let implied_obligations = traits::elaborate_predicates(tcx, predicates);
             let implied_obligations = implied_obligations.map(|pred| {
                 let mut cause = cause.clone();

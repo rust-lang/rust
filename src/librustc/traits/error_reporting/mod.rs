@@ -54,10 +54,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     span,
                     predicates
                         .iter()
-                        .map(|predicate| ErrorDescriptor {
-                            predicate: predicate.clone(),
-                            index: None,
-                        })
+                        .map(|&predicate| ErrorDescriptor { predicate, index: None })
                         .collect(),
                 )
             })
@@ -73,7 +70,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             error_map.entry(span).or_default().push(ErrorDescriptor {
-                predicate: error.obligation.predicate.clone(),
+                predicate: error.obligation.predicate,
                 index: Some(index),
             });
 
@@ -137,7 +134,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        for implication in super::elaborate_predicates(self.tcx, vec![cond.clone()]) {
+        for implication in super::elaborate_predicates(self.tcx, vec![*cond]) {
             if let ty::Predicate::Trait(implication, _) = implication {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();

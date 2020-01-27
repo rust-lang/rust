@@ -19,7 +19,7 @@ fn const_vars_since_snapshot<'tcx>(
     (
         range.start..range.end,
         (range.start.index..range.end.index)
-            .map(|index| table.probe_value(ConstVid::from_index(index)).origin.clone())
+            .map(|index| table.probe_value(ConstVid::from_index(index)).origin)
             .collect(),
     )
 }

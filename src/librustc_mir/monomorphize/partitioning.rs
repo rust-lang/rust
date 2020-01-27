@@ -740,18 +740,15 @@ fn compute_codegen_unit_name(
 
     let cgu_def_id = cgu_def_id.unwrap();
 
-    cache
-        .entry((cgu_def_id, volatile))
-        .or_insert_with(|| {
-            let def_path = tcx.def_path(cgu_def_id);
+    *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
+        let def_path = tcx.def_path(cgu_def_id);
 
-            let components = def_path.data.iter().map(|part| part.data.as_symbol());
+        let components = def_path.data.iter().map(|part| part.data.as_symbol());
 
-            let volatile_suffix = volatile.then_some("volatile");
+        let volatile_suffix = volatile.then_some("volatile");
 
-            name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
-        })
-        .clone()
+        name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
+    })
 }
 
 fn numbered_codegen_unit_name(

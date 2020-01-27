@@ -108,7 +108,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                         if needs_retag(&destination.0) {
                             returns.push((
                                 block_data.terminator().source_info,
-                                destination.0.clone(),
+                                destination.0,
                                 destination.1,
                             ));
                         }
@@ -141,8 +141,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
                     // Retag-as-raw after escaping to a raw pointer.
-                    StatementKind::Assign(box (ref place, Rvalue::AddressOf(..))) => {
-                        (RetagKind::Raw, place.clone())
+                    StatementKind::Assign(box (place, Rvalue::AddressOf(..))) => {
+                        (RetagKind::Raw, place)
                     }
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
@@ -156,7 +156,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                             }
                             _ => RetagKind::Default,
                         };
-                        (kind, place.clone())
+                        (kind, *place)
                     }
                     // Do nothing for the rest
                     _ => continue,

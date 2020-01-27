@@ -348,7 +348,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             // `unsafe` blocks are required in safe code
             Safety::Safe => {
                 for violation in violations {
-                    let mut violation = violation.clone();
+                    let mut violation = *violation;
                     match violation.kind {
                         UnsafetyViolationKind::GeneralAndConstFn
                         | UnsafetyViolationKind::General => {}
@@ -383,7 +383,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             // these things are forbidden in const fns
                             UnsafetyViolationKind::General
                             | UnsafetyViolationKind::BorrowPacked(_) => {
-                                let mut violation = violation.clone();
+                                let mut violation = *violation;
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
                                 // compat lint

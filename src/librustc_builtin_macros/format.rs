@@ -708,7 +708,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Before consuming the expressions, we have to remember spans for
         // count arguments as they are now generated separate from other
         // arguments, hence have no access to the `P<ast::Expr>`'s.
-        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span.clone()).collect();
+        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span).collect();
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))

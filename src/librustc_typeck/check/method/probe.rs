@@ -1491,7 +1491,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
         Some(Pick {
-            item: probes[0].0.item.clone(),
+            item: probes[0].0.item,
             kind: TraitPick,
             import_ids: probes[0].0.import_ids.clone(),
             autoderefs: 0,
@@ -1715,7 +1715,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 impl<'tcx> Candidate<'tcx> {
     fn to_unadjusted_pick(&self) -> Pick<'tcx> {
         Pick {
-            item: self.item.clone(),
+            item: self.item,
             kind: match self.kind {
                 InherentImplCandidate(..) => InherentImplPick,
                 ObjectCandidate => ObjectPick,
@@ -1731,7 +1731,7 @@ impl<'tcx> Candidate<'tcx> {
                             && !trait_ref.skip_binder().substs.has_placeholders()
                     );
 
-                    WhereClausePick(trait_ref.clone())
+                    WhereClausePick(*trait_ref)
                 }
             },
             import_ids: self.import_ids.clone(),

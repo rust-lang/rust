@@ -168,7 +168,7 @@ where
                 self.elaborator.patch().patch_terminator(
                     bb,
                     TerminatorKind::Drop {
-                        location: self.place.clone(),
+                        location: *self.place,
                         target: self.succ,
                         unwind: self.unwind.into_option(),
                     },
@@ -517,7 +517,7 @@ where
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
         let discr = Place::from(self.new_temp(discr_ty));
-        let discr_rv = Rvalue::Discriminant(self.place.clone());
+        let discr_rv = Rvalue::Discriminant(*self.place);
         let switch_block = BasicBlockData {
             statements: vec![self.assign(&discr, discr_rv)],
             terminator: Some(Terminator {
@@ -554,7 +554,7 @@ where
                 Rvalue::Ref(
                     tcx.lifetimes.re_erased,
                     BorrowKind::Mut { allow_two_phase_borrow: false },
-                    self.place.clone(),
+                    *self.place,
                 ),
             )],
             terminator: Some(Terminator {
@@ -634,7 +634,7 @@ where
         let loop_block = BasicBlockData {
             statements: vec![self.assign(
                 &can_go,
-                Rvalue::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(length_or_end.clone())),
+                Rvalue::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(*length_or_end)),
             )],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -693,7 +693,7 @@ where
             }
         }
 
-        let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
+        let move_ = |place: &Place<'tcx>| Operand::Move(*place);
         let elem_size = &Place::from(self.new_temp(tcx.types.usize));
         let len = &Place::from(self.new_temp(tcx.types.usize));
 
@@ -702,7 +702,7 @@ where
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
-                self.assign(len, Rvalue::Len(self.place.clone())),
+                self.assign(len, Rvalue::Len(*self.place)),
             ],
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -735,8 +735,7 @@ where
         let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types.usize };
 
         let cur = self.new_temp(iter_ty);
-        let length_or_end =
-            if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length.clone() };
+        let length_or_end = if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length };
 
         let unwind = self.unwind.map(|unwind| {
             self.drop_loop(unwind, cur, &length_or_end, ety, Unwind::InCleanup, ptr_based)
@@ -752,7 +751,7 @@ where
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             vec![
-                self.assign(&tmp, Rvalue::AddressOf(Mutability::Mut, self.place.clone())),
+                self.assign(&tmp, Rvalue::AddressOf(Mutability::Mut, *self.place)),
                 self.assign(&cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     &length_or_end,
@@ -925,11 +924,8 @@ where
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block = TerminatorKind::Drop {
-            location: self.place.clone(),
-            target,
-            unwind: unwind.into_option(),
-        };
+        let block =
+            TerminatorKind::Drop { location: *self.place, target, unwind: unwind.into_option() };
         self.new_block(unwind, block)
     }
 
@@ -982,9 +978,6 @@ where
     }
 
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
-        Statement {
-            source_info: self.source_info,
-            kind: StatementKind::Assign(box (lhs.clone(), rhs)),
-        }
+        Statement { source_info: self.source_info, kind: StatementKind::Assign(box (*lhs, rhs)) }
     }
 }

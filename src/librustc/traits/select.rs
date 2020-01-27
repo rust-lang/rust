@@ -2068,7 +2068,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                _ => candidates.vec.push(AutoImplCandidate(def_id.clone())),
+                _ => candidates.vec.push(AutoImplCandidate(def_id)),
             }
         }
 
@@ -2132,10 +2132,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // but `Foo` is declared as `trait Foo: Bar<u32>`.
             let upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
                 .filter(|upcast_trait_ref| {
-                    self.infcx.probe(|_| {
-                        let upcast_trait_ref = upcast_trait_ref.clone();
-                        self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
-                    })
+                    self.infcx
+                        .probe(|_| self.match_poly_trait_ref(obligation, *upcast_trait_ref).is_ok())
                 })
                 .count();
 
@@ -2243,7 +2241,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().is_trait_alias(def_id) {
-            candidates.vec.push(TraitAliasCandidate(def_id.clone()));
+            candidates.vec.push(TraitAliasCandidate(def_id));
         }
 
         Ok(())
@@ -3249,7 +3247,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation_trait_ref: ty::PolyTraitRef<'tcx>,
         expected_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let obligation_trait_ref = obligation_trait_ref.clone();
         self.infcx
             .at(&obligation_cause, obligation_param_env)
             .sup(obligation_trait_ref, expected_trait_ref)

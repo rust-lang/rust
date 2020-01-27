@@ -178,7 +178,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 grouped_errors.push(GroupedMoveError::MovesFromPlace {
                     span,
-                    move_from: match_place.clone(),
+                    move_from: *match_place,
                     original_path,
                     kind,
                     binds_to,
