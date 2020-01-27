@@ -40,7 +40,6 @@ fn main() {
 //     StorageLive(_2);
 //     StorageLive(_3);
 //     StorageLive(_4);
-//     _3 = move _2;
 //     goto -> bb1;
 // }
 // bb8: {
