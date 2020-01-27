@@ -11,8 +11,8 @@ LL | type Foo = fn(&u8, &u8) -> &u8;
    |               ^^^  ^^^
 help: consider introducing a named lifetime parameter
    |
-LL | type Foo<'lifetime> = fn(&'lifetime u8, &'lifetime u8) -> &'lifetime u8;
-   |         ^^^^^^^^^^^      ^^^^^^^^^^^^^  ^^^^^^^^^^^^^     ^^^^^^^^^^
+LL | type Foo<'r> = fn(&'r u8, &'r u8) -> &'r u8;
+   |         ^^^^      ^^^^^^  ^^^^^^     ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-19707.rs:5:27
@@ -28,12 +28,12 @@ LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {}
    = note: for more information on Higher-Ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing a Higher-Ranked lifetime
    |
-LL | fn bar<F: for<'lifetime> Fn(&'lifetime u8, &'lifetime u8) -> &'lifetime u8>(f: &F) {}
-   |           ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^  ^^^^^^^^^^^^^     ^^^^^^^^^^
+LL | fn bar<F: for<'r> Fn(&'r u8, &'r u8) -> &'r u8>(f: &F) {}
+   |           ^^^^^^^    ^^^^^^  ^^^^^^     ^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn bar<'lifetime, F: Fn(&'lifetime u8, &'lifetime u8) -> &'lifetime u8>(f: &F) {}
-   |        ^^^^^^^^^^       ^^^^^^^^^^^^^  ^^^^^^^^^^^^^     ^^^^^^^^^^
+LL | fn bar<'r, F: Fn(&'r u8, &'r u8) -> &'r u8>(f: &F) {}
+   |        ^^^       ^^^^^^  ^^^^^^     ^^^
 
 error: aborting due to 2 previous errors
 
