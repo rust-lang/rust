@@ -96,7 +96,7 @@ pub fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
 /// ```
-pub fn span_note_and_lint<'a, T: LintContext>(
+pub fn span_lint_and_note<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
     span: Span,

@@ -1,4 +1,4 @@
-use crate::utils::{get_parent_expr, higher, if_sequence, same_tys, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{get_parent_expr, higher, if_sequence, same_tys, snippet, span_lint_and_note, span_lint_and_then};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::ty::Ty;
 use rustc_data_structures::fx::FxHashMap;
@@ -178,7 +178,7 @@ fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
         &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same_sequenced(blocks, eq) {
-        span_note_and_lint(
+        span_lint_and_note(
             cx,
             IF_SAME_THEN_ELSE,
             j.span,
@@ -201,7 +201,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
         &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     for (i, j) in search_same(conds, hash, eq) {
-        span_note_and_lint(
+        span_lint_and_note(
             cx,
             IFS_SAME_COND,
             j.span,
@@ -229,7 +229,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
     };
 
     for (i, j) in search_same(conds, hash, eq) {
-        span_note_and_lint(
+        span_lint_and_note(
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,
             j.span,

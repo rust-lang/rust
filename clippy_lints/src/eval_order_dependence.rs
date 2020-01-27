@@ -1,4 +1,4 @@
-use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
+use crate::utils::{get_parent_expr, span_lint, span_lint_and_note};
 use if_chain::if_chain;
 use rustc::hir::map::Map;
 use rustc::ty;
@@ -307,7 +307,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                     // Check that this is a read, not a write.
                     if !is_in_assignment_position(self.cx, expr);
                     then {
-                        span_note_and_lint(
+                        span_lint_and_note(
                             self.cx,
                             EVAL_ORDER_DEPENDENCE,
                             expr.span,

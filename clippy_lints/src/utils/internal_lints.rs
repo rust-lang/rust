@@ -318,7 +318,7 @@ impl CompilerLintFunctions {
         map.insert("span_lint", "utils::span_lint");
         map.insert("struct_span_lint", "utils::span_lint");
         map.insert("lint", "utils::span_lint");
-        map.insert("span_lint_note", "utils::span_note_and_lint");
+        map.insert("span_lint_note", "utils::span_lint_and_note");
         map.insert("span_lint_help", "utils::span_lint_and_help");
         Self { map }
     }

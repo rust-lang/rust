@@ -28,8 +28,8 @@ use crate::utils::{
     is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
     match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
     remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then,
-    span_note_and_lint, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -2422,7 +2422,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
         if same_span && !multiline {
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 if is_option {
                     OPTION_MAP_UNWRAP_OR_ELSE
@@ -2566,7 +2566,7 @@ fn lint_filter_next<'a, 'tcx>(
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             // add note if not multi-line
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 FILTER_NEXT,
                 expr.span,
@@ -2624,7 +2624,7 @@ fn lint_filter_map_next<'a, 'tcx>(
                    `.find_map(p)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 FILTER_MAP_NEXT,
                 expr.span,
