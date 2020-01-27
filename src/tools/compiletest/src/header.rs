@@ -24,6 +24,7 @@ enum ParsedNameDirective {
 
 /// Properties which must be known very early, before actually running
 /// the test.
+#[derive(Default)]
 pub struct EarlyProps {
     pub ignore: bool,
     pub should_fail: bool,
@@ -39,14 +40,7 @@ impl EarlyProps {
     }
 
     pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
-        let mut props = EarlyProps {
-            ignore: false,
-            should_fail: false,
-            aux: Vec::new(),
-            aux_crate: Vec::new(),
-            revisions: vec![],
-        };
-
+        let mut props = EarlyProps::default();
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
 
