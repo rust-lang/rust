@@ -21,29 +21,23 @@ use rustc_span::Span;
 use syntax::ast::Attribute;
 use syntax::attr;
 
-pub(crate) trait TargetExt {
-    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target;
-}
-
-impl TargetExt for Target {
-    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
-        match impl_item.kind {
-            hir::ImplItemKind::Const(..) => Target::AssocConst,
-            hir::ImplItemKind::Method(..) => {
-                let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
-                let containing_item = tcx.hir().expect_item(parent_hir_id);
-                let containing_impl_is_for_trait = match &containing_item.kind {
-                    hir::ItemKind::Impl { ref of_trait, .. } => of_trait.is_some(),
-                    _ => bug!("parent of an ImplItem must be an Impl"),
-                };
-                if containing_impl_is_for_trait {
-                    Target::Method(MethodKind::Trait { body: true })
-                } else {
-                    Target::Method(MethodKind::Inherent)
-                }
+fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
+    match impl_item.kind {
+        hir::ImplItemKind::Const(..) => Target::AssocConst,
+        hir::ImplItemKind::Method(..) => {
+            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
+            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let containing_impl_is_for_trait = match &containing_item.kind {
+                hir::ItemKind::Impl { ref of_trait, .. } => of_trait.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+            if containing_impl_is_for_trait {
+                Target::Method(MethodKind::Trait { body: true })
+            } else {
+                Target::Method(MethodKind::Inherent)
             }
-            hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::OpaqueTy(..) => Target::AssocTy,
         }
+        hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::OpaqueTy(..) => Target::AssocTy,
     }
 }
 
@@ -437,7 +431,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        let target = Target::from_impl_item(self.tcx, impl_item);
+        let target = target_from_impl_item(self.tcx, impl_item);
         self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
