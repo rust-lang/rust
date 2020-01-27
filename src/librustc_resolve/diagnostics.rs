@@ -8,7 +8,6 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -20,6 +19,7 @@ use syntax::ast::{self, Ident, Path};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
+use crate::lifetimes::{HRLTSpanType, MissingLifetimeSpot};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
@@ -1471,7 +1471,7 @@ crate fn add_missing_lifetime_specifiers_label(
     count: usize,
     lifetime_names: &FxHashSet<ast::Ident>,
     snippet: Option<&str>,
-    missing_named_lifetime_spots: &[&hir::Generics<'_>],
+    missing_named_lifetime_spots: &[MissingLifetimeSpot<'_>],
 ) {
     if count > 1 {
         err.span_label(span, format!("expected {} lifetime parameters", count));
@@ -1484,21 +1484,41 @@ crate fn add_missing_lifetime_specifiers_label(
                 Applicability::MaybeIncorrect,
             );
         };
-        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg| {
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
             err.span_label(span, "expected named lifetime parameter");
 
-            if let Some(generics) = missing_named_lifetime_spots.iter().last() {
+            for missing in missing_named_lifetime_spots.iter().rev() {
                 let mut introduce_suggestion = vec![];
-                introduce_suggestion.push(match &generics.params {
-                    [] => (generics.span, "<'lifetime>".to_string()),
-                    [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+                let msg;
+                let should_break;
+                introduce_suggestion.push(match missing {
+                    MissingLifetimeSpot::Generics(generics) => {
+                        msg = "consider introducing a named lifetime parameter";
+                        should_break = true;
+                        match &generics.params {
+                            [] => (generics.span, "<'lifetime>".to_string()),
+                            [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+                        }
+                    }
+                    MissingLifetimeSpot::HRLT { span, span_type } => {
+                        msg = "consider introducing a Higher-Ranked lifetime";
+                        should_break = false;
+                        err.note(
+                            "for more information on Higher-Ranked lifetimes, visit \
+                             https://doc.rust-lang.org/nomicon/hrtb.html",
+                        );
+                        let suggestion = match span_type {
+                            HRLTSpanType::Empty => "for<'lifetime> ",
+                            HRLTSpanType::Tail => ", 'lifetime",
+                        };
+                        (*span, suggestion.to_string())
+                    }
                 });
-                introduce_suggestion.push((span, sugg));
-                err.multipart_suggestion(
-                    "consider introducing a named lifetime parameter",
-                    introduce_suggestion,
-                    Applicability::MaybeIncorrect,
-                );
+                introduce_suggestion.push((span, sugg.to_string()));
+                err.multipart_suggestion(msg, introduce_suggestion, Applicability::MaybeIncorrect);
+                if should_break {
+                    break;
+                }
             }
         };
 
@@ -1513,13 +1533,13 @@ crate fn add_missing_lifetime_specifiers_label(
                 suggest_existing(err, format!("{}<{}>", snippet, name));
             }
             (0, _, Some("&")) => {
-                suggest_new(err, "&'lifetime ".to_string());
+                suggest_new(err, "&'lifetime ");
             }
             (0, _, Some("'_")) => {
-                suggest_new(err, "'lifetime".to_string());
+                suggest_new(err, "'lifetime");
             }
             (0, _, Some(snippet)) if !snippet.ends_with(">") => {
-                suggest_new(err, format!("{}<'lifetime>", snippet));
+                suggest_new(err, &format!("{}<'lifetime>", snippet));
             }
             _ => {
                 err.span_label(span, "expected lifetime parameter");

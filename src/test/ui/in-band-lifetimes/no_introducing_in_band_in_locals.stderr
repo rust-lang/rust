@@ -9,6 +9,8 @@ LL |     let y: &'test u32 = x;
 error[E0261]: use of undeclared lifetime name `'test`
   --> $DIR/no_introducing_in_band_in_locals.rs:10:16
    |
+LL | fn bar() {
+   |       - help: consider introducing lifetime `'test` here: `<'test>`
 LL |     let y: fn(&'test u32) = foo2;
    |                ^^^^^ undeclared lifetime
 

@@ -17,6 +17,11 @@ LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {}
    |                           ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+   = note: for more information on Higher-Ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider introducing a Higher-Ranked lifetime
+   |
+LL | fn bar<F: for<'lifetime> Fn(&u8, &u8) -> &'lifetime u8>(f: &F) {}
+   |           ^^^^^^^^^^^^^^                 ^^^^^^^^^^
 help: consider introducing a named lifetime parameter
    |
 LL | fn bar<'lifetime, F: Fn(&u8, &u8) -> &'lifetime u8>(f: &F) {}

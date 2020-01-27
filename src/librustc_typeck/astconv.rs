@@ -1307,12 +1307,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             );
                         }
                     };
+                    // FIXME: point at the type params that don't have appropriate lifetimes:
+                    // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
+                    //                         ----  ----     ^^^^^^^
                     struct_span_err!(
                         tcx.sess,
                         binding.span,
                         E0582,
                         "binding for associated type `{}` references lifetime `{}`, \
-                                     which does not appear in the trait input types",
+                         which does not appear in the trait input types",
                         binding.item_name,
                         br_name
                     )

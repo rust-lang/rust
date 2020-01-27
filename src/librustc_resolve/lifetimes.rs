@@ -153,6 +153,22 @@ struct NamedRegionMap {
     object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
+crate enum MissingLifetimeSpot<'tcx> {
+    Generics(&'tcx hir::Generics<'tcx>),
+    HRLT { span: Span, span_type: HRLTSpanType },
+}
+
+crate enum HRLTSpanType {
+    Empty,
+    Tail,
+}
+
+impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
+    fn into(self) -> MissingLifetimeSpot<'tcx> {
+        MissingLifetimeSpot::Generics(self)
+    }
+}
+
 struct LifetimeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
@@ -186,7 +202,7 @@ struct LifetimeContext<'a, 'tcx> {
 
     /// When encountering an undefined named lifetime, we will suggest introducing it in these
     /// places.
-    missing_named_lifetime_spots: Vec<&'tcx hir::Generics<'tcx>>,
+    missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -389,7 +405,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
-                self.missing_named_lifetime_spots.push(generics);
+                self.missing_named_lifetime_spots.push(generics.into());
                 self.visit_early_late(None, &sig.decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
@@ -424,7 +440,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
             | hir::ItemKind::Impl { ref generics, .. } => {
-                self.missing_named_lifetime_spots.push(generics);
+                self.missing_named_lifetime_spots.push(generics.into());
 
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
@@ -696,7 +712,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
-        self.missing_named_lifetime_spots.push(&trait_item.generics);
+        self.missing_named_lifetime_spots.push((&trait_item.generics).into());
         match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -753,7 +769,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
-        self.missing_named_lifetime_spots.push(&impl_item.generics);
+        self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -953,6 +969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     ) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
+        let should_pop_missing_lt = self.is_trait_ref_fn_scope(trait_ref);
         if !self.trait_ref_hack
             || trait_ref.bound_generic_params.iter().any(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => true,
@@ -988,10 +1005,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.with(scope, |old_scope, this| {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
                 walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
-                this.visit_trait_ref(&trait_ref.trait_ref)
+                this.visit_trait_ref(&trait_ref.trait_ref);
             })
         } else {
-            self.visit_trait_ref(&trait_ref.trait_ref)
+            self.visit_trait_ref(&trait_ref.trait_ref);
+        }
+        if should_pop_missing_lt {
+            self.missing_named_lifetime_spots.pop();
         }
     }
 }
@@ -1832,18 +1852,41 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_ref
             );
             err.span_label(lifetime_ref.span, "undeclared lifetime");
-            if !self.is_in_fn_syntax {
-                for generics in &self.missing_named_lifetime_spots {
-                    let (span, sugg) = match &generics.params {
-                        [] => (generics.span, format!("<{}>", lifetime_ref)),
-                        [param, ..] => (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref)),
-                    };
-                    err.span_suggestion(
-                        span,
-                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
+            for missing in &self.missing_named_lifetime_spots {
+                match missing {
+                    MissingLifetimeSpot::Generics(generics) => {
+                        let (span, sugg) = match &generics.params {
+                            [] => (generics.span, format!("<{}>", lifetime_ref)),
+                            [param, ..] => {
+                                (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
+                            }
+                        };
+                        err.span_suggestion(
+                            span,
+                            &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    MissingLifetimeSpot::HRLT { span, span_type } => {
+                        err.span_suggestion(
+                            *span,
+                            &format!(
+                                "consider introducing a Higher-Ranked lifetime `{}` here",
+                                lifetime_ref
+                            ),
+                            match span_type {
+                                HRLTSpanType::Empty => format!("for<{}> ", lifetime_ref),
+                                HRLTSpanType::Tail => format!(", {}", lifetime_ref),
+                            }
+                            .to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        err.note(
+                            "for more information on Higher-Ranked lifetimes, visit \
+                             https://doc.rust-lang.org/nomicon/hrtb.html",
+                        );
+                    }
                 }
             }
             err.emit();
@@ -2441,6 +2484,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         let elided_len = elided_params.len();
 
+        // FIXME: collect spans of the input params when appropriate to use in the diagnostic.
         for (i, info) in elided_params.into_iter().enumerate() {
             let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions } = info;
 
@@ -2746,6 +2790,27 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn uninsert_lifetime_on_error(&mut self, lifetime_ref: &'tcx hir::Lifetime, bad_def: Region) {
         let old_value = self.map.defs.remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
+    }
+
+    fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
+        if let Res::Def(_, did) = trait_ref.trait_ref.path.res {
+            if [
+                self.tcx.lang_items().fn_once_trait(),
+                self.tcx.lang_items().fn_trait(),
+                self.tcx.lang_items().fn_mut_trait(),
+            ]
+            .contains(&Some(did))
+            {
+                let (span, span_type) = match &trait_ref.bound_generic_params {
+                    [] => (trait_ref.span.shrink_to_lo(), HRLTSpanType::Empty),
+                    [.., bound] => (bound.span.shrink_to_hi(), HRLTSpanType::Tail),
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HRLT { span, span_type });
+                return true;
+            }
+        };
+        false
     }
 }
 
