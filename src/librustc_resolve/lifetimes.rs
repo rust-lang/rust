@@ -280,14 +280,14 @@ enum Elide {
 }
 
 #[derive(Clone, Debug)]
-struct ElisionFailureInfo {
+crate struct ElisionFailureInfo {
     /// Where we can find the argument pattern.
     parent: Option<hir::BodyId>,
     /// The index of the argument in the original definition.
     index: usize,
     lifetime_count: usize,
     have_bound_regions: bool,
-    span: Span,
+    crate span: Span,
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -2441,11 +2441,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if add_label {
             add_missing_lifetime_specifiers_label(
                 &mut err,
+                self.tcx.sess.source_map(),
                 span,
                 lifetime_refs.len(),
                 &lifetime_names,
                 self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
                 &self.missing_named_lifetime_spots,
+                error.map(|p| &p[..]).unwrap_or(&[]),
             );
         }
 
@@ -2488,7 +2490,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut spans = vec![];
 
         for (i, info) in elided_params.into_iter().enumerate() {
-            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } = info;
+            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
+                info;
 
             spans.push(span);
             let help_name = if let Some(ident) =

@@ -19,7 +19,7 @@ use syntax::ast::{self, Ident, Path};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::lifetimes::{HRLTSpanType, MissingLifetimeSpot};
+use crate::lifetimes::{ElisionFailureInfo, HRLTSpanType, MissingLifetimeSpot};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
@@ -1467,11 +1467,13 @@ crate fn report_missing_lifetime_specifiers(
 
 crate fn add_missing_lifetime_specifiers_label(
     err: &mut DiagnosticBuilder<'_>,
+    source_map: &SourceMap,
     span: Span,
     count: usize,
     lifetime_names: &FxHashSet<ast::Ident>,
     snippet: Option<&str>,
     missing_named_lifetime_spots: &[MissingLifetimeSpot<'_>],
+    params: &[ElisionFailureInfo],
 ) {
     if count > 1 {
         err.span_label(span, format!("expected {} lifetime parameters", count));
@@ -1514,6 +1516,14 @@ crate fn add_missing_lifetime_specifiers_label(
                         (*span, suggestion.to_string())
                     }
                 });
+                for param in params {
+                    if let Ok(snippet) = source_map.span_to_snippet(param.span) {
+                        if snippet.starts_with("&") && !snippet.starts_with("&'") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'lifetime {}", &snippet[1..])));
+                        }
+                    }
+                }
                 introduce_suggestion.push((span, sugg.to_string()));
                 err.multipart_suggestion(msg, introduce_suggestion, Applicability::MaybeIncorrect);
                 if should_break {
