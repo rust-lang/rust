@@ -49,6 +49,7 @@ cargo run add-person $your_user_name
 Example PRs:
 
 * [Example of adding yourself to the LLVM ICE-breakers.](https://github.com/rust-lang/team/pull/140)
+* [Example of adding yourself to the Cleanup Crew ICE-breakers.](https://github.com/rust-lang/team/pull/221)
 
 ## Tagging an issue for an ICE-breaker group
 
