@@ -850,6 +850,7 @@ fn test<T: ApplyL>(t: T) {
 }
 
 #[test]
+#[ignore]
 fn impl_trait() {
     assert_snapshot!(
         infer(r#"
@@ -1021,6 +1022,7 @@ fn test() {
 }
 
 #[test]
+#[ignore]
 fn error_bound_chalk() {
     let t = type_at(
         r#"
