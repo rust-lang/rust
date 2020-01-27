@@ -4,7 +4,11 @@ error[E0106]: missing lifetime specifier
 LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
    |                                          ^ expected named lifetime parameter
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+  --> $DIR/rfc1623.rs:8:29
+   |
+LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
+   |                             ^^^  ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/rfc1623.rs:10:39
@@ -12,7 +16,11 @@ error[E0106]: missing lifetime specifier
 LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
    |                                       ^ expected named lifetime parameter
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+  --> $DIR/rfc1623.rs:10:26
+   |
+LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
+   |                          ^^^  ^^^
 
 error: aborting due to 2 previous errors
 

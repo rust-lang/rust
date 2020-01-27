@@ -10,7 +10,11 @@ error[E0106]: missing lifetime specifier
 LL | fn func1<'a>(_arg: &'a Thing) -> &() { unimplemented!() }
    |                                  ^ help: consider using the named lifetime: `&'a`
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+  --> $DIR/return-without-lifetime.rs:5:20
+   |
+LL | fn func1<'a>(_arg: &'a Thing) -> &() { unimplemented!() }
+   |                    ^^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-without-lifetime.rs:7:35
@@ -18,7 +22,11 @@ error[E0106]: missing lifetime specifier
 LL | fn func2<'a>(_arg: &Thing<'a>) -> &() { unimplemented!() }
    |                                   ^ help: consider using the named lifetime: `&'a`
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+  --> $DIR/return-without-lifetime.rs:7:20
+   |
+LL | fn func2<'a>(_arg: &Thing<'a>) -> &() { unimplemented!() }
+   |                    ^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
