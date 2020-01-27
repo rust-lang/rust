@@ -391,139 +391,143 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
-        let file = File::open(testfile).unwrap();
-        iter_header(testfile, cfg, file, &mut |ln| {
-            if let Some(ep) = config.parse_error_pattern(ln) {
-                self.error_patterns.push(ep);
-            }
+        if !testfile.is_dir() {
+            let file = File::open(testfile).unwrap();
 
-            if let Some(flags) = config.parse_compile_flags(ln) {
-                self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
-            }
+            iter_header(testfile, cfg, file, &mut |ln| {
+                if let Some(ep) = config.parse_error_pattern(ln) {
+                    self.error_patterns.push(ep);
+                }
 
-            if let Some(edition) = config.parse_edition(ln) {
-                self.compile_flags.push(format!("--edition={}", edition));
-            }
+                if let Some(flags) = config.parse_compile_flags(ln) {
+                    self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
+                }
 
-            if let Some(r) = config.parse_revisions(ln) {
-                self.revisions.extend(r);
-            }
+                if let Some(edition) = config.parse_edition(ln) {
+                    self.compile_flags.push(format!("--edition={}", edition));
+                }
 
-            if self.run_flags.is_none() {
-                self.run_flags = config.parse_run_flags(ln);
-            }
+                if let Some(r) = config.parse_revisions(ln) {
+                    self.revisions.extend(r);
+                }
 
-            if self.pp_exact.is_none() {
-                self.pp_exact = config.parse_pp_exact(ln, testfile);
-            }
+                if self.run_flags.is_none() {
+                    self.run_flags = config.parse_run_flags(ln);
+                }
 
-            if !self.should_ice {
-                self.should_ice = config.parse_should_ice(ln);
-            }
+                if self.pp_exact.is_none() {
+                    self.pp_exact = config.parse_pp_exact(ln, testfile);
+                }
 
-            if !self.build_aux_docs {
-                self.build_aux_docs = config.parse_build_aux_docs(ln);
-            }
+                if !self.should_ice {
+                    self.should_ice = config.parse_should_ice(ln);
+                }
 
-            if !self.force_host {
-                self.force_host = config.parse_force_host(ln);
-            }
+                if !self.build_aux_docs {
+                    self.build_aux_docs = config.parse_build_aux_docs(ln);
+                }
 
-            if !self.check_stdout {
-                self.check_stdout = config.parse_check_stdout(ln);
-            }
+                if !self.force_host {
+                    self.force_host = config.parse_force_host(ln);
+                }
 
-            if !self.check_run_results {
-                self.check_run_results = config.parse_check_run_results(ln);
-            }
+                if !self.check_stdout {
+                    self.check_stdout = config.parse_check_stdout(ln);
+                }
 
-            if !self.dont_check_compiler_stdout {
-                self.dont_check_compiler_stdout = config.parse_dont_check_compiler_stdout(ln);
-            }
+                if !self.check_run_results {
+                    self.check_run_results = config.parse_check_run_results(ln);
+                }
 
-            if !self.dont_check_compiler_stderr {
-                self.dont_check_compiler_stderr = config.parse_dont_check_compiler_stderr(ln);
-            }
+                if !self.dont_check_compiler_stdout {
+                    self.dont_check_compiler_stdout = config.parse_dont_check_compiler_stdout(ln);
+                }
 
-            if !self.no_prefer_dynamic {
-                self.no_prefer_dynamic = config.parse_no_prefer_dynamic(ln);
-            }
+                if !self.dont_check_compiler_stderr {
+                    self.dont_check_compiler_stderr = config.parse_dont_check_compiler_stderr(ln);
+                }
 
-            if !self.pretty_expanded {
-                self.pretty_expanded = config.parse_pretty_expanded(ln);
-            }
+                if !self.no_prefer_dynamic {
+                    self.no_prefer_dynamic = config.parse_no_prefer_dynamic(ln);
+                }
 
-            if let Some(m) = config.parse_pretty_mode(ln) {
-                self.pretty_mode = m;
-            }
+                if !self.pretty_expanded {
+                    self.pretty_expanded = config.parse_pretty_expanded(ln);
+                }
 
-            if !self.pretty_compare_only {
-                self.pretty_compare_only = config.parse_pretty_compare_only(ln);
-            }
+                if let Some(m) = config.parse_pretty_mode(ln) {
+                    self.pretty_mode = m;
+                }
 
-            if let Some(ab) = config.parse_aux_build(ln) {
-                self.aux_builds.push(ab);
-            }
+                if !self.pretty_compare_only {
+                    self.pretty_compare_only = config.parse_pretty_compare_only(ln);
+                }
 
-            if let Some(ac) = config.parse_aux_crate(ln) {
-                self.aux_crates.push(ac);
-            }
+                if let Some(ab) = config.parse_aux_build(ln) {
+                    self.aux_builds.push(ab);
+                }
 
-            if let Some(ee) = config.parse_env(ln, "exec-env") {
-                self.exec_env.push(ee);
-            }
+                if let Some(ac) = config.parse_aux_crate(ln) {
+                    self.aux_crates.push(ac);
+                }
 
-            if let Some(ee) = config.parse_env(ln, "rustc-env") {
-                self.rustc_env.push(ee);
-            }
+                if let Some(ee) = config.parse_env(ln, "exec-env") {
+                    self.exec_env.push(ee);
+                }
 
-            if let Some(ev) = config.parse_name_value_directive(ln, "unset-rustc-env") {
-                self.unset_rustc_env.push(ev);
-            }
+                if let Some(ee) = config.parse_env(ln, "rustc-env") {
+                    self.rustc_env.push(ee);
+                }
 
-            if let Some(cl) = config.parse_check_line(ln) {
-                self.check_lines.push(cl);
-            }
+                if let Some(ev) = config.parse_name_value_directive(ln, "unset-rustc-env") {
+                    self.unset_rustc_env.push(ev);
+                }
 
-            if let Some(of) = config.parse_forbid_output(ln) {
-                self.forbid_output.push(of);
-            }
+                if let Some(cl) = config.parse_check_line(ln) {
+                    self.check_lines.push(cl);
+                }
 
-            if !self.check_test_line_numbers_match {
-                self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
-            }
+                if let Some(of) = config.parse_forbid_output(ln) {
+                    self.forbid_output.push(of);
+                }
 
-            self.update_pass_mode(ln, cfg, config);
-            self.update_fail_mode(ln, config);
+                if !self.check_test_line_numbers_match {
+                    self.check_test_line_numbers_match =
+                        config.parse_check_test_line_numbers_match(ln);
+                }
 
-            if !self.ignore_pass {
-                self.ignore_pass = config.parse_ignore_pass(ln);
-            }
+                self.update_pass_mode(ln, cfg, config);
+                self.update_fail_mode(ln, config);
 
-            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
-                self.normalize_stdout.push(rule);
-            }
-            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
-                self.normalize_stderr.push(rule);
-            }
+                if !self.ignore_pass {
+                    self.ignore_pass = config.parse_ignore_pass(ln);
+                }
 
-            if let Some(code) = config.parse_failure_status(ln) {
-                self.failure_status = code;
-            }
+                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
+                    self.normalize_stdout.push(rule);
+                }
+                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
+                    self.normalize_stderr.push(rule);
+                }
 
-            if !self.run_rustfix {
-                self.run_rustfix = config.parse_run_rustfix(ln);
-            }
+                if let Some(code) = config.parse_failure_status(ln) {
+                    self.failure_status = code;
+                }
 
-            if !self.rustfix_only_machine_applicable {
-                self.rustfix_only_machine_applicable =
-                    config.parse_rustfix_only_machine_applicable(ln);
-            }
+                if !self.run_rustfix {
+                    self.run_rustfix = config.parse_run_rustfix(ln);
+                }
 
-            if self.assembly_output.is_none() {
-                self.assembly_output = config.parse_assembly_output(ln);
-            }
-        });
+                if !self.rustfix_only_machine_applicable {
+                    self.rustfix_only_machine_applicable =
+                        config.parse_rustfix_only_machine_applicable(ln);
+                }
+
+                if self.assembly_output.is_none() {
+                    self.assembly_output = config.parse_assembly_output(ln);
+                }
+            });
+        }
 
         if self.failure_status == -1 {
             self.failure_status = match config.mode {
