@@ -1,3 +1,118 @@
+Version 1.41.0 (2020-01-30)
+===========================
+
+Language
+--------
+
+- [You can now pass type parameters to foreign items when implementing
+  traits.][65879] E.g. You can now write `impl<T> From<Foo> for Vec<T> {}`.
+- [You can now arbitrarily nest receiver types in the `self` position.][64325] E.g. you can
+  now write `fn foo(self: Box<Box<Self>>) {}`. Previously only `Self`, `&Self`,
+  `&mut Self`, `Arc<Self>`, `Rc<Self>`, and `Box<Self>` were allowed.
+- [You can now use any valid identifier in a `format_args` macro.][66847]
+  Previously identifiers starting with an underscore were not allowed.
+- [Visibility modifiers (e.g. `pub`) are now syntactically allowed on trait items and
+  enum variants.][66183] These are still rejected semantically, but
+  can be seen and parsed by procedural macros and conditional compilation.
+
+Compiler
+--------
+
+- [Rustc will now warn if you have unused loop `'label`s.][66325]
+- [Removed support for the `i686-unknown-dragonfly` target.][67255]
+- [Added tier 3 support\* for the `riscv64gc-unknown-linux-gnu` target.][66661]
+- [You can now pass an arguments file passing the `@path` syntax
+  to rustc.][66172] Note that the format differs somewhat from what is
+  found in other tooling; please see [the documentation][argfile-docs] for
+  more information.
+- [You can now provide `--extern` flag without a path, indicating that it is
+  available from the search path or specified with an `-L` flag.][64882]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+[argfile-docs]: https://doc.rust-lang.org/nightly/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
+
+Libraries
+---------
+
+- [The `core::panic` module is now stable.][66771] It was already stable
+  through `std`.
+- [`NonZero*` numerics now implement `From<NonZero*>` if it's a smaller integer
+  width.][66277] E.g. `NonZeroU16` now implements `From<NonZeroU8>`.
+- [`MaybeUninit<T>` now implements `fmt::Debug`.][65013]
+
+Stabilized APIs
+---------------
+
+- [`Result::map_or`]
+- [`Result::map_or_else`]
+- [`std::rc::Weak::weak_count`]
+- [`std::rc::Weak::strong_count`]
+- [`std::sync::Weak::weak_count`]
+- [`std::sync::Weak::strong_count`]
+
+Cargo
+-----
+
+- [Cargo will now document all the private items for binary crates
+  by default.][cargo/7593]
+- [`cargo-install` will now reinstall the package if it detects that it is out
+  of date.][cargo/7560]
+- [Cargo.lock now uses a more git friendly format that should help to reduce
+  merge conflicts.][cargo/7579]
+- [You can now override specific dependencies's build settings][cargo/7591] E.g.
+  `[profile.dev.overrides.image] opt-level = 2` sets the `image` crate's
+  optimisation level to `2` for debug builds. You can also use
+  `[profile.<profile>.build_overrides]` to override build scripts and
+  their dependencies.
+
+Misc
+----
+
+- [You can now specify `edition` in documentation code blocks to compile the block
+  for that edition.][66238] E.g. `edition2018` tells rustdoc that the code sample
+  should be compiled the 2018 edition of Rust.
+- [You can now provide custom themes to rustdoc with `--theme`, and check the
+  current theme with `--check-theme`.][54733]
+- [You can use `#[cfg(doc)]` to compile an item when building documentation.][61351]
+
+Compatibility Notes
+-------------------
+
+- [As previously announced 1.41.0 will be the last tier 1 release for 32-bit
+  Apple targets.][apple-32bit-drop] This means that the source code is still
+  available to build, but the targets are no longer being tested and release
+  binaries for those platforms will no longer be distributed by the Rust project.
+  Please refer to the linked blog post for more information.
+
+[54733]: https://github.com/rust-lang/rust/pull/54733/
+[61351]: https://github.com/rust-lang/rust/pull/61351/
+[67255]: https://github.com/rust-lang/rust/pull/67255/
+[66661]: https://github.com/rust-lang/rust/pull/66661/
+[66771]: https://github.com/rust-lang/rust/pull/66771/
+[66847]: https://github.com/rust-lang/rust/pull/66847/
+[66238]: https://github.com/rust-lang/rust/pull/66238/
+[66277]: https://github.com/rust-lang/rust/pull/66277/
+[66325]: https://github.com/rust-lang/rust/pull/66325/
+[66172]: https://github.com/rust-lang/rust/pull/66172/
+[66183]: https://github.com/rust-lang/rust/pull/66183/
+[65879]: https://github.com/rust-lang/rust/pull/65879/
+[65013]: https://github.com/rust-lang/rust/pull/65013/
+[64882]: https://github.com/rust-lang/rust/pull/64882/
+[64325]: https://github.com/rust-lang/rust/pull/64325/
+[cargo/7560]: https://github.com/rust-lang/cargo/pull/7560/
+[cargo/7579]: https://github.com/rust-lang/cargo/pull/7579/
+[cargo/7591]: https://github.com/rust-lang/cargo/pull/7591/
+[cargo/7593]: https://github.com/rust-lang/cargo/pull/7593/
+[`Result::map_or_else`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.map_or_else
+[`Result::map_or`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.map_or
+[`std::rc::Weak::weak_count`]: https://doc.rust-lang.org/std/rc/struct.Weak.html#method.weak_count
+[`std::rc::Weak::strong_count`]: https://doc.rust-lang.org/std/rc/struct.Weak.html#method.strong_count
+[`std::sync::Weak::weak_count`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.weak_count
+[`std::sync::Weak::strong_count`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.strong_count
+[apple-32bit-drop]: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
+
 Version 1.40.0 (2019-12-19)
 ===========================
 
