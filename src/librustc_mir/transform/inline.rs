@@ -354,7 +354,7 @@ impl Inliner<'tcx> {
             let ty = v.ty.subst(tcx, callsite.substs);
             // Cost of the var is the size in machine-words, if we know
             // it.
-            if let Some(size) = type_size_of(tcx, param_env.clone(), ty) {
+            if let Some(size) = type_size_of(tcx, param_env, ty) {
                 cost += (size / ptr_size) as usize;
             } else {
                 cost += UNKNOWN_SIZE_COST;
@@ -450,7 +450,7 @@ impl Inliner<'tcx> {
 
                     let stmt = Statement {
                         source_info: callsite.location,
-                        kind: StatementKind::Assign(box (tmp.clone(), dest)),
+                        kind: StatementKind::Assign(box (tmp, dest)),
                     };
                     caller_body[callsite.bb].statements.push(stmt);
                     self.tcx.mk_place_deref(tmp)

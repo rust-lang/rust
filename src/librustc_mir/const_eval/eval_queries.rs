@@ -226,7 +226,7 @@ pub fn const_eval_validated_provider<'tcx>(
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
-        let mut key = key.clone();
+        let mut key = key;
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
@@ -267,7 +267,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     // In case we fail in the `UserFacing` variant, we just do the real computation.
     if key.param_env.reveal == Reveal::All {
-        let mut key = key.clone();
+        let mut key = key;
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested

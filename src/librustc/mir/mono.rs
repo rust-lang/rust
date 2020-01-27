@@ -362,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
-        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
+        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name()))
     }
 }
 

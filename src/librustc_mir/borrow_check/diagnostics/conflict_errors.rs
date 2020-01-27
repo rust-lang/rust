@@ -691,7 +691,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
 
         if self.access_place_error_reported.contains(&(
-            Place { local: root_place.local.clone(), projection: root_place_projection },
+            Place { local: *root_place.local, projection: root_place_projection },
             borrow_span,
         )) {
             debug!(
@@ -702,7 +702,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         self.access_place_error_reported.insert((
-            Place { local: root_place.local.clone(), projection: root_place_projection },
+            Place { local: *root_place.local, projection: root_place_projection },
             borrow_span,
         ));
 

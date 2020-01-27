@@ -883,7 +883,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check is_empty() first because it's the common case, and doing that
         // way we avoid the clone() call.
         if !self.access_place_error_reported.is_empty()
-            && self.access_place_error_reported.contains(&(place_span.0.clone(), place_span.1))
+            && self.access_place_error_reported.contains(&(*place_span.0, place_span.1))
         {
             debug!(
                 "access_place: suppressing error place_span=`{:?}` kind=`{:?}`",
@@ -911,7 +911,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if conflict_error || mutability_error {
             debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`", place_span, kind);
 
-            self.access_place_error_reported.insert((place_span.0.clone(), place_span.1));
+            self.access_place_error_reported.insert((*place_span.0, place_span.1));
         }
     }
 
@@ -1011,10 +1011,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // the 2018 edition so we emit it as a warning. We buffer
                     // these sepately so that we only emit a warning if borrow
                     // checking was otherwise successful.
-                    this.reservation_warnings.insert(
-                        bi,
-                        (place_span.0.clone(), place_span.1, location, bk, borrow.clone()),
-                    );
+                    this.reservation_warnings
+                        .insert(bi, (*place_span.0, place_span.1, location, bk, borrow.clone()));
 
                     // Don't suppress actual errors.
                     Control::Continue

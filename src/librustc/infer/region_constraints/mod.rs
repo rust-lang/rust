@@ -832,7 +832,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         (
             range.clone(),
             (range.start.index()..range.end.index())
-                .map(|index| self.var_infos[ty::RegionVid::from(index)].origin.clone())
+                .map(|index| self.var_infos[ty::RegionVid::from(index)].origin)
                 .collect(),
         )
     }

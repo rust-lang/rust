@@ -1326,7 +1326,7 @@ pub trait ToPolyTraitRef<'tcx> {
 
 impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        ty::Binder::dummy(self.clone())
+        ty::Binder::dummy(*self)
     }
 }
 
@@ -1372,19 +1372,19 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::RegionOutlives(self.clone())
+        Predicate::RegionOutlives(*self)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::TypeOutlives(self.clone())
+        Predicate::TypeOutlives(*self)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::Projection(self.clone())
+        Predicate::Projection(*self)
     }
 }
 

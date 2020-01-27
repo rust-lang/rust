@@ -366,8 +366,8 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
     // Put the active features into a map for quick lookup.
     index.active_features = active_lib_features
         .iter()
-        .map(|&(ref s, ..)| s.clone())
-        .chain(active_lang_features.iter().map(|&(ref s, ..)| s.clone()))
+        .map(|&(s, ..)| s)
+        .chain(active_lang_features.iter().map(|&(s, ..)| s))
         .collect();
 
     {

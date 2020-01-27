@@ -306,7 +306,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         (
             range.start.vid..range.end.vid,
             (range.start.vid.index..range.end.vid.index)
-                .map(|index| self.values.get(index as usize).origin.clone())
+                .map(|index| self.values.get(index as usize).origin)
                 .collect(),
         )
     }

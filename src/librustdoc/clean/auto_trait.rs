@@ -393,7 +393,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             Type::ResolvedPath {
                                 path: new_path,
                                 param_names: param_names.clone(),
-                                did: did.clone(),
+                                did: *did,
                                 is_generic: *is_generic,
                             }
                         }
@@ -468,7 +468,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             })
             .map(|p| {
                 let replaced = p.fold_with(&mut replacer);
-                (replaced.clone(), replaced.clean(self.cx))
+                (replaced, replaced.clean(self.cx))
             });
 
         let mut generic_params =
@@ -614,7 +614,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             trait_: Type::ResolvedPath {
                                                 path: new_trait_path,
                                                 param_names: param_names.clone(),
-                                                did: did.clone(),
+                                                did: *did,
                                                 is_generic: *is_generic,
                                             },
                                             generic_params: Vec::new(),

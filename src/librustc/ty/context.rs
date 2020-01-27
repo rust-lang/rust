@@ -1294,7 +1294,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, crate_disambiguator) = if def_id.is_local() {
-            (self.crate_name.clone(), self.sess.local_crate_disambiguator())
+            (self.crate_name, self.sess.local_crate_disambiguator())
         } else {
             (
                 self.cstore.crate_name_untracked(def_id.krate),

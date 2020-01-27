@@ -499,7 +499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             let fn_sig = {
                 match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => f.clone(),
+                    Some(f) => *f,
                     None => {
                         bug!("No fn-sig entry for def_id={:?}", def_id);
                     }

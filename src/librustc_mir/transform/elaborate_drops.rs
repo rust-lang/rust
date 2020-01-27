@@ -459,7 +459,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(box (location.clone(), Rvalue::Use(value.clone()))),
+            kind: StatementKind::Assign(box (*location, Rvalue::Use(value.clone()))),
             source_info: terminator.source_info,
         };
 
@@ -512,11 +512,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("elaborate_drop_and_replace({:?}) - untracked {:?}", terminator, parent);
                 self.patch.patch_terminator(
                     bb,
-                    TerminatorKind::Drop {
-                        location: location.clone(),
-                        target,
-                        unwind: Some(unwind),
-                    },
+                    TerminatorKind::Drop { location: *location, target, unwind: Some(unwind) },
                 );
             }
         }

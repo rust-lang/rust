@@ -59,14 +59,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: hair::pattern::Ascription { variance, ref user_ty, user_ty_span },
+                ascription: hair::pattern::Ascription { variance, user_ty, user_ty_span },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 // value being matched, taking the variance field into account.
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
-                    user_ty: user_ty.clone(),
-                    source: match_pair.place.clone(),
+                    user_ty: user_ty,
+                    source: match_pair.place,
                     variance,
                 });
 
@@ -85,7 +85,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
-                    source: match_pair.place.clone(),
+                    source: match_pair.place,
                     var_id: var,
                     var_ty: ty,
                     binding_mode: mode,

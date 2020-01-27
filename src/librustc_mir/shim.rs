@@ -207,7 +207,7 @@ fn build_drop_shim<'tcx>(
                 0,
                 Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Raw, box (dropee_ptr.clone())),
+                    kind: StatementKind::Retag(RetagKind::Raw, box (dropee_ptr)),
                 },
             );
         }
@@ -445,7 +445,7 @@ impl CloneShimBuilder<'tcx> {
 
         // `let ref_loc: &ty = &src;`
         let statement = self.make_statement(StatementKind::Assign(box (
-            ref_loc.clone(),
+            ref_loc,
             Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, src),
         )));
 
@@ -475,7 +475,7 @@ impl CloneShimBuilder<'tcx> {
 
         let cond = self.make_place(Mutability::Mut, tcx.types.bool);
         let compute_cond = self.make_statement(StatementKind::Assign(box (
-            cond.clone(),
+            cond,
             Rvalue::BinaryOp(BinOp::Ne, Operand::Copy(end), Operand::Copy(beg)),
         )));
 
@@ -512,7 +512,7 @@ impl CloneShimBuilder<'tcx> {
                 Rvalue::Use(Operand::Constant(self.make_usize(0))),
             ))),
             self.make_statement(StatementKind::Assign(box (
-                end.clone(),
+                end,
                 Rvalue::Use(Operand::Constant(self.make_usize(len))),
             ))),
         ];

@@ -1988,7 +1988,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn to_copy(&self) -> Self {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
-            Operand::Move(ref place) => Operand::Copy(place.clone()),
+            Operand::Move(place) => Operand::Copy(place),
         }
     }
 }
@@ -2462,11 +2462,15 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
         let projs: Vec<_> = self
             .projs
             .iter()
-            .map(|elem| match elem {
+            .map(|&elem| match elem {
                 Deref => Deref,
-                Field(f, ()) => Field(f.clone(), ()),
+                Field(f, ()) => Field(f, ()),
                 Index(()) => Index(()),
-                elem => elem.clone(),
+                Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
+                ConstantIndex { offset, min_length, from_end } => {
+                    ConstantIndex { offset, min_length, from_end }
+                }
+                Subslice { from, to, from_end } => Subslice { from, to, from_end },
             })
             .collect();
 
@@ -2862,11 +2866,15 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
-        match self {
+        match *self {
             Deref => Deref,
-            Field(f, ty) => Field(*f, ty.fold_with(folder)),
+            Field(f, ty) => Field(f, ty.fold_with(folder)),
             Index(v) => Index(v.fold_with(folder)),
-            elem => elem.clone(),
+            Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
+            ConstantIndex { offset, min_length, from_end } => {
+                ConstantIndex { offset, min_length, from_end }
+            }
+            Subslice { from, to, from_end } => Subslice { from, to, from_end },
         }
     }
 
@@ -2911,7 +2919,7 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
 impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Constant {
-            span: self.span.clone(),
+            span: self.span,
             user_ty: self.user_ty.fold_with(folder),
             literal: self.literal.fold_with(folder),
         }

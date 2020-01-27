@@ -526,11 +526,11 @@ pub fn predicates_for_generics<'tcx>(
     generic_bounds
         .predicates
         .iter()
-        .map(|predicate| Obligation {
+        .map(|&predicate| Obligation {
             cause: cause.clone(),
             recursion_depth,
             param_env,
-            predicate: predicate.clone(),
+            predicate,
         })
         .collect()
 }
