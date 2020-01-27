@@ -129,7 +129,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut prev_rest_span = None;
 
         let mut iter = pats.iter();
-        // Lower all the patterns until the first occurence of a sub-slice pattern.
+        // Lower all the patterns until the first occurrence of a sub-slice pattern.
         for pat in iter.by_ref() {
             match pat.kind {
                 // Found a sub-slice pattern `..`. Record, lower it to `_`, and stop here.

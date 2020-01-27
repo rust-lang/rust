@@ -477,7 +477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If one of the types is an uncalled function and calling it would yield the other type,
-    /// suggest calling the function. Returns wether a suggestion was given.
+    /// suggest calling the function. Returns whether a suggestion was given.
     fn add_type_neq_err_label(
         &self,
         err: &mut rustc_errors::DiagnosticBuilder<'_>,

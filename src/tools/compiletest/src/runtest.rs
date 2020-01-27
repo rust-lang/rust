@@ -2949,7 +2949,7 @@ impl<'test> TestCx<'test> {
             };
             if run_output_errors > 0 {
                 self.fatal_proc_rec(
-                    &format!("{} errors occured comparing run output.", run_output_errors),
+                    &format!("{} errors occurred comparing run output.", run_output_errors),
                     &proc_res,
                 );
             }
