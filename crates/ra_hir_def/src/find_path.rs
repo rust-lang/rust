@@ -7,7 +7,7 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::Name;
+use hir_expand::name::{known, Name};
 
 const MAX_PATH_LEN: usize = 15;
 
@@ -102,7 +102,7 @@ fn find_path_inner(
     let mut best_path = None;
     let mut best_path_len = max_len;
     for (module_id, name) in importable_locations {
-        let mut path = match find_path_inner(
+        let mut new_path = match find_path_inner(
             db,
             ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
             from,
@@ -111,13 +111,38 @@ fn find_path_inner(
             None => continue,
             Some(path) => path,
         };
-        path.segments.push(name);
-        if path_len(&path) < best_path_len {
-            best_path_len = path_len(&path);
-            best_path = Some(path);
+        new_path.segments.push(name);
+
+        if prefer_new_path(best_path_len, best_path.as_ref(), &new_path) {
+            best_path_len = path_len(&new_path);
+            best_path = Some(new_path);
         }
     }
     best_path
+}
+
+fn prefer_new_path(old_path_len: usize, old_path: Option<&ModPath>, new_path: &ModPath) -> bool {
+    match (old_path.and_then(|mod_path| mod_path.segments.first()), new_path.segments.first()) {
+        (Some(old_path_start), Some(new_path_start))
+            if old_path_start == &known::std && use_std_instead(new_path_start) =>
+        {
+            false
+        }
+        (Some(old_path_start), Some(new_path_start))
+            if new_path_start == &known::std && use_std_instead(old_path_start) =>
+        {
+            true
+        }
+        (None, Some(_)) => true,
+        (Some(_), None) => false,
+        _ => path_len(new_path) < old_path_len,
+    }
+}
+
+// When std library is present, paths starting with `std::`
+// should be preferred over paths starting with `core::` and `alloc::`
+fn use_std_instead(name: &Name) -> bool {
+    name == &known::core || name == &known::alloc
 }
 
 fn path_len(path: &ModPath) -> usize {
