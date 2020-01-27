@@ -287,6 +287,7 @@ struct ElisionFailureInfo {
     index: usize,
     lifetime_count: usize,
     have_bound_regions: bool,
+    span: Span,
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -2273,6 +2274,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     index: i,
                     lifetime_count: gather.lifetimes.len(),
                     have_bound_regions: gather.have_bound_regions,
+                    span: input.span,
                 }
             })
             .collect();
@@ -2483,11 +2485,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             params.iter().cloned().filter(|info| info.lifetime_count > 0).collect();
 
         let elided_len = elided_params.len();
+        let mut spans = vec![];
 
-        // FIXME: collect spans of the input params when appropriate to use in the diagnostic.
         for (i, info) in elided_params.into_iter().enumerate() {
-            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions } = info;
+            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } = info;
 
+            spans.push(span);
             let help_name = if let Some(ident) =
                 parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
             {
@@ -2518,14 +2521,22 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
+        let help = |msg| {
+            if spans.is_empty() {
+                db.help(msg);
+            } else {
+                db.span_help(spans, msg);
+            }
+        };
+
         if len == 0 {
             db.help(
                 "this function's return type contains a borrowed value, \
-                but there is no value for it to be borrowed from",
+                 but there is no value for it to be borrowed from",
             );
             self.suggest_lifetime(db, span, "consider giving it a 'static lifetime")
         } else if elided_len == 0 {
-            db.help(
+            help(
                 "this function's return type contains a borrowed value with \
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments",
@@ -2533,16 +2544,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let msg = "consider giving it an explicit bounded or 'static lifetime";
             self.suggest_lifetime(db, span, msg)
         } else if elided_len == 1 {
-            db.help(&format!(
+            help(&format!(
                 "this function's return type contains a borrowed value, \
-                but the signature does not say which {} it is borrowed from",
+                 but the signature does not say which {} it is borrowed from",
                 m
             ));
             true
         } else {
-            db.help(&format!(
+            help(&format!(
                 "this function's return type contains a borrowed value, \
-                but the signature does not say whether it is borrowed from {}",
+                 but the signature does not say whether it is borrowed from {}",
                 m
             ));
             true
