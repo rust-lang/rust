@@ -194,13 +194,10 @@ fn do_bench_extend_chain(b: &mut Bencher, dst_len: usize, src_len: usize) {
         x4 = iter.next().unwrap_or(&[][..]);
         x5 = iter.next().unwrap_or(&[][..]);
     }
-    let src = x1
-        .iter()
-        .cloned()
-        .chain(x2.iter().cloned())
-        .chain(x3.iter().cloned())
-        .chain(x4.iter().cloned())
-        .chain(x5.iter().cloned());
+    let src =
+        x1.iter().cloned().chain(x2.iter().cloned().chain(x3.iter().cloned())).chain(
+            Some(()).into_iter().flat_map(|()| x4.iter().cloned().chain(x5.iter().cloned())),
+        );
     do_bench_extend_iter(b, dst_len, src_len, src)
 }
 
