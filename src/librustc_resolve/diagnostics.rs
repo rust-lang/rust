@@ -1521,6 +1521,9 @@ crate fn add_missing_lifetime_specifiers_label(
                         if snippet.starts_with("&") && !snippet.starts_with("&'") {
                             introduce_suggestion
                                 .push((param.span, format!("&'a {}", &snippet[1..])));
+                        } else if snippet.starts_with("&'_ ") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'a {}", &snippet[4..])));
                         }
                     }
                 }
