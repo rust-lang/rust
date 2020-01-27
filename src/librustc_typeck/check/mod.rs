@@ -2434,16 +2434,6 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     }
     let sp = tcx.sess.source_map().def_span(sp);
 
-    if adt.is_enum() && !tcx.features().transparent_enums {
-        feature_err(
-            &tcx.sess.parse_sess,
-            sym::transparent_enums,
-            sp,
-            "transparent enums are unstable",
-        )
-        .emit();
-    }
-
     if adt.is_union() && !tcx.features().transparent_unions {
         feature_err(
             &tcx.sess.parse_sess,

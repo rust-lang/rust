@@ -3,7 +3,7 @@
 // - repr-transparent-other-reprs.rs
 // - repr-transparent-other-items.rs
 
-#![feature(repr_align, transparent_enums, transparent_unions)]
+#![feature(transparent_unions)]
 
 use std::marker::PhantomData;
 
@@ -58,6 +58,16 @@ enum TooManyFieldsEnum {
 enum TooManyVariants { //~ ERROR transparent enum needs exactly one variant, but has 2
     Foo(String),
     Bar,
+}
+
+#[repr(transparent)]
+enum NontrivialAlignZstEnum {
+    Foo(u32, [u16; 0]), //~ ERROR alignment larger than 1
+}
+
+#[repr(transparent)]
+enum GenericAlignEnum<T> {
+    Foo { bar: ZstAlign32<T>, baz: u32 } //~ ERROR alignment larger than 1
 }
 
 #[repr(transparent)]
