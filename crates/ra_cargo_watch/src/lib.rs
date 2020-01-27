@@ -9,6 +9,7 @@ use lsp_types::{
 };
 use std::{
     collections::HashMap,
+    io::BufReader,
     path::PathBuf,
     process::{Command, Stdio},
     sync::Arc,
@@ -347,7 +348,9 @@ impl WatchThread {
             // which will break out of the loop, and continue the shutdown
             let _ = message_send.send(CheckEvent::Begin);
 
-            for message in cargo_metadata::parse_messages(command.stdout.take().unwrap()) {
+            for message in
+                cargo_metadata::parse_messages(BufReader::new(command.stdout.take().unwrap()))
+            {
                 let message = match message {
                     Ok(message) => message,
                     Err(err) => {
