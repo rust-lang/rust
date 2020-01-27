@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, AsName};
+use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     SmolStr, SyntaxElement,
@@ -48,7 +48,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
         return None;
     }
 
-    let name_to_import = &find_applicable_name_ref(ctx.covering_element())?.as_name();
+    let name_to_import = &find_applicable_name_ref(ctx.covering_element())?.syntax().to_string();
     let proposed_imports = imports_locator
         .find_imports(&name_to_import.to_string())
         .into_iter()
@@ -64,7 +64,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     ctx.add_assist_group(AssistId("auto_import"), "auto import", || {
         proposed_imports
             .into_iter()
-            .map(|import| import_to_action(import, &position, &path_to_import))
+            .map(|import| import_to_action(import, &position, &path_to_import.syntax()))
             .collect()
     })
 }
@@ -84,12 +84,12 @@ fn find_applicable_name_ref(element: SyntaxElement) -> Option<ast::NameRef> {
     }
 }
 
-fn import_to_action(import: String, position: &SyntaxNode, path: &ast::Path) -> ActionBuilder {
+fn import_to_action(import: String, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
     let mut action_builder = ActionBuilder::default();
     action_builder.label(format!("Import `{}`", &import));
     auto_import_text_edit(
         position,
-        &path.syntax().clone(),
+        anchor,
         &[SmolStr::new(import)],
         action_builder.text_edit_builder(),
     );

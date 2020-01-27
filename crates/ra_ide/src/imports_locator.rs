@@ -41,7 +41,7 @@ impl<'a> ImportsLocatorIde<'a> {
     }
 }
 
-impl<'a> ImportsLocator for ImportsLocatorIde<'a> {
+impl ImportsLocator for ImportsLocatorIde<'_> {
     fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef> {
         let _p = profile("search_for_imports");
         let db = self.source_binder.db;

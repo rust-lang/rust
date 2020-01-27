@@ -234,6 +234,7 @@ mod helpers {
     use crate::{test_db::TestDB, Assist, AssistCtx, ImportsLocator};
     use std::sync::Arc;
 
+    // FIXME remove the `ModuleDefId` reexport from `ra_hir` when this gets removed.
     pub(crate) struct TestImportsLocator {
         db: Arc<TestDB>,
         test_file_id: FileId,
@@ -248,13 +249,13 @@ mod helpers {
     impl ImportsLocator for TestImportsLocator {
         fn find_imports(&mut self, name_to_import: &str) -> Vec<hir::ModuleDef> {
             let crate_def_map = self.db.crate_def_map(self.db.test_crate());
-            let mut findings = vec![];
+            let mut findings = Vec::new();
 
             let mut module_ids_to_process =
                 crate_def_map.modules_for_file(self.test_file_id).collect::<Vec<_>>();
 
             while !module_ids_to_process.is_empty() {
-                let mut more_ids_to_process = vec![];
+                let mut more_ids_to_process = Vec::new();
                 for local_module_id in module_ids_to_process.drain(..) {
                     for (name, namespace_data) in
                         crate_def_map[local_module_id].scope.entries_without_primitives()
