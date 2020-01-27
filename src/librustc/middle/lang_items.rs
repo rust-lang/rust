@@ -57,8 +57,7 @@ pub fn whitelisted(tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
     // symbols. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        return lang_item == LangItem::EhPersonalityLangItem
-            || lang_item == LangItem::EhUnwindResumeLangItem;
+        return lang_item == LangItem::EhPersonalityLangItem;
     }
 
     false

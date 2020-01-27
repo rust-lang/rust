@@ -35,14 +35,6 @@
 //!
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
-//!
-//! ## `eh_personality` and `eh_unwind_resume`
-//!
-//! These language items are used by the compiler when generating unwind info.
-//! The first one is the personality routine described above. The second one
-//! allows compilation target to customize the process of resuming unwind at the
-//! end of the landing pads. `eh_unwind_resume` is used only if
-//! `custom_unwind_resume` flag in the target options is set.
 
 #![allow(private_no_mangle_fns)]
 
@@ -324,8 +316,8 @@ unsafe fn find_eh_action(
     eh::find_eh_action(lsda, &eh_context, foreign_exception)
 }
 
-// See docs in the `unwind` module.
 #[cfg(all(
+    bootstrap,
     target_os = "windows",
     any(target_arch = "x86", target_arch = "x86_64"),
     target_env = "gnu"

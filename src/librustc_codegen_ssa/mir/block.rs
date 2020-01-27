@@ -178,15 +178,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let lp1 = bx.load_operand(lp1).immediate();
             slot.storage_dead(&mut bx);
 
-            if !bx.sess().target.target.options.custom_unwind_resume {
-                let mut lp = bx.const_undef(self.landing_pad_type());
-                lp = bx.insert_value(lp, lp0, 0);
-                lp = bx.insert_value(lp, lp1, 1);
-                bx.resume(lp);
-            } else {
-                bx.call(bx.eh_unwind_resume(), &[lp0], helper.funclet(self));
-                bx.unreachable();
-            }
+            let mut lp = bx.const_undef(self.landing_pad_type());
+            lp = bx.insert_value(lp, lp0, 0);
+            lp = bx.insert_value(lp, lp1, 1);
+            bx.resume(lp);
         }
     }
 

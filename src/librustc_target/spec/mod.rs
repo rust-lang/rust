@@ -692,11 +692,6 @@ pub struct TargetOptions {
     pub archive_format: String,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
-    /// Whether the target uses a custom unwind resumption routine.
-    /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
-    /// defined in libgcc. If this option is enabled, the target must provide
-    /// `eh_unwind_resume` lang item.
-    pub custom_unwind_resume: bool,
     /// Whether the runtime startup code requires the `main` function be passed
     /// `argc` and `argv` values.
     pub main_needs_argc_argv: bool,
@@ -866,7 +861,6 @@ impl Default for TargetOptions {
             link_env: Vec::new(),
             link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
-            custom_unwind_resume: false,
             main_needs_argc_argv: true,
             allow_asm: true,
             has_elf_tls: false,
@@ -1182,7 +1176,6 @@ impl Target {
         key!(relro_level, RelroLevel)?;
         key!(archive_format);
         key!(allow_asm, bool);
-        key!(custom_unwind_resume, bool);
         key!(main_needs_argc_argv, bool);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
@@ -1410,7 +1403,6 @@ impl ToJson for Target {
         target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
-        target_option_val!(custom_unwind_resume);
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);

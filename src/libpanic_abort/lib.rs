@@ -115,7 +115,7 @@ pub mod personalities {
     // Note that we don't execute landing pads, so this is never called, so it's
     // body is empty.
     #[no_mangle]
-    #[cfg(all(target_os = "windows", target_env = "gnu"))]
+    #[cfg(all(bootstrap, target_os = "windows", target_env = "gnu"))]
     pub extern "C" fn rust_eh_unwind_resume() {}
 
     // These two are called by our startup objects on i686-pc-windows-gnu, but

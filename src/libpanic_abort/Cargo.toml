@@ -14,4 +14,3 @@ doc = false
 core = { path = "../libcore" }
 libc = { version = "0.2", default-features = false }
 compiler_builtins = "0.1.0"
-cfg-if = "0.1.8"
