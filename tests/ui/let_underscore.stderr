@@ -95,5 +95,30 @@ LL |     let _ = a;
    |
    = help: consider explicitly using expression value
 
-error: aborting due to 12 previous errors
+error: non-binding let on an a synchronization lock
+  --> $DIR/let_underscore.rs:95:5
+   |
+LL |     let _ = m.lock();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::let_underscore_lock)]` on by default
+   = help: consider using an underscore-prefixed named binding
+
+error: non-binding let on an a synchronization lock
+  --> $DIR/let_underscore.rs:96:5
+   |
+LL |     let _ = rw.read();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding
+
+error: non-binding let on an a synchronization lock
+  --> $DIR/let_underscore.rs:97:5
+   |
+LL |     let _ = rw.write();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding
+
+error: aborting due to 15 previous errors
 

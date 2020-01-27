@@ -960,6 +960,13 @@ pub const ALL_LINTS: [Lint; 350] = [
         module: "returns",
     },
     Lint {
+        name: "let_underscore_lock",
+        group: "correctness",
+        desc: "non-binding let on a synchronization lock",
+        deprecation: None,
+        module: "let_underscore",
+    },
+    Lint {
         name: "let_underscore_must_use",
         group: "restriction",
         desc: "non-binding let on a `#[must_use]` expression",
