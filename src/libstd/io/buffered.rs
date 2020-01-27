@@ -179,6 +179,30 @@ impl<R> BufReader<R> {
         &self.buf[self.pos..self.cap]
     }
 
+    /// Returns the number of bytes the internal buffer can hold at once.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(buffered_io_capacity)]
+    /// use std::io::{BufReader, BufRead};
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("log.txt")?;
+    ///     let mut reader = BufReader::new(f);
+    ///
+    ///     let capacity = reader.capacity();
+    ///     let buffer = reader.fill_buf()?;
+    ///     assert!(buffer.len() <= capacity);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "buffered_io_capacity", issue = "68558")]
+    pub fn capacity(&self) -> usize {
+        self.buf.len()
+    }
+
     /// Unwraps this `BufReader<R>`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost. Therefore,
@@ -581,6 +605,7 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(buffered_io_capacity)]
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
@@ -591,6 +616,7 @@ impl<W: Write> BufWriter<W> {
     /// // Calculate how many bytes can be written without flushing
     /// let without_flush = capacity - buf_writer.buffer().len();
     /// ```
+    #[unstable(feature = "buffered_io_capacity", issue = "68558")]
     pub fn capacity(&self) -> usize {
         self.buf.capacity()
     }
