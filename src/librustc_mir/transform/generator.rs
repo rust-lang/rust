@@ -891,7 +891,7 @@ fn create_generator_drop_shim<'tcx>(
 
     let source_info = source_info(&body);
 
-    let mut cases = create_cases(&mut body, transform, |point| point.drop);
+    let mut cases = create_cases(&mut body, transform, Operation::Drop);
 
     cases.insert(0, (UNRESUMED, drop_clean));
 
@@ -1009,7 +1009,7 @@ fn create_generator_resume_function<'tcx>(
         }
     }
 
-    let mut cases = create_cases(body, &transform, |point| Some(point.resume));
+    let mut cases = create_cases(body, &transform, Operation::Resume);
 
     use rustc::mir::interpret::PanicInfo::{ResumedAfterPanic, ResumedAfterReturn};
 
@@ -1059,14 +1059,27 @@ fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'tcx, F>(
+/// An operation that can be performed on a generator.
+#[derive(PartialEq, Copy, Clone)]
+enum Operation {
+    Resume,
+    Drop,
+}
+
+impl Operation {
+    fn target_block(self, point: &SuspensionPoint<'_>) -> Option<BasicBlock> {
+        match self {
+            Operation::Resume => Some(point.resume),
+            Operation::Drop => point.drop,
+        }
+    }
+}
+
+fn create_cases<'tcx>(
     body: &mut BodyAndCache<'tcx>,
     transform: &TransformVisitor<'tcx>,
-    target: F,
-) -> Vec<(usize, BasicBlock)>
-where
-    F: Fn(&SuspensionPoint<'tcx>) -> Option<BasicBlock>,
-{
+    operation: Operation,
+) -> Vec<(usize, BasicBlock)> {
     let source_info = source_info(body);
 
     transform
@@ -1074,7 +1087,7 @@ where
         .iter()
         .filter_map(|point| {
             // Find the target for this suspension point, if applicable
-            target(point).map(|target| {
+            operation.target_block(point).map(|target| {
                 let block = BasicBlock::new(body.basic_blocks().len());
                 let mut statements = Vec::new();
 
@@ -1087,15 +1100,17 @@ where
                     }
                 }
 
-                // Move the resume argument to the destination place of the `Yield` terminator
-                let resume_arg = Local::new(2); // 0 = return, 1 = self
-                statements.push(Statement {
-                    source_info,
-                    kind: StatementKind::Assign(box (
-                        point.resume_arg,
-                        Rvalue::Use(Operand::Move(resume_arg.into())),
-                    )),
-                });
+                if operation == Operation::Resume {
+                    // Move the resume argument to the destination place of the `Yield` terminator
+                    let resume_arg = Local::new(2); // 0 = return, 1 = self
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::Assign(box (
+                            point.resume_arg,
+                            Rvalue::Use(Operand::Move(resume_arg.into())),
+                        )),
+                    });
+                }
 
                 // Then jump to the real target
                 body.basic_blocks_mut().push(BasicBlockData {
