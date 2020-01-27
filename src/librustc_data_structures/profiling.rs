@@ -88,7 +88,6 @@ use std::fs;
 use std::path::Path;
 use std::process;
 use std::sync::Arc;
-use std::thread::ThreadId;
 use std::time::{Duration, Instant};
 use std::u32;
 
@@ -129,17 +128,13 @@ bitflags::bitflags! {
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
                         Self::INCR_CACHE_LOADS.bits;
-
-        // empty() and none() aren't const-fns unfortunately
-        const NONE = 0;
-        const ALL  = !Self::NONE.bits;
     }
 }
 
 // keep this in sync with the `-Z self-profile-events` help message in librustc_session/options.rs
 const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
-    ("none", EventFilter::NONE),
-    ("all", EventFilter::ALL),
+    ("none", EventFilter::empty()),
+    ("all", EventFilter::all()),
     ("default", EventFilter::DEFAULT),
     ("generic-activity", EventFilter::GENERIC_ACTIVITIES),
     ("query-provider", EventFilter::QUERY_PROVIDERS),
@@ -148,10 +143,6 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
     ("query-keys", EventFilter::QUERY_KEYS),
 ];
-
-fn thread_id_to_u32(tid: ThreadId) -> u32 {
-    unsafe { std::mem::transmute::<ThreadId, u64>(tid) as u32 }
-}
 
 /// Something that uniquely identifies a query invocation.
 pub struct QueryInvocationId(pub u32);
@@ -185,7 +176,7 @@ impl SelfProfilerRef {
         // If there is no SelfProfiler then the filter mask is set to NONE,
         // ensuring that nothing ever tries to actually access it.
         let event_filter_mask =
-            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::NONE);
+            profiler.as_ref().map(|p| p.event_filter_mask).unwrap_or(EventFilter::empty());
 
         SelfProfilerRef {
             profiler,
@@ -318,7 +309,7 @@ impl SelfProfilerRef {
     ) {
         drop(self.exec(event_filter, |profiler| {
             let event_id = StringId::new_virtual(query_invocation_id.0);
-            let thread_id = thread_id_to_u32(std::thread::current().id());
+            let thread_id = std::thread::current().id().as_u64() as u32;
 
             profiler.profiler.record_instant_event(
                 event_kind(profiler),
@@ -477,7 +468,7 @@ impl<'a> TimingGuard<'a> {
         event_kind: StringId,
         event_id: EventId,
     ) -> TimingGuard<'a> {
-        let thread_id = thread_id_to_u32(std::thread::current().id());
+        let thread_id = std::thread::current().id().as_u64() as u32;
         let raw_profiler = &profiler.profiler;
         let timing_guard =
             raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
