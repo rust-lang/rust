@@ -1498,8 +1498,8 @@ crate fn add_missing_lifetime_specifiers_label(
                         msg = "consider introducing a named lifetime parameter";
                         should_break = true;
                         match &generics.params {
-                            [] => (generics.span, "<'lifetime>".to_string()),
-                            [param, ..] => (param.span.shrink_to_lo(), "'lifetime, ".to_string()),
+                            [] => (generics.span, "<'r>".to_string()),
+                            [param, ..] => (param.span.shrink_to_lo(), "'r, ".to_string()),
                         }
                     }
                     MissingLifetimeSpot::HRLT { span, span_type } => {
@@ -1510,8 +1510,8 @@ crate fn add_missing_lifetime_specifiers_label(
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                         let suggestion = match span_type {
-                            HRLTSpanType::Empty => "for<'lifetime> ",
-                            HRLTSpanType::Tail => ", 'lifetime",
+                            HRLTSpanType::Empty => "for<'r> ",
+                            HRLTSpanType::Tail => ", 'r",
                         };
                         (*span, suggestion.to_string())
                     }
@@ -1520,7 +1520,7 @@ crate fn add_missing_lifetime_specifiers_label(
                     if let Ok(snippet) = source_map.span_to_snippet(param.span) {
                         if snippet.starts_with("&") && !snippet.starts_with("&'") {
                             introduce_suggestion
-                                .push((param.span, format!("&'lifetime {}", &snippet[1..])));
+                                .push((param.span, format!("&'r {}", &snippet[1..])));
                         }
                     }
                 }
@@ -1543,13 +1543,13 @@ crate fn add_missing_lifetime_specifiers_label(
                 suggest_existing(err, format!("{}<{}>", snippet, name));
             }
             (0, _, Some("&")) => {
-                suggest_new(err, "&'lifetime ");
+                suggest_new(err, "&'r ");
             }
             (0, _, Some("'_")) => {
-                suggest_new(err, "'lifetime");
+                suggest_new(err, "'r");
             }
             (0, _, Some(snippet)) if !snippet.ends_with(">") => {
-                suggest_new(err, &format!("{}<'lifetime>", snippet));
+                suggest_new(err, &format!("{}<'r>", snippet));
             }
             _ => {
                 err.span_label(span, "expected lifetime parameter");
