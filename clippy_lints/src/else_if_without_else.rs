@@ -5,7 +5,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of if expressions with an `else if` branch,
@@ -56,7 +56,7 @@ impl EarlyLintPass for ElseIfWithoutElse {
 
         while let ExprKind::If(_, _, Some(ref els)) = item.kind {
             if let ExprKind::If(_, _, None) = els.kind {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     ELSE_IF_WITHOUT_ELSE,
                     els.span,

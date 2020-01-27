@@ -28,8 +28,8 @@ use crate::utils::{
     is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
     match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
     remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then,
-    span_note_and_lint, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -2133,7 +2133,7 @@ fn lint_iter_nth<'a, 'tcx>(
         return; // caller is not a type that we want to lint
     };
 
-    span_help_and_lint(
+    span_lint_and_help(
         cx,
         ITER_NTH,
         expr.span,
@@ -2242,7 +2242,7 @@ fn lint_get_unwrap<'a, 'tcx>(
 fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             ITER_SKIP_NEXT,
             expr.span,
@@ -2303,7 +2303,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
     };
 
     if let Some((lint, kind, none_value)) = mess {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             lint,
             expr.span,
@@ -2330,7 +2330,7 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
     };
 
     if let Some((lint, kind, none_value)) = mess {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             lint,
             expr.span,
@@ -2350,7 +2350,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir
         if has_debug_impl(error_type, cx);
 
         then {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 OK_EXPECT,
                 expr.span,
@@ -2422,7 +2422,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
         if same_span && !multiline {
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 if is_option {
                     OPTION_MAP_UNWRAP_OR_ELSE
@@ -2566,7 +2566,7 @@ fn lint_filter_next<'a, 'tcx>(
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             // add note if not multi-line
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 FILTER_NEXT,
                 expr.span,
@@ -2588,7 +2588,7 @@ fn lint_skip_while_next<'a, 'tcx>(
 ) {
     // lint if caller of `.skip_while().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             SKIP_WHILE_NEXT,
             expr.span,
@@ -2609,7 +2609,7 @@ fn lint_filter_map<'a, 'tcx>(
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.filter_map(..)` instead";
-        span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
+        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
 
@@ -2624,7 +2624,7 @@ fn lint_filter_map_next<'a, 'tcx>(
                    `.find_map(p)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 FILTER_MAP_NEXT,
                 expr.span,
@@ -2649,7 +2649,7 @@ fn lint_find_map<'a, 'tcx>(
     if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
         let msg = "called `find(p).map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.find_map(..)` instead";
-        span_help_and_lint(cx, FIND_MAP, expr.span, msg, hint);
+        span_lint_and_help(cx, FIND_MAP, expr.span, msg, hint);
     }
 }
 
@@ -2664,7 +2664,7 @@ fn lint_filter_map_map<'a, 'tcx>(
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
-        span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
+        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
 
@@ -2680,7 +2680,7 @@ fn lint_filter_flat_map<'a, 'tcx>(
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
             and filtering by returning `iter::empty()`";
-        span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
+        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
 
@@ -2696,7 +2696,7 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
             and filtering by returning `iter::empty()`";
-        span_help_and_lint(cx, FILTER_MAP, expr.span, msg, hint);
+        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
 
@@ -3077,7 +3077,7 @@ fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
 }
 
 fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
-    span_help_and_lint(
+    span_lint_and_help(
         cx,
         SUSPICIOUS_MAP,
         expr.span,
@@ -3436,5 +3436,5 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
     }
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
     let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
-    span_help_and_lint(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
+    span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
 }

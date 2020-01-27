@@ -9,7 +9,7 @@ use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 use syntax::ast::Attribute;
 
-use crate::utils::{match_type, paths, snippet_opt, span_help_and_lint, LimitStack};
+use crate::utils::{match_type, paths, snippet_opt, span_lint_and_help, LimitStack};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.
@@ -96,7 +96,7 @@ impl CognitiveComplexity {
                 },
             };
 
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 COGNITIVE_COMPLEXITY,
                 fn_span,

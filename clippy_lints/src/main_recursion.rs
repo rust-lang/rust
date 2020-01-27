@@ -2,7 +2,7 @@ use rustc_hir::{Crate, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
-use crate::utils::{is_entrypoint_fn, is_no_std_crate, snippet, span_help_and_lint};
+use crate::utils::{is_entrypoint_fn, is_no_std_crate, snippet, span_lint_and_help};
 use if_chain::if_chain;
 
 declare_clippy_lint! {
@@ -48,7 +48,7 @@ impl LateLintPass<'_, '_> for MainRecursion {
             if let Some(def_id) = path.res.opt_def_id();
             if is_entrypoint_fn(cx, def_id);
             then {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     MAIN_RECURSION,
                     func.span,

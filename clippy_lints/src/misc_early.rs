@@ -1,5 +1,5 @@
 use crate::utils::{
-    constants, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg,
+    constants, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -305,7 +305,7 @@ impl EarlyLintPass for MiscEarlyLints {
                 }
             }
             if !pfields.is_empty() && wilds == pfields.len() {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     UNNEEDED_FIELD_PATTERN,
                     pat.span,
@@ -338,7 +338,7 @@ impl EarlyLintPass for MiscEarlyLints {
                                 "You matched a field with a wildcard pattern. Consider using `..` instead",
                             );
                         } else {
-                            span_help_and_lint(
+                            span_lint_and_help(
                                 cx,
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,

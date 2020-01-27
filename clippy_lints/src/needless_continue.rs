@@ -39,7 +39,7 @@ use rustc_span::source_map::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 use syntax::ast;
 
-use crate::utils::{snippet, snippet_block, span_help_and_lint, trim_multiline};
+use crate::utils::{snippet, snippet_block, span_lint_and_help, trim_multiline};
 
 declare_clippy_lint! {
     /// **What it does:** The lint checks for `if`-statements appearing in loops
@@ -300,7 +300,7 @@ fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str
             data.if_expr,
         ),
     };
-    span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
+    span_lint_and_help(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }
 
 fn suggestion_snippet_for_continue_inside_if<'a>(

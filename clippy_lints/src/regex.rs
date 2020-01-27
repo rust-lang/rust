@@ -1,5 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
+use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::*;
@@ -208,7 +208,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8:
             match parser.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {
-                        span_help_and_lint(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
+                        span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
                     }
                 },
                 Err(regex_syntax::Error::Parse(e)) => {
@@ -236,7 +236,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8:
         match parser.parse(&r) {
             Ok(r) => {
                 if let Some(repl) = is_trivial_regex(&r) {
-                    span_help_and_lint(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
+                    span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
                 }
             },
             Err(regex_syntax::Error::Parse(e)) => {

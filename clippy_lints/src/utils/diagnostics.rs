@@ -69,7 +69,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///    |
 ///    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 /// ```
-pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
+pub fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     db.0.help(help);
     db.docs_link(lint);
@@ -96,7 +96,7 @@ pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
 /// ```
-pub fn span_note_and_lint<'a, T: LintContext>(
+pub fn span_lint_and_note<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
     span: Span,

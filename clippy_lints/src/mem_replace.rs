@@ -1,5 +1,5 @@
 use crate::utils::{
-    in_macro, match_def_path, match_qpath, paths, snippet, snippet_with_applicability, span_help_and_lint,
+    in_macro, match_def_path, match_qpath, paths, snippet, snippet_with_applicability, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -142,7 +142,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             then {
                 if match_def_path(cx, repl_def_id, &paths::MEM_UNINITIALIZED) {
-                    span_help_and_lint(
+                    span_lint_and_help(
                         cx,
                         MEM_REPLACE_WITH_UNINIT,
                         expr_span,
@@ -151,7 +151,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
                     );
                 } else if match_def_path(cx, repl_def_id, &paths::MEM_ZEROED) &&
                         !cx.tables.expr_ty(src).is_primitive() {
-                    span_help_and_lint(
+                    span_lint_and_help(
                         cx,
                         MEM_REPLACE_WITH_UNINIT,
                         expr_span,

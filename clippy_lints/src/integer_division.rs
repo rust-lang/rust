@@ -1,4 +1,4 @@
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -30,7 +30,7 @@ declare_lint_pass!(IntegerDivision => [INTEGER_DIVISION]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if is_integer_division(cx, expr) {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 INTEGER_DIVISION,
                 expr.span,

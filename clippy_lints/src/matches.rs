@@ -4,7 +4,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
-    snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
@@ -449,7 +449,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
-                span_note_and_lint(
+                span_lint_and_note(
                     cx,
                     MATCH_OVERLAPPING_ARM,
                     start.span,
@@ -488,7 +488,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                         if is_panic_block(block);
                         then {
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
-                            span_note_and_lint(cx,
+                            span_lint_and_note(cx,
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
@@ -700,7 +700,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields in this arm that contains at least one Wild pattern
             if fields.len() > 1 && fields.iter().any(is_wild) {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,

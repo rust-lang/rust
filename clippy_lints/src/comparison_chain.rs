@@ -1,5 +1,5 @@
 use crate::utils::{
-    get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_help_and_lint, SpanlessEq,
+    get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_lint_and_help, SpanlessEq,
 };
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
                 return;
             }
         }
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             COMPARISON_CHAIN,
             expr.span,

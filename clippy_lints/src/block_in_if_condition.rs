@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             if expr.span.from_expansion() || differing_macro_contexts(expr.span, ex.span) {
                                 return;
                             }
-                            span_help_and_lint(
+                            span_lint_and_help(
                                 cx,
                                 BLOCK_IN_IF_CONDITION_EXPR,
                                 check.span,
@@ -107,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             return;
                         }
                         // move block higher
-                        span_help_and_lint(
+                        span_lint_and_help(
                             cx,
                             BLOCK_IN_IF_CONDITION_STMT,
                             check.span,

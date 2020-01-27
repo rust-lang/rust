@@ -1,6 +1,6 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_help_and_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -34,7 +34,7 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         let lint_true = |is_debug: bool| {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,
@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             );
         };
         let lint_false_without_message = || {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             );
         };
         let lint_false_with_message = |panic_message: String| {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,

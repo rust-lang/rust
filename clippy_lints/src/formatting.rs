@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_help_and_lint, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note};
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -140,7 +140,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
                     let op = UnOp::to_string(op);
                     let eqop_span = lhs.span.between(sub_rhs.span);
                     if eq_snippet.ends_with('=') {
-                        span_note_and_lint(
+                        span_lint_and_note(
                             cx,
                             SUSPICIOUS_ASSIGNMENT_FORMATTING,
                             eqop_span,
@@ -178,7 +178,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
         then {
             let unop_str = UnOp::to_string(op);
             let eqop_span = lhs.span.between(un_rhs.span);
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 SUSPICIOUS_UNARY_OP_FORMATTING,
                 eqop_span,
@@ -221,7 +221,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         let else_desc = if is_if(else_) { "if" } else { "{..}" };
 
         then {
-            span_note_and_lint(
+            span_lint_and_note(
                 cx,
                 SUSPICIOUS_ELSE_FORMATTING,
                 else_span,
@@ -260,7 +260,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
                 if space_snippet.contains('\n');
                 if indentation(cx, op.span) <= indentation(cx, lhs.span);
                 then {
-                    span_note_and_lint(
+                    span_lint_and_note(
                         cx,
                         POSSIBLE_MISSING_COMMA,
                         lint_span,
@@ -291,7 +291,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
                     ("an `else {..}`", "the next block")
                 };
 
-                span_note_and_lint(
+                span_lint_and_note(
                     cx,
                     SUSPICIOUS_ELSE_FORMATTING,
                     else_span,

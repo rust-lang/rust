@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
                     | (_, Constant::F64(_)) => "f64",
                     _ => "f32"
                 };
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     ZERO_DIVIDED_BY_ZERO,
                     expr.span,
