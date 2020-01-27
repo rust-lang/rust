@@ -28,4 +28,4 @@ chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "ff65b5a
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]
-insta = "0.12.0"
+insta = "0.13.0"
