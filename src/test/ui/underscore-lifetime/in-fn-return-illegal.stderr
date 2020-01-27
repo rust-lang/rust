@@ -11,7 +11,7 @@ LL | fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } }
    |           ^^^^     ^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'r>(x: &'r u32, y: &'r u32) -> &'r u32 { loop { } }
+LL | fn foo<'a>(x: &'a u32, y: &'a u32) -> &'a u32 { loop { } }
    |       ^^^^    ^^^^^^^     ^^^^^^^      ^^
 
 error: aborting due to previous error
