@@ -87,8 +87,9 @@ extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
 
 extern "C" LLVMPassRef LLVMRustCreateAddressSanitizerFunctionPass(bool Recover) {
   const bool CompileKernel = false;
+  const bool UseAfterScope = true;
 
-  return wrap(createAddressSanitizerFunctionPass(CompileKernel, Recover));
+  return wrap(createAddressSanitizerFunctionPass(CompileKernel, Recover, UseAfterScope));
 }
 
 extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
