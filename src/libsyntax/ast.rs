@@ -2655,6 +2655,20 @@ impl ItemKind {
             ItemKind::Mac(..) | ItemKind::MacroDef(..) | ItemKind::Impl { .. } => "item",
         }
     }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        match self {
+            Self::Fn(_, generics, _)
+            | Self::TyAlias(_, generics)
+            | Self::Enum(_, generics)
+            | Self::Struct(_, generics)
+            | Self::Union(_, generics)
+            | Self::Trait(_, _, generics, ..)
+            | Self::TraitAlias(generics, _)
+            | Self::Impl { generics, .. } => Some(generics),
+            _ => None,
+        }
+    }
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;

@@ -26,13 +26,17 @@ error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/dyn-trait-compatibility.rs:5:15
    |
 LL | type A2 = dyn<dyn, dyn>;
-   |               ^^^ not found in this scope
+   |        -      ^^^ not found in this scope
+   |        |
+   |        help: you might be missing a type parameter: `<dyn>`
 
 error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/dyn-trait-compatibility.rs:5:20
    |
 LL | type A2 = dyn<dyn, dyn>;
-   |                    ^^^ not found in this scope
+   |        -           ^^^ not found in this scope
+   |        |
+   |        help: you might be missing a type parameter: `<dyn>`
 
 error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/dyn-trait-compatibility.rs:9:11
@@ -44,7 +48,9 @@ error[E0412]: cannot find type `dyn` in this scope
   --> $DIR/dyn-trait-compatibility.rs:9:16
    |
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
-   |                ^^^ not found in this scope
+   |        -       ^^^ not found in this scope
+   |        |
+   |        help: you might be missing a type parameter: `<dyn>`
 
 error: aborting due to 8 previous errors
 

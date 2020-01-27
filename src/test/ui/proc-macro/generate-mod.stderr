@@ -6,6 +6,9 @@ LL | generate_mod::check!();
    | |
    | not found in this scope
    | in this macro invocation
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           FromOutside
 
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:9:1
@@ -15,18 +18,27 @@ LL | generate_mod::check!();
    | |
    | not found in this scope
    | in this macro invocation
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           Outer
 
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           FromOutside
 
 error[E0412]: cannot find type `OuterAttr` in this scope
   --> $DIR/generate-mod.rs:12:1
    |
 LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: possible candidate is found in another module, you can import it into scope:
+           OuterAttr
 
 warning: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:16:10

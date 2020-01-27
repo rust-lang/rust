@@ -614,6 +614,8 @@ struct UseError<'a> {
     node_id: NodeId,
     /// Whether the diagnostic should state that it's "better".
     better: bool,
+    /// Extra free form suggestion. Currently used to suggest new type parameter.
+    suggestion: Option<(Span, &'static str, String, Applicability)>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -2474,10 +2476,15 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
-        for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
+        for UseError { mut err, candidates, node_id, better, suggestion } in
+            self.use_injections.drain(..)
+        {
             let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
                 diagnostics::show_candidates(&mut err, span, &candidates, better, found_use);
+            }
+            if let Some((span, msg, sugg, appl)) = suggestion {
+                err.span_suggestion(span, msg, sugg, appl);
             }
             err.emit();
         }

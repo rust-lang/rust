@@ -2,7 +2,9 @@ error[E0412]: cannot find type `DeviceId` in this scope
   --> $DIR/issue-58712.rs:6:20
    |
 LL | impl<H> AddrVec<H, DeviceId> {
-   |                    ^^^^^^^^ not found in this scope
+   |       -            ^^^^^^^^ not found in this scope
+   |       |
+   |       help: you might be missing a type parameter: `, DeviceId`
 
 error[E0412]: cannot find type `DeviceId` in this scope
   --> $DIR/issue-58712.rs:8:29

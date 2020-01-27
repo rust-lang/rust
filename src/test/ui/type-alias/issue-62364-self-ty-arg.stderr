@@ -2,7 +2,9 @@ error[E0411]: cannot find type `Self` in this scope
   --> $DIR/issue-62364-self-ty-arg.rs:5:29
    |
 LL | type Alias<'a> = Struct<&'a Self>;
-   |                             ^^^^ `Self` is only available in impls, traits, and type definitions
+   |              -              ^^^^ `Self` is only available in impls, traits, and type definitions
+   |              |
+   |              help: you might be missing a type parameter: `, Self`
 
 error: aborting due to previous error
 

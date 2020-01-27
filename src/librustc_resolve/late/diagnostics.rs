@@ -12,9 +12,9 @@ use rustc_hir::def::{self, CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::PrimTy;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
-use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
+use syntax::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use log::debug;
@@ -51,7 +51,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     (variant_path_string, enum_path_string)
 }
 
-impl<'a> LateResolutionVisitor<'a, '_> {
+impl<'a> LateResolutionVisitor<'a, '_, '_> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -857,5 +857,50 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             });
             variants
         })
+    }
+
+    crate fn report_missing_type_error(
+        &self,
+        path: &[Segment],
+    ) -> Option<(Span, &'static str, String, Applicability)> {
+        let ident = match path {
+            [segment] => segment.ident,
+            _ => return None,
+        };
+        match (
+            self.diagnostic_metadata.current_item,
+            self.diagnostic_metadata.currently_processing_generics,
+        ) {
+            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), true) if ident.name == sym::main => {
+                // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
+            }
+            (Some(Item { kind, .. }), true) => {
+                // Likely missing type parameter.
+                if let Some(generics) = kind.generics() {
+                    let msg = "you might be missing a type parameter";
+                    let (span, sugg) = if let [.., param] = &generics.params[..] {
+                        let span = if let [.., bound] = &param.bounds[..] {
+                            bound.span()
+                        } else {
+                            param.ident.span
+                        };
+                        (span, format!(", {}", ident))
+                    } else {
+                        (generics.span, format!("<{}>", ident))
+                    };
+                    // Do not suggest if this is coming from macro expansion.
+                    if !span.from_expansion() {
+                        return Some((
+                            span.shrink_to_hi(),
+                            msg,
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        ));
+                    }
+                }
+            }
+            _ => {}
+        }
+        None
     }
 }
