@@ -227,8 +227,8 @@ fn dtorck_constraint_for_ty<'tcx>(
             // In particular, skipping over `_interior` is safe
             // because any side-effects from dropping `_interior` can
             // only take place through references with lifetimes
-            // derived from lifetimes attached to the upvars, and we
-            // *do* incorporate the upvars here.
+            // derived from lifetimes attached to the upvars and resume
+            // argument, and we *do* incorporate those here.
 
             constraints.outlives.extend(
                 substs
@@ -236,6 +236,7 @@ fn dtorck_constraint_for_ty<'tcx>(
                     .upvar_tys(def_id, tcx)
                     .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
             );
+            constraints.outlives.push(substs.as_generator().resume_ty(def_id, tcx).into());
         }
 
         ty::Adt(def, substs) => {
