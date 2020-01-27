@@ -34,6 +34,16 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="function">foo</span>::&lt;<span class="type.builtin">i32</span>&gt;();
 }
 
+<span class="macro">macro_rules</span><span class="macro">!</span> def_fn {
+    ($($tt:tt)*) =&gt; {$($tt)*}
+}
+
+<span class="macro">def_fn</span><span class="macro">!</span>{
+    <span class="keyword">fn</span> <span class="function">bar</span>() -&gt; <span class="type.builtin">u32</span> {
+        <span class="literal.numeric">100</span>
+    }
+}
+
 <span class="comment">// comment</span>
 <span class="keyword">fn</span> <span class="function">main</span>() {
     <span class="macro">println</span><span class="macro">!</span>(<span class="string">"Hello, {}!"</span>, <span class="literal.numeric">92</span>);
