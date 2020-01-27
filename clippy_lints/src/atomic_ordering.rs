@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, span_help_and_lint};
+use crate::utils::{match_def_path, span_lint_and_help};
 use if_chain::if_chain;
 use rustc::ty;
 use rustc_hir::def_id::DefId;
@@ -80,7 +80,7 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         then {
             if method == "load" &&
                 match_ordering_def_path(cx, ordering_def_id, &["Release", "AcqRel"]) {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     INVALID_ATOMIC_ORDERING,
                     ordering_arg.span,
@@ -89,7 +89,7 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                 );
             } else if method == "store" &&
                 match_ordering_def_path(cx, ordering_def_id, &["Acquire", "AcqRel"]) {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     INVALID_ATOMIC_ORDERING,
                     ordering_arg.span,
@@ -113,7 +113,7 @@ fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
         if match_ordering_def_path(cx, ordering_def_id, &["Relaxed"]);
         then {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 INVALID_ATOMIC_ORDERING,
                 args[0].span,

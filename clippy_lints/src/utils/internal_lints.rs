@@ -1,5 +1,5 @@
 use crate::utils::{
-    is_expn_of, match_def_path, match_type, method_calls, paths, span_help_and_lint, span_lint, span_lint_and_sugg,
+    is_expn_of, match_def_path, match_type, method_calls, paths, span_lint, span_lint_and_help, span_lint_and_sugg,
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
@@ -319,7 +319,7 @@ impl CompilerLintFunctions {
         map.insert("struct_span_lint", "utils::span_lint");
         map.insert("lint", "utils::span_lint");
         map.insert("span_lint_note", "utils::span_note_and_lint");
-        map.insert("span_lint_help", "utils::span_help_and_lint");
+        map.insert("span_lint_help", "utils::span_lint_and_help");
         Self { map }
     }
 }
@@ -336,7 +336,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     COMPILER_LINT_FUNCTIONS,
                     path.ident.span,

@@ -249,14 +249,14 @@ Depending on how complex we want our lint message to be, we can choose from a
 variety of lint emission functions. They can all be found in
 [`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
 
-`span_help_and_lint` seems most appropriate in this case. It allows us to
+`span_lint_and_help` seems most appropriate in this case. It allows us to
 provide an extra help message and we can't really suggest a better name
 automatically. This is how it looks:
 
 ```rust
 impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, _: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             FOO_FUNCTIONS,
             span,
@@ -284,7 +284,7 @@ With that we can expand our `check_fn` method to:
 impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
         if is_foo_fn(fn_kind) {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 FOO_FUNCTIONS,
                 span,

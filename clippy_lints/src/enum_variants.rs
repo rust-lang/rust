@@ -1,7 +1,7 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use crate::utils::{camel_case, is_present_in_source};
-use crate::utils::{span_help_and_lint, span_lint};
+use crate::utils::{span_lint, span_lint_and_help};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -201,7 +201,7 @@ fn check_variant(
         (false, _) => ("pre", pre),
         (true, false) => ("post", post),
     };
-    span_help_and_lint(
+    span_lint_and_help(
         cx,
         lint,
         span,

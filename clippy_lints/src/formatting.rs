@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_help_and_lint, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -178,7 +178,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
         then {
             let unop_str = UnOp::to_string(op);
             let eqop_span = lhs.span.between(un_rhs.span);
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 SUSPICIOUS_UNARY_OP_FORMATTING,
                 eqop_span,

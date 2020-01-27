@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, snippet, span_help_and_lint, SpanlessHash};
+use crate::utils::{in_macro, snippet, span_lint_and_help, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass};
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
                     }
                     hint_string.truncate(hint_string.len() - 2);
                     hint_string.push('`');
-                    span_help_and_lint(
+                    span_lint_and_help(
                         cx,
                         TYPE_REPETITION_IN_BOUNDS,
                         p.span,

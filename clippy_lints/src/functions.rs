@@ -1,6 +1,6 @@
 use crate::utils::{
     attr_by_name, attrs::is_proc_macro, is_must_use_ty, iter_input_pats, match_def_path, must_use_attr, qpath_res,
-    return_ty, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method,
+    return_ty, snippet, snippet_opt, span_lint, span_lint_and_help, span_lint_and_then, trait_ref_of_method,
     type_is_unsafe_function,
 };
 use matches::matches;
@@ -433,7 +433,7 @@ fn check_needless_must_use(
             },
         );
     } else if !attr.is_value_str() && is_must_use_ty(cx, return_ty(cx, item_id)) {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             DOUBLE_MUST_USE,
             fn_header_span,

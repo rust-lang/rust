@@ -3,7 +3,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `as` conversions.
@@ -45,7 +45,7 @@ impl EarlyLintPass for AsConversions {
         }
 
         if let ExprKind::Cast(_, _) = expr.kind {
-            span_help_and_lint(
+            span_lint_and_help(
                 cx,
                 AS_CONVERSIONS,
                 expr.span,

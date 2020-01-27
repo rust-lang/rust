@@ -6,7 +6,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
@@ -56,7 +56,7 @@ impl EarlyLintPass for IfNotElse {
             if let ExprKind::Block(..) = els.kind {
                 match cond.kind {
                     ExprKind::Unary(UnOp::Not, _) => {
-                        span_help_and_lint(
+                        span_lint_and_help(
                             cx,
                             IF_NOT_ELSE,
                             item.span,
@@ -65,7 +65,7 @@ impl EarlyLintPass for IfNotElse {
                         );
                     },
                     ExprKind::Binary(ref kind, _, _) if kind.node == BinOpKind::Ne => {
-                        span_help_and_lint(
+                        span_lint_and_help(
                             cx,
                             IF_NOT_ELSE,
                             item.span,

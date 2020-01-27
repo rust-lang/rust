@@ -6,7 +6,7 @@ use rustc_hir::{AssocItemKind, HirId, ImplItem, ImplItemKind, ImplItemRef, ItemK
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::span_help_and_lint;
+use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks methods that contain a `self` argument but don't use it
@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         };
                         visitor.visit_body(body);
                         if !visitor.uses_self {
-                            span_help_and_lint(
+                            span_lint_and_help(
                                 cx,
                                 UNUSED_SELF,
                                 self_param.span,

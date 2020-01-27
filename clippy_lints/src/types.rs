@@ -27,7 +27,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
     match_path, method_chain_args, multispan_sugg, qpath_res, same_tys, sext, snippet, snippet_opt,
-    snippet_with_applicability, snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then, unsext,
 };
 
@@ -264,7 +264,7 @@ impl Types {
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
                         if match_type_parameter(cx, qpath, &paths::VEC) {
-                            span_help_and_lint(
+                            span_lint_and_help(
                                 cx,
                                 BOX_VEC,
                                 hir_ty.span,
@@ -321,7 +321,7 @@ impl Types {
                             return; // don't recurse into the type
                         }
                     } else if match_def_path(cx, def_id, &paths::LINKED_LIST) {
-                        span_help_and_lint(
+                        span_lint_and_help(
                             cx,
                             LINKEDLIST,
                             hir_ty.span,
@@ -1785,7 +1785,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                         conclusion
                     );
 
-                    span_help_and_lint(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
+                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
                 }
             }
         }

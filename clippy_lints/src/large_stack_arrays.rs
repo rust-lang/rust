@@ -7,7 +7,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use if_chain::if_chain;
 
 use crate::rustc_target::abi::LayoutOf;
-use crate::utils::{snippet, span_help_and_lint};
+use crate::utils::{snippet, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for local arrays that may be too large.
@@ -49,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeStackArrays {
             if let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes());
             if self.maximum_allowed_size < element_count * element_size;
             then {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     LARGE_STACK_ARRAYS,
                     expr.span,

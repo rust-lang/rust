@@ -4,7 +4,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, is_allowed, is_expn_of, is_wild, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
-    snippet_with_applicability, span_help_and_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, span_note_and_lint,
     walk_ptrs_ty,
 };
 use if_chain::if_chain;
@@ -700,7 +700,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields in this arm that contains at least one Wild pattern
             if fields.len() > 1 && fields.iter().any(is_wild) {
-                span_help_and_lint(
+                span_lint_and_help(
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
