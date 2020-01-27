@@ -210,6 +210,23 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
+    /// Prints `{...}` around what `f` and optionally `t` print
+    fn type_ascribed_value(
+        mut self,
+        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        self.write_str("{")?;
+        self = f(self)?;
+        if print_ty {
+            self.write_str(": ")?;
+            self = t(self)?;
+        }
+        self.write_str("}")?;
+        Ok(self)
+    }
+
     /// Prints `<...>` around what `f` prints.
     fn generic_delimiters(
         self,
@@ -455,22 +472,6 @@ pub trait PrettyPrinter<'tcx>:
 
             Ok(cx)
         })
-    }
-
-    fn print_type_ascribed(
-        mut self,
-        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        ty: Ty<'tcx>,
-        print_ty: bool,
-    ) -> Result<Self::Const, Self::Error> {
-        self.write_str("{")?;
-        self = f(self)?;
-        if print_ty {
-            self.write_str(": ")?;
-            self = self.print_type(ty)?;
-        }
-        self.write_str("}")?;
-        Ok(self)
     }
 
     fn pretty_print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
@@ -1002,12 +1003,12 @@ pub trait PrettyPrinter<'tcx>:
             (Scalar::Raw { size: 0, .. }, _) => p!(print(ty)),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
-                self = self.print_type_ascribed(
+                self = self.type_ascribed_value(
                     |mut this| {
                         write!(this, "0x{:01$x}", data, size as usize * 2)?;
                         Ok(this)
                     },
-                    ty,
+                    |this| this.print_type(ty),
                     print_ty,
                 )?
             }
@@ -1027,12 +1028,12 @@ pub trait PrettyPrinter<'tcx>:
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        self.print_type_ascribed(
+        self.type_ascribed_value(
             |mut this| {
                 this.write_str("pointer")?;
                 Ok(this)
             },
-            ty,
+            |this| this.print_type(ty),
             print_ty,
         )
     }
@@ -1425,6 +1426,24 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self.pretty_in_binder(value)
     }
 
+    fn type_ascribed_value(
+        mut self,
+        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        self.write_str("{")?;
+        self = f(self)?;
+        if print_ty {
+            self.write_str(": ")?;
+            let was_in_value = std::mem::replace(&mut self.in_value, false);
+            self = t(self)?;
+            self.in_value = was_in_value;
+        }
+        self.write_str("}")?;
+        Ok(self)
+    }
+
     fn generic_delimiters(
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
@@ -1488,7 +1507,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        self.print_type_ascribed(
+        self.type_ascribed_value(
             |mut this| {
                 define_scoped_cx!(this);
                 if this.print_alloc_ids {
@@ -1498,27 +1517,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 }
                 Ok(this)
             },
-            ty,
+            |this| this.print_type(ty),
             print_ty,
         )
-    }
-
-    fn print_type_ascribed(
-        mut self,
-        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        ty: Ty<'tcx>,
-        print_ty: bool,
-    ) -> Result<Self::Const, Self::Error> {
-        self.write_str("{")?;
-        self = f(self)?;
-        if print_ty {
-            self.write_str(": ")?;
-            let was_in_value = std::mem::replace(&mut self.in_value, false);
-            self = self.print_type(ty)?;
-            self.in_value = was_in_value;
-        }
-        self.write_str("}")?;
-        Ok(self)
     }
 }
 
