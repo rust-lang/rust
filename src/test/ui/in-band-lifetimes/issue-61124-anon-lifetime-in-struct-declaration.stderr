@@ -6,8 +6,8 @@ LL | struct Heartbreak(Betrayal);
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct Heartbreak<'lifetime>(Betrayal<'lifetime>);
-   |                  ^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^
+LL | struct Heartbreak<'r>(Betrayal<'r>);
+   |                  ^^^^ ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

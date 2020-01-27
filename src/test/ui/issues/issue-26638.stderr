@@ -11,8 +11,8 @@ LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.ne
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn parse_type<'lifetime>(iter: Box<dyn Iterator<Item=&str>+'static>) -> &'lifetime str { iter.next() }
-   |              ^^^^^^^^^^^                                                ^^^^^^^^^^
+LL | fn parse_type<'r>(iter: Box<dyn Iterator<Item=&str>+'static>) -> &'r str { iter.next() }
+   |              ^^^^                                                ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:4:40

@@ -19,8 +19,8 @@ LL | fn g(_x: &isize, _y: &isize) -> &isize {
    |          ^^^^^^      ^^^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn g<'lifetime>(_x: &'lifetime isize, _y: &'lifetime isize) -> &'lifetime isize {
-   |     ^^^^^^^^^^^     ^^^^^^^^^^^^^^^^      ^^^^^^^^^^^^^^^^     ^^^^^^^^^^
+LL | fn g<'r>(_x: &'r isize, _y: &'r isize) -> &'r isize {
+   |     ^^^^     ^^^^^^^^^      ^^^^^^^^^     ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:17:19
@@ -35,8 +35,8 @@ LL | fn h(_x: &Foo) -> &isize {
    |          ^^^^
 help: consider introducing a named lifetime parameter
    |
-LL | fn h<'lifetime>(_x: &'lifetime Foo) -> &'lifetime isize {
-   |     ^^^^^^^^^^^     ^^^^^^^^^^^^^^     ^^^^^^^^^^
+LL | fn h<'r>(_x: &'r Foo) -> &'r isize {
+   |     ^^^^     ^^^^^^^     ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:21:20
