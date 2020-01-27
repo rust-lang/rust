@@ -101,7 +101,6 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         Some(assist)
     }
 
-    #[allow(dead_code)] // will be used for auto import assist with multiple actions
     pub(crate) fn add_assist_group(
         self,
         id: AssistId,
@@ -168,7 +167,6 @@ pub(crate) struct ActionBuilder {
 }
 
 impl ActionBuilder {
-    #[allow(dead_code)]
     /// Adds a custom label to the action, if it needs to be different from the assist label
     pub(crate) fn label(&mut self, label: impl Into<String>) {
         self.label = Some(label.into())

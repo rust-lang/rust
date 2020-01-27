@@ -215,6 +215,25 @@ fn main() {
 }
 
 #[test]
+fn doctest_auto_import() {
+    check(
+        "auto_import",
+        r#####"
+fn main() {
+    let map = HashMap<|>::new();
+}
+"#####,
+        r#####"
+use std::collections::HashMap;
+
+fn main() {
+    let map = HashMap<|>::new();
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_change_visibility() {
     check(
         "change_visibility",
