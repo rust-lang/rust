@@ -1,8 +1,13 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
+#![feature(rustc_private)]
+
+extern crate libc;
+
 use std::fs::{File, remove_file};
 use std::io::{Read, Write, ErrorKind, Result};
+use std::os::unix::io::AsRawFd;
 use std::path::{PathBuf, Path};
 
 fn test_metadata(bytes: &[u8], path: &Path) -> Result<()> {
@@ -39,6 +44,16 @@ fn main() {
     // Reading until EOF should get the whole text.
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+
+    // Test calling posix_fadvise on the file.
+    unsafe {
+        libc::posix_fadvise(
+            file.as_raw_fd(),
+            0,
+            bytes.len() as i64,
+            libc::POSIX_FADV_DONTNEED,
+        );
+    }
 
     // Test that metadata of an absolute path is correct.
     test_metadata(bytes, &path).unwrap();
