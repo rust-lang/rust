@@ -1913,7 +1913,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                         err.note(
-                            "for more information on higher-ranked lifetimes, visit \
+                            "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                     }
