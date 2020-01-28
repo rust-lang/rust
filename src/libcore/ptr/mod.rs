@@ -238,17 +238,16 @@ pub(crate) struct FatPtr<T> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(slice_from_raw_parts)]
 /// use std::ptr;
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
-/// let mut x = [5, 6, 7];
-/// let ptr = &mut x[0] as *mut _;
-/// let slice = ptr::slice_from_raw_parts_mut(ptr, 3);
+/// let x = [5, 6, 7];
+/// let ptr = x.as_ptr();
+/// let slice = ptr::slice_from_raw_parts(ptr, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
 #[inline]
-#[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
+#[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
@@ -265,7 +264,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// [`slice_from_raw_parts`]: fn.slice_from_raw_parts.html
 /// [`from_raw_parts_mut`]: ../../std/slice/fn.from_raw_parts_mut.html
 #[inline]
-#[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
+#[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
