@@ -19,7 +19,7 @@ use syntax::ast::{self, Ident, Path};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::lifetimes::{ElisionFailureInfo, ForLifetimeSpanType, MissingLifetimeSpot};
+use crate::lifetimes::{ElisionFailureInfo, MissingLifetimeSpot};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
@@ -1502,30 +1502,17 @@ crate fn add_missing_lifetime_specifiers_label(
                             [param, ..] => (param.span.shrink_to_lo(), "'a, ".to_string()),
                         }
                     }
-                    MissingLifetimeSpot::HRLT { span, span_type } => {
+                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
                         msg = format!(
                             "consider making the {} lifetime-generic with a new `'a` lifetime",
-                            match span_type {
-                                ForLifetimeSpanType::BoundEmpty
-                                | ForLifetimeSpanType::BoundTail => "bound",
-                                ForLifetimeSpanType::TypeEmpty | ForLifetimeSpanType::TypeTail =>
-                                    "type",
-                            }
+                            span_type.descr(),
                         );
                         should_break = false;
                         err.note(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
-                        let suggestion = match span_type {
-                            ForLifetimeSpanType::BoundEmpty | ForLifetimeSpanType::TypeEmpty => {
-                                "for<'a> "
-                            }
-                            ForLifetimeSpanType::BoundTail | ForLifetimeSpanType::TypeTail => {
-                                ", 'a"
-                            }
-                        };
-                        (*span, suggestion.to_string())
+                        (*span, span_type.suggestion("'a"))
                     }
                 });
                 for param in params {
