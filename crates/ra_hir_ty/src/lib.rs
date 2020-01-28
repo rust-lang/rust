@@ -847,7 +847,7 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Array => {
                 let t = self.parameters.as_single();
-                write!(f, "[{};_]", t.display(f.db))?;
+                write!(f, "[{}; _]", t.display(f.db))?;
             }
             TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();
