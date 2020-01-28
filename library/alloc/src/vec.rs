@@ -2240,23 +2240,28 @@ fn write_in_place_with_drop<T>(
     }
 }
 
-// Further specialization potential once
-// https://github.com/rust-lang/rust/issues/62645 has been solved:
-// T can be split into IN and OUT which only need to have the same size and alignment
 impl<T, I> SpecFrom<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source: AsIntoIter<T>>,
+    I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source: AsIntoIter>,
 {
     default fn from_iter(mut iterator: I) -> Self {
-        // This specialization only makes sense if we're juggling real allocations.
-        // Additionally some of the pointer arithmetic would panic on ZSTs.
-        if mem::size_of::<T>() == 0 {
+        // Additional requirements which cannot expressed via trait bounds. We rely on const eval
+        // instead:
+        // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
+        // b) size match as required by Alloc contract
+        // c) alignments match as required by Alloc contract
+        if mem::size_of::<T>() == 0
+            || mem::size_of::<T>()
+                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+            || mem::align_of::<T>()
+                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+        {
             return SpecFromNested::from_iter(iterator);
         }
 
-        let (src_buf, src_end, cap) = {
-            let inner = unsafe { iterator.as_inner().as_into_iter() };
-            (inner.buf.as_ptr(), inner.end, inner.cap)
+        let (src_buf, dst_buf, dst_end, cap) = unsafe {
+            let inner = iterator.as_inner().as_into_iter();
+            (inner.buf.as_ptr(), inner.buf.as_ptr() as *mut T, inner.end as *const T, inner.cap)
         };
 
         // use try-fold
@@ -2266,15 +2271,15 @@ where
         let dst = if mem::needs_drop::<T>() {
             // special-case drop handling since it forces us to lug that extra field around which
             // can inhibit optimizations
-            let sink = InPlaceDrop { inner: src_buf, dst: src_buf };
+            let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
             let sink = iterator
-                .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(src_end))
+                .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
                 .unwrap();
             // iteration succeeded, don't drop head
             let sink = mem::ManuallyDrop::new(sink);
             sink.dst
         } else {
-            iterator.try_fold::<_, _, Result<_, !>>(src_buf, write_in_place(src_end)).unwrap()
+            iterator.try_fold::<_, _, Result<_, !>>(dst_buf, write_in_place(dst_end)).unwrap()
         };
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
@@ -2289,8 +2294,8 @@ where
         src.forget_in_place();
 
         let vec = unsafe {
-            let len = dst.offset_from(src_buf) as usize;
-            Vec::from_raw_parts(src_buf, len, cap)
+            let len = dst.offset_from(dst_buf) as usize;
+            Vec::from_raw_parts(dst_buf, len, cap)
         };
 
         vec
@@ -3010,12 +3015,15 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 }
 
 // internal helper trait for in-place iteration specialization.
-pub(crate) trait AsIntoIter<T> {
-    fn as_into_iter(&mut self) -> &mut IntoIter<T>;
+pub(crate) trait AsIntoIter {
+    type Item;
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
 }
 
-impl<T> AsIntoIter<T> for IntoIter<T> {
-    fn as_into_iter(&mut self) -> &mut IntoIter<T> {
+impl<T> AsIntoIter for IntoIter<T> {
+    type Item = T;
+
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
         self
     }
 }

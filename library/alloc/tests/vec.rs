@@ -820,11 +820,12 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .zip(std::iter::repeat(1usize))
         .map(|(a, b)| a + b)
         .peekable()
-        .skip(1);
+        .skip(1)
+        .map(|e| std::num::NonZeroUsize::new(e));
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Vec<_>>();
     let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr);
+    assert_eq!(srcptr, sinkptr as *const usize);
 }
 
 #[test]

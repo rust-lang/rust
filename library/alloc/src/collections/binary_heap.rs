@@ -1186,8 +1186,10 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
-impl<I> AsIntoIter<I> for IntoIter<I> {
-    fn as_into_iter(&mut self) -> &mut vec::IntoIter<I> {
+impl<I> AsIntoIter for IntoIter<I> {
+    type Item = I;
+
+    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
         &mut self.iter
     }
 }
