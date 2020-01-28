@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .into_iter()
             .map(|matched_place_ref| {
                 let matched_place = Place {
-                    local: *matched_place_ref.local,
+                    local: matched_place_ref.local,
                     projection: tcx.intern_place_elems(matched_place_ref.projection),
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
