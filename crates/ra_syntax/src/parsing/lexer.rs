@@ -69,7 +69,7 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
         .map(|(token, error)| (token.kind, error))
 }
 
-/// The same as `single_syntax_kind()` but returns only `SyntaxKind` and
+/// The same as `lex_single_syntax_kind()` but returns only `SyntaxKind` and
 /// returns `None` if any tokenization error occured.
 ///
 /// Beware that unescape errors are not checked at tokenization time.
@@ -79,10 +79,12 @@ pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
         .map(|(token, _error)| token.kind)
 }
 
-/// Returns the first encountered token at the beginning of the string.
+/// Returns `SyntaxKind` and `Option<SyntaxError>` of the first token
+/// encountered at the beginning of the string.
 ///
 /// Returns `None` if the string contains zero tokens or if the token was parsed
 /// with an error.
+/// The token is malformed if the returned error is not `None`.
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 fn first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
