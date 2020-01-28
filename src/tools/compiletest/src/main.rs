@@ -70,7 +70,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "(compile-fail|run-fail|run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+            "compile-fail | run-fail | run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
+             codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
         )
         .optopt(
             "",
@@ -115,7 +116,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "ar", "path to an archiver", "PATH")
         .optopt("", "linker", "path to a linker", "PATH")
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
-        .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
         .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
         .optopt("", "remote-test-client", "path to the remote test client", "PATH")
@@ -239,7 +239,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         ar: matches.opt_str("ar").unwrap_or("ar".into()),
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
-        llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
         nodejs: matches.opt_str("nodejs"),
     }
 }
