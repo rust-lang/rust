@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                             cx,
                             LET_UNDERSCORE_LOCK,
                             stmt.span,
-                            "non-binding let on an a synchronization lock",
+                            "non-binding let on a synchronization lock",
                             "consider using an underscore-prefixed named binding"
                         )
                     } else {

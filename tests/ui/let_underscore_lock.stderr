@@ -1,0 +1,27 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:7:5
+   |
+LL |     let _ = m.lock();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-underscore-lock` implied by `-D warnings`
+   = help: consider using an underscore-prefixed named binding
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:8:5
+   |
+LL |     let _ = rw.read();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:9:5
+   |
+LL |     let _ = rw.write();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding
+
+error: aborting due to 3 previous errors
+
