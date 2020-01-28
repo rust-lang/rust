@@ -155,7 +155,7 @@ struct NamedRegionMap {
 
 crate enum MissingLifetimeSpot<'tcx> {
     Generics(&'tcx hir::Generics<'tcx>),
-    HRLT { span: Span, span_type: ForLifetimeSpanType },
+    HigherRanked { span: Span, span_type: ForLifetimeSpanType },
 }
 
 crate enum ForLifetimeSpanType {
@@ -163,6 +163,22 @@ crate enum ForLifetimeSpanType {
     BoundTail,
     TypeEmpty,
     TypeTail,
+}
+
+impl ForLifetimeSpanType {
+    crate fn descr(&self) -> &'static str {
+        match self {
+            Self::BoundEmpty | Self::BoundTail => "bound",
+            Self::TypeEmpty | Self::TypeTail => "type",
+        }
+    }
+
+    crate fn suggestion(&self, sugg: &str) -> String {
+        match self {
+            Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
+            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
+        }
+    }
 }
 
 impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
@@ -525,7 +541,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     (ty.span.shrink_to_lo(), ForLifetimeSpanType::TypeEmpty)
                 };
                 self.missing_named_lifetime_spots
-                    .push(MissingLifetimeSpot::HRLT { span, span_type });
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
                 let scope = Scope::Binder {
                     lifetimes: c
                         .generic_params
@@ -1887,29 +1903,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    MissingLifetimeSpot::HRLT { span, span_type } => {
+                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
                         err.span_suggestion(
                             *span,
                             &format!(
                                 "consider making the {} lifetime-generic with a new `{}` lifetime",
-                                match span_type {
-                                    ForLifetimeSpanType::BoundEmpty
-                                    | ForLifetimeSpanType::BoundTail => "bound",
-                                    ForLifetimeSpanType::TypeEmpty
-                                    | ForLifetimeSpanType::TypeTail => "type",
-                                },
+                                span_type.descr(),
                                 lifetime_ref
                             ),
-                            match span_type {
-                                ForLifetimeSpanType::TypeEmpty
-                                | ForLifetimeSpanType::BoundEmpty => {
-                                    format!("for<{}> ", lifetime_ref)
-                                }
-                                ForLifetimeSpanType::TypeTail | ForLifetimeSpanType::BoundTail => {
-                                    format!(", {}", lifetime_ref)
-                                }
-                            }
-                            .to_string(),
+                            span_type.suggestion(&lifetime_ref.to_string()),
                             Applicability::MaybeIncorrect,
                         );
                         err.note(
@@ -2840,7 +2842,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
                 };
                 self.missing_named_lifetime_spots
-                    .push(MissingLifetimeSpot::HRLT { span, span_type });
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
                 return true;
             }
         };
