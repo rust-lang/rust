@@ -5,11 +5,7 @@
 
 use crate::sync::atomic::Ordering;
 
-#[cfg(target_pointer_width = "64")]
-use crate::sync::atomic::AtomicU64;
-
-#[cfg(target_pointer_width = "32")]
-use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::AtomicUsize;
 
 /// Sets the `bit` of `x`.
 #[inline]
@@ -30,7 +26,7 @@ const fn unset_bit(x: u64, bit: u32) -> u64 {
 }
 
 /// Maximum number of features that can be cached.
-const CACHE_CAPACITY: u32 = 63;
+const CACHE_CAPACITY: u32 = 62;
 
 /// This type is used to initialize the cache
 #[derive(Copy, Clone)]
@@ -81,83 +77,48 @@ impl Initializer {
 }
 
 /// This global variable is a cache of the features supported by the CPU.
-static CACHE: Cache = Cache::uninitialized();
+// Note: on x64, we only use the first slot
+static CACHE: [Cache; 2] = [Cache::uninitialized(), Cache::uninitialized()];
 
-/// Feature cache with capacity for `CACHE_CAPACITY` features.
+/// Feature cache with capacity for `usize::max_value() - 1` features.
 ///
 /// Note: the last feature bit is used to represent an
 /// uninitialized cache.
-#[cfg(target_pointer_width = "64")]
-struct Cache(AtomicU64);
+///
+/// Note: we can use `Relaxed` atomic operations, because we are only interested
+/// in the effects of operations on a single memory location. That is, we only
+/// need "modification order", and not the full-blown "happens before". However,
+/// we use `SeqCst` just to be on the safe side.
+struct Cache(AtomicUsize);
 
-#[cfg(target_pointer_width = "64")]
-#[allow(clippy::use_self)]
 impl Cache {
+    const CAPACITY: u32 = (core::mem::size_of::<usize>() * 8 - 1) as u32;
+    const MASK: usize = (1 << Cache::CAPACITY) - 1;
+
     /// Creates an uninitialized cache.
     #[allow(clippy::declare_interior_mutable_const)]
     const fn uninitialized() -> Self {
-        Cache(AtomicU64::new(u64::max_value()))
+        Cache(AtomicUsize::new(usize::max_value()))
     }
     /// Is the cache uninitialized?
     #[inline]
     pub(crate) fn is_uninitialized(&self) -> bool {
-        self.0.load(Ordering::Relaxed) == u64::max_value()
+        self.0.load(Ordering::SeqCst) == usize::max_value()
     }
 
     /// Is the `bit` in the cache set?
     #[inline]
     pub(crate) fn test(&self, bit: u32) -> bool {
-        test_bit(CACHE.0.load(Ordering::Relaxed), bit)
+        test_bit(self.0.load(Ordering::SeqCst) as u64, bit)
     }
 
     /// Initializes the cache.
     #[inline]
-    pub(crate) fn initialize(&self, value: Initializer) {
-        self.0.store(value.0, Ordering::Relaxed);
+    fn initialize(&self, value: usize) {
+        self.0.store(value, Ordering::SeqCst);
     }
 }
 
-/// Feature cache with capacity for `CACHE_CAPACITY` features.
-///
-/// Note: the last feature bit is used to represent an
-/// uninitialized cache.
-#[cfg(target_pointer_width = "32")]
-struct Cache(AtomicU32, AtomicU32);
-
-#[cfg(target_pointer_width = "32")]
-impl Cache {
-    /// Creates an uninitialized cache.
-    const fn uninitialized() -> Self {
-        Cache(
-            AtomicU32::new(u32::max_value()),
-            AtomicU32::new(u32::max_value()),
-        )
-    }
-    /// Is the cache uninitialized?
-    #[inline]
-    pub(crate) fn is_uninitialized(&self) -> bool {
-        self.1.load(Ordering::Relaxed) == u32::max_value()
-    }
-
-    /// Is the `bit` in the cache set?
-    #[inline]
-    pub(crate) fn test(&self, bit: u32) -> bool {
-        if bit < 32 {
-            test_bit(CACHE.0.load(Ordering::Relaxed) as u64, bit)
-        } else {
-            test_bit(CACHE.1.load(Ordering::Relaxed) as u64, bit - 32)
-        }
-    }
-
-    /// Initializes the cache.
-    #[inline]
-    pub(crate) fn initialize(&self, value: Initializer) {
-        let lo: u32 = value.0 as u32;
-        let hi: u32 = (value.0 >> 32) as u32;
-        self.0.store(lo, Ordering::Relaxed);
-        self.1.store(hi, Ordering::Relaxed);
-    }
-}
 cfg_if::cfg_if! {
     if #[cfg(feature = "std_detect_env_override")] {
         #[inline(never)]
@@ -167,14 +128,20 @@ cfg_if::cfg_if! {
                     let _ = super::Feature::from_str(v).map(|v| value.unset(v as u32));
                 }
             }
-            CACHE.initialize(value);
+            do_initialize(value);
         }
     } else {
         #[inline]
         fn initialize(value: Initializer) {
-            CACHE.initialize(value);
+            do_initialize(value);
         }
     }
+}
+
+#[inline]
+fn do_initialize(value: Initializer) {
+    CACHE[0].initialize((value.0) as usize & Cache::MASK);
+    CACHE[1].initialize((value.0 >> Cache::CAPACITY) as usize & Cache::MASK);
 }
 
 /// Tests the `bit` of the storage. If the storage has not been initialized,
@@ -194,8 +161,14 @@ pub(crate) fn test<F>(bit: u32, f: F) -> bool
 where
     F: FnOnce() -> Initializer,
 {
-    if CACHE.is_uninitialized() {
-        initialize(f());
+    let (bit, idx) = if bit < Cache::CAPACITY {
+        (bit, 0)
+    } else {
+        (bit - Cache::CAPACITY, 1)
+    };
+
+    if CACHE[idx].is_uninitialized() {
+        initialize(f())
     }
-    CACHE.test(bit)
+    CACHE[idx].test(bit)
 }
