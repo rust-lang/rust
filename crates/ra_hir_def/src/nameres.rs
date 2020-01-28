@@ -229,6 +229,46 @@ impl CrateDefMap {
             self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path, shadow);
         (res.resolved_def, res.segment_index)
     }
+
+    // FIXME: this can use some more human-readable format (ideally, an IR
+    // even), as this should be a great debugging aid.
+    pub fn dump(&self) -> String {
+        let mut buf = String::new();
+        go(&mut buf, self, "\ncrate", self.root);
+        return buf.trim().to_string();
+
+        fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {
+            *buf += path;
+            *buf += "\n";
+
+            let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();
+            entries.sort_by_key(|(name, _)| name.clone());
+
+            for (name, def) in entries {
+                *buf += &format!("{}:", name);
+
+                if def.types.is_some() {
+                    *buf += " t";
+                }
+                if def.values.is_some() {
+                    *buf += " v";
+                }
+                if def.macros.is_some() {
+                    *buf += " m";
+                }
+                if def.is_none() {
+                    *buf += " _";
+                }
+
+                *buf += "\n";
+            }
+
+            for (name, child) in map.modules[module].children.iter() {
+                let path = path.to_string() + &format!("::{}", name);
+                go(buf, map, &path, *child);
+            }
+        }
+    }
 }
 
 impl ModuleData {
