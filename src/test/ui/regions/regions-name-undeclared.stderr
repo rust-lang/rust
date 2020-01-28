@@ -94,7 +94,7 @@ help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
    |            ^^^^
-help: consider introducing a higher-ranked lifetime `'b` here
+help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
    |                              ^^^^
@@ -110,7 +110,7 @@ help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
    |            ^^^^
-help: consider introducing a higher-ranked lifetime `'b` here
+help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
    |                              ^^^^
