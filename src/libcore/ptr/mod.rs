@@ -1043,49 +1043,55 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[lang = "align_offset"]
 pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
-    /// Calculate multiplicative modular inverse of `x` modulo `m`.
+    /// Calculate multiplicative modular inverse of `x` modulo `m = 2^mpow`.
     ///
     /// This implementation is tailored for align_offset and has following preconditions:
     ///
-    /// * `m` is a power-of-two;
-    /// * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
+    /// * The requested modulo `m` is a power-of-two, so `mpow` can be an argument;
+    /// * `x < m`; (if `x >= m`, pass in `x % m` instead)
     ///
     /// Implementation of this function shall not panic. Ever.
     #[inline]
-    fn mod_inv(x: usize, m: usize) -> usize {
-        /// Multiplicative modular inverse table modulo 2⁴ = 16.
+    fn mod_pow_2_inv(x: usize, mpow: usize) -> usize {
+        /// Multiplicative modular inverse table modulo 2^4 = 16.
         ///
         /// Note, that this table does not contain values where inverse does not exist (i.e., for
-        /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
+        /// `0^-1 mod 16`, `2^-1 mod 16`, etc.)
         const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
-        /// Modulo for which the `INV_TABLE_MOD_16` is intended.
-        const INV_TABLE_MOD: usize = 16;
-        /// INV_TABLE_MOD²
-        const INV_TABLE_MOD_SQUARED: usize = INV_TABLE_MOD * INV_TABLE_MOD;
+        /// `t` such that `2^t` is the modulu for which the `INV_TABLE_MOD_16` is intended.
+        const INV_TABLE_MOD_POW: usize = 4;
+        const INV_TABLE_MOD_POW_TIMES_2: usize = INV_TABLE_MOD_POW << 1;
+        const INV_TABLE_MOD: usize = 1 << INV_TABLE_MOD_POW;
 
         let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
-        if m <= INV_TABLE_MOD {
-            table_inverse & (m - 1)
+        let mask = (1usize << mpow) - 1;
+
+        if mpow <= INV_TABLE_MOD_POW {
+            table_inverse & mask
         } else {
             // We iterate "up" using the following formula:
             //
-            // $$ xy ≡ 1 (mod 2ⁿ) → xy (2 - xy) ≡ 1 (mod 2²ⁿ) $$
+            // ` xy = 1 (mod 2^n) -> xy (2 - xy) = 1 (mod 2^(2n)) `
             //
-            // until 2²ⁿ ≥ m. Then we can reduce to our desired `m` by taking the result `mod m`.
+            // until 2^2n ≥ m. Then we can reduce to our desired `m` by taking the result `mod m`.
+            //
+            // Running `k` iterations starting with a solution valid mod `2^t` will get us a
+            // solution valid mod `2^((2^k) * t)`, so we need to calculate for which `k`,
+            // `2^k * t > log2(m)`.
             let mut inverse = table_inverse;
-            let mut going_mod = INV_TABLE_MOD_SQUARED;
+            let mut going_modpow = INV_TABLE_MOD_POW_TIMES_2;
             loop {
-                // y = y * (2 - xy) mod n
+                // y = y * (2 - xy)
                 //
-                // Note, that we use wrapping operations here intentionally – the original formula
+                // Note, that we use wrapping operations here intentionally - the original formula
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
                 // usize::max_value()` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
-                if going_mod >= m {
-                    return inverse & (m - 1);
+                if going_modpow >= mpow {
+                    return inverse & mask;
                 }
-                going_mod = going_mod.wrapping_mul(going_mod);
+                going_modpow <<= 1;
             }
         }
     }
@@ -1111,7 +1117,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 
     let smoda = stride & a_minus_one;
     // a is power-of-two so cannot be 0. stride = 0 is handled above.
-    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
+    let apow = intrinsics::cttz_nonzero(a);
+    let gcdpow = intrinsics::cttz_nonzero(stride).min(apow);
     let gcd = 1usize << gcdpow;
 
     if p as usize & (gcd.wrapping_sub(1)) == 0 {
@@ -1140,7 +1147,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         let a2minus1 = a2.wrapping_sub(1);
         let s2 = smoda >> gcdpow;
         let minusp2 = a2.wrapping_sub(pmoda >> gcdpow);
-        return (minusp2.wrapping_mul(mod_inv(s2, a2))) & a2minus1;
+        return (minusp2.wrapping_mul(mod_pow_2_inv(s2, apow.wrapping_sub(gcdpow)))) & a2minus1;
     }
 
     // Cannot be aligned at all.
