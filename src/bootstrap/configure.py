@@ -60,6 +60,7 @@ o("lld", "rust.lld", "build lld")
 o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
+o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
 
 o("cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
 o("cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")

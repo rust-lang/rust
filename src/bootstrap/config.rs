@@ -116,6 +116,7 @@ pub struct Config {
     pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
     pub jemalloc: bool,
+    pub control_flow_guard: bool,
 
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
@@ -333,6 +334,7 @@ struct Rust {
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<bool>,
+    control_flow_guard: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -580,6 +582,7 @@ impl Config {
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
+            set(&mut config.control_flow_guard, rust.control_flow_guard);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends =
