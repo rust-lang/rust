@@ -247,7 +247,7 @@ impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
         // replaces every key-value pair in `self`. Since `oiter` is in sorted
         // order and the structure of the `BTreeMap` stays the same,
         // the BTree invariants are maintained at the end of the loop
-        while siter.front != siter.back {
+        while !siter.is_empty() {
             if let Some((ok, ov)) = oiter.next() {
                 // SAFETY: This is safe because the `siter.front != siter.back` check
                 // ensures that `siter` is nonempty
@@ -1764,7 +1764,7 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.front == self.back {
+        if self.is_empty() {
             None
         } else {
             unsafe {
@@ -1780,6 +1780,10 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K, V> RangeMut<'a, K, V> {
+    fn is_empty(&self) -> bool {
+        self.front == self.back
+    }
+
     unsafe fn next_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
         let handle = ptr::read(&self.front);
 
@@ -1816,7 +1820,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.front == self.back { None } else { unsafe { Some(self.next_back_unchecked()) } }
+        if self.is_empty() { None } else { unsafe { Some(self.next_back_unchecked()) } }
     }
 }
 
