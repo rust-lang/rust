@@ -359,6 +359,14 @@ impl WatchThread {
                     }
                 };
 
+                // Skip certain kinds of messages to only spend time on what's useful
+                match &message {
+                    Message::CompilerArtifact(artifact) if artifact.fresh => continue,
+                    Message::BuildScriptExecuted(_) => continue,
+                    Message::Unknown => continue,
+                    _ => {}
+                }
+
                 match message_send.send(CheckEvent::Msg(message)) {
                     Ok(()) => {}
                     Err(_err) => {
