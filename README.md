@@ -51,10 +51,10 @@ program, and cannot run all programs:
 
 ## Using Miri
 
-Install Miri via `rustup`:
+Install Miri on Rust nightly via `rustup`:
 
 ```sh
-rustup component add miri
+rustup +nightly component add miri
 ```
 
 If `rustup` says the `miri` component is unavailable, that's because not all
