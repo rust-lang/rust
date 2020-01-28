@@ -207,9 +207,25 @@ impl CargoWorkspace {
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
         for node in resolve.nodes {
-            let source = pkg_by_id[&node.id];
+            let source = match pkg_by_id.get(&node.id) {
+                Some(&src) => src,
+                None => {
+                    log::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
+                    continue;
+                }
+            };
             for dep_node in node.deps {
-                let dep = PackageDependency { name: dep_node.name, pkg: pkg_by_id[&dep_node.pkg] };
+                let pkg = match pkg_by_id.get(&dep_node.pkg) {
+                    Some(&pkg) => pkg,
+                    None => {
+                        log::error!(
+                            "Dep node id do not match in cargo metadata, ignoring {}",
+                            dep_node.pkg
+                        );
+                        continue;
+                    }
+                };
+                let dep = PackageDependency { name: dep_node.name, pkg };
                 packages[source].dependencies.push(dep);
             }
             packages[source].features.extend(node.features);
