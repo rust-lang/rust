@@ -221,6 +221,7 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
+        debug_assert!(!self.is_shared_root());
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
@@ -230,6 +231,7 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
+        debug_assert!(!self.is_shared_root());
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
