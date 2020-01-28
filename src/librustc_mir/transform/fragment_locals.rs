@@ -1,5 +1,5 @@
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
+use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::util::IntTypeExt;
@@ -26,6 +26,24 @@ impl MirPass<'tcx> for FragmentLocals {
         }
 
         collector.visit_body(read_only!(body));
+
+        // Enforce current limitations of `VarDebugInfo` wrt fragmentation.
+        for var_debug_info in &body.var_debug_info {
+            match &var_debug_info.contents {
+                VarDebugInfoContents::Compact(place) => {
+                    if let Some(node) = collector.place_node(place) {
+                        node.ensure_debug_info_compatible_descendents();
+                    }
+                }
+                VarDebugInfoContents::Composite { ty: _, fragments } => {
+                    for fragment in fragments {
+                        if let Some(node) = collector.place_node(&fragment.contents) {
+                            node.ensure_debug_info_compatible_descendents();
+                        }
+                    }
+                }
+            }
+        }
 
         let replacements = collector
             .locals
@@ -133,6 +151,25 @@ impl FragmentTree<'tcx> {
         }
     }
 
+    /// Make any descendent node which has discriminant/variant fragments opaque,
+    /// as `enum`s (and similarly, generators) are not compatible with variable
+    /// debuginfo currently (also see comments in `VarDebugInfoFragment`).
+    fn ensure_debug_info_compatible_descendents(&mut self) {
+        if let FragmentTreeNodeKind::Nested(ref mut fragments) = self.kind {
+            let enum_like = fragments.keys().any(|f| match f {
+                Fragment::Discriminant => true,
+                Fragment::Field(variant_index, _) => variant_index.is_some(),
+            });
+            if enum_like {
+                self.make_opaque();
+            } else {
+                for fragment in fragments.values_mut() {
+                    fragment.ensure_debug_info_compatible_descendents();
+                }
+            }
+        }
+    }
+
     fn project(
         mut self: &'a mut Self,
         mut proj_elems: &'tcx [PlaceElem<'tcx>],
@@ -195,6 +232,37 @@ impl FragmentTree<'tcx> {
             }
         }
     }
+
+    /// Push debuginfo for all leaves into `fragments`, pointing to
+    /// their respective `replacement_local`s (set by `assign_locals`).
+    fn gather_debug_info_fragments(
+        &self,
+        dbg_fragment_projection: &mut Vec<ProjectionKind>,
+        dbg_fragments: &mut Vec<VarDebugInfoFragment<'tcx>>,
+    ) {
+        match self.kind {
+            FragmentTreeNodeKind::OpaqueLeaf { replacement_local } => {
+                dbg_fragments.push(VarDebugInfoFragment {
+                    projection: dbg_fragment_projection.clone(),
+                    contents: Place::from(replacement_local.expect("missing replacement")),
+                })
+            }
+            FragmentTreeNodeKind::Nested(ref fragments) => {
+                for (&f, fragment) in fragments {
+                    match f {
+                        Fragment::Discriminant => unreachable!(),
+                        Fragment::Field(variant_index, field) => {
+                            assert_eq!(variant_index, None);
+
+                            dbg_fragment_projection.push(ProjectionElem::Field(field, ()));
+                        }
+                    }
+                    fragment.gather_debug_info_fragments(dbg_fragment_projection, dbg_fragments);
+                    dbg_fragment_projection.pop();
+                }
+            }
+        }
+    }
 }
 
 struct FragmentTreeCollector<'tcx> {
@@ -220,11 +288,6 @@ impl Visitor<'tcx> for FragmentTreeCollector<'tcx> {
 
         if let Some(node) = self.place_node(place) {
             if context.is_use() {
-                node.make_opaque();
-            }
-
-            // FIXME(eddyb) implement debuginfo support for fragmented locals.
-            if let PlaceContext::NonUse(NonUseContext::VarDebugInfo) = context {
                 node.make_opaque();
             }
         }
@@ -307,6 +370,40 @@ impl MutVisitor<'tcx> for FragmentTreeReplacer<'tcx> {
                 Ok(place_replacement) => *place = place_replacement,
                 // HACK(eddyb) this only exists to support `(Set)Discriminant` below.
                 Err(_) => unreachable!(),
+            }
+        }
+    }
+
+    // Break up `VarDebugInfo` into fragments where necessary.
+    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
+        match &mut var_debug_info.contents {
+            VarDebugInfoContents::Compact(place) => {
+                if let Some(place_replacement) = self.replace(place) {
+                    match place_replacement {
+                        Ok(place_replacement) => *place = place_replacement,
+                        Err(node) => {
+                            let mut fragments = vec![];
+                            node.gather_debug_info_fragments(&mut vec![], &mut fragments);
+                            var_debug_info.contents =
+                                VarDebugInfoContents::Composite { ty: node.ty, fragments };
+                        }
+                    }
+                }
+            }
+            VarDebugInfoContents::Composite { ty: _, fragments } => {
+                for fragment in fragments {
+                    if let Some(place_replacement) = self.replace(&fragment.contents) {
+                        match place_replacement {
+                            Ok(place_replacement) => fragment.contents = place_replacement,
+                            // FIXME(eddyb) implement!!
+                            Err(_) => span_bug!(
+                                var_debug_info.source_info.span,
+                                "FIXME: implement fragmentation for {:?}",
+                                var_debug_info,
+                            ),
+                        }
+                    }
+                }
             }
         }
     }

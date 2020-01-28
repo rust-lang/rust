@@ -1288,10 +1288,14 @@ fn generator_layout_and_saved_local_names(
 
     let state_arg = mir::Local::new(1);
     for var in &body.var_debug_info {
-        if var.place.local != state_arg {
+        let place = match var.contents {
+            mir::VarDebugInfoContents::Compact(place) => place,
+            mir::VarDebugInfoContents::Composite { .. } => continue,
+        };
+        if place.local != state_arg {
             continue;
         }
-        match var.place.projection[..] {
+        match place.projection[..] {
             [
                 // Deref of the `Pin<&mut Self>` state argument.
                 mir::ProjectionElem::Field(..),

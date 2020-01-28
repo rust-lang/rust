@@ -34,6 +34,7 @@ use libc::c_uint;
 use log::debug;
 use std::cell::RefCell;
 use std::ffi::CString;
+use std::ops::Range;
 
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_codegen_ssa::traits::*;
@@ -154,6 +155,7 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         variable_alloca: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
+        fragment: Option<Range<Size>>,
         span: Span,
     ) {
         assert!(!dbg_context.source_locations_enabled);
@@ -161,21 +163,30 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
 
         let loc = span_start(cx, span);
 
-        // Convert the direct and indirect offsets to address ops.
+        // Convert the direct/indirect offsets and fragment byte range to DWARF OPs.
         let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
         let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
-        let mut addr_ops = SmallVec::<[_; 8]>::new();
+        let op_llvm_fragment = || unsafe { llvm::LLVMRustDIBuilderCreateOpLLVMFragment() };
+        let mut dwarf_ops = SmallVec::<[_; 8]>::new();
 
         if direct_offset.bytes() > 0 {
-            addr_ops.push(op_plus_uconst());
-            addr_ops.push(direct_offset.bytes() as i64);
+            dwarf_ops.push(op_plus_uconst());
+            dwarf_ops.push(direct_offset.bytes() as i64);
         }
         for &offset in indirect_offsets {
-            addr_ops.push(op_deref());
+            dwarf_ops.push(op_deref());
             if offset.bytes() > 0 {
-                addr_ops.push(op_plus_uconst());
-                addr_ops.push(offset.bytes() as i64);
+                dwarf_ops.push(op_plus_uconst());
+                dwarf_ops.push(offset.bytes() as i64);
             }
+        }
+
+        if let Some(fragment) = fragment {
+            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
+            // offset and size, both of them in bits.
+            dwarf_ops.push(op_llvm_fragment());
+            dwarf_ops.push(fragment.start.bits() as i64);
+            dwarf_ops.push((fragment.end - fragment.start).bits() as i64);
         }
 
         // FIXME(eddyb) maybe this information could be extracted from `var`,
@@ -191,8 +202,8 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
                 DIB(cx),
                 variable_alloca,
                 dbg_var,
-                addr_ops.as_ptr(),
-                addr_ops.len() as c_uint,
+                dwarf_ops.as_ptr(),
+                dwarf_ops.len() as c_uint,
                 debug_loc,
                 self.llbb(),
             );

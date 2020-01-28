@@ -739,16 +739,31 @@ macro_rules! make_mir_visitor {
                 let VarDebugInfo {
                     name: _,
                     source_info,
-                    place,
+                    contents,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
                 let location = START_BLOCK.start_location();
-                self.visit_place(
-                    place,
-                    PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                    location,
-                );
+                match contents {
+                    VarDebugInfoContents::Compact(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location,
+                        );
+                    }
+                    VarDebugInfoContents::Composite { ty, fragments } => {
+                        // FIXME(eddyb) use a better `TyContext` here.
+                        self.visit_ty(ty, TyContext::Location(location));
+                        for VarDebugInfoFragment { projection: _, contents } in fragments {
+                            self.visit_place(
+                                contents,
+                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                                location,
+                            );
+                        }
+                    }
+                }
             }
 
             fn super_source_scope(&mut self,

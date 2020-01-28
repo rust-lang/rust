@@ -5,9 +5,9 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Size};
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
-
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
+use std::ops::Range;
 
 use super::OperandValue;
 use super::{FunctionCx, LocalRef};
@@ -25,13 +25,17 @@ pub enum VariableKind {
 }
 
 /// Like `mir::VarDebugInfo`, but within a `mir::Local`.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct PerLocalVarDebugInfo<'tcx, D> {
     pub name: Symbol,
     pub source_info: mir::SourceInfo,
 
     /// `DIVariable` returned by `create_dbg_var`.
     pub dbg_var: Option<D>,
+
+    /// Byte range in the `dbg_var` covered by this fragment,
+    /// if this is a fragment of a composite `VarDebugInfo`.
+    pub fragment: Option<Range<Size>>,
 
     /// `.place.projection` from `mir::VarDebugInfo`.
     pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
@@ -127,7 +131,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().find(|var| var.projection.is_empty()).copied();
+        let whole_local_var =
+            vars.iter().find(|var| var.fragment.is_none() && var.projection.is_empty()).cloned();
         let has_proj = || vars.iter().any(|var| !var.projection.is_empty());
 
         let fallback_var = if self.mir.local_kind(local) == mir::LocalKind::Arg {
@@ -173,6 +178,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     name,
                     source_info: decl.source_info,
                     dbg_var,
+                    fragment: None,
                     projection: ty::List::empty(),
                 })
             }
@@ -183,7 +189,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let local_ref = &self.locals[local];
 
         if !bx.sess().fewer_names() {
-            let name = match whole_local_var.or(fallback_var) {
+            let name = match whole_local_var.or(fallback_var.clone()) {
                 Some(var) if var.name != kw::Invalid => var.name.to_string(),
                 _ => format!("{:?}", local),
             };
@@ -221,7 +227,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => return,
         };
 
-        let vars = vars.iter().copied().chain(fallback_var);
+        let vars = vars.iter().cloned().chain(fallback_var);
 
         for var in vars {
             let mut layout = base.layout;
@@ -270,6 +276,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         base.llval,
                         direct_offset,
                         &indirect_offsets,
+                        var.fragment,
                         span,
                     );
                 }
@@ -302,25 +309,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 (None, var.source_info.span)
             };
+            let (var_ty, var_kind) = match var.contents {
+                mir::VarDebugInfoContents::Compact(place) => (
+                    self.monomorphized_place_ty(place.as_ref()),
+                    if self.mir.local_kind(place.local) == mir::LocalKind::Arg
+                        && place.projection.is_empty()
+                    {
+                        // FIXME(eddyb, #67586) take `var.source_info.scope` into
+                        // account to avoid using `ArgumentVariable` more than once
+                        // per argument local.
+
+                        let arg_index = place.local.index() - 1;
+
+                        // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
+                        // offset in closures to account for the hidden environment?
+                        // Also, is this `+ 1` needed at all?
+                        VariableKind::ArgumentVariable(arg_index + 1)
+                    } else {
+                        VariableKind::LocalVariable
+                    },
+                ),
+                mir::VarDebugInfoContents::Composite { ty, fragments: _ } => {
+                    (self.monomorphize(&ty), VariableKind::LocalVariable)
+                }
+            };
             let dbg_var = scope.map(|scope| {
-                let place = var.place;
-                let var_ty = self.monomorphized_place_ty(place.as_ref());
-                let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
-                    && place.projection.is_empty()
-                {
-                    // FIXME(eddyb, #67586) take `var.source_info.scope` into
-                    // account to avoid using `ArgumentVariable` more than once
-                    // per argument local.
-
-                    let arg_index = place.local.index() - 1;
-
-                    // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
-                    // offset in closures to account for the hidden environment?
-                    // Also, is this `+ 1` needed at all?
-                    VariableKind::ArgumentVariable(arg_index + 1)
-                } else {
-                    VariableKind::LocalVariable
-                };
                 self.cx.create_dbg_var(
                     self.debug_context.as_ref().unwrap(),
                     var.name,
@@ -331,12 +344,54 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 )
             });
 
-            per_local[var.place.local].push(PerLocalVarDebugInfo {
-                name: var.name,
-                source_info: var.source_info,
-                dbg_var,
-                projection: var.place.projection,
-            });
+            match &var.contents {
+                mir::VarDebugInfoContents::Compact(place) => {
+                    per_local[place.local].push(PerLocalVarDebugInfo {
+                        name: var.name,
+                        source_info: var.source_info,
+                        dbg_var,
+                        fragment: None,
+                        projection: place.projection,
+                    });
+                }
+                mir::VarDebugInfoContents::Composite { ty: _, fragments } => {
+                    let var_layout = self.cx.layout_of(var_ty);
+                    for fragment in fragments {
+                        let mut fragment_start = Size::ZERO;
+                        let mut fragment_layout = var_layout;
+
+                        for elem in &fragment.projection {
+                            match *elem {
+                                mir::ProjectionElem::Field(field, _) => {
+                                    let i = field.index();
+                                    fragment_start += fragment_layout.fields.offset(i);
+                                    fragment_layout = fragment_layout.field(self.cx, i);
+                                }
+                                _ => span_bug!(
+                                    var.source_info.span,
+                                    "unsupported fragment projection `{:?}`",
+                                    elem,
+                                ),
+                            }
+                        }
+
+                        let place = fragment.contents;
+                        per_local[place.local].push(PerLocalVarDebugInfo {
+                            name: var.name,
+                            source_info: var.source_info,
+                            dbg_var,
+                            fragment: if fragment_layout.size == var_layout.size {
+                                // Fragment covers entire variable, so as far as
+                                // DWARF is concerned, it's not really a fragment.
+                                None
+                            } else {
+                                Some(fragment_start..fragment_start + fragment_layout.size)
+                            },
+                            projection: place.projection,
+                        });
+                    }
+                }
+            }
         }
         Some(per_local)
     }

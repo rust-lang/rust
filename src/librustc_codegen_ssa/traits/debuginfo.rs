@@ -6,6 +6,7 @@ use rustc::ty::{Instance, Ty};
 use rustc_hir::def_id::CrateNum;
 use rustc_span::{SourceFile, Span};
 use rustc_target::abi::call::FnAbi;
+use std::ops::Range;
 use syntax::ast::Name;
 
 pub trait DebugInfoMethods<'tcx>: BackendTypes {
@@ -56,6 +57,9 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
+        // Byte range in the `dbg_var` covered by this fragment,
+        // if this is a fragment of a composite `DIVariable`.
+        fragment: Option<Range<Size>>,
         span: Span,
     );
     fn set_source_location(

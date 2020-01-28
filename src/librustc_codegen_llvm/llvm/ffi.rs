@@ -1809,6 +1809,7 @@ extern "C" {
     ) -> &'a Value;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> i64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);

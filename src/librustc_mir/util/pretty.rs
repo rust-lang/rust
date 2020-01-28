@@ -441,18 +441,34 @@ fn write_scope_tree(
             continue;
         }
 
-        let indented_debug_info = format!(
-            "{0:1$}debug {2} => {3:?};",
-            INDENT, indent, var_debug_info.name, var_debug_info.place,
-        );
+        let mut indented_header = format!("{0:1$}debug {2}", INDENT, indent, var_debug_info.name);
+
+        match &var_debug_info.contents {
+            VarDebugInfoContents::Compact(place) => {
+                write!(indented_header, " => {:?};", place).unwrap();
+            }
+            VarDebugInfoContents::Composite { ty, fragments: _ } => {
+                write!(indented_header, ": {} {{", ty).unwrap();
+            }
+        }
 
         writeln!(
             w,
             "{0:1$} // in {2}",
-            indented_debug_info,
+            indented_header,
             ALIGN,
             comment(tcx, var_debug_info.source_info),
         )?;
+
+        match &var_debug_info.contents {
+            VarDebugInfoContents::Compact(_) => {}
+            VarDebugInfoContents::Composite { ty: _, fragments } => {
+                for fragment in fragments {
+                    writeln!(w, "{0:1$}{0}{2:?},", INDENT, indent, fragment).unwrap();
+                }
+                writeln!(w, "{0:1$}}};", INDENT, indent)?;
+            }
+        }
     }
 
     // Local variable types (including the user's name in a comment).

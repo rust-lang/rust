@@ -948,10 +948,64 @@ pub struct VarDebugInfo<'tcx> {
     /// (see `LocalDecl`'s `source_info` field for more details).
     pub source_info: SourceInfo,
 
-    /// Where the data for this user variable is to be found.
-    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    /// based on a `Local`, not a `Static`, and contains no indexing.
-    pub place: Place<'tcx>,
+    /// How the contents of this user variable are represented.
+    pub contents: VarDebugInfoContents<'tcx>,
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub enum VarDebugInfoContents<'tcx> {
+    /// The user variable's data is entirely in one `Place`.
+    // NOTE(eddyb) there's an unenforced invariant that this `Place` is
+    // contains no indexing (with a non-constant index).
+    Compact(Place<'tcx>),
+
+    /// The user variable's data is split across several fragments,
+    /// each described by a `VarDebugInfoFragment`.
+    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
+    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
+    /// the underlying debuginfo feature this relies on.
+    Composite {
+        /// Type of the original user variable.
+        ty: Ty<'tcx>,
+
+        /// All the parts of the original user variable, which ended
+        /// up in disjoint places, due to optimizations.
+        fragments: Vec<VarDebugInfoFragment<'tcx>>,
+    },
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct VarDebugInfoFragment<'tcx> {
+    /// Where in the composite user variable this fragment is,
+    /// represented as a "projection" into the composite variable.
+    /// At lower levels, this corresponds to a byte/bit range.
+    // NOTE(eddyb) there's an unenforced invariant that this contains
+    // only `Field`s, and not into `enum` variants or `union`s.
+    // FIXME(eddyb) support this for `enum`s by either using DWARF's
+    // more advanced control-flow features (unsupported by LLVM?)
+    // to match on the discriminant, or by using custom type debuginfo
+    // with non-overlapping variants for the composite variable.
+    pub projection: Vec<ProjectionKind>,
+
+    /// Where the data for this fragment can be found.
+    // NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    // contains no indexing (with a non-constant index).
+    pub contents: Place<'tcx>,
+}
+
+impl Debug for VarDebugInfoFragment<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        for elem in self.projection.iter() {
+            match elem {
+                ProjectionElem::Field(field, _) => {
+                    write!(fmt, ".{:?}", field.index())?;
+                }
+                _ => bug!("unsupported fragment projection `{:?}`", elem),
+            }
+        }
+
+        write!(fmt, " => {:?}", self.contents)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

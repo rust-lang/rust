@@ -5,7 +5,7 @@ use rustc::lint::builtin::MUTABLE_BORROW_RESERVATION_CONFLICT;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::mir::{
     read_only, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability, Operand, Place,
-    PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
+    PlaceElem, PlaceRef, ReadOnlyBodyAndCache, VarDebugInfoContents,
 };
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -121,7 +121,11 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
-        if let Some(local) = var_debug_info.place.as_local() {
+        let place = match var_debug_info.contents {
+            VarDebugInfoContents::Compact(place) => place,
+            VarDebugInfoContents::Composite { .. } => continue,
+        };
+        if let Some(local) = place.as_local() {
             if let Some(prev_name) = local_names[local] {
                 if var_debug_info.name != prev_name {
                     span_bug!(

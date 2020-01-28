@@ -967,6 +967,10 @@ extern "C" int64_t LLVMRustDIBuilderCreateOpPlusUconst() {
   return dwarf::DW_OP_plus_uconst;
 }
 
+extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
+  return dwarf::DW_OP_LLVM_fragment;
+}
+
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
   RawRustStringOstream OS(Str);
   unwrap<llvm::Type>(Ty)->print(OS);

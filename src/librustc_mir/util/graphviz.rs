@@ -195,12 +195,22 @@ fn write_graph_label<'tcx, W: Write>(
     }
 
     for var_debug_info in &body.var_debug_info {
-        write!(
-            w,
-            r#"debug {} =&gt; {};<br align="left"/>"#,
-            var_debug_info.name,
-            escape(&var_debug_info.place)
-        )?;
+        write!(w, "debug {}", var_debug_info.name)?;
+
+        match &var_debug_info.contents {
+            VarDebugInfoContents::Compact(place) => {
+                write!(w, " =&gt; {}", escape(place))?;
+            }
+            VarDebugInfoContents::Composite { ty, fragments } => {
+                write!(w, r#": {} {{<br align="left"/>"#, escape(ty))?;
+                for fragment in fragments {
+                    write!(w, r#"    {},<br align="left"/>"#, escape(fragment))?;
+                }
+                write!(w, r#"}}"#)?;
+            }
+        }
+
+        write!(w, r#";<br align="left"/>"#)?;
     }
 
     writeln!(w, ">;")
