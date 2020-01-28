@@ -19,7 +19,7 @@ use syntax::ast::{self, Ident, Path};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::lifetimes::{ElisionFailureInfo, HRLTSpanType, MissingLifetimeSpot};
+use crate::lifetimes::{ElisionFailureInfo, ForLifetimeSpanType, MissingLifetimeSpot};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
@@ -1495,7 +1495,7 @@ crate fn add_missing_lifetime_specifiers_label(
                 let should_break;
                 introduce_suggestion.push(match missing {
                     MissingLifetimeSpot::Generics(generics) => {
-                        msg = "consider introducing a named lifetime parameter";
+                        msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
                         match &generics.params {
                             [] => (generics.span, "<'a>".to_string()),
@@ -1503,15 +1503,27 @@ crate fn add_missing_lifetime_specifiers_label(
                         }
                     }
                     MissingLifetimeSpot::HRLT { span, span_type } => {
-                        msg = "consider introducing a higher-ranked lifetime";
+                        msg = format!(
+                            "consider making the {} lifetime-generic with a new `'a` lifetime",
+                            match span_type {
+                                ForLifetimeSpanType::BoundEmpty
+                                | ForLifetimeSpanType::BoundTail => "bound",
+                                ForLifetimeSpanType::TypeEmpty | ForLifetimeSpanType::TypeTail =>
+                                    "type",
+                            }
+                        );
                         should_break = false;
                         err.note(
                             "for more information on higher-ranked lifetimes, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                         let suggestion = match span_type {
-                            HRLTSpanType::Empty => "for<'a> ",
-                            HRLTSpanType::Tail => ", 'a",
+                            ForLifetimeSpanType::BoundEmpty | ForLifetimeSpanType::TypeEmpty => {
+                                "for<'a> "
+                            }
+                            ForLifetimeSpanType::BoundTail | ForLifetimeSpanType::TypeTail => {
+                                ", 'a"
+                            }
                         };
                         (*span, suggestion.to_string())
                     }
@@ -1528,7 +1540,7 @@ crate fn add_missing_lifetime_specifiers_label(
                     }
                 }
                 introduce_suggestion.push((span, sugg.to_string()));
-                err.multipart_suggestion(msg, introduce_suggestion, Applicability::MaybeIncorrect);
+                err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
                 if should_break {
                     break;
                 }

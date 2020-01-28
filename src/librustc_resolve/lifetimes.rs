@@ -155,12 +155,14 @@ struct NamedRegionMap {
 
 crate enum MissingLifetimeSpot<'tcx> {
     Generics(&'tcx hir::Generics<'tcx>),
-    HRLT { span: Span, span_type: HRLTSpanType },
+    HRLT { span: Span, span_type: ForLifetimeSpanType },
 }
 
-crate enum HRLTSpanType {
-    Empty,
-    Tail,
+crate enum ForLifetimeSpanType {
+    BoundEmpty,
+    BoundTail,
+    TypeEmpty,
+    TypeTail,
 }
 
 impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
@@ -509,6 +511,21 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
+                let lifetime_span: Option<Span> = c
+                    .generic_params
+                    .iter()
+                    .filter_map(|param| match param.kind {
+                        GenericParamKind::Lifetime { .. } => Some(param.span),
+                        _ => None,
+                    })
+                    .last();
+                let (span, span_type) = if let Some(span) = lifetime_span {
+                    (span.shrink_to_hi(), ForLifetimeSpanType::TypeTail)
+                } else {
+                    (ty.span.shrink_to_lo(), ForLifetimeSpanType::TypeEmpty)
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HRLT { span, span_type });
                 let scope = Scope::Binder {
                     lifetimes: c
                         .generic_params
@@ -531,6 +548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.check_lifetime_params(old_scope, &c.generic_params);
                     intravisit::walk_ty(this, ty);
                 });
+                self.missing_named_lifetime_spots.pop();
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
@@ -1873,12 +1891,23 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         err.span_suggestion(
                             *span,
                             &format!(
-                                "consider introducing a higher-ranked lifetime `{}` here",
+                                "consider making the {} lifetime-generic with a new `{}` lifetime",
+                                match span_type {
+                                    ForLifetimeSpanType::BoundEmpty
+                                    | ForLifetimeSpanType::BoundTail => "bound",
+                                    ForLifetimeSpanType::TypeEmpty
+                                    | ForLifetimeSpanType::TypeTail => "type",
+                                },
                                 lifetime_ref
                             ),
                             match span_type {
-                                HRLTSpanType::Empty => format!("for<{}> ", lifetime_ref),
-                                HRLTSpanType::Tail => format!(", {}", lifetime_ref),
+                                ForLifetimeSpanType::TypeEmpty
+                                | ForLifetimeSpanType::BoundEmpty => {
+                                    format!("for<{}> ", lifetime_ref)
+                                }
+                                ForLifetimeSpanType::TypeTail | ForLifetimeSpanType::BoundTail => {
+                                    format!(", {}", lifetime_ref)
+                                }
                             }
                             .to_string(),
                             Applicability::MaybeIncorrect,
@@ -2487,13 +2516,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             params.iter().cloned().filter(|info| info.lifetime_count > 0).collect();
 
         let elided_len = elided_params.len();
-        let mut spans = vec![];
 
         for (i, info) in elided_params.into_iter().enumerate() {
             let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
                 info;
 
-            spans.push(span);
+            db.span_label(span, "");
             let help_name = if let Some(ident) =
                 parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
             {
@@ -2524,14 +2552,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        let help = |msg| {
-            if spans.is_empty() {
-                db.help(msg);
-            } else {
-                db.span_help(spans, msg);
-            }
-        };
-
         if len == 0 {
             db.help(
                 "this function's return type contains a borrowed value, \
@@ -2539,7 +2559,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             );
             self.suggest_lifetime(db, span, "consider giving it a 'static lifetime")
         } else if elided_len == 0 {
-            help(
+            db.help(
                 "this function's return type contains a borrowed value with \
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments",
@@ -2547,14 +2567,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let msg = "consider giving it an explicit bounded or 'static lifetime";
             self.suggest_lifetime(db, span, msg)
         } else if elided_len == 1 {
-            help(&format!(
+            db.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say which {} it is borrowed from",
                 m
             ));
             true
         } else {
-            help(&format!(
+            db.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say whether it is borrowed from {}",
                 m
@@ -2816,8 +2836,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .contains(&Some(did))
             {
                 let (span, span_type) = match &trait_ref.bound_generic_params {
-                    [] => (trait_ref.span.shrink_to_lo(), HRLTSpanType::Empty),
-                    [.., bound] => (bound.span.shrink_to_hi(), HRLTSpanType::Tail),
+                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
+                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
                 };
                 self.missing_named_lifetime_spots
                     .push(MissingLifetimeSpot::HRLT { span, span_type });
