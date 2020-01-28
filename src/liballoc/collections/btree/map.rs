@@ -249,7 +249,7 @@ impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
         // the BTree invariants are maintained at the end of the loop
         while siter.front != siter.back {
             if let Some((ok, ov)) = oiter.next() {
-                // This is safe because the `siter.front != siter.back` check
+                // SAFETY: This is safe because the `siter.front != siter.back` check
                 // ensures that `siter` is nonempty
                 let (sk, sv) = unsafe { siter.next_unchecked() };
                 sk.clone_from(ok);
