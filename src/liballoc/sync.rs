@@ -550,16 +550,24 @@ impl<T: ?Sized> Arc<T> {
         ptr
     }
 
-    /// Constructs an `Arc` from a raw pointer.
+    /// Constructs an `Arc<T>` from a raw pointer.
     ///
-    /// The raw pointer must have been previously returned by a call to a
-    /// [`Arc::into_raw`][into_raw], using the same `T`.
+    /// The raw pointer must have been previously returned by a call to
+    /// [`Arc<U>::into_raw`][into_raw] where `U` must have the same size and
+    /// alignment as `T`. This is trivially true if `U` is `T`.
+    /// Note that if `U` is not `T` but has the same size and alignment, this is
+    /// basically like transmuting references of different types. See
+    /// [`mem::transmute`][transmute] for more information on what
+    /// restrictions apply in this case.
+    ///
+    /// The user of `from_raw` has to make sure a specific value of `T` is only
+    /// dropped once.
     ///
     /// This function is unsafe because improper use may lead to memory unsafety,
-    /// even if `T` is never accessed. For example, a double-free may occur if the function is
-    /// called twice on the same raw pointer.
+    /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: struct.Arc.html#method.into_raw
+    /// [transmute]: ../../std/mem/fn.transmute.html
     ///
     /// # Examples
     ///
