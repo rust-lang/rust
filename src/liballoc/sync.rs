@@ -25,7 +25,7 @@ use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::{isize, usize};
 
-use crate::alloc::{box_free, handle_alloc_error, Alloc, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
 use crate::string::String;

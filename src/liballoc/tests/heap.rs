@@ -1,4 +1,4 @@
-use std::alloc::{Alloc, Global, Layout, System};
+use std::alloc::{AllocRef, Global, Layout, System};
 
 /// Issue #45955 and #62251.
 #[test]
@@ -11,7 +11,7 @@ fn std_heap_overaligned_request() {
     check_overalign_requests(Global)
 }
 
-fn check_overalign_requests<T: Alloc>(mut allocator: T) {
+fn check_overalign_requests<T: AllocRef>(mut allocator: T) {
     for &align in &[4, 8, 16, 32] {
         // less than and bigger than `MIN_ALIGN`
         for &size in &[align / 2, align - 1] {
