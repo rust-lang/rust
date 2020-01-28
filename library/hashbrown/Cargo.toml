@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.6.3"
+version = "0.7.0"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "Apache-2.0/MIT"
@@ -14,7 +14,7 @@ build = "build.rs"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.2.11", optional = true, default-features = false }
+ahash = { version = "0.3.2", optional = true, default-features = false }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
