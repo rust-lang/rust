@@ -140,6 +140,11 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         (pattern, pattern_ty)
     }
 
+    fn check_in_cx(&self, hir_id: HirId, f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>)) {
+        let module = self.tcx.hir().get_module_parent(hir_id);
+        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |cx| f(cx));
+    }
+
     fn check_match(
         &mut self,
         scrut: &hir::Expr<'_>,
@@ -151,8 +156,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             self.check_patterns(arm.guard.is_some(), &arm.pat);
         }
 
-        let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
+        self.check_in_cx(scrut.hir_id, |ref mut cx| {
             let mut have_errors = false;
 
             let inlined_arms: Vec<_> = arms
@@ -180,8 +184,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
-        let module = self.tcx.hir().get_module_parent(pat.hir_id);
-        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
+        self.check_in_cx(pat.hir_id, |ref mut cx| {
             let (pattern, pattern_ty) = self.lower_pattern(cx, pat, &mut false);
             let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
 
