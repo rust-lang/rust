@@ -15,7 +15,13 @@ export function createClient(config: Config): lc.LanguageClient {
 
     const command = expandPathResolving(config.raLspServerPath);
     if (spawnSync(command, ["--version"]).status !== 0) {
-        window.showErrorMessage(`Unable to execute '${command} --version'`);
+        window.showErrorMessage(
+            `Unable to execute '${command} --version'
+
+Perhaps it is not in $PATH?
+
+PATH=${process.env.PATH}
+`);
     }
     const run: lc.Executable = {
         command,
