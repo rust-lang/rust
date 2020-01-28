@@ -82,6 +82,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
 
+    pub use_lld: bool,
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
@@ -321,6 +322,7 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     lld: Option<bool>,
+    use_lld: Option<bool>,
     llvm_tools: Option<bool>,
     lldb: Option<bool>,
     deny_warnings: Option<bool>,
@@ -565,6 +567,7 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
+            set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
