@@ -45,12 +45,6 @@ pub struct SyntaxTreeBuilder {
 }
 
 impl SyntaxTreeBuilder {
-    pub fn new(errors: Vec<SyntaxError>) -> Self {
-        Self { errors, inner: GreenNodeBuilder::default() }
-    }
-}
-
-impl SyntaxTreeBuilder {
     pub(crate) fn finish_raw(self) -> (GreenNode, Vec<SyntaxError>) {
         let green = self.inner.finish();
         (green, self.errors)

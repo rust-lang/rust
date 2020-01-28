@@ -16,55 +16,21 @@ pub struct Token {
     pub len: TextUnit,
 }
 
-/// Represents the result of parsing one token. Beware that the token may be malformed.
-#[derive(Debug)]
-pub struct ParsedToken {
-    /// Parsed token.
-    pub token: Token,
-    /// If error is present then parsed token is malformed.
-    pub error: Option<SyntaxError>,
-}
-
-#[derive(Debug, Default)]
-/// Represents the result of parsing source code of Rust language.
-pub struct ParsedTokens {
-    /// Parsed tokens in order they appear in source code.
-    pub tokens: Vec<Token>,
-    /// Collection of all occured tokenization errors.
-    /// In general `self.errors.len() <= self.tokens.len()`
-    pub errors: Vec<SyntaxError>,
-}
-impl ParsedTokens {
-    /// Append `token` and `error` (if pressent) to the result.
-    pub fn push(&mut self, ParsedToken { token, error }: ParsedToken) {
-        self.tokens.push(token);
-        if let Some(error) = error {
-            self.errors.push(error)
-        }
-    }
-}
-
-/// Same as `tokenize_append()`, just a shortcut for creating `ParsedTokens`
-/// and returning the result the usual way.
-pub fn tokenize(text: &str) -> ParsedTokens {
-    let mut parsed = ParsedTokens::default();
-    tokenize_append(text, &mut parsed);
-    parsed
-}
-
 /// Break a string up into its component tokens.
-/// Writes to `ParsedTokens` which are basically a pair `(Vec<Token>, Vec<SyntaxError>)`.
 /// Beware that it checks for shebang first and its length contributes to resulting
 /// tokens offsets.
-pub fn tokenize_append(text: &str, parsed: &mut ParsedTokens) {
+pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     // non-empty string is a precondtion of `rustc_lexer::strip_shebang()`.
     if text.is_empty() {
-        return;
+        return Default::default();
     }
+
+    let mut tokens = Vec::new();
+    let mut errors = Vec::new();
 
     let mut offset: usize = rustc_lexer::strip_shebang(text)
         .map(|shebang_len| {
-            parsed.tokens.push(Token { kind: SHEBANG, len: TextUnit::from_usize(shebang_len) });
+            tokens.push(Token { kind: SHEBANG, len: TextUnit::from_usize(shebang_len) });
             shebang_len
         })
         .unwrap_or(0);
@@ -72,34 +38,75 @@ pub fn tokenize_append(text: &str, parsed: &mut ParsedTokens) {
     let text_without_shebang = &text[offset..];
 
     for rustc_token in rustc_lexer::tokenize(text_without_shebang) {
-        parsed.push(rustc_token_to_parsed_token(&rustc_token, text, TextUnit::from_usize(offset)));
+        let token_len = TextUnit::from_usize(rustc_token.len);
+        let token_range = TextRange::offset_len(TextUnit::from_usize(offset), token_len);
+
+        let (syntax_kind, error) =
+            rustc_token_kind_to_syntax_kind(&rustc_token.kind, &text[token_range]);
+
+        tokens.push(Token { kind: syntax_kind, len: token_len });
+
+        if let Some(error) = error {
+            errors.push(SyntaxError::new(SyntaxErrorKind::TokenizeError(error), token_range));
+        }
+
         offset += rustc_token.len;
     }
+
+    (tokens, errors)
+}
+
+/// Returns `SyntaxKind` and `Option<SyntaxError>` of the first token
+/// encountered at the beginning of the string.
+///
+/// Returns `None` if the string contains zero *or two or more* tokens.
+/// The token is malformed if the returned error is not `None`.
+///
+/// Beware that unescape errors are not checked at tokenization time.
+pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxError>)> {
+    first_token(text)
+        .filter(|(token, _)| token.len.to_usize() == text.len())
+        .map(|(token, error)| (token.kind, error))
+}
+
+/// The same as `single_syntax_kind()` but returns only `SyntaxKind` and
+/// returns `None` if any tokenization error occured.
+///
+/// Beware that unescape errors are not checked at tokenization time.
+pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
+    first_token(text)
+        .filter(|(token, error)| !error.is_some() && token.len.to_usize() == text.len())
+        .map(|(token, _error)| token.kind)
 }
 
 /// Returns the first encountered token at the beginning of the string.
-/// If the string contains zero or *two or more tokens* returns `None`.
 ///
-/// The main difference between `first_token()` and `single_token()` is that
-/// the latter returns `None` if the string contains more than one token.
-pub fn single_token(text: &str) -> Option<ParsedToken> {
-    first_token(text).filter(|parsed| parsed.token.len.to_usize() == text.len())
-}
-
-/// Returns the first encountered token at the beginning of the string.
-/// If the string contains zero tokens returns `None`.
+/// Returns `None` if the string contains zero tokens or if the token was parsed
+/// with an error.
 ///
-/// The main difference between `first_token() and single_token()` is that
-/// the latter returns `None` if the string contains more than one token.
-pub fn first_token(text: &str) -> Option<ParsedToken> {
+/// Beware that unescape errors are not checked at tokenization time.
+fn first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
     // non-empty string is a precondtion of `rustc_lexer::first_token()`.
     if text.is_empty() {
-        None
-    } else {
-        let rustc_token = rustc_lexer::first_token(text);
-        Some(rustc_token_to_parsed_token(&rustc_token, text, TextUnit::from(0)))
+        return None;
     }
+
+    let rustc_token = rustc_lexer::first_token(text);
+    let (syntax_kind, error) = rustc_token_kind_to_syntax_kind(&rustc_token.kind, text);
+
+    let token = Token { kind: syntax_kind, len: TextUnit::from_usize(rustc_token.len) };
+    let error = error.map(|error| {
+        SyntaxError::new(
+            SyntaxErrorKind::TokenizeError(error),
+            TextRange::from_to(TextUnit::from(0), TextUnit::of_str(text)),
+        )
+    });
+
+    Some((token, error))
 }
+
+// FIXME: simplify TokenizeError to `SyntaxError(String, TextRange)` as per @matklad advice:
+// https://github.com/rust-analyzer/rust-analyzer/pull/2911/files#r371175067
 
 /// Describes the values of `SyntaxErrorKind::TokenizeError` enum variant.
 /// It describes all the types of errors that may happen during the tokenization
@@ -136,122 +143,132 @@ pub enum TokenizeError {
     LifetimeStartsWithNumber,
 }
 
-/// Mapper function that converts `rustc_lexer::Token` with some additional context
-/// to `ParsedToken`
-fn rustc_token_to_parsed_token(
-    rustc_token: &rustc_lexer::Token,
-    text: &str,
-    token_start_offset: TextUnit,
-) -> ParsedToken {
+fn rustc_token_kind_to_syntax_kind(
+    rustc_token_kind: &rustc_lexer::TokenKind,
+    token_text: &str,
+) -> (SyntaxKind, Option<TokenizeError>) {
+    // A note on an intended tradeoff:
     // We drop some useful infromation here (see patterns with double dots `..`)
     // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
-    // being `u16` that come from `rowan::SyntaxKind` type and changes to `rowan::SyntaxKind`
-    // would mean hell of a rewrite
+    // being `u16` that come from `rowan::SyntaxKind`.
 
-    let token_range =
-        TextRange::offset_len(token_start_offset, TextUnit::from_usize(rustc_token.len));
-
-    let token_text = &text[token_range];
-
-    let (syntax_kind, error) = {
+    let syntax_kind = {
         use rustc_lexer::TokenKind as TK;
         use TokenizeError as TE;
 
-        match rustc_token.kind {
-            TK::LineComment => ok(COMMENT),
-            TK::BlockComment { terminated } => {
-                ok_if(terminated, COMMENT, TE::UnterminatedBlockComment)
+        match rustc_token_kind {
+            TK::LineComment => COMMENT,
+
+            TK::BlockComment { terminated: true } => COMMENT,
+            TK::BlockComment { terminated: false } => {
+                return (COMMENT, Some(TE::UnterminatedBlockComment));
             }
-            TK::Whitespace => ok(WHITESPACE),
-            TK::Ident => ok(if token_text == "_" {
-                UNDERSCORE
-            } else {
-                SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
-            }),
-            TK::RawIdent => ok(IDENT),
-            TK::Literal { kind, .. } => match_literal_kind(&kind),
-            TK::Lifetime { starts_with_number } => {
-                ok_if(!starts_with_number, LIFETIME, TE::LifetimeStartsWithNumber)
+
+            TK::Whitespace => WHITESPACE,
+
+            TK::Ident => {
+                if token_text == "_" {
+                    UNDERSCORE
+                } else {
+                    SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
+                }
             }
-            TK::Semi => ok(SEMI),
-            TK::Comma => ok(COMMA),
-            TK::Dot => ok(DOT),
-            TK::OpenParen => ok(L_PAREN),
-            TK::CloseParen => ok(R_PAREN),
-            TK::OpenBrace => ok(L_CURLY),
-            TK::CloseBrace => ok(R_CURLY),
-            TK::OpenBracket => ok(L_BRACK),
-            TK::CloseBracket => ok(R_BRACK),
-            TK::At => ok(AT),
-            TK::Pound => ok(POUND),
-            TK::Tilde => ok(TILDE),
-            TK::Question => ok(QUESTION),
-            TK::Colon => ok(COLON),
-            TK::Dollar => ok(DOLLAR),
-            TK::Eq => ok(EQ),
-            TK::Not => ok(EXCL),
-            TK::Lt => ok(L_ANGLE),
-            TK::Gt => ok(R_ANGLE),
-            TK::Minus => ok(MINUS),
-            TK::And => ok(AMP),
-            TK::Or => ok(PIPE),
-            TK::Plus => ok(PLUS),
-            TK::Star => ok(STAR),
-            TK::Slash => ok(SLASH),
-            TK::Caret => ok(CARET),
-            TK::Percent => ok(PERCENT),
-            TK::Unknown => ok(ERROR),
+
+            TK::RawIdent => IDENT,
+            TK::Literal { kind, .. } => return match_literal_kind(&kind),
+
+            TK::Lifetime { starts_with_number: false } => LIFETIME,
+            TK::Lifetime { starts_with_number: true } => {
+                return (LIFETIME, Some(TE::LifetimeStartsWithNumber))
+            }
+
+            TK::Semi => SEMI,
+            TK::Comma => COMMA,
+            TK::Dot => DOT,
+            TK::OpenParen => L_PAREN,
+            TK::CloseParen => R_PAREN,
+            TK::OpenBrace => L_CURLY,
+            TK::CloseBrace => R_CURLY,
+            TK::OpenBracket => L_BRACK,
+            TK::CloseBracket => R_BRACK,
+            TK::At => AT,
+            TK::Pound => POUND,
+            TK::Tilde => TILDE,
+            TK::Question => QUESTION,
+            TK::Colon => COLON,
+            TK::Dollar => DOLLAR,
+            TK::Eq => EQ,
+            TK::Not => EXCL,
+            TK::Lt => L_ANGLE,
+            TK::Gt => R_ANGLE,
+            TK::Minus => MINUS,
+            TK::And => AMP,
+            TK::Or => PIPE,
+            TK::Plus => PLUS,
+            TK::Star => STAR,
+            TK::Slash => SLASH,
+            TK::Caret => CARET,
+            TK::Percent => PERCENT,
+            TK::Unknown => ERROR,
         }
     };
 
-    return ParsedToken {
-        token: Token { kind: syntax_kind, len: token_range.len() },
-        error: error
-            .map(|error| SyntaxError::new(SyntaxErrorKind::TokenizeError(error), token_range)),
-    };
+    return (syntax_kind, None);
 
-    type ParsedSyntaxKind = (SyntaxKind, Option<TokenizeError>);
-
-    fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> ParsedSyntaxKind {
+    fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<TokenizeError>) {
         use rustc_lexer::LiteralKind as LK;
         use TokenizeError as TE;
 
-        match *kind {
-            LK::Int { empty_int, .. } => ok_if(!empty_int, INT_NUMBER, TE::EmptyInt),
-            LK::Float { empty_exponent, .. } => {
-                ok_if(!empty_exponent, FLOAT_NUMBER, TE::EmptyExponent)
-            }
-            LK::Char { terminated } => ok_if(terminated, CHAR, TE::UnterminatedChar),
-            LK::Byte { terminated } => ok_if(terminated, BYTE, TE::UnterminatedByte),
-            LK::Str { terminated } => ok_if(terminated, STRING, TE::UnterminatedString),
-            LK::ByteStr { terminated } => {
-                ok_if(terminated, BYTE_STRING, TE::UnterminatedByteString)
+        #[rustfmt::skip]
+        let syntax_kind = match *kind {
+            LK::Int { empty_int: false, .. } => INT_NUMBER,
+            LK::Int { empty_int: true, .. } => {
+                return (INT_NUMBER, Some(TE::EmptyInt))
             }
 
-            LK::RawStr { started: true, terminated, .. } => {
-                ok_if(terminated, RAW_STRING, TE::UnterminatedRawString)
+            LK::Float { empty_exponent: false, .. } => FLOAT_NUMBER,
+            LK::Float { empty_exponent: true, .. } => {
+                return (FLOAT_NUMBER, Some(TE::EmptyExponent))
             }
-            LK::RawStr { started: false, .. } => err(RAW_STRING, TE::UnstartedRawString),
 
-            LK::RawByteStr { started: true, terminated, .. } => {
-                ok_if(terminated, RAW_BYTE_STRING, TE::UnterminatedRawByteString)
+            LK::Char { terminated: true } => CHAR,
+            LK::Char { terminated: false } => {
+                return (CHAR, Some(TE::UnterminatedChar))
+            }
+
+            LK::Byte { terminated: true } => BYTE,
+            LK::Byte { terminated: false } => {
+                return (BYTE, Some(TE::UnterminatedByte))
+            }
+
+            LK::Str { terminated: true } => STRING,
+            LK::Str { terminated: false } => {
+                return (STRING, Some(TE::UnterminatedString))
+            }
+
+
+            LK::ByteStr { terminated: true } => BYTE_STRING,
+            LK::ByteStr { terminated: false } => {
+                return (BYTE_STRING, Some(TE::UnterminatedByteString))
+            }
+
+            LK::RawStr { started: true, terminated: true, .. } => RAW_STRING,
+            LK::RawStr { started: true, terminated: false, .. } => {
+                return (RAW_STRING, Some(TE::UnterminatedRawString))
+            }
+            LK::RawStr { started: false, .. } => {
+                return (RAW_STRING, Some(TE::UnstartedRawString))
+            }
+
+            LK::RawByteStr { started: true, terminated: true, .. } => RAW_BYTE_STRING,
+            LK::RawByteStr { started: true, terminated: false, .. } => {
+                return (RAW_BYTE_STRING, Some(TE::UnterminatedRawByteString))
             }
             LK::RawByteStr { started: false, .. } => {
-                err(RAW_BYTE_STRING, TE::UnstartedRawByteString)
+                return (RAW_BYTE_STRING, Some(TE::UnstartedRawByteString))
             }
-        }
-    }
-    const fn ok(syntax_kind: SyntaxKind) -> ParsedSyntaxKind {
+        };
+
         (syntax_kind, None)
-    }
-    const fn err(syntax_kind: SyntaxKind, error: TokenizeError) -> ParsedSyntaxKind {
-        (syntax_kind, Some(error))
-    }
-    fn ok_if(cond: bool, syntax_kind: SyntaxKind, error: TokenizeError) -> ParsedSyntaxKind {
-        if cond {
-            ok(syntax_kind)
-        } else {
-            err(syntax_kind, error)
-        }
     }
 }

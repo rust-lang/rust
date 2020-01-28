@@ -2,7 +2,9 @@
 
 use hir::ModuleSource;
 use ra_db::{RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt};
-use ra_syntax::{algo::find_node_at_offset, ast, single_token, AstNode, SyntaxKind, SyntaxNode};
+use ra_syntax::{
+    algo::find_node_at_offset, ast, lex_single_valid_syntax_kind, AstNode, SyntaxKind, SyntaxNode,
+};
 use ra_text_edit::TextEdit;
 
 use crate::{
@@ -17,7 +19,7 @@ pub(crate) fn rename(
     position: FilePosition,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
-    match single_token(new_name)?.token.kind {
+    match lex_single_valid_syntax_kind(new_name)? {
         SyntaxKind::IDENT | SyntaxKind::UNDERSCORE => (),
         _ => return None,
     }

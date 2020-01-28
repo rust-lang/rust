@@ -15,9 +15,15 @@ pub use lexer::*;
 pub(crate) use self::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
-    let ParsedTokens { tokens, errors } = tokenize(&text);
+    let (tokens, lexer_errors) = tokenize(&text);
+
     let mut token_source = TextTokenSource::new(text, &tokens);
-    let mut tree_sink = TextTreeSink::new(text, &tokens, errors);
+    let mut tree_sink = TextTreeSink::new(text, &tokens);
+
     ra_parser::parse(&mut token_source, &mut tree_sink);
-    tree_sink.finish()
+
+    let (tree, mut parser_errors) = tree_sink.finish();
+    parser_errors.extend(lexer_errors);
+
+    (tree, parser_errors)
 }

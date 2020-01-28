@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use ra_parser::{Token, TokenSource};
-use ra_syntax::{single_token, SmolStr, SyntaxKind, SyntaxKind::*, T};
+use ra_syntax::{lex_single_valid_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{Cell, Ref, RefCell};
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -129,8 +129,7 @@ fn convert_delim(d: Option<tt::DelimiterKind>, closing: bool) -> TtToken {
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
-    let kind = single_token(&l.text)
-        .map(|parsed| parsed.token.kind)
+    let kind = lex_single_valid_syntax_kind(&l.text)
         .filter(|kind| kind.is_literal())
         .unwrap_or_else(|| match l.text.as_ref() {
             "true" => T![true],

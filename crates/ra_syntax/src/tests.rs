@@ -11,7 +11,7 @@ use crate::{fuzz, SourceFile};
 fn lexer_tests() {
     dir_tests(&test_data_dir(), &["lexer"], |text, _| {
         // FIXME: add tests for errors (their format is up to discussion)
-        let tokens = crate::tokenize(text).tokens;
+        let (tokens, _errors) = crate::tokenize(text);
         dump_tokens(&tokens, text)
     })
 }
