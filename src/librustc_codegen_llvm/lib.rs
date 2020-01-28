@@ -29,7 +29,7 @@ use rustc::dep_graph::WorkProduct;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::CompiledModule;
+use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_errors::{FatalError, Handler};
 use std::any::Any;
 use std::ffi::CStr;
@@ -39,7 +39,7 @@ use syntax::expand::allocator::AllocatorKind;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{OptLevel, OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -270,13 +270,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         )
     }
 
-    fn join_codegen_and_link(
+    fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         dep_graph: &DepGraph,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<Box<dyn Any>, ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -291,14 +290,18 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         sess.compile_status()?;
 
-        if !sess
-            .opts
-            .output_types
-            .keys()
-            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
-        {
-            return Ok(());
-        }
+        Ok(Box::new(codegen_results))
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: Box<dyn Any>,
+        outputs: &OutputFilenames,
+    ) -> Result<(), ErrorReported> {
+        let codegen_results = codegen_results
+            .downcast::<CodegenResults>()
+            .expect("Expected CodegenResults, found Box<Any>");
 
         if sess.opts.debugging_opts.no_link {
             // FIXME: use a binary format to encode the `.rlink` file
