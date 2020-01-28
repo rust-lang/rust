@@ -346,7 +346,7 @@ pub fn main_loop() {
     @r###"
     [144; 146) '{}': ()
     [169; 198) '{     ...t(); }': ()
-    [175; 193) 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<T, H>
+    [175; 193) 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<{unknown}, FxHasher>
     [175; 195) 'FxHash...ault()': HashSet<{unknown}, FxHasher>
     "###
     );

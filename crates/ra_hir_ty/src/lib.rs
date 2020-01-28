@@ -912,7 +912,8 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
             TypeCtor::FnDef(def) => {
-                let sig = f.db.callable_item_signature(def);
+                let sig = f.db.callable_item_signature(def)
+                    .subst(&self.parameters);
                 let name = match def {
                     CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
                     CallableDef::StructId(s) => f.db.struct_data(s).name.clone(),
@@ -933,8 +934,8 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ">")?;
                 }
                 write!(f, "(")?;
-                f.write_joined(sig.value.params(), ", ")?;
-                write!(f, ") -> {}", sig.value.ret().display(f.db))?;
+                f.write_joined(sig.params(), ", ")?;
+                write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {

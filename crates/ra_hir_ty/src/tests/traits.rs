@@ -261,10 +261,10 @@ fn test() {
     [92; 94) '{}': ()
     [105; 144) '{     ...(s); }': ()
     [115; 116) 's': S<u32>
-    [119; 120) 'S': S<u32>(T) -> S<T>
+    [119; 120) 'S': S<u32>(u32) -> S<u32>
     [119; 129) 'S(unknown)': S<u32>
     [121; 128) 'unknown': u32
-    [135; 138) 'foo': fn foo<S<u32>>(T) -> ()
+    [135; 138) 'foo': fn foo<S<u32>>(S<u32>) -> ()
     [135; 141) 'foo(s)': ()
     [139; 140) 's': S<u32>
     "###
@@ -289,11 +289,11 @@ fn test() {
     [98; 100) '{}': ()
     [111; 163) '{     ...(s); }': ()
     [121; 122) 's': S<u32>
-    [125; 126) 'S': S<u32>(T) -> S<T>
+    [125; 126) 'S': S<u32>(u32) -> S<u32>
     [125; 135) 'S(unknown)': S<u32>
     [127; 134) 'unknown': u32
     [145; 146) 'x': u32
-    [154; 157) 'foo': fn foo<u32, S<u32>>(T) -> U
+    [154; 157) 'foo': fn foo<u32, S<u32>>(S<u32>) -> u32
     [154; 160) 'foo(s)': u32
     [158; 159) 's': S<u32>
     "###
@@ -1066,26 +1066,26 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
+    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> {unknown}
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
-    [321; 324) 'get': fn get<impl Trait<Type = i64>>(T) -> <T as Trait>::Type
+    [321; 324) 'get': fn get<impl Trait<Type = i64>>(impl Trait<Type = i64>) -> <impl Trait<Type = i64> as Trait>::Type
     [321; 327) 'get(y)': {unknown}
     [325; 326) 'y': impl Trait<Type = i64>
-    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(T) -> U
+    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> {unknown}
     [333; 340) 'get2(y)': {unknown}
     [338; 339) 'y': impl Trait<Type = i64>
-    [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
+    [346; 349) 'get': fn get<S<u64>>(S<u64>) -> <S<u64> as Trait>::Type
     [346; 357) 'get(set(S))': u64
-    [350; 353) 'set': fn set<S<u64>>(T) -> T
+    [350; 353) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [350; 356) 'set(S)': S<u64>
     [354; 355) 'S': S<u64>
-    [363; 367) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [363; 367) 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
     [363; 375) 'get2(set(S))': u64
-    [368; 371) 'set': fn set<S<u64>>(T) -> T
+    [368; 371) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [368; 374) 'set(S)': S<u64>
     [372; 373) 'S': S<u64>
-    [381; 385) 'get2': fn get2<str, S<str>>(T) -> U
+    [381; 385) 'get2': fn get2<str, S<str>>(S<str>) -> str
     [381; 395) 'get2(S::<str>)': str
     [386; 394) 'S::<str>': S<str>
     "###
@@ -1258,9 +1258,9 @@ fn test() {
     [157; 160) '{t}': T
     [158; 159) 't': T
     [259; 280) '{     ...S)); }': ()
-    [265; 269) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [265; 269) 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
     [265; 277) 'get2(set(S))': u64
-    [270; 273) 'set': fn set<S<u64>>(T) -> T
+    [270; 273) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [270; 276) 'set(S)': S<u64>
     [274; 275) 'S': S<u64>
     "###
@@ -1432,7 +1432,7 @@ fn test() {
     [340; 342) '{}': ()
     [356; 515) '{     ... S); }': ()
     [366; 368) 'x1': u64
-    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(T, F) -> U
+    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
     [371; 394) 'foo1(S...hod())': u64
     [376; 377) 'S': S
     [379; 393) '|s| s.method()': |S| -> u64
@@ -1440,7 +1440,7 @@ fn test() {
     [383; 384) 's': S
     [383; 393) 's.method()': u64
     [404; 406) 'x2': u64
-    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(F, T) -> U
+    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
     [409; 432) 'foo2(|...(), S)': u64
     [414; 428) '|s| s.method()': |S| -> u64
     [415; 416) 's': S
