@@ -227,20 +227,20 @@ impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
     fn clone_from(&mut self, other: &Self) {
         // This truncates `self` to `other.len()` by calling `split_off` on
         // the first key after `other.len()` elements if it exists
-        if let Some(key) = {
-            if self.len() > other.len() {
-                let diff = self.len() - other.len();
-                if diff <= other.len() {
-                    self.iter().nth_back(diff - 1).map(|pair| (*pair.0).clone())
-                } else {
-                    self.iter().nth(other.len()).map(|pair| (*pair.0).clone())
-                }
+        let split_off_key = if self.len() > other.len() {
+            let diff = self.len() - other.len();
+            if diff <= other.len() {
+                self.iter().nth_back(diff - 1).map(|pair| (*pair.0).clone())
             } else {
-                None
+                self.iter().nth(other.len()).map(|pair| (*pair.0).clone())
             }
-        } {
+        } else {
+            None
+        };
+        if let Some(key) = split_off_key {
             self.split_off(&key);
         }
+
         let mut siter = self.range_mut(..);
         let mut oiter = other.iter();
         // After truncation, `self` is at most as long as `other` so this loop
