@@ -89,7 +89,7 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | ...                   &'b isize,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
@@ -105,7 +105,7 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | ...                   &'b isize)>,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,

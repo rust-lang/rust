@@ -1514,7 +1514,7 @@ crate fn add_missing_lifetime_specifiers_label(
                         );
                         should_break = false;
                         err.note(
-                            "for more information on higher-ranked lifetimes, visit \
+                            "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                         let suggestion = match span_type {

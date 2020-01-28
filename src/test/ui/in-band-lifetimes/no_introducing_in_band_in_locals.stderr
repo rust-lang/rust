@@ -12,7 +12,7 @@ error[E0261]: use of undeclared lifetime name `'test`
 LL |     let y: fn(&'test u32) = foo2;
    |                ^^^^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'test` here
    |
 LL | fn bar<'test>() {
