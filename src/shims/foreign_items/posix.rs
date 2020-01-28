@@ -268,6 +268,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_mutex_init"
             | "pthread_mutexattr_destroy"
             | "pthread_mutex_lock"
+            | "pthread_mutex_trylock"
             | "pthread_mutex_unlock"
             | "pthread_mutex_destroy"
             | "pthread_rwlock_rdlock"
