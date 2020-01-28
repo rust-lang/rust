@@ -64,7 +64,7 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxError>)> {
-    first_token(text)
+    lex_first_token(text)
         .filter(|(token, _)| token.len.to_usize() == text.len())
         .map(|(token, error)| (token.kind, error))
 }
@@ -74,7 +74,7 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
 ///
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
-    first_token(text)
+    lex_first_token(text)
         .filter(|(token, error)| !error.is_some() && token.len.to_usize() == text.len())
         .map(|(token, _error)| token.kind)
 }
@@ -87,7 +87,7 @@ pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
 /// The token is malformed if the returned error is not `None`.
 ///
 /// Beware that unescape errors are not checked at tokenization time.
-fn first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
+fn lex_first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
     // non-empty string is a precondtion of `rustc_lexer::first_token()`.
     if text.is_empty() {
         return None;
