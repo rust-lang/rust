@@ -5,9 +5,7 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::diagnostics::{
-    add_missing_lifetime_specifiers_label, report_missing_lifetime_specifiers,
-};
+use crate::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
@@ -153,42 +151,8 @@ struct NamedRegionMap {
     object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
-crate enum MissingLifetimeSpot<'tcx> {
-    Generics(&'tcx hir::Generics<'tcx>),
-    HigherRanked { span: Span, span_type: ForLifetimeSpanType },
-}
-
-crate enum ForLifetimeSpanType {
-    BoundEmpty,
-    BoundTail,
-    TypeEmpty,
-    TypeTail,
-}
-
-impl ForLifetimeSpanType {
-    crate fn descr(&self) -> &'static str {
-        match self {
-            Self::BoundEmpty | Self::BoundTail => "bound",
-            Self::TypeEmpty | Self::TypeTail => "type",
-        }
-    }
-
-    crate fn suggestion(&self, sugg: &str) -> String {
-        match self {
-            Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
-            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
-        }
-    }
-}
-
-impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
-    fn into(self) -> MissingLifetimeSpot<'tcx> {
-        MissingLifetimeSpot::Generics(self)
-    }
-}
-
-struct LifetimeContext<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+crate struct LifetimeContext<'a, 'tcx> {
+    crate tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -220,7 +184,7 @@ struct LifetimeContext<'a, 'tcx> {
 
     /// When encountering an undefined named lifetime, we will suggest introducing it in these
     /// places.
-    missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
+    crate missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -1879,49 +1843,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             self.insert_lifetime(lifetime_ref, def);
         } else {
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                lifetime_ref.span,
-                E0261,
-                "use of undeclared lifetime name `{}`",
-                lifetime_ref
-            );
-            err.span_label(lifetime_ref.span, "undeclared lifetime");
-            for missing in &self.missing_named_lifetime_spots {
-                match missing {
-                    MissingLifetimeSpot::Generics(generics) => {
-                        let (span, sugg) = match &generics.params {
-                            [] => (generics.span, format!("<{}>", lifetime_ref)),
-                            [param, ..] => {
-                                (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
-                            }
-                        };
-                        err.span_suggestion(
-                            span,
-                            &format!("consider introducing lifetime `{}` here", lifetime_ref),
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
-                        err.span_suggestion(
-                            *span,
-                            &format!(
-                                "consider making the {} lifetime-generic with a new `{}` lifetime",
-                                span_type.descr(),
-                                lifetime_ref
-                            ),
-                            span_type.suggestion(&lifetime_ref.to_string()),
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.note(
-                            "for more information on higher-ranked polymorphism, visit \
-                             https://doc.rust-lang.org/nomicon/hrtb.html",
-                        );
-                    }
-                }
-            }
-            err.emit();
+            self.emit_undeclared_lifetime_error(lifetime_ref);
         }
     }
 
@@ -2461,7 +2383,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
 
-        let mut err = report_missing_lifetime_specifiers(self.tcx.sess, span, lifetime_refs.len());
+        let mut err = self.report_missing_lifetime_specifiers(span, lifetime_refs.len());
         let mut add_label = true;
 
         if let Some(params) = error {
@@ -2470,14 +2392,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
         if add_label {
-            add_missing_lifetime_specifiers_label(
+            self.add_missing_lifetime_specifiers_label(
                 &mut err,
-                self.tcx.sess.source_map(),
                 span,
                 lifetime_refs.len(),
                 &lifetime_names,
-                self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
-                &self.missing_named_lifetime_spots,
                 error.map(|p| &p[..]).unwrap_or(&[]),
             );
         }
@@ -2826,27 +2745,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn uninsert_lifetime_on_error(&mut self, lifetime_ref: &'tcx hir::Lifetime, bad_def: Region) {
         let old_value = self.map.defs.remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
-    }
-
-    fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
-        if let Res::Def(_, did) = trait_ref.trait_ref.path.res {
-            if [
-                self.tcx.lang_items().fn_once_trait(),
-                self.tcx.lang_items().fn_trait(),
-                self.tcx.lang_items().fn_mut_trait(),
-            ]
-            .contains(&Some(did))
-            {
-                let (span, span_type) = match &trait_ref.bound_generic_params {
-                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
-                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
-                };
-                self.missing_named_lifetime_spots
-                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
-                return true;
-            }
-        };
-        false
     }
 }
 
