@@ -2123,13 +2123,11 @@ where
 
 fn extend_fold<T>(self_: &mut Vec<T>) -> impl FnMut((), T) -> Result<(), T> + '_ {
     move |(), element| {
-        let len = self_.len();
-        if len < self_.capacity() {
+        if self_.len() < self_.capacity() {
             unsafe {
-                ptr::write(self_.get_unchecked_mut(len), element);
-                self_.set_len(len + 1);
-                Ok(())
+                self_.push_unchecked(element);
             }
+            Ok(())
         } else {
             Err(element)
         }
@@ -2137,6 +2135,23 @@ fn extend_fold<T>(self_: &mut Vec<T>) -> impl FnMut((), T) -> Result<(), T> + '_
 }
 
 impl<T> Vec<T> {
+    unsafe fn push_unchecked(&mut self, value: T) {
+        let end = self.as_mut_ptr().add(self.len);
+        ptr::write(end, value);
+        // NB can't overflow since we would have had to alloc the address space
+        self.len += 1;
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn extend_desugared_fallback<I: Iterator<Item = T>>(&mut self, iterator: &I, element: T) {
+        let (lower, _) = iterator.size_hint();
+        self.reserve(lower.saturating_add(1));
+        unsafe {
+            self.push_unchecked(element);
+        }
+    }
+
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
@@ -2147,20 +2162,8 @@ impl<T> Vec<T> {
         //      }
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
-        loop {
-            match iterator.try_fold((), extend_fold(self)) {
-                Ok(_) => return,
-                Err(element) => {
-                    let (lower, _) = iterator.size_hint();
-                    self.reserve(lower.saturating_add(1));
-                    unsafe {
-                        let len = self.len();
-                        ptr::write(self.get_unchecked_mut(len), element);
-                        // NB can't overflow since we would have had to alloc the address space
-                        self.set_len(len + 1);
-                    }
-                }
-            }
+        while let Err(element) = iterator.try_fold((), extend_fold(self)) {
+            self.extend_desugared_fallback(&iterator, element);
         }
     }
 
