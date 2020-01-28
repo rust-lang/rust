@@ -13,4 +13,5 @@ test_utils::marks!(
     macro_dollar_crate_self
     macro_dollar_crate_other
     infer_resolve_while_let
+    prefer_std_paths
 );

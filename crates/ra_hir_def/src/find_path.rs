@@ -8,6 +8,7 @@ use crate::{
     CrateId, ModuleDefId, ModuleId,
 };
 use hir_expand::name::{known, Name};
+use test_utils::tested_by;
 
 const MAX_PATH_LEN: usize = 15;
 
@@ -151,8 +152,10 @@ fn find_path_inner(
 
 fn select_best_path(old_path: ModPath, new_path: ModPath) -> ModPath {
     if old_path.starts_with_std() && new_path.should_start_with_std() {
+        tested_by!(prefer_std_paths);
         old_path
     } else if new_path.starts_with_std() && old_path.should_start_with_std() {
+        tested_by!(prefer_std_paths);
         new_path
     } else if new_path.len() < old_path.len() {
         new_path
@@ -231,6 +234,7 @@ mod tests {
     use hir_expand::hygiene::Hygiene;
     use ra_db::fixture::WithFixture;
     use ra_syntax::ast::AstNode;
+    use test_utils::covers;
 
     /// `code` needs to contain a cursor marker; checks that `find_path` for the
     /// item the `path` refers to returns that same path when called from the
@@ -481,5 +485,42 @@ mod tests {
             pub use super::foo;
         "#;
         check_found_path(code, "crate::foo::S");
+    }
+
+    #[test]
+    fn prefer_std_paths_over_alloc() {
+        covers!(prefer_std_paths);
+        let code = r#"
+        //- /main.rs crate:main deps:alloc,std
+        <|>
+
+        //- /std.rs crate:std deps:alloc
+        pub mod sync {
+            pub use alloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:alloc
+        pub mod sync {
+            pub struct Arc;
+        }
+        "#;
+        check_found_path(code, "std::sync::Arc");
+    }
+
+    #[test]
+    fn prefer_shorter_paths_if_not_alloc() {
+        let code = r#"
+        //- /main.rs crate:main deps:megaalloc,std
+        <|>
+
+        //- /std.rs crate:std deps:megaalloc
+        pub mod sync {
+            pub use megaalloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:megaalloc
+        pub struct Arc;
+        "#;
+        check_found_path(code, "megaalloc::Arc");
     }
 }
