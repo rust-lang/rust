@@ -4,7 +4,6 @@
 #![feature(cell_update)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(debug_map_key_value)]
 #![feature(debug_non_exhaustive)]
 #![feature(dec2flt)]
 #![feature(exact_size_is_empty)]

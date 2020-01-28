@@ -86,6 +86,10 @@ pub fn provide(providers: &mut Providers<'_>) {
     /// Const evaluability whitelist is here to check evaluability at the
     /// top level beforehand.
     fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
+        if tcx.is_closure(def_id) {
+            return None;
+        }
+
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
                 Some(tcx.lookup_const_stability(def_id).is_some())
