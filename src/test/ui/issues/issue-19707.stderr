@@ -2,13 +2,14 @@ error[E0106]: missing lifetime specifier
   --> $DIR/issue-19707.rs:3:28
    |
 LL | type Foo = fn(&u8, &u8) -> &u8;
-   |                            ^ expected named lifetime parameter
+   |               ---  ---     ^ expected named lifetime parameter
    |
-help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-  --> $DIR/issue-19707.rs:3:15
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+   = note: for more information on higher-ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'a` lifetime
    |
-LL | type Foo = fn(&u8, &u8) -> &u8;
-   |               ^^^  ^^^
+LL | type Foo = for<'a> fn(&'a u8, &'a u8) -> &'a u8;
+   |            ^^^^^^^    ^^^^^^  ^^^^^^     ^^^
 help: consider introducing a named lifetime parameter
    |
 LL | type Foo<'a> = fn(&'a u8, &'a u8) -> &'a u8;
@@ -18,15 +19,11 @@ error[E0106]: missing lifetime specifier
   --> $DIR/issue-19707.rs:5:27
    |
 LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {}
-   |                           ^ expected named lifetime parameter
+   |              ---  ---     ^ expected named lifetime parameter
    |
-help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-  --> $DIR/issue-19707.rs:5:14
-   |
-LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {}
-   |              ^^^  ^^^
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
    = note: for more information on higher-ranked lifetimes, visit https://doc.rust-lang.org/nomicon/hrtb.html
-help: consider introducing a higher-ranked lifetime
+help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | fn bar<F: for<'a> Fn(&'a u8, &'a u8) -> &'a u8>(f: &F) {}
    |           ^^^^^^^    ^^^^^^  ^^^^^^     ^^^
