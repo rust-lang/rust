@@ -194,9 +194,6 @@ mod tests {
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed: Parse<SourceFile> = {
             let f = SourceFile::parse(&before);
-            // FIXME: it seems this initialization statement is unnecessary (see edit in outer scope)
-            // Investigate whether it should really be removed.
-            let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (green, new_errors, range) =
                 incremental_reparse(f.tree().syntax(), &edit, f.errors.to_vec()).unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
