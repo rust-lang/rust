@@ -1,7 +1,7 @@
 #![cfg(not(miri))] // FIXME: takes too long
 
 use hashbrown::HashSet;
-use rand::{distributions::Alphanumeric, Rng, SeedableRng, XorShiftRng};
+use rand::{distributions::Alphanumeric, rngs::SmallRng, Rng, SeedableRng};
 
 #[test]
 fn test_hashset_insert_remove() {
@@ -12,8 +12,7 @@ fn test_hashset_insert_remove() {
         130, 220, 246, 217, 111, 124, 221, 189, 190, 234, 121, 93, 67, 95, 100, 43,
     ];
 
-    let mut rng: XorShiftRng = SeedableRng::from_seed(seed);
-    //let mut rng: XorShiftRng = XorShiftRng::new_unseeded();
+    let rng = &mut SmallRng::from_seed(seed);
     let tx: Vec<Vec<char>> = (0..4096)
         .map(|_| (rng.sample_iter(&Alphanumeric).take(32).collect()))
         .collect();
