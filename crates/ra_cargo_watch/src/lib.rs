@@ -216,8 +216,10 @@ impl CheckWatcherThread {
                 self.last_update_req.take();
                 task_send.send(CheckTask::ClearDiagnostics).unwrap();
 
-                // By replacing the watcher, we drop the previous one which
-                // causes it to shut down automatically.
+                // Replace with a dummy watcher first so we drop the original and wait for completion
+                std::mem::replace(&mut self.watcher, WatchThread::dummy());
+
+                // Then create the actual new watcher
                 self.watcher = WatchThread::new(&self.options, &self.workspace_root);
             }
         }
