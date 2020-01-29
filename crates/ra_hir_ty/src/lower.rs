@@ -140,10 +140,13 @@ impl Ty {
                     ImplTraitLoweringMode::Variable => {
                         let idx = ctx.impl_trait_counter.get();
                         ctx.impl_trait_counter.set(idx + 1);
-                        let generics =
-                            generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
-                        let (self_params, list_params, impl_trait_params) = generics.provenance_split();
-                        assert!((idx as usize) < impl_trait_params);
+                        let (self_params, list_params, _impl_trait_params) = if let Some(def) = ctx.resolver.generic_def() {
+                            let generics = generics(ctx.db, def);
+                            generics.provenance_split()
+                        } else {
+                            (0, 0, 0)
+                        };
+                        // assert!((idx as usize) < impl_trait_params); // TODO return position impl trait
                         Ty::Bound(idx as u32 + self_params as u32 + list_params as u32)
                     }
                     ImplTraitLoweringMode::Disallowed => {
