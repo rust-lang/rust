@@ -829,11 +829,7 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
-        } else if can_use_lld
-            && self.config.use_lld
-            && target.contains("pc-windows-msvc")
-            && self.build == target
-        {
+        } else if can_use_lld && self.config.use_lld && self.build == target {
             Some(&self.initial_lld)
         } else {
             None
