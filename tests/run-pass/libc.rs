@@ -5,13 +5,14 @@
 
 extern crate libc;
 
-use std::convert::TryInto;
-use std::env::temp_dir;
-use std::fs::{File, remove_file};
-use std::io::Write;
-use std::os::unix::io::AsRawFd;
+#[cfg(not(target_os = "macos"))]
+fn test_posix_fadvise() {
+    use std::convert::TryInto;
+    use std::env::temp_dir;
+    use std::fs::{File, remove_file};
+    use std::io::Write;
+    use std::os::unix::io::AsRawFd;
 
-fn main() {
     let path = temp_dir().join("miri_test_libc.txt");
     // Cleanup before test
     remove_file(&path).ok();
@@ -33,4 +34,9 @@ fn main() {
     drop(file);
     remove_file(&path).unwrap();
     assert_eq!(result, 0);
+}
+
+fn main() {
+    #[cfg(not(target_os = "macos"))]
+    test_posix_fadvise();
 }
