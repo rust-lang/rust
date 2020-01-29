@@ -143,7 +143,8 @@
 
 (defun rust-analyzer-run (runnable)
   (interactive (list (rust-analyzer--select-runnable)))
-  (-let (((&hash "env" "bin" "args" "label") runnable))
+  (-let* (((&hash "env" "bin" "args" "label") runnable)
+          (compilation-environment (-map (-lambda ((k v)) (concat k "=" v)) (ht-items env))))
     (compilation-start
      (string-join (append (list bin) args '()) " ")
      ;; cargo-process-mode is nice, but try to work without it...
