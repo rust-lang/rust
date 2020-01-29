@@ -19,6 +19,7 @@ use crate::{
     pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
 };
 
+use log::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -2108,7 +2109,13 @@ impl<'a> Drop for WritableDst<'a> {
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.
 pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
-    let found = sm.span_to_snippet(sp).unwrap();
+    let found = match sm.span_to_snippet(sp) {
+        Ok(snippet) => snippet,
+        Err(e) => {
+            warn!("Invalid span {:?}. Err={:?}", sp, e);
+            return false;
+        }
+    };
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
     // All the chars that differ in capitalization are confusable (above):
     let confusable = found
