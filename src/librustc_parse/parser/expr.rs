@@ -681,7 +681,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         loop {
             if self.eat(&token::Question) {
