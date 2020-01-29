@@ -1,3 +1,4 @@
+use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
 use rustc_ast_pretty::pprust;
@@ -693,11 +694,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         impl_dyn_multi: bool,
         ty: &Ty,
     ) {
-        if !allow_plus && impl_dyn_multi {
+        if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
             let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
             self.struct_span_err(ty.span, "ambiguous `+` in a type")
                 .span_suggestion(
@@ -712,11 +713,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_recover_from_bad_type_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         ty: &Ty,
     ) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if !allow_plus || !self.token.is_like_plus() {
+        if matches!(allow_plus, AllowPlus::No) || !self.token.is_like_plus() {
             return Ok(());
         }
 

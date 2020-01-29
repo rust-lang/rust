@@ -1,4 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
+use super::ty::{AllowPlus, RecoverQPath};
 use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
@@ -1839,7 +1840,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_sig(&mut self, cfg: &ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
-        let decl = self.parse_fn_decl(cfg, true)?;
+        let decl = self.parse_fn_decl(cfg, AllowPlus::Yes)?;
         generics.where_clause = self.parse_where_clause()?;
         Ok((ident, decl, generics))
     }
@@ -1848,11 +1849,11 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_decl(
         &mut self,
         cfg: &ParamCfg,
-        ret_allow_plus: bool,
+        ret_allow_plus: AllowPlus,
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(cfg)?,
-            output: self.parse_ret_ty(ret_allow_plus, true)?,
+            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
         }))
     }
 
