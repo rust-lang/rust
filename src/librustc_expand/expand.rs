@@ -25,7 +25,7 @@ use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::util::map_in_place::MapInPlace;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, Visitor};
 
 use smallvec::{smallvec, SmallVec};
 use std::io::ErrorKind;
@@ -39,7 +39,7 @@ macro_rules! ast_fragments {
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
             $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)?
+            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident($($args:tt)*);)?
             fn $make_ast:ident;
         })*
     ) => {
@@ -127,7 +127,7 @@ macro_rules! ast_fragments {
                     AstFragment::OptExpr(None) => {}
                     $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
-                        visitor.$visit_ast_elt(ast_elt);
+                        visitor.$visit_ast_elt(ast_elt, $($args)*);
                     })?)*
                 }
             }
@@ -147,52 +147,58 @@ ast_fragments! {
     Pat(P<ast::Pat>) { "pattern"; one fn visit_pat; fn visit_pat; fn make_pat; }
     Ty(P<ast::Ty>) { "type"; one fn visit_ty; fn visit_ty; fn make_ty; }
     Stmts(SmallVec<[ast::Stmt; 1]>) {
-        "statement"; many fn flat_map_stmt; fn visit_stmt; fn make_stmts;
+        "statement"; many fn flat_map_stmt; fn visit_stmt(); fn make_stmts;
     }
     Items(SmallVec<[P<ast::Item>; 1]>) {
-        "item"; many fn flat_map_item; fn visit_item; fn make_items;
+        "item"; many fn flat_map_item; fn visit_item(); fn make_items;
     }
     TraitItems(SmallVec<[P<ast::AssocItem>; 1]>) {
-        "trait item"; many fn flat_map_trait_item; fn visit_trait_item; fn make_trait_items;
+        "trait item";
+        many fn flat_map_trait_item;
+        fn visit_assoc_item(AssocCtxt::Trait);
+        fn make_trait_items;
     }
     ImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
-        "impl item"; many fn flat_map_impl_item; fn visit_impl_item; fn make_impl_items;
+        "impl item";
+        many fn flat_map_impl_item;
+        fn visit_assoc_item(AssocCtxt::Impl);
+        fn make_impl_items;
     }
     ForeignItems(SmallVec<[P<ast::ForeignItem>; 1]>) {
         "foreign item";
         many fn flat_map_foreign_item;
-        fn visit_foreign_item;
+        fn visit_foreign_item();
         fn make_foreign_items;
     }
     Arms(SmallVec<[ast::Arm; 1]>) {
-        "match arm"; many fn flat_map_arm; fn visit_arm; fn make_arms;
+        "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
     }
     Fields(SmallVec<[ast::Field; 1]>) {
-        "field expression"; many fn flat_map_field; fn visit_field; fn make_fields;
+        "field expression"; many fn flat_map_field; fn visit_field(); fn make_fields;
     }
     FieldPats(SmallVec<[ast::FieldPat; 1]>) {
         "field pattern";
         many fn flat_map_field_pattern;
-        fn visit_field_pattern;
+        fn visit_field_pattern();
         fn make_field_patterns;
     }
     GenericParams(SmallVec<[ast::GenericParam; 1]>) {
         "generic parameter";
         many fn flat_map_generic_param;
-        fn visit_generic_param;
+        fn visit_generic_param();
         fn make_generic_params;
     }
     Params(SmallVec<[ast::Param; 1]>) {
-        "function parameter"; many fn flat_map_param; fn visit_param; fn make_params;
+        "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
     }
     StructFields(SmallVec<[ast::StructField; 1]>) {
         "field";
         many fn flat_map_struct_field;
-        fn visit_struct_field;
+        fn visit_struct_field();
         fn make_struct_fields;
     }
     Variants(SmallVec<[ast::Variant; 1]>) {
-        "variant"; many fn flat_map_variant; fn visit_variant; fn make_variants;
+        "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
     }
 }
 
@@ -861,7 +867,7 @@ pub fn parse_ast_fragment<'a>(
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
             while this.token != token::Eof {
-                items.push(this.parse_foreign_item(DUMMY_SP)?);
+                items.push(this.parse_foreign_item()?);
             }
             AstFragment::ForeignItems(items)
         }

@@ -1,8 +1,8 @@
-error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found keyword `let`
+error: expected one of `async`, `const`, `crate`, `extern`, `fn`, `pub`, `static`, `type`, or `unsafe`, found keyword `let`
   --> $DIR/issue-54441.rs:3:9
    |
 LL |         let
-   |         ^^^ expected one of `crate`, `fn`, `pub`, `static`, or `type`
+   |         ^^^ expected one of 9 possible tokens
 ...
 LL |     m!();
    |     ----- in this macro invocation

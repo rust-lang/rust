@@ -1,8 +1,8 @@
-error: expected one of `(`, `fn`, `static`, or `type`, found keyword `pub`
+error: expected one of `(`, `async`, `const`, `extern`, `fn`, `static`, `type`, or `unsafe`, found keyword `pub`
   --> $DIR/duplicate-visibility.rs:3:9
    |
 LL |     pub pub fn foo();
-   |         ^^^ expected one of `(`, `fn`, `static`, or `type`
+   |         ^^^ expected one of 8 possible tokens
 
 error: aborting due to previous error
 

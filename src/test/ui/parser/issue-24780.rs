@@ -3,6 +3,6 @@
 // expected one of ..., `>`, ... found `>`
 
 fn foo() -> Vec<usize>> {
-    //~^ ERROR expected one of `!`, `+`, `::`, `where`, or `{`, found `>`
+    //~^ ERROR expected `;` or `{`, found `>`
     Vec::new()
 }

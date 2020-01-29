@@ -302,19 +302,18 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_ty(self, t)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, fd: &'v ast::FnDecl, s: Span, _: NodeId) {
-        self.record("FnDecl", Id::None, fd);
-        ast_visit::walk_fn(self, fk, fd, s)
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
+        self.record("FnDecl", Id::None, fk.decl());
+        ast_visit::walk_fn(self, fk, s)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::AssocItem) {
-        self.record("TraitItem", Id::None, ti);
-        ast_visit::walk_trait_item(self, ti)
-    }
-
-    fn visit_impl_item(&mut self, ii: &'v ast::AssocItem) {
-        self.record("ImplItem", Id::None, ii);
-        ast_visit::walk_impl_item(self, ii)
+    fn visit_assoc_item(&mut self, item: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+        let label = match ctxt {
+            ast_visit::AssocCtxt::Trait => "TraitItem",
+            ast_visit::AssocCtxt::Impl => "ImplItem",
+        };
+        self.record(label, Id::None, item);
+        ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
     fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {

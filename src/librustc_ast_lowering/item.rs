@@ -14,7 +14,7 @@ use rustc_target::spec::abi;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::node_id::NodeMap;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
@@ -81,25 +81,23 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         }
     }
 
-    fn visit_trait_item(&mut self, item: &'a AssocItem) {
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let hir_item = lctx.lower_trait_item(item);
-            let id = hir::TraitItemId { hir_id: hir_item.hir_id };
-            lctx.trait_items.insert(id, hir_item);
-            lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
+    fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
+            AssocCtxt::Trait => {
+                let hir_item = lctx.lower_trait_item(item);
+                let id = hir::TraitItemId { hir_id: hir_item.hir_id };
+                lctx.trait_items.insert(id, hir_item);
+                lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
+            }
+            AssocCtxt::Impl => {
+                let hir_item = lctx.lower_impl_item(item);
+                let id = hir::ImplItemId { hir_id: hir_item.hir_id };
+                lctx.impl_items.insert(id, hir_item);
+                lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
+            }
         });
 
-        visit::walk_trait_item(self, item);
-    }
-
-    fn visit_impl_item(&mut self, item: &'a AssocItem) {
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let hir_item = lctx.lower_impl_item(item);
-            let id = hir::ImplItemId { hir_id: hir_item.hir_id };
-            lctx.impl_items.insert(id, hir_item);
-            lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
-        });
-        visit::walk_impl_item(self, item);
+        visit::walk_assoc_item(self, item, ctxt);
     }
 }
 
@@ -299,20 +297,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
+                    let asyncness = header.asyncness.node;
                     let body_id =
-                        this.lower_maybe_async_body(span, &decl, header.asyncness.node, Some(body));
+                        this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let (generics, decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
-                            this.lower_fn_decl(
-                                &decl,
-                                Some((fn_def_id, idty)),
-                                true,
-                                header.asyncness.node.opt_return_id(),
-                            )
+                            let ret_id = asyncness.opt_return_id();
+                            this.lower_fn_decl(&decl, Some((fn_def_id, idty)), true, ret_id)
                         },
                     );
                     let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
@@ -658,7 +653,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
-                ForeignItemKind::Fn(ref fdec, ref generics) => {
+                ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                    let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
                         generics,
                         def_id,

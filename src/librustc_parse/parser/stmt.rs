@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
+    pub(super) fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
         self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 

@@ -17,7 +17,7 @@ use syntax::mut_visit::{self, MutVisitor};
 use syntax::ptr::P;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
-use syntax::visit::Visitor;
+use syntax::visit::{AssocCtxt, Visitor};
 
 use std::default::Default;
 use std::iter;
@@ -103,8 +103,8 @@ impl Annotatable {
     pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
         match self {
             Annotatable::Item(item) => visitor.visit_item(item),
-            Annotatable::TraitItem(trait_item) => visitor.visit_trait_item(trait_item),
-            Annotatable::ImplItem(impl_item) => visitor.visit_impl_item(impl_item),
+            Annotatable::TraitItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Trait),
+            Annotatable::ImplItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Impl),
             Annotatable::ForeignItem(foreign_item) => visitor.visit_foreign_item(foreign_item),
             Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
             Annotatable::Expr(expr) => visitor.visit_expr(expr),

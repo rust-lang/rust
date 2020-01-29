@@ -179,10 +179,9 @@ macro_rules! early_lint_methods {
             fn check_where_predicate(a: &ast::WherePredicate);
             fn check_poly_trait_ref(a: &ast::PolyTraitRef,
                                     b: &ast::TraitBoundModifier);
-            fn check_fn(a: syntax::visit::FnKind<'_>, b: &ast::FnDecl, c: Span, d_: ast::NodeId);
+            fn check_fn(a: syntax::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
             fn check_fn_post(
                 a: syntax::visit::FnKind<'_>,
-                b: &ast::FnDecl,
                 c: Span,
                 d: ast::NodeId
             );

@@ -1,14 +1,23 @@
-error: extern items cannot be `const`
-  --> $DIR/no-const-fn-in-extern-block.rs:2:5
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/no-const-fn-in-extern-block.rs:2:14
    |
+LL | extern {
+   | ------ in this `extern` block
 LL |     const fn foo();
-   |     ^^^^^
+   |     ---------^^^
+   |     |
+   |     help: remove the qualifiers: `fn`
 
-error: extern items cannot be `const`
-  --> $DIR/no-const-fn-in-extern-block.rs:4:5
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/no-const-fn-in-extern-block.rs:4:21
    |
+LL | extern {
+   | ------ in this `extern` block
+...
 LL |     const unsafe fn bar();
-   |     ^^^^^
+   |     ----------------^^^
+   |     |
+   |     help: remove the qualifiers: `fn`
 
 error: aborting due to 2 previous errors
 

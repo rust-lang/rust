@@ -307,7 +307,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let decl = ecx.fn_decl(vec![], ast::FunctionRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
-    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), main_body);
+    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), Some(main_body));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {

@@ -67,13 +67,13 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_generics(self, g)
     }
-    fn visit_fn(&mut self, fk: FnKind<'_>, fd: &FnDecl, s: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'_>, s: Span, _: NodeId) {
         self.count += 1;
-        walk_fn(self, fk, fd, s)
+        walk_fn(self, fk, s)
     }
-    fn visit_assoc_item(&mut self, ti: &AssocItem) {
+    fn visit_assoc_item(&mut self, ti: &AssocItem, ctxt: AssocCtxt) {
         self.count += 1;
-        walk_assoc_item(self, ti)
+        walk_assoc_item(self, ti, ctxt);
     }
     fn visit_trait_ref(&mut self, t: &TraitRef) {
         self.count += 1;

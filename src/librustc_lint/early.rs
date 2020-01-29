@@ -116,17 +116,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(
-        &mut self,
-        fk: ast_visit::FnKind<'a>,
-        decl: &'a ast::FnDecl,
-        span: Span,
-        id: ast::NodeId,
-    ) {
-        run_early_pass!(self, check_fn, fk, decl, span, id);
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
+        run_early_pass!(self, check_fn, fk, span, id);
         self.check_id(id);
-        ast_visit::walk_fn(self, fk, decl, span);
-        run_early_pass!(self, check_fn_post, fk, decl, span, id);
+        ast_visit::walk_fn(self, fk, span);
+        run_early_pass!(self, check_fn_post, fk, span, id);
     }
 
     fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
@@ -213,19 +207,18 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'a ast::AssocItem) {
-        self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
-            run_early_pass!(cx, check_trait_item, trait_item);
-            ast_visit::walk_trait_item(cx, trait_item);
-            run_early_pass!(cx, check_trait_item_post, trait_item);
-        });
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'a ast::AssocItem) {
-        self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
-            run_early_pass!(cx, check_impl_item, impl_item);
-            ast_visit::walk_impl_item(cx, impl_item);
-            run_early_pass!(cx, check_impl_item_post, impl_item);
+    fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+        self.with_lint_attrs(item.id, &item.attrs, |cx| match ctxt {
+            ast_visit::AssocCtxt::Trait => {
+                run_early_pass!(cx, check_trait_item, item);
+                ast_visit::walk_assoc_item(cx, item, ctxt);
+                run_early_pass!(cx, check_trait_item_post, item);
+            }
+            ast_visit::AssocCtxt::Impl => {
+                run_early_pass!(cx, check_impl_item, item);
+                ast_visit::walk_assoc_item(cx, item, ctxt);
+                run_early_pass!(cx, check_impl_item_post, item);
+            }
         });
     }
 

@@ -36,18 +36,20 @@ impl BoundModifiers {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub(super) enum AllowPlus {
     Yes,
     No,
 }
 
+#[derive(PartialEq)]
 pub(super) enum RecoverQPath {
     Yes,
     No,
 }
 
 // Is `...` (`CVarArgs`) legal at this level of type parsing?
+#[derive(PartialEq)]
 enum AllowCVariadic {
     Yes,
     No,
@@ -106,7 +108,7 @@ impl<'a> Parser<'a> {
         recover_qpath: RecoverQPath,
         allow_c_variadic: AllowCVariadic,
     ) -> PResult<'a, P<Ty>> {
-        let allow_qpath_recovery = matches!(recover_qpath, RecoverQPath::Yes);
+        let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         maybe_whole!(self, NtTy, |x| x);
 
@@ -142,7 +144,7 @@ impl<'a> Parser<'a> {
                 self.parse_ty_bare_fn(lifetime_defs)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
-                let parse_plus = matches!(allow_plus, AllowPlus::Yes) && self.check_plus();
+                let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(kw::Impl) {
@@ -162,7 +164,7 @@ impl<'a> Parser<'a> {
         } else if self.token.is_path_start() {
             self.parse_path_start_ty(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
-            if let AllowCVariadic::Yes = allow_c_variadic {
+            if allow_c_variadic == AllowCVariadic::Yes {
                 TyKind::CVarArgs
             } else {
                 // FIXME(Centril): Should we just allow `...` syntactically
@@ -200,7 +202,7 @@ impl<'a> Parser<'a> {
 
         if ts.len() == 1 && !trailing {
             let ty = ts.into_iter().nth(0).unwrap().into_inner();
-            let maybe_bounds = matches!(allow_plus, AllowPlus::Yes) && self.token.is_like_plus();
+            let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                 TyKind::Path(None, path) if maybe_bounds => {
@@ -355,7 +357,7 @@ impl<'a> Parser<'a> {
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
             }))
-        } else if matches!(allow_plus, AllowPlus::Yes) && self.check_plus() {
+        } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds(Vec::new(), path, lo, true)
         } else {
@@ -396,7 +398,7 @@ impl<'a> Parser<'a> {
                 Ok(bound) => bounds.push(bound),
                 Err(neg_sp) => negative_bounds.push(neg_sp),
             }
-            if matches!(allow_plus, AllowPlus::No) || !self.eat_plus() {
+            if allow_plus == AllowPlus::No || !self.eat_plus() {
                 break;
             }
         }

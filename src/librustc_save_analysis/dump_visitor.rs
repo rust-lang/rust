@@ -358,7 +358,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         decl: &'l ast::FnDecl,
         header: &'l ast::FnHeader,
         ty_params: &'l ast::Generics,
-        body: &'l ast::Block,
+        body: Option<&'l ast::Block>,
     ) {
         let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
@@ -392,7 +392,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
             }
 
-            v.visit_block(&body);
+            walk_list!(v, visit_block, body);
         });
     }
 
@@ -1291,7 +1291,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 }
             }
             Fn(ref sig, ref ty_params, ref body) => {
-                self.process_fn(item, &sig.decl, &sig.header, ty_params, &body)
+                self.process_fn(item, &sig.decl, &sig.header, ty_params, body.as_deref())
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
@@ -1515,7 +1515,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         let access = access_from!(self.save_ctxt, item, hir_id);
 
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                let decl = &sig.decl;
                 if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(fn_data, DefData, item.span);
 
