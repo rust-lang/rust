@@ -93,6 +93,80 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ==10029==ABORTING
 ```
 
+Use of a stack object after its scope has already ended:
+
+```shell
+$ cat b.rs
+static mut P: *mut usize = std::ptr::null_mut();
+
+fn main() {
+    unsafe {
+        {
+            let mut x = 0;
+            P = &mut x;
+        }
+        std::ptr::write_volatile(P, 123);
+    }
+}
+$ rustc -Zsanitizer=address b.rs
+$./b
+=================================================================
+==424427==ERROR: AddressSanitizer: stack-use-after-scope on address 0x7fff67be6be0 at pc 0x5647a3ea4658 bp 0x7fff67be6b90 sp 0x7fff67be6b88
+WRITE of size 8 at 0x7fff67be6be0 thread T0
+    #0 0x5647a3ea4657 in core::ptr::write_volatile::h4b04601757d0376d (/tmp/b+0xb8657)
+    #1 0x5647a3ea4432 in b::main::h5574a756e615c9cf (/tmp/b+0xb8432)
+    #2 0x5647a3ea480b in std::rt::lang_start::_$u7b$$u7b$closure$u7d$$u7d$::hd57e7ee01866077e (/tmp/b+0xb880b)
+    #3 0x5647a3eab412 in std::panicking::try::do_call::he0421ca82dd11ba3 (.llvm.8083791802951296215) (/tmp/b+0xbf412)
+    #4 0x5647a3eacb26 in __rust_maybe_catch_panic (/tmp/b+0xc0b26)
+    #5 0x5647a3ea5b66 in std::rt::lang_start_internal::h19bc96b28f670a64 (/tmp/b+0xb9b66)
+    #6 0x5647a3ea4788 in std::rt::lang_start::h642d10b4b6965fb8 (/tmp/b+0xb8788)
+    #7 0x5647a3ea449a in main (/tmp/b+0xb849a)
+    #8 0x7fd1d18b3bba in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x26bba)
+    #9 0x5647a3df7299 in _start (/tmp/b+0xb299)
+
+Address 0x7fff67be6be0 is located in stack of thread T0 at offset 32 in frame
+    #0 0x5647a3ea433f in b::main::h5574a756e615c9cf (/tmp/b+0xb833f)
+
+  This frame has 1 object(s):
+    [32, 40) 'x' <== Memory access at offset 32 is inside this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-use-after-scope (/tmp/b+0xb8657) in core::ptr::write_volatile::h4b04601757d0376d
+Shadow bytes around the buggy address:
+  0x10006cf74d20: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74d30: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74d40: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74d50: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74d60: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x10006cf74d70: 00 00 00 00 00 00 00 00 f1 f1 f1 f1[f8]f3 f3 f3
+  0x10006cf74d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74d90: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74da0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74db0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10006cf74dc0: f1 f1 f1 f1 00 f3 f3 f3 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+  Shadow gap:              cc
+==424427==ABORTING
+```
+
 ## MemorySanitizer
 
 Use of uninitialized memory. Note that we are using `-Zbuild-std` to instrument

@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::session::config;
+use rustc::session::config::{self, Sanitizer};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
@@ -1232,12 +1232,19 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
-        if self.cx.sess().opts.optimize == config::OptLevel::No {
+        let size = size.bytes();
+        if size == 0 {
             return;
         }
 
-        let size = size.bytes();
-        if size == 0 {
+        let opts = &self.cx.sess().opts;
+        let emit = match opts.debugging_opts.sanitizer {
+            // Some sanitizer use lifetime intrinsics. When they are in use,
+            // emit lifetime intrinsics regardless of optimization level.
+            Some(Sanitizer::Address) | Some(Sanitizer::Memory) => true,
+            _ => opts.optimize != config::OptLevel::No,
+        };
+        if !emit {
             return;
         }
 
