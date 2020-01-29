@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 349] = [
+pub const ALL_LINTS: [Lint; 350] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1854,6 +1854,13 @@ pub const ALL_LINTS: [Lint; 349] = [
         desc: "using a single-character str where a char could be used, e.g., `_.split(\"x\")`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "single_component_path_imports",
+        group: "style",
+        desc: "imports with single component path are redundant",
+        deprecation: None,
+        module: "single_component_path_imports",
     },
     Lint {
         name: "single_match",

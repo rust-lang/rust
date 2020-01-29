@@ -316,7 +316,7 @@ impl Types {
                                 OPTION_OPTION,
                                 hir_ty.span,
                                 "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
-                                enum if you need to distinguish all 3 cases",
+                                 enum if you need to distinguish all 3 cases",
                             );
                             return; // don't recurse into the type
                         }

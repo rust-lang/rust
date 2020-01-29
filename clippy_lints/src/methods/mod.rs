@@ -2310,7 +2310,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
             &format!("used `unwrap()` on `{}` value", kind,),
             &format!(
                 "if you don't want to handle the `{}` case gracefully, consider \
-                using `expect()` to provide a better panic message",
+                 using `expect()` to provide a better panic message",
                 none_value,
             ),
         );
@@ -2679,7 +2679,7 @@ fn lint_filter_flat_map<'a, 'tcx>(
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
-            and filtering by returning `iter::empty()`";
+                    and filtering by returning `iter::empty()`";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
@@ -2695,7 +2695,7 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
-            and filtering by returning `iter::empty()`";
+                    and filtering by returning `iter::empty()`";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, hint);
     }
 }
@@ -3148,7 +3148,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
 
         let msg = format!(
             "called `{0}` (or with one of deref aliases) on an Option value. \
-                        This can be done more directly by calling `{1}` instead",
+             This can be done more directly by calling `{1}` instead",
             current_method, hint
         );
         span_lint_and_sugg(
