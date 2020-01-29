@@ -397,6 +397,7 @@ E0718: include_str!("./error_codes/E0718.md"),
 E0720: include_str!("./error_codes/E0720.md"),
 E0723: include_str!("./error_codes/E0723.md"),
 E0725: include_str!("./error_codes/E0725.md"),
+E0727: include_str!("./error_codes/E0727.md"),
 E0728: include_str!("./error_codes/E0728.md"),
 E0729: include_str!("./error_codes/E0729.md"),
 E0730: include_str!("./error_codes/E0730.md"),
@@ -607,6 +608,5 @@ E0746: include_str!("./error_codes/E0746.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
-    E0727, // `async` generators are not yet supported
     E0739, // invalid track_caller application/syntax
 }
