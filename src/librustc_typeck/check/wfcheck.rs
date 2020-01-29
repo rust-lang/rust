@@ -530,7 +530,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     def_id: DefId,
-    return_ty: Option<Ty<'tcx>>,
+    return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     debug!("check_where_clauses(def_id={:?}, return_ty={:?})", def_id, return_ty);
 
@@ -664,7 +664,7 @@ fn check_where_clauses<'tcx, 'fcx>(
 
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
-    if let Some(return_ty) = return_ty {
+    if let Some((return_ty, span)) = return_ty {
         predicates.predicates.extend(check_opaque_types(tcx, fcx, def_id, span, return_ty));
     }
 
@@ -708,7 +708,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
+    check_where_clauses(tcx, fcx, span, def_id, Some((sig.output(), hir_sig.decl.output.span())));
 }
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
