@@ -1043,7 +1043,8 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[lang = "align_offset"]
 pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
-    /// Calculate multiplicative modular inverse of `x` modulo `m = 2^mpow`.
+    /// Calculate multiplicative modular inverse of `x` modulo `m`, where
+    /// `m = 2^mpow` and `mask = m - 1`.
     ///
     /// This implementation is tailored for align_offset and has following preconditions:
     ///
@@ -1052,7 +1053,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     ///
     /// Implementation of this function shall not panic. Ever.
     #[inline]
-    fn mod_pow_2_inv(x: usize, mpow: usize) -> usize {
+    fn mod_pow_2_inv(x: usize, mpow: usize, mask: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2^4 = 16.
         ///
         /// Note, that this table does not contain values where inverse does not exist (i.e., for
@@ -1064,7 +1065,6 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         const INV_TABLE_MOD: usize = 1 << INV_TABLE_MOD_POW;
 
         let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
-        let mask = (1usize << mpow) - 1;
 
         if mpow <= INV_TABLE_MOD_POW {
             table_inverse & mask
@@ -1147,7 +1147,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         let a2minus1 = a2.wrapping_sub(1);
         let s2 = smoda >> gcdpow;
         let minusp2 = a2.wrapping_sub(pmoda >> gcdpow);
-        return (minusp2.wrapping_mul(mod_pow_2_inv(s2, apow.wrapping_sub(gcdpow)))) & a2minus1;
+        return (minusp2.wrapping_mul(mod_pow_2_inv(s2, apow.wrapping_sub(gcdpow), a2minus1)))
+            & a2minus1;
     }
 
     // Cannot be aligned at all.
