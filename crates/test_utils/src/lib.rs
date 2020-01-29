@@ -169,19 +169,6 @@ pub struct FixtureEntry {
 ///  // - other meta
 ///  ```
 pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
-    let mut res = Vec::new();
-    let mut buf = String::new();
-    let mut meta: Option<&str> = None;
-
-    macro_rules! flush {
-        () => {
-            if let Some(meta) = meta {
-                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
-                buf.clear();
-            }
-        };
-    };
-
     let margin = fixture
         .lines()
         .filter(|it| it.trim_start().starts_with("//-"))
@@ -200,6 +187,19 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
                 None
             }
         });
+
+    let mut res = Vec::new();
+    let mut buf = String::new();
+    let mut meta: Option<&str> = None;
+
+    macro_rules! flush {
+        () => {
+            if let Some(meta) = meta {
+                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
+                buf.clear();
+            }
+        };
+    };
 
     for line in lines {
         if line.starts_with("//-") {
