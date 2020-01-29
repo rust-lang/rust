@@ -91,8 +91,12 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
             #[stable(feature = "from_nonzero", since = "1.31.0")]
             impl From<$Ty> for $Int {
-                fn from(nonzero: $Ty) -> Self {
-                    nonzero.0
+                doc_comment! {
+                    concat!(
+"Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`"),
+                    fn from(nonzero: $Ty) -> Self {
+                        nonzero.0
+                    }
                 }
             }
 
