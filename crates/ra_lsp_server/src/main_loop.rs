@@ -5,7 +5,14 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    env,
+    error::Error,
+    fmt, panic,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
@@ -425,6 +432,19 @@ fn loop_turn(
             loop_state.subscriptions.subscriptions(),
         )
     }
+
+    let loop_duration = loop_start.elapsed();
+    if loop_duration > Duration::from_millis(10) {
+        log::error!("overly long loop turn: {:?}", loop_duration);
+        if env::var("RA_PROFILE").is_ok() {
+            show_message(
+                req::MessageType::Error,
+                format!("overly long loop turn: {:?}", loop_duration),
+                &connection.sender,
+            );
+        }
+    }
+
     Ok(())
 }
 
