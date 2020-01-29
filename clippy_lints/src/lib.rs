@@ -284,6 +284,7 @@ pub mod replace_consts;
 pub mod returns;
 pub mod serde_api;
 pub mod shadow;
+pub mod single_component_path_imports;
 pub mod slow_vector_initialization;
 pub mod strings;
 pub mod suspicious_trait_impl;
@@ -741,6 +742,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_REUSE,
         &shadow::SHADOW_SAME,
         &shadow::SHADOW_UNRELATED,
+        &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         &strings::STRING_ADD,
         &strings::STRING_ADD_ASSIGN,
@@ -993,6 +995,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
     store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
+    store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1296,6 +1299,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
+        LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
@@ -1431,6 +1435,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&returns::LET_AND_RETURN),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
+        LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
