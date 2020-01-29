@@ -3540,8 +3540,8 @@ dependencies = [
  "rustc_data_structures",
  "rustc_span",
  "serialize",
- "term_size",
  "termcolor",
+ "termize",
  "unicode-width",
  "winapi 0.3.8",
 ]
@@ -4578,6 +4578,16 @@ dependencies = [
  "libc",
  "redox_syscall",
  "redox_termios",
+]
+
+[[package]]
+name = "termize"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1706be6b564323ce7092f5f7e6b118a14c8ef7ed0e69c8c5329c914a9f101295"
+dependencies = [
+ "libc",
+ "winapi 0.3.8",
 ]
 
 [[package]]
