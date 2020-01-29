@@ -399,6 +399,15 @@ impl<'a> AstValidator<'a> {
             }
         }
     }
+
+    fn check_attr_on_if_expr(&self, attrs: &[Attribute]) {
+        if let [a0, ..] = attrs {
+            // Just point to the first attribute in there...
+            self.err_handler()
+                .struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
+                .emit();
+        }
+    }
 }
 
 enum GenericPosition {
@@ -515,6 +524,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 )
                 .emit();
             }
+            ExprKind::If(..) => self.check_attr_on_if_expr(&*expr.attrs),
             _ => {}
         }
 
