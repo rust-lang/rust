@@ -6,9 +6,9 @@ mod google_cpu_profiler;
 
 use std::{
     cell::RefCell,
+    collections::BTreeMap,
     collections::HashSet,
     io::{stderr, Write},
-    iter::repeat,
     mem,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -17,7 +17,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use itertools::Itertools;
 use once_cell::sync::Lazy;
 
 pub use crate::memory_usage::{Bytes, MemoryUsage};
@@ -216,7 +215,7 @@ impl Drop for Profiler {
                         // (otherwise we could print `0ms` despite user's `>0` filter when
                         // `duration` is just a few nanos).
                         if duration.as_millis() > longer_than.as_millis() {
-                            print(0, &stack.messages, &mut stdout.lock(), longer_than, None);
+                            print(&stack.messages, longer_than, &mut stdout.lock());
                         }
                         stack.messages.clear();
                     }
@@ -227,59 +226,85 @@ impl Drop for Profiler {
     }
 }
 
-fn print(
-    lvl: usize,
-    msgs: &[Message],
-    out: &mut impl Write,
-    longer_than: Duration,
-    total: Option<Duration>,
-) {
+fn print(msgs: &[Message], longer_than: Duration, out: &mut impl Write) {
     if msgs.is_empty() {
         return;
     }
-    // The index of the first element that will be included in the slice when we recurse.
-    let mut next_start = 0;
-    let indent = repeat("    ").take(lvl).collect::<String>();
-    // We output hierarchy for long calls, but sum up all short calls
-    let mut short = Vec::new();
+    let children_map = idx_to_children(msgs);
+    let root_idx = msgs.len() - 1;
+    print_for_idx(root_idx, &children_map, msgs, longer_than, out);
+}
+
+fn print_for_idx(
+    current_idx: usize,
+    children_map: &[Vec<usize>],
+    msgs: &[Message],
+    longer_than: Duration,
+    out: &mut impl Write,
+) {
+    let current = &msgs[current_idx];
+    let current_indent = "    ".repeat(current.level);
+    writeln!(out, "{}{:5}ms - {}", current_indent, current.duration.as_millis(), current.message)
+        .expect("printing profiling info");
+
+    let longer_than_millis = longer_than.as_millis();
+    let children_indices = &children_map[current_idx];
     let mut accounted_for = Duration::default();
-    for (i, &Message { level, duration, message: ref msg }) in msgs.iter().enumerate() {
-        if level != lvl {
-            continue;
-        }
-        accounted_for += duration;
-        if duration.as_millis() > longer_than.as_millis() {
-            writeln!(out, "{}{:5}ms - {}", indent, duration.as_millis(), msg)
-                .expect("printing profiling info to stdout");
+    let mut short_children = BTreeMap::new(); // Use `BTreeMap` to get deterministic output.
 
-            print(lvl + 1, &msgs[next_start..i], out, longer_than, Some(duration));
+    for child_idx in children_indices.iter() {
+        let child = &msgs[*child_idx];
+        if child.duration.as_millis() > longer_than_millis {
+            print_for_idx(*child_idx, children_map, msgs, longer_than, out);
         } else {
-            short.push((msg, duration))
+            let pair = short_children.entry(&child.message).or_insert((Duration::default(), 0));
+            pair.0 += child.duration;
+            pair.1 += 1;
         }
-
-        next_start = i + 1;
-    }
-    short.sort_by_key(|(msg, _time)| *msg);
-    for (msg, entires) in short.iter().group_by(|(msg, _time)| msg).into_iter() {
-        let mut count = 0;
-        let mut total_duration = Duration::default();
-        entires.for_each(|(_msg, time)| {
-            count += 1;
-            total_duration += *time;
-        });
-        writeln!(out, "{}{:5}ms - {} ({} calls)", indent, total_duration.as_millis(), msg, count)
-            .expect("printing profiling info to stdout");
+        accounted_for += child.duration;
     }
 
-    if let Some(total) = total {
-        if let Some(unaccounted) = total.checked_sub(accounted_for) {
-            let unaccounted_millis = unaccounted.as_millis();
-            if unaccounted_millis > longer_than.as_millis() && unaccounted_millis > 0 {
-                writeln!(out, "{}{:5}ms - ???", indent, unaccounted_millis)
-                    .expect("printing profiling info to stdout");
-            }
-        }
+    for (child_msg, (duration, count)) in short_children.iter() {
+        let millis = duration.as_millis();
+        writeln!(out, "    {}{:5}ms - {} ({} calls)", current_indent, millis, child_msg, count)
+            .expect("printing profiling info");
     }
+
+    let unaccounted_millis = (current.duration - accounted_for).as_millis();
+    if !children_indices.is_empty()
+        && unaccounted_millis > 0
+        && unaccounted_millis > longer_than_millis
+    {
+        writeln!(out, "    {}{:5}ms - ???", current_indent, unaccounted_millis)
+            .expect("printing profiling info");
+    }
+}
+
+/// Returns a mapping from an index in the `msgs` to the vector with the indices of its children.
+///
+/// This assumes that the entries in `msgs` are in the order of when the calls to `profile` finish.
+/// In other words, a postorder of the call graph. In particular, the root is the last element of
+/// `msgs`.
+fn idx_to_children(msgs: &[Message]) -> Vec<Vec<usize>> {
+    // Initialize with the index of the root; `msgs` and `ancestors` should be never empty.
+    assert!(!msgs.is_empty());
+    let mut ancestors = vec![msgs.len() - 1];
+    let mut result: Vec<Vec<usize>> = vec![vec![]; msgs.len()];
+    for (idx, msg) in msgs[..msgs.len() - 1].iter().enumerate().rev() {
+        // We need to find the parent of the current message, i.e., the last ancestor that has a
+        // level lower than the current message.
+        while msgs[*ancestors.last().unwrap()].level >= msg.level {
+            ancestors.pop();
+        }
+        result[*ancestors.last().unwrap()].push(idx);
+        ancestors.push(idx);
+    }
+    // Note that above we visited all children from the last to the first one. Let's reverse vectors
+    // to get the more natural order where the first element is the first child.
+    for vec in result.iter_mut() {
+        vec.reverse();
+    }
+    result
 }
 
 /// Prints backtrace to stderr, useful for debugging.
@@ -388,7 +413,7 @@ mod tests {
             Message { level: 1, duration: Duration::from_nanos(2), message: "bar".to_owned() },
             Message { level: 0, duration: Duration::from_millis(1), message: "foo".to_owned() },
         ];
-        print(0, &msgs, &mut result, Duration::from_millis(0), Some(Duration::from_millis(1)));
+        print(&msgs, Duration::from_millis(0), &mut result);
         // The calls to `bar` are so short that they'll be rounded to 0ms and should get collapsed
         // when printing.
         assert_eq!(
@@ -404,7 +429,7 @@ mod tests {
             Message { level: 1, duration: Duration::from_millis(2), message: "bar".to_owned() },
             Message { level: 0, duration: Duration::from_millis(5), message: "foo".to_owned() },
         ];
-        print(0, &msgs, &mut result, Duration::from_millis(0), Some(Duration::from_millis(1)));
+        print(&msgs, Duration::from_millis(0), &mut result);
         assert_eq!(
             std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
             vec![
@@ -426,7 +451,7 @@ mod tests {
             Message { level: 1, duration: Duration::from_millis(4), message: "bar".to_owned() },
             Message { level: 0, duration: Duration::from_millis(9), message: "foo".to_owned() },
         ];
-        print(0, &msgs, &mut result, Duration::from_millis(0), None);
+        print(&msgs, Duration::from_millis(0), &mut result);
         assert_eq!(
             std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
             vec![
