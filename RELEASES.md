@@ -62,9 +62,9 @@ Cargo
 - [Cargo.lock now uses a more git friendly format that should help to reduce
   merge conflicts.][cargo/7579]
 - [You can now override specific dependencies's build settings][cargo/7591] E.g.
-  `[profile.dev.overrides.image] opt-level = 2` sets the `image` crate's
+  `[profile.dev.package.image] opt-level = 2` sets the `image` crate's
   optimisation level to `2` for debug builds. You can also use
-  `[profile.<profile>.build_overrides]` to override build scripts and
+  `[profile.<profile>.build-override]` to override build scripts and
   their dependencies.
 
 Misc
