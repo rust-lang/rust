@@ -3,6 +3,7 @@
 
 #![feature(rustc_private)]
 
+#[allow(unused)] // necessary on macos due to conditional compilation
 extern crate libc;
 
 #[cfg(not(target_os = "macos"))]
