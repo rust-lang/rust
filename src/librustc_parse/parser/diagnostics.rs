@@ -938,47 +938,6 @@ impl<'a> Parser<'a> {
         self.expect(&token::Semi).map(drop) // Error unconditionally
     }
 
-    pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
-        &mut self,
-        ident: &Ident,
-        extern_sp: Span,
-    ) -> PResult<'a, ()> {
-        if self.token != token::Semi {
-            // This might be an incorrect fn definition (#62109).
-            let parser_snapshot = self.clone();
-            match self.parse_inner_attrs_and_block() {
-                Ok((_, body)) => {
-                    self.struct_span_err(ident.span, "incorrect `fn` inside `extern` block")
-                        .span_label(ident.span, "can't have a body")
-                        .span_label(body.span, "this body is invalid here")
-                        .span_label(
-                            extern_sp,
-                            "`extern` blocks define existing foreign functions and `fn`s \
-                             inside of them cannot have a body",
-                        )
-                        .help(
-                            "you might have meant to write a function accessible through ffi, \
-                               which can be done by writing `extern fn` outside of the \
-                               `extern` block",
-                        )
-                        .note(
-                            "for more information, visit \
-                               https://doc.rust-lang.org/std/keyword.extern.html",
-                        )
-                        .emit();
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    mem::replace(self, parser_snapshot);
-                    self.expect_semi()?;
-                }
-            }
-        } else {
-            self.bump();
-        }
-        Ok(())
-    }
-
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     pub(super) fn recover_incorrect_await_syntax(

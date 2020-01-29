@@ -1,4 +1,4 @@
-// error-pattern:expected one of `(`, `fn`, `static`, or `type`
+// error-pattern: expected one of `(`, `async`, `const`, `extern`, `fn`
 extern {
     pub pub fn foo();
 }

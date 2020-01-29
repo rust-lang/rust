@@ -133,7 +133,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
         );
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -142,7 +142,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: make_signature(&sig.decl, generics),
                     parent: None,
                     children: vec![],
                     decl_id: None,

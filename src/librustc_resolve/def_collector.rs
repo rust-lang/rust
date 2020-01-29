@@ -125,7 +125,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     &sig.header,
                     generics,
                     &sig.decl,
-                    Some(body),
+                    body.as_deref(),
                 );
             }
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) => {
@@ -213,39 +213,26 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
-        let def_data = match ti.kind {
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(ti.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ti.ident.name),
-            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
-        };
-
-        let def = self.create_def(ti.id, def_data, ti.span);
-        self.with_parent(def, |this| visit::walk_trait_item(this, ti));
-    }
-
-    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
-        let def_data = match ii.kind {
-            AssocItemKind::Fn(FnSig { ref header, ref decl }, ref body)
-                if header.asyncness.node.is_async() =>
-            {
+    fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
+        let def_data = match &i.kind {
+            AssocItemKind::Fn(FnSig { header, decl }, body) if header.asyncness.node.is_async() => {
                 return self.visit_async_fn(
-                    ii.id,
-                    ii.ident.name,
-                    ii.span,
+                    i.id,
+                    i.ident.name,
+                    i.span,
                     header,
-                    &ii.generics,
+                    &i.generics,
                     decl,
                     body.as_deref(),
                 );
             }
-            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
-            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
+            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            AssocItemKind::Macro(..) => return self.visit_macro_invoc(i.id),
         };
 
-        let def = self.create_def(ii.id, def_data, ii.span);
-        self.with_parent(def, |this| visit::walk_impl_item(this, ii));
+        let def = self.create_def(i.id, def_data, i.span);
+        self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
