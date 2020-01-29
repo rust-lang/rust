@@ -153,9 +153,9 @@ where
     // FIXME: I think we should just control the flags externally,
     // and then we do not need this machinery.
     pub fn elaborate_drop(&mut self, bb: BasicBlock) {
-        debug!("elaborate_drop({:?})", self);
+        debug!("elaborate_drop({:?}, {:?})", bb, self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
-        debug!("elaborate_drop({:?}): live - {:?}", self, style);
+        debug!("elaborate_drop({:?}, {:?}): live - {:?}", bb, self, style);
         match style {
             DropStyle::Dead => {
                 self.elaborator
@@ -426,25 +426,21 @@ where
         let mut unwind_blocks =
             if unwind.is_cleanup() { None } else { Some(Vec::with_capacity(adt.variants.len())) };
 
+        let mut have_otherwise_with_drop_glue = false;
         let mut have_otherwise = false;
         let tcx = self.tcx();
 
         for (variant_index, discr) in adt.discriminants(tcx) {
+            let variant = &adt.variants[variant_index];
             let subpath = self.elaborator.downcast_subpath(self.path, variant_index);
+
             if let Some(variant_path) = subpath {
                 let base_place = tcx.mk_place_elem(
                     self.place.clone(),
-                    ProjectionElem::Downcast(
-                        Some(adt.variants[variant_index].ident.name),
-                        variant_index,
-                    ),
+                    ProjectionElem::Downcast(Some(variant.ident.name), variant_index),
                 );
-                let fields = self.move_paths_for_fields(
-                    &base_place,
-                    variant_path,
-                    &adt.variants[variant_index],
-                    substs,
-                );
+                let fields =
+                    self.move_paths_for_fields(&base_place, variant_path, &variant, substs);
                 values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
@@ -474,16 +470,30 @@ where
                 normal_blocks.push(normal);
             } else {
                 have_otherwise = true;
+
+                let param_env = self.elaborator.param_env();
+                let have_field_with_drop_glue = variant
+                    .fields
+                    .iter()
+                    .any(|field| field.ty(tcx, substs).needs_drop(tcx, param_env));
+                if have_field_with_drop_glue {
+                    have_otherwise_with_drop_glue = true;
+                }
             }
         }
 
-        if have_otherwise {
+        if !have_otherwise {
+            values.pop();
+        } else if !have_otherwise_with_drop_glue {
+            normal_blocks.push(self.goto_block(succ, unwind));
+            if let Unwind::To(unwind) = unwind {
+                unwind_blocks.as_mut().unwrap().push(self.goto_block(unwind, Unwind::InCleanup));
+            }
+        } else {
             normal_blocks.push(self.drop_block(succ, unwind));
             if let Unwind::To(unwind) = unwind {
                 unwind_blocks.as_mut().unwrap().push(self.drop_block(unwind, Unwind::InCleanup));
             }
-        } else {
-            values.pop();
         }
 
         (
@@ -926,6 +936,11 @@ where
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let block =
             TerminatorKind::Drop { location: *self.place, target, unwind: unwind.into_option() };
+        self.new_block(unwind, block)
+    }
+
+    fn goto_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
+        let block = TerminatorKind::Goto { target };
         self.new_block(unwind, block)
     }
 
