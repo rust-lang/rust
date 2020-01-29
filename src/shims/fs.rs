@@ -432,9 +432,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
         // * interpreting `dirfd` as any file descriptor when `path` is empty and AT_EMPTY_PATH is
         // set.
-        // The behavior of `statx` with a relative path and a directory file descriptor other than
-        // `AT_FDCWD` is specified but it cannot be tested from `libstd`. If you found this error,
-        // please open an issue reporting it.
+        // Other behaviors cannot be tested from `libstd` and thus are not implemented. If you
+        // found this error, please open an issue reporting it.
         if !(
             path.is_absolute() ||
             dirfd == this.eval_libc_i32("AT_FDCWD")? ||
