@@ -448,7 +448,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
@@ -472,7 +472,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
@@ -664,7 +664,7 @@ fn place_as_reborrow(
         //
         // This is sufficient to prevent an access to a `static mut` from being marked as a
         // reborrow, even if the check above were to disappear.
-        let inner_ty = Place::ty_from(&place.local, inner, body, tcx).ty;
+        let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
         match inner_ty.kind {
             ty::Ref(..) => Some(inner),
             _ => None,

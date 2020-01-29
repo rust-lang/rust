@@ -134,7 +134,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
-                let span = self.fx.mir.local_decls[*place_ref.local].source_info.span;
+                let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
                 }
@@ -174,7 +174,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     // We use `NonUseContext::VarDebugInfo` for the base,
                     // which might not force the base local to memory,
                     // so we have to do it manually.
-                    self.visit_local(place_ref.local, context, location);
+                    self.visit_local(&place_ref.local, context, location);
                 }
             }
 
@@ -212,8 +212,8 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 };
             }
 
-            self.visit_place_base(place_ref.local, context, location);
-            self.visit_projection(place_ref.local, place_ref.projection, context, location);
+            self.visit_place_base(&place_ref.local, context, location);
+            self.visit_projection(&place_ref.local, place_ref.projection, context, location);
         }
     }
 }

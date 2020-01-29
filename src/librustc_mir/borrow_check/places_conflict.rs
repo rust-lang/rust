@@ -119,7 +119,7 @@ fn place_components_conflict<'tcx>(
     //    and either equal or disjoint.
     //  - If we did run out of access, the borrow can access a part of it.
 
-    let borrow_local = &borrow_place.local;
+    let borrow_local = borrow_place.local;
     let access_local = access_place.local;
 
     match place_base_conflict(borrow_local, access_local) {
@@ -293,7 +293,7 @@ fn place_components_conflict<'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_base_conflict(l1: &Local, l2: &Local) -> Overlap {
+fn place_base_conflict(l1: Local, l2: Local) -> Overlap {
     if l1 == l2 {
         // the same local - base case, equal
         debug!("place_element_conflict: DISJOINT-OR-EQ-LOCAL");
@@ -311,7 +311,7 @@ fn place_base_conflict(l1: &Local, l2: &Local) -> Overlap {
 fn place_projection_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    pi1_local: &Local,
+    pi1_local: Local,
     pi1_proj_base: &[PlaceElem<'tcx>],
     pi1_elem: &PlaceElem<'tcx>,
     pi2_elem: &PlaceElem<'tcx>,

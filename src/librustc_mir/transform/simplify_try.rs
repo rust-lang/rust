@@ -139,7 +139,7 @@ fn match_variant_field_place<'tcx>(place: &Place<'tcx>) -> Option<(Local, VarFie
         PlaceRef {
             local,
             projection: &[ProjectionElem::Downcast(_, var_idx), ProjectionElem::Field(field, ty)],
-        } => Some((*local, VarField { field, field_ty: ty, var_idx })),
+        } => Some((local, VarField { field, field_ty: ty, var_idx })),
         _ => None,
     }
 }

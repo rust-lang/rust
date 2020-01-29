@@ -1773,7 +1773,7 @@ rustc_index::newtype_index! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
-    pub local: &'a Local,
+    pub local: Local,
     pub projection: &'a [PlaceElem<'tcx>],
 }
 
@@ -1797,8 +1797,8 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
-            PlaceRef { local, projection: &[] }
-            | PlaceRef { local, projection: &[ProjectionElem::Deref] } => Some(*local),
+            PlaceRef { local, projection: [] }
+            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
         }
     }
@@ -1810,7 +1810,7 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
-        PlaceRef { local: &self.local, projection: &self.projection }
+        PlaceRef { local: self.local, projection: &self.projection }
     }
 }
 
@@ -1826,9 +1826,9 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     //
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
-        match self {
+        match *self {
             PlaceRef { local, projection: [] }
-            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(**local),
+            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
         }
     }
@@ -1836,8 +1836,8 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     /// If this place represents a local variable like `_X` with no
     /// projections, return `Some(_X)`.
     pub fn as_local(&self) -> Option<Local> {
-        match self {
-            PlaceRef { local, projection: [] } => Some(**local),
+        match *self {
+            PlaceRef { local, projection: [] } => Some(local),
             _ => None,
         }
     }

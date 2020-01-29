@@ -823,7 +823,7 @@ enum InitializationRequiringAction {
 }
 
 struct RootPlace<'d, 'tcx> {
-    place_local: &'d Local,
+    place_local: Local,
     place_projection: &'d [PlaceElem<'tcx>],
     is_local_mutation_allowed: LocalMutationIsAllowed,
 }
@@ -1382,7 +1382,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("check_for_invalidation_at_exit({:?})", borrow);
         let place = &borrow.borrowed_place;
         let deref = [ProjectionElem::Deref];
-        let mut root_place = PlaceRef { local: &place.local, projection: &[] };
+        let mut root_place = PlaceRef { local: place.local, projection: &[] };
 
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
         // we just know that all locals are dropped at function exit (otherwise
@@ -1391,7 +1391,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // FIXME: allow thread-locals to borrow other thread locals?
 
         let (might_be_alive, will_be_dropped) =
-            if self.body.local_decls[*root_place.local].is_ref_to_thread_local() {
+            if self.body.local_decls[root_place.local].is_ref_to_thread_local() {
                 // Thread-locals might be dropped after the function exits
                 // We have to dereference the outer reference because
                 // borrows don't conflict behind shared references.
@@ -1722,7 +1722,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.check_if_full_path_is_moved(
                         location, InitializationRequiringAction::Use,
                         (PlaceRef {
-                            local: &place.local,
+                            local: place.local,
                             projection: proj_base,
                         }, span), flow_state);
                     // (base initialized; no need to
@@ -1740,13 +1740,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&place.local, proj_base, self.body(), tcx).ty;
+                    let base_ty = Place::ty_from(place.local, proj_base, self.body(), tcx).ty;
                     match base_ty.kind {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
                                 location, InitializationRequiringAction::Assignment,
                                 (PlaceRef {
-                                    local: &place.local,
+                                    local: place.local,
                                     projection: proj_base,
                                 }, span), flow_state);
 
@@ -1759,7 +1759,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // is allowed, remove this match arm.
                         ty::Adt(..) | ty::Tuple(..) => {
                             check_parent_of_field(self, location, PlaceRef {
-                                local: &place.local,
+                                local: place.local,
                                 projection: proj_base,
                             }, span, flow_state);
 
@@ -1998,9 +1998,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
                 if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
-                    && self.is_local_ever_initialized(*local, flow_state).is_some()
+                    && self.is_local_ever_initialized(local, flow_state).is_some()
                 {
-                    self.used_mut.insert(*local);
+                    self.used_mut.insert(local);
                 }
             }
             RootPlace {
@@ -2032,7 +2032,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Result<RootPlace<'d, 'tcx>, PlaceRef<'d, 'tcx>> {
         match place {
             PlaceRef { local, projection: [] } => {
-                let local = &self.body.local_decls[*local];
+                let local = &self.body.local_decls[local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
                         LocalMutationIsAllowed::Yes => Ok(RootPlace {

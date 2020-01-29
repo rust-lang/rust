@@ -47,7 +47,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
-                    let name = self.local_names[*local].expect("immutable unnamed local");
+                    let name = self.local_names[local].expect("immutable unnamed local");
                     reason = format!(", as `{}` is not declared as mutable", name);
                 }
             }
@@ -70,20 +70,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_for_guard() =>
+                if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
                 reason = ", as it is immutable for the pattern guard".to_string();
             }
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_to_static() =>
+                if self.body.local_decls[local].is_ref_to_static() =>
             {
                 if access_place.projection.len() == 1 {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
                     reason = String::new();
                 } else {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    let local_info = &self.body.local_decls[*local].local_info;
+                    let local_info = &self.body.local_decls[local].local_info;
                     if let LocalInfo::StaticRef { def_id, .. } = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
                         reason = format!(", as `{}` is an immutable static item", static_name);
@@ -93,7 +93,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if *the_place_err.local == Local::new(1)
+                if the_place_err.local == Local::new(1)
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
@@ -212,7 +212,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if {
                     self.body
                         .local_decls
-                        .get(*local)
+                        .get(local)
                         .map(|local_decl| {
                             if let LocalInfo::User(ClearCrossCrate::Set(
                                 mir::BindingForm::ImplicitSelf(kind),
@@ -224,7 +224,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 // Deliberately fall into this case for all implicit self types,
                                 // so that we don't fall in to the next case with them.
                                 kind == mir::ImplicitSelfKind::MutRef
-                            } else if Some(kw::SelfLower) == self.local_names[*local] {
+                            } else if Some(kw::SelfLower) == self.local_names[local] {
                                 // Otherwise, check if the name is the self kewyord - in which case
                                 // we have an explicit self. Do the same thing in this case and check
                                 // for a `self: &mut Self` to suggest removing the `&mut`.
@@ -247,20 +247,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
             PlaceRef { local, projection: [] }
-                if self.body.local_decls[*local].can_be_made_mutable() =>
+                if self.body.local_decls[local].can_be_made_mutable() =>
             {
                 // ... but it doesn't make sense to suggest it on
                 // variables that are `ref x`, `ref mut x`, `&self`,
                 // or `&mut self` (such variables are simply not
                 // mutable).
-                let local_decl = &self.body.local_decls[*local];
+                let local_decl = &self.body.local_decls[local];
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_suggestion(
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
-                    format!("mut {}", self.local_names[*local].unwrap()),
+                    format!("mut {}", self.local_names[local].unwrap()),
                     Applicability::MachineApplicable,
                 );
             }
@@ -312,7 +312,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_ref_for_guard() =>
+                if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.note(
@@ -326,9 +326,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // FIXME: can this case be generalized to work for an
             // arbitrary base for the projection?
             PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[*local].is_user_variable() =>
+                if self.body.local_decls[local].is_user_variable() =>
             {
-                let local_decl = &self.body.local_decls[*local];
+                let local_decl = &self.body.local_decls[local];
                 let suggestion = match local_decl.local_info {
                     LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_))) => {
                         Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
@@ -343,7 +343,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ))) => Some(suggest_ampmut(
                         self.infcx.tcx,
                         self.body,
-                        *local,
+                        local,
                         local_decl,
                         opt_ty_info,
                     )),
@@ -379,7 +379,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     );
                 }
 
-                match self.local_names[*local] {
+                match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
                         err.span_label(
                             span,
@@ -411,7 +411,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [ProjectionElem::Deref],
                 // FIXME document what is this 1 magic number about
-            } if *local == Local::new(1) && !self.upvars.is_empty() => {
+            } if local == Local::new(1) && !self.upvars.is_empty() => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_help(
                     self.body.span,

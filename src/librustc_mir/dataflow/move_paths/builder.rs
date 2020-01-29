@@ -109,7 +109,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let proj_base = &place.projection[..i];
             let body = self.builder.body;
             let tcx = self.builder.tcx;
-            let place_ty = Place::ty_from(&place.local, proj_base, body, tcx).ty;
+            let place_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
             match place_ty.kind {
                 ty::Ref(..) | ty::RawPtr(..) => {
                     let proj = &place.projection[..i + 1];

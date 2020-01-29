@@ -246,7 +246,7 @@ impl MovePathLookup {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: PlaceRef<'_, '_>) -> LookupResult {
-        let mut result = self.locals[*place.local];
+        let mut result = self.locals[place.local];
 
         for elem in place.projection.iter() {
             if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {

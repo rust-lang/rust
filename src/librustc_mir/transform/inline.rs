@@ -640,8 +640,8 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         new
     }
 
-    fn make_integrate_local(&self, local: &Local) -> Local {
-        if *local == RETURN_PLACE {
+    fn make_integrate_local(&self, local: Local) -> Local {
+        if local == RETURN_PLACE {
             return self.destination.local;
         }
 
@@ -660,7 +660,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _ctxt: PlaceContext, _location: Location) {
-        *local = self.make_integrate_local(local);
+        *local = self.make_integrate_local(*local);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
@@ -680,7 +680,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Index(local) = elem {
-            let new_local = self.make_integrate_local(local);
+            let new_local = self.make_integrate_local(*local);
 
             if new_local != *local {
                 return Some(PlaceElem::Index(new_local));

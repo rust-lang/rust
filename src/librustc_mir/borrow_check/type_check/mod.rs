@@ -2390,7 +2390,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&borrowed_place.local, proj_base, body, tcx).ty;
+                    let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind {
