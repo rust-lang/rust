@@ -9,8 +9,8 @@
 // borrowck=migrate`.
 
 // revisions: zflag edition
-// [zflag]compile-flags: -Z borrowck=migrate
-// [edition]edition:2018
+//[zflag]compile-flags: -Z borrowck=migrate
+//[edition]edition:2018
 
 #![feature(nll)]
 
