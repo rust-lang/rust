@@ -129,7 +129,7 @@ a new unstable feature:
    in the active `declare_features` block:
 
    ```rust,ignore
-   // description of feature
+   /// description of feature
    (active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
    ```
 
