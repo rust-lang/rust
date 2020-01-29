@@ -5,7 +5,14 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    env,
+    error::Error,
+    fmt, panic,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
@@ -425,6 +432,19 @@ fn loop_turn(
             loop_state.subscriptions.subscriptions(),
         )
     }
+
+    let loop_duration = loop_start.elapsed();
+    if loop_duration > Duration::from_millis(10) {
+        log::error!("overly long loop turn: {:?}", loop_duration);
+        if env::var("RA_PROFILE").is_ok() {
+            show_message(
+                req::MessageType::Error,
+                format!("overly long loop turn: {:?}", loop_duration),
+                &connection.sender,
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -452,7 +472,7 @@ fn on_request(
     world: &mut WorldState,
     pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
-    sender: &Sender<Task>,
+    task_sender: &Sender<Task>,
     msg_sender: &Sender<Message>,
     request_received: Instant,
     req: Request,
@@ -461,7 +481,7 @@ fn on_request(
         req: Some(req),
         pool,
         world,
-        sender,
+        task_sender,
         msg_sender,
         pending_requests,
         request_received,
@@ -661,7 +681,7 @@ struct PoolDispatcher<'a> {
     world: &'a mut WorldState,
     pending_requests: &'a mut PendingRequests,
     msg_sender: &'a Sender<Message>,
-    sender: &'a Sender<Task>,
+    task_sender: &'a Sender<Task>,
     request_received: Instant,
 }
 
@@ -708,7 +728,7 @@ impl<'a> PoolDispatcher<'a> {
 
         self.pool.execute({
             let world = self.world.snapshot();
-            let sender = self.sender.clone();
+            let sender = self.task_sender.clone();
             move || {
                 let result = f(world, params);
                 let task = result_to_task::<R>(id, result);
@@ -786,7 +806,7 @@ fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: WorldSnapshot,
     publish_decorations: bool,
-    sender: Sender<Task>,
+    task_sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
@@ -802,7 +822,7 @@ fn update_file_notifications_on_threadpool(
                     }
                     Ok(params) => {
                         let not = notification_new::<req::PublishDiagnostics>(params);
-                        sender.send(Task::Notify(not)).unwrap();
+                        task_sender.send(Task::Notify(not)).unwrap();
                     }
                 }
             }
@@ -815,7 +835,7 @@ fn update_file_notifications_on_threadpool(
                     }
                     Ok(params) => {
                         let not = notification_new::<req::PublishDecorations>(params);
-                        sender.send(Task::Notify(not)).unwrap();
+                        task_sender.send(Task::Notify(not)).unwrap();
                     }
                 }
             }
