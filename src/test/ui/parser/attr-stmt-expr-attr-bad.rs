@@ -38,8 +38,6 @@ fn main() {}
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = #[attr] &mut #![attr] 0; }
 //~^ ERROR an inner attribute is not permitted in this context
-#[cfg(FALSE)] fn e() { let _ = #[attr] if 0 {}; }
-//~^ ERROR attributes are not yet allowed on `if` expressions
 #[cfg(FALSE)] fn e() { let _ = if 0 #[attr] {}; }
 //~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if 0 {#![attr]}; }
@@ -51,14 +49,11 @@ fn main() {}
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else #[attr] if 0 {}; }
-//~^ ERROR attributes are not yet allowed on `if` expressions
-//~| ERROR expected `{`, found `#`
+//~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 #[attr] {}; }
 //~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if 0 {} else if 0 {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
-#[cfg(FALSE)] fn e() { let _ = #[attr] if let _ = 0 {}; }
-//~^ ERROR attributes are not yet allowed on `if` expressions
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 #[attr] {}; }
 //~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {#![attr]}; }
@@ -70,8 +65,7 @@ fn main() {}
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else {#![attr]}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else #[attr] if let _ = 0 {}; }
-//~^ ERROR attributes are not yet allowed on `if` expressions
-//~| ERROR expected `{`, found `#`
+//~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 #[attr] {}; }
 //~^ ERROR expected `{`, found `#`
 #[cfg(FALSE)] fn e() { let _ = if let _ = 0 {} else if let _ = 0 {#![attr]}; }

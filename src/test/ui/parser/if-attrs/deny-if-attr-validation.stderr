@@ -5,7 +5,7 @@ LL |     #[allow(warnings)] if true {}
    |     ^^^^^^^^^^^^^^^^^^
 
 error: attributes are not yet allowed on `if` expressions
-  --> $DIR/deny-if-attr-validation.rs:7:2
+  --> $DIR/deny-if-attr-validation.rs:7:5
    |
 LL |     #[allow(warnings)] if let Some(_) = Some(true) {
    |     ^^^^^^^^^^^^^^^^^^
