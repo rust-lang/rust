@@ -26,15 +26,6 @@ Discussion happens in this Zulip stream:
 
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
 
-# Work List
-
-We have this "work list" paper document:
-
-https://paper.dropbox.com/doc/RLS-2.0-work-list--AZ3BgHKKCtqszbsi3gi6sjchAQ-42vbnxzuKq2lKwW0mkn8Y
-
-It shows what everyone is working on right now. If you want to (this is not
-mandatory), add yourself to the list!
-
 # Issue Labels
 
 * [good-first-issue](https://github.com/rust-analyzer/rust-analyzer/labels/good%20first%20issue)
@@ -50,10 +41,12 @@ mandatory), add yourself to the list!
 
 # CI
 
-We use Travis for CI. Most of the things, including formatting, are checked by
+We use GitHub Actions for CI. Most of the things, including formatting, are checked by
 `cargo test` so, if `cargo test` passes locally, that's a good sign that CI will
-be green as well. We use bors-ng to enforce the [not rocket
-science](https://graydon2.dreamwidth.org/1597.html) rule.
+be green as well. The only exception is that long-running by default a skipped locally.
+Use `env RUN_SLOW_TESTS=1 cargo test` to run the full suite.
+
+We use bors-ng to enforce the [not rocket science](https://graydon2.dreamwidth.org/1597.html) rule.
 
 You can run `cargo xtask install-pre-commit-hook` to install git-hook to run rustfmt on commit.
 
@@ -81,42 +74,37 @@ relevant test and execute it (VS Code includes an action for running a single
 test).
 
 However, launching a VS Code instance with locally build language server is
-possible. There's even a VS Code task for this, so just <kbd>F5</kbd> should
-work (thanks, [@andrew-w-ross](https://github.com/andrew-w-ross)!).
+possible. There's "Run Extension (Dev Server)" launch configuration for this.
 
-I often just install development version with `cargo xtask install --server --jemalloc` and
-restart the host VS Code.
+In general, I use one of the following workflows for fixing bugs and
+implementing features.
 
-See [./debugging.md](./debugging.md) for how to attach to rust-analyzer with
-debugger, and don't forget that rust-analyzer has useful `pd` snippet and `dbg`
-postfix completion for printf debugging :-)
+If the problem concerns only internal parts of rust-analyzer (ie, I don't need
+to touch `ra_lsp_server` crate or typescript code), there is a unit-test for it.
+So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and
+then just do printf-driven development/debugging. As a sanity check after I'm
+done, I use `cargo xtask install --server` and **Reload Window** action in VS
+Code to sanity check that the thing works as I expect.
 
-# Working With VS Code Extension
+If the problem concerns only the VS Code extension, I use **Run Extension**
+launch configuration from `launch.json`. Notably, this uses the usual
+`ra_lsp_server` binary from `PATH`. After I am done with the fix, I use `cargo
+xtask install --client-code` to try the new extension for real.
 
-To work on the VS Code extension, launch code inside `editors/code` and use `F5`
-to launch/debug. To automatically apply formatter and linter suggestions, use
-`npm run fix`.
+If I need to fix something in the `ra_lsp_server` crate, I feel sad because it's
+on the boundary between the two processes, and working there is slow. I usually
+just `cargo xtask install --server` and poke changes from my live environment.
+Note that this uses `--release`, which is usually faster overall, because
+loading stdlib into debug version of rust-analyzer takes a lot of time. To speed
+things up, sometimes I open a temporary hello-world project which has
+`"rust-analyzer.withSysroot": false` in `.code/settings.json`. This flag causes
+rust-analyzer to skip loading the sysroot, which greatly reduces the amount of
+things rust-analyzer needs to do, and makes printf's more useful. Note that you
+should only use `eprint!` family of macros for debugging: stdout is used for LSP
+communication, and `print!` would break it.
 
-Tests are located inside `src/test` and are named `*.test.ts`. They use the
-[Mocha](https://mochajs.org) test framework and the builtin Node
-[assert](https://nodejs.org/api/assert.html) module. Unlike normal Node tests
-they must be hosted inside a VS Code instance. This can be done in one of two
-ways:
-
-1. When `F5` debugging in VS Code select the `Extension Tests` configuration
-   from the drop-down at the top of the Debug View. This will launch a temporary
-   instance of VS Code. The test results will appear in the "Debug Console" tab
-   of the primary VS Code instance.
-
-2. Run `npm test` from the command line. Although this is initiated from the
-   command line it is not headless; it will also launch a temporary instance of
-   VS Code.
-
-Due to the requirements of running the tests inside VS Code they are **not run
-on CI**. When making changes to the extension please ensure the tests are not
-broken locally before opening a Pull Request.
-
-To install **only** the VS Code extension, use `cargo xtask install --client-code`.
+If I need to fix something simultaneously in the server and in the client, I
+feel even more sad. I don't have a specific workflow for this case.
 
 # Logging
 
