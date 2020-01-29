@@ -234,17 +234,48 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
     tcx.hir()
         .get_if_local(trait_def_id)
         .and_then(|node| match node {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., bounds, _), .. }) => Some(
-                bounds
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(.., generics, bounds, _),
+                ..
+            }) => Some(
+                generics
+                    .where_clause
+                    .predicates
                     .iter()
-                    .filter_map(|b| match b {
+                    .filter_map(|pred| {
+                        match pred {
+                            hir::WherePredicate::BoundPredicate(pred)
+                                if pred.bounded_ty.hir_id.owner_def_id() == trait_def_id =>
+                            {
+                                // Fetch spans for trait bounds that are Sized:
+                                // `trait T where Self: Pred`
+                                Some(pred.bounds.iter().filter_map(|b| match b {
+                                    hir::GenericBound::Trait(
+                                        trait_ref,
+                                        hir::TraitBoundModifier::None,
+                                    ) if trait_has_sized_self(
+                                        tcx,
+                                        trait_ref.trait_ref.trait_def_id(),
+                                    ) =>
+                                    {
+                                        Some(trait_ref.span)
+                                    }
+                                    _ => None,
+                                }))
+                            }
+                            _ => None,
+                        }
+                    })
+                    .flatten()
+                    .chain(bounds.iter().filter_map(|b| match b {
                         hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
                             if trait_has_sized_self(tcx, trait_ref.trait_ref.trait_def_id()) =>
                         {
+                            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
                             Some(trait_ref.span)
                         }
                         _ => None,
-                    })
+                    }))
                     .collect::<SmallVec<[Span; 1]>>(),
             ),
             _ => None,
