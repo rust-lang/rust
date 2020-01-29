@@ -434,7 +434,7 @@ fn loop_turn(
     }
 
     let loop_duration = loop_start.elapsed();
-    if loop_duration > Duration::from_millis(10) {
+    if loop_duration > Duration::from_millis(100) {
         log::error!("overly long loop turn: {:?}", loop_duration);
         if env::var("RA_PROFILE").is_ok() {
             show_message(
