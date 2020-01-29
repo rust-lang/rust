@@ -301,45 +301,74 @@ impl RootDatabase {
             )*}
         }
         sweep_each_query![
+            // SourceDatabase
             ra_db::ParseQuery
             ra_db::SourceRootCratesQuery
+
+            // AstDatabase
             hir::db::AstIdMapQuery
-            hir::db::ParseMacroQuery
-            hir::db::MacroDefQuery
+            hir::db::InternMacroQuery
             hir::db::MacroArgQuery
+            hir::db::MacroDefQuery
+            hir::db::ParseMacroQuery
             hir::db::MacroExpandQuery
-            hir::db::StructDataQuery
-            hir::db::EnumDataQuery
-            hir::db::TraitDataQuery
+
+            // DefDatabase
             hir::db::RawItemsQuery
             hir::db::ComputeCrateDefMapQuery
-            hir::db::GenericParamsQuery
-            hir::db::FunctionDataQuery
+            hir::db::StructDataQuery
+            hir::db::UnionDataQuery
+            hir::db::EnumDataQuery
+            hir::db::ImplDataQuery
+            hir::db::TraitDataQuery
             hir::db::TypeAliasDataQuery
+            hir::db::FunctionDataQuery
             hir::db::ConstDataQuery
             hir::db::StaticDataQuery
+            hir::db::BodyWithSourceMapQuery
+            hir::db::BodyQuery
+            hir::db::ExprScopesQuery
+            hir::db::GenericParamsQuery
+            hir::db::AttrsQuery
             hir::db::ModuleLangItemsQuery
             hir::db::CrateLangItemsQuery
             hir::db::LangItemQuery
             hir::db::DocumentationQuery
-            hir::db::ExprScopesQuery
+
+            // InternDatabase
+            hir::db::InternFunctionQuery
+            hir::db::InternStructQuery
+            hir::db::InternUnionQuery
+            hir::db::InternEnumQuery
+            hir::db::InternConstQuery
+            hir::db::InternStaticQuery
+            hir::db::InternTraitQuery
+            hir::db::InternTypeAliasQuery
+            hir::db::InternImplQuery
+
+            // HirDatabase
             hir::db::DoInferQuery
             hir::db::TyQuery
             hir::db::ValueTyQuery
+            hir::db::ImplSelfTyQuery
+            hir::db::ImplTraitQuery
             hir::db::FieldTypesQuery
             hir::db::CallableItemSignatureQuery
+            hir::db::GenericPredicatesForParamQuery
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
-            hir::db::BodyWithSourceMapQuery
-            hir::db::BodyQuery
             hir::db::ImplsInCrateQuery
             hir::db::ImplsForTraitQuery
+            hir::db::TraitSolverQuery
+            hir::db::InternTypeCtorQuery
+            hir::db::InternChalkImplQuery
+            hir::db::InternAssocTyValueQuery
             hir::db::AssociatedTyDataQuery
+            hir::db::AssociatedTyValueQuery
+            hir::db::TraitSolveQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
-            hir::db::ImplDataQuery
-            hir::db::TraitSolveQuery
         ];
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc
