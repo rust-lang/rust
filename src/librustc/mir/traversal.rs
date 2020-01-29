@@ -4,7 +4,7 @@ use super::*;
 
 /// Preorder traversal of a graph.
 ///
-/// Preorder traversal is when each node is visited before an of it's
+/// Preorder traversal is when each node is visited before any of its
 /// successors
 ///
 /// ```text
@@ -82,7 +82,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
 /// Postorder traversal of a graph.
 ///
-/// Postorder traversal is when each node is visited after all of it's
+/// Postorder traversal is when each node is visited after all of its
 /// successors, except when the successor is only reachable by a back-edge
 ///
 ///
