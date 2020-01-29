@@ -1,7 +1,7 @@
 use hir::{db::HirDatabase, HirDisplay};
 use ra_syntax::{
-    ast::{self, AstNode, LetStmt, NameOwner},
-    TextRange, T,
+    ast::{self, AstNode, LetStmt, NameOwner, TypeAscriptionOwner},
+    TextRange,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -34,17 +34,21 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     // The binding must have a name
     let name = pat.name()?;
     let name_range = name.syntax().text_range();
-    // Assist should only be applicable if cursor is between 'let' and '='
     let stmt_range = stmt.syntax().text_range();
     let eq_range = stmt.eq_token()?.text_range();
+    // Assist should only be applicable if cursor is between 'let' and '='
     let let_range = TextRange::from_to(stmt_range.start(), eq_range.start());
     let cursor_in_range = ctx.frange.range.is_subrange(&let_range);
     if !cursor_in_range {
         return None;
     }
     // Assist not applicable if the type has already been specified
-    if stmt.syntax().children_with_tokens().any(|child| child.kind() == T![:]) {
-        return None;
+    // and it has no placeholders
+    let ascribed_ty = stmt.ascribed_type();
+    if let Some(ref ty) = ascribed_ty {
+        if ty.syntax().descendants().find_map(ast::PlaceholderType::cast).is_none() {
+            return None;
+        }
     }
     // Infer type
     let db = ctx.db;
@@ -60,7 +64,11 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
         format!("Insert explicit type '{}'", ty.display(db)),
         |edit| {
             edit.target(pat_range);
-            edit.insert(name_range.end(), format!(": {}", ty.display(db)));
+            if let Some(ascribed_ty) = ascribed_ty {
+                edit.replace(ascribed_ty.syntax().text_range(), format!("{}", ty.display(db)));
+            } else {
+                edit.insert(name_range.end(), format!(": {}", ty.display(db)));
+            }
         },
     )
 }
@@ -82,6 +90,40 @@ mod tests {
             add_explicit_type,
             "fn f() { let a<|> = 1; }",
             "fn f() { let a<|>: i32 = 1; }",
+        );
+    }
+
+    #[test]
+    fn add_explicit_type_works_for_underscore() {
+        check_assist(
+            add_explicit_type,
+            "fn f() { let a<|>: _ = 1; }",
+            "fn f() { let a<|>: i32 = 1; }",
+        );
+    }
+
+    #[test]
+    fn add_explicit_type_works_for_nested_underscore() {
+        check_assist(
+            add_explicit_type,
+            r#"
+            enum Option<T> {
+                Some(T),
+                None
+            }
+
+            fn f() {
+                let a<|>: Option<_> = Option::Some(1);
+            }"#,
+            r#"
+            enum Option<T> {
+                Some(T),
+                None
+            }
+
+            fn f() {
+                let a<|>: Option<i32> = Option::Some(1);
+            }"#,
         );
     }
 
