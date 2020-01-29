@@ -129,7 +129,7 @@ impl Completions {
         self.add_function_with_name(ctx, None, func)
     }
 
-    pub(crate) fn add_function_impl(&mut self, ctx: &CompletionContext, func: hir::Function) {
+    pub(crate) fn add_function_impl(&mut self, ctx: &CompletionContext, func: &hir::Function) {
         use crate::display::FunctionSignature;
 
         let display = FunctionSignature::from_hir(ctx.db, func.clone());
@@ -150,7 +150,7 @@ impl Completions {
         
         let snippet = {
             let mut s = format!("{}", display);
-            s.push_str(" { $0 }");
+            s.push_str(" { $0}");
             s
         };
 
