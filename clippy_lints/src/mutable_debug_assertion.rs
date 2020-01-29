@@ -4,7 +4,7 @@ use matches::matches;
 use rustc::hir::map::Map;
 use rustc::ty;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
+use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -147,6 +147,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                     }
                 }
             },
+            // Don't check await desugars
+            ExprKind::Match(_, _, MatchSource::AwaitDesugar) => return,
             _ if !self.found => self.expr_span = Some(expr.span),
             _ => return,
         }
