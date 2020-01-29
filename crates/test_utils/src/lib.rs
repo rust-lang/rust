@@ -176,7 +176,7 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
         .next()
         .expect("empty fixture");
 
-    let lines = fixture
+    let mut lines = fixture
         .split('\n') // don't use `.lines` to not drop `\r\n`
         .filter_map(|line| {
             if line.len() >= margin {
@@ -189,29 +189,28 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
         });
 
     let mut res = Vec::new();
-    let mut buf = String::new();
-    let mut meta: Option<&str> = None;
-
-    macro_rules! flush {
-        () => {
-            if let Some(meta) = meta {
-                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
-                buf.clear();
+    let mut meta = None;
+    loop {
+        let mut next_meta = None;
+        let mut text = String::new();
+        for line in lines.by_ref() {
+            if line.starts_with("//-") {
+                next_meta = Some(line["//-".len()..].trim().to_string());
+                break;
             }
-        };
-    };
-
-    for line in lines {
-        if line.starts_with("//-") {
-            flush!();
-            buf.clear();
-            meta = Some(line["//-".len()..].trim());
-            continue;
+            text.push_str(line);
+            text.push('\n');
         }
-        buf.push_str(line);
-        buf.push('\n');
+
+        if let Some(meta) = meta {
+            res.push(FixtureEntry { meta, text });
+        }
+        meta = next_meta;
+        if meta.is_none() {
+            break;
+        }
     }
-    flush!();
+
     res
 }
 
