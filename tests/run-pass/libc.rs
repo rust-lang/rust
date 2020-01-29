@@ -5,6 +5,7 @@
 
 extern crate libc;
 
+use std::convert::TryInto;
 use std::env::temp_dir;
 use std::fs::{File, remove_file};
 use std::io::Write;
@@ -25,7 +26,7 @@ fn main() {
         libc::posix_fadvise(
             file.as_raw_fd(),
             0,
-            bytes.len() as i64,
+            bytes.len().try_into().unwrap(),
             libc::POSIX_FADV_DONTNEED,
         )
     };
