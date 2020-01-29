@@ -9,7 +9,7 @@ use lsp_types::{
 };
 use std::{
     collections::HashMap,
-    io::BufReader,
+    io::{BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
     sync::Arc,
@@ -350,13 +350,29 @@ impl WatchThread {
             // which will break out of the loop, and continue the shutdown
             let _ = message_send.send(CheckEvent::Begin);
 
-            for message in
-                cargo_metadata::parse_messages(BufReader::new(command.stdout.take().unwrap()))
-            {
+            // We manually read a line at a time, instead of using serde's
+            // stream deserializers, because the deserializer cannot recover
+            // from an error, resulting in it getting stuck, because we try to
+            // be resillient against failures.
+            //
+            // Because cargo only outputs one JSON object per line, we can
+            // simply skip a line if it doesn't parse, which just ignores any
+            // erroneus output.
+            let stdout = BufReader::new(command.stdout.take().unwrap());
+            for line in stdout.lines() {
+                let line = match line {
+                    Ok(line) => line,
+                    Err(err) => {
+                        log::error!("Couldn't read line from cargo: {:?}", err);
+                        continue;
+                    }
+                };
+
+                let message = serde_json::from_str::<cargo_metadata::Message>(&line);
                 let message = match message {
                     Ok(message) => message,
                     Err(err) => {
-                        log::error!("Invalid json from cargo check, ignoring: {}", err);
+                        log::error!("Invalid json from cargo check, ignoring ({}): {} ", err, line);
                         continue;
                     }
                 };
