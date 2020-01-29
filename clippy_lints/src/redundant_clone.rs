@@ -334,7 +334,7 @@ fn base_local_and_movability<'tcx>(
             && has_drop(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
     }
 
-    Some((*local, deref || field))
+    Some((local, deref || field))
 }
 
 struct LocalUseVisitor {
