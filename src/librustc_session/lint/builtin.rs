@@ -19,6 +19,16 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub CONFLICTING_REPR_HINTS,
+    Deny,
+    "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #68585 <https://github.com/rust-lang/rust/issues/68585>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     pub META_VARIABLE_MISUSE,
     Allow,
     "possible meta-variable misuse at macro definition"
@@ -520,6 +530,7 @@ declare_lint_pass! {
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         ILL_FORMED_ATTRIBUTE_INPUT,
+        CONFLICTING_REPR_HINTS,
         META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
