@@ -1,4 +1,4 @@
-//! This module implements manually tracked test coverage, which useful for
+//! This module implements manually tracked test coverage, which is useful for
 //! quickly finding a test responsible for testing a particular bit of code.
 //!
 //! See <https://matklad.github.io/2018/06/18/a-trick-for-test-maintenance.html>
