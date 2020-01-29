@@ -194,7 +194,9 @@ impl dyn Any {
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
-            // SAFETY: just checked whether we are pointing to the correct type
+            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
+            // that check for memory safety because we have implemented Any for all types; no other
+            // impls can exist as they would conflict with our impl.
             unsafe { Some(&*(self as *const dyn Any as *const T)) }
         } else {
             None
@@ -228,7 +230,9 @@ impl dyn Any {
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
-            // SAFETY: just checked whether we are pointing to the correct type
+            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
+            // that check for memory safety because we have implemented Any for all types; no other
+            // impls can exist as they would conflict with our impl.
             unsafe { Some(&mut *(self as *mut dyn Any as *mut T)) }
         } else {
             None
