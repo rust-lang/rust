@@ -810,9 +810,38 @@ impl<K: Ord, V> BTreeMap<K, V> {
         K: Borrow<Q>,
         Q: Ord,
     {
+        self.remove_entry(key).map(|(_, v)| v)
+    }
+
+    /// Removes a key from the map, returning the stored key and value if the key
+    /// was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btreemap_remove_entry)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
+    /// assert_eq!(map.remove_entry(&1), None);
+    /// ```
+    #[unstable(feature = "btreemap_remove_entry", issue = "66714")]
+    pub fn remove_entry<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Ord,
+    {
         match search::search_tree(self.root.as_mut(), key) {
             Found(handle) => Some(
-                OccupiedEntry { handle, length: &mut self.length, _marker: PhantomData }.remove(),
+                OccupiedEntry { handle, length: &mut self.length, _marker: PhantomData }
+                    .remove_entry(),
             ),
             GoDown(_) => None,
         }
