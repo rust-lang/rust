@@ -363,7 +363,7 @@ impl WatchThread {
                 let line = match line {
                     Ok(line) => line,
                     Err(err) => {
-                        log::error!("Couldn't read line from cargo: {:?}", err);
+                        log::error!("Couldn't read line from cargo: {}", err);
                         continue;
                     }
                 };
@@ -372,7 +372,11 @@ impl WatchThread {
                 let message = match message {
                     Ok(message) => message,
                     Err(err) => {
-                        log::error!("Invalid json from cargo check, ignoring ({}): {} ", err, line);
+                        log::error!(
+                            "Invalid json from cargo check, ignoring ({}): {:?} ",
+                            err,
+                            line
+                        );
                         continue;
                     }
                 };
