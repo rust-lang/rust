@@ -1046,11 +1046,22 @@ pub fn report_object_safety_error(
 
     let mut reported_violations = FxHashSet::default();
     for violation in violations {
+        if let ObjectSafetyViolation::SizedSelf(sp) = &violation {
+            if !sp.is_empty() {
+                // Do not report `SizedSelf` without spans pointing at `SizedSelf` obligations
+                // with a `Span`.
+                reported_violations.insert(ObjectSafetyViolation::SizedSelf(vec![].into()));
+            }
+        }
         if reported_violations.insert(violation.clone()) {
-            match violation.span() {
-                Some(span) => err.span_label(span, violation.error_msg()),
-                None => err.note(&violation.error_msg()),
-            };
+            let spans = violation.spans();
+            if spans.is_empty() {
+                err.note(&violation.error_msg());
+            } else {
+                for span in spans {
+                    err.span_label(span, violation.error_msg());
+                }
+            }
         }
     }
 

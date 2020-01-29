@@ -18,8 +18,6 @@ LL | trait A: Sized {
    |          ----- the trait cannot require that `Self : Sized`
 LL |     fn f(a: A) -> A;
    |             ^ the trait `A` cannot be made into an object
-   |
-   = note: the trait cannot require that `Self : Sized`
 
 error: associated item referring to unboxed trait object for its own trait
   --> $DIR/object-unsafe-trait-should-use-self.rs:8:13

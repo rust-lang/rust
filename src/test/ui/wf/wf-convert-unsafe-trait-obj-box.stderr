@@ -7,7 +7,6 @@ LL | trait Trait: Sized {}
 LL |     let t_box: Box<dyn Trait> = Box::new(S);
    |                                 ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
    = note: required by cast to type `std::boxed::Box<dyn Trait>`
 
@@ -20,7 +19,6 @@ LL | trait Trait: Sized {}
 LL |     takes_box(Box::new(S));
    |               ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
    = note: required by cast to type `std::boxed::Box<(dyn Trait + 'static)>`
 
@@ -33,7 +31,6 @@ LL | trait Trait: Sized {}
 LL |     Box::new(S) as Box<dyn Trait>;
    |     ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Trait>>` for `std::boxed::Box<S>`
    = note: required by cast to type `std::boxed::Box<dyn Trait>`
 

@@ -18,15 +18,16 @@ use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use smallvec::SmallVec;
 use syntax::ast;
 
 use std::borrow::Cow;
 use std::iter::{self};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
-    SizedSelf(Span),
+    SizedSelf(SmallVec<[Span; 1]>),
 
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
@@ -75,18 +76,18 @@ impl ObjectSafetyViolation {
         }
     }
 
-    pub fn span(&self) -> Option<Span> {
+    pub fn spans(&self) -> SmallVec<[Span; 1]> {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
-        match *self {
+        match self {
+            ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
-            | ObjectSafetyViolation::SizedSelf(span)
             | ObjectSafetyViolation::Method(_, _, span)
-                if span != DUMMY_SP =>
+                if *span != DUMMY_SP =>
             {
-                Some(span)
+                vec![*span].into()
             }
-            _ => None,
+            _ => vec![].into(),
         }
     }
 }
@@ -189,10 +190,14 @@ fn object_safety_violations_for_trait(
                         tcx.def_path_str(trait_def_id)
                     ),
                 );
-                match violation.span() {
-                    Some(span) => err.span_label(span, violation.error_msg()),
-                    None => err.note(&violation.error_msg()),
-                };
+                let spans = violation.spans();
+                if spans.is_empty() {
+                    err.note(&violation.error_msg());
+                } else {
+                    for span in spans {
+                        err.span_label(span, violation.error_msg());
+                    }
+                }
                 err.emit();
                 false
             } else {
@@ -203,8 +208,9 @@ fn object_safety_violations_for_trait(
 
     // Check the trait itself.
     if trait_has_sized_self(tcx, trait_def_id) {
-        let span = get_sized_bound(tcx, trait_def_id);
-        violations.push(ObjectSafetyViolation::SizedSelf(span));
+        // We don't want to include the requirement from `Sized` itself to be `Sized` in the list.
+        let spans = get_sized_bounds(tcx, trait_def_id);
+        violations.push(ObjectSafetyViolation::SizedSelf(spans));
     }
     if predicates_reference_self(tcx, trait_def_id, false) {
         violations.push(ObjectSafetyViolation::SupertraitSelf);
@@ -224,25 +230,26 @@ fn object_safety_violations_for_trait(
     violations
 }
 
-fn get_sized_bound(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Span {
+fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
     tcx.hir()
         .get_if_local(trait_def_id)
         .and_then(|node| match node {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., bounds, _), .. }) => bounds
-                .iter()
-                .filter_map(|b| match b {
-                    hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
-                        if Some(trait_ref.trait_ref.trait_def_id())
-                            == tcx.lang_items().sized_trait() =>
-                    {
-                        Some(trait_ref.span)
-                    }
-                    _ => None,
-                })
-                .next(),
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., bounds, _), .. }) => Some(
+                bounds
+                    .iter()
+                    .filter_map(|b| match b {
+                        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
+                            if trait_has_sized_self(tcx, trait_ref.trait_ref.trait_def_id()) =>
+                        {
+                            Some(trait_ref.span)
+                        }
+                        _ => None,
+                    })
+                    .collect::<SmallVec<[Span; 1]>>(),
+            ),
             _ => None,
         })
-        .unwrap_or(DUMMY_SP)
+        .unwrap_or_else(SmallVec::new)
 }
 
 fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_only: bool) -> bool {
