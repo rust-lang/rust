@@ -173,8 +173,7 @@ let g:LanguageClient_serverCommands = {
 
 NeoVim 0.5 (not yet released) has built in language server support. For a quick start configuration
 of rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp#rust_analyzer).
-Once `neovim/nvim-lsp` is installed, you can use `call nvim_lsp#setup("rust_analyzer", {})`
-or `lua require'nvim_lsp'.rust_analyzer.setup({})` to quickly get set up.
+Once `neovim/nvim-lsp` is installed, use `lua require'nvim_lsp'.rust_analyzer.setup({})` in your `init.vim`.
 
 
 ## Sublime Text 3
