@@ -1,6 +1,6 @@
 fn a(&self) { }
-//~^ ERROR unexpected `self` parameter in function
-//~| NOTE not valid as function parameter
-//~| NOTE `self` is only valid as the first parameter of an associated function
+//~^ ERROR `self` parameter only allowed in associated `fn`s
+//~| NOTE not semantically valid as function parameter
+//~| NOTE associated `fn`s are those in `impl` or `trait` definitions
 
 fn main() { }
