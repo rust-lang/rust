@@ -17,6 +17,7 @@ extern crate log;
 
 use rustc::ty::query::Providers;
 
+mod check_attr;
 mod check_const;
 pub mod dead;
 mod diagnostic_items;
@@ -30,8 +31,10 @@ pub mod loops;
 mod reachable;
 mod region;
 pub mod stability;
+mod upvars;
 
 pub fn provide(providers: &mut Providers<'_>) {
+    check_attr::provide(providers);
     check_const::provide(providers);
     diagnostic_items::provide(providers);
     entry::provide(providers);
@@ -42,4 +45,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     reachable::provide(providers);
     region::provide(providers);
     stability::provide(providers);
+    upvars::provide(providers);
 }

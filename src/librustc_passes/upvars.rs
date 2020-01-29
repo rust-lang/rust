@@ -1,8 +1,8 @@
 //! Upvar (closure capture) collection from cross-body HIR uses of `Res::Local`s.
 
-use crate::hir::map::Map;
-use crate::ty::query::Providers;
-use crate::ty::TyCtxt;
+use rustc::hir::map::Map;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
