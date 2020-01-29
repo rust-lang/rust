@@ -1895,21 +1895,23 @@ function getSearchElement() {
         var implementors = document.getElementById("implementors-list");
         var synthetic_implementors = document.getElementById("synthetic-implementors-list");
 
-        // This `inlined_types` variable is used to avoid having the same implementation showing
-        // up twice. For example "String" in the "Sync" doc page.
-        //
-        // By the way, this is only used by and useful for traits implemented automatically (like
-        // "Send" and "Sync").
-        var inlined_types = new Set();
-        onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
-            var aliases = el.getAttribute("aliases");
-            if (!aliases) {
-                return;
-            }
-            aliases.split(",").forEach(function(alias) {
-                inlined_types.add(alias);
+        if (synthetic_implementors) {
+            // This `inlined_types` variable is used to avoid having the same implementation
+            // showing up twice. For example "String" in the "Sync" doc page.
+            //
+            // By the way, this is only used by and useful for traits implemented automatically
+            // (like "Send" and "Sync").
+            var inlined_types = new Set();
+            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
+                var aliases = el.getAttribute("aliases");
+                if (!aliases) {
+                    return;
+                }
+                aliases.split(",").forEach(function(alias) {
+                    inlined_types.add(alias);
+                });
             });
-        });
+        }
 
         var libs = Object.getOwnPropertyNames(imp);
         var llength = libs.length;
