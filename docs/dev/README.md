@@ -106,6 +106,10 @@ communication, and `print!` would break it.
 If I need to fix something simultaneously in the server and in the client, I
 feel even more sad. I don't have a specific workflow for this case.
 
+Additionally, I use `cargo run --release -p ra_cli -- analysis-stats
+path/to/some/rust/crate` to run a batch analysis. This is primaraly useful for
+performance optimiations, or for bug minimization.
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to
