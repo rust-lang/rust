@@ -1327,6 +1327,8 @@ pub trait Write {
     /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
     /// returned.
     ///
+    /// If the buffer contains no data, this will never call [`write`].
+    ///
     /// # Errors
     ///
     /// This function will return the first error of
