@@ -71,7 +71,23 @@ impl<'a> Parser<'a> {
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
         }
 
-        self.expect(&token::ModSep)?;
+        let lo_colon = self.token.span;
+        if self.eat(&token::Colon) {
+            // <Bar as Baz<T>>:Qux
+            //                ^
+            let span = lo_colon.to(self.prev_span);
+            self.diagnostic()
+                .struct_span_err(span, "found single colon where type path was expected")
+                .span_suggestion(
+                    span,
+                    "use double colon",
+                    "::".to_string(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        } else {
+            self.expect(&token::ModSep)?;
+        }
 
         let qself = QSelf { ty, path_span, position: path.segments.len() };
         self.parse_path_segments(&mut path.segments, style)?;
