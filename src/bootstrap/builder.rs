@@ -946,7 +946,8 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // FIXME: Don't use LLD if we're compiling libstd, since it fails to link it.
+        // FIXME: Don't use LLD if we're compiling libtest, since it fails to link it.
+        // See https://github.com/rust-lang/rust/issues/68647.
         let can_use_lld = mode != Mode::Std;
 
         // FIXME: The beta compiler doesn't pick the `lld-link` flavor for `*-pc-windows-msvc`
