@@ -347,7 +347,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_write_buf(this, metadata, buf_op)
+        stat_macos_write_buf(this, metadata, buf_op)
     }
 
     fn stat_or_lstat(
@@ -369,7 +369,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
-        stat_write_buf(this, metadata, buf_op)
+        stat_macos_write_buf(this, metadata, buf_op)
     }
 
     fn statx(
@@ -427,17 +427,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.read_scalar(dirfd_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
                 err_unsup_format!("Failed to convert pointer sized operand to integer: {}", e)
             })?;
-        // we only support interpreting `path` as an absolute directory or as a directory relative
-        // to `dirfd` when the latter is `AT_FDCWD`. The behavior of `statx` with a relative path
-        // and a directory file descriptor other than `AT_FDCWD` is specified but it cannot be
-        // tested from `libstd`. If you found this error, please open an issue reporting it.
+        // We only support:
+        // * interpreting `path` as an absolute directory,
+        // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
+        // * interpreting `dirfd` as any file descriptor when `path` is empty and AT_EMPTY_PATH is
+        // set.
+        // The behavior of `statx` with a relative path and a directory file descriptor other than
+        // `AT_FDCWD` is specified but it cannot be tested from `libstd`. If you found this error,
+        // please open an issue reporting it.
         if !(
             path.is_absolute() ||
             dirfd == this.eval_libc_i32("AT_FDCWD")? ||
             (path.as_os_str().is_empty() && empty_path_flag)
         ) {
             throw_unsup_format!(
-                "Using statx with a relative path and a file descriptor different from `AT_FDCWD` is not supported"
+                "Using statx is only supported with absolute paths, relative paths with the file \
+                descriptor `AT_FDCWD`, and empty paths with the `AT_EMPTY_PATH` flag set and any \
+                file descriptor"
             )
         }
 
@@ -631,7 +637,7 @@ impl FileMetadata {
     }
 }
 
-fn stat_write_buf<'tcx, 'mir>(
+fn stat_macos_write_buf<'tcx, 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     metadata: FileMetadata,
     buf_op: OpTy<'tcx, Tag>,
