@@ -271,10 +271,10 @@ fn print_for_idx(
 /// In other words, a postorder of the call graph. In particular, the root is the last element of
 /// `msgs`.
 fn idx_to_children(msgs: &[Message]) -> Vec<Vec<usize>> {
-    // Initialize with the index of the root; `ancestors` should be never empty.
+    // Initialize with the index of the root; `msgs` and `ancestors` should be never empty.
+    assert!(!msgs.is_empty());
     let mut ancestors = vec![msgs.len() - 1];
-    let mut result: Vec<Vec<usize>> = vec![];
-    result.resize_with(msgs.len(), Default::default);
+    let mut result: Vec<Vec<usize>> = vec![vec![]; msgs.len()];
     for (idx, msg) in msgs[..msgs.len() - 1].iter().enumerate().rev() {
         // We need to find the parent of the current message, i.e., the last ancestor that has a
         // level lower than the current message.
