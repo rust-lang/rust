@@ -1,4 +1,5 @@
 use super::pat::{GateOr, PARAM_EXPECTED};
+use super::ty::{AllowPlus, RecoverQPath};
 use super::{BlockMode, Parser, PathStyle, PrevTokenKind, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
@@ -1399,7 +1400,7 @@ impl<'a> Parser<'a> {
             self.expect_or()?;
             args
         };
-        let output = self.parse_ret_ty(true, true)?;
+        let output = self.parse_ret_ty(AllowPlus::Yes, RecoverQPath::Yes)?;
 
         Ok(P(FnDecl { inputs, output }))
     }
