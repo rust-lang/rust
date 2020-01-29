@@ -1,8 +1,8 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxElement,
-    SyntaxKind::{NAME_REF, USE_ITEM},
+    SmolStr,
+    SyntaxKind::USE_ITEM,
     SyntaxNode,
 };
 
@@ -32,25 +32,28 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     ctx: AssistCtx<impl HirDatabase>,
     imports_locator: &mut F,
 ) -> Option<Assist> {
-    let path: ast::Path = ctx.find_node_at_offset()?;
-    let module = path.syntax().ancestors().find_map(ast::Module::cast);
+    let path_to_import: ast::Path = ctx.find_node_at_offset()?;
+    let path_to_import_syntax = path_to_import.syntax();
+    if path_to_import_syntax.ancestors().find(|ancestor| ancestor.kind() == USE_ITEM).is_some() {
+        return None;
+    }
+
+    let module = path_to_import_syntax.ancestors().find_map(ast::Module::cast);
     let position = match module.and_then(|it| it.item_list()) {
         Some(item_list) => item_list.syntax().clone(),
         None => {
-            let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
+            let current_file = path_to_import_syntax.ancestors().find_map(ast::SourceFile::cast)?;
             current_file.syntax().clone()
         }
     };
     let source_analyzer = ctx.source_analyzer(&position, None);
     let module_with_name_to_import = source_analyzer.module()?;
-    let path_to_import = ctx.covering_element().ancestors().find_map(ast::Path::cast)?;
     if source_analyzer.resolve_path(ctx.db, &path_to_import).is_some() {
         return None;
     }
 
-    let name_to_import = &find_applicable_name_ref(ctx.covering_element())?.syntax().to_string();
     let proposed_imports = imports_locator
-        .find_imports(&name_to_import.to_string())
+        .find_imports(&path_to_import_syntax.to_string())
         .into_iter()
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
@@ -64,24 +67,9 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     ctx.add_assist_group(AssistId("auto_import"), "auto import", || {
         proposed_imports
             .into_iter()
-            .map(|import| import_to_action(import, &position, &path_to_import.syntax()))
+            .map(|import| import_to_action(import, &position, &path_to_import_syntax))
             .collect()
     })
-}
-
-fn find_applicable_name_ref(element: SyntaxElement) -> Option<ast::NameRef> {
-    if element.ancestors().find(|ancestor| ancestor.kind() == USE_ITEM).is_some() {
-        None
-    } else if element.kind() == NAME_REF {
-        Some(element.as_node().cloned().and_then(ast::NameRef::cast)?)
-    } else {
-        let parent = element.parent()?;
-        if parent.kind() == NAME_REF {
-            Some(ast::NameRef::cast(parent)?)
-        } else {
-            None
-        }
-    }
 }
 
 fn import_to_action(import: String, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
@@ -110,16 +98,16 @@ mod tests {
             auto_import,
             TestImportsLocator::new,
             r"
-            PubStruct<|>
+            <|>PubStruct
 
             pub mod PubMod {
                 pub struct PubStruct;
             }
             ",
             r"
-            use PubMod::PubStruct;
+            <|>use PubMod::PubStruct;
 
-            PubStruct<|>
+            PubStruct
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -134,7 +122,7 @@ mod tests {
             auto_import,
             TestImportsLocator::new,
             r"
-            PubStruct<|>
+            PubSt<|>ruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;
@@ -149,7 +137,7 @@ mod tests {
             r"
             use PubMod1::PubStruct;
 
-            PubStruct<|>
+            PubSt<|>ruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;
