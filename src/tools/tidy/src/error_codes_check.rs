@@ -93,9 +93,42 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, boo
     }
 }
 
+fn check_used_error_codes(
+    file_path: &Path,
+    f: &str,
+    error_codes: &HashMap<String, bool>,
+    errors: &mut usize,
+) {
+    for (line_number, line) in f.lines().enumerate() {
+        let s = line.trim();
+        let c = if s.contains(" \"E0") {
+            ' '
+        } else if s.contains("(\"E0") {
+            '('
+        } else {
+            continue;
+        };
+        let parts = s.split(&format!("{}\"E0", c)).collect::<Vec<_>>();
+        if let Some(err_code) = parts[1].split('"').next() {
+            let err_code = format!("E0{}", err_code);
+            if error_codes.get(&err_code).is_none() {
+                eprintln!(
+                    "Error code `{}` used but hasn't been declared in `{}:{}`",
+                    err_code,
+                    file_path.display(),
+                    line_number + 1
+                );
+                *errors += 1;
+            }
+        }
+    }
+}
+
 pub fn check(path: &Path, bad: &mut bool) {
     println!("Checking which error codes lack tests...");
     let mut error_codes: HashMap<String, bool> = HashMap::new();
+    let mut errors_count: usize = 0;
+
     super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
         let file_name = entry.file_name();
         if file_name == "error_codes.rs" {
@@ -105,6 +138,14 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     });
     println!("Found {} error codes", error_codes.len());
+
+    super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+        let file_name = entry.file_name();
+        if entry.path().extension() == Some(OsStr::new("rs")) && file_name != "error_codes_check.rs"
+        {
+            check_used_error_codes(entry.path(), contents, &error_codes, &mut errors_count);
+        }
+    });
 
     let mut errors = Vec::new();
     for (err_code, nb) in &error_codes {
@@ -117,7 +158,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         eprintln!("{}", err);
     }
     println!("Found {} error codes with no tests", errors.len());
-    if !errors.is_empty() {
+    if !errors.is_empty() || errors_count != 0 {
         *bad = true;
     }
     println!("Done!");
