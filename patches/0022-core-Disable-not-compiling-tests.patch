@@ -44,7 +44,7 @@ index 0475aeb..9558198 100644
 --- a/src/libcore/tests/num/int_macros.rs
 +++ b/src/libcore/tests/num/int_macros.rs
 @@ -88,6 +88,7 @@ mod tests {
-                 assert_eq!(C.count_zeros(), bits as u32 - 5);
+                 assert_eq!(x.trailing_ones(), 0);
              }
  
 +            /*
@@ -64,7 +64,7 @@ index 04ed14f..a6e372e 100644
 --- a/src/libcore/tests/num/uint_macros.rs
 +++ b/src/libcore/tests/num/uint_macros.rs
 @@ -52,6 +52,7 @@ mod tests {
-                 assert!(C.count_zeros() == bits as u32 - 5);
+                 assert_eq!(x.trailing_ones(), 0);
              }
  
 +            /*
