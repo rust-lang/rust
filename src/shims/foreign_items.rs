@@ -780,6 +780,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            "posix_fadvise" => {
+                // fadvise is only informational, we can ignore it.
+                this.write_null(dest)?;
+            }
+
             "mmap" => {
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
                 let addr = this.read_scalar(args[0])?.not_undef()?;
