@@ -1169,16 +1169,16 @@ fn test() {
 "#),
         @r###"
     [76; 184) '{     ...one; }': ()
-    [82; 83) 'A': A<i32>(T) -> A<T>
+    [82; 83) 'A': A<i32>(i32) -> A<i32>
     [82; 87) 'A(42)': A<i32>
     [84; 86) '42': i32
-    [93; 94) 'A': A<u128>(T) -> A<T>
+    [93; 94) 'A': A<u128>(u128) -> A<u128>
     [93; 102) 'A(42u128)': A<u128>
     [95; 101) '42u128': u128
-    [108; 112) 'Some': Some<&str>(T) -> Option<T>
+    [108; 112) 'Some': Some<&str>(&str) -> Option<&str>
     [108; 117) 'Some("x")': Option<&str>
     [113; 116) '"x"': &str
-    [123; 135) 'Option::Some': Some<&str>(T) -> Option<T>
+    [123; 135) 'Option::Some': Some<&str>(&str) -> Option<&str>
     [123; 140) 'Option...e("x")': Option<&str>
     [136; 139) '"x"': &str
     [146; 150) 'None': Option<{unknown}>

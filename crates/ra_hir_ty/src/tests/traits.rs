@@ -1322,7 +1322,7 @@ fn test() {
     [173; 175) '{}': ()
     [189; 308) '{     ... 1); }': ()
     [199; 200) 'x': Option<u32>
-    [203; 215) 'Option::Some': Some<u32>(T) -> Option<T>
+    [203; 215) 'Option::Some': Some<u32>(u32) -> Option<u32>
     [203; 221) 'Option...(1u32)': Option<u32>
     [216; 220) '1u32': u32
     [227; 228) 'x': Option<u32>

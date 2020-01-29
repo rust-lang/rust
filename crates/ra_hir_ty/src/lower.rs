@@ -729,14 +729,12 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId
     let var_data = &enum_data.variants[def.local_id];
     let fields = var_data.variant_data.fields();
     let resolver = def.parent.resolver(db);
-    let ctx = TyLoweringContext::new(db, &resolver);
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
-    let generics = generics(db, def.parent.into());
-    let substs = Substs::bound_vars(&generics);
-    let ret = type_for_adt(db, def.parent.into()).subst(&substs);
-    let num_binders = generics.len();
-    Binders::new(num_binders, FnSig::from_params_and_return(params, ret))
+    let ret = type_for_adt(db, def.parent.into());
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
 }
 
 /// Build the type of a tuple enum variant constructor.
