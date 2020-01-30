@@ -1,8 +1,8 @@
-error: expected one of `fn` or `unsafe`, found keyword `const`
+error: expected one of `extern`, `fn`, or `unsafe`, found keyword `const`
   --> $DIR/no-async-const.rs:4:11
    |
 LL | pub async const fn x() {}
-   |           ^^^^^ expected one of `fn` or `unsafe`
+   |           ^^^^^ expected one of `extern`, `fn`, or `unsafe`
 
 error: aborting due to previous error
 

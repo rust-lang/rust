@@ -1089,6 +1089,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         self.check_c_varadic_type(fk);
 
+        // Functions cannot both be `const async`
+        if let Some(FnHeader {
+            constness: Const::Yes(cspan),
+            asyncness: Async::Yes { span: aspan, .. },
+            ..
+        }) = fk.header()
+        {
+            self.err_handler()
+                .struct_span_err(span, "functions cannot be both `const` and `async`")
+                .span_label(*cspan, "`const` because of this")
+                .span_label(*aspan, "`async` because of this")
+                .emit();
+        }
+
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {

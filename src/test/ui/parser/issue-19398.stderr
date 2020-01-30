@@ -1,8 +1,10 @@
-error: expected `fn`, found keyword `unsafe`
-  --> $DIR/issue-19398.rs:2:19
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found keyword `extern`
+  --> $DIR/issue-19398.rs:2:5
    |
+LL | trait T {
+   |          - expected one of 10 possible tokens
 LL |     extern "Rust" unsafe fn foo();
-   |                   ^^^^^^ expected `fn`
+   |     ^^^^^^ unexpected token
 
 error: aborting due to previous error
 

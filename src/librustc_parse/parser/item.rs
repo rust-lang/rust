@@ -11,7 +11,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::BytePos;
 use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
-use syntax::ast::{Async, Const, Defaultness, Extern, IsAuto, PathSegment, StrLit, Unsafe};
+use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, StrLit, Unsafe};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
 use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
@@ -96,53 +96,30 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
+        if self.is_fn_front_matter() {
+            // FUNCTION ITEM
+            return self.parse_item_fn(lo, vis, attrs);
+        }
+
         if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
+                // EXTERN CRATE
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
-
+            // EXTERN BLOCK
             let abi = self.parse_abi();
-
-            if self.eat_keyword(kw::Fn) {
-                // EXTERN FUNCTION ITEM
-                let header = FnHeader {
-                    unsafety: Unsafe::No,
-                    asyncness: Async::No,
-                    constness: Const::No,
-                    ext: Extern::from_abi(abi),
-                };
-                return self.parse_item_fn(lo, vis, attrs, header);
-            } else if self.check(&token::OpenDelim(token::Brace)) {
-                return Ok(Some(self.parse_item_foreign_mod(lo, abi, vis, attrs)?));
-            }
-
-            self.unexpected()?;
+            return Ok(Some(self.parse_item_foreign_mod(lo, abi, vis, attrs)?));
         }
 
         if self.is_static_global() {
-            self.bump();
             // STATIC ITEM
+            self.bump();
             let m = self.parse_mutability();
             let info = self.parse_item_const(Some(m))?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
-        let constness = self.parse_constness();
-        if let Const::Yes(const_span) = constness {
-            if [kw::Fn, kw::Unsafe, kw::Extern].iter().any(|k| self.check_keyword(*k)) {
-                // CONST FUNCTION ITEM
-                let unsafety = self.parse_unsafety();
-
-                if self.check_keyword(kw::Extern) {
-                    self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
-                }
-                let ext = self.parse_extern()?;
-                self.expect_keyword(kw::Fn)?;
-
-                let header = FnHeader { unsafety, asyncness: Async::No, constness, ext };
-                return self.parse_item_fn(lo, vis, attrs, header);
-            }
-
+        if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             if self.eat_keyword(kw::Mut) {
                 let prev_span = self.prev_span;
@@ -159,21 +136,6 @@ impl<'a> Parser<'a> {
 
             let info = self.parse_item_const(None)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
-        }
-
-        // Parses `async unsafe? fn`.
-        if self.check_keyword(kw::Async) {
-            let async_span = self.token.span;
-            if self.is_keyword_ahead(1, &[kw::Fn]) || self.is_keyword_ahead(2, &[kw::Fn]) {
-                // ASYNC FUNCTION ITEM
-                let asyncness = self.parse_asyncness(); // `async`
-                let unsafety = self.parse_unsafety(); // `unsafe`?
-                self.expect_keyword(kw::Fn)?; // `fn`
-                self.ban_async_in_2015(async_span);
-                let header =
-                    FnHeader { unsafety, asyncness, constness: Const::No, ext: Extern::None };
-                return self.parse_item_fn(lo, vis, attrs, header);
-            }
         }
 
         if self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto]) {
@@ -193,26 +155,6 @@ impl<'a> Parser<'a> {
             self.expect_keyword(kw::Impl)?;
             let info = self.parse_item_impl(unsafety, defaultness)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
-        }
-
-        if self.check_keyword(kw::Fn) {
-            // FUNCTION ITEM
-            self.bump();
-            let header = FnHeader::default();
-            return self.parse_item_fn(lo, vis, attrs, header);
-        }
-
-        if self.check_keyword(kw::Unsafe)
-            && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace))
-        {
-            // UNSAFE FUNCTION ITEM
-            let unsafety = self.parse_unsafety();
-            // `{` is also expected after `unsafe`; in case of error, include it in the diagnostic.
-            self.check(&token::OpenDelim(token::Brace));
-            let ext = self.parse_extern()?;
-            self.expect_keyword(kw::Fn)?;
-            let header = FnHeader { unsafety, asyncness: Async::No, constness: Const::No, ext };
-            return self.parse_item_fn(lo, vis, attrs, header);
         }
 
         if self.eat_keyword(kw::Mod) {
@@ -1662,9 +1604,9 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: Visibility,
         mut attrs: Vec<Attribute>,
-        header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
         let cfg = ParamCfg { is_name_required: |_| true };
+        let header = self.parse_fn_front_matter()?;
         let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
         let body = self.parse_fn_body(&mut false, &mut attrs)?;
         let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
@@ -1730,27 +1672,24 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Is the current token unambiguously the start of an `FnHeader`?
+    /// Is the current token the start of an `FnHeader` / not a valid parse?
     fn is_fn_front_matter(&mut self) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
-        // This works for `async fn` and similar as `async async` is an invalid
-        // parse and `async fn` is never a valid parse on previous editions.
-        const QUALIFIER: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
-
-        let check_qual_follow = |this: &mut Self, dist| {
-            this.look_ahead(dist, |t| {
-                // ...qualified and then `fn`, e.g. `const fn`.
-                t.is_keyword(kw::Fn)
-                // Two qualifiers. This is enough.
-                || QUALIFIER.iter().any(|&kw| t.is_keyword(kw))
-            })
-        };
+        const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
         self.check_keyword(kw::Fn) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
-            || QUALIFIER.iter().any(|&kw| self.check_keyword(kw)) && check_qual_follow(self, 1)
-            // `extern ABI fn` or `extern ABI $qual`; skip 1 for the ABI.
-            || self.check_keyword(kw::Extern) && check_qual_follow(self, 2)
+            || QUALS.iter().any(|&kw| self.check_keyword(kw))
+                && self.look_ahead(1, |t| {
+                    // ...qualified and then `fn`, e.g. `const fn`.
+                    t.is_keyword(kw::Fn)
+                    // Two qualifiers. This is enough. Due `async` we need to check that it's reserved.
+                    || t.is_non_raw_ident_where(|i| QUALS.contains(&i.name) && i.is_reserved())
+                })
+            // `extern ABI fn`
+            || self.check_keyword(kw::Extern)
+                && self.look_ahead(1, |t| t.can_begin_literal_or_bool())
+                && self.look_ahead(2, |t| t.is_keyword(kw::Fn))
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
