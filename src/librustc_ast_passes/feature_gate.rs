@@ -538,8 +538,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         match i.kind {
             ast::AssocItemKind::Fn(ref sig, _) => {
-                let constness = sig.header.constness.node;
-                if let (ast::Constness::Const, AssocCtxt::Trait) = (constness, ctxt) {
+                if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }

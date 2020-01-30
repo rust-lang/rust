@@ -6,7 +6,6 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::ast;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
@@ -35,7 +34,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     match pred.skip_binder().self_ty().kind {
                         ty::Param(ref p) => {
                             // Allow `T: ?const Trait`
-                            if *constness == ast::Constness::NotConst
+                            if *constness == hir::Constness::NotConst
                                 && feature_allowed(tcx, def_id, sym::const_trait_bound_opt_out)
                             {
                                 continue;

@@ -13,7 +13,6 @@ use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::mem;
@@ -234,16 +233,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, constness: Spanned<Constness>) {
-        if constness.node == Constness::Const {
-            struct_span_err!(
-                self.session,
-                constness.span,
-                E0379,
-                "trait fns cannot be declared const"
-            )
-            .span_label(constness.span, "trait fns cannot be const")
-            .emit();
+    fn check_trait_fn_not_const(&self, constness: Const) {
+        if let Const::Yes(span) = constness {
+            struct_span_err!(self.session, span, E0379, "trait fns cannot be declared const")
+                .span_label(span, "trait fns cannot be const")
+                .emit();
         }
     }
 
@@ -487,7 +481,7 @@ impl<'a> AstValidator<'a> {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) | Extern::Implicit
-                    if header.unsafety == Unsafety::Unsafe =>
+                    if matches!(header.unsafety, Unsafe::Yes(_)) =>
                 {
                     return;
                 }
@@ -514,12 +508,13 @@ impl<'a> AstValidator<'a> {
     /// FIXME(const_generics): Is this really true / necessary? Discuss with @varkor.
     /// At any rate, the restriction feels too syntactic. Consider moving it to e.g. typeck.
     fn check_const_fn_const_generic(&self, span: Span, sig: &FnSig, generics: &Generics) {
-        if sig.header.constness.node == Constness::Const {
+        if let Const::Yes(const_span) = sig.header.constness {
             // Look for const generics and error if we find any.
             for param in &generics.params {
                 if let GenericParamKind::Const { .. } = param.kind {
                     self.err_handler()
                         .struct_span_err(span, "const parameters are not permitted in `const fn`")
+                        .span_label(const_span, "`const fn` because of this")
                         .emit();
                 }
             }
@@ -754,13 +749,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .help("use `auto trait Trait {}` instead")
                             .emit();
                     }
-                    if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
+                    if let (Unsafe::Yes(span), ImplPolarity::Negative) = (unsafety, polarity) {
                         struct_span_err!(
                             this.session,
                             item.span,
                             E0198,
                             "negative impls cannot be unsafe"
                         )
+                        .span_label(span, "unsafe because of this")
                         .emit();
                     }
 
@@ -782,13 +778,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     &item.vis,
                     Some("place qualifiers on individual impl items instead"),
                 );
-                if unsafety == Unsafety::Unsafe {
+                if let Unsafe::Yes(span) = unsafety {
                     struct_span_err!(
                         self.session,
                         item.span,
                         E0197,
                         "inherent impls cannot be unsafe"
                     )
+                    .span_label(span, "unsafe because of this")
                     .emit();
                 }
                 if polarity == ImplPolarity::Negative {
@@ -800,9 +797,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default")
                         .emit();
                 }
-                if constness == Constness::Const {
+                if let Const::Yes(span) = constness {
                     self.err_handler()
                         .struct_span_err(item.span, "inherent impls cannot be `const`")
+                        .span_label(span, "`const` because of this")
                         .note("only trait implementations may be annotated with `const`")
                         .emit();
                 }

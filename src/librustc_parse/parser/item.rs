@@ -12,7 +12,7 @@ use rustc_span::BytePos;
 use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
-use syntax::ast::{Constness, Defaultness, Extern, IsAsync, IsAuto, PathSegment, StrLit, Unsafety};
+use syntax::ast::{Const, Defaultness, Extern, IsAsync, IsAuto, PathSegment, StrLit, Unsafe};
 use syntax::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
 use syntax::ast::{FnHeader, ForeignItem, ForeignItemKind, Mutability, Visibility, VisibilityKind};
 use syntax::ptr::P;
@@ -107,9 +107,9 @@ impl<'a> Parser<'a> {
                 // EXTERN FUNCTION ITEM
                 let fn_span = self.prev_span;
                 let header = FnHeader {
-                    unsafety: Unsafety::Normal,
+                    unsafety: Unsafe::No,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
-                    constness: respan(fn_span, Constness::NotConst),
+                    constness: Const::No,
                     ext: Extern::from_abi(abi),
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
@@ -128,8 +128,8 @@ impl<'a> Parser<'a> {
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
-        if self.eat_keyword(kw::Const) {
-            let const_span = self.prev_span;
+        let constness = self.parse_constness();
+        if let Const::Yes(const_span) = constness {
             if [kw::Fn, kw::Unsafe, kw::Extern].iter().any(|k| self.check_keyword(*k)) {
                 // CONST FUNCTION ITEM
                 let unsafety = self.parse_unsafety();
@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
                 let header = FnHeader {
                     unsafety,
                     asyncness: respan(const_span, IsAsync::NotAsync),
-                    constness: respan(const_span, Constness::Const),
+                    constness,
                     ext,
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
@@ -175,7 +175,6 @@ impl<'a> Parser<'a> {
                 self.bump(); // `async`
                 let unsafety = self.parse_unsafety(); // `unsafe`?
                 self.expect_keyword(kw::Fn)?; // `fn`
-                let fn_span = self.prev_span;
                 let asyncness = respan(
                     async_span,
                     IsAsync::Async {
@@ -184,20 +183,16 @@ impl<'a> Parser<'a> {
                     },
                 );
                 self.ban_async_in_2015(async_span);
-                let header = FnHeader {
-                    unsafety,
-                    asyncness,
-                    constness: respan(fn_span, Constness::NotConst),
-                    ext: Extern::None,
-                };
+                let header =
+                    FnHeader { unsafety, asyncness, constness: Const::No, ext: Extern::None };
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
         }
 
         if self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto]) {
             // UNSAFE TRAIT ITEM
-            self.bump(); // `unsafe`
-            let info = self.parse_item_trait(lo, Unsafety::Unsafe)?;
+            let unsafety = self.parse_unsafety();
+            let info = self.parse_item_trait(lo, unsafety)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -218,9 +213,9 @@ impl<'a> Parser<'a> {
             self.bump();
             let fn_span = self.prev_span;
             let header = FnHeader {
-                unsafety: Unsafety::Normal,
+                unsafety: Unsafe::No,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
-                constness: respan(fn_span, Constness::NotConst),
+                constness: Const::No,
                 ext: Extern::None,
             };
             return self.parse_item_fn(lo, vis, attrs, header);
@@ -230,16 +225,16 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace))
         {
             // UNSAFE FUNCTION ITEM
-            self.bump(); // `unsafe`
+            let unsafety = self.parse_unsafety();
             // `{` is also expected after `unsafe`; in case of error, include it in the diagnostic.
             self.check(&token::OpenDelim(token::Brace));
             let ext = self.parse_extern()?;
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
             let header = FnHeader {
-                unsafety: Unsafety::Unsafe,
+                unsafety,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
-                constness: respan(fn_span, Constness::NotConst),
+                constness: Const::No,
                 ext,
             };
             return self.parse_item_fn(lo, vis, attrs, header);
@@ -268,7 +263,7 @@ impl<'a> Parser<'a> {
             || (self.check_keyword(kw::Auto) && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             // TRAIT ITEM
-            let info = self.parse_item_trait(lo, Unsafety::Normal)?;
+            let info = self.parse_item_trait(lo, Unsafe::No)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -547,7 +542,7 @@ impl<'a> Parser<'a> {
     ///   `impl` GENERICS `const`? `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
     fn parse_item_impl(
         &mut self,
-        unsafety: Unsafety,
+        unsafety: Unsafe,
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
         // First, parse generic parameters if necessary.
@@ -561,13 +556,10 @@ impl<'a> Parser<'a> {
             generics
         };
 
-        let constness = if self.eat_keyword(kw::Const) {
-            let span = self.prev_span;
+        let constness = self.parse_constness();
+        if let Const::Yes(span) = constness {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
-            Constness::Const
-        } else {
-            Constness::NotConst
-        };
+        }
 
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
         let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
@@ -707,7 +699,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+    fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafe) -> PResult<'a, ItemInfo> {
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
 
@@ -734,11 +726,11 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_span);
-            if is_auto == IsAuto::Yes {
+            if let IsAuto::Yes = is_auto {
                 let msg = "trait aliases cannot be `auto`";
                 self.struct_span_err(whole_span, msg).span_label(whole_span, msg).emit();
             }
-            if unsafety != Unsafety::Normal {
+            if let Unsafe::Yes(_) = unsafety {
                 let msg = "trait aliases cannot be `unsafe`";
                 self.struct_span_err(whole_span, msg).span_label(whole_span, msg).emit();
             }
@@ -1785,28 +1777,27 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Parses all the "front matter" for a `fn` declaration, up to
-    /// and including the `fn` keyword:
+    /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
+    /// up to and including the `fn` keyword. The formal grammar is:
     ///
-    /// - `const fn`
-    /// - `unsafe fn`
-    /// - `const unsafe fn`
-    /// - `extern fn`
-    /// - etc.
+    /// ```
+    /// Extern = "extern" StringLit ;
+    /// FnQual = "const"? "async"? "unsafe"? Extern? ;
+    /// FnFrontMatter = FnQual? "fn" ;
+    /// ```
     fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
-        let is_const_fn = self.eat_keyword(kw::Const);
-        let const_span = self.prev_span;
+        let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         if let IsAsync::Async { .. } = asyncness {
             self.ban_async_in_2015(self.prev_span);
         }
         let asyncness = respan(self.prev_span, asyncness);
         let unsafety = self.parse_unsafety();
-        let (constness, unsafety, ext) = if is_const_fn {
-            (respan(const_span, Constness::Const), unsafety, Extern::None)
+        let (constness, unsafety, ext) = if let Const::Yes(_) = constness {
+            (constness, unsafety, Extern::None)
         } else {
             let ext = self.parse_extern()?;
-            (respan(self.prev_span, Constness::NotConst), unsafety, ext)
+            (Const::No, unsafety, ext)
         };
         if !self.eat_keyword(kw::Fn) {
             // It is possible for `expect_one_of` to recover given the contents of

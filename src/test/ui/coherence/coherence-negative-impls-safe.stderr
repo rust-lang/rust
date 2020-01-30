@@ -2,7 +2,9 @@ error[E0198]: negative impls cannot be unsafe
   --> $DIR/coherence-negative-impls-safe.rs:7:1
    |
 LL | unsafe impl !Send for TestType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | unsafe because of this
 
 error: aborting due to previous error
 

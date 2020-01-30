@@ -1818,7 +1818,7 @@ define_print_and_forward_display! {
     ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref data, constness) => {
-                if let ast::Constness::Const = constness {
+                if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))

@@ -648,7 +648,7 @@ impl<'a> State<'a> {
                     self.s.space();
                 }
 
-                if constness == ast::Constness::Const {
+                if let hir::Constness::Const = constness {
                     self.word_nbsp("const");
                 }
 

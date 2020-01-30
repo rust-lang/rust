@@ -1863,7 +1863,7 @@ pub struct Ty {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
-    pub unsafety: Unsafety,
+    pub unsafety: Unsafe,
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
@@ -2101,43 +2101,11 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic
-)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            Unsafety::Unsafe => "unsafe ",
-            Unsafety::Normal => "",
-        }
-    }
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum Unsafe {
+    Yes(Span),
+    No,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2162,9 +2130,9 @@ impl IsAsync {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 #[derive(HashStable_Generic)]
-pub enum Constness {
-    Const,
-    NotConst,
+pub enum Const {
+    Yes(Span),
+    No,
 }
 
 /// Item defaultness.
@@ -2527,9 +2495,9 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
-    pub unsafety: Unsafety,
+    pub unsafety: Unsafe,
     pub asyncness: Spanned<IsAsync>,
-    pub constness: Spanned<Constness>,
+    pub constness: Const,
     pub ext: Extern,
 }
 
@@ -2537,9 +2505,9 @@ impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
         let Self { unsafety, asyncness, constness, ext } = self;
-        matches!(unsafety, Unsafety::Unsafe)
+        matches!(unsafety, Unsafe::Yes(_))
             || asyncness.node.is_async()
-            || matches!(constness.node, Constness::Const)
+            || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
 }
@@ -2547,9 +2515,9 @@ impl FnHeader {
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
-            unsafety: Unsafety::Normal,
+            unsafety: Unsafe::No,
             asyncness: dummy_spanned(IsAsync::NotAsync),
-            constness: dummy_spanned(Constness::NotConst),
+            constness: Const::No,
             ext: Extern::None,
         }
     }
@@ -2606,7 +2574,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<P<AssocItem>>),
+    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2615,10 +2583,10 @@ pub enum ItemKind {
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl {
-        unsafety: Unsafety,
+        unsafety: Unsafe,
         polarity: ImplPolarity,
         defaultness: Defaultness,
-        constness: Constness,
+        constness: Const,
         generics: Generics,
 
         /// The trait being implemented, if any.

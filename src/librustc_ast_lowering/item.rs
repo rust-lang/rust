@@ -67,10 +67,12 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
                 if let ItemKind::Impl { constness, ref of_trait, .. } = item.kind {
-                    if constness == Constness::Const {
+                    if let Const::Yes(span) = constness {
                         this.lctx
                             .diagnostic()
-                            .span_err(item.span, "const trait impls are not yet implemented");
+                            .struct_span_err(item.span, "const trait impls are not yet implemented")
+                            .span_label(span, "const because of this")
+                            .emit();
                     }
 
                     this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
@@ -413,10 +415,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
 
                 hir::ItemKind::Impl {
-                    unsafety,
+                    unsafety: self.lower_unsafety(unsafety),
                     polarity,
                     defaultness: self.lower_defaultness(defaultness, true /* [1] */),
-                    constness,
+                    constness: self.lower_constness(constness),
                     generics,
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
@@ -430,7 +432,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .alloc_from_iter(items.iter().map(|item| self.lower_trait_item_ref(item)));
                 hir::ItemKind::Trait(
                     is_auto,
-                    unsafety,
+                    self.lower_unsafety(unsafety),
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
                     items,
@@ -1245,9 +1247,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: h.unsafety,
+            unsafety: self.lower_unsafety(h.unsafety),
             asyncness: self.lower_asyncness(h.asyncness.node),
-            constness: h.constness.node,
+            constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
     }
@@ -1278,6 +1280,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match a {
             IsAsync::Async { .. } => hir::IsAsync::Async,
             IsAsync::NotAsync => hir::IsAsync::NotAsync,
+        }
+    }
+
+    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+        match c {
+            Const::Yes(_) => hir::Constness::Const,
+            Const::No => hir::Constness::NotConst,
+        }
+    }
+
+    pub(super) fn lower_unsafety(&mut self, u: Unsafe) -> hir::Unsafety {
+        match u {
+            Unsafe::Yes(_) => hir::Unsafety::Unsafe,
+            Unsafe::No => hir::Unsafety::Normal,
         }
     }
 
