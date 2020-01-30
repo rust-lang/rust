@@ -5584,21 +5584,18 @@ where
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialOrd
-trait SlicePartialOrd<B> {
-    fn partial_compare(&self, other: &[B]) -> Option<Ordering>;
+trait SlicePartialOrd: Sized {
+    fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
 }
 
-impl<A> SlicePartialOrd<A> for [A]
-where
-    A: PartialOrd,
-{
-    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
-        let l = cmp::min(self.len(), other.len());
+impl<A: PartialOrd> SlicePartialOrd for A {
+    default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        let l = cmp::min(left.len(), right.len());
 
         // Slice to the loop iteration range to enable bound check
         // elimination in the compiler
-        let lhs = &self[..l];
-        let rhs = &other[..l];
+        let lhs = &left[..l];
+        let rhs = &right[..l];
 
         for i in 0..l {
             match lhs[i].partial_cmp(&rhs[i]) {
@@ -5607,36 +5604,61 @@ where
             }
         }
 
-        self.len().partial_cmp(&other.len())
+        left.len().partial_cmp(&right.len())
     }
 }
 
-impl<A> SlicePartialOrd<A> for [A]
+// This is the impl that we would like to have. Unfortunately it's not sound.
+// See `partial_ord_slice.rs`.
+/*
+impl<A> SlicePartialOrd for A
 where
     A: Ord,
 {
-    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
-        Some(SliceOrd::compare(self, other))
+    default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        Some(SliceOrd::compare(left, right))
     }
+}
+*/
+
+impl<A: AlwaysApplicableOrd> SlicePartialOrd for A {
+    fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        Some(SliceOrd::compare(left, right))
+    }
+}
+
+trait AlwaysApplicableOrd: SliceOrd + Ord {}
+
+macro_rules! always_applicable_ord {
+    ($([$($p:tt)*] $t:ty,)*) => {
+        $(impl<$($p)*> AlwaysApplicableOrd for $t {})*
+    }
+}
+
+always_applicable_ord! {
+    [] u8, [] u16, [] u32, [] u64, [] u128, [] usize,
+    [] i8, [] i16, [] i32, [] i64, [] i128, [] isize,
+    [] bool, [] char,
+    [T: ?Sized] *const T, [T: ?Sized] *mut T,
+    [T: AlwaysApplicableOrd] &T,
+    [T: AlwaysApplicableOrd] &mut T,
+    [T: AlwaysApplicableOrd] Option<T>,
 }
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's Ord
-trait SliceOrd<B> {
-    fn compare(&self, other: &[B]) -> Ordering;
+trait SliceOrd: Sized {
+    fn compare(left: &[Self], right: &[Self]) -> Ordering;
 }
 
-impl<A> SliceOrd<A> for [A]
-where
-    A: Ord,
-{
-    default fn compare(&self, other: &[A]) -> Ordering {
-        let l = cmp::min(self.len(), other.len());
+impl<A: Ord> SliceOrd for A {
+    default fn compare(left: &[Self], right: &[Self]) -> Ordering {
+        let l = cmp::min(left.len(), right.len());
 
         // Slice to the loop iteration range to enable bound check
         // elimination in the compiler
-        let lhs = &self[..l];
-        let rhs = &other[..l];
+        let lhs = &left[..l];
+        let rhs = &right[..l];
 
         for i in 0..l {
             match lhs[i].cmp(&rhs[i]) {
@@ -5645,19 +5667,19 @@ where
             }
         }
 
-        self.len().cmp(&other.len())
+        left.len().cmp(&right.len())
     }
 }
 
 // memcmp compares a sequence of unsigned bytes lexicographically.
 // this matches the order we want for [u8], but no others (not even [i8]).
-impl SliceOrd<u8> for [u8] {
+impl SliceOrd for u8 {
     #[inline]
-    fn compare(&self, other: &[u8]) -> Ordering {
+    fn compare(left: &[Self], right: &[Self]) -> Ordering {
         let order =
-            unsafe { memcmp(self.as_ptr(), other.as_ptr(), cmp::min(self.len(), other.len())) };
+            unsafe { memcmp(left.as_ptr(), right.as_ptr(), cmp::min(left.len(), right.len())) };
         if order == 0 {
-            self.len().cmp(&other.len())
+            left.len().cmp(&right.len())
         } else if order < 0 {
             Less
         } else {
