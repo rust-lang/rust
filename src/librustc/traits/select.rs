@@ -511,7 +511,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let Some(key) =
                             ProjectionCacheKey::from_poly_projection_predicate(self, data)
                         {
-                            self.infcx.projection_cache.borrow_mut().complete(key);
+                            self.infcx.inner.borrow_mut().projection_cache.complete(key);
                         }
                         result
                     }

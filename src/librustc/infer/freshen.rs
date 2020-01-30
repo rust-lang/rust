@@ -154,14 +154,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
         match t.kind {
             ty::Infer(ty::TyVar(v)) => {
-                let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
+                let opt_ty = self.infcx.inner.borrow_mut().type_variables.probe(v).known();
                 self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
             }
 
             ty::Infer(ty::IntVar(v)) => self.freshen_ty(
                 self.infcx
-                    .int_unification_table
+                    .inner
                     .borrow_mut()
+                    .int_unification_table
                     .probe_value(v)
                     .map(|v| v.to_type(tcx)),
                 ty::IntVar(v),
@@ -170,8 +171,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
             ty::Infer(ty::FloatVar(v)) => self.freshen_ty(
                 self.infcx
-                    .float_unification_table
+                    .inner
                     .borrow_mut()
+                    .float_unification_table
                     .probe_value(v)
                     .map(|v| v.to_type(tcx)),
                 ty::FloatVar(v),
@@ -225,8 +227,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match ct.val {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
-                let opt_ct =
-                    self.infcx.const_unification_table.borrow_mut().probe_value(v).val.known();
+                let opt_ct = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table
+                    .probe_value(v)
+                    .val
+                    .known();
                 return self.freshen_const(
                     opt_ct,
                     ty::InferConst::Var(v),
