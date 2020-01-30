@@ -48,8 +48,8 @@ impl<'a> DefCollector<'a> {
         decl: &'a FnDecl,
         body: Option<&'a Block>,
     ) {
-        let (closure_id, return_impl_trait_id) = match header.asyncness.node {
-            IsAsync::Async { closure_id, return_impl_trait_id } => {
+        let (closure_id, return_impl_trait_id) = match header.asyncness {
+            Async::Yes { span: _, closure_id, return_impl_trait_id } => {
                 (closure_id, return_impl_trait_id)
             }
             _ => unreachable!(),
@@ -117,7 +117,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod(..)
             | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.node.is_async() => {
+            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -215,7 +215,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
-            AssocItemKind::Fn(FnSig { header, decl }, body) if header.asyncness.node.is_async() => {
+            AssocItemKind::Fn(FnSig { header, decl }, body) if header.asyncness.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -255,10 +255,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
                 match asyncness {
-                    IsAsync::Async { closure_id, .. } => {
+                    Async::Yes { closure_id, .. } => {
                         self.create_def(closure_id, DefPathData::ClosureExpr, expr.span)
                     }
-                    IsAsync::NotAsync => closure_def,
+                    Async::No => closure_def,
                 }
             }
             ExprKind::Async(_, async_id, _) => {

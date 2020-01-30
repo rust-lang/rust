@@ -2,7 +2,9 @@ error[E0706]: trait fns cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:17:9
    |
 LL |         async fn ft1();
-   |         ^^^^^^^^^^^^^^^
+   |         -----^^^^^^^^^^
+   |         |
+   |         `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
@@ -17,7 +19,9 @@ error[E0706]: trait fns cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:21:21
    |
 LL |         /* const */ async unsafe extern "C" fn ft5();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
@@ -26,7 +30,9 @@ error[E0706]: trait fns cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:28:9
    |
 LL |         async fn ft1() {}
-   |         ^^^^^^^^^^^^^^^^^
+   |         -----^^^^^^^^^^^^
+   |         |
+   |         `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
@@ -41,7 +47,9 @@ error[E0706]: trait fns cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:33:21
    |
 LL |         /* const */ async unsafe extern "C" fn ft5() {}
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait

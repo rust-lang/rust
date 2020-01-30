@@ -34,7 +34,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_span::source_map::{dummy_spanned, respan, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -1198,14 +1198,14 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
     ///
     /// The `NodeId` is the `NodeId` for the closure that results from
     /// desugaring an async block, just like the NodeId field in the
-    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// `Async::Yes` variant. This is necessary in order to create a def for the
     /// closure which can be used as a parent of any child defs. Defs
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
@@ -2109,21 +2109,21 @@ pub enum Unsafe {
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum IsAsync {
-    Async { closure_id: NodeId, return_impl_trait_id: NodeId },
-    NotAsync,
+pub enum Async {
+    Yes { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+    No,
 }
 
-impl IsAsync {
+impl Async {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self { true } else { false }
+        if let Async::Yes { .. } = self { true } else { false }
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
-            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-            IsAsync::NotAsync => None,
+            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::No => None,
         }
     }
 }
@@ -2496,7 +2496,7 @@ impl Extern {
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
     pub unsafety: Unsafe,
-    pub asyncness: Spanned<IsAsync>,
+    pub asyncness: Async,
     pub constness: Const,
     pub ext: Extern,
 }
@@ -2506,7 +2506,7 @@ impl FnHeader {
     pub fn has_qualifiers(&self) -> bool {
         let Self { unsafety, asyncness, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
-            || asyncness.node.is_async()
+            || asyncness.is_async()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -2516,7 +2516,7 @@ impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
             unsafety: Unsafe::No,
-            asyncness: dummy_spanned(IsAsync::NotAsync),
+            asyncness: Async::No,
             constness: Const::No,
             ext: Extern::None,
         }
