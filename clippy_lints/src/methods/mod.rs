@@ -114,7 +114,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```ignore
+    /// ```rust,ignore
     /// let opt = Some(1);
     /// opt?;
     /// # Some::<()>(())
@@ -168,7 +168,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// struct X;
     /// impl X {
     ///     fn add(&self, other: &X) -> X {
@@ -200,7 +200,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// impl X {
     ///     fn as_str(self) -> &str {
     ///         ..
@@ -245,7 +245,7 @@ declare_clippy_lint! {
     /// **Known problems:** The error type needs to implement `Debug`
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// x.ok().expect("why did I do this again?")
     /// ```
     pub OK_EXPECT,
@@ -318,7 +318,7 @@ declare_clippy_lint! {
     /// **Known problems:** The order of the arguments is not in execution order.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// opt.map_or(None, |a| a + 1)
     /// ```
     pub OPTION_MAP_OR_NONE,
@@ -707,7 +707,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// impl Foo {
     ///     fn new(..) -> NotAFoo {
     ///     }
@@ -771,7 +771,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```should_panic
+    /// ```rust,should_panic
     /// for x in (0..100).step_by(0) {
     ///     //..
     /// }
@@ -953,7 +953,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
     /// ```
     pub CHARS_LAST_CMP,
@@ -1147,7 +1147,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// unsafe { (&() as *const ()).offset(1) };
     /// ```
     pub ZST_OFFSET,
