@@ -8,4 +8,4 @@ impl S {
 }
 
 #[cfg(FALSE)]
-unsafe async fn f() {} //~ ERROR expected one of `extern`, `fn`, or `{`, found keyword `async`
+unsafe async fn f() {} //~ ERROR expected one of `extern` or `fn`, found keyword `async`

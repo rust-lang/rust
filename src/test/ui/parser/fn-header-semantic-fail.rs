@@ -10,8 +10,8 @@ fn main() {
     unsafe fn ff2() {} // OK.
     const fn ff3() {} // OK.
     extern "C" fn ff4() {} // OK.
-    const /* async */ unsafe extern "C" fn ff5() {} // OK.
-    //^ FIXME(Centril): `async` should be legal syntactically, ensure it's illegal semantically.
+    const async unsafe extern "C" fn ff5() {} // OK.
+    //~^ ERROR functions cannot be both `const` and `async`
 
     trait X {
         async fn ft1(); //~ ERROR trait fns cannot be declared `async`
@@ -21,6 +21,7 @@ fn main() {
         const async unsafe extern "C" fn ft5();
         //~^ ERROR trait fns cannot be declared `async`
         //~| ERROR trait fns cannot be declared const
+        //~| ERROR functions cannot be both `const` and `async`
     }
 
     struct Y;
@@ -34,6 +35,7 @@ fn main() {
         //~^ ERROR trait fns cannot be declared `async`
         //~| ERROR trait fns cannot be declared const
         //~| ERROR method `ft5` has an incompatible type for trait
+        //~| ERROR functions cannot be both `const` and `async`
     }
 
     impl Y {
@@ -41,7 +43,8 @@ fn main() {
         unsafe fn fi2() {} // OK.
         const fn fi3() {} // OK.
         extern "C" fn fi4() {} // OK.
-        const async unsafe extern "C" fn fi5() {} // OK.
+        const async unsafe extern "C" fn fi5() {}
+        //~^ ERROR functions cannot be both `const` and `async`
     }
 
     extern {
@@ -50,5 +53,6 @@ fn main() {
         const fn fe3(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         extern "C" fn fe4(); //~ ERROR functions in `extern` blocks cannot have qualifiers
         const async unsafe extern "C" fn fe5(); //~ ERROR functions in `extern` blocks
+        //~^ ERROR functions cannot be both `const` and `async`
     }
 }

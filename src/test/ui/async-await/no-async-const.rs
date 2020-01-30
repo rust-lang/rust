@@ -2,4 +2,4 @@
 // compile-flags: --crate-type lib
 
 pub async const fn x() {}
-//~^ ERROR expected one of `fn` or `unsafe`, found keyword `const`
+//~^ ERROR expected one of `extern`, `fn`, or `unsafe`, found keyword `const`
