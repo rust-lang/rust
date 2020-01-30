@@ -249,42 +249,56 @@ macro_rules! int_impl {
      $reversed:expr, $le_bytes:expr, $be_bytes:expr,
      $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
         doc_comment! {
-            concat!("Returns the smallest value that can be represented by this integer type.
+            concat!("The smallest value that can be represented by this integer type.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), ", stringify!($Min), ");",
+#![feature(assoc_int_consts)]
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
 $EndFeature, "
 ```"),
+            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
+        }
+
+        doc_comment! {
+            concat!("The largest value that can be represented by this integer type.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(assoc_int_consts)]
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
+$EndFeature, "
+```"),
+            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            pub const MAX: Self = !Self::MIN;
+        }
+
+        doc_comment! {
+            "Returns the smallest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
             pub const fn min_value() -> Self {
-                !0 ^ ((!0 as $UnsignedT) >> 1) as Self
+                Self::MIN
             }
         }
 
         doc_comment! {
-            concat!("Returns the largest value that can be represented by this integer type.
-
-# Examples
-
-Basic usage:
-
-```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value(), ", stringify!($Max), ");",
-$EndFeature, "
-```"),
+            "Returns the largest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
             pub const fn max_value() -> Self {
-                !Self::min_value()
+                Self::MAX
             }
         }
 
@@ -2388,38 +2402,52 @@ macro_rules! uint_impl {
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
         $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
         doc_comment! {
-            concat!("Returns the smallest value that can be represented by this integer type.
+            concat!("The smallest value that can be represented by this integer type.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), 0);", $EndFeature, "
+#![feature(assoc_int_consts)]
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_promotable]
-            #[inline(always)]
-            #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-            pub const fn min_value() -> Self { 0 }
+            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            pub const MIN: Self = 0;
         }
 
         doc_comment! {
-            concat!("Returns the largest value that can be represented by this integer type.
+            concat!("The largest value that can be represented by this integer type.
 
 # Examples
 
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value(), ",
-stringify!($MaxV), ");", $EndFeature, "
+#![feature(assoc_int_consts)]
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
+$EndFeature, "
 ```"),
+            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            pub const MAX: Self = !0;
+        }
+
+        doc_comment! {
+            "Returns the smallest value that can be represented by this integer type.",
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
             #[inline(always)]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-            pub const fn max_value() -> Self { !0 }
+            pub const fn min_value() -> Self { Self::MIN }
+        }
+
+        doc_comment! {
+            "Returns the largest value that can be represented by this integer type.",
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
+            #[inline(always)]
+            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            pub const fn max_value() -> Self { Self::MAX }
         }
 
         doc_comment! {
