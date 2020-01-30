@@ -10,7 +10,7 @@ pub use StabilityLevel::*;
 
 use crate::ast;
 use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Ident, Name, Path, PathSegment};
-use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
+use crate::ast::{Expr, ExprKind, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
@@ -20,11 +20,24 @@ use crate::GLOBALS;
 
 use rustc_span::source_map::{BytePos, Spanned};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_errors::Handler;
 use rustc_span::Span;
 
 use log::debug;
 use std::iter;
 use std::ops::DerefMut;
+
+/// The central location for denying the precense of attributes on an 'if' expression.
+/// If attributes on 'if' expres are ever permitted, this is the place to add
+/// the feature-gate check.
+pub fn check_attr_on_if_expr(attrs: &[Attribute], err_handler: &Handler) {
+    if let [a0, ..] = attrs {
+        // Just point to the first attribute in there...
+        err_handler
+            .struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
+            .emit();
+	}
+}
 
 pub fn mark_used(attr: &Attribute) {
     debug!("marking {:?} as used", attr);
@@ -626,11 +639,19 @@ impl NestedMetaItem {
 }
 
 pub trait HasAttrs: Sized {
+    /// A hook invoked before any `#[cfg]` or `#[cfg_attr]`
+    /// attributes are processed. Override this if you want
+    /// to prevent `#[cfg]` or `#[cfg_attr]` from being used
+    /// on something (e.g. an `Expr`)
+    fn check_cfg_attrs(&self, _handler: &Handler) {}
     fn attrs(&self) -> &[ast::Attribute];
     fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F);
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
+    fn check_cfg_attrs(&self, handler: &Handler) {
+        self.node.check_cfg_attrs(handler)
+    }
     fn attrs(&self) -> &[ast::Attribute] {
         self.node.attrs()
     }
@@ -662,6 +683,9 @@ impl HasAttrs for AttrVec {
 }
 
 impl<T: HasAttrs + 'static> HasAttrs for P<T> {
+    fn check_cfg_attrs(&self, handler: &Handler) {
+        (**self).check_cfg_attrs(handler);
+    }
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
     }
@@ -671,6 +695,16 @@ impl<T: HasAttrs + 'static> HasAttrs for P<T> {
 }
 
 impl HasAttrs for StmtKind {
+    fn check_cfg_attrs(&self, handler: &Handler) {
+        debug!("check_cfg_attrs: StmtKind {:?}", self);
+        match *self {
+            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
+                expr.check_cfg_attrs(handler);
+            },
+            _ => {}
+        }
+    }
+
     fn attrs(&self) -> &[Attribute] {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
@@ -698,6 +732,9 @@ impl HasAttrs for StmtKind {
 }
 
 impl HasAttrs for Stmt {
+    fn check_cfg_attrs(&self, handler: &Handler) {
+        self.kind.check_cfg_attrs(handler)
+    }
     fn attrs(&self) -> &[ast::Attribute] {
         self.kind.attrs()
     }
@@ -709,6 +746,22 @@ impl HasAttrs for Stmt {
 
 impl HasAttrs for GenericParam {
     fn attrs(&self) -> &[ast::Attribute] {
+        &self.attrs
+    }
+
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+        self.attrs.visit_attrs(f);
+    }
+}
+
+impl HasAttrs for Expr {
+    fn check_cfg_attrs(&self, handler: &Handler) {
+        debug!("check_cfg_attrs: Expr {:?}", self);
+        if let ExprKind::If(..) = &self.kind {
+            check_attr_on_if_expr(&self.attrs, handler);
+        }
+    }
+    fn attrs(&self) -> &[Attribute] {
         &self.attrs
     }
 
@@ -732,6 +785,6 @@ macro_rules! derive_has_attrs {
 }
 
 derive_has_attrs! {
-    Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::AssocItem, ast::Arm,
+    Item, Local, ast::ForeignItem, ast::StructField, ast::AssocItem, ast::Arm,
     ast::Field, ast::FieldPat, ast::Variant, ast::Param
 }

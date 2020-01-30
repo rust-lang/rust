@@ -251,6 +251,7 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
 
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
+        node.check_cfg_attrs(&self.sess.span_diagnostic);
         self.process_cfg_attrs(&mut node);
         self.in_cfg(node.attrs()).then_some(node)
     }
