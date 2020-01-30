@@ -665,16 +665,21 @@ fn check_where_clauses<'tcx, 'fcx>(
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
     if let Some((return_ty, span)) = return_ty {
-        predicates.predicates.extend(check_opaque_types(tcx, fcx, def_id, span, return_ty));
+        let opaque_types = check_opaque_types(tcx, fcx, def_id, span, return_ty);
+        for _ in 0..opaque_types.len() {
+            predicates.spans.push(span);
+        }
+        predicates.predicates.extend(opaque_types);
     }
 
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
-    let wf_obligations = predicates
-        .predicates
-        .iter()
-        .flat_map(|p| traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, span));
+    assert_eq!(predicates.predicates.len(), predicates.spans.len());
+    let wf_obligations =
+        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(p, sp)| {
+            traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, *sp)
+        });
 
     for obligation in wf_obligations.chain(default_obligations) {
         debug!("next obligation cause: {:?}", obligation.cause);
