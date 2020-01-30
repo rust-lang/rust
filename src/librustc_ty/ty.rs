@@ -9,7 +9,11 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
-fn sized_constraint_for_ty(tcx: TyCtxt<'tcx>, adtdef: &ty::AdtDef, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+fn sized_constraint_for_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adtdef: &ty::AdtDef,
+    ty: Ty<'tcx>,
+) -> Vec<Ty<'tcx>> {
     use ty::TyKind::*;
 
     let result = match ty.kind {
