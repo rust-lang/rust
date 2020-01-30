@@ -34,6 +34,6 @@ fn fmt() {
 
     assert!(
         output.status.success(),
-        "Formatting check failed. Run `./util/dev fmt` to update formatting."
+        "Formatting check failed. Run `cargo dev fmt` to update formatting."
     );
 }

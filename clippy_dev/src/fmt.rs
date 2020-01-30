@@ -88,7 +88,7 @@ pub fn run(check: bool, verbose: bool) {
         Ok(false) => {
             eprintln!();
             eprintln!("Formatting check failed.");
-            eprintln!("Run `./util/dev fmt` to update formatting.");
+            eprintln!("Run `cargo dev fmt` to update formatting.");
             1
         },
         Err(err) => {

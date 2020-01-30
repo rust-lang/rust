@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 lazy_static! {
@@ -205,7 +206,8 @@ fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item = Lint> {
 fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     // We use `WalkDir` instead of `fs::read_dir` here in order to recurse into subdirectories.
     // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
-    WalkDir::new("../clippy_lints/src")
+    let path = clippy_project_dir().join("clippy_lints/src");
+    WalkDir::new(path)
         .into_iter()
         .filter_map(std::result::Result::ok)
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
@@ -225,7 +227,7 @@ pub struct FileChange {
 /// See `replace_region_in_text` for documentation of the other options.
 #[allow(clippy::expect_fun_call)]
 pub fn replace_region_in_file<F>(
-    path: &str,
+    path: &Path,
     start: &str,
     end: &str,
     replace_start: bool,
@@ -235,14 +237,15 @@ pub fn replace_region_in_file<F>(
 where
     F: Fn() -> Vec<String>,
 {
-    let mut f = fs::File::open(path).expect(&format!("File not found: {}", path));
+    let path = clippy_project_dir().join(path);
+    let mut f = fs::File::open(&path).expect(&format!("File not found: {}", path.to_string_lossy()));
     let mut contents = String::new();
     f.read_to_string(&mut contents)
         .expect("Something went wrong reading the file");
     let file_change = replace_region_in_text(&contents, start, end, replace_start, replacements);
 
     if write_back {
-        let mut f = fs::File::create(path).expect(&format!("File not found: {}", path));
+        let mut f = fs::File::create(&path).expect(&format!("File not found: {}", path.to_string_lossy()));
         f.write_all(file_change.new_lines.as_bytes())
             .expect("Unable to write file");
         // Ensure we write the changes with a trailing newline so that
@@ -316,6 +319,12 @@ where
         changed: lines.ne(new_lines.clone()),
         new_lines: new_lines.join("\n"),
     }
+}
+
+/// Returns the path to the Clippy project directory
+fn clippy_project_dir() -> PathBuf {
+    let clippy_dev_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    clippy_dev_dir.parent().unwrap().to_path_buf()
 }
 
 #[test]

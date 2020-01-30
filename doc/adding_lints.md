@@ -39,10 +39,10 @@ lint. Fortunately, you can use the clippy dev tools to handle this for you. We
 are naming our new lint `foo_functions` (lints are generally written in snake
 case), and we don't need type information so it will have an early pass type
 (more on this later on). To get started on this lint you can run
-`./util/dev new_lint --name=foo_functions --pass=early --category=pedantic`
+`cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
 (category will default to nursery if not provided). This command will create
 two files: `tests/ui/foo_functions.rs` and `clippy_lints/src/foo_functions.rs`,
-as well as run `./util/dev update_lints` to register the new lint. Next, we'll
+as well as run `cargo dev update_lints` to register the new lint. Next, we'll
 open up these files and add our lint!
 
 ### Testing
@@ -386,7 +386,7 @@ It can be installed via `rustup`:
 rustup component add rustfmt --toolchain=nightly
 ```
 
-Use `./util/dev fmt` to format the whole codebase. Make sure that `rustfmt` is
+Use `cargo dev fmt` to format the whole codebase. Make sure that `rustfmt` is
 installed for the nightly toolchain.
 
 ### Debugging
@@ -404,9 +404,9 @@ Before submitting your PR make sure you followed all of the basic requirements:
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
 - [ ] `cargo test` passes locally
-- [ ] Executed `./util/dev update_lints`
+- [ ] Executed `cargo dev update_lints`
 - [ ] Added lint documentation
-- [ ] Run `./util/dev fmt`
+- [ ] Run `cargo dev fmt`
 
 ### Cheatsheet
 

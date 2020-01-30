@@ -22,8 +22,8 @@ cargo test --features deny-warnings
 )
 
 # Perform various checks for lint registration
-./util/dev update_lints --check
-./util/dev --limit-stderr-length
+cargo dev update_lints --check
+cargo dev --limit-stderr-length
 
 # Check running clippy-driver without cargo
 (
