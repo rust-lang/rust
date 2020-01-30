@@ -206,7 +206,7 @@ fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item = Lint> {
 fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     // We use `WalkDir` instead of `fs::read_dir` here in order to recurse into subdirectories.
     // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
-    let path = clippy_project_dir().join("clippy_lints/src");
+    let path = clippy_project_root().join("clippy_lints/src");
     WalkDir::new(path)
         .into_iter()
         .filter_map(std::result::Result::ok)
@@ -237,7 +237,7 @@ pub fn replace_region_in_file<F>(
 where
     F: Fn() -> Vec<String>,
 {
-    let path = clippy_project_dir().join(path);
+    let path = clippy_project_root().join(path);
     let mut f = fs::File::open(&path).expect(&format!("File not found: {}", path.to_string_lossy()));
     let mut contents = String::new();
     f.read_to_string(&mut contents)
@@ -322,9 +322,22 @@ where
 }
 
 /// Returns the path to the Clippy project directory
-fn clippy_project_dir() -> PathBuf {
-    let clippy_dev_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-    clippy_dev_dir.parent().unwrap().to_path_buf()
+pub fn clippy_project_root() -> PathBuf {
+    let current_dir = std::env::current_dir().unwrap();
+    for path in current_dir.ancestors() {
+        let result = std::fs::read_to_string(path.join("Cargo.toml"));
+        if let Err(err) = &result {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                continue;
+            }
+        }
+
+        let content = result.unwrap();
+        if content.contains("[package]\nname = \"clippy\"") {
+            return path.to_path_buf();
+        }
+    }
+    panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
 }
 
 #[test]
