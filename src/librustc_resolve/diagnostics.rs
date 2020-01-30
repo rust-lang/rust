@@ -1519,9 +1519,21 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
-                    let (span, sugg) = match &generics.params {
-                        [] => (generics.span, format!("<{}>", lifetime_ref)),
-                        [param, ..] => (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref)),
+                    let (span, sugg) = if let Some(param) = generics
+                        .params
+                        .iter()
+                        .filter(|p| match p.kind {
+                            hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            } => false,
+                            _ => true,
+                        })
+                        .next()
+                    {
+                        (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
+                    } else {
+                        (generics.span, format!("<{}>", lifetime_ref))
                     };
                     err.span_suggestion(
                         span,
@@ -1592,20 +1604,28 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             };
-            let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
-                err.span_label(span, "expected named lifetime parameter");
+            let suggest_new =
+                |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
+                    err.span_label(span, "expected named lifetime parameter");
 
-                for missing in self.missing_named_lifetime_spots.iter().rev() {
-                    let mut introduce_suggestion = vec![];
-                    let msg;
-                    let should_break;
-                    introduce_suggestion.push(match missing {
+                    for missing in self.missing_named_lifetime_spots.iter().rev() {
+                        let mut introduce_suggestion = vec![];
+                        let msg;
+                        let should_break;
+                        introduce_suggestion.push(match missing {
                         MissingLifetimeSpot::Generics(generics) => {
                             msg = "consider introducing a named lifetime parameter".to_string();
                             should_break = true;
-                            match &generics.params {
-                                [] => (generics.span, "<'a>".to_string()),
-                                [param, ..] => (param.span.shrink_to_lo(), "'a, ".to_string()),
+                            if let Some(param) = generics.params.iter().filter(|p| match p.kind {
+                                hir::GenericParamKind::Type {
+                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                    ..
+                                } => false,
+                                _ => true,
+                            }).next() {
+                                (param.span.shrink_to_lo(), "'a, ".to_string())
+                            } else {
+                                (generics.span, "<'a>".to_string())
                             }
                         }
                         MissingLifetimeSpot::HigherRanked { span, span_type } => {
@@ -1621,29 +1641,30 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             (*span, span_type.suggestion("'a"))
                         }
                     });
-                    for param in params {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
-                        {
-                            if snippet.starts_with("&") && !snippet.starts_with("&'") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[1..])));
-                            } else if snippet.starts_with("&'_ ") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[4..])));
+                        for param in params {
+                            if let Ok(snippet) =
+                                self.tcx.sess.source_map().span_to_snippet(param.span)
+                            {
+                                if snippet.starts_with("&") && !snippet.starts_with("&'") {
+                                    introduce_suggestion
+                                        .push((param.span, format!("&'a {}", &snippet[1..])));
+                                } else if snippet.starts_with("&'_ ") {
+                                    introduce_suggestion
+                                        .push((param.span, format!("&'a {}", &snippet[4..])));
+                                }
                             }
                         }
+                        introduce_suggestion.push((span, sugg.to_string()));
+                        err.multipart_suggestion(
+                            &msg,
+                            introduce_suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
+                        if should_break {
+                            break;
+                        }
                     }
-                    introduce_suggestion.push((span, sugg.to_string()));
-                    err.multipart_suggestion(
-                        &msg,
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                    if should_break {
-                        break;
-                    }
-                }
-            };
+                };
 
             match (
                 lifetime_names.len(),
