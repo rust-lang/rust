@@ -108,7 +108,7 @@ fn drop_after_sharing() {
 
 // Make sure that coercing &mut T to *const T produces a writeable pointer.
 fn direct_mut_to_const_raw() {
-    // FIXME: This is currently disabled, waiting on a fix for <https://github.com/rust-lang/rust/issues/56604>
+    // TODO: This is currently disabled, waiting on a decision on <https://github.com/rust-lang/rust/issues/56604>
     /*let x = &mut 0;
     let y: *const i32 = x;
     unsafe { *(y as *mut i32) = 1; }
