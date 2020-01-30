@@ -28,8 +28,8 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::{self, LinkagePreference};
+use rustc::middle::lang_items;
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
@@ -847,11 +847,8 @@ impl CrateInfo {
 
             // No need to look for lang items that are whitelisted and don't
             // actually need to exist.
-            let missing = missing
-                .iter()
-                .cloned()
-                .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
-                .collect();
+            let missing =
+                missing.iter().cloned().filter(|&l| !lang_items::whitelisted(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 
