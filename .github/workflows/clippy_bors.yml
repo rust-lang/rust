@@ -41,6 +41,8 @@ jobs:
         elif [[ "$output" = "none" ]]; then
           echo "WARNING: changelog is 'none'"
         fi
+      env:
+        PYTHONIOENCODING: 'utf-8'
   base:
     needs: changelog
     strategy:
