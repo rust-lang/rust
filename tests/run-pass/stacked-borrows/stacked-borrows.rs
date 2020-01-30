@@ -119,9 +119,6 @@ fn direct_mut_to_const_raw() {
 // Make sure that we can create two raw pointers from a mutable reference and use them both.
 fn two_raw() { unsafe {
     let x = &mut 0;
-    // Given the implicit reborrows, the only reason this currently works is that we
-    // do not track raw pointers: The creation of `y2` reborrows `x` and thus pops
-    // `y1` off the stack.
     let y1 = x as *mut _;
     let y2 = x as *mut _;
     *y1 += 2;
