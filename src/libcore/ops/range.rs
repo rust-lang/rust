@@ -343,28 +343,12 @@ pub struct RangeInclusive<Idx> {
     pub(crate) is_empty: Option<bool>,
     // This field is:
     //  - `None` when next() or next_back() was never called
-    //  - `Some(false)` when `start <= end` assuming no overflow
-    //  - `Some(true)` otherwise
+    //  - `Some(false)` when `start < end`
+    //  - `Some(true)` when `end < start`
+    //  - `Some(false)` when `start == end` and the range hasn't yet completed iteration
+    //  - `Some(true)` when `start == end` and the range has completed iteration
     // The field cannot be a simple `bool` because the `..=` constructor can
     // accept non-PartialOrd types, also we want the constructor to be const.
-}
-
-trait RangeInclusiveEquality: Sized {
-    fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool;
-}
-
-impl<T> RangeInclusiveEquality for T {
-    #[inline]
-    default fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        range.is_empty.unwrap_or_default()
-    }
-}
-
-impl<T: PartialOrd> RangeInclusiveEquality for T {
-    #[inline]
-    fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        range.is_empty()
-    }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -373,8 +357,7 @@ impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
     fn eq(&self, other: &Self) -> bool {
         self.start == other.start
             && self.end == other.end
-            && RangeInclusiveEquality::canonicalized_is_empty(self)
-                == RangeInclusiveEquality::canonicalized_is_empty(other)
+            && self.is_exhausted() == other.is_exhausted()
     }
 }
 
@@ -386,7 +369,8 @@ impl<Idx: Hash> Hash for RangeInclusive<Idx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.start.hash(state);
         self.end.hash(state);
-        RangeInclusiveEquality::canonicalized_is_empty(self).hash(state);
+        // Ideally we would hash `is_exhausted` here as well, but there's no
+        // way for us to call it.
     }
 }
 
@@ -482,6 +466,14 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
         write!(fmt, "..=")?;
         self.end.fmt(fmt)?;
         Ok(())
+    }
+}
+
+impl<Idx: PartialEq<Idx>> RangeInclusive<Idx> {
+    // Returns true if this is a range that started non-empty, and was iterated
+    // to exhaustion.
+    fn is_exhausted(&self) -> bool {
+        Some(true) == self.is_empty && self.start == self.end
     }
 }
 
