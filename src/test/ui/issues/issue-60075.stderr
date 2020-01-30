@@ -13,11 +13,5 @@ LL |         let _ = if true {
 LL |         });
    |           ^ help: `}` may belong here
 
-error: expected identifier, found `;`
-  --> $DIR/issue-60075.rs:6:11
-   |
-LL |         });
-   |           ^ expected identifier
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

@@ -22,8 +22,7 @@ fn syntax() {
         unsafe fn f();
         const fn f();
         extern "C" fn f();
-        /* const */ async unsafe extern "C" fn f();
-        //^ FIXME(Centril): `const` should be legal syntactically.
+        const async unsafe extern "C" fn f();
     }
 
     impl X for Y {
@@ -31,8 +30,7 @@ fn syntax() {
         unsafe fn f();
         const fn f();
         extern "C" fn f();
-        /* const */ async unsafe extern "C" fn f();
-        //^ FIXME(Centril): `const` should be legal syntactically.
+        const async unsafe extern "C" fn f();
     }
 
     impl Y {
@@ -40,8 +38,7 @@ fn syntax() {
         unsafe fn f();
         const fn f();
         extern "C" fn f();
-        /* const */ async unsafe extern "C" fn f();
-        //^ FIXME(Centril): `const` should be legal syntactically.
+        const async unsafe extern "C" fn f();
     }
 
     extern {
@@ -49,7 +46,6 @@ fn syntax() {
         unsafe fn f();
         const fn f();
         extern "C" fn f();
-        /* const */ async unsafe extern "C" fn f();
-        //^ FIXME(Centril): `const` should be legal syntactically.
+        const async unsafe extern "C" fn f();
     }
 }

@@ -798,12 +798,12 @@ impl<'a> Parser<'a> {
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
-        } else if self.is_const_item() {
-            self.parse_assoc_const()?
+        } else if self.is_fn_front_matter() {
+            self.parse_assoc_fn(at_end, &mut attrs, is_name_required)?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
             (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
-            self.parse_assoc_fn(at_end, &mut attrs, is_name_required)?
+            self.parse_assoc_const()?
         };
 
         Ok(AssocItem {
@@ -817,12 +817,6 @@ impl<'a> Parser<'a> {
             kind,
             tokens: None,
         })
-    }
-
-    /// Returns `true` if we are looking at `const ID`
-    /// (returns `false` for things like `const fn`, etc.).
-    fn is_const_item(&self) -> bool {
-        self.token.is_keyword(kw::Const) && !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
     }
 
     /// This parses the grammar:
@@ -1034,21 +1028,20 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        let visibility = self.parse_visibility(FollowedByType::No)?;
+        let vis = self.parse_visibility(FollowedByType::No)?;
 
-        // FOREIGN TYPE ITEM
         if self.check_keyword(kw::Type) {
-            return self.parse_item_foreign_type(visibility, lo, attrs);
-        }
-
-        // FOREIGN STATIC ITEM
-        if self.is_static_global() {
+            // FOREIGN TYPE ITEM
+            self.parse_item_foreign_type(vis, lo, attrs)
+        } else if self.is_fn_front_matter() {
+            // FOREIGN FUNCTION ITEM
+            self.parse_item_foreign_fn(vis, lo, attrs)
+        } else if self.is_static_global() {
+            // FOREIGN STATIC ITEM
             self.bump(); // `static`
-            return self.parse_item_foreign_static(visibility, lo, attrs);
-        }
-
-        // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
-        if self.is_kw_followed_by_ident(kw::Const) {
+            self.parse_item_foreign_static(vis, lo, attrs)
+        } else if self.token.is_keyword(kw::Const) {
+            // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
             self.bump(); // `const`
             self.struct_span_err(self.prev_span, "extern items cannot be `const`")
                 .span_suggestion(
@@ -1058,32 +1051,17 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 )
                 .emit();
-            return self.parse_item_foreign_static(visibility, lo, attrs);
-        }
-
-        // FOREIGN FUNCTION ITEM
-        const MAY_INTRODUCE_FN: &[Symbol] = &[kw::Const, kw::Async, kw::Unsafe, kw::Extern, kw::Fn];
-        if MAY_INTRODUCE_FN.iter().any(|&kw| self.check_keyword(kw)) {
-            return self.parse_item_foreign_fn(visibility, lo, attrs);
-        }
-
-        match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
-            Some(mac) => Ok(P(ForeignItem {
-                ident: Ident::invalid(),
-                span: lo.to(self.prev_span),
-                id: DUMMY_NODE_ID,
-                attrs,
-                vis: visibility,
-                kind: ForeignItemKind::Macro(mac),
-                tokens: None,
-            })),
-            None => {
-                if !attrs.is_empty() {
-                    self.expected_item_err(&attrs)?;
-                }
-
-                self.unexpected()
+            self.parse_item_foreign_static(vis, lo, attrs)
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", Some(&vis), &mut false)? {
+            let kind = ForeignItemKind::Macro(mac);
+            let span = lo.to(self.prev_span);
+            let ident = Ident::invalid();
+            Ok(P(ForeignItem { ident, span, id: DUMMY_NODE_ID, attrs, vis, kind, tokens: None }))
+        } else {
+            if !attrs.is_empty() {
+                self.expected_item_err(&attrs)?;
             }
+            self.unexpected()
         }
     }
 
@@ -1752,6 +1730,29 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
+    /// Is the current token unambiguously the start of an `FnHeader`?
+    fn is_fn_front_matter(&mut self) -> bool {
+        // We use an over-approximation here.
+        // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
+        // This works for `async fn` and similar as `async async` is an invalid
+        // parse and `async fn` is never a valid parse on previous editions.
+        const QUALIFIER: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
+
+        let check_qual_follow = |this: &mut Self, dist| {
+            this.look_ahead(dist, |t| {
+                // ...qualified and then `fn`, e.g. `const fn`.
+                t.is_keyword(kw::Fn)
+                // Two qualifiers. This is enough.
+                || QUALIFIER.iter().any(|&kw| t.is_keyword(kw))
+            })
+        };
+        self.check_keyword(kw::Fn) // Definitely an `fn`.
+            // `$qual fn` or `$qual $qual`:
+            || QUALIFIER.iter().any(|&kw| self.check_keyword(kw)) && check_qual_follow(self, 1)
+            // `extern ABI fn` or `extern ABI $qual`; skip 1 for the ABI.
+            || self.check_keyword(kw::Extern) && check_qual_follow(self, 2)
+    }
+
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
     /// up to and including the `fn` keyword. The formal grammar is:
     ///
@@ -1763,16 +1764,13 @@ impl<'a> Parser<'a> {
     fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
+        let unsafety = self.parse_unsafety();
+        let ext = self.parse_extern()?;
+
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);
         }
-        let unsafety = self.parse_unsafety();
-        let (constness, unsafety, ext) = if let Const::Yes(_) = constness {
-            (constness, unsafety, Extern::None)
-        } else {
-            let ext = self.parse_extern()?;
-            (Const::No, unsafety, ext)
-        };
+
         if !self.eat_keyword(kw::Fn) {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
@@ -1781,6 +1779,7 @@ impl<'a> Parser<'a> {
                 unreachable!()
             }
         }
+
         Ok(FnHeader { constness, unsafety, asyncness, ext })
     }
 
