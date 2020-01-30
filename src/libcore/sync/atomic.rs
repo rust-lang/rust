@@ -2444,7 +2444,7 @@ unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-/// returns the max value (signed comparison)
+/// returns the max value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
@@ -2457,7 +2457,7 @@ unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-/// returns the min value (signed comparison)
+/// returns the min value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
 unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
