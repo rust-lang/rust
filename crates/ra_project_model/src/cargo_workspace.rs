@@ -209,6 +209,9 @@ impl CargoWorkspace {
         for node in resolve.nodes {
             let source = match pkg_by_id.get(&node.id) {
                 Some(&src) => src,
+                // FIXME: replace this and a similar branch below with `.unwrap`, once
+                // https://github.com/rust-lang/cargo/issues/7841
+                // is fixed and hits stable (around 1.43-is probably?).
                 None => {
                     log::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
                     continue;
