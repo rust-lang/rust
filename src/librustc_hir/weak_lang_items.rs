@@ -1,9 +1,9 @@
 //! Validity checking for weak lang items
 
+use crate::def_id::DefId;
 use crate::{lang_items, LangItem, LanguageItems};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use syntax::ast;
 

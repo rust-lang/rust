@@ -107,8 +107,6 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 }
 
-impl<'ctx> rustc_lang_items::HashStableContext for StableHashingContext<'ctx> {}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for DefId {
     type KeyType = DefPathHash;
 

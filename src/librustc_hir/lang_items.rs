@@ -9,11 +9,11 @@
 
 pub use self::LangItem::*;
 
+use crate::def_id::DefId;
 use crate::Target;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;

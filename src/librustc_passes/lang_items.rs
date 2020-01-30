@@ -16,8 +16,8 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_lang_items::lang_items::{extract, ITEM_REFS};
-use rustc_lang_items::{LangItem, LanguageItems, Target};
+use rustc_hir::lang_items::{extract, ITEM_REFS};
+use rustc_hir::{LangItem, LanguageItems, Target};
 
 use rustc::ty::query::Providers;
 

@@ -2,10 +2,10 @@
 
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::DefId;
-use rustc_lang_items::{lang_items, LangItem};
+use rustc_hir::{lang_items, LangItem};
 use rustc_target::spec::PanicStrategy;
 
-pub use rustc_lang_items::weak_lang_items::link_name;
+pub use rustc_hir::weak_lang_items::link_name;
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
