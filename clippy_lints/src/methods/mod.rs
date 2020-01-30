@@ -117,7 +117,6 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let opt = Some(1);
     /// opt?;
-    /// # Some::<()>(())
     /// ```
     pub OPTION_EXPECT_USED,
     restriction,
@@ -168,11 +167,12 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
     /// struct X;
     /// impl X {
     ///     fn add(&self, other: &X) -> X {
-    ///         ..
+    ///         // ..
+    /// # X
     ///     }
     /// }
     /// ```
@@ -200,10 +200,12 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # struct X;
     /// impl X {
-    ///     fn as_str(self) -> &str {
-    ///         ..
+    ///     fn as_str(self) -> &'static str {
+    ///         // ..
+    /// # ""
     ///     }
     /// }
     /// ```
@@ -245,7 +247,8 @@ declare_clippy_lint! {
     /// **Known problems:** The error type needs to implement `Debug`
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # let x = Ok::<_, ()>(());
     /// x.ok().expect("why did I do this again?")
     /// ```
     pub OK_EXPECT,
@@ -318,8 +321,10 @@ declare_clippy_lint! {
     /// **Known problems:** The order of the arguments is not in execution order.
     ///
     /// **Example:**
-    /// ```rust,ignore
-    /// opt.map_or(None, |a| a + 1)
+    /// ```rust
+    /// # let opt = Some(1);
+    /// opt.map_or(None, |a| Some(a + 1))
+    /// # ;
     /// ```
     pub OPTION_MAP_OR_NONE,
     style,
@@ -707,9 +712,12 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # struct Foo;
+    /// # struct NotAFoo;
     /// impl Foo {
-    ///     fn new(..) -> NotAFoo {
+    ///     fn new() -> NotAFoo {
+    /// # NotAFoo
     ///     }
     /// }
     /// ```
@@ -744,14 +752,20 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # use std::ffi::CString;
+    /// # fn call_some_ffi_func(_: *const i8) {}
+    /// #
     /// let c_str = CString::new("foo").unwrap().as_ptr();
     /// unsafe {
     ///     call_some_ffi_func(c_str);
     /// }
     /// ```
     /// Here `c_str` point to a freed address. The correct use would be:
-    /// ```rust,ignore
+    /// ```rust
+    /// # use std::ffi::CString;
+    /// # fn call_some_ffi_func(_: *const i8) {}
+    /// #
     /// let c_str = CString::new("foo").unwrap();
     /// unsafe {
     ///     call_some_ffi_func(c_str.as_ptr());
@@ -953,8 +967,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # let name = "_";
     /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
+    /// # ;
     /// ```
     pub CHARS_LAST_CMP,
     style,
@@ -1147,7 +1163,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
     /// unsafe { (&() as *const ()).offset(1) };
     /// ```
     pub ZST_OFFSET,
@@ -1165,24 +1181,30 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust,ignore
+    /// ```rust
+    /// # || {
     /// let metadata = std::fs::metadata("foo.txt")?;
     /// let filetype = metadata.file_type();
     ///
     /// if filetype.is_file() {
     ///     // read file
     /// }
+    /// # Ok::<_, std::io::Error>(())
+    /// # };
     /// ```
     ///
     /// should be written as:
     ///
-    /// ```rust,ignore
+    /// ```rust
+    /// # || {
     /// let metadata = std::fs::metadata("foo.txt")?;
     /// let filetype = metadata.file_type();
     ///
     /// if !filetype.is_dir() {
     ///     // read file
     /// }
+    /// # Ok::<_, std::io::Error>(())
+    /// # };
     /// ```
     pub FILETYPE_IS_FILE,
     restriction,
@@ -1198,12 +1220,16 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
-    ///  opt.as_ref().map(String::as_str)
+    /// ```rust
+    /// # let opt = Some("".to_string());
+    /// opt.as_ref().map(String::as_str)
+    /// # ;
     /// ```
     /// Can be written as
-    /// ```rust,ignore
-    ///  opt.as_deref()
+    /// ```rust
+    /// # let opt = Some("".to_string());
+    /// opt.as_deref()
+    /// # ;
     /// ```
     pub OPTION_AS_REF_DEREF,
     complexity,
