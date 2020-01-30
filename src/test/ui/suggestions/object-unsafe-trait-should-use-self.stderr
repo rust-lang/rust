@@ -15,7 +15,7 @@ error[E0038]: the trait `A` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-self.rs:3:13
    |
 LL | trait A: Sized {
-   |          ----- the trait cannot require that `Self : Sized`
+   |          ----- traits that require `Self: Sized` cannot be made into an object
 LL |     fn f(a: A) -> A;
    |             ^ the trait `A` cannot be made into an object
 

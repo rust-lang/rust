@@ -16,7 +16,7 @@ error[E0038]: the trait `std::marker::Copy` cannot be made into an object
 LL |     let _: &Copy + 'static;
    |            ^^^^^ the trait `std::marker::Copy` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
+   = note: traits that require `Self: Sized` cannot be made into an object
 
 error: aborting due to 3 previous errors
 

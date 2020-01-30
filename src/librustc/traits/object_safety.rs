@@ -44,7 +44,7 @@ impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
             ObjectSafetyViolation::SizedSelf(_) => {
-                "the trait cannot require that `Self : Sized`".into()
+                "traits that require `Self: Sized` cannot be made into an object".into()
             }
             ObjectSafetyViolation::SupertraitSelf => {
                 "the trait cannot use `Self` as a type parameter \

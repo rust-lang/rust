@@ -2,9 +2,9 @@ error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:7:5
    |
 LL | trait Array: Sized + Copy {}
-   |              -----   ---- the trait cannot require that `Self : Sized`
+   |              -----   ---- traits that require `Self: Sized` cannot be made into an object
    |              |
-   |              the trait cannot require that `Self : Sized`
+   |              traits that require `Self: Sized` cannot be made into an object
 ...
 LL |     &dyn Array;
    |     ^^^^^^^^^^ the trait `Array` cannot be made into an object
@@ -13,9 +13,9 @@ error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:4:13
    |
 LL | trait Array: Sized + Copy {}
-   |              -----   ---- the trait cannot require that `Self : Sized`
+   |              -----   ---- traits that require `Self: Sized` cannot be made into an object
    |              |
-   |              the trait cannot require that `Self : Sized`
+   |              traits that require `Self: Sized` cannot be made into an object
 ...
 LL |     let _ = x
    |             ^ the trait `Array` cannot be made into an object

@@ -2,7 +2,7 @@ error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-sized.rs:14:5
    |
 LL | trait Bar : Sized {
-   |             ----- the trait cannot require that `Self : Sized`
+   |             ----- traits that require `Self: Sized` cannot be made into an object
 ...
 LL |     t
    |     ^ the trait `Bar` cannot be made into an object

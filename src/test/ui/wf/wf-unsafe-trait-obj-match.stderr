@@ -16,7 +16,7 @@ error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:26:21
    |
 LL | trait Trait: Sized {}
-   |              ----- the trait cannot require that `Self : Sized`
+   |              ----- traits that require `Self: Sized` cannot be made into an object
 ...
 LL |         Some(()) => &S,
    |                     ^^ the trait `Trait` cannot be made into an object
@@ -28,7 +28,7 @@ error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:25:25
    |
 LL | trait Trait: Sized {}
-   |              ----- the trait cannot require that `Self : Sized`
+   |              ----- traits that require `Self: Sized` cannot be made into an object
 ...
 LL |     let t: &dyn Trait = match opt() {
    |                         ^^^^^^^^^^^ the trait `Trait` cannot be made into an object

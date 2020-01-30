@@ -2,7 +2,7 @@ error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:18:38
    |
 LL | trait NonObjectSafe1: Sized {}
-   |                       ----- the trait cannot require that `Self : Sized`
+   |                       ----- traits that require `Self: Sized` cannot be made into an object
 ...
 LL | fn takes_non_object_safe_ref<T>(obj: &dyn NonObjectSafe1) {
    |                                      ^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe1` cannot be made into an object
@@ -38,7 +38,7 @@ error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:38:6
    |
 LL | trait NonObjectSafe1: Sized {}
-   |                       ----- the trait cannot require that `Self : Sized`
+   |                       ----- traits that require `Self: Sized` cannot be made into an object
 ...
 LL | impl Trait for dyn NonObjectSafe1 {}
    |      ^^^^^ the trait `NonObjectSafe1` cannot be made into an object

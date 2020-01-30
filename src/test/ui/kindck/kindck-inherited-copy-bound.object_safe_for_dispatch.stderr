@@ -13,7 +13,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/kindck-inherited-copy-bound.rs:28:13
    |
 LL | trait Foo : Copy {
-   |             ---- the trait cannot require that `Self : Sized`
+   |             ---- traits that require `Self: Sized` cannot be made into an object
 ...
 LL |     let z = &x as &dyn Foo;
    |             ^^ the trait `Foo` cannot be made into an object
