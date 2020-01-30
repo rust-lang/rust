@@ -285,7 +285,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if whence == this.eval_libc_i32("SEEK_END")? {
             SeekFrom::End(offset)
         } else {
-            throw_unsup_format!("Unsupported whence argument to lseek64: {}", whence)
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
         };
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
