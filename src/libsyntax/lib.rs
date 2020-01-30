@@ -35,6 +35,10 @@ macro_rules! unwrap_or {
 pub struct Globals {
     used_attrs: Lock<GrowableBitSet<AttrId>>,
     known_attrs: Lock<GrowableBitSet<AttrId>>,
+    /// Stores attributes on 'if' expressions that
+    /// we've already emitted an error for, to avoid emitting
+    /// duplicate errors
+    if_expr_attrs: Lock<GrowableBitSet<AttrId>>,
     rustc_span_globals: rustc_span::Globals,
 }
 
@@ -45,6 +49,7 @@ impl Globals {
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
+            if_expr_attrs: Lock::new(GrowableBitSet::new_empty()),
             rustc_span_globals: rustc_span::Globals::new(edition),
         }
     }

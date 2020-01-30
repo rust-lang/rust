@@ -32,10 +32,16 @@ use std::ops::DerefMut;
 /// the feature-gate check.
 pub fn check_attr_on_if_expr(attrs: &[Attribute], err_handler: &Handler) {
     if let [a0, ..] = attrs {
-        // Just point to the first attribute in there...
-        err_handler
-            .struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
-            .emit();
+        // Deduplicate errors by attr id, as this method may get multiple times
+        // for the same set of attrs
+        if GLOBALS.with(|globals| {
+            globals.if_expr_attrs.lock().insert(a0.id)
+        }) {
+            // Just point to the first attribute in there...
+            err_handler
+                .struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
+                .emit();
+        }
 	}
 }
 

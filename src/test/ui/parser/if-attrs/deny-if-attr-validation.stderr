@@ -1,4 +1,16 @@
 error: attributes are not yet allowed on `if` expressions
+  --> $DIR/deny-if-attr-validation.rs:3:5
+   |
+LL |     #[cfg(FALSE)]
+   |     ^^^^^^^^^^^^^
+
+error: attributes are not yet allowed on `if` expressions
+  --> $DIR/deny-if-attr-validation.rs:6:5
+   |
+LL |     #[cfg_attr(FALSE, allow(warnings))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes are not yet allowed on `if` expressions
   --> $DIR/deny-if-attr-validation.rs:9:5
    |
 LL |     #[allow(warnings)] if true {}
@@ -10,5 +22,5 @@ error: attributes are not yet allowed on `if` expressions
 LL |     #[allow(warnings)] if let Some(_) = Some(true) {
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
