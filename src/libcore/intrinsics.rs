@@ -870,12 +870,16 @@ extern "rust-intrinsic" {
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
+    /// The stabilized version of this intrinsic is
+    /// [`std::any::type_name`](../../std/any/fn.type_name.html)
     #[rustc_const_unstable(feature = "const_type_name", issue = "none")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    /// The stabilized version of this intrinsic is
+    /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
     #[rustc_const_unstable(feature = "const_type_id", issue = "none")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
