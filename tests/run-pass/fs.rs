@@ -29,8 +29,10 @@ fn main() {
     let mut file = File::create(&path).unwrap();
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 0);
 
     file.write(bytes).unwrap();
+    assert_eq!(file.metadata().unwrap().len(), bytes.len() as u64);
     // Test opening, reading and closing a file.
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();

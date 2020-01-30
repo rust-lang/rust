@@ -339,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     // different values into a struct.
     fn write_packed_immediates(
         &mut self,
-        place: &MPlaceTy<'tcx, Tag>,
+        place: MPlaceTy<'tcx, Tag>,
         imms: &[ImmTy<'tcx, Tag>],
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

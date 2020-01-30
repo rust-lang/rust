@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_int_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
         ];
 
-        this.write_packed_immediates(&tp, &imms)?;
+        this.write_packed_immediates(tp, &imms)?;
 
         Ok(0)
     }
@@ -77,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_int_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
         ];
 
-        this.write_packed_immediates(&tv, &imms)?;
+        this.write_packed_immediates(tv, &imms)?;
 
         Ok(0)
     }
