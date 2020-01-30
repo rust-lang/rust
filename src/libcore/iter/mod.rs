@@ -351,6 +351,8 @@ pub use self::adapters::Cloned;
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
+#[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
+pub use self::adapters::MapWhile;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
 #[stable(feature = "rust1", since = "1.0.0")]
