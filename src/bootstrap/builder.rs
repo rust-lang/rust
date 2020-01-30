@@ -780,7 +780,12 @@ impl<'a> Builder<'a> {
         }
 
         match mode {
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {}
+            Mode::ToolBootstrap | Mode::ToolStd => {}
+            Mode::Std => {
+                if stage != 0 {
+                    rustflags.arg("-Zshare-generics");
+                }
+            }
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
