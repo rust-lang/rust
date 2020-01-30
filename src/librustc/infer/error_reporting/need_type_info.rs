@@ -47,9 +47,12 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
                 if ty.walk().any(|inner_ty| {
                     inner_ty == self.target_ty
                         || match (&inner_ty.kind, &self.target_ty.kind) {
-                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                                self.infcx.type_variables.borrow_mut().sub_unified(a_vid, b_vid)
-                            }
+                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                .infcx
+                                .inner
+                                .borrow_mut()
+                                .type_variables
+                                .sub_unified(a_vid, b_vid),
                             _ => false,
                         }
                 }) {
@@ -166,7 +169,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         highlight: Option<ty::print::RegionHighlightMode>,
     ) -> (String, Option<Span>, Cow<'static, str>, Option<String>, Option<&'static str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind {
                 let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
@@ -224,7 +227,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
-            let ty_vars = self.type_variables.borrow();
+            let ty_vars = &self.inner.borrow().type_variables;
             let getter = move |ty_vid| {
                 let var_origin = ty_vars.var_origin(ty_vid);
                 if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {

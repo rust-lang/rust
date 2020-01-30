@@ -82,7 +82,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) {
         debug!("register_region_obligation(body_id={:?}, obligation={:?})", body_id, obligation);
 
-        self.region_obligations.borrow_mut().push((body_id, obligation));
+        self.inner.borrow_mut().region_obligations.push((body_id, obligation));
     }
 
     pub fn register_region_obligation_with_cause(
@@ -103,7 +103,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
     /// Trait queries just want to pass back type obligations "as is"
     pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
-        ::std::mem::take(&mut *self.region_obligations.borrow_mut())
+        ::std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
     /// Process the region obligations that must be proven (during

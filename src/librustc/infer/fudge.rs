@@ -8,11 +8,10 @@ use super::{ConstVariableOrigin, RegionVariableOrigin};
 use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
 
-use std::cell::RefMut;
 use std::ops::Range;
 
 fn const_vars_since_snapshot<'tcx>(
-    mut table: RefMut<'_, ut::UnificationTable<ut::InPlace<ConstVid<'tcx>>>>,
+    table: &mut ut::UnificationTable<ut::InPlace<ConstVid<'tcx>>>,
     snapshot: &ut::Snapshot<ut::InPlace<ConstVid<'tcx>>>,
 ) -> (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>) {
     let range = table.vars_since_snapshot(snapshot);
@@ -82,23 +81,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // going to be popped, so we will have to
                     // eliminate any references to them.
 
-                    let type_vars = self
-                        .type_variables
-                        .borrow_mut()
-                        .vars_since_snapshot(&snapshot.type_snapshot);
-                    let int_vars = self
-                        .int_unification_table
-                        .borrow_mut()
-                        .vars_since_snapshot(&snapshot.int_snapshot);
-                    let float_vars = self
-                        .float_unification_table
-                        .borrow_mut()
-                        .vars_since_snapshot(&snapshot.float_snapshot);
-                    let region_vars = self
-                        .borrow_region_constraints()
+                    let mut inner = self.inner.borrow_mut();
+                    let type_vars =
+                        inner.type_variables.vars_since_snapshot(&snapshot.type_snapshot);
+                    let int_vars =
+                        inner.int_unification_table.vars_since_snapshot(&snapshot.int_snapshot);
+                    let float_vars =
+                        inner.float_unification_table.vars_since_snapshot(&snapshot.float_snapshot);
+                    let region_vars = inner
+                        .unwrap_region_constraints()
                         .vars_since_snapshot(&snapshot.region_constraints_snapshot);
                     let const_vars = const_vars_since_snapshot(
-                        self.const_unification_table.borrow_mut(),
+                        &mut inner.const_unification_table,
                         &snapshot.const_snapshot,
                     );
 
@@ -166,7 +160,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                     // variables to their binding anyhow, we know
                     // that it is unbound, so we can just return
                     // it.
-                    debug_assert!(self.infcx.type_variables.borrow_mut().probe(vid).is_unknown());
+                    debug_assert!(
+                        self.infcx.inner.borrow_mut().type_variables.probe(vid).is_unknown()
+                    );
                     ty
                 }
             }

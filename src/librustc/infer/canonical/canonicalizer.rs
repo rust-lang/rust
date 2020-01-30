@@ -317,7 +317,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                 let r = self
                     .infcx
                     .unwrap()
-                    .borrow_region_constraints()
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
                 debug!(
                     "canonical: region var found with vid {:?}, \
@@ -621,7 +623,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
 
     /// Returns the universe in which `vid` is defined.
     fn region_var_universe(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
-        self.infcx.unwrap().borrow_region_constraints().var_universe(vid)
+        self.infcx.unwrap().inner.borrow_mut().unwrap_region_constraints().var_universe(vid)
     }
 
     /// Creates a canonical variable (with the given `info`)

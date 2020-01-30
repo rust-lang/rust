@@ -66,7 +66,12 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
         let origin = Subtype(box self.fields.trace.clone());
-        Ok(self.fields.infcx.borrow_region_constraints().glb_regions(self.tcx(), origin, a, b))
+        Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().glb_regions(
+            self.tcx(),
+            origin,
+            a,
+            b,
+        ))
     }
 
     fn consts(

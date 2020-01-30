@@ -226,7 +226,9 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         let b = match b {
             &ty::ReVar(vid) => self
                 .infcx
-                .borrow_region_constraints()
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
                 .opportunistic_resolve_var(self.infcx.tcx, vid),
 
             other => other,
