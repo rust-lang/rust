@@ -7,4 +7,7 @@ fn main() {
     let _ = m.lock();
     let _ = rw.read();
     let _ = rw.write();
+    let _ = m.try_lock();
+    let _ = rw.try_read();
+    let _ = rw.try_write();
 }
