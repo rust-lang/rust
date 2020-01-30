@@ -188,29 +188,16 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
             }
         });
 
-    let mut res = Vec::new();
-    let mut meta = None;
-    loop {
-        let mut next_meta = None;
-        let mut text = String::new();
-        for line in lines.by_ref() {
-            if line.starts_with("//-") {
-                next_meta = Some(line["//-".len()..].trim().to_string());
-                break;
-            }
-            text.push_str(line);
-            text.push('\n');
-        }
-
-        if let Some(meta) = meta {
-            res.push(FixtureEntry { meta, text });
-        }
-        meta = next_meta;
-        if meta.is_none() {
-            break;
+    let mut res: Vec<FixtureEntry> = Vec::new();
+    for line in lines.by_ref() {
+        if line.starts_with("//-") {
+            let meta = line["//-".len()..].trim().to_string();
+            res.push(FixtureEntry { meta, text: String::new() })
+        } else if let Some(entry) = res.last_mut() {
+            entry.text.push_str(line);
+            entry.text.push('\n');
         }
     }
-
     res
 }
 
