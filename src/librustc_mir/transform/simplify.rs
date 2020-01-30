@@ -124,7 +124,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 }
 
                 let data = &mut self.basic_blocks[bb];
-                data.statements.extend(new_stmts.drain(..));
+                data.statements.append(&mut new_stmts);
                 data.terminator = Some(terminator);
 
                 changed |= inner_changed;
