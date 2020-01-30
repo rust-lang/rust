@@ -16,8 +16,12 @@ extern crate log;
 
 use rustc::ty::query::Providers;
 
+mod common_traits;
+mod needs_drop;
 mod ty;
 
 pub fn provide(providers: &mut Providers<'_>) {
+    common_traits::provide(providers);
+    needs_drop::provide(providers);
     ty::provide(providers);
 }
