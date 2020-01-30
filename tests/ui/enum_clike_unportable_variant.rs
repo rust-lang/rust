@@ -1,7 +1,7 @@
 // ignore-x86
 
-#![warn(clippy::all)]
-#![allow(unused)]
+#![warn(clippy::enum_clike_unportable_variant)]
+#![allow(unused, non_upper_case_globals)]
 
 #[repr(usize)]
 enum NonPortable {
@@ -35,17 +35,16 @@ enum NonPortableSignedNoHint {
     A = 0x1_0000_0000,
 }
 
-/*
-FIXME: uncomment once https://github.com/rust-lang/rust/issues/31910 is fixed
 #[repr(usize)]
-enum NonPortable2<T: Trait> {
-    X = Trait::Number,
+enum NonPortable2 {
+    X = <usize as Trait>::Number,
     Y = 0,
 }
 
 trait Trait {
     const Number: usize = 0x1_0000_0000;
 }
-*/
+
+impl Trait for usize {}
 
 fn main() {}
