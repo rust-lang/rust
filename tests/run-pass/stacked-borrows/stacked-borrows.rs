@@ -108,7 +108,7 @@ fn drop_after_sharing() {
 
 // Make sure that coercing &mut T to *const T produces a writeable pointer.
 fn direct_mut_to_const_raw() {
-    // FIXME: This is currently disabled, waiting on a fix for <https://github.com/rust-lang/rust/issues/56604>
+    // TODO: This is currently disabled, waiting on a decision on <https://github.com/rust-lang/rust/issues/56604>
     /*let x = &mut 0;
     let y: *const i32 = x;
     unsafe { *(y as *mut i32) = 1; }
@@ -119,9 +119,6 @@ fn direct_mut_to_const_raw() {
 // Make sure that we can create two raw pointers from a mutable reference and use them both.
 fn two_raw() { unsafe {
     let x = &mut 0;
-    // Given the implicit reborrows, the only reason this currently works is that we
-    // do not track raw pointers: The creation of `y2` reborrows `x` and thus pops
-    // `y1` off the stack.
     let y1 = x as *mut _;
     let y2 = x as *mut _;
     *y1 += 2;
@@ -129,16 +126,14 @@ fn two_raw() { unsafe {
 } }
 
 // Make sure that creating a *mut does not invalidate existing shared references.
-fn shr_and_raw() { /* unsafe {
+fn shr_and_raw() { unsafe {
     use std::mem;
-    // FIXME: This is currently disabled because "as *mut _" incurs a reborrow.
     let x = &mut 0;
     let y1: &i32 = mem::transmute(&*x); // launder lifetimes
     let y2 = x as *mut _;
     let _val = *y1;
     *y2 += 1;
-    // TODO: Once this works, add compile-fail test that tries to read from y1 again.
-} */ }
+} }
 
 fn disjoint_mutable_subborrows() {
     struct Foo {
@@ -165,5 +160,5 @@ fn disjoint_mutable_subborrows() {
     let b = unsafe{ borrow_field_b(ptr) };
     b.push(4);
     a.push_str(" world");
-    dbg!(a,b);
+    eprintln!("{:?} {:?}", a, b);
 }
