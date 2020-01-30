@@ -855,8 +855,15 @@ extern "rust-intrinsic" {
     /// Moves a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::ptr::write`](../../std/ptr/fn.write.html).
     pub fn move_val_init<T>(dst: *mut T, src: T);
 
+    /// The minimum alignment of a type.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::align_of`](../../std/mem/fn.align_of.html).
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
     #[rustc_const_unstable(feature = "const_pref_align_of", issue = "none")]
@@ -867,6 +874,10 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
+    /// The minimum alignment of the type of the value that `val` points to.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::min_align_of_val`](../../std/mem/fn.min_align_of_val.html).
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
@@ -897,6 +908,9 @@ extern "rust-intrinsic" {
     /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::zeroed`](../../std/mem/fn.zeroed.html).
     #[unstable(
         feature = "core_intrinsics",
         reason = "intrinsics are unlikely to ever be stabilized, instead \
@@ -914,6 +928,9 @@ extern "rust-intrinsic" {
     /// state, which means it may claim either dropped or
     /// undropped. In the general case one must use `ptr::write` to
     /// initialize memory previous set to the result of `uninit`.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::MaybeUninit`](../../std/mem/union.MaybeUninit.html).
     #[unstable(
         feature = "core_intrinsics",
         reason = "intrinsics are unlikely to ever be stabilized, instead \
@@ -1159,6 +1176,9 @@ extern "rust-intrinsic" {
     /// byte past the end of an allocated object. If either pointer is out of
     /// bounds or arithmetic overflow occurs then any further use of the
     /// returned value will result in undefined behavior.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::pointer::offset`](../../std/primitive.pointer.html#method.offset).
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1172,6 +1192,9 @@ extern "rust-intrinsic" {
     /// resulting pointer to point into or one byte past the end of an allocated
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::pointer::wrapping_offset`](../../std/primitive.pointer.html#method.wrapping_offset).
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -1626,6 +1649,8 @@ extern "rust-intrinsic" {
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
     pub fn discriminant_value<T>(v: &T) -> u64;
 
     /// Rust's "try catch" construct which invokes the function pointer `f` with
