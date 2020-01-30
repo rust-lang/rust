@@ -19,11 +19,6 @@ fn if_let() {
     #[attr] if let Some(_) = Some(true) {}
 }
 
-fn bar() {}
-fn foo() {
-    bar(#[cfg(FALSE)] if true {});
-}
-
 macro_rules! custom_macro {
     ($expr:expr) => {}
 }

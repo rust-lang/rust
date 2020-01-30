@@ -1,3 +1,9 @@
+fn bar() {}
+fn foo() {
+    bar(#[cfg(FALSE)] if true {}); //~ ERROR attributes are not yet allowed
+}
+
+
 fn main() {
 
     #[cfg(FALSE)] //~ ERROR attributes are not yet allowed on `if` expressions
