@@ -18,7 +18,7 @@ unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"
 annotate-snippets = "0.6.1"
-term_size = "0.3.1"
+termize = "0.1.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["handleapi", "synchapi", "winbase"] }
