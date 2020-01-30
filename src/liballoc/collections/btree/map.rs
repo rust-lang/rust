@@ -2096,8 +2096,13 @@ where
             }
         }
 
-        let front = Handle::new_edge(min_node, min_edge);
-        let back = Handle::new_edge(max_node, max_edge);
+        // Safety guarantee: `min_edge` is always in range for `min_node`, because
+        // `min_edge` is unconditionally calculated for each iteration's value of `min_node`,
+        // either (if not found) as the edge index returned by `search_linear`,
+        // or (if found) as the KV index returned by `search_linear`, possibly + 1.
+        // Likewise for `max_node` versus `max_edge`.
+        let front = unsafe { Handle::new_edge(min_node, min_edge) };
+        let back = unsafe { Handle::new_edge(max_node, max_edge) };
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
                 return (f, b);
