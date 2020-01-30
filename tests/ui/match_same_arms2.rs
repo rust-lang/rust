@@ -79,6 +79,46 @@ fn match_same_arms() {
         (None, Some(a)) => bar(a), // bindings have different types
         _ => (),
     }
+
+    let x: Result<i32, &str> = Ok(3);
+
+    // No warning because of the guard.
+    match x {
+        Ok(x) if x * x == 64 => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err"),
+    }
+
+    // This used to be a false positive; see issue #1996.
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(x) if x * x == 64 => println!("ok 64"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err"),
+    }
+
+    match (x, Some(1i32)) {
+        (Ok(x), Some(_)) => println!("ok {}", x),
+        (Ok(_), Some(x)) => println!("ok {}", x),
+        _ => println!("err"),
+    }
+
+    // No warning; different types for `x`.
+    match (x, Some(1.0f64)) {
+        (Ok(x), Some(_)) => println!("ok {}", x),
+        (Ok(_), Some(x)) => println!("ok {}", x),
+        _ => println!("err"),
+    }
+
+    // False negative #2251.
+    match x {
+        Ok(_tmp) => println!("ok"),
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {
+            unreachable!();
+        },
+    }
 }
 
 fn main() {}
