@@ -18,9 +18,9 @@ use crate::token::{self, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
 
+use rustc_errors::Handler;
 use rustc_span::source_map::{BytePos, Spanned};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_errors::Handler;
 use rustc_span::Span;
 
 use log::debug;
@@ -34,15 +34,13 @@ pub fn check_attr_on_if_expr(attrs: &[Attribute], err_handler: &Handler) {
     if let [a0, ..] = attrs {
         // Deduplicate errors by attr id, as this method may get multiple times
         // for the same set of attrs
-        if GLOBALS.with(|globals| {
-            globals.if_expr_attrs.lock().insert(a0.id)
-        }) {
+        if GLOBALS.with(|globals| globals.if_expr_attrs.lock().insert(a0.id)) {
             // Just point to the first attribute in there...
             err_handler
                 .struct_span_err(a0.span, "attributes are not yet allowed on `if` expressions")
                 .emit();
         }
-	}
+    }
 }
 
 pub fn mark_used(attr: &Attribute) {
@@ -706,7 +704,7 @@ impl HasAttrs for StmtKind {
         match *self {
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
                 expr.check_cfg_attrs(handler);
-            },
+            }
             _ => {}
         }
     }
