@@ -299,7 +299,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let asyncness = header.asyncness.node;
+                    let asyncness = header.asyncness;
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
@@ -836,19 +836,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(ref sig, ref body) => {
                 self.current_item = Some(i.span);
-                let body_id = self.lower_maybe_async_body(
-                    i.span,
-                    &sig.decl,
-                    sig.header.asyncness.node,
-                    body.as_deref(),
-                );
+                let asyncness = sig.header.asyncness;
+                let body_id =
+                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, body.as_deref());
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
                     impl_item_def_id,
                     impl_trait_return_allow,
-                    sig.header.asyncness.node.opt_return_id(),
+                    asyncness.opt_return_id(),
                 );
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
@@ -1033,12 +1030,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         decl: &FnDecl,
-        asyncness: IsAsync,
+        asyncness: Async,
         body: Option<&Block>,
     ) -> hir::BodyId {
         let closure_id = match asyncness {
-            IsAsync::Async { closure_id, .. } => closure_id,
-            IsAsync::NotAsync => return self.lower_fn_body_block(span, decl, body),
+            Async::Yes { closure_id, .. } => closure_id,
+            Async::No => return self.lower_fn_body_block(span, decl, body),
         };
 
         self.lower_body(|this| {
@@ -1248,7 +1245,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(h.asyncness.node),
+            asyncness: self.lower_asyncness(h.asyncness),
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }
@@ -1276,10 +1273,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .emit();
     }
 
-    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+    fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
         match a {
-            IsAsync::Async { .. } => hir::IsAsync::Async,
-            IsAsync::NotAsync => hir::IsAsync::NotAsync,
+            Async::Yes { .. } => hir::IsAsync::Async,
+            Async::No => hir::IsAsync::NotAsync,
         }
     }
 

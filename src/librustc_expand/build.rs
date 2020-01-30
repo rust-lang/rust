@@ -507,7 +507,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             ast::ExprKind::Closure(
                 ast::CaptureBy::Ref,
-                ast::IsAsync::NotAsync,
+                ast::Async::No,
                 ast::Movability::Movable,
                 fn_decl,
                 body,
@@ -530,7 +530,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             ast::ExprKind::Closure(
                 ast::CaptureBy::Ref,
-                ast::IsAsync::NotAsync,
+                ast::Async::No,
                 ast::Movability::Movable,
                 fn_decl,
                 body,

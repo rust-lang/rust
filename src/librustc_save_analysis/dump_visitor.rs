@@ -290,8 +290,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // as an `impl Trait` existential type. Because of this, to match
                 // the definition paths when resolving nested types we need to
                 // start walking from the newly-created definition.
-                match sig.header.asyncness.node {
-                    ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                match sig.header.asyncness {
+                    ast::Async::Yes { return_impl_trait_id, .. } => {
                         v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
                     }
                     _ => v.visit_ty(ret_ty),
@@ -383,8 +383,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     // as an `impl Trait` existential type. Because of this, to match
                     // the definition paths when resolving nested types we need to
                     // start walking from the newly-created definition.
-                    match header.asyncness.node {
-                        ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                    match header.asyncness {
+                        ast::Async::Yes { return_impl_trait_id, .. } => {
                             v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
                         }
                         _ => v.visit_ty(ret_ty),

@@ -368,7 +368,7 @@ impl Sig for ast::Item {
                 if let ast::Const::Yes(_) = header.constness {
                     text.push_str("const ");
                 }
-                if header.asyncness.node.is_async() {
+                if header.asyncness.is_async() {
                     text.push_str("async ");
                 }
                 if let ast::Unsafe::Yes(_) = header.unsafety {
@@ -887,7 +887,7 @@ fn make_method_signature(
     if let ast::Const::Yes(_) = m.header.constness {
         text.push_str("const ");
     }
-    if m.header.asyncness.node.is_async() {
+    if m.header.asyncness.is_async() {
         text.push_str("async ");
     }
     if let ast::Unsafe::Yes(_) = m.header.unsafety {

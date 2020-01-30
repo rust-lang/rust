@@ -24,7 +24,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
 use syntax::ast::DUMMY_NODE_ID;
 use syntax::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
-use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
+use syntax::ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use syntax::ptr::P;
 use syntax::token::{self, DelimToken, Token, TokenKind};
 use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
@@ -954,11 +954,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> IsAsync {
+    fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            IsAsync::Async { closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+            let span = self.prev_span;
+            Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
-            IsAsync::NotAsync
+            Async::No
         }
     }
 

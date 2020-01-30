@@ -2449,7 +2449,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_asyncness(&mut self, asyncness: ast::IsAsync) {
+    crate fn print_asyncness(&mut self, asyncness: ast::Async) {
         if asyncness.is_async() {
             self.word_nbsp("async");
         }
@@ -2734,7 +2734,7 @@ impl<'a> State<'a> {
         self.s.word(visibility_qualified(vis, ""));
 
         self.print_constness(header.constness);
-        self.print_asyncness(header.asyncness.node);
+        self.print_asyncness(header.asyncness);
         self.print_unsafety(header.unsafety);
 
         match header.ext {

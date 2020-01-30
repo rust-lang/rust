@@ -114,7 +114,7 @@ pub trait MutVisitor: Sized {
         noop_visit_fn_decl(d, self);
     }
 
-    fn visit_asyncness(&mut self, a: &mut IsAsync) {
+    fn visit_asyncness(&mut self, a: &mut Async) {
         noop_visit_asyncness(a, self);
     }
 
@@ -728,13 +728,13 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
     }
 }
 
-pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T) {
+pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut Async, vis: &mut T) {
     match asyncness {
-        IsAsync::Async { closure_id, return_impl_trait_id } => {
+        Async::Yes { span: _, closure_id, return_impl_trait_id } => {
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
         }
-        IsAsync::NotAsync => {}
+        Async::No => {}
     }
 }
 
@@ -980,7 +980,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     let FnHeader { unsafety: _, asyncness, constness: _, ext: _ } = header;
-    vis.visit_asyncness(&mut asyncness.node);
+    vis.visit_asyncness(asyncness);
 }
 
 pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, vis: &mut T) {

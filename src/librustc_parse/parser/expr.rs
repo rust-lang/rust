@@ -13,7 +13,7 @@ use syntax::ast::{self, AttrStyle, AttrVec, CaptureBy, Field, Ident, Lit, DUMMY_
 use syntax::ast::{
     AnonConst, BinOp, BinOpKind, FnDecl, FunctionRetTy, Mac, Param, Ty, TyKind, UnOp,
 };
-use syntax::ast::{Arm, BlockCheckMode, Expr, ExprKind, IsAsync, Label, Movability, RangeLimits};
+use syntax::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind};
 use syntax::util::classify;
@@ -1348,7 +1348,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness =
-            if self.token.span.rust_2018() { self.parse_asyncness() } else { IsAsync::NotAsync };
+            if self.token.span.rust_2018() { self.parse_asyncness() } else { Async::No };
         if asyncness.is_async() {
             // Feature-gate `async ||` closures.
             self.sess.gated_spans.gate(sym::async_closure, self.prev_span);

@@ -56,7 +56,9 @@ error[E0706]: trait fns cannot be declared `async`
   --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}
-   |     ^^^^^^^^^^^^^^^^^
+   |     -----^^^^^^^^^^^^
+   |     |
+   |     `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
