@@ -136,7 +136,6 @@ fn shr_and_raw() { unsafe {
     let y2 = x as *mut _;
     let _val = *y1;
     *y2 += 1;
-    // TODO: Once this works, add compile-fail test that tries to read from y1 again.
 } }
 
 fn disjoint_mutable_subborrows() {
