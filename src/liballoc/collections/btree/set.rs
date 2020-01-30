@@ -56,10 +56,21 @@ use crate::collections::btree_map::{self, BTreeMap, Keys};
 ///     println!("{}", book);
 /// }
 /// ```
-#[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone> Clone for BTreeSet<T> {
+    fn clone(&self) -> Self {
+        BTreeSet { map: self.map.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.map.clone_from(&other.map);
+    }
 }
 
 /// An iterator over the items of a `BTreeSet`.

@@ -786,6 +786,26 @@ fn test_clone() {
 }
 
 #[test]
+fn test_clone_from() {
+    let mut map1 = BTreeMap::new();
+    let size = 30;
+
+    for i in 0..size {
+        let mut map2 = BTreeMap::new();
+        for j in 0..i {
+            let mut map1_copy = map2.clone();
+            map1_copy.clone_from(&map1);
+            assert_eq!(map1_copy, map1);
+            let mut map2_copy = map1.clone();
+            map2_copy.clone_from(&map2);
+            assert_eq!(map2_copy, map2);
+            map2.insert(100 * j + 1, 2 * j + 1);
+        }
+        map1.insert(i, 10 * i);
+    }
+}
+
+#[test]
 #[allow(dead_code)]
 fn test_variance() {
     use std::collections::btree_map::{IntoIter, Iter, Keys, Range, Values};
