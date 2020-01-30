@@ -1,7 +1,7 @@
 //! Validity checking for weak lang items
 
 use rustc::middle::lang_items;
-use rustc::middle::weak_lang_items::whitelisted;
+use rustc::middle::lang_items::whitelisted;
 use rustc::session::config;
 
 use rustc::hir::map::Map;
