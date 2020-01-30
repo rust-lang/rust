@@ -1,9 +1,8 @@
 use crate::utils::{
-    attr_by_name, attrs::is_proc_macro, is_must_use_ty, iter_input_pats, match_def_path, must_use_attr, qpath_res,
-    return_ty, snippet, snippet_opt, span_lint, span_lint_and_help, span_lint_and_then, trait_ref_of_method,
-    type_is_unsafe_function,
+    attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, iter_input_pats, match_def_path,
+    must_use_attr, qpath_res, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help, span_lint_and_then,
+    trait_ref_of_method, type_is_unsafe_function,
 };
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
@@ -195,12 +194,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         span: Span,
         hir_id: hir::HirId,
     ) {
-        let is_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            matches!(item.kind, hir::ItemKind::Impl{ of_trait: Some(_), .. })
-        } else {
-            false
-        };
-
         let unsafety = match kind {
             intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
             intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
@@ -208,7 +201,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         };
 
         // don't warn for implementations, it's not their fault
-        if !is_impl {
+        if !is_trait_impl_item(cx, hir_id) {
             // don't lint extern functions decls, it's not their fault either
             match kind {
                 intravisit::FnKind::Method(
