@@ -190,14 +190,7 @@ fn object_safety_violations_for_trait(
                         tcx.def_path_str(trait_def_id)
                     ),
                 );
-                let spans = violation.spans();
-                if spans.is_empty() {
-                    err.note(&violation.error_msg());
-                } else {
-                    for span in spans {
-                        err.span_label(span, violation.error_msg());
-                    }
-                }
+                err.span_label(*span, violation.error_msg());
                 err.emit();
                 false
             } else {
