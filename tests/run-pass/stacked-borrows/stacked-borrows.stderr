@@ -1,7 +1,1 @@
-[$DIR/stacked-borrows.rs:168] a = "hello world"
-[$DIR/stacked-borrows.rs:168] b = [
-    0,
-    1,
-    2,
-    4,
-]
+"hello world" [0, 1, 2, 4]
