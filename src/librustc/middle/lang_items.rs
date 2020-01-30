@@ -14,7 +14,7 @@ use crate::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
-pub use rustc_lang_items::{LangItem, LanguageItems};
+pub use rustc_hir::{LangItem, LanguageItems};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.

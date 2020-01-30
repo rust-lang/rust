@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_lang_items::weak_lang_items::WEAK_ITEMS_REFS;
+use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -95,7 +95,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
-        if let Some((lang_item, _)) = rustc_lang_items::lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = hir::lang_items::extract(&i.attrs) {
             self.register(lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)

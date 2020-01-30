@@ -4,8 +4,8 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc_hir as hir;
-use rustc_hir::{Item, ItemKind, TraitItem, TraitItemKind};
+use crate::hir;
+use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 
 use std::fmt::{self, Display};
 

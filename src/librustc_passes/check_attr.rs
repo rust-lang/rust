@@ -14,7 +14,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
-use rustc_lang_items::{MethodKind, Target};
+use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
