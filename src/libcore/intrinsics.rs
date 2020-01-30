@@ -1438,14 +1438,21 @@ extern "rust-intrinsic" {
     pub fn frem_fast<T>(a: T, b: T) -> T;
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
-    /// https://github.com/rust-lang/rust/issues/10184
+    /// (<https://github.com/rust-lang/rust/issues/10184>)
+    /// This is under stabilization at <https://github.com/rust-lang/rust/issues/67058>
     pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `count_ones` method. For example,
+    /// [`std::u32::count_ones`](../../std/primitive.u32.html#method.count_ones)
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
     pub fn ctpop<T>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `leading_zeros` method. For example,
+    /// [`std::u32::leading_zeros`](../../std/primitive.u32.html#method.leading_zeros)
     ///
     /// # Examples
     ///
@@ -1491,6 +1498,9 @@ extern "rust-intrinsic" {
     pub fn ctlz_nonzero<T>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `trailing_zeros` method. For example,
+    /// [`std::u32::trailing_zeros`](../../std/primitive.u32.html#method.trailing_zeros)
     ///
     /// # Examples
     ///
@@ -1536,10 +1546,16 @@ extern "rust-intrinsic" {
     pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `swap_bytes` method. For example,
+    /// [`std::u32::swap_bytes`](../../std/primitive.u32.html#method.swap_bytes)
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
     pub fn bswap<T>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `reverse_bits` method. For example,
+    /// [`std::u32::reverse_bits`](../../std/primitive.u32.html#method.reverse_bits)
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
     pub fn bitreverse<T>(x: T) -> T;
 
@@ -1569,20 +1585,34 @@ extern "rust-intrinsic" {
     pub fn exact_div<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
-    /// where y = 0 or x = `T::min_value()` and y = -1
+    /// where y = 0 or x = `T::min_value()` and y = -1.
+    ///
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `checked_div` method. For example,
+    /// [`std::u32::checked_div`](../../std/primitive.u32.html#method.checked_div)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
     pub fn unchecked_div<T>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
     /// undefined behavior where y = 0 or x = `T::min_value()` and y = -1
+    ///
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `checked_rem` method. For example,
+    /// [`std::u32::checked_rem`](../../std/primitive.u32.html#method.checked_rem)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
     pub fn unchecked_rem<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_shl` method. For example,
+    /// [`std::u32::wrapping_shl`](../../std/primitive.u32.html#method.wrapping_shl)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shl<T>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `wrapping_shr` method. For example,
+    /// [`std::u32::wrapping_shr`](../../std/primitive.u32.html#method.wrapping_shr)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
