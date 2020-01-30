@@ -143,7 +143,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```
+    /// ```rust
     /// let res: Result<usize, ()> = Ok(1);
     /// res?;
     /// # Ok::<(), ()>(())
