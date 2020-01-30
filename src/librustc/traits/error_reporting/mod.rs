@@ -695,7 +695,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             let unit_obligation = Obligation {
                                 predicate: ty::Predicate::Trait(
                                     predicate,
-                                    ast::Constness::NotConst,
+                                    hir::Constness::NotConst,
                                 ),
                                 ..obligation.clone()
                             };

@@ -4,7 +4,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::{self, Attribute, Expr, FnHeader, FnSig, Generics, Ident, Param};
-use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
+use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use syntax::expand::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ptr::P;
 
@@ -64,7 +64,7 @@ impl AllocFnFactory<'_, '_> {
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let decl = self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty));
-        let header = FnHeader { unsafety: Unsafety::Unsafe, ..FnHeader::default() };
+        let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header };
         let kind = ItemKind::Fn(sig, Generics::default(), Some(self.cx.block_expr(output_expr)));
         let item = self.cx.item(

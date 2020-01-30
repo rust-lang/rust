@@ -28,12 +28,12 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::print;
-use rustc_hir::{ExprKind, GenericArg, GenericArgs};
+use rustc_hir::{Constness, ExprKind, GenericArg, GenericArgs};
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
-use syntax::ast::{self, Constness};
+use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::collections::BTreeSet;
@@ -1502,7 +1502,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .filter(|(trait_ref, _, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
-            assert_eq!(constness, ast::Constness::NotConst);
+            assert_eq!(constness, Constness::NotConst);
 
             for trait_ref in traits::elaborate_trait_ref(tcx, base_trait_ref) {
                 debug!(

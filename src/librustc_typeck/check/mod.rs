@@ -2693,13 +2693,13 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         None
     }
 
-    fn default_constness_for_trait_bounds(&self) -> ast::Constness {
+    fn default_constness_for_trait_bounds(&self) -> hir::Constness {
         // FIXME: refactor this into a method
         let node = self.tcx.hir().get(self.body_id);
         if let Some(fn_like) = FnLikeNode::from_node(node) {
             fn_like.constness()
         } else {
-            ast::Constness::NotConst
+            hir::Constness::NotConst
         }
     }
 

@@ -32,7 +32,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast;
 
 use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::MoveData;
@@ -1938,7 +1937,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                                 tcx.mk_substs_trait(ty, &[]),
                                             ),
                                         }),
-                                        ast::Constness::NotConst,
+                                        hir::Constness::NotConst,
                                     ),
                                 ),
                                 &traits::SelectionError::Unimplemented,
@@ -2579,7 +2578,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.prove_predicates(
             Some(ty::Predicate::Trait(
                 trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
-                ast::Constness::NotConst,
+                hir::Constness::NotConst,
             )),
             locations,
             category,

@@ -300,11 +300,11 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         Some(self.item_def_id)
     }
 
-    fn default_constness_for_trait_bounds(&self) -> ast::Constness {
+    fn default_constness_for_trait_bounds(&self) -> hir::Constness {
         if let Some(fn_like) = FnLikeNode::from_node(self.node()) {
             fn_like.constness()
         } else {
-            ast::Constness::NotConst
+            hir::Constness::NotConst
         }
     }
 
@@ -2429,7 +2429,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     match bound {
                         &hir::GenericBound::Trait(ref poly_trait_ref, modifier) => {
                             let constness = match modifier {
-                                hir::TraitBoundModifier::MaybeConst => ast::Constness::NotConst,
+                                hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
                                 hir::TraitBoundModifier::None => constness,
                                 hir::TraitBoundModifier::Maybe => bug!("this wasn't handled"),
                             };
@@ -2617,13 +2617,13 @@ fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
-    constness: ast::Constness,
+    constness: hir::Constness,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, modifier) => {
             let constness = match modifier {
                 hir::TraitBoundModifier::Maybe => return vec![],
-                hir::TraitBoundModifier::MaybeConst => ast::Constness::NotConst,
+                hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
                 hir::TraitBoundModifier::None => constness,
             };
 

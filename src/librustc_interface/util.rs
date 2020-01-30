@@ -668,7 +668,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
-        sig.header.constness.node == ast::Constness::Const
+        matches!(sig.header.constness, ast::Const::Yes(_))
             || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }

@@ -9,7 +9,6 @@ use crate::ty::fold::TypeFolder;
 use crate::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use syntax::ast;
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
@@ -350,7 +349,7 @@ impl AutoTraitFinder<'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::Predicate::Trait(pred, ast::Constness::NotConst),
+                            ty::Predicate::Trait(pred, hir::Constness::NotConst),
                         );
                         predicates.push_back(pred);
                     } else {

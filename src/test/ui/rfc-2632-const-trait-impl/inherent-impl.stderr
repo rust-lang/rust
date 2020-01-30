@@ -2,7 +2,9 @@ error: inherent impls cannot be `const`
   --> $DIR/inherent-impl.rs:9:1
    |
 LL | impl const S {}
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^-----^^^^^
+   |      |
+   |      `const` because of this
    |
    = note: only trait implementations may be annotated with `const`
 
@@ -10,7 +12,9 @@ error: inherent impls cannot be `const`
   --> $DIR/inherent-impl.rs:13:1
    |
 LL | impl const T {}
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^-----^^^^^
+   |      |
+   |      `const` because of this
    |
    = note: only trait implementations may be annotated with `const`
 
@@ -18,13 +22,17 @@ error: const trait impls are not yet implemented
   --> $DIR/inherent-impl.rs:9:1
    |
 LL | impl const S {}
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^-----^^^^^
+   |      |
+   |      const because of this
 
 error: const trait impls are not yet implemented
   --> $DIR/inherent-impl.rs:13:1
    |
 LL | impl const T {}
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^-----^^^^^
+   |      |
+   |      const because of this
 
 error: aborting due to 4 previous errors
 

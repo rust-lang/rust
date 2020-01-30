@@ -19,7 +19,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name, NodeId};
 use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
-pub use syntax::ast::{CaptureBy, Constness, Movability, Mutability, Unsafety};
+pub use syntax::ast::{CaptureBy, Movability, Mutability};
 use syntax::node_id::NodeMap;
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
@@ -2109,18 +2109,8 @@ impl ImplicitSelfKind {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    HashStable_Generic,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum IsAsync {
     Async,
     NotAsync,
@@ -2387,6 +2377,38 @@ pub struct Item<'hir> {
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum Unsafety {
+    Unsafe,
+    Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Self::Unsafe => "unsafe ",
+            Self::Normal => "",
+        }
+    }
+}
+
+impl fmt::Display for Unsafety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Self::Unsafe => "unsafe",
+            Self::Normal => "normal",
+        })
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum Constness {
+    Const,
+    NotConst,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
