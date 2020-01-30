@@ -533,7 +533,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(0u128, __u64_layout)?, // stx_dev_minor
         ];
 
-        this.write_packed_immediates(&statxbuf_place, &imms)?;
+        this.write_packed_immediates(statxbuf_place, &imms)?;
 
         Ok(0)
     }
@@ -692,7 +692,7 @@ fn stat_macos_write_buf<'tcx, 'mir>(
     ];
 
     let buf = ecx.deref_operand(buf_op)?;
-    ecx.write_packed_immediates(&buf, &imms)?;
+    ecx.write_packed_immediates(buf, &imms)?;
 
     Ok(0)
 }
