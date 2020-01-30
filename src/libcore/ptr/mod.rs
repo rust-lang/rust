@@ -1083,7 +1083,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)))
                     & (going_mod - 1);
-                if going_mod > m {
+                if going_mod >= m {
                     return inverse & (m - 1);
                 }
                 going_mod = going_mod.wrapping_mul(going_mod);
@@ -1134,7 +1134,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         // to take the result $o mod lcm(s, a)$. We can replace $lcm(s, a)$ with just a $a / g$.
         let j = a.wrapping_sub(pmoda) >> gcdpow;
         let k = smoda >> gcdpow;
-        return intrinsics::unchecked_rem(j.wrapping_mul(mod_inv(k, a)), a >> gcdpow);
+        return (j.wrapping_mul(mod_inv(k, a))) & ((a >> gcdpow).wrapping_sub(1));
     }
 
     // Cannot be aligned at all.
