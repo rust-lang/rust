@@ -1367,7 +1367,7 @@ impl EmitterWriter {
                 } else if self.ui_testing {
                     140
                 } else {
-                    term_size::dimensions()
+                    termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
                         .unwrap_or(std::usize::MAX)
                 };

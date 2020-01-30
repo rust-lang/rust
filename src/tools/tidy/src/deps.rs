@@ -167,7 +167,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("termcolor"),
     Crate("terminon"),
     Crate("termion"),
-    Crate("term_size"),
+    Crate("termize"),
     Crate("thread_local"),
     Crate("ucd-util"),
     Crate("unicode-normalization"),
