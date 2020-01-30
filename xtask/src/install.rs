@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use crate::cmd::{run, run_with_output, Cmd};
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: u32 = 40;
+const REQUIRED_RUST_VERSION: u32 = 41;
 
 pub struct InstallCmd {
     pub client: Option<ClientOpt>,
