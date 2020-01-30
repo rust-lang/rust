@@ -105,5 +105,41 @@ help: consider refactoring into `(Some(a), ..) | (.., Some(a))`
 LL |         (Some(a), ..) => bar(a),
    |         ^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:102:29
+   |
+LL |         (Ok(_), Some(x)) => println!("ok {}", x),
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:101:29
+   |
+LL |         (Ok(x), Some(_)) => println!("ok {}", x),
+   |                             ^^^^^^^^^^^^^^^^^^^^
+help: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
+  --> $DIR/match_same_arms2.rs:101:9
+   |
+LL |         (Ok(x), Some(_)) => println!("ok {}", x),
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:117:18
+   |
+LL |         Ok(_) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:116:18
+   |
+LL |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+help: consider refactoring into `Ok(3) | Ok(_)`
+  --> $DIR/match_same_arms2.rs:116:9
+   |
+LL |         Ok(3) => println!("ok"),
+   |         ^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
 
