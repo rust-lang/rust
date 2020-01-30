@@ -1659,7 +1659,7 @@ impl<'a> Parser<'a> {
                 self.prev_span,
                 "change the delimiters to curly braces",
                 " { /* items */ }".to_string(),
-                Applicability::MaybeIncorrect,
+                Applicability::HasPlaceholders,
             );
         }
 
