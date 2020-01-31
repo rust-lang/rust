@@ -661,7 +661,7 @@ impl<'a> Parser<'a> {
         Ok((Ident::invalid(), item_kind, Some(attrs)))
     }
 
-    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<AssocItem>, Vec<Attribute>)> {
+    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<P<AssocItem>>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
@@ -786,12 +786,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, P<AssocItem>> {
         maybe_whole!(self, NtImplItem, |x| x);
         self.parse_assoc_item(at_end, |_| true)
     }
 
-    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
+    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, P<AssocItem>> {
         maybe_whole!(self, NtTraitItem, |x| x);
         // This is somewhat dubious; We don't want to allow
         // param names to be left off if there is a definition...
@@ -805,7 +805,7 @@ impl<'a> Parser<'a> {
         &mut self,
         at_end: &mut bool,
         is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, AssocItem> {
+    ) -> PResult<'a, P<AssocItem>> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
@@ -818,7 +818,7 @@ impl<'a> Parser<'a> {
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
         }
-        Ok(item)
+        Ok(P(item))
     }
 
     fn parse_assoc_item_(
@@ -1064,7 +1064,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    pub fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
+    pub fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, P<ForeignItem>> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;
@@ -1112,7 +1112,7 @@ impl<'a> Parser<'a> {
         }
 
         match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
-            Some(mac) => Ok(ForeignItem {
+            Some(mac) => Ok(P(ForeignItem {
                 ident: Ident::invalid(),
                 span: lo.to(self.prev_span),
                 id: DUMMY_NODE_ID,
@@ -1120,7 +1120,7 @@ impl<'a> Parser<'a> {
                 vis: visibility,
                 kind: ForeignItemKind::Macro(mac),
                 tokens: None,
-            }),
+            })),
             None => {
                 if !attrs.is_empty() {
                     self.expected_item_err(&attrs)?;
@@ -1138,14 +1138,14 @@ impl<'a> Parser<'a> {
         vis: ast::Visibility,
         lo: Span,
         attrs: Vec<Attribute>,
-    ) -> PResult<'a, ForeignItem> {
+    ) -> PResult<'a, P<ForeignItem>> {
         let mutbl = self.parse_mutability();
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         let hi = self.token.span;
         self.expect_semi()?;
-        Ok(ForeignItem {
+        Ok(P(ForeignItem {
             ident,
             attrs,
             kind: ForeignItemKind::Static(ty, mutbl),
@@ -1153,7 +1153,7 @@ impl<'a> Parser<'a> {
             span: lo.to(hi),
             vis,
             tokens: None,
-        })
+        }))
     }
 
     /// Parses a type from a foreign module.
@@ -1162,13 +1162,13 @@ impl<'a> Parser<'a> {
         vis: ast::Visibility,
         lo: Span,
         attrs: Vec<Attribute>,
-    ) -> PResult<'a, ForeignItem> {
+    ) -> PResult<'a, P<ForeignItem>> {
         self.expect_keyword(kw::Type)?;
 
         let ident = self.parse_ident()?;
         let hi = self.token.span;
         self.expect_semi()?;
-        Ok(ast::ForeignItem {
+        Ok(P(ast::ForeignItem {
             ident,
             attrs,
             kind: ForeignItemKind::Ty,
@@ -1176,7 +1176,7 @@ impl<'a> Parser<'a> {
             span: lo.to(hi),
             vis,
             tokens: None,
-        })
+        }))
     }
 
     fn is_static_global(&mut self) -> bool {
@@ -1740,13 +1740,13 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: Vec<Attribute>,
         extern_sp: Span,
-    ) -> PResult<'a, ForeignItem> {
+    ) -> PResult<'a, P<ForeignItem>> {
         self.expect_keyword(kw::Fn)?;
         let (ident, decl, generics) =
             self.parse_fn_sig(ParamCfg { is_self_allowed: false, is_name_required: |_| true })?;
         let span = lo.to(self.token.span);
         self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
-        Ok(ast::ForeignItem {
+        Ok(P(ast::ForeignItem {
             ident,
             attrs,
             kind: ForeignItemKind::Fn(decl, generics),
@@ -1754,7 +1754,7 @@ impl<'a> Parser<'a> {
             span,
             vis,
             tokens: None,
-        })
+        }))
     }
 
     fn parse_assoc_fn(

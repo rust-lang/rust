@@ -650,7 +650,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         generics: &'l ast::Generics,
         trait_ref: &'l Option<ast::TraitRef>,
         typ: &'l ast::Ty,
-        impl_items: &'l [ast::AssocItem],
+        impl_items: &'l [P<ast::AssocItem>],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             if !self.span.filter_generated(item.span) {
@@ -681,7 +681,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         item: &'l ast::Item,
         generics: &'l ast::Generics,
         trait_refs: &'l ast::GenericBounds,
-        methods: &'l [ast::AssocItem],
+        methods: &'l [P<ast::AssocItem>],
     ) {
         let name = item.ident.to_string();
         let qualname = format!(

@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
     pub fn parse_attr_item(&mut self) -> PResult<'a, ast::AttrItem> {
         let item = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
-                Nonterminal::NtMeta(ref item) => Some(item.clone()),
+                Nonterminal::NtMeta(ref item) => Some(item.clone().into_inner()),
                 _ => None,
             },
             _ => None,

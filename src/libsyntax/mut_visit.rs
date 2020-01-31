@@ -82,7 +82,7 @@ pub trait MutVisitor: Sized {
         noop_visit_use_tree(use_tree, self);
     }
 
-    fn flat_map_foreign_item(&mut self, ni: ForeignItem) -> SmallVec<[ForeignItem; 1]> {
+    fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
         noop_flat_map_foreign_item(ni, self)
     }
 
@@ -102,11 +102,11 @@ pub trait MutVisitor: Sized {
         noop_visit_item_kind(i, self);
     }
 
-    fn flat_map_trait_item(&mut self, i: AssocItem) -> SmallVec<[AssocItem; 1]> {
+    fn flat_map_trait_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
         noop_flat_map_assoc_item(i, self)
     }
 
-    fn flat_map_impl_item(&mut self, i: AssocItem) -> SmallVec<[AssocItem; 1]> {
+    fn flat_map_impl_item(&mut self, i: P<AssocItem>) -> SmallVec<[P<AssocItem>; 1]> {
         noop_flat_map_assoc_item(i, self)
     }
 
@@ -704,7 +704,8 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(AttrItem { path, args }) => {
+        token::NtMeta(item) => {
+            let AttrItem { path, args } = item.deref_mut();
             vis.visit_path(path);
             visit_mac_args(args, vis);
         }
@@ -947,11 +948,11 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
 }
 
 pub fn noop_flat_map_assoc_item<T: MutVisitor>(
-    mut item: AssocItem,
+    mut item: P<AssocItem>,
     visitor: &mut T,
-) -> SmallVec<[AssocItem; 1]> {
+) -> SmallVec<[P<AssocItem>; 1]> {
     let AssocItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
-        &mut item;
+        item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -1036,10 +1037,10 @@ pub fn noop_flat_map_item<T: MutVisitor>(
 }
 
 pub fn noop_flat_map_foreign_item<T: MutVisitor>(
-    mut item: ForeignItem,
+    mut item: P<ForeignItem>,
     visitor: &mut T,
-) -> SmallVec<[ForeignItem; 1]> {
-    let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = &mut item;
+) -> SmallVec<[P<ForeignItem>; 1]> {
+    let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     match kind {

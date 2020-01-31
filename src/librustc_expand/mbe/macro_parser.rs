@@ -81,6 +81,7 @@ use rustc_parse::Directory;
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast::{Ident, Name};
 use syntax::print::pprust;
+use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
@@ -914,7 +915,7 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
             }
         }
         sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
-        sym::meta => token::NtMeta(p.parse_attr_item()?),
+        sym::meta => token::NtMeta(P(p.parse_attr_item()?)),
         sym::vis => token::NtVis(p.parse_visibility(FollowedByType::Yes)?),
         sym::lifetime => {
             if p.check_lifetime() {
