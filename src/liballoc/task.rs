@@ -1,12 +1,12 @@
 #![unstable(feature = "wake_trait", issue = "0")]
 //! Types and Traits for working with asynchronous tasks.
-use core::mem;
-use core::task::{Waker, RawWaker, RawWakerVTable};
+use core::mem::{self, ManuallyDrop};
+use core::task::{RawWaker, RawWakerVTable, Waker};
 
 use crate::sync::Arc;
 
 /// The implementation of waking a task on an executor.
-/// 
+///
 /// This trait can be used to create a [`Waker`]. An executor can define an
 /// implementation of this trait, and use that to construct a Waker to pass
 /// to the tasks that are executed on that executor.
@@ -14,7 +14,7 @@ use crate::sync::Arc;
 /// This trait is a memory-safe and ergonomic alternative to constructing a
 /// [`RawWaker`]. It supports the common executor design in which the data
 /// used to wake up a task is stored in an [`Arc`]. Some executors (especially
-/// those for embedded systems) cannot use this API, which is way [`RawWaker`]
+/// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
 #[unstable(feature = "wake_trait", issue = "0")]
 pub trait Wake {
@@ -36,9 +36,9 @@ pub trait Wake {
 #[unstable(feature = "wake_trait", issue = "0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     fn from(waker: Arc<W>) -> Waker {
-        unsafe {
-            Waker::from_raw(raw_waker(waker))
-        }
+        // SAFETY: This is safe because raw_waker safely constructs
+        // a RawWaker from Arc<W>.
+        unsafe { Waker::from_raw(raw_waker(waker)) }
     }
 }
 
@@ -56,7 +56,6 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 // explicitly.
 #[inline(always)]
 fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
-
     // Increment the reference count of the arc to clone it.
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
         let waker: Arc<W> = Arc::from_raw(waker as *const W);
@@ -70,11 +69,10 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
         Wake::wake(waker);
     }
 
-    // Wake by reference, forgetting the Arc to avoid decrementing the reference count
+    // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
     unsafe fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        let waker: Arc<W> = Arc::from_raw(waker as *const W);
+        let waker: ManuallyDrop<Arc<W>> = ManuallyDrop::new(Arc::from_raw(waker as *const W));
         Wake::wake_by_ref(&waker);
-        mem::forget(waker);
     }
 
     // Decrement the reference count of the Arc on drop
@@ -82,10 +80,8 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
         mem::drop(Arc::from_raw(waker as *const W));
     }
 
-    RawWaker::new(Arc::into_raw(waker) as *const (), &RawWakerVTable::new(
-        clone_waker::<W>,
-        wake::<W>,
-        wake_by_ref::<W>,
-        drop_waker::<W>,
+    RawWaker::new(
+        Arc::into_raw(waker) as *const (),
+        &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
     ))
 }
