@@ -878,6 +878,52 @@ impl<T> LinkedList<T> {
         unsafe { self.split_off_after_node(split_node, at) }
     }
 
+    /// Removes the element at the given index and returns it.
+    ///
+    /// This operation should compute in O(n) time.
+    ///
+    /// # Panics
+    /// Panics if at >= len
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(linked_list_remove)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut d = LinkedList::new();
+    ///
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// d.push_front(3);
+    ///
+    /// assert_eq!(d.remove(1), 2);
+    /// assert_eq!(d.remove(0), 3);
+    /// assert_eq!(d.remove(0), 1);
+    /// ```
+    #[unstable(feature = "linked_list_remove", issue = "69210")]
+    pub fn remove(&mut self, at: usize) -> T {
+        let len = self.len();
+        assert!(at < len, "Cannot remove at an index outside of the list bounds");
+
+        // Below, we iterate towards the node at the given index, either from
+        // the start or the end, depending on which would be faster.
+        let offset_from_end = len - at - 1;
+        if at <= offset_from_end {
+            let mut cursor = self.cursor_front_mut();
+            for _ in 0..at {
+                cursor.move_next();
+            }
+            cursor.remove_current().unwrap()
+        } else {
+            let mut cursor = self.cursor_back_mut();
+            for _ in 0..offset_from_end {
+                cursor.move_prev();
+            }
+            cursor.remove_current().unwrap()
+        }
+    }
+
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
