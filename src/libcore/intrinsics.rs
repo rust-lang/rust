@@ -1738,16 +1738,16 @@ extern "rust-intrinsic" {
     /// y < 0 or y >= N, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_shl` method. For example,
-    /// [`std::u32::wrapping_shl`](../../std/primitive.u32.html#method.wrapping_shl)
+    /// primitives via the `checked_shl` method. For example,
+    /// [`std::u32::checked_shl`](../../std/primitive.u32.html#method.checked_shl)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shl<T>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_shr` method. For example,
-    /// [`std::u32::wrapping_shr`](../../std/primitive.u32.html#method.wrapping_shr)
+    /// primitives via the `checked_shr` method. For example,
+    /// [`std::u32::checked_shr`](../../std/primitive.u32.html#method.checked_shr)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
@@ -1785,22 +1785,22 @@ extern "rust-intrinsic" {
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_add` method. For example,
-    /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
+    /// primitives via the `checked_add` method. For example,
+    /// [`std::u32::checked_add`](../../std/primitive.u32.html#method.checked_add)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_sub` method. For example,
-    /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
+    /// primitives via the `checked_sub` method. For example,
+    /// [`std::u32::checked_sub`](../../std/primitive.u32.html#method.checked_sub)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_mul` method. For example,
-    /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
+    /// primitives via the `checked_mul` method. For example,
+    /// [`std::u32::checked_mul`](../../std/primitive.u32.html#method.checked_mul)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_mul<T>(a: T, b: T) -> T;
 
