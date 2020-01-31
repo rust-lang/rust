@@ -1596,6 +1596,11 @@ pub(super) struct ParamCfg {
     pub is_name_required: fn(&token::Token) -> bool,
 }
 
+impl ParamCfg {
+    /// Configuration for a free function in the sense that it is not associated.
+    const FREE: Self = ParamCfg { is_name_required: |_| true };
+}
+
 /// Parsing of functions and methods.
 impl<'a> Parser<'a> {
     /// Parses an item-position function declaration.
@@ -1605,11 +1610,9 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         mut attrs: Vec<Attribute>,
     ) -> PResult<'a, Option<P<Item>>> {
-        let cfg = ParamCfg { is_name_required: |_| true };
-        let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
-        let body = self.parse_fn_body(&mut false, &mut attrs)?;
-        let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
+        let (ident, sig, generics, body) =
+            self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+        let kind = ItemKind::Fn(sig, generics, body);
         self.mk_item_with_info(attrs, lo, vis, (ident, kind, None))
     }
 
@@ -1620,11 +1623,9 @@ impl<'a> Parser<'a> {
         lo: Span,
         mut attrs: Vec<Attribute>,
     ) -> PResult<'a, P<ForeignItem>> {
-        let cfg = ParamCfg { is_name_required: |_| true };
-        let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
-        let body = self.parse_fn_body(&mut false, &mut attrs)?;
-        let kind = ForeignItemKind::Fn(FnSig { header, decl }, generics, body);
+        let (ident, sig, generics, body) =
+            self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+        let kind = ForeignItemKind::Fn(sig, generics, body);
         let span = lo.to(self.prev_span);
         Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
     }
@@ -1635,10 +1636,25 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         is_name_required: fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
-        let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(&&ParamCfg { is_name_required })?;
-        let body = self.parse_fn_body(at_end, attrs)?;
-        Ok((ident, AssocItemKind::Fn(FnSig { header, decl }, body), generics))
+        let cfg = ParamCfg { is_name_required };
+        let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, &cfg)?;
+        Ok((ident, AssocItemKind::Fn(sig, body), generics))
+    }
+
+    /// Parse a function starting from the front matter (`const ...`) to the body `{ ... }` or `;`.
+    fn parse_fn(
+        &mut self,
+        at_end: &mut bool,
+        attrs: &mut Vec<Attribute>,
+        cfg: &ParamCfg,
+    ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
+        let header = self.parse_fn_front_matter()?; // `const ... fn`
+        let ident = self.parse_ident()?; // `foo`
+        let mut generics = self.parse_generics()?; // `<'a, T, ...>`
+        let decl = self.parse_fn_decl(cfg, AllowPlus::Yes)?; // `(p: u8, ...)`
+        generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
+        let body = self.parse_fn_body(at_end, attrs)?; // `;` or `{ ... }`.
+        Ok((ident, FnSig { header, decl }, generics, body))
     }
 
     /// Parse the "body" of a function.
@@ -1720,15 +1736,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(FnHeader { constness, unsafety, asyncness, ext })
-    }
-
-    /// Parse the "signature", including the identifier, parameters, and generics of a function.
-    fn parse_fn_sig(&mut self, cfg: &ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
-        let ident = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
-        let decl = self.parse_fn_decl(cfg, AllowPlus::Yes)?;
-        generics.where_clause = self.parse_where_clause()?;
-        Ok((ident, decl, generics))
     }
 
     /// Parses the parameter list and result type of a function declaration.
