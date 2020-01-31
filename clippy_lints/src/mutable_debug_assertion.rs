@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// debug_assert!(take_a_mut_parameter(&mut 5));
     /// ```
     pub DEBUG_ASSERT_WITH_MUT_CALL,
-    correctness,
+    nursery,
     "mutable arguments in `debug_assert{,_ne,_eq}!`"
 }
 
