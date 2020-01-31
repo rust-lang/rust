@@ -6,7 +6,7 @@ LL |     let x: [usize; 2] = [return, 22];
    |                          |
    |                          any code following this expression is unreachable
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/expr_array.rs:4:9
    |
 LL | #![deny(unreachable_code)]

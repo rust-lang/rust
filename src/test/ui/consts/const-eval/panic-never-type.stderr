@@ -6,7 +6,7 @@ LL | const VOID: ! = panic!();
    |                 |
    |                 the evaluated program panicked at 'explicit panic', $DIR/panic-never-type.rs:8:17
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/panic-never-type.rs:4:9
    |
 LL | #![warn(const_err)]

@@ -4,7 +4,7 @@ error: unused array of `S` that must be used
 LL |     singleton();
    |     ^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/must_use-array.rs:1:9
    |
 LL | #![deny(unused_must_use)]

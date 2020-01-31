@@ -1267,7 +1267,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         err.span_label(
             upvar_span,
-            format!("`{}` is declared here, outside of the {} body", upvar_name, escapes_from),
+            format!("`{}` declared here, outside of the {} body", upvar_name, escapes_from),
         );
 
         err.span_label(borrow_span, format!("borrow is only valid in the {} body", escapes_from));

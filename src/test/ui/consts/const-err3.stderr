@@ -4,7 +4,7 @@ error: attempt to negate with overflow
 LL |     let a = -std::i8::MIN;
    |             ^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/const-err3.rs:11:9
    |
 LL | #![deny(const_err)]

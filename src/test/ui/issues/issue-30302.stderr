@@ -15,7 +15,7 @@ LL |
 LL |         _ => false
    |         ^ unreachable pattern
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-30302.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]

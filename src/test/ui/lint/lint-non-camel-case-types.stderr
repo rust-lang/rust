@@ -4,7 +4,7 @@ error: type `ONE_TWO_THREE` should have an upper camel case name
 LL | struct ONE_TWO_THREE;
    |        ^^^^^^^^^^^^^ help: convert the identifier to upper camel case: `OneTwoThree`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-non-camel-case-types.rs:1:11
    |
 LL | #![forbid(non_camel_case_types)]

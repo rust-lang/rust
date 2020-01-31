@@ -6,7 +6,7 @@ LL | |     loop {}
 LL | | }
    | |_^
    |
-note: first defined here
+note: the lang item is first defined here
   --> $DIR/panic-handler-duplicate.rs:10:1
    |
 LL | / fn panic(info: &PanicInfo) -> ! {

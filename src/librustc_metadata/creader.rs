@@ -694,7 +694,7 @@ impl<'a> CrateLoader<'a> {
                 self.sess
                     .struct_span_err(*span2, "cannot define multiple global allocators")
                     .span_label(*span2, "cannot define a new global allocator")
-                    .span_label(*span1, "previous global allocator is defined here")
+                    .span_label(*span1, "previous global allocator defined here")
                     .emit();
                 true
             }

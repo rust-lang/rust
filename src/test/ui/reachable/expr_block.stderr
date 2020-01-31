@@ -6,7 +6,7 @@ LL |         return;
 LL |         22
    |         ^^ unreachable expression
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/expr_block.rs:4:9
    |
 LL | #![deny(unreachable_code)]

@@ -894,7 +894,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         diag.note(note);
         if let ty::Adt(def, _) = ty.kind {
             if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
-                diag.span_note(sp, "type defined here");
+                diag.span_note(sp, "the type is defined here");
             }
         }
         diag.emit();

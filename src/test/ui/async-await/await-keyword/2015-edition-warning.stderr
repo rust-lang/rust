@@ -4,7 +4,7 @@ error: `await` is a keyword in the 2018 edition
 LL |     pub mod await {
    |             ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/2015-edition-warning.rs:4:9
    |
 LL | #![deny(keyword_idents)]

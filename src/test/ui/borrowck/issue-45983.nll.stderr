@@ -2,7 +2,7 @@ error[E0521]: borrowed data escapes outside of closure
   --> $DIR/issue-45983.rs:20:18
    |
 LL |     let x = None;
-   |         - `x` is declared here, outside of the closure body
+   |         - `x` declared here, outside of the closure body
 LL |     give_any(|y| x = Some(y));
    |               -  ^^^^^^^^^^^ `y` escapes the closure body here
    |               |

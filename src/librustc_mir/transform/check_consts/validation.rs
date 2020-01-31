@@ -625,7 +625,7 @@ fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
         }
         for local in locals {
             let span = body.local_decls[local].source_info.span;
-            error.span_note(span, "more locals defined here");
+            error.span_note(span, "more locals are defined here");
         }
         error.emit();
     }

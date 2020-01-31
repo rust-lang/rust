@@ -4,7 +4,7 @@ error: implementing `LintPass` by hand
 LL | impl LintPass for Foo {
    |      ^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint_pass_impl_without_macro.rs:4:9
    |
 LL | #![deny(rustc::lint_pass_impl_without_macro)]

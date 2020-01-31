@@ -4,7 +4,7 @@ error: passing `Ty<'_>` by reference
 LL |     ty_ref: &Ty<'_>,
    |             ^^^^^^^ help: try passing by value: `Ty<'_>`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/pass_ty_by_ref.rs:4:9
    |
 LL | #![deny(rustc::ty_pass_by_reference)]
