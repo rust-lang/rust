@@ -177,13 +177,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             AssocItemId::ConstId(c) => ValueNs::ConstId(c),
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
-        let substs = Substs::build_for_def(self.db, item)
-            .use_parent_substs(&trait_ref.substs)
-            .fill_with_params()
-            .build();
 
         self.write_assoc_resolution(id, item);
-        Some((def, Some(substs)))
+        Some((def, Some(trait_ref.substs)))
     }
 
     fn resolve_ty_assoc_item(
