@@ -7,13 +7,13 @@ use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::{respan, Span};
+use rustc_span::source_map::{respan, BytePos, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
 use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use syntax::ptr::P;
-use syntax::token;
+use syntax::token::{self, TokenKind};
 use syntax::util::classify;
 
 use std::mem;
@@ -431,6 +431,23 @@ impl<'a> Parser<'a> {
                     if let Err(mut e) =
                         self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
                     {
+                        if let TokenKind::DocComment(..) = self.token.kind {
+                            if let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                                let sp = self.token.span;
+                                let marker = &snippet[..3];
+                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
+
+                                e.span_suggestion(
+                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
+                                    &format!(
+                                        "add a space before `{}` to use a regular comment",
+                                        doc_comment_marker,
+                                    ),
+                                    format!("{} {}", comment_marker, doc_comment_marker),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
                         e.emit();
                         self.recover_stmt();
                         // Don't complain about type errors in body tail after parse error (#57383).
