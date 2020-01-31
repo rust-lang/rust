@@ -152,11 +152,9 @@ impl<'a> Parser<'a> {
             }
 
             self.parse_item_const(None)?
-        } else if self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
-        {
-            // UNSAFE TRAIT ITEM
-            let unsafety = self.parse_unsafety();
-            self.parse_item_trait(attrs, lo, unsafety)?
+        } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
+            // TRAIT ITEM
+            self.parse_item_trait(attrs, lo)?
         } else if self.check_keyword(kw::Impl)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
             || self.check_keyword(kw::Default) && self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe])
@@ -176,11 +174,6 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             self.parse_item_enum()?
-        } else if self.check_keyword(kw::Trait)
-            || (self.check_keyword(kw::Auto) && self.is_keyword_ahead(1, &[kw::Trait]))
-        {
-            // TRAIT ITEM
-            self.parse_item_trait(attrs, lo, Unsafe::No)?
         } else if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
             self.parse_item_struct()?
@@ -207,6 +200,15 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
         Ok(Some(info))
+    }
+
+    /// When parsing a statement, would the start of a path be an item?
+    pub(super) fn is_path_start_item(&mut self) -> bool {
+        self.is_crate_vis() // no: `crate::b`, yes: `crate $item`
+        || self.is_union_item() // no: `union::b`, yes: `union U { .. }`
+        || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
+        || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
+        || self.is_macro_rules_item() // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
 
     /// Recover on encountering a struct or method definition where the user
@@ -338,7 +340,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    pub(super) fn is_async_fn(&self) -> bool {
+    fn is_async_fn(&self) -> bool {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
@@ -609,13 +611,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(
-        &mut self,
-        attrs: &mut Vec<Attribute>,
-        lo: Span,
-        unsafety: Unsafe,
-    ) -> PResult<'a, ItemInfo> {
+    /// Is this an `(unsafe auto? | auto) trait` item?
+    fn check_auto_or_unsafe_trait_item(&mut self) -> bool {
+        // auto trait
+        self.check_keyword(kw::Auto) && self.is_keyword_ahead(1, &[kw::Trait])
+            // unsafe auto trait
+            || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
+    }
+
+    /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
+    fn parse_item_trait(&mut self, attrs: &mut Vec<Attribute>, lo: Span) -> PResult<'a, ItemInfo> {
+        let unsafety = self.parse_unsafety();
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
 
@@ -1179,7 +1185,7 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    pub(super) fn is_union_item(&self) -> bool {
+    fn is_union_item(&self) -> bool {
         self.token.is_keyword(kw::Union)
             && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
@@ -1362,7 +1368,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
-    pub(super) fn is_macro_rules_item(&mut self) -> bool {
+    fn is_macro_rules_item(&mut self) -> bool {
         self.check_keyword(sym::macro_rules)
             && self.look_ahead(1, |t| *t == token::Not)
             && self.look_ahead(2, |t| t.is_ident())

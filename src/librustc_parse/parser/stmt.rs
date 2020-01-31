@@ -58,11 +58,7 @@ impl<'a> Parser<'a> {
         // like a path (1 token), but it fact not a path.
         if self.token.is_path_start()
             && !self.token.is_qpath_start()
-            && !self.is_union_item() // `union::b::c` - path, `union U { ... }` - not a path.
-            && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
-            && !self.is_auto_trait_item()
-            && !self.is_async_fn()
-            && !self.is_macro_rules_item()
+            && !self.is_path_start_item() // Confirm we don't steal syntax from `parse_item_`.
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
@@ -265,16 +261,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
-    }
-
-    fn is_auto_trait_item(&self) -> bool {
-        // auto trait
-        (self.token.is_keyword(kw::Auto) &&
-            self.is_keyword_ahead(1, &[kw::Trait]))
-        || // unsafe auto trait
-        (self.token.is_keyword(kw::Unsafe) &&
-         self.is_keyword_ahead(1, &[kw::Auto]) &&
-         self.is_keyword_ahead(2, &[kw::Trait]))
     }
 
     /// Parses a block. No inner attributes are allowed.
