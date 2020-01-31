@@ -4,20 +4,18 @@
 use std::iter;
 
 use either::Either;
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{AsName, Name},
-};
+use hir_expand::{hygiene::Hygiene, name::AsName};
 use ra_syntax::ast::{self, NameOwner};
 use test_utils::tested_by;
 
+use crate::nameres::raw::ImportAlias;
 use crate::path::{ModPath, PathKind};
 
 pub(crate) fn lower_use_tree(
     prefix: Option<ModPath>,
     tree: ast::UseTree,
     hygiene: &Hygiene,
-    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, Option<Name>),
+    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, ImportAlias),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -34,7 +32,9 @@ pub(crate) fn lower_use_tree(
             lower_use_tree(prefix.clone(), child_tree, hygiene, cb);
         }
     } else {
-        let alias = tree.alias().and_then(|a| a.name()).map(|a| a.as_name());
+        let alias = tree.alias().map_or(ImportAlias::NoAlias, |a| {
+            a.name().map(|it| it.as_name()).map_or(ImportAlias::Unnamed, |a| ImportAlias::Alias(a))
+        });
         let is_glob = tree.has_star();
         if let Some(ast_path) = tree.path() {
             // Handle self in a path.
@@ -57,7 +57,7 @@ pub(crate) fn lower_use_tree(
         } else if is_glob {
             tested_by!(glob_enum_group);
             if let Some(prefix) = prefix {
-                cb(prefix, &tree, is_glob, None)
+                cb(prefix, &tree, is_glob, ImportAlias::NoAlias)
             }
         }
     }

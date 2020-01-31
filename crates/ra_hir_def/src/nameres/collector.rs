@@ -438,7 +438,10 @@ where
         } else {
             match import.path.segments.last() {
                 Some(last_segment) => {
-                    let name = import.alias.clone().unwrap_or_else(|| last_segment.clone());
+                    let name = match &import.alias {
+                        raw::ImportAlias::Alias(name) => name.clone(),
+                        _ => last_segment.clone(), // "use as ;" and "use as _;" are treated the same way
+                    };
                     log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658

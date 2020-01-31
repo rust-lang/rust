@@ -57,7 +57,12 @@ impl ModPath {
     pub(crate) fn expand_use_item(
         item_src: InFile<ast::UseItem>,
         hygiene: &Hygiene,
-        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<Name>),
+        mut cb: impl FnMut(
+            ModPath,
+            &ast::UseTree,
+            /* is_glob */ bool,
+            crate::nameres::raw::ImportAlias,
+        ),
     ) {
         if let Some(tree) = item_src.value.use_tree() {
             lower::lower_use_tree(None, tree, hygiene, &mut cb);
