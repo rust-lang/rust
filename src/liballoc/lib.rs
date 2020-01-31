@@ -159,6 +159,7 @@ pub mod str;
 pub mod string;
 #[cfg(target_has_atomic = "ptr")]
 pub mod sync;
+pub mod task;
 #[cfg(test)]
 mod tests;
 pub mod vec;
