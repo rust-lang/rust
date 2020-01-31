@@ -23,6 +23,17 @@ pub struct FileHandler {
     low: i32,
 }
 
+impl FileHandler {
+    fn next_fd(&self) -> i32 {
+        self.low + 1
+    }
+
+    fn register_fd(&mut self, fd: i32, handle: FileHandle) {
+        self.low = fd;
+        self.handles.insert(fd, handle).unwrap_none();
+    }
+}
+
 impl Default for FileHandler {
     fn default() -> Self {
         FileHandler {
@@ -107,10 +118,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let fd = options.open(&path).map(|file| {
-            let mut fh = &mut this.machine.file_handler;
-            fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file, writable }).unwrap_none();
-            fh.low
+            let fh = &mut this.machine.file_handler;
+            let fd = fh.next_fd();
+            fh.register_fd(fd, FileHandle { file, writable });
+            fd
         });
 
         this.try_unwrap_io_result(fd)
@@ -153,9 +164,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 None => return this.handle_not_found(),
             };
             let fd_result = file_result.map(|duplicated| {
-                let new_fd = std::cmp::max(fh.low + 1, arg);
-                fh.low = new_fd;
-                fh.handles.insert(fh.low, FileHandle { file: duplicated, writable }).unwrap_none();
+                let new_fd = std::cmp::max(fh.next_fd(), arg);
+                fh.register_fd(new_fd, FileHandle { file: duplicated, writable });
                 new_fd
             });
             this.try_unwrap_io_result(fd_result)
