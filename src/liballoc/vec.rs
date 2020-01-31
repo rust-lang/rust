@@ -2397,6 +2397,13 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     }
 }
 
+#[stable(feature = "vec_from_array", since = "1.42.0")]
+impl<T, const N: usize> From<[T; N]> for Vec<T> {
+    fn from(arr: [T; N]) -> Vec<T> {
+        <[T]>::into_vec(box arr)
+    }
+}
+
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
 impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
 where
