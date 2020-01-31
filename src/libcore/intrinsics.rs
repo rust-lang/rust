@@ -612,7 +612,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Maximum with the current value using a sized comparison.
+    /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
@@ -620,7 +620,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using a sized comparison.
+    /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
@@ -628,7 +628,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_acq<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using a sized comparison.
+    /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
@@ -636,7 +636,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_rel<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using a sized comparison.
+    /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
@@ -653,7 +653,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Minimum with the current value using a sized comparison.
+    /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
@@ -661,7 +661,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using a sized comparison.
+    /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
@@ -669,7 +669,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acq<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using a sized comparison.
+    /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
@@ -677,7 +677,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_rel<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using a sized comparison.
+    /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
@@ -685,7 +685,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acqrel<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using a sized comparison.
+    /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
@@ -694,7 +694,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Minimum with the current value using an unsized comparison.
+    /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
@@ -702,7 +702,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using an unsized comparison.
+    /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
@@ -710,7 +710,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acq<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using an unsized comparison.
+    /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
@@ -718,7 +718,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_rel<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using an unsized comparison.
+    /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
@@ -726,7 +726,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acqrel<T>(dst: *mut T, src: T) -> T;
-    /// Minimum with the current value using an unsized comparison.
+    /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
@@ -735,7 +735,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Maximum with the current value using an unsized comparison.
+    /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
@@ -743,7 +743,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using an unsized comparison.
+    /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
@@ -751,7 +751,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acq<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using an unsized comparison.
+    /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
@@ -759,7 +759,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_rel<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using an unsized comparison.
+    /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
@@ -767,7 +767,7 @@ extern "rust-intrinsic" {
     /// as the `order`. For example,
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acqrel<T>(dst: *mut T, src: T) -> T;
-    /// Maximum with the current value using an unsized comparison.
+    /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
