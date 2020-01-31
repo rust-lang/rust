@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
             self.parse_item_impl(unsafety, defaultness)?
         } else if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
-            self.parse_item_mod(&attrs[..])?
+            self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
             let (ident, ty, generics) = self.parse_type_alias()?;
