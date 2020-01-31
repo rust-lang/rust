@@ -319,18 +319,20 @@ fn do_mir_borrowck<'a, 'tcx>(
         };
 
         // Span and message don't matter; we overwrite them below anyway
-        let mut diag = mbcx.infcx.tcx.struct_span_lint_hir(
+        mbcx.infcx.tcx.struct_span_lint_hir(
             MUTABLE_BORROW_RESERVATION_CONFLICT,
             lint_root,
             DUMMY_SP,
-            "",
+            |lint| {
+                let mut diag = lint.build("");
+
+                diag.message = initial_diag.styled_message().clone();
+                diag.span = initial_diag.span.clone();
+
+                diag.buffer(&mut mbcx.errors_buffer);
+            },
         );
-
-        diag.message = initial_diag.styled_message().clone();
-        diag.span = initial_diag.span.clone();
-
         initial_diag.cancel();
-        diag.buffer(&mut mbcx.errors_buffer);
     }
 
     // For each non-user used mutable variable, check if it's been assigned from
@@ -381,15 +383,17 @@ fn do_mir_borrowck<'a, 'tcx>(
             UNUSED_MUT,
             lint_root,
             span,
-            "variable does not need to be mutable",
+            |lint| {
+                lint.build("variable does not need to be mutable")
+                .span_suggestion_short(
+                    mut_span,
+                    "remove this `mut`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            },
         )
-        .span_suggestion_short(
-            mut_span,
-            "remove this `mut`",
-            String::new(),
-            Applicability::MachineApplicable,
-        )
-        .emit();
     }
 
     // Buffer any move errors that we collected and de-duplicated.

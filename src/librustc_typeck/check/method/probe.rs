@@ -382,11 +382,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .emit();
                 } else {
-                    self.tcx.lint_hir(
+                    self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        "type annotations needed",
+                        |lint| lint.build("type annotations needed").emit(),
                     );
                 }
             } else {
@@ -1280,33 +1280,34 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
-        let mut diag = self.tcx.struct_span_lint_hir(
+        self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
-            "a method with this name may be added to the standard library in the future",
-        );
-
-        // FIXME: This should be a `span_suggestion` instead of `help`
-        // However `self.span` only
-        // highlights the method name, so we can't use it. Also consider reusing the code from
-        // `report_method_error()`.
-        diag.help(&format!(
-            "call with fully qualified syntax `{}(...)` to keep using the current method",
-            self.tcx.def_path_str(stable_pick.item.def_id),
-        ));
-
-        if nightly_options::is_nightly_build() {
-            for (candidate, feature) in unstable_candidates {
+            |lint| {
+                let mut diag = lint.build("a method with this name may be added to the standard library in the future");
+                // FIXME: This should be a `span_suggestion` instead of `help`
+                // However `self.span` only
+                // highlights the method name, so we can't use it. Also consider reusing the code from
+                // `report_method_error()`.
                 diag.help(&format!(
-                    "add `#![feature({})]` to the crate attributes to enable `{}`",
-                    feature,
-                    self.tcx.def_path_str(candidate.item.def_id),
+                    "call with fully qualified syntax `{}(...)` to keep using the current method",
+                    self.tcx.def_path_str(stable_pick.item.def_id),
                 ));
-            }
-        }
 
-        diag.emit();
+                if nightly_options::is_nightly_build() {
+                    for (candidate, feature) in unstable_candidates {
+                        diag.help(&format!(
+                            "add `#![feature({})]` to the crate attributes to enable `{}`",
+                            feature,
+                            self.tcx.def_path_str(candidate.item.def_id),
+                        ));
+                    }
+                }
+
+                diag.emit();
+            },
+        );
     }
 
     fn select_trait_candidate(

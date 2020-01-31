@@ -209,10 +209,11 @@ fn validate_and_turn_into_const<'tcx>(
 
     val.map_err(|error| {
         let err = error_to_const_error(&ecx, error);
-        match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
-            Ok(mut diag) => {
-                diag.note(note_on_undefined_behavior_error());
-                diag.emit();
+        match err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
+            diag.note(note_on_undefined_behavior_error());
+            diag.emit();
+        }) {
+            Ok(_) => {
                 ErrorHandled::Reported
             }
             Err(err) => err,

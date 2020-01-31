@@ -97,9 +97,8 @@ impl CheckAttrVisitor<'tcx> {
                         UNUSED_ATTRIBUTES,
                         hir_id,
                         attr.span,
-                        "`#[inline]` is ignored on function prototypes",
-                    )
-                    .emit();
+                        |lint| lint.build("`#[inline]` is ignored on function prototypes").emit(),
+                    );
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -112,18 +111,19 @@ impl CheckAttrVisitor<'tcx> {
                         UNUSED_ATTRIBUTES,
                         hir_id,
                         attr.span,
-                        "`#[inline]` is ignored on constants",
-                    )
-                    .warn(
-                        "this was previously accepted by the compiler but is \
-                       being phased out; it will become a hard error in \
-                       a future release!",
-                    )
-                    .note(
-                        "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
-                         for more information",
-                    )
-                    .emit();
+                        |lint| {
+                            lint.build("`#[inline]` is ignored on constants")
+                            .warn(
+                                "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
+                            )
+                            .note(
+                                "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
+                                 for more information",
+                            )
+                            .emit();
+                        });
                 true
             }
             _ => {
@@ -336,10 +336,12 @@ impl CheckAttrVisitor<'tcx> {
                     CONFLICTING_REPR_HINTS,
                     hir_id,
                     hint_spans.collect::<Vec<Span>>(),
-                    "conflicting representation hints",
-                )
-                .code(rustc_errors::error_code!(E0566))
-                .emit();
+                    |lint| {
+                        lint.build("conflicting representation hints")
+                            .code(rustc_errors::error_code!(E0566))
+                            .emit();
+                    }
+                );
         }
     }
 

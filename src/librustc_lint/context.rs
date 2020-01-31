@@ -26,7 +26,8 @@ use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability};
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -474,7 +475,7 @@ pub trait LintContext: Sized {
     fn lints(&self) -> &LintStore;
 
     fn lookup_and_emit<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: Option<S>, msg: &str) {
-        self.lookup(lint, span, msg).emit();
+        self.lookup(lint, span, |lint| lint.build(msg).emit());
     }
 
     fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(
@@ -484,95 +485,96 @@ pub trait LintContext: Sized {
         msg: &str,
         diagnostic: BuiltinLintDiagnostics,
     ) {
-        let mut db = self.lookup(lint, span, msg);
+        self.lookup(lint, span, |lint| {
+            let mut db = lint.build(msg);
+            let sess = self.sess();
+            match diagnostic {
+                BuiltinLintDiagnostics::Normal => (),
+                BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+                    let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                        Ok(s) if is_global => {
+                            (format!("dyn ({})", s), Applicability::MachineApplicable)
+                        }
+                        Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                        Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
+                    };
+                    db.span_suggestion(span, "use `dyn`", sugg, app);
+                }
+                BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+                    let (sugg, app) = match sess.source_map().span_to_snippet(span) {
+                        Ok(ref s) => {
+                            // FIXME(Manishearth) ideally the emitting code
+                            // can tell us whether or not this is global
+                            let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
 
-        let sess = self.sess();
-        match diagnostic {
-            BuiltinLintDiagnostics::Normal => (),
-            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(s) if is_global => {
-                        (format!("dyn ({})", s), Applicability::MachineApplicable)
-                    }
-                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `dyn`", sugg, app);
-            }
-            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
-                let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                    Ok(ref s) => {
-                        // FIXME(Manishearth) ideally the emitting code
-                        // can tell us whether or not this is global
-                        let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
-
-                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
-                    }
-                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
-                };
-                db.span_suggestion(span, "use `crate`", sugg, app);
-            }
-            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
-                db.span_label(
-                    span,
-                    "names from parent modules are not accessible without an explicit import",
-                );
-            }
-            BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-                db.span_note(span_def, "the macro is defined here");
-            }
-            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                n,
-                path_span,
-                incl_angl_brckt,
-                insertion_span,
-                anon_lts,
-            ) => {
-                add_elided_lifetime_in_path_suggestion(
-                    sess,
-                    &mut db,
+                            (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                        }
+                        Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
+                    };
+                    db.span_suggestion(span, "use `crate`", sugg, app);
+                }
+                BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+                    db.span_label(
+                        span,
+                        "names from parent modules are not accessible without an explicit import",
+                    );
+                }
+                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+                    db.span_note(span_def, "the macro is defined here");
+                }
+                BuiltinLintDiagnostics::ElidedLifetimesInPaths(
                     n,
                     path_span,
                     incl_angl_brckt,
                     insertion_span,
                     anon_lts,
-                );
-            }
-            BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
-            }
-            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
-                if !replaces.is_empty() {
-                    db.tool_only_multipart_suggestion(
-                        &message,
-                        replaces,
-                        Applicability::MachineApplicable,
+                ) => {
+                    add_elided_lifetime_in_path_suggestion(
+                        sess,
+                        &mut db,
+                        n,
+                        path_span,
+                        incl_angl_brckt,
+                        insertion_span,
+                        anon_lts,
                     );
                 }
-            }
-            BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
-                for (span, is_imported) in spans {
-                    let introduced = if is_imported { "imported" } else { "defined" };
-                    db.span_label(
-                        span,
-                        format!("the item `{}` is already {} here", ident, introduced),
-                    );
+                BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
+                    db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+                }
+                BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                    if !replaces.is_empty() {
+                        db.tool_only_multipart_suggestion(
+                            &message,
+                            replaces,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+                BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+                    for (span, is_imported) in spans {
+                        let introduced = if is_imported { "imported" } else { "defined" };
+                        db.span_label(
+                            span,
+                            format!("the item `{}` is already {} here", ident, introduced),
+                        );
+                    }
+                }
+                BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
+                    stability::deprecation_suggestion(&mut db, suggestion, span)
                 }
             }
-            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
-                stability::deprecation_suggestion(&mut db, suggestion, span)
-            }
-        }
 
-        db.emit();
+            db.emit();
+        });
     }
 
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_>;
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    );
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
@@ -583,9 +585,9 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: S,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
-        self.lookup(lint, Some(span), msg)
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)
+    ) {
+        self.lookup(lint, Some(span), decorate);
     }
 
     /// Emit a lint and note at the appropriate level, for a particular span.
@@ -597,21 +599,25 @@ pub trait LintContext: Sized {
         note_span: Span,
         note: &str,
     ) {
-        let mut err = self.lookup(lint, Some(span), msg);
-        if note_span == span {
-            err.note(note);
-        } else {
-            err.span_note(note_span, note);
-        }
-        err.emit();
+        self.lookup(lint, Some(span), |lint| {
+            let mut err = lint.build(msg);
+            if note_span == span {
+                err.note(note);
+            } else {
+                err.span_note(note_span, note);
+            }
+            err.emit();
+        });
     }
 
     /// Emit a lint and help at the appropriate level, for a particular span.
     fn span_lint_help(&self, lint: &'static Lint, span: Span, msg: &str, help: &str) {
-        let mut err = self.lookup(lint, Some(span), msg);
-        self.span_lint(lint, span, msg);
-        err.span_help(span, help);
-        err.emit();
+        self.lookup(lint, Some(span), |err| {
+            let mut err = err.build(msg);
+            self.span_lint(lint, span, msg);
+            err.span_help(span, help);
+            err.emit();
+        });
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
@@ -654,13 +660,13 @@ impl LintContext for LateContext<'_, '_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
-            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg),
-            None => self.tcx.struct_lint_node(lint, hir_id, msg),
+            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, decorate),
+            None => self.tcx.struct_lint_node(lint, hir_id, decorate),
         }
     }
 }
@@ -681,9 +687,9 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
-        self.builder.struct_lint(lint, span.map(|s| s.into()), msg)
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
+        self.builder.struct_lint(lint, span.map(|s| s.into()), decorate)
     }
 }
 

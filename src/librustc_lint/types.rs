@@ -67,6 +67,7 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
+    let mut overwritten = false;
     if let ExprKind::Struct(_, eps, _) = &parent_expr.kind {
         if eps.len() != 2 {
             return false;
@@ -75,35 +76,36 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
         // (`..=`) instead only if it is the `end` that is
         // overflowing and only by 1.
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-            let mut err = cx.struct_span_lint(
+            cx.struct_span_lint(
                 OVERFLOWING_LITERALS,
                 parent_expr.span,
-                &format!("range endpoint is out of range for `{}`", ty),
+                |lint| {
+                    let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
+                    if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                        use ast::{LitIntType, LitKind};
+                        // We need to preserve the literal's suffix,
+                        // as it may determine typing information.
+                        let suffix = match lit.node {
+                            LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
+                            LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
+                            LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+                            _ => bug!(),
+                        };
+                        let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+                        err.span_suggestion(
+                            parent_expr.span,
+                            &"use an inclusive range instead",
+                            suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                        overwritten = true;
+                    }
+                },
             );
-            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
-                use ast::{LitIntType, LitKind};
-                // We need to preserve the literal's suffix,
-                // as it may determine typing information.
-                let suffix = match lit.node {
-                    LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
-                    LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
-                    LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
-                    _ => bug!(),
-                };
-                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                err.span_suggestion(
-                    parent_expr.span,
-                    &"use an inclusive range instead",
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-                err.emit();
-                return true;
-            }
         }
     }
-
-    false
+    overwritten
 }
 
 // For `isize` & `usize`, be conservative with the warnings, so that the
@@ -163,31 +165,32 @@ fn report_bin_hex_error(
             (t.name_str(), actually.to_string())
         }
     };
-    let mut err = cx.struct_span_lint(
+    cx.struct_span_lint(
         OVERFLOWING_LITERALS,
         expr.span,
-        &format!("literal out of range for {}", t),
+        |lint| {
+            let mut err = lint.build(&format!("literal out of range for {}", t));
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                    an `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+            if let Some(sugg_ty) = get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative) {
+                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                    let (sans_suffix, _) = repr_str.split_at(pos);
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("consider using `{}` instead", sugg_ty),
+                        format!("{}{}", sans_suffix, sugg_ty),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.help(&format!("consider using `{}` instead", sugg_ty));
+                }
+            }
+            err.emit();
+        },
     );
-    err.note(&format!(
-        "the literal `{}` (decimal `{}`) does not fit into \
-            an `{}` and will become `{}{}`",
-        repr_str, val, t, actually, t
-    ));
-    if let Some(sugg_ty) = get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative) {
-        if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
-            let (sans_suffix, _) = repr_str.split_at(pos);
-            err.span_suggestion(
-                expr.span,
-                &format!("consider using `{}` instead", sugg_ty),
-                format!("{}{}", sans_suffix, sugg_ty),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            err.help(&format!("consider using `{}` instead", sugg_ty));
-        }
-    }
-
-    err.emit();
 }
 
 // This function finds the next fitting type and generates a suggestion string.
@@ -298,18 +301,16 @@ fn lint_uint_literal<'a, 'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.tables.expr_ty(par_e).kind {
-                        let mut err = cx.struct_span_lint(
-                            OVERFLOWING_LITERALS,
-                            par_e.span,
-                            "only `u8` can be cast into `char`",
-                        );
-                        err.span_suggestion(
-                            par_e.span,
-                            &"use a `char` literal instead",
-                            format!("'\\u{{{:X}}}'", lit_val),
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
+                        cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
+                            lint.build("only `u8` can be cast into `char`")
+                                .span_suggestion(
+                                    par_e.span,
+                                    &"use a `char` literal instead",
+                                    format!("'\\u{{{:X}}}'", lit_val),
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                        });
                         return;
                     }
                 }
@@ -883,22 +884,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         note: &str,
         help: Option<&str>,
     ) {
-        let mut diag = self.cx.struct_span_lint(
-            IMPROPER_CTYPES,
-            sp,
-            &format!("`extern` block uses type `{}`, which is not FFI-safe", ty),
-        );
-        diag.span_label(sp, "not FFI-safe");
-        if let Some(help) = help {
-            diag.help(help);
-        }
-        diag.note(note);
-        if let ty::Adt(def, _) = ty.kind {
-            if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
-                diag.span_note(sp, "the type is defined here");
+        self.cx.struct_span_lint(IMPROPER_CTYPES, sp, |lint| {
+            let mut diag =
+                lint.build(&format!("`extern` block uses type `{}`, which is not FFI-safe", ty));
+            diag.span_label(sp, "not FFI-safe");
+            if let Some(help) = help {
+                diag.help(help);
             }
-        }
-        diag.emit();
+            diag.note(note);
+            if let ty::Adt(def, _) = ty.kind {
+                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
+                    diag.span_note(sp, "the type is defined here");
+                }
+            }
+            diag.emit();
+        });
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {

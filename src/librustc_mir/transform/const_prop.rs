@@ -557,11 +557,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             if r_bits.map_or(false, |b| b >= left_bits as u128) {
                 let lint_root = self.lint_root(source_info)?;
                 let dir = if op == BinOp::Shr { "right" } else { "left" };
-                self.tcx.lint_hir(
+                self.tcx.struct_span_lint_hir(
                     ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
                     lint_root,
                     source_info.span,
-                    &format!("attempt to shift {} with overflow", dir),
+                    |lint| lint.build(&format!("attempt to shift {} with overflow", dir)).emit(),
                 );
                 return None;
             }
@@ -912,35 +912,42 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             .hir()
                             .as_local_hir_id(self.source.def_id())
                             .expect("some part of a failing const eval must be local");
-                        let msg = match msg {
-                            PanicInfo::Overflow(_)
-                            | PanicInfo::OverflowNeg
-                            | PanicInfo::DivisionByZero
-                            | PanicInfo::RemainderByZero => msg.description().to_owned(),
-                            PanicInfo::BoundsCheck { ref len, ref index } => {
-                                let len =
-                                    self.eval_operand(len, source_info).expect("len must be const");
-                                let len = match self.ecx.read_scalar(len) {
-                                    Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
-                                    other => bug!("const len not primitive: {:?}", other),
+                        self.tcx.struct_span_lint_hir(
+                            ::rustc::lint::builtin::CONST_ERR,
+                            hir_id,
+                            span,
+                            |lint| {
+                                let msg = match msg {
+                                    PanicInfo::Overflow(_)
+                                    | PanicInfo::OverflowNeg
+                                    | PanicInfo::DivisionByZero
+                                    | PanicInfo::RemainderByZero => msg.description().to_owned(),
+                                    PanicInfo::BoundsCheck { ref len, ref index } => {
+                                        let len =
+                                            self.eval_operand(len, source_info).expect("len must be const");
+                                        let len = match self.ecx.read_scalar(len) {
+                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
+                                            other => bug!("const len not primitive: {:?}", other),
+                                        };
+                                        let index = self
+                                            .eval_operand(index, source_info)
+                                            .expect("index must be const");
+                                        let index = match self.ecx.read_scalar(index) {
+                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
+                                            other => bug!("const index not primitive: {:?}", other),
+                                        };
+                                        format!(
+                                            "index out of bounds: \
+                                            the len is {} but the index is {}",
+                                            len, index,
+                                        )
+                                    }
+                                    // Need proper const propagator for these
+                                    _ => return,
                                 };
-                                let index = self
-                                    .eval_operand(index, source_info)
-                                    .expect("index must be const");
-                                let index = match self.ecx.read_scalar(index) {
-                                    Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
-                                    other => bug!("const index not primitive: {:?}", other),
-                                };
-                                format!(
-                                    "index out of bounds: \
-                                    the len is {} but the index is {}",
-                                    len, index,
-                                )
-                            }
-                            // Need proper const propagator for these
-                            _ => return,
-                        };
-                        self.tcx.lint_hir(::rustc::lint::builtin::CONST_ERR, hir_id, span, &msg);
+                                lint.build(&msg).emit()
+                            },
+                        );
                     } else {
                         if self.should_const_prop(value) {
                             if let ScalarMaybeUndef::Scalar(scalar) = value_const {
