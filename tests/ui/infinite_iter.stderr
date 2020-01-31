@@ -4,7 +4,7 @@ error: infinite iteration detected
 LL |     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/infinite_iter.rs:8:8
    |
 LL | #[deny(clippy::infinite_iter)]
@@ -50,7 +50,7 @@ error: possible infinite iteration detected
 LL |     (0..).zip((0..).take_while(square_is_lower_64)).count(); // maybe infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/infinite_iter.rs:29:8
    |
 LL | #[deny(clippy::maybe_infinite_iter)]

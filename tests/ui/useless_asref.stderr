@@ -4,7 +4,7 @@ error: this call to `as_ref` does nothing
 LL |         foo_rstr(rstr.as_ref());
    |                  ^^^^^^^^^^^^^ help: try this: `rstr`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/useless_asref.rs:3:9
    |
 LL | #![deny(clippy::useless_asref)]

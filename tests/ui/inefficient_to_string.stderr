@@ -4,7 +4,7 @@ error: calling `to_string` on `&&str`
 LL |     let _: String = rrstr.to_string();
    |                     ^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrstr).to_string()`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/inefficient_to_string.rs:2:9
    |
 LL | #![deny(clippy::inefficient_to_string)]

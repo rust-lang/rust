@@ -4,7 +4,7 @@ error: using `MIN`
 LL |     { let foo = std::isize::MIN; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `isize::min_value()`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/replace_consts.rs:4:9
    |
 LL | #![deny(clippy::replace_consts)]

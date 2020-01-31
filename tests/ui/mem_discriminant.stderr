@@ -6,7 +6,7 @@ LL |     mem::discriminant(&&Some(2));
    |                       |
    |                       help: try dereferencing: `&Some(2)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/mem_discriminant.rs:3:9
    |
 LL | #![deny(clippy::mem_discriminant_non_enum)]

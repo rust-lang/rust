@@ -4,7 +4,7 @@ error: You appear to be counting bytes the naive way
 LL |     let _ = x.iter().filter(|&&a| a == 0).count(); // naive byte count
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, 0)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/bytecount.rs:1:8
    |
 LL | #[deny(clippy::naive_bytecount)]
