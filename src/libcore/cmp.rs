@@ -35,7 +35,7 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not `Eq`.
+/// so floating point types implement `PartialEq` but not [`Eq`].
 ///
 /// Formally, the equality must be (for all `a`, `b` and `c`):
 ///
@@ -55,12 +55,12 @@ use self::Ordering::*;
 ///
 /// ## How can I implement `PartialEq`?
 ///
-/// PartialEq only requires the `eq` method to be implemented; `ne` is defined
-/// in terms of it by default. Any manual implementation of `ne` *must* respect
-/// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
+/// `PartialEq` only requires the [`eq`] method to be implemented; [`ne`] is defined
+/// in terms of it by default. Any manual implementation of [`ne`] *must* respect
+/// the rule that [`eq`] is a strict inverse of [`ne`]; that is, `!(a == b)` if and
 /// only if `a != b`.
 ///
-/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with
+/// Implementations of `PartialEq`, [`PartialOrd`], and [`Ord`] *must* agree with
 /// each other. It's easy to accidentally make them disagree by deriving some
 /// of the traits and manually implementing others.
 ///
@@ -190,6 +190,9 @@ use self::Ordering::*;
 /// assert_eq!(x == y, false);
 /// assert_eq!(x.eq(&y), false);
 /// ```
+///
+/// [`eq`]: PartialEq::eq
+/// [`ne`]: PartialEq::ne
 #[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
@@ -233,7 +236,7 @@ pub macro PartialEq($item:item) {
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 ///
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
-/// `PartialEq`, and has no extra methods.
+/// [`PartialEq`], and has no extra methods.
 ///
 /// ## Derivable
 ///
@@ -370,6 +373,7 @@ impl Ordering {
     /// Chains two orderings.
     ///
     /// Returns `self` when it's not `Equal`. Otherwise returns `other`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -442,10 +446,12 @@ impl Ordering {
 
 /// A helper struct for reverse ordering.
 ///
-/// This struct is a helper to be used with functions like `Vec::sort_by_key` and
+/// This struct is a helper to be used with functions like [`Vec::sort_by_key`] and
 /// can be used to reverse order a part of a key.
 ///
-/// Example usage:
+/// [`Vec::sort_by_key`]: ../../std/vec/struct.Vec.html#method.sort_by_key
+///
+/// # Examples
 ///
 /// ```
 /// use std::cmp::Reverse;
@@ -506,12 +512,12 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// ## How can I implement `Ord`?
 ///
-/// `Ord` requires that the type also be `PartialOrd` and `Eq` (which requires `PartialEq`).
+/// `Ord` requires that the type also be [`PartialOrd`] and [`Eq`] (which requires [`PartialEq`]).
 ///
-/// Then you must define an implementation for `cmp()`. You may find it useful to use
-/// `cmp()` on your type's fields.
+/// Then you must define an implementation for [`cmp`]. You may find it useful to use
+/// [`cmp`] on your type's fields.
 ///
-/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must*
+/// Implementations of [`PartialEq`], [`PartialOrd`], and `Ord` *must*
 /// agree with each other. That is, `a.cmp(b) == Ordering::Equal` if
 /// and only if `a == b` and `Some(a.cmp(b)) == a.partial_cmp(b)` for
 /// all `a` and `b`. It's easy to accidentally make them disagree by
@@ -548,13 +554,15 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
+///
+/// [`cmp`]: Ord::cmp
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Ord: Eq + PartialOrd<Self> {
-    /// This method returns an `Ordering` between `self` and `other`.
+    /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
     /// `self <operator> other` if true.
@@ -689,20 +697,20 @@ impl PartialOrd for Ordering {
 ///
 /// ## How can I implement `PartialOrd`?
 ///
-/// `PartialOrd` only requires implementation of the `partial_cmp` method, with the others
+/// `PartialOrd` only requires implementation of the [`partial_cmp`] method, with the others
 /// generated from default implementations.
 ///
 /// However it remains possible to implement the others separately for types which do not have a
 /// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 ==
 /// false` (cf. IEEE 754-2008 section 5.11).
 ///
-/// `PartialOrd` requires your type to be `PartialEq`.
+/// `PartialOrd` requires your type to be [`PartialEq`].
 ///
-/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with each other. It's
+/// Implementations of [`PartialEq`], `PartialOrd`, and [`Ord`] *must* agree with each other. It's
 /// easy to accidentally make them disagree by deriving some of the traits and manually
 /// implementing others.
 ///
-/// If your type is `Ord`, you can implement `partial_cmp()` by using `cmp()`:
+/// If your type is [`Ord`], you can implement [`partial_cmp`] by using [`cmp`]:
 ///
 /// ```
 /// use std::cmp::Ordering;
@@ -733,7 +741,7 @@ impl PartialOrd for Ordering {
 /// }
 /// ```
 ///
-/// You may also find it useful to use `partial_cmp()` on your type's fields. Here
+/// You may also find it useful to use [`partial_cmp`] on your type's fields. Here
 /// is an example of `Person` types who have a floating-point `height` field that
 /// is the only field to be used for sorting:
 ///
@@ -768,6 +776,9 @@ impl PartialOrd for Ordering {
 /// assert_eq!(x < y, true);
 /// assert_eq!(x.lt(&y), true);
 /// ```
+///
+/// [`partial_cmp`]: PartialOrd::partial_cmp
+/// [`cmp`]: Ord::cmp
 #[lang = "partial_ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = ">")]
@@ -893,7 +904,7 @@ pub macro PartialOrd($item:item) {
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 ///
-/// Internally uses an alias to `Ord::min`.
+/// Internally uses an alias to [`Ord::min`].
 ///
 /// # Examples
 ///
@@ -956,7 +967,7 @@ pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 ///
 /// Returns the second argument if the comparison determines them to be equal.
 ///
-/// Internally uses an alias to `Ord::max`.
+/// Internally uses an alias to [`Ord::max`].
 ///
 /// # Examples
 ///
