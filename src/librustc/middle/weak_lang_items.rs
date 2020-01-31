@@ -141,7 +141,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
-        if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = rustc_lang_items::lang_items::extract(&i.attrs) {
             self.register(lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)
