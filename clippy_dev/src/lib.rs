@@ -322,6 +322,7 @@ where
 }
 
 /// Returns the path to the Clippy project directory
+#[must_use]
 pub fn clippy_project_root() -> PathBuf {
     let current_dir = std::env::current_dir().unwrap();
     for path in current_dir.ancestors() {
