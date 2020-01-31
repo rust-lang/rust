@@ -310,6 +310,7 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(wake_trait)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
