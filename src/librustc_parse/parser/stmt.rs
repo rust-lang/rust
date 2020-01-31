@@ -7,10 +7,10 @@ use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::{respan, BytePos, Span};
+use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast;
-use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle, VisibilityKind};
+use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
 use syntax::ptr::P;
 use syntax::token::{self, TokenKind};
@@ -52,11 +52,6 @@ impl<'a> Parser<'a> {
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
-        let mac_vis = respan(lo, VisibilityKind::Inherited);
-        if let Some(macro_def) = self.eat_macro_def(&attrs, &mac_vis, lo)? {
-            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))));
-        }
-
         // Starts like a simple path, being careful to avoid contextual keywords
         // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
@@ -67,6 +62,7 @@ impl<'a> Parser<'a> {
             && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
             && !self.is_auto_trait_item()
             && !self.is_async_fn()
+            && !self.is_macro_rules_item()
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
