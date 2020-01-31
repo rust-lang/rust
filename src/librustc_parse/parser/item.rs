@@ -515,7 +515,7 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let (impl_items, attrs) = self.parse_impl_body()?;
+        let (impl_items, attrs) = self.parse_item_list(|p, at_end| p.parse_impl_item(at_end))?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -571,15 +571,21 @@ impl<'a> Parser<'a> {
         Ok((Ident::invalid(), item_kind, Some(attrs)))
     }
 
-    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<P<AssocItem>>, Vec<Attribute>)> {
+    fn parse_item_list<T>(
+        &mut self,
+        mut parse_item: impl FnMut(&mut Parser<'a>, &mut bool) -> PResult<'a, T>,
+    ) -> PResult<'a, (Vec<T>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
-        let mut impl_items = Vec::new();
+        let mut items = Vec::new();
         while !self.eat(&token::CloseDelim(token::Brace)) {
+            if self.recover_doc_comment_before_brace() {
+                continue;
+            }
             let mut at_end = false;
-            match self.parse_impl_item(&mut at_end) {
-                Ok(impl_item) => impl_items.push(impl_item),
+            match parse_item(self, &mut at_end) {
+                Ok(item) => items.push(item),
                 Err(mut err) => {
                     err.emit();
                     if !at_end {
@@ -589,7 +595,30 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok((impl_items, attrs))
+        Ok((items, attrs))
+    }
+
+    /// Recover on a doc comment before `}`.
+    fn recover_doc_comment_before_brace(&mut self) -> bool {
+        if let token::DocComment(_) = self.token.kind {
+            if self.look_ahead(1, |tok| tok == &token::CloseDelim(token::Brace)) {
+                struct_span_err!(
+                    self.diagnostic(),
+                    self.token.span,
+                    E0584,
+                    "found a documentation comment that doesn't document anything",
+                )
+                .span_label(self.token.span, "this doc comment doesn't document anything")
+                .help(
+                    "doc comments must come before what they document, maybe a \
+                    comment was intended with `//`?",
+                )
+                .emit();
+                self.bump();
+                return true;
+            }
+        }
+        false
     }
 
     /// Parses defaultness (i.e., `default` or nothing).
@@ -660,39 +689,8 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
-            self.expect(&token::OpenDelim(token::Brace))?;
-            let mut trait_items = vec![];
-            while !self.eat(&token::CloseDelim(token::Brace)) {
-                if let token::DocComment(_) = self.token.kind {
-                    if self.look_ahead(1, |tok| tok == &token::CloseDelim(token::Brace)) {
-                        struct_span_err!(
-                            self.diagnostic(),
-                            self.token.span,
-                            E0584,
-                            "found a documentation comment that doesn't document anything",
-                        )
-                        .help(
-                            "doc comments must come before what they document, maybe a \
-                            comment was intended with `//`?",
-                        )
-                        .emit();
-                        self.bump();
-                        continue;
-                    }
-                }
-                let mut at_end = false;
-                match self.parse_trait_item(&mut at_end) {
-                    Ok(item) => trait_items.push(item),
-                    Err(mut e) => {
-                        e.emit();
-                        if !at_end {
-                            self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
-                            break;
-                        }
-                    }
-                }
-            }
-            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, trait_items), None))
+            let (items, attrs) = self.parse_item_list(|p, at_end| p.parse_trait_item(at_end))?;
+            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items), Some(attrs)))
         }
     }
 
@@ -942,26 +940,18 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         abi: Option<StrLit>,
-        visibility: Visibility,
+        vis: Visibility,
         mut attrs: Vec<Attribute>,
     ) -> PResult<'a, P<Item>> {
-        self.expect(&token::OpenDelim(token::Brace))?;
-
-        attrs.extend(self.parse_inner_attributes()?);
-
-        let mut foreign_items = vec![];
-        while !self.eat(&token::CloseDelim(token::Brace)) {
-            foreign_items.push(self.parse_foreign_item()?);
-        }
-
-        let prev_span = self.prev_span;
-        let m = ast::ForeignMod { abi, items: foreign_items };
-        let invalid = Ident::invalid();
-        Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
+        let (items, iattrs) = self.parse_item_list(|p, at_end| p.parse_foreign_item(at_end))?;
+        attrs.extend(iattrs);
+        let span = lo.to(self.prev_span);
+        let m = ast::ForeignMod { abi, items };
+        Ok(self.mk_item(span, Ident::invalid(), ItemKind::ForeignMod(m), vis, attrs))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
-    pub fn parse_foreign_item(&mut self) -> PResult<'a, P<ForeignItem>> {
+    pub fn parse_foreign_item(&mut self, at_end: &mut bool) -> PResult<'a, P<ForeignItem>> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let mut attrs = self.parse_outer_attributes()?;
@@ -973,7 +963,7 @@ impl<'a> Parser<'a> {
             self.parse_item_foreign_type()?
         } else if self.check_fn_front_matter() {
             // FOREIGN FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
+            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, |_| true)?;
             (ident, ForeignItemKind::Fn(sig, generics, body))
         } else if self.is_static_global() {
             // FOREIGN STATIC ITEM
@@ -991,7 +981,7 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
             self.parse_item_foreign_static()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", Some(&vis), &mut false)? {
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", Some(&vis), at_end)? {
             (Ident::invalid(), ForeignItemKind::Macro(mac))
         } else {
             if !attrs.is_empty() {

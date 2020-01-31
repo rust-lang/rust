@@ -1269,6 +1269,7 @@ impl<'a> State<'a> {
                 self.print_where_clause(&generics.where_clause);
                 self.s.word(" ");
                 self.bopen();
+                self.print_inner_attributes(&item.attrs);
                 for trait_item in trait_items {
                     self.print_assoc_item(trait_item);
                 }
