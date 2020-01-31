@@ -4,7 +4,7 @@ error: wildcard match will miss any future added variants
 LL |         _ => eprintln!("Not red"),
    |         ^ help: try this: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/wildcard_enum_match_arm.rs:3:9
    |
 LL | #![deny(clippy::wildcard_enum_match_arm)]

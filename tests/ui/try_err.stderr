@@ -4,7 +4,7 @@ error: returning an `Err(_)` with the `?` operator
 LL |         Err(err)?;
    |         ^^^^^^^^^ help: try this: `return Err(err)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/try_err.rs:4:9
    |
 LL | #![deny(clippy::try_err)]

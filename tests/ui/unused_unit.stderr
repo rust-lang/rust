@@ -6,7 +6,7 @@ LL |       pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) ->
 LL | |         ()
    | |__________^ help: remove the `-> ()`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused_unit.rs:12:9
    |
 LL | #![deny(clippy::unused_unit)]

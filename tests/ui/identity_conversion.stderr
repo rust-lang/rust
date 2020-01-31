@@ -4,7 +4,7 @@ error: identical conversion
 LL |     let _ = T::from(val);
    |             ^^^^^^^^^^^^ help: consider removing `T::from()`: `val`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/identity_conversion.rs:3:9
    |
 LL | #![deny(clippy::identity_conversion)]

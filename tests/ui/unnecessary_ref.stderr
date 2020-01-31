@@ -4,7 +4,7 @@ error: Creating a reference that is immediately dereferenced.
 LL |     let inner = (&outer).inner;
    |                 ^^^^^^^^ help: try this: `outer`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unnecessary_ref.rs:10:8
    |
 LL | #[deny(clippy::ref_in_deref)]

@@ -4,7 +4,7 @@ error: this pattern is unneeded as the `..` pattern can match that element
 LL |     if let (0, .., _) = t {};
    |                  ^^^ help: remove it
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unneeded_wildcard_pattern.rs:3:9
    |
 LL | #![deny(clippy::unneeded_wildcard_pattern)]

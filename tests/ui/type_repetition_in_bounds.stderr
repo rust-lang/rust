@@ -4,7 +4,7 @@ error: this type has already been used as a bound predicate
 LL |     T: Clone,
    |     ^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/type_repetition_in_bounds.rs:1:8
    |
 LL | #[deny(clippy::type_repetition_in_bounds)]
