@@ -1,7 +1,8 @@
+use clippy_dev::clippy_project_root;
 use shell_escape::escape;
 use std::ffi::OsStr;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{self, Command};
 use walkdir::WalkDir;
 
@@ -9,7 +10,6 @@ use walkdir::WalkDir;
 pub enum CliError {
     CommandFailed(String),
     IoError(io::Error),
-    ProjectRootNotFound,
     RustfmtNotInstalled,
     WalkDirError(walkdir::Error),
 }
@@ -35,7 +35,7 @@ pub fn run(check: bool, verbose: bool) {
     fn try_run(context: &FmtContext) -> Result<bool, CliError> {
         let mut success = true;
 
-        let project_root = project_root()?;
+        let project_root = clippy_project_root();
 
         rustfmt_test(context)?;
 
@@ -69,9 +69,6 @@ pub fn run(check: bool, verbose: bool) {
             CliError::IoError(err) => {
                 eprintln!("error: {}", err);
             },
-            CliError::ProjectRootNotFound => {
-                eprintln!("error: Can't determine root of project. Please run inside a Clippy working dir.");
-            },
             CliError::RustfmtNotInstalled => {
                 eprintln!("error: rustfmt nightly is not installed.");
             },
@@ -88,7 +85,7 @@ pub fn run(check: bool, verbose: bool) {
         Ok(false) => {
             eprintln!();
             eprintln!("Formatting check failed.");
-            eprintln!("Run `./util/dev fmt` to update formatting.");
+            eprintln!("Run `cargo dev fmt` to update formatting.");
             1
         },
         Err(err) => {
@@ -175,23 +172,4 @@ fn rustfmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
         eprintln!("rustfmt failed on {}", path.display());
     }
     Ok(success)
-}
-
-fn project_root() -> Result<PathBuf, CliError> {
-    let current_dir = std::env::current_dir()?;
-    for path in current_dir.ancestors() {
-        let result = std::fs::read_to_string(path.join("Cargo.toml"));
-        if let Err(err) = &result {
-            if err.kind() == io::ErrorKind::NotFound {
-                continue;
-            }
-        }
-
-        let content = result?;
-        if content.contains("[package]\nname = \"clippy\"") {
-            return Ok(path.to_path_buf());
-        }
-    }
-
-    Err(CliError::ProjectRootNotFound)
 }
