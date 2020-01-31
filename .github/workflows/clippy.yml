@@ -37,13 +37,17 @@ jobs:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+    - name: Run cargo update
+      run: cargo update
     - name: Cache cargo dir
       uses: actions/cache@v1
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu
-    - name: Checkout
-      uses: actions/checkout@v2.0.0
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-x86_64-unknown-linux-gnu
     - name: Master Toolchain Setup
       run: bash setup-toolchain.sh
 
