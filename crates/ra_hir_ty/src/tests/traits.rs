@@ -358,15 +358,15 @@ fn test() {
     [221; 223) '{}': ()
     [234; 300) '{     ...(S); }': ()
     [244; 245) 'x': u32
-    [248; 252) 'foo1': fn foo1<S>(T) -> <T as Iterable>::Item
+    [248; 252) 'foo1': fn foo1<S>(S) -> <S as Iterable>::Item
     [248; 255) 'foo1(S)': u32
     [253; 254) 'S': S
     [265; 266) 'y': u32
-    [269; 273) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
+    [269; 273) 'foo2': fn foo2<S>(S) -> <S as Iterable>::Item
     [269; 276) 'foo2(S)': u32
     [274; 275) 'S': S
     [286; 287) 'z': u32
-    [290; 294) 'foo3': fn foo3<S>(T) -> <T as Iterable>::Item
+    [290; 294) 'foo3': fn foo3<S>(S) -> <S as Iterable>::Item
     [290; 297) 'foo3(S)': u32
     [295; 296) 'S': S
     "###
