@@ -18,7 +18,7 @@ use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use syntax::ast;
 
 use std::borrow::Cow;
@@ -85,9 +85,9 @@ impl ObjectSafetyViolation {
             | ObjectSafetyViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
             {
-                vec![*span].into()
+                smallvec![*span]
             }
-            _ => vec![].into(),
+            _ => smallvec![],
         }
     }
 }

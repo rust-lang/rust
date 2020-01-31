@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use syntax::ast;
 
@@ -180,15 +180,12 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 }
 
-fn could_be_self(trait_name: Ident, ty: &hir::Ty<'_>) -> bool {
+fn could_be_self(trait_def_id: DefId, ty: &hir::Ty<'_>) -> bool {
     match ty.kind {
-        hir::TyKind::TraitObject([trait_ref], ..) => {
-            let mut p = trait_ref.trait_ref.path.segments.iter().map(|s| s.ident);
-            match (p.next(), p.next()) {
-                (Some(ident), None) => ident == trait_name,
-                _ => false,
-            }
-        }
+        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
+            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id),
+            _ => false,
+        },
         _ => false,
     }
 }
@@ -206,18 +203,18 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     let mut trait_should_be_self = vec![];
     match &item.kind {
         hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
-            if could_be_self(trait_name, ty) =>
+            if could_be_self(trait_def_id, ty) =>
         {
             trait_should_be_self.push(ty.span)
         }
         hir::TraitItemKind::Method(sig, _) => {
             for ty in sig.decl.inputs {
-                if could_be_self(trait_name, ty) {
+                if could_be_self(trait_def_id, ty) {
                     trait_should_be_self.push(ty.span);
                 }
             }
             match sig.decl.output {
-                hir::FunctionRetTy::Return(ty) if could_be_self(trait_name, ty) => {
+                hir::FunctionRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
                     trait_should_be_self.push(ty.span);
                 }
                 _ => {}
