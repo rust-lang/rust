@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.7.0] - 2020-01-31
+
+### Added
+- Added a `drain_filter` function to `HashMap`. (#135)
+
+### Changed
+- Updated `ahash` dependency to 0.3. (#141)
+- Optimized set union and intersection. (#130)
+- `raw_entry` can now be used without requiring `S: BuildHasher`. (#123)
+- `RawTable::bucket_index` can now be used under the `raw` feature. (#128)
+
 ## [v0.6.3] - 2019-10-31
 
 ### Added
@@ -164,7 +175,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/rust-lang/hashbrown/compare/v0.6.3...v0.7.0
 [v0.6.3]: https://github.com/rust-lang/hashbrown/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/rust-lang/hashbrown/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...v0.6.1
