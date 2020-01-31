@@ -8,7 +8,6 @@
 #![feature(bool_to_option)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -1080,18 +1080,7 @@ fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>])
     fmt.precision = getcount(args, &arg.format.precision);
 
     // Extract the correct argument
-    let value = {
-        #[cfg(bootstrap)]
-        {
-            match arg.position {
-                rt::v1::Position::At(i) => args[i],
-            }
-        }
-        #[cfg(not(bootstrap))]
-        {
-            args[arg.position]
-        }
-    };
+    let value = args[arg.position];
 
     // Then actually do some printing
     (value.formatter)(value.value, fmt)

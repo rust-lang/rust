@@ -133,7 +133,6 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(assoc_int_consts)]
 
 #[prelude_import]

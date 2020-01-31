@@ -7,7 +7,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
 #![feature(inner_deref)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

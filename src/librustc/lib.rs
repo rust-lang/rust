@@ -42,7 +42,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(option_expect_none)]
 #![feature(range_is_empty)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
 #![feature(thread_local)]

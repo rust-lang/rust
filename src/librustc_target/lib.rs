@@ -11,7 +11,6 @@
 #![feature(box_syntax)]
 #![feature(bool_to_option)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 
 #[macro_use]
 extern crate log;

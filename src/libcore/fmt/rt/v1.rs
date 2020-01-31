@@ -7,9 +7,6 @@
 
 #[derive(Copy, Clone)]
 pub struct Argument {
-    #[cfg(bootstrap)]
-    pub position: Position,
-    #[cfg(not(bootstrap))]
     pub position: usize,
     pub format: FormatSpec,
 }
@@ -41,10 +38,4 @@ pub enum Count {
     Is(usize),
     Param(usize),
     Implied,
-}
-
-#[cfg(bootstrap)]
-#[derive(Copy, Clone)]
-pub enum Position {
-    At(usize),
 }

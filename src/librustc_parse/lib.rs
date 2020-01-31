@@ -2,7 +2,6 @@
 
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 
 use syntax::ast;
 use syntax::print::pprust;
