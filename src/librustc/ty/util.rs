@@ -18,6 +18,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_span::Span;
+use rustc_target::abi::TargetDataLayout;
 use smallvec::SmallVec;
 use std::{cmp, fmt};
 use syntax::ast;
@@ -726,7 +727,7 @@ impl<'tcx> ty::TyS<'tcx> {
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
-        match needs_drop_components(self) {
+        match needs_drop_components(self, &tcx.data_layout) {
             Err(AlwaysRequiresDrop) => true,
             Ok(components) => {
                 let query_ty = match *components {
@@ -736,7 +737,7 @@ impl<'tcx> ty::TyS<'tcx> {
                     [component_ty] => component_ty,
                     _ => self,
                 };
-                // This doesn't depend on regions, so try to minimize distinct.
+                // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 let erased = tcx.normalize_erasing_regions(param_env, query_ty);
                 tcx.needs_drop_raw(param_env.and(erased))
@@ -992,7 +993,10 @@ impl<'tcx> ExplicitSelf<'tcx> {
 /// Returns a list of types such that the given type needs drop if and only if
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
-pub fn needs_drop_components(ty: Ty<'tcx>) -> Result<SmallVec<[Ty<'tcx>; 4]>, AlwaysRequiresDrop> {
+pub fn needs_drop_components(
+    ty: Ty<'tcx>,
+    target_layout: &TargetDataLayout,
+) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
     match ty.kind {
         ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
@@ -1017,18 +1021,25 @@ pub fn needs_drop_components(ty: Ty<'tcx>) -> Result<SmallVec<[Ty<'tcx>; 4]>, Al
         // state transformation pass
         ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
 
-        ty::Slice(ty) => needs_drop_components(ty),
-        ty::Array(elem_ty, ..) => {
-            match needs_drop_components(elem_ty) {
+        ty::Slice(ty) => needs_drop_components(ty, target_layout),
+        ty::Array(elem_ty, size) => {
+            match needs_drop_components(elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
-                // Arrays of size zero don't need drop, even if their element
-                // type does.
-                _ => Ok(smallvec![ty]),
+                res => match size.val.try_to_bits(target_layout.pointer_size) {
+                    // Arrays of size zero don't need drop, even if their element
+                    // type does.
+                    Some(0) => Ok(SmallVec::new()),
+                    Some(_) => res,
+                    // We don't know which of the cases above we are in, so
+                    // return the whole type and let the caller decide what to
+                    // do.
+                    None => Ok(smallvec![ty]),
+                },
             }
         }
         // If any field needs drop, then the whole tuple does.
-        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), |mut acc, elem| {
-            acc.extend(needs_drop_components(elem)?);
+        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), move |mut acc, elem| {
+            acc.extend(needs_drop_components(elem, target_layout)?);
             Ok(acc)
         }),
 
