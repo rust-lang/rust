@@ -851,6 +851,12 @@ extern "rust-intrinsic" {
     /// compiler, but no instructions will be emitted for it. This is
     /// appropriate for operations on the same thread that may be preempted,
     /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// by passing
+    /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
+    /// as the `order`.
     pub fn atomic_singlethreadfence();
     /// A compiler-only memory barrier.
     ///
@@ -858,6 +864,12 @@ extern "rust-intrinsic" {
     /// compiler, but no instructions will be emitted for it. This is
     /// appropriate for operations on the same thread that may be preempted,
     /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// by passing
+    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
+    /// as the `order`.
     pub fn atomic_singlethreadfence_acq();
     /// A compiler-only memory barrier.
     ///
@@ -865,6 +877,12 @@ extern "rust-intrinsic" {
     /// compiler, but no instructions will be emitted for it. This is
     /// appropriate for operations on the same thread that may be preempted,
     /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// by passing
+    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
+    /// as the `order`.
     pub fn atomic_singlethreadfence_rel();
     /// A compiler-only memory barrier.
     ///
@@ -872,6 +890,12 @@ extern "rust-intrinsic" {
     /// compiler, but no instructions will be emitted for it. This is
     /// appropriate for operations on the same thread that may be preempted,
     /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`std::sync::atomic::compiler_fence`](../../std/sync/atomic/fn.compiler_fence.html)
+    /// by passing
+    /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
+    /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
 
     /// Magic intrinsic that derives its meaning from attributes
