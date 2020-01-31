@@ -12,6 +12,7 @@ use hir_def::{
     AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 use hir_expand::name::{name, Name};
+use hir_def::generics::WherePredicateTarget;
 
 fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -19,11 +20,14 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     // lifetime problems, but since there usually shouldn't be more than a
     // few direct traits this should be fine (we could even use some kind of
     // SmallVec if performance is a concern)
-    db.generic_params(trait_.into())
+    let generic_params = db.generic_params(trait_.into());
+    let trait_self = generic_params.find_trait_self_param();
+    generic_params
         .where_predicates
         .iter()
-        .filter_map(|pred| match &pred.type_ref {
-            TypeRef::Path(p) if p == &Path::from(name![Self]) => pred.bound.as_path(),
+        .filter_map(|pred| match &pred.target {
+            WherePredicateTarget::TypeRef(TypeRef::Path(p)) if p == &Path::from(name![Self]) => pred.bound.as_path(),
+            WherePredicateTarget::TypeParam(local_id) if Some(*local_id) == trait_self => pred.bound.as_path(),
             _ => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {

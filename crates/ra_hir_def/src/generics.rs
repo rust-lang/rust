@@ -53,8 +53,15 @@ pub struct GenericParams {
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WherePredicate {
-    pub type_ref: TypeRef,
+    pub target: WherePredicateTarget,
     pub bound: TypeBound,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum WherePredicateTarget {
+    TypeRef(TypeRef),
+    /// For desugared where predicates that can directly refer to a type param.
+    TypeParam(LocalTypeParamId)
 }
 
 type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
@@ -190,18 +197,24 @@ impl GenericParams {
             return;
         }
         let bound = TypeBound::from_ast(bound);
-        self.where_predicates.push(WherePredicate { type_ref, bound });
+        self.where_predicates.push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
     }
 
     fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
         type_ref.walk(&mut |type_ref| {
-            if let TypeRef::ImplTrait(_) = type_ref {
+            if let TypeRef::ImplTrait(bounds) = type_ref {
                 let param = TypeParamData {
                     name: None,
                     default: None,
                     provenance: TypeParamProvenance::ArgumentImplTrait,
                 };
-                let _param_id = self.types.alloc(param);
+                let param_id = self.types.alloc(param);
+                for bound in bounds {
+                    self.where_predicates.push(WherePredicate {
+                        target: WherePredicateTarget::TypeParam(param_id),
+                        bound: bound.clone()
+                    });
+                }
             }
         });
     }
@@ -210,6 +223,12 @@ impl GenericParams {
         self.types
             .iter()
             .find_map(|(id, p)| if p.name.as_ref() == Some(name) { Some(id) } else { None })
+    }
+
+    pub fn find_trait_self_param(&self) -> Option<LocalTypeParamId> {
+        self.types
+            .iter()
+            .find_map(|(id, p)| if p.provenance == TypeParamProvenance::TraitSelf { Some(id) } else { None })
     }
 }
 

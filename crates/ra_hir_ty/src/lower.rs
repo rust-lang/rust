@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::BuiltinType,
-    generics::WherePredicate,
+    generics::{WherePredicateTarget, WherePredicate},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
@@ -505,7 +505,22 @@ impl GenericPredicate {
         ctx: &'a TyLoweringContext<'a, impl HirDatabase>,
         where_predicate: &'a WherePredicate,
     ) -> impl Iterator<Item = GenericPredicate> + 'a {
-        let self_ty = Ty::from_hir(ctx, &where_predicate.type_ref);
+        let self_ty = match &where_predicate.target {
+            WherePredicateTarget::TypeRef(type_ref) => Ty::from_hir(ctx, type_ref),
+            WherePredicateTarget::TypeParam(param_id) => {
+                let generic_def = ctx.resolver.generic_def().expect("generics in scope");
+                let generics = generics(ctx.db, generic_def);
+                let param_id = hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
+                let idx = generics.param_idx(param_id);
+                match ctx.type_param_mode {
+                    TypeParamLoweringMode::Placeholder => {
+                        let name = generics.param_name(param_id);
+                        Ty::Param { idx, name }
+                    },
+                    TypeParamLoweringMode::Variable => Ty::Bound(idx),
+                }
+            },
+        };
         GenericPredicate::from_type_bound(ctx, &where_predicate.bound, self_ty)
     }
 
@@ -595,10 +610,18 @@ pub(crate) fn generic_predicates_for_param_query(
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
     let ctx = TyLoweringContext::new(db, &resolver);
+    let generics = generics(db, def);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
-        .filter(|pred| Ty::from_hir_only_param(&ctx, &pred.type_ref) == Some(param_idx))
+        .filter(|pred| match &pred.target {
+            WherePredicateTarget::TypeRef(type_ref) => Ty::from_hir_only_param(&ctx, type_ref) == Some(param_idx),
+            WherePredicateTarget::TypeParam(local_id) => {
+                let param_id = hir_def::TypeParamId { parent: def, local_id: *local_id };
+                let idx = generics.param_idx(param_id);
+                idx == param_idx
+            }
+        })
         .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
         .collect()
 }
