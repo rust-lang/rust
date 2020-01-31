@@ -10,5 +10,24 @@ debug = 0
 incremental = true
 debug = 0 # set this to 1 or 2 to get more useful backtraces in debugger
 
+# ideally, we would use `build-override` here, but some crates are also
+# needed at run-time and we end up compiling them twice
+[profile.release.package.proc-macro2]
+opt-level = 0
+[profile.release.package.quote]
+opt-level = 0
+[profile.release.package.syn]
+opt-level = 0
+[profile.release.package.serde_derive]
+opt-level = 0
+[profile.release.package.chalk-derive]
+opt-level = 0
+[profile.release.package.chalk-macros]
+opt-level = 0
+[profile.release.package.salsa-macros]
+opt-level = 0
+[profile.release.package.xtask]
+opt-level = 0
+
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
