@@ -98,7 +98,10 @@ impl<'a> Parser<'a> {
 
         if self.is_fn_front_matter() {
             // FUNCTION ITEM
-            return self.parse_item_fn(lo, vis, attrs);
+            let (ident, sig, generics, body) =
+                self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+            let kind = ItemKind::Fn(sig, generics, body);
+            return self.mk_item_with_info(attrs, lo, vis, (ident, kind, None));
         }
 
         if self.eat_keyword(kw::Extern) {
@@ -741,7 +744,9 @@ impl<'a> Parser<'a> {
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
         } else if self.is_fn_front_matter() {
-            self.parse_assoc_fn(at_end, &mut attrs, is_name_required)?
+            let cfg = ParamCfg { is_name_required };
+            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, &cfg)?;
+            (ident, AssocItemKind::Fn(sig, body), generics)
         } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
             (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
@@ -968,7 +973,7 @@ impl<'a> Parser<'a> {
     pub fn parse_foreign_item(&mut self) -> PResult<'a, P<ForeignItem>> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
-        let attrs = self.parse_outer_attributes()?;
+        let mut attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
 
@@ -977,7 +982,19 @@ impl<'a> Parser<'a> {
             self.parse_item_foreign_type(vis, lo, attrs)
         } else if self.is_fn_front_matter() {
             // FOREIGN FUNCTION ITEM
-            self.parse_item_foreign_fn(vis, lo, attrs)
+            let (ident, sig, generics, body) =
+                self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+            let kind = ForeignItemKind::Fn(sig, generics, body);
+            let span = lo.to(self.prev_span);
+            Ok(P(ast::ForeignItem {
+                ident,
+                attrs,
+                kind,
+                id: DUMMY_NODE_ID,
+                span,
+                vis,
+                tokens: None,
+            }))
         } else if self.is_static_global() {
             // FOREIGN STATIC ITEM
             self.bump(); // `static`
@@ -1603,44 +1620,6 @@ impl ParamCfg {
 
 /// Parsing of functions and methods.
 impl<'a> Parser<'a> {
-    /// Parses an item-position function declaration.
-    fn parse_item_fn(
-        &mut self,
-        lo: Span,
-        vis: Visibility,
-        mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, Option<P<Item>>> {
-        let (ident, sig, generics, body) =
-            self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
-        let kind = ItemKind::Fn(sig, generics, body);
-        self.mk_item_with_info(attrs, lo, vis, (ident, kind, None))
-    }
-
-    /// Parses a function declaration from a foreign module.
-    fn parse_item_foreign_fn(
-        &mut self,
-        vis: ast::Visibility,
-        lo: Span,
-        mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, P<ForeignItem>> {
-        let (ident, sig, generics, body) =
-            self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
-        let kind = ForeignItemKind::Fn(sig, generics, body);
-        let span = lo.to(self.prev_span);
-        Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
-    }
-
-    fn parse_assoc_fn(
-        &mut self,
-        at_end: &mut bool,
-        attrs: &mut Vec<Attribute>,
-        is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
-        let cfg = ParamCfg { is_name_required };
-        let (ident, sig, generics, body) = self.parse_fn(at_end, attrs, &cfg)?;
-        Ok((ident, AssocItemKind::Fn(sig, body), generics))
-    }
-
     /// Parse a function starting from the front matter (`const ...`) to the body `{ ... }` or `;`.
     fn parse_fn(
         &mut self,
