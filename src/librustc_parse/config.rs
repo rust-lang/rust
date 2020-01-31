@@ -541,14 +541,9 @@ fn is_cfg(attr: &Attribute) -> bool {
 
 /// Process the potential `cfg` attributes on a module.
 /// Also determine if the module should be included in this configuration.
-pub fn process_configure_mod(
-    sess: &ParseSess,
-    cfg_mods: bool,
-    attrs: &[Attribute],
-) -> (bool, Vec<Attribute>) {
+pub fn process_configure_mod(sess: &ParseSess, cfg_mods: bool, attrs: &mut Vec<Attribute>) -> bool {
     // Don't perform gated feature checking.
     let mut strip_unconfigured = StripUnconfigured { sess, features: None };
-    let mut attrs = attrs.to_owned();
-    strip_unconfigured.process_cfg_attrs(&mut attrs);
-    (!cfg_mods || strip_unconfigured.in_cfg(&attrs), attrs)
+    strip_unconfigured.process_cfg_attrs(attrs);
+    !cfg_mods || strip_unconfigured.in_cfg(&attrs)
 }
