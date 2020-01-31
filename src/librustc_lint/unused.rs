@@ -213,18 +213,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name(sym::must_use) {
-                    let msg = format!(
-                        "unused {}`{}`{} that must be used",
-                        descr_pre_path,
-                        cx.tcx.def_path_str(def_id),
-                        descr_post_path
-                    );
-                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, span, &msg);
-                    // check for #[must_use = "..."]
-                    if let Some(note) = attr.value_str() {
-                        err.note(&note.as_str());
-                    }
-                    err.emit();
+                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                        let msg = format!(
+                            "unused {}`{}`{} that must be used",
+                            descr_pre_path,
+                            cx.tcx.def_path_str(def_id),
+                            descr_post_path
+                        );
+                        let mut err = lint.build(&msg);
+                        // check for #[must_use = "..."]
+                        if let Some(note) = attr.value_str() {
+                            err.note(&note.as_str());
+                        }
+                        err.emit();
+                    });
                     return true;
                 }
             }
@@ -406,52 +408,54 @@ impl UnusedParens {
         msg: &str,
         keep_space: (bool, bool),
     ) {
-        let span_msg = format!("unnecessary parentheses around {}", msg);
-        let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
-        let mut ate_left_paren = false;
-        let mut ate_right_paren = false;
-        let parens_removed = pattern.trim_matches(|c| match c {
-            '(' => {
-                if ate_left_paren {
-                    false
-                } else {
-                    ate_left_paren = true;
-                    true
+        cx.struct_span_lint(UNUSED_PARENS, span, |lint| {
+            let span_msg = format!("unnecessary parentheses around {}", msg);
+            let mut err = lint.build(&span_msg);
+            let mut ate_left_paren = false;
+            let mut ate_right_paren = false;
+            let parens_removed = pattern.trim_matches(|c| match c {
+                '(' => {
+                    if ate_left_paren {
+                        false
+                    } else {
+                        ate_left_paren = true;
+                        true
+                    }
                 }
-            }
-            ')' => {
-                if ate_right_paren {
-                    false
-                } else {
-                    ate_right_paren = true;
-                    true
+                ')' => {
+                    if ate_right_paren {
+                        false
+                    } else {
+                        ate_right_paren = true;
+                        true
+                    }
                 }
-            }
-            _ => false,
-        });
+                _ => false,
+            });
 
-        let replace = {
-            let mut replace = if keep_space.0 {
-                let mut s = String::from(" ");
-                s.push_str(parens_removed);
-                s
-            } else {
-                String::from(parens_removed)
+            let replace = {
+                let mut replace = if keep_space.0 {
+                    let mut s = String::from(" ");
+                    s.push_str(parens_removed);
+                    s
+                } else {
+                    String::from(parens_removed)
+                };
+
+                if keep_space.1 {
+                    replace.push(' ');
+                }
+                replace
             };
 
-            if keep_space.1 {
-                replace.push(' ');
-            }
-            replace
-        };
-
-        err.span_suggestion_short(
-            span,
-            "remove these parentheses",
-            replace,
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+            err.span_suggestion_short(
+                span,
+                "remove these parentheses",
+                replace,
+                Applicability::MachineApplicable,
+            );
+            err.emit();
+        });
     }
 }
 

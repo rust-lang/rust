@@ -315,10 +315,11 @@ impl<'a> StripUnconfigured<'a> {
                 validate_attr::check_meta_bad_delim(self.sess, dspan, delim, msg);
                 match parse_in(self.sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                     Ok(r) => return Some(r),
-                    Err(mut e) => e
-                        .help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                    Err(mut e) => {
+                        e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
                         .note(CFG_ATTR_NOTE_REF)
-                        .emit(),
+                        .emit();
+                    },
                 }
             }
             _ => self.error_malformed_cfg_attr_missing(attr.span),

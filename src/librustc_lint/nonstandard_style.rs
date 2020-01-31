@@ -108,14 +108,14 @@ impl NonCamelCaseTypes {
 
         if !is_camel_case(name) {
             let msg = format!("{} `{}` should have an upper camel case name", sort, name);
-            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, &msg)
-                .span_suggestion(
+            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
+                lint.build(&msg).span_suggestion(
                     ident.span,
                     "convert the identifier to upper camel case",
                     to_camel_case(name),
                     Applicability::MaybeIncorrect,
-                )
-                .emit();
+                ).emit()
+            })
         }
     }
 }
@@ -226,22 +226,24 @@ impl NonSnakeCase {
             let sc = NonSnakeCase::to_snake_case(name);
 
             let msg = format!("{} `{}` should have a snake case name", sort, name);
-            let mut err = cx.struct_span_lint(NON_SNAKE_CASE, ident.span, &msg);
+            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
+                let mut err = lint.build(&msg);
+                // We have a valid span in almost all cases, but we don't have one when linting a crate
+                // name provided via the command line.
+                if !ident.span.is_dummy() {
+                    err.span_suggestion(
+                        ident.span,
+                        "convert the identifier to snake case",
+                        sc,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.help(&format!("convert the identifier to snake case: `{}`", sc));
+                }
 
-            // We have a valid span in almost all cases, but we don't have one when linting a crate
-            // name provided via the command line.
-            if !ident.span.is_dummy() {
-                err.span_suggestion(
-                    ident.span,
-                    "convert the identifier to snake case",
-                    sc,
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.help(&format!("convert the identifier to snake case: `{}`", sc));
-            }
+                err.emit();
+            });
 
-            err.emit();
         }
     }
 }
@@ -390,8 +392,8 @@ impl NonUpperCaseGlobals {
         if name.chars().any(|c| c.is_lowercase()) {
             let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
 
-            let msg = format!("{} `{}` should have an upper case name", sort, name);
-            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, &msg)
+            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
+                lint.build(&format!("{} `{}` should have an upper case name", sort, name))
                 .span_suggestion(
                     ident.span,
                     "convert the identifier to upper case",
@@ -399,6 +401,7 @@ impl NonUpperCaseGlobals {
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
+            })
         }
     }
 }

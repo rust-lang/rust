@@ -527,7 +527,9 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
          does not derive Copy (error E0133)"
             .to_string()
     };
-    tcx.lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), &message);
+    tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
+        lint.build(&message).emit()
+    });
 }
 
 /// Returns the `HirId` for an enclosing scope that is also `unsafe`.
@@ -559,15 +561,17 @@ fn is_enclosed(
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
-    let mut db = tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg);
-    db.span_label(span, msg);
-    if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
-        db.span_label(
-            tcx.sess.source_map().def_span(tcx.hir().span(id)),
-            format!("because it's nested under this `unsafe` {}", kind),
-        );
-    }
-    db.emit();
+    tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
+        let mut db = lint.build(msg);
+        db.span_label(span, msg);
+        if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
+            db.span_label(
+                tcx.sess.source_map().def_span(tcx.hir().span(id)),
+                format!("because it's nested under this `unsafe` {}", kind),
+            );
+        }
+        db.emit();
+    });
 }
 
 fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
@@ -619,13 +623,17 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                         SAFE_PACKED_BORROWS,
                         lint_hir_id,
                         source_info.span,
-                        &format!(
-                            "{} is unsafe and requires unsafe function or block (error E0133)",
-                            description
-                        ),
+                        |lint| {
+                            lint.build(
+                                &format!(
+                                    "{} is unsafe and requires unsafe function or block (error E0133)",
+                                    description
+                                )
+                            )
+                            .note(&details.as_str())
+                            .emit()
+                        }
                     )
-                    .note(&details.as_str())
-                    .emit();
                 }
             }
         }

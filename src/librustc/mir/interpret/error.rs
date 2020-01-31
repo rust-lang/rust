@@ -83,18 +83,15 @@ impl<'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        self.struct_generic(tcx, message, None)
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
+    ) -> Result<(), ErrorHandled> {
+        self.struct_generic(tcx, message, emit, None)
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        let err = self.struct_error(tcx, message);
-        match err {
-            Ok(mut err) => {
-                err.emit();
-                ErrorHandled::Reported
-            }
-            Err(err) => err,
+        match self.struct_error(tcx, message, |mut e| e.emit()) {
+            Ok(_) => ErrorHandled::Reported,
+            Err(x) => x,
         }
     }
 
@@ -105,9 +102,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: hir::HirId,
         span: Option<Span>,
     ) -> ErrorHandled {
-        let lint = self.struct_generic(tcx, message, Some(lint_root));
-        match lint {
-            Ok(mut lint) => {
+        match self.struct_generic(
+            tcx,
+            message,
+            |mut lint: DiagnosticBuilder<'_>| {
+                // Apply the span.
                 if let Some(span) = span {
                     let primary_spans = lint.span.primary_spans().to_vec();
                     // point at the actual error as the primary span
@@ -121,18 +120,26 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     }
                 }
                 lint.emit();
+            }
+        , Some(lint_root)) {
+            Ok(_) => {
                 ErrorHandled::Reported
             }
             Err(err) => err,
         }
     }
 
+   /// Sets the message passed in via `message`, then adds the span labels for you, before applying
+   /// further modifications in `emit`. It's up to you to call emit(), stash(..), etc. within the
+   /// `emit` method. If you don't need to do any additional processing, just use
+   /// struct_generic.
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
         lint_root: Option<hir::HirId>,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
+    ) -> Result<(), ErrorHandled> {
         let must_error = match self.error {
             InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
@@ -143,7 +150,22 @@ impl<'tcx> ConstEvalErr<'tcx> {
             _ => false,
         };
         trace!("reporting const eval failure at {:?}", self.span);
-        let mut err = if let (Some(lint_root), false) = (lint_root, must_error) {
+
+        let add_span_labels = |err: &mut DiagnosticBuilder<'_>| {
+            if !must_error {
+                err.span_label(self.span, self.error.to_string());
+            }
+            // Skip the last, which is just the environment of the constant.  The stacktrace
+            // is sometimes empty because we create "fake" eval contexts in CTFE to do work
+            // on constant values.
+            if self.stacktrace.len() > 0 {
+                for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
+                    err.span_label(frame_info.call_site, frame_info.to_string());
+                }
+            }
+        };
+
+        if let (Some(lint_root), false) = (lint_root, must_error) {
             let hir_id = self
                 .stacktrace
                 .iter()
@@ -155,25 +177,22 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 rustc_session::lint::builtin::CONST_ERR,
                 hir_id,
                 tcx.span,
-                message,
-            )
-        } else if must_error {
-            struct_error(tcx, &self.error.to_string())
+                |lint| {
+                    let mut err = lint.build(message);
+                    add_span_labels(&mut err);
+                    emit(err);
+                },
+            );
         } else {
-            struct_error(tcx, message)
+            let mut err = if must_error {
+                struct_error(tcx, &self.error.to_string())
+            } else {
+                struct_error(tcx, message)
+            };
+            add_span_labels(&mut err);
+            emit(err);
         };
-        if !must_error {
-            err.span_label(self.span, self.error.to_string());
-        }
-        // Skip the last, which is just the environment of the constant.  The stacktrace
-        // is sometimes empty because we create "fake" eval contexts in CTFE to do work
-        // on constant values.
-        if self.stacktrace.len() > 0 {
-            for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
-                err.span_label(frame_info.call_site, frame_info.to_string());
-            }
-        }
-        Ok(err)
+        Ok(())
     }
 }
 

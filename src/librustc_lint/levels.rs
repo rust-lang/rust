@@ -6,7 +6,8 @@ use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability};
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::{intravisit, HirId};
@@ -39,8 +40,8 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     tcx.arena.alloc(builder.levels.build_map())
 }
 
-pub struct LintLevelsBuilder<'a> {
-    sess: &'a Session,
+pub struct LintLevelsBuilder<'s> {
+    sess: &'s Session,
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, u32>,
     cur: u32,
@@ -52,8 +53,8 @@ pub struct BuilderPush {
     pub changed: bool,
 }
 
-impl<'a> LintLevelsBuilder<'a> {
-    pub fn new(sess: &'a Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
+impl<'s> LintLevelsBuilder<'s> {
+    pub fn new(sess: &'s Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
             sets: LintLevelSets::new(),
@@ -245,15 +246,17 @@ impl<'a> LintLevelsBuilder<'a> {
                                     lvl,
                                     src,
                                     Some(li.span().into()),
-                                    &msg,
-                                )
-                                .span_suggestion(
-                                    li.span(),
-                                    "change it to",
-                                    new_lint_name.to_string(),
-                                    Applicability::MachineApplicable,
-                                )
-                                .emit();
+                                    |lint| {
+                                        lint.build(&msg)
+                                        .span_suggestion(
+                                            li.span(),
+                                            "change it to",
+                                            new_lint_name.to_string(),
+                                            Applicability::MachineApplicable,
+                                        )
+                                        .emit();
+                                    },
+                                );
 
                                 let src = LintSource::Node(
                                     Symbol::intern(&new_lint_name),
@@ -279,48 +282,51 @@ impl<'a> LintLevelsBuilder<'a> {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                        let mut err = struct_lint_level(
+                        struct_lint_level(
                             self.sess,
                             lint,
                             level,
                             src,
                             Some(li.span().into()),
-                            &msg,
+                            |lint| {
+                                let mut err = lint.build(&msg);
+                                if let Some(new_name) = renamed {
+                                    err.span_suggestion(
+                                        li.span(),
+                                        "use the new name",
+                                        new_name,
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                err.emit();
+                            },
                         );
-                        if let Some(new_name) = renamed {
-                            err.span_suggestion(
-                                li.span(),
-                                "use the new name",
-                                new_name,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        err.emit();
                     }
                     CheckLintNameResult::NoLint(suggestion) => {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
                         let msg = format!("unknown lint: `{}`", name);
-                        let mut db = struct_lint_level(
+                        struct_lint_level(
                             self.sess,
                             lint,
                             level,
                             src,
                             Some(li.span().into()),
-                            &msg,
+                            |lint| {
+                                let mut db = lint.build(&msg);
+                                if let Some(suggestion) = suggestion {
+                                    db.span_suggestion(
+                                        li.span(),
+                                        "did you mean",
+                                        suggestion.to_string(),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                db.emit();
+                            },
                         );
 
-                        if let Some(suggestion) = suggestion {
-                            db.span_suggestion(
-                                li.span(),
-                                "did you mean",
-                                suggestion.to_string(),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-
-                        db.emit();
                     }
                 }
             }
@@ -390,10 +396,10 @@ impl<'a> LintLevelsBuilder<'a> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
-        struct_lint_level(self.sess, lint, level, src, span, msg)
+        struct_lint_level(self.sess, lint, level, src, span, decorate)
     }
 
     /// Registers the ID provided with the current set of lints stored in

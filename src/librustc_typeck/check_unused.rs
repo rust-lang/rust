@@ -55,12 +55,14 @@ impl CheckVisitor<'tcx> {
             return;
         }
 
-        let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-            format!("unused import: `{}`", snippet)
-        } else {
-            "unused import".to_owned()
-        };
-        self.tcx.lint_hir(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
+        self.tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, id, span, |lint| {
+            let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                format!("unused import: `{}`", snippet)
+            } else {
+                "unused import".to_owned()
+            };
+            lint.build(&msg).emit();
+        });
     }
 }
 
@@ -130,14 +132,16 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                     .map(|attr| attr.span)
                     .fold(span, |acc, attr_span| acc.to(attr_span));
 
-                tcx.struct_span_lint_hir(lint, id, span, msg)
-                    .span_suggestion_short(
-                        span_with_attrs,
-                        "remove it",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                tcx.struct_span_lint_hir(lint, id, span, |lint| {
+                    lint.build(msg)
+                        .span_suggestion_short(
+                            span_with_attrs,
+                            "remove it",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                });
                 continue;
             }
         }
@@ -170,21 +174,25 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         }
 
         // Otherwise, we can convert it into a `use` of some kind.
-        let msg = "`extern crate` is not idiomatic in the new edition";
-        let help = format!("convert it to a `{}`", visibility_qualified(&item.vis, "use"));
         let base_replacement = match extern_crate.orig_name {
             Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
             None => format!("use {};", item.ident.name),
         };
         let replacement = visibility_qualified(&item.vis, base_replacement);
-        tcx.struct_span_lint_hir(lint, id, extern_crate.span, msg)
-            .span_suggestion_short(
-                extern_crate.span,
-                &help,
-                replacement,
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
+
+            let msg = "`extern crate` is not idiomatic in the new edition";
+            let help = format!("convert it to a `{}`", visibility_qualified(&item.vis, "use"));
+
+            lint.build(msg)
+                .span_suggestion_short(
+                    extern_crate.span,
+                    &help,
+                    replacement,
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        })
     }
 }
 

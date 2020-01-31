@@ -604,15 +604,13 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 }
 
 fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {
-    tcx.lint_hir(
-        lint::builtin::STABLE_FEATURES,
-        hir::CRATE_HIR_ID,
-        span,
-        &format!(
+    tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
+        lint.build(&format!(
             "the feature `{}` has been stable since {} and no longer requires \
-                  an attribute to enable",
-            feature, since
-        ),
+                      an attribute to enable",
+                feature, since
+            )).emit();
+        }
     );
 }
 

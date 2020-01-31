@@ -1701,7 +1701,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sub: Region<'tcx>,
     ) {
         self.construct_generic_bound_failure(region_scope_tree, span, origin, bound_kind, sub)
-            .emit()
+            .emit();
     }
 
     pub fn construct_generic_bound_failure(

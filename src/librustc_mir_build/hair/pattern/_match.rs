@@ -2235,24 +2235,26 @@ fn lint_overlapping_patterns<'tcx>(
     overlaps: Vec<IntRange<'tcx>>,
 ) {
     if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
-        let mut err = tcx.struct_span_lint_hir(
+        tcx.struct_span_lint_hir(
             lint::builtin::OVERLAPPING_PATTERNS,
             hir_id,
             ctor_range.span,
-            "multiple patterns covering the same range",
+            |lint| {
+                let mut err = lint.build("multiple patterns covering the same range");
+                err.span_label(ctor_range.span, "overlapping patterns");
+                for int_range in overlaps {
+                    // Use the real type for user display of the ranges:
+                    err.span_label(
+                        int_range.span,
+                        &format!(
+                            "this range overlaps on `{}`",
+                            IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
+                        ),
+                    );
+                }
+                err.emit();
+            },
         );
-        err.span_label(ctor_range.span, "overlapping patterns");
-        for int_range in overlaps {
-            // Use the real type for user display of the ranges:
-            err.span_label(
-                int_range.span,
-                &format!(
-                    "this range overlaps on `{}`",
-                    IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
-                ),
-            );
-        }
-        err.emit();
     }
 }
 

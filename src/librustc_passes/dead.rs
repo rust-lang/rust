@@ -554,12 +554,9 @@ impl DeadVisitor<'tcx> {
         participle: &str,
     ) {
         if !name.as_str().starts_with("_") {
-            self.tcx.lint_hir(
-                lint::builtin::DEAD_CODE,
-                id,
-                span,
-                &format!("{} is never {}: `{}`", node_type, participle, name),
-            );
+            self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
+                lint.build(&format!("{} is never {}: `{}`", node_type, participle, name)).emit()
+            });
         }
     }
 }

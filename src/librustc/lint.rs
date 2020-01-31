@@ -11,6 +11,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::{Span, Symbol};
 
+
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
 pub enum LintSource {
@@ -174,20 +175,37 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     }
 }
 
-pub fn struct_lint_level<'a>(
-    sess: &'a Session,
+
+pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a>);
+
+impl<'a> LintDiagnosticBuilder<'a> {
+    /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
+    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a> {
+        self.0.set_primary_message(msg);
+        self.0
+    }
+
+    /// Create a LintDiagnosticBuilder from some existing DiagnosticBuilder.
+    pub fn new(err: DiagnosticBuilder<'a>) -> LintDiagnosticBuilder<'a>{
+        LintDiagnosticBuilder(err)
+    }
+}
+
+pub fn struct_lint_level<'s>(
+    sess: &'s Session,
     lint: &'static Lint,
     level: Level,
     src: LintSource,
     span: Option<MultiSpan>,
-    msg: &str,
-) -> DiagnosticBuilder<'a> {
+    decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)) {
+
+    // FIXME: Move the guts of this function into a fn which takes dyn Fn to reduce code bloat.
     let mut err = match (level, span) {
-        (Level::Allow, _) => return sess.diagnostic().struct_dummy(),
-        (Level::Warn, Some(span)) => sess.struct_span_warn(span, msg),
-        (Level::Warn, None) => sess.struct_warn(msg),
-        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, msg),
-        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(msg),
+        (Level::Allow, _) => { return; },
+        (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
+        (Level::Warn, None) => sess.struct_warn(""),
+        (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
+        (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(""),
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
@@ -209,7 +227,7 @@ pub fn struct_lint_level<'a>(
             err.cancel();
             // Don't continue further, since we don't want to have
             // `diag_span_note_once` called for a diagnostic that isn't emitted.
-            return err;
+            return;
         }
     }
 
@@ -299,7 +317,8 @@ pub fn struct_lint_level<'a>(
         err.note(&citation);
     }
 
-    return err;
+    // Finally, run `decorate`. This function is also responsible for emitting the diagnostic.
+    decorate(LintDiagnosticBuilder::new(err));
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.
