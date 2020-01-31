@@ -142,12 +142,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if cmd == this.eval_libc_i32("F_DUPFD")? || cmd == this.eval_libc_i32("F_DUPFD_CLOEXEC")? {
             // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
-            // differ in whether the FD_CLOEXEC flag is pre-set on the duplicated file descriptor,
+            // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            let arg = match arg_op {
-                Some(arg_op) => this.read_scalar(arg_op)?.to_i32()?,
-                None => throw_unsup_format!("fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"),
-            };
+            let arg_op = arg_op
+                .ok_or_else(|| err_unsup_format!("fcntl with command F_DUPFD or F_DUPFD_CLOEXEC requires a third argument"))?;
+            let arg = this.read_scalar(arg_op)?.to_i32()?;
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
                 Some(original) => (original.file.try_clone(), original.writable),
