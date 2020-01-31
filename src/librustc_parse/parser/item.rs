@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
 
         if let Some((ident, kind)) = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis)? {
-            return Ok(Some(self.mk_item(lo.to(self.prev_span), ident, kind, vis, attrs)));
+            return Ok(Some(P(self.mk_item(lo, ident, kind, vis, attrs))));
         }
 
         // FAILURE TO PARSE ITEM
@@ -942,9 +942,7 @@ impl<'a> Parser<'a> {
             }
             self.unexpected()?
         };
-
-        let span = lo.to(self.prev_span);
-        Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
+        Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
     }
 
     /// Parses a static item from a foreign module.
@@ -1364,7 +1362,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
-    fn is_macro_rules_item(&mut self) -> bool {
+    pub(super) fn is_macro_rules_item(&mut self) -> bool {
         self.check_keyword(sym::macro_rules)
             && self.look_ahead(1, |t| *t == token::Not)
             && self.look_ahead(2, |t| t.is_ident())
@@ -1383,22 +1381,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
-    }
-
-    pub(super) fn eat_macro_def(
-        &mut self,
-        attrs: &[Attribute],
-        vis: &Visibility,
-        lo: Span,
-    ) -> PResult<'a, Option<P<Item>>> {
-        let (ident, kind) = if self.eat_keyword(kw::Macro) {
-            self.parse_item_decl_macro(lo)?
-        } else if self.is_macro_rules_item() {
-            self.parse_item_macro_rules(vis)?
-        } else {
-            return Ok(None);
-        };
-        Ok(Some(self.mk_item(lo.to(self.prev_span), ident, kind, vis.clone(), attrs.to_vec())))
     }
 
     fn complain_if_pub_macro(&self, vis: &VisibilityKind, sp: Span) {
@@ -1496,15 +1478,16 @@ impl<'a> Parser<'a> {
         Ok(true)
     }
 
-    fn mk_item(
+    fn mk_item<K>(
         &self,
-        span: Span,
+        lo: Span,
         ident: Ident,
-        kind: ItemKind,
+        kind: K,
         vis: Visibility,
         attrs: Vec<Attribute>,
-    ) -> P<Item> {
-        P(Item { ident, attrs, id: DUMMY_NODE_ID, kind, vis, span, tokens: None })
+    ) -> Item<K> {
+        let span = lo.to(self.prev_span);
+        Item { ident, attrs, id: DUMMY_NODE_ID, kind, vis, span, tokens: None }
     }
 }
 
