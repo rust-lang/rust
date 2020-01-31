@@ -2399,7 +2399,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 
 #[stable(feature = "vec_from_array", since = "1.42.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
-    fn from(arr: [T; N]) -> Vec<T> {
+    fn from(arr: [T; N]) -> Self {
         <[T]>::into_vec(box arr)
     }
 }
