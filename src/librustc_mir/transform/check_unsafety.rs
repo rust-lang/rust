@@ -148,16 +148,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
-                        self.register_violations(
-                            &[UnsafetyViolation {
-                                source_info: self.source_info,
-                                description: Symbol::intern("cast of pointer to int"),
-                                details: Symbol::intern(
-                                    "casting pointers to integers in constants",
-                                ),
-                                kind: UnsafetyViolationKind::General,
-                            }],
-                            &[],
+                        self.require_unsafe(
+                            "cast of pointer to int",
+                            "casting pointers to integers in constants",
+                            UnsafetyViolationKind::General,
                         );
                     }
                     _ => {}
@@ -171,14 +165,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if self.const_context && self.tcx.features().const_compare_raw_pointers =>
             {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
-                    self.register_violations(
-                        &[UnsafetyViolation {
-                            source_info: self.source_info,
-                            description: Symbol::intern("pointer operation"),
-                            details: Symbol::intern("operations on pointers in constants"),
-                            kind: UnsafetyViolationKind::General,
-                        }],
-                        &[],
+                    self.require_unsafe(
+                        "pointer operation",
+                        "operations on pointers in constants",
+                        UnsafetyViolationKind::General,
                     );
                 }
             }
@@ -199,18 +189,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         .as_ref()
                         .assert_crate_local()
                         .lint_root;
-                    self.register_violations(
-                        &[UnsafetyViolation {
-                            source_info,
-                            description: Symbol::intern("borrow of packed field"),
-                            details: Symbol::intern(
-                                "fields of packed structs might be misaligned: dereferencing a \
-                            misaligned pointer or even just creating a misaligned reference \
-                            is undefined behavior",
-                            ),
-                            kind: UnsafetyViolationKind::BorrowPacked(lint_root),
-                        }],
-                        &[],
+                    self.require_unsafe(
+                        "borrow of packed field",
+                        "fields of packed structs might be misaligned: dereferencing a \
+                        misaligned pointer or even just creating a misaligned reference \
+                        is undefined behavior",
+                        UnsafetyViolationKind::BorrowPacked(lint_root),
                     );
                 }
             }
@@ -434,15 +418,10 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                         the field can be changed to invalid values",
                                     )
                                 };
-                                let source_info = self.source_info;
-                                self.register_violations(
-                                    &[UnsafetyViolation {
-                                        source_info,
-                                        description: Symbol::intern(description),
-                                        details: Symbol::intern(details),
-                                        kind: UnsafetyViolationKind::GeneralAndConstFn,
-                                    }],
-                                    &[],
+                                self.require_unsafe(
+                                    description,
+                                    details,
+                                    UnsafetyViolationKind::GeneralAndConstFn,
                                 );
                             }
                         },
