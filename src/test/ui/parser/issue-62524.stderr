@@ -16,9 +16,8 @@ LL | | Ϥ,
    |
 help: change the delimiters to curly braces
    |
-LL | y!{
-LL | Ϥ}
-   |
+LL | y! { /* items */ }
+   |    ^^^^^^^^^^^^^^^
 help: add a semicolon
    |
 LL | Ϥ,;

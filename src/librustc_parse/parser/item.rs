@@ -1638,26 +1638,32 @@ impl<'a> Parser<'a> {
             .span_to_snippet(self.prev_span)
             .map(|s| s.ends_with(")") || s.ends_with("]"))
             .unwrap_or(false);
-        let right_brace_span = if has_close_delim {
-            // it's safe to peel off one character only when it has the close delim
-            self.prev_span.with_lo(self.prev_span.hi() - BytePos(1))
-        } else {
-            self.prev_span.shrink_to_hi()
-        };
 
-        self.struct_span_err(
+        let mut err = self.struct_span_err(
             self.prev_span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
-        )
-        .multipart_suggestion(
-            "change the delimiters to curly braces",
-            vec![
-                (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), "{".to_string()),
-                (right_brace_span, '}'.to_string()),
-            ],
-            Applicability::MaybeIncorrect,
-        )
-        .span_suggestion(
+        );
+
+        // To avoid ICE, we shouldn't emit actual suggestions when it hasn't closing delims
+        if has_close_delim {
+            err.multipart_suggestion(
+                "change the delimiters to curly braces",
+                vec![
+                    (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), '{'.to_string()),
+                    (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            err.span_suggestion(
+                self.prev_span,
+                "change the delimiters to curly braces",
+                " { /* items */ }".to_string(),
+                Applicability::HasPlaceholders,
+            );
+        }
+
+        err.span_suggestion(
             self.prev_span.shrink_to_hi(),
             "add a semicolon",
             ';'.to_string(),

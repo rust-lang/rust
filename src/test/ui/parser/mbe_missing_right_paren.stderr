@@ -14,8 +14,8 @@ LL | macro_rules! abc(ؼ
    |
 help: change the delimiters to curly braces
    |
-LL | macro_rules! abc{ؼ}
-   |                 ^ ^
+LL | macro_rules! abc { /* items */ }
+   |                  ^^^^^^^^^^^^^^^
 help: add a semicolon
    |
 LL | macro_rules! abc(ؼ;
