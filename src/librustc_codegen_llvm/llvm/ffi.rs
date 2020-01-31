@@ -1454,6 +1454,10 @@ extern "C" {
 
     pub fn LLVMInitializePasses();
 
+    pub fn LLVMTimeTraceProfilerInitialize();
+
+    pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
+
     pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);
 
     pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
