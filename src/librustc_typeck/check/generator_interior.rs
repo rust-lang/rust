@@ -7,7 +7,7 @@ use super::FnCtxt;
 use rustc::hir::map::Map;
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -160,32 +160,38 @@ pub fn resolve_interior<'a, 'tcx>(
 
     debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
-    // Replace all regions inside the generator interior with late bound regions
-    // Note that each region slot in the types gets a new fresh late bound region,
-    // which means that none of the regions inside relate to any other, even if
-    // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let fold_types: Vec<_> = types.iter().map(|(t, _)| t.ty).collect();
-    let folded_types = fcx.tcx.fold_regions(&fold_types, &mut false, |_, current_depth| {
-        counter += 1;
-        fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
-    });
-
-    // Store the generator types and spans into the tables for this generator.
-    let types = types
+    let mut captured_tys = FxHashSet::default();
+    let type_causes: Vec<_> = types
         .into_iter()
-        .zip(&folded_types)
-        .map(|((mut interior_cause, _), ty)| {
-            interior_cause.ty = ty;
-            interior_cause
+        .filter_map(|(mut cause, _)| {
+            // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
+            // can.
+            let erased = fcx.tcx.erase_regions(&cause.ty);
+            if captured_tys.insert(erased) {
+                // Replace all regions inside the generator interior with late bound regions.
+                // Note that each region slot in the types gets a new fresh late bound region,
+                // which means that none of the regions inside relate to any other, even if
+                // typeck had previously found constraints that would cause them to be related.
+                let folded = fcx.tcx.fold_regions(&erased, &mut false, |_, current_depth| {
+                    counter += 1;
+                    fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
+                });
+
+                cause.ty = folded;
+                Some(cause)
+            } else {
+                None
+            }
         })
         .collect();
-    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = types;
 
-    // Extract type components
-    let type_list = fcx.tcx.mk_type_list(folded_types.iter());
-
+    // Extract type components to build the witness type.
+    let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
+
+    // Store the generator types and spans into the tables for this generator.
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = type_causes;
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",
