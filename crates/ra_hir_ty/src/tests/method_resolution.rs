@@ -697,7 +697,7 @@ fn test<U, T: Trait<U>>(t: T) {
     [71; 72) 't': T
     [77; 96) '{     ...d(); }': ()
     [83; 84) 't': T
-    [83; 93) 't.method()': [missing name]
+    [83; 93) 't.method()': U
     "###
     );
 }

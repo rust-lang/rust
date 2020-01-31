@@ -236,8 +236,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         self.result.record_field_resolutions.insert(field.expr, field_def);
                     }
                     let field_ty = field_def
-                        .map_or(Ty::Unknown, |it| field_types[it.local_id].clone())
-                        .subst(&substs);
+                        .map_or(Ty::Unknown, |it| field_types[it.local_id].clone().subst(&substs));
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
@@ -686,7 +685,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             if let TypeCtor::FnDef(def) = a_ty.ctor {
                 let generic_predicates = self.db.generic_predicates(def.into());
                 for predicate in generic_predicates.iter() {
-                    let predicate = predicate.clone().subst(&a_ty.parameters);
+                    let predicate = predicate.clone().subst_type_params(self.db, def.into(), &a_ty.parameters);
                     if let Some(obligation) = Obligation::from_predicate(predicate) {
                         self.obligations.push(obligation);
                     }

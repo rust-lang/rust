@@ -61,7 +61,7 @@ impl CrateImplBlocks {
             for impl_id in module_data.scope.impls() {
                 match db.impl_trait(impl_id) {
                     Some(tr) => {
-                        res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);
+                        res.impls_by_trait.entry(tr.value.trait_).or_default().push(impl_id);
                     }
                     None => {
                         let self_ty = db.impl_self_ty(impl_id);

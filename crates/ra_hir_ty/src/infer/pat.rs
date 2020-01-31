@@ -12,7 +12,7 @@ use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
-use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_tuple_struct_pat(
@@ -34,8 +34,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let expected_ty = var_data
                 .as_ref()
                 .and_then(|d| d.field(&Name::new_tuple_field(i)))
-                .map_or(Ty::Unknown, |field| field_tys[field].clone())
-                .subst(&substs);
+                .map_or(Ty::Unknown, |field| field_tys[field].clone().subst(&substs));
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
         }
@@ -65,7 +64,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for subpat in subpats {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
             let expected_ty =
-                matching_field.map_or(Ty::Unknown, |field| field_tys[field].clone()).subst(&substs);
+                matching_field.map_or(Ty::Unknown, |field| field_tys[field].clone().subst(&substs));
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
         }

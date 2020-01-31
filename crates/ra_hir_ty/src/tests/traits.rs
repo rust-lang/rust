@@ -822,8 +822,7 @@ fn test<T: ApplyL>() {
 "#,
     );
     // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
-    // FIXME: fix type parameter names going missing when going through Chalk
-    assert_eq!(t, "ApplyL::Out<[missing name]>");
+    assert_eq!(t, "ApplyL::Out<T>");
 }
 
 #[test]

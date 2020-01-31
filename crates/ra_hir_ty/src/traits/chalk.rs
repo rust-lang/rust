@@ -142,8 +142,9 @@ impl ToChalk for Ty {
                 let substitution = proj_ty.parameters.to_chalk(db);
                 chalk_ir::AliasTy { associated_ty_id, substitution }.cast().intern()
             }
-            Ty::Param { idx, .. } => {
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }
+            Ty::Param(id) => {
+                let interned_id = db.intern_type_param_id(id);
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: interned_id.as_intern_id().as_usize() }
                     .to_ty::<TypeFamily>()
             }
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
@@ -177,7 +178,8 @@ impl ToChalk for Ty {
             },
             chalk_ir::TyData::Placeholder(idx) => {
                 assert_eq!(idx.ui, UniverseIndex::ROOT);
-                Ty::Param { idx: idx.idx as u32, name: crate::Name::missing() }
+                let interned_id = crate::db::GlobalTypeParamId::from_intern_id(crate::salsa::InternId::from(idx.idx));
+                Ty::Param(db.lookup_intern_type_param_id(interned_id))
             }
             chalk_ir::TyData::Alias(proj) => {
                 let associated_ty = from_chalk(db, proj.associated_ty_id);
@@ -524,7 +526,7 @@ fn convert_where_clauses(
             // skip errored predicates completely
             continue;
         }
-        result.push(pred.clone().subst(substs).to_chalk(db));
+        result.push(pred.clone().subst_type_params(db, def, substs).to_chalk(db));
     }
     result
 }
@@ -709,12 +711,12 @@ fn impl_block_datum(
     let trait_ref = db
         .impl_trait(impl_id)
         // ImplIds for impls where the trait ref can't be resolved should never reach Chalk
-        .expect("invalid impl passed to Chalk");
+        .expect("invalid impl passed to Chalk")
+        .value;
     let impl_data = db.impl_data(impl_id);
 
     let generic_params = generics(db, impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
-    let trait_ref = trait_ref.subst(&bound_vars);
     let trait_ = trait_ref.trait_;
     let impl_type = if impl_id.lookup(db).container.module(db).krate == krate {
         chalk_rust_ir::ImplType::Local
@@ -789,20 +791,18 @@ fn type_alias_associated_ty_value(
         _ => panic!("assoc ty value should be in impl"),
     };
 
-    let trait_ref = db.impl_trait(impl_id).expect("assoc ty value should not exist"); // we don't return any assoc ty values if the impl'd trait can't be resolved
+    let trait_ref = db.impl_trait(impl_id).expect("assoc ty value should not exist").value; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
     let assoc_ty = db
         .trait_data(trait_ref.trait_)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
-    let generic_params = generics(db, impl_id.into());
-    let bound_vars = Substs::bound_vars(&generic_params);
-    let ty = db.ty(type_alias.into()).subst(&bound_vars);
-    let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
+    let ty = db.ty(type_alias.into());
+    let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
         impl_id: Impl::ImplBlock(impl_id.into()).to_chalk(db),
         associated_ty_id: assoc_ty.to_chalk(db),
-        value: make_binders(value_bound, bound_vars.len()),
+        value: make_binders(value_bound, ty.num_binders),
     };
     Arc::new(value)
 }

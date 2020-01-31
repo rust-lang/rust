@@ -30,7 +30,7 @@ use crate::{
     Binders, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate, ProjectionTy, Substs,
     TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
-use hir_expand::name::Name;
+use hir_def::TypeParamId;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a, DB: HirDatabase> {
@@ -145,7 +145,16 @@ impl Ty {
                     ImplTraitLoweringMode::Param => {
                         let idx = ctx.impl_trait_counter.get();
                         ctx.impl_trait_counter.set(idx + 1);
-                        Ty::Param { idx: idx as u32, name: Name::missing() }
+                        if let Some(def) = ctx.resolver.generic_def() {
+                            let generics = generics(ctx.db, def);
+                            let param = generics
+                                .iter()
+                                .nth(idx as usize)
+                                .map_or(Ty::Unknown, |(id, _)| Ty::Param(id));
+                            param
+                        } else {
+                            Ty::Unknown
+                        }
                     }
                     ImplTraitLoweringMode::Variable => {
                         let idx = ctx.impl_trait_counter.get();
@@ -176,7 +185,7 @@ impl Ty {
     fn from_hir_only_param(
         ctx: &TyLoweringContext<'_, impl HirDatabase>,
         type_ref: &TypeRef,
-    ) -> Option<u32> {
+    ) -> Option<TypeParamId> {
         let path = match type_ref {
             TypeRef::Path(path) => path,
             _ => return None,
@@ -192,9 +201,7 @@ impl Ty {
             _ => return None,
         };
         if let TypeNs::GenericParam(param_id) = resolution {
-            let generics = generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
-            let idx = generics.param_idx(param_id);
-            Some(idx)
+            Some(param_id)
         } else {
             None
         }
@@ -256,20 +263,18 @@ impl Ty {
             TypeNs::GenericParam(param_id) => {
                 let generics =
                     generics(ctx.db, ctx.resolver.generic_def().expect("generics in scope"));
-                let idx = generics.param_idx(param_id);
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => {
-                        // FIXME: maybe return name in resolution?
-                        let name = generics.param_name(param_id);
-                        Ty::Param { idx, name }
+                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Variable => {
+                        let idx = generics.param_idx(param_id).expect("matching generics");
+                        Ty::Bound(idx)
                     }
-                    TypeParamLoweringMode::Variable => Ty::Bound(idx),
                 }
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = generics(ctx.db, impl_id.into());
                 let substs = match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Substs::identity(&generics),
+                    TypeParamLoweringMode::Placeholder => Substs::type_params(&generics),
                     TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
                 };
                 ctx.db.impl_self_ty(impl_id).subst(&substs)
@@ -277,7 +282,7 @@ impl Ty {
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(ctx.db, adt.into());
                 let substs = match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Substs::identity(&generics),
+                    TypeParamLoweringMode::Placeholder => Substs::type_params(&generics),
                     TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
                 };
                 ctx.db.ty(adt.into()).subst(&substs)
@@ -319,20 +324,28 @@ impl Ty {
         self_ty: Ty,
         segment: PathSegment<'_>,
     ) -> Ty {
-        let param_idx = match self_ty {
-            Ty::Param { idx, .. } if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => idx,
-            Ty::Bound(idx) if ctx.type_param_mode == TypeParamLoweringMode::Variable => idx,
-            _ => return Ty::Unknown, // Error: Ambiguous associated type
-        };
         let def = match ctx.resolver.generic_def() {
             Some(def) => def,
             None => return Ty::Unknown, // this can't actually happen
         };
-        let predicates = ctx.db.generic_predicates_for_param(def.into(), param_idx);
+        let param_id = match self_ty {
+            Ty::Param(id) if ctx.type_param_mode == TypeParamLoweringMode::Placeholder => id,
+            Ty::Bound(idx) if ctx.type_param_mode == TypeParamLoweringMode::Variable => {
+                let generics = generics(ctx.db, def);
+                let param_id = if let Some((id, _)) = generics.iter().nth(idx as usize) {
+                    id
+                } else {
+                    return Ty::Unknown;
+                };
+                param_id
+            },
+            _ => return Ty::Unknown, // Error: Ambiguous associated type
+        };
+        let predicates = ctx.db.generic_predicates_for_param(param_id);
         let traits_from_env = predicates.iter().filter_map(|pred| match pred {
             GenericPredicate::Implemented(tr) => {
-                if let Ty::Param { idx, .. } = tr.self_ty() {
-                    if *idx == param_idx {
+                if let Ty::Param(id) = tr.self_ty() {
+                    if *id == param_id {
                         return Some(tr.trait_);
                     }
                 }
@@ -530,13 +543,12 @@ impl GenericPredicate {
                 let generic_def = ctx.resolver.generic_def().expect("generics in scope");
                 let generics = generics(ctx.db, generic_def);
                 let param_id = hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
-                let idx = generics.param_idx(param_id);
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => {
-                        let name = generics.param_name(param_id);
-                        Ty::Param { idx, name }
+                    TypeParamLoweringMode::Placeholder => Ty::Param(param_id),
+                    TypeParamLoweringMode::Variable => {
+                        let idx = generics.param_idx(param_id).expect("matching generics");
+                        Ty::Bound(idx)
                     }
-                    TypeParamLoweringMode::Variable => Ty::Bound(idx),
                 }
             }
         };
@@ -599,17 +611,19 @@ pub fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> PolyFnSig {
 pub(crate) fn field_types_query(
     db: &impl HirDatabase,
     variant_id: VariantId,
-) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
+) -> Arc<ArenaMap<LocalStructFieldId, Binders<Ty>>> {
     let var_data = variant_data(db, variant_id);
-    let resolver = match variant_id {
-        VariantId::StructId(it) => it.resolver(db),
-        VariantId::UnionId(it) => it.resolver(db),
-        VariantId::EnumVariantId(it) => it.parent.resolver(db),
+    let (resolver, def): (_, GenericDefId) = match variant_id {
+        VariantId::StructId(it) => (it.resolver(db), it.into()),
+        VariantId::UnionId(it) => (it.resolver(db), it.into()),
+        VariantId::EnumVariantId(it) => (it.parent.resolver(db), it.parent.into()),
     };
+    let generics = generics(db, def);
     let mut res = ArenaMap::default();
-    let ctx = TyLoweringContext::new(db, &resolver);
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, Ty::from_hir(&ctx, &field_data.type_ref))
+        res.insert(field_id, Binders::new(generics.len(), Ty::from_hir(&ctx, &field_data.type_ref)))
     }
     Arc::new(res)
 }
@@ -624,23 +638,20 @@ pub(crate) fn field_types_query(
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 pub(crate) fn generic_predicates_for_param_query(
     db: &impl HirDatabase,
-    def: GenericDefId,
-    param_idx: u32,
+    param_id: TypeParamId,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = def.resolver(db);
+    let resolver = param_id.parent.resolver(db);
     let ctx = TyLoweringContext::new(db, &resolver);
-    let generics = generics(db, def);
+    // let generics = generics(db, def);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
         .filter(|pred| match &pred.target {
             WherePredicateTarget::TypeRef(type_ref) => {
-                Ty::from_hir_only_param(&ctx, type_ref) == Some(param_idx)
+                Ty::from_hir_only_param(&ctx, type_ref) == Some(param_id)
             }
             WherePredicateTarget::TypeParam(local_id) => {
-                let param_id = hir_def::TypeParamId { parent: def, local_id: *local_id };
-                let idx = generics.param_idx(param_id);
-                idx == param_idx
+                *local_id == param_id.local_id
             }
         })
         .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
@@ -650,8 +661,7 @@ pub(crate) fn generic_predicates_for_param_query(
 pub(crate) fn generic_predicates_for_param_recover(
     _db: &impl HirDatabase,
     _cycle: &[String],
-    _def: &GenericDefId,
-    _param_idx: &u32,
+    _param_id: &TypeParamId,
 ) -> Arc<[GenericPredicate]> {
     Arc::new([])
 }
@@ -905,12 +915,12 @@ pub(crate) fn impl_self_ty_recover(
     Binders::new(generics.len(), Ty::Unknown)
 }
 
-pub(crate) fn impl_trait_query(db: &impl HirDatabase, impl_id: ImplId) -> Option<TraitRef> {
+pub(crate) fn impl_trait_query(db: &impl HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let generics = generics(db, impl_id.into());
-    let ctx = TyLoweringContext::new(db, &resolver);
-    let self_ty = db.impl_self_ty(impl_id).subst(&Substs::identity(&generics));
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Variable);
+    let self_ty = db.impl_self_ty(impl_id);
     let target_trait = impl_data.target_trait.as_ref()?;
-    TraitRef::from_hir(&ctx, target_trait, Some(self_ty.clone()))
+    Some(Binders::new(self_ty.num_binders, TraitRef::from_hir(&ctx, target_trait, Some(self_ty.value.clone()))?))
 }

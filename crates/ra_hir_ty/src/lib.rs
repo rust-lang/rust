@@ -45,10 +45,10 @@ use std::{fmt, iter, mem};
 
 use hir_def::{
     expr::ExprId, type_ref::Mutability, AdtId, AssocContainerId, DefWithBodyId, GenericDefId,
-    HasModule, Lookup, TraitId, TypeAliasId,
+    HasModule, Lookup, TraitId, TypeAliasId, TypeParamId, generics::TypeParamProvenance,
 };
-use hir_expand::name::Name;
 use ra_db::{impl_intern_key, salsa, CrateId};
+use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase,
@@ -288,14 +288,7 @@ pub enum Ty {
     Projection(ProjectionTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
-    Param {
-        /// The index of the parameter (starting with parameters from the
-        /// surrounding impl, then the current function).
-        idx: u32,
-        /// The name of the parameter, for displaying.
-        // FIXME get rid of this
-        name: Name,
-    },
+    Param(TypeParamId),
 
     /// A bound type variable. Used during trait resolution to represent Chalk
     /// variables, and in `Dyn` and `Opaque` bounds to represent the `Self` type.
@@ -366,15 +359,15 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn identity(generic_params: &Generics) -> Substs {
+    pub(crate) fn type_params(generic_params: &Generics) -> Substs {
         Substs(
-            generic_params.iter().map(|(idx, p)| Ty::Param { idx, name: p.name.clone().unwrap_or_else(Name::missing) }).collect(),
+            generic_params.iter().map(|(id, _)| Ty::Param(id)).collect(),
         )
     }
 
     /// Return Substs that replace each parameter by a bound variable.
     pub(crate) fn bound_vars(generic_params: &Generics) -> Substs {
-        Substs(generic_params.iter().map(|(idx, _p)| Ty::Bound(idx)).collect())
+        Substs(generic_params.iter().enumerate().map(|(idx, _)| Ty::Bound(idx as u32)).collect())
     }
 
     pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
@@ -420,11 +413,6 @@ impl SubstsBuilder {
 
     pub fn fill_with_bound_vars(self, starting_from: u32) -> Self {
         self.fill((starting_from..).map(Ty::Bound))
-    }
-
-    pub fn fill_with_params(self) -> Self {
-        let start = self.vec.len() as u32;
-        self.fill((start..).map(|idx| Ty::Param { idx, name: Name::missing() }))
     }
 
     pub fn fill_with_unknown(self) -> Self {
@@ -762,13 +750,19 @@ pub trait TypeWalk {
     /// Replaces type parameters in this type using the given `Substs`. (So e.g.
     /// if `self` is `&[T]`, where type parameter T has index 0, and the
     /// `Substs` contain `u32` at index 0, we'll have `&[u32]` afterwards.)
-    fn subst(self, substs: &Substs) -> Self
+    // TODO: this should mostly not be used anymore
+    fn subst_type_params(self, db: &impl HirDatabase, def: GenericDefId, substs: &Substs) -> Self
     where
         Self: Sized,
     {
+        let generics = generics(db, def);
         self.fold(&mut |ty| match ty {
-            Ty::Param { idx, name } => {
-                substs.get(idx as usize).cloned().unwrap_or(Ty::Param { idx, name })
+            Ty::Param(id) => {
+                if let Some(idx) = generics.param_idx(id) {
+                    substs.get(idx as usize).cloned().unwrap_or(Ty::Param(id))
+                } else {
+                    ty
+                }
             }
             ty => ty,
         })
@@ -1042,7 +1036,18 @@ impl HirDisplay for Ty {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
-            Ty::Param { name, .. } => write!(f, "{}", name)?,
+            Ty::Param(id) => {
+                let generic_params = f.db.generic_params(id.parent);
+                let param_data = &generic_params.types[id.local_id];
+                match param_data.provenance {
+                    TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
+                        write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
+                    }
+                    TypeParamProvenance::ArgumentImplTrait => {
+                        write!(f, "impl TODO")?
+                    }
+                }
+            },
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 match self {

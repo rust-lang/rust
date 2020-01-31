@@ -99,23 +99,19 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.types.iter())
-            .chain(self.params.types.iter())
-            .enumerate()
-            .map(|(i, (_local_id, p))| (i as u32, p))
+            .flat_map(|it| it.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p)))
+            .chain(self.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: self.def, local_id }, p)))
     }
 
-    pub(crate) fn iter_parent<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
+    pub(crate) fn iter_parent<'a>(&'a self) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.types.iter())
-            .enumerate()
-            .map(|(i, (_local_id, p))| (i as u32, p))
+            .flat_map(|it| it.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p)))
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -137,16 +133,11 @@ impl Generics {
         (self_params, list_params, impl_trait_params)
     }
 
-    pub(crate) fn param_idx(&self, param: TypeParamId) -> u32 {
-        self.find_param(param).0
+    pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<u32> {
+        Some(self.find_param(param)?.0)
     }
 
-    pub(crate) fn param_name(&self, param: TypeParamId) -> Name {
-        // FIXME make this return Option
-        self.find_param(param).1.name.clone().unwrap_or_else(Name::missing)
-    }
-
-    fn find_param(&self, param: TypeParamId) -> (u32, &TypeParamData) {
+    fn find_param(&self, param: TypeParamId) -> Option<(u32, &TypeParamData)> {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
@@ -156,9 +147,10 @@ impl Generics {
                 .find(|(_, (idx, _))| *idx == param.local_id)
                 .unwrap();
             let (_total, parent_len, _child) = self.len_split();
-            return ((parent_len + idx) as u32, data);
+            Some(((parent_len + idx) as u32, data))
+        } else {
+            self.parent_generics.as_ref().and_then(|g| g.find_param(param))
         }
-        self.parent_generics.as_ref().unwrap().find_param(param)
     }
 }
 
