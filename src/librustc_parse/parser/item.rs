@@ -22,7 +22,7 @@ use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use log::debug;
 use std::mem;
 
-pub(super) type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
+pub(super) type ItemInfo = (Ident, ItemKind);
 
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
@@ -85,8 +85,8 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
 
-        if let Some(info) = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis)? {
-            return Ok(Some(self.mk_item_with_info(attrs, lo, vis, info)));
+        if let Some((ident, kind)) = self.parse_item_kind(&mut attrs, macros_allowed, lo, &vis)? {
+            return Ok(Some(self.mk_item(lo.to(self.prev_span), ident, kind, vis, attrs)));
         }
 
         // FAILURE TO PARSE ITEM
@@ -118,18 +118,18 @@ impl<'a> Parser<'a> {
             // USE ITEM
             let tree = self.parse_use_tree()?;
             self.expect_semi()?;
-            (Ident::invalid(), ItemKind::Use(P(tree)), None)
+            (Ident::invalid(), ItemKind::Use(P(tree)))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(&mut false, attrs, |_| true)?;
-            (ident, ItemKind::Fn(sig, generics, body), None)
+            (ident, ItemKind::Fn(sig, generics, body))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
                 // EXTERN CRATE
                 self.parse_item_extern_crate()?
             } else {
                 // EXTERN BLOCK
-                self.parse_item_foreign_mod()?
+                self.parse_item_foreign_mod(attrs)?
             }
         } else if self.is_static_global() {
             // STATIC ITEM
@@ -156,7 +156,7 @@ impl<'a> Parser<'a> {
         {
             // UNSAFE TRAIT ITEM
             let unsafety = self.parse_unsafety();
-            self.parse_item_trait(lo, unsafety)?
+            self.parse_item_trait(attrs, lo, unsafety)?
         } else if self.check_keyword(kw::Impl)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
             || self.check_keyword(kw::Default) && self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe])
@@ -165,14 +165,14 @@ impl<'a> Parser<'a> {
             let defaultness = self.parse_defaultness();
             let unsafety = self.parse_unsafety();
             self.expect_keyword(kw::Impl)?;
-            self.parse_item_impl(unsafety, defaultness)?
+            self.parse_item_impl(attrs, unsafety, defaultness)?
         } else if self.eat_keyword(kw::Mod) {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword(kw::Type) {
             // TYPE ITEM
             let (ident, ty, generics) = self.parse_type_alias()?;
-            (ident, ItemKind::TyAlias(ty, generics), None)
+            (ident, ItemKind::TyAlias(ty, generics))
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
             || (self.check_keyword(kw::Auto) && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             // TRAIT ITEM
-            self.parse_item_trait(lo, Unsafe::No)?
+            self.parse_item_trait(attrs, lo, Unsafe::No)?
         } else if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
             self.parse_item_struct()?
@@ -306,26 +306,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn mk_item_with_info(
-        &self,
-        attrs: Vec<Attribute>,
-        lo: Span,
-        vis: Visibility,
-        info: ItemInfo,
-    ) -> P<Item> {
-        let (ident, item, extra_attrs) = info;
-        let span = lo.to(self.prev_span);
-        let attrs = Self::maybe_append(attrs, extra_attrs);
-        self.mk_item(span, ident, item, vis, attrs)
-    }
-
-    fn maybe_append<T>(mut lhs: Vec<T>, mut rhs: Option<Vec<T>>) -> Vec<T> {
-        if let Some(ref mut rhs) = rhs {
-            lhs.append(rhs);
-        }
-        lhs
-    }
-
     /// Parses an item macro, e.g., `item!();`.
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
         self.complain_if_pub_macro(&vis.node, vis.span);
@@ -339,7 +319,7 @@ impl<'a> Parser<'a> {
         }
 
         let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
-        Ok((Ident::invalid(), ItemKind::Mac(mac), None))
+        Ok((Ident::invalid(), ItemKind::Mac(mac)))
     }
 
     /// Emits an expected-item-after-attributes error.
@@ -428,16 +408,21 @@ impl<'a> Parser<'a> {
 
     /// Parses an implementation item, `impl` keyword is already parsed.
     ///
-    ///    impl<'a, T> TYPE { /* impl items */ }
-    ///    impl<'a, T> TRAIT for TYPE { /* impl items */ }
-    ///    impl<'a, T> !TRAIT for TYPE { /* impl items */ }
-    ///    impl<'a, T> const TRAIT for TYPE { /* impl items */ }
+    /// ```
+    /// impl<'a, T> TYPE { /* impl items */ }
+    /// impl<'a, T> TRAIT for TYPE { /* impl items */ }
+    /// impl<'a, T> !TRAIT for TYPE { /* impl items */ }
+    /// impl<'a, T> const TRAIT for TYPE { /* impl items */ }
+    /// ```
     ///
     /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
-    ///   `impl` GENERICS `const`? `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
-    ///   `impl` GENERICS `const`? `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
+    /// ```
+    /// "impl" GENERICS "const"? "!"? TYPE "for"? (TYPE | "..") ("where" PREDICATES)? "{" BODY "}"
+    /// "impl" GENERICS "const"? "!"? TYPE ("where" PREDICATES)? "{" BODY "}"
+    /// ```
     fn parse_item_impl(
         &mut self,
+        attrs: &mut Vec<Attribute>,
         unsafety: Unsafe,
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
@@ -492,7 +477,7 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let (impl_items, attrs) = self.parse_item_list(|p, at_end| p.parse_impl_item(at_end))?;
+        let impl_items = self.parse_item_list(attrs, |p, at_end| p.parse_impl_item(at_end))?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -545,15 +530,16 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok((Ident::invalid(), item_kind, Some(attrs)))
+        Ok((Ident::invalid(), item_kind))
     }
 
     fn parse_item_list<T>(
         &mut self,
+        attrs: &mut Vec<Attribute>,
         mut parse_item: impl FnMut(&mut Parser<'a>, &mut bool) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, Vec<Attribute>)> {
+    ) -> PResult<'a, Vec<T>> {
         self.expect(&token::OpenDelim(token::Brace))?;
-        let attrs = self.parse_inner_attributes()?;
+        attrs.append(&mut self.parse_inner_attributes()?);
 
         let mut items = Vec::new();
         while !self.eat(&token::CloseDelim(token::Brace)) {
@@ -572,7 +558,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok((items, attrs))
+        Ok(items)
     }
 
     /// Recover on a doc comment before `}`.
@@ -624,7 +610,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafe) -> PResult<'a, ItemInfo> {
+    fn parse_item_trait(
+        &mut self,
+        attrs: &mut Vec<Attribute>,
+        lo: Span,
+        unsafety: Unsafe,
+    ) -> PResult<'a, ItemInfo> {
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
 
@@ -662,12 +653,12 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
+            Ok((ident, ItemKind::TraitAlias(tps, bounds)))
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
-            let (items, attrs) = self.parse_item_list(|p, at_end| p.parse_trait_item(at_end))?;
-            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items), Some(attrs)))
+            let items = self.parse_item_list(attrs, |p, at_end| p.parse_trait_item(at_end))?;
+            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, items)))
         }
     }
 
@@ -854,7 +845,7 @@ impl<'a> Parser<'a> {
             (orig_name, None)
         };
         self.expect_semi()?;
-        Ok((item_name, ItemKind::ExternCrate(orig_name), None))
+        Ok((item_name, ItemKind::ExternCrate(orig_name)))
     }
 
     fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
@@ -905,11 +896,11 @@ impl<'a> Parser<'a> {
     /// extern "C" {}
     /// extern {}
     /// ```
-    fn parse_item_foreign_mod(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_foreign_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
-        let (items, attrs) = self.parse_item_list(|p, at_end| p.parse_foreign_item(at_end))?;
+        let items = self.parse_item_list(attrs, |p, at_end| p.parse_foreign_item(at_end))?;
         let module = ast::ForeignMod { abi, items };
-        Ok((Ident::invalid(), ItemKind::ForeignMod(module), Some(attrs)))
+        Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
@@ -1016,7 +1007,7 @@ impl<'a> Parser<'a> {
             Some(m) => ItemKind::Static(ty, m, e),
             None => ItemKind::Const(ty, e),
         };
-        Ok((id, item, None))
+        Ok((id, item))
     }
 
     /// We were supposed to parse `:` but instead, we're already at `=`.
@@ -1069,7 +1060,7 @@ impl<'a> Parser<'a> {
 
         let enum_definition =
             EnumDef { variants: variants.into_iter().filter_map(|v| v).collect() };
-        Ok((id, ItemKind::Enum(enum_definition, generics), None))
+        Ok((id, ItemKind::Enum(enum_definition, generics)))
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
@@ -1163,7 +1154,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Struct(vdata, generics), None))
+        Ok((class_name, ItemKind::Struct(vdata, generics)))
     }
 
     /// Parses `union Foo { ... }`.
@@ -1187,7 +1178,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Union(vdata, generics), None))
+        Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
     pub(super) fn is_union_item(&self) -> bool {
@@ -1369,7 +1360,7 @@ impl<'a> Parser<'a> {
         };
 
         self.sess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_span));
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: false }), None))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: false })))
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
@@ -1391,7 +1382,7 @@ impl<'a> Parser<'a> {
             self.report_invalid_macro_expansion_item();
         }
 
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true }), None))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
     }
 
     pub(super) fn eat_macro_def(
@@ -1400,14 +1391,14 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
         lo: Span,
     ) -> PResult<'a, Option<P<Item>>> {
-        let info = if self.eat_keyword(kw::Macro) {
+        let (ident, kind) = if self.eat_keyword(kw::Macro) {
             self.parse_item_decl_macro(lo)?
         } else if self.is_macro_rules_item() {
             self.parse_item_macro_rules(vis)?
         } else {
             return Ok(None);
         };
-        Ok(Some(self.mk_item_with_info(attrs.to_vec(), lo, vis.clone(), info)))
+        Ok(Some(self.mk_item(lo.to(self.prev_span), ident, kind, vis.clone(), attrs.to_vec())))
     }
 
     fn complain_if_pub_macro(&self, vis: &VisibilityKind, sp: Span) {

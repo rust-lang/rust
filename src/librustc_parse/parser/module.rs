@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
             (module, inner_attrs)
         };
         attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(module), None))
+        Ok((id, ItemKind::Mod(module)))
     }
 
     /// Given a termination token, parses all of the items in a module.
