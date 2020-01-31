@@ -8,6 +8,7 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::Session;
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::env;
@@ -338,13 +339,19 @@ impl DepGraph {
 
             (result, dep_node_index)
         } else {
-            (task(cx, arg), self.next_virtual_depnode_index())
+            let sess = cx.get_stable_hashing_context().sess();
+            (task(cx, arg), self.next_virtual_depnode_index(sess))
         }
     }
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<OP, R>(&self, dep_kind: DepKind, op: OP) -> (R, DepNodeIndex)
+    pub fn with_anon_task<OP, R>(
+        &self,
+        sess: &Session,
+        dep_kind: DepKind,
+        op: OP,
+    ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
@@ -368,7 +375,7 @@ impl DepGraph {
             let dep_node_index = data.current.complete_anon_task(dep_kind, task_deps);
             (result, dep_node_index)
         } else {
-            (op(), self.next_virtual_depnode_index())
+            (op(), self.next_virtual_depnode_index(sess))
         }
     }
 
@@ -909,9 +916,13 @@ impl DepGraph {
         }
     }
 
-    fn next_virtual_depnode_index(&self) -> DepNodeIndex {
-        let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
-        DepNodeIndex::from_u32(index)
+    fn next_virtual_depnode_index(&self, sess: &Session) -> DepNodeIndex {
+        if unlikely!(sess.prof.enabled()) {
+            let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
+            DepNodeIndex::from_u32(index)
+        } else {
+            DepNodeIndex::INVALID
+        }
     }
 }
 

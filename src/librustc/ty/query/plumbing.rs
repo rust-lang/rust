@@ -385,7 +385,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
-                    tcx.dep_graph.with_anon_task(Q::dep_kind(), || Q::compute(tcx, key))
+                    tcx.dep_graph.with_anon_task(self.sess, Q::dep_kind(), || Q::compute(tcx, key))
                 })
             });
 
