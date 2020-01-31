@@ -138,19 +138,7 @@ impl<'a> Parser<'a> {
             self.parse_item_const(Some(m))?
         } else if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
-            if self.eat_keyword(kw::Mut) {
-                let prev_span = self.prev_span;
-                self.struct_span_err(prev_span, "const globals cannot be mutable")
-                    .span_label(prev_span, "cannot be mutable")
-                    .span_suggestion(
-                        const_span,
-                        "you might want to declare a static instead",
-                        "static".to_owned(),
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
-            }
-
+            self.recover_const_mut(const_span);
             self.parse_item_const(None)?
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -984,6 +972,22 @@ impl<'a> Parser<'a> {
             })
         } else {
             false
+        }
+    }
+
+    /// Recover on `const mut` with `const` already eaten.
+    fn recover_const_mut(&mut self, const_span: Span) {
+        if self.eat_keyword(kw::Mut) {
+            let span = self.prev_span;
+            self.struct_span_err(span, "const globals cannot be mutable")
+                .span_label(span, "cannot be mutable")
+                .span_suggestion(
+                    const_span,
+                    "you might want to declare a static instead",
+                    "static".to_owned(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
         }
     }
 
