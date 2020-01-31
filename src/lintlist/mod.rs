@@ -289,7 +289,7 @@ pub const ALL_LINTS: [Lint; 351] = [
     },
     Lint {
         name: "debug_assert_with_mut_call",
-        group: "correctness",
+        group: "nursery",
         desc: "mutable arguments in `debug_assert{,_ne,_eq}!`",
         deprecation: None,
         module: "mutable_debug_assertion",

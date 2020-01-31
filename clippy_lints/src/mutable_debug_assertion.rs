@@ -4,7 +4,7 @@ use matches::matches;
 use rustc::hir::map::Map;
 use rustc::ty;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
+use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// debug_assert!(take_a_mut_parameter(&mut 5));
     /// ```
     pub DEBUG_ASSERT_WITH_MUT_CALL,
-    correctness,
+    nursery,
     "mutable arguments in `debug_assert{,_ne,_eq}!`"
 }
 
@@ -61,38 +61,38 @@ fn extract_call<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> O
         if block.stmts.len() == 1;
         if let StmtKind::Semi(ref matchexpr) = block.stmts[0].kind;
         then {
+            // debug_assert
             if_chain! {
                 if let ExprKind::Match(ref ifclause, _, _) = matchexpr.kind;
                 if let ExprKind::DropTemps(ref droptmp) = ifclause.kind;
                 if let ExprKind::Unary(UnOp::UnNot, ref condition) = droptmp.kind;
                 then {
-                    // debug_assert
                     let mut visitor = MutArgVisitor::new(cx);
                     visitor.visit_expr(condition);
                     return visitor.expr_span();
-                } else {
-                    // debug_assert_{eq,ne}
-                    if_chain! {
-                        if let ExprKind::Block(ref matchblock, _) = matchexpr.kind;
-                        if let Some(ref matchheader) = matchblock.expr;
-                        if let ExprKind::Match(ref headerexpr, _, _) = matchheader.kind;
-                        if let ExprKind::Tup(ref conditions) = headerexpr.kind;
-                        if conditions.len() == 2;
-                        then {
-                            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref lhs) = conditions[0].kind {
-                                let mut visitor = MutArgVisitor::new(cx);
-                                visitor.visit_expr(lhs);
-                                if let Some(span) = visitor.expr_span() {
-                                    return Some(span);
-                                }
-                            }
-                            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref rhs) = conditions[1].kind {
-                                let mut visitor = MutArgVisitor::new(cx);
-                                visitor.visit_expr(rhs);
-                                if let Some(span) = visitor.expr_span() {
-                                    return Some(span);
-                                }
-                            }
+                }
+            }
+
+            // debug_assert_{eq,ne}
+            if_chain! {
+                if let ExprKind::Block(ref matchblock, _) = matchexpr.kind;
+                if let Some(ref matchheader) = matchblock.expr;
+                if let ExprKind::Match(ref headerexpr, _, _) = matchheader.kind;
+                if let ExprKind::Tup(ref conditions) = headerexpr.kind;
+                if conditions.len() == 2;
+                then {
+                    if let ExprKind::AddrOf(BorrowKind::Ref, _, ref lhs) = conditions[0].kind {
+                        let mut visitor = MutArgVisitor::new(cx);
+                        visitor.visit_expr(lhs);
+                        if let Some(span) = visitor.expr_span() {
+                            return Some(span);
+                        }
+                    }
+                    if let ExprKind::AddrOf(BorrowKind::Ref, _, ref rhs) = conditions[1].kind {
+                        let mut visitor = MutArgVisitor::new(cx);
+                        visitor.visit_expr(rhs);
+                        if let Some(span) = visitor.expr_span() {
+                            return Some(span);
                         }
                     }
                 }
@@ -147,6 +147,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                     }
                 }
             },
+            // Don't check await desugars
+            ExprKind::Match(_, _, MatchSource::AwaitDesugar) => return,
             _ if !self.found => self.expr_span = Some(expr.span),
             _ => return,
         }
