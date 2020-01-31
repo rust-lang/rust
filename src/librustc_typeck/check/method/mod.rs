@@ -58,7 +58,7 @@ pub enum MethodError<'tcx> {
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
-    IllegalSizedBound(Vec<DefId>, bool),
+    IllegalSizedBound(Vec<DefId>, bool, Span),
 
     // Found a match, but the return type is wrong
     BadReturnType,
@@ -204,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
 
-        if result.illegal_sized_bound {
+        if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind {
                 let trait_type = self
@@ -249,7 +249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => Vec::new(),
             };
 
-            return Err(IllegalSizedBound(candidates, needs_mut));
+            return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
 
         Ok(result.callee)
