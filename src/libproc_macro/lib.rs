@@ -303,7 +303,7 @@ impl Span {
     /// definition site (local variables, labels, `$crate`) and sometimes at the macro
     /// call site (everything else).
     /// The span location is taken from the call-site.
-    #[unstable(feature = "proc_macro_mixed_site", issue = "65049")]
+    #[stable(feature = "proc_macro_mixed_site", since = "1.45.0")]
     pub fn mixed_site() -> Span {
         Span(bridge::client::Span::mixed_site())
     }
