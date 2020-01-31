@@ -4,7 +4,7 @@ use std::{convert::TryFrom, rc::Rc, sync::Arc};
 
 pub fn no_vec() {
     let v: Vec<_> = [0; 33].into();
-    //~^ ERROR the trait bound `std::vec::Vec<u8>: std::convert::From<[u8; 33]>` is not satisfied
+    //~^ ERROR arrays only have std trait implementations for lengths 0..=32
 }
 
 pub fn no_box() {
