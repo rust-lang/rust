@@ -13,8 +13,8 @@ struct S;
 struct Type;
 
 impl TraitA<()> for S { //~ ERROR not all trait items implemented
-fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: std::marker::Copy { unimplemented!() }
-fn bar<T>(_: T) -> Self { unimplemented!() }
+fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: std::marker::Copy { todo!() }
+fn bar<T>(_: T) -> Self { todo!() }
 type Type = Type;
 }
 

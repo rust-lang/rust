@@ -2220,7 +2220,7 @@ fn bounds_from_generic_predicates(
     for projection in &projections {
         let p = projection.skip_binder();
         // FIXME: this is not currently supported syntax, we should be looking at the `types` and
-        // insert the associated types where they correspond, but for now lets be "lazy" and
+        // insert the associated types where they correspond, but for now let's be "lazy" and
         // propose this instead of the following valid resugaring:
         // `T: Trait, Trait::Assoc = K` → `T: Trait<Assoc = K>`
         where_clauses.push(format!("{} = {}", tcx.def_path_str(p.projection_ty.item_def_id), p.ty));
@@ -2277,7 +2277,7 @@ fn fn_sig_suggestion(
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
     format!(
-        "{}fn {}{}({}){}{} {{ unimplemented!() }}",
+        "{}fn {}{}({}){}{} {{ todo!() }}",
         unsafety, ident, generics, args, output, where_clauses
     )
 }
