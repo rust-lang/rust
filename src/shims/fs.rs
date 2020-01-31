@@ -950,7 +950,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
                     let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
 
-                    let name_offset = dirent_layout.details.fields.offset(4);
+                    let name_offset = dirent_layout.details.fields.offset(5);
                     let name_ptr = entry_ptr.offset(name_offset, this)?;
 
                     #[cfg(unix)]
@@ -969,8 +969,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                     let imms = [
                         immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
-                        immty_from_uint_checked(0u128, off_t_layout)?, // d_off
+                        immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
                         immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                        immty_from_uint_checked(file_name.len() as u128, c_ushort_layout)?, // d_namlen
                         immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
                     ];
                     this.write_packed_immediates(entry_place, &imms)?;
