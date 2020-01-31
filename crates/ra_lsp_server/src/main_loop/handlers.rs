@@ -33,6 +33,7 @@ use crate::{
         to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
         TryConvWithToVec,
     },
+    diagnostics::DiagnosticTask,
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
@@ -656,6 +657,7 @@ pub fn handle_code_action(
         .filter(|(diag_range, _fix)| diag_range.intersection(&range).is_some())
         .map(|(_range, fix)| fix);
 
+    // TODO: When done, we won't need this, only the one pulling from world.diagnostics
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
@@ -676,28 +678,12 @@ pub fn handle_code_action(
         res.push(action.into());
     }
 
-    for fix in world.check_watcher.fixes_for(&params.text_document.uri).into_iter().flatten() {
-        let fix_range = fix.location.range.conv_with(&line_index);
+    for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
+        let fix_range = fix.range.conv_with(&line_index);
         if fix_range.intersection(&range).is_none() {
             continue;
         }
-
-        let edit = {
-            let edits = vec![TextEdit::new(fix.location.range, fix.replacement.clone())];
-            let mut edit_map = std::collections::HashMap::new();
-            edit_map.insert(fix.location.uri.clone(), edits);
-            WorkspaceEdit::new(edit_map)
-        };
-
-        let action = CodeAction {
-            title: fix.title.clone(),
-            kind: Some("quickfix".to_string()),
-            diagnostics: Some(fix.diagnostics.clone()),
-            edit: Some(edit),
-            command: None,
-            is_preferred: None,
-        };
-        res.push(action.into());
+        res.push(fix.action.clone());
     }
 
     for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
@@ -875,14 +861,10 @@ pub fn handle_document_highlight(
     ))
 }
 
-pub fn publish_diagnostics(
-    world: &WorldSnapshot,
-    file_id: FileId,
-) -> Result<req::PublishDiagnosticsParams> {
+pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<DiagnosticTask> {
     let _p = profile("publish_diagnostics");
-    let uri = world.file_id_to_uri(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let mut diagnostics: Vec<Diagnostic> = world
+    let diagnostics: Vec<Diagnostic> = world
         .analysis()
         .diagnostics(file_id)?
         .into_iter()
@@ -896,10 +878,7 @@ pub fn publish_diagnostics(
             tags: None,
         })
         .collect();
-    if let Some(check_diags) = world.check_watcher.diagnostics_for(&uri) {
-        diagnostics.extend(check_diags.iter().cloned());
-    }
-    Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
+    Ok(DiagnosticTask::SetNative(file_id, diagnostics))
 }
 
 pub fn publish_decorations(

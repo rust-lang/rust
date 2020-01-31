@@ -17,16 +17,17 @@ use std::{
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
-use ra_cargo_watch::{CheckOptions, CheckTask};
+use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
 use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
-use ra_vfs::{VfsTask, Watch};
+use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
+    diagnostics::DiagnosticTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -254,6 +255,7 @@ pub fn main_loop(
 enum Task {
     Respond(Response),
     Notify(Notification),
+    Diagnostic(DiagnosticTask),
 }
 
 enum Event {
@@ -359,7 +361,7 @@ fn loop_turn(
             world_state.maybe_collect_garbage();
             loop_state.in_flight_libraries -= 1;
         }
-        Event::CheckWatcher(task) => on_check_task(pool, task, world_state, task_sender)?,
+        Event::CheckWatcher(task) => on_check_task(task, world_state, task_sender)?,
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(
                 world_state,
@@ -464,6 +466,7 @@ fn on_task(
         Task::Notify(n) => {
             msg_sender.send(n.into()).unwrap();
         }
+        Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, state),
     }
 }
 
@@ -621,23 +624,26 @@ fn on_notification(
 }
 
 fn on_check_task(
-    pool: &ThreadPool,
     task: CheckTask,
     world_state: &mut WorldState,
     task_sender: &Sender<Task>,
 ) -> Result<()> {
-    let urls = match task {
+    match task {
         CheckTask::ClearDiagnostics => {
-            let state = Arc::get_mut(&mut world_state.check_watcher.state)
-                .expect("couldn't get check watcher state as mutable");
-            state.clear()
+            task_sender.send(Task::Diagnostic(DiagnosticTask::ClearCheck))?;
         }
 
-        CheckTask::AddDiagnostic(url, diagnostic) => {
-            let state = Arc::get_mut(&mut world_state.check_watcher.state)
-                .expect("couldn't get check watcher state as mutable");
-            state.add_diagnostic_with_fixes(url.clone(), diagnostic);
-            vec![url]
+        CheckTask::AddDiagnostic { url, diagnostic, fixes } => {
+            let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
+            let file_id = world_state
+                .vfs
+                .read()
+                .path2file(&path)
+                .map(|it| FileId(it.0))
+                .ok_or_else(|| format!("unknown file: {}", path.to_string_lossy()))?;
+
+            task_sender
+                .send(Task::Diagnostic(DiagnosticTask::AddCheck(file_id, diagnostic, fixes)))?;
         }
 
         CheckTask::Status(progress) => {
@@ -647,31 +653,30 @@ fn on_check_task(
             };
             let not = notification_new::<req::Progress>(params);
             task_sender.send(Task::Notify(not)).unwrap();
-            Vec::new()
         }
     };
 
-    let subscriptions = urls
-        .into_iter()
-        .map(|url| {
-            let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
-            Ok(world_state.vfs.read().path2file(&path).map(|it| FileId(it.0)))
-        })
-        .filter_map(|res| res.transpose())
-        .collect::<Result<Vec<_>>>()?;
-
-    // We manually send a diagnostic update when the watcher asks
-    // us to, to avoid the issue of having to change the file to
-    // receive updated diagnostics.
-    update_file_notifications_on_threadpool(
-        pool,
-        world_state.snapshot(),
-        false,
-        task_sender.clone(),
-        subscriptions,
-    );
-
     Ok(())
+}
+
+fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state: &mut WorldState) {
+    let subscriptions = state.diagnostics.handle_task(task);
+
+    for file_id in subscriptions {
+        let path = state.vfs.read().file2path(VfsFile(file_id.0));
+        let uri = match url_from_path_with_drive_lowercasing(&path) {
+            Ok(uri) => uri,
+            Err(err) => {
+                log::error!("Couldn't convert path to url ({}): {:?}", err, path.to_string_lossy());
+                continue;
+            }
+        };
+
+        let diagnostics = state.diagnostics.diagnostics_for(file_id).cloned().collect();
+        let params = req::PublishDiagnosticsParams { uri, diagnostics, version: None };
+        let not = notification_new::<req::PublishDiagnostics>(params);
+        msg_sender.send(not.into()).unwrap();
+    }
 }
 
 struct PoolDispatcher<'a> {
@@ -819,9 +824,8 @@ fn update_file_notifications_on_threadpool(
                             log::error!("failed to compute diagnostics: {:?}", e);
                         }
                     }
-                    Ok(params) => {
-                        let not = notification_new::<req::PublishDiagnostics>(params);
-                        task_sender.send(Task::Notify(not)).unwrap();
+                    Ok(task) => {
+                        task_sender.send(Task::Diagnostic(task)).unwrap();
                     }
                 }
             }
