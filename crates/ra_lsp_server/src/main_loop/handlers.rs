@@ -1,7 +1,11 @@
 //! This module is responsible for implementing handlers for Lanuage Server Protocol.
 //! The majority of requests are fulfilled by calling into the `ra_ide` crate.
 
-use std::{fmt::Write as _, io::Write as _};
+use std::{
+    fmt::Write as _,
+    io::Write as _,
+    process::{self, Stdio},
+};
 
 use either::Either;
 use lsp_server::ErrorCode;
@@ -582,21 +586,19 @@ pub fn handle_formatting(
     let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
-    use std::process;
     let mut rustfmt = process::Command::new("rustfmt");
     if let Some(&crate_id) = crate_ids.first() {
         // Assume all crates are in the same edition
         let edition = world.analysis().crate_edition(crate_id)?;
         rustfmt.args(&["--edition", &edition.to_string()]);
     }
-    rustfmt.stdin(process::Stdio::piped()).stdout(process::Stdio::piped());
 
     if let Ok(path) = params.text_document.uri.to_file_path() {
         if let Some(parent) = path.parent() {
             rustfmt.current_dir(parent);
         }
     }
-    let mut rustfmt = rustfmt.spawn()?;
+    let mut rustfmt = rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
