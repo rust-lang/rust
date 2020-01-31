@@ -2,7 +2,8 @@
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
-//! drop their contents when they go out of scope.
+//! drop their contents when they go out of scope. Boxes also ensure that they
+//! never allocate more than `isize::MAX` bytes.
 //!
 //! # Examples
 //!

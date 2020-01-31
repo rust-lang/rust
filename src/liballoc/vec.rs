@@ -4,6 +4,8 @@
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
 //!
+//! Vectors ensure they never allocate more than `isize::MAX` bytes.
+//!
 //! # Examples
 //!
 //! You can explicitly create a [`Vec<T>`] with [`new`]:
