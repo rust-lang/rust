@@ -2398,7 +2398,10 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 }
 
 #[stable(feature = "vec_from_array", since = "1.42.0")]
-impl<T, const N: usize> From<[T; N]> for Vec<T> {
+impl<T, const N: usize> From<[T; N]> for Vec<T>
+where
+    [T; N]: LengthAtMost32,
+{
     fn from(arr: [T; N]) -> Self {
         <[T]>::into_vec(box arr)
     }
