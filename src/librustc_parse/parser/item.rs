@@ -203,101 +203,107 @@ impl<'a> Parser<'a> {
             return Ok(Some(macro_def));
         }
 
-        // Verify whether we have encountered a struct or method definition where the user forgot to
-        // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
         if vis.node.is_pub() && self.check_ident() && self.look_ahead(1, |t| *t != token::Not) {
-            // Space between `pub` keyword and the identifier
-            //
-            //     pub   S {}
-            //        ^^^ `sp` points here
-            let sp = self.prev_span.between(self.token.span);
-            let full_sp = self.prev_span.to(self.token.span);
-            let ident_sp = self.token.span;
-            if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
-                // possible public struct definition where `struct` was forgotten
-                let ident = self.parse_ident().unwrap();
-                let msg = format!("add `struct` here to parse `{}` as a public struct", ident);
-                let mut err = self.struct_span_err(sp, "missing `struct` for struct definition");
-                err.span_suggestion_short(
-                    sp,
-                    &msg,
-                    " struct ".into(),
-                    Applicability::MaybeIncorrect, // speculative
-                );
-                return Err(err);
-            } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
-                let ident = self.parse_ident().unwrap();
-                self.bump(); // `(`
-                let kw_name = self.recover_first_param();
-                self.consume_block(token::Paren, ConsumeClosingDelim::Yes);
-                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
-                    self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
-                    self.bump(); // `{`
-                    ("fn", kw_name, false)
-                } else if self.check(&token::OpenDelim(token::Brace)) {
-                    self.bump(); // `{`
-                    ("fn", kw_name, false)
-                } else if self.check(&token::Colon) {
-                    let kw = "struct";
-                    (kw, kw, false)
-                } else {
-                    ("fn` or `struct", "function or struct", true)
-                };
-
-                let msg = format!("missing `{}` for {} definition", kw, kw_name);
-                let mut err = self.struct_span_err(sp, &msg);
-                if !ambiguous {
-                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
-                    let suggestion =
-                        format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name);
-                    err.span_suggestion_short(
-                        sp,
-                        &suggestion,
-                        format!(" {} ", kw),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    if let Ok(snippet) = self.span_to_snippet(ident_sp) {
-                        err.span_suggestion(
-                            full_sp,
-                            "if you meant to call a macro, try",
-                            format!("{}!", snippet),
-                            // this is the `ambiguous` conditional branch
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        err.help(
-                            "if you meant to call a macro, remove the `pub` \
-                                  and add a trailing `!` after the identifier",
-                        );
-                    }
-                }
-                return Err(err);
-            } else if self.look_ahead(1, |t| *t == token::Lt) {
-                let ident = self.parse_ident().unwrap();
-                self.eat_to_tokens(&[&token::Gt]);
-                self.bump(); // `>`
-                let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    ("fn", self.recover_first_param(), false)
-                } else if self.check(&token::OpenDelim(token::Brace)) {
-                    ("struct", "struct", false)
-                } else {
-                    ("fn` or `struct", "function or struct", true)
-                };
-                let msg = format!("missing `{}` for {} definition", kw, kw_name);
-                let mut err = self.struct_span_err(sp, &msg);
-                if !ambiguous {
-                    err.span_suggestion_short(
-                        sp,
-                        &format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name),
-                        format!(" {} ", kw),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                return Err(err);
-            }
+            self.recover_missing_kw_before_item()?;
         }
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, vis)
+    }
+
+    /// Recover on encountering a struct or method definition where the user
+    /// forgot to add the `struct` or `fn` keyword after writing `pub`: `pub S {}`.
+    fn recover_missing_kw_before_item(&mut self) -> PResult<'a, ()> {
+        // Space between `pub` keyword and the identifier
+        //
+        //     pub   S {}
+        //        ^^^ `sp` points here
+        let sp = self.prev_span.between(self.token.span);
+        let full_sp = self.prev_span.to(self.token.span);
+        let ident_sp = self.token.span;
+        if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
+            // possible public struct definition where `struct` was forgotten
+            let ident = self.parse_ident().unwrap();
+            let msg = format!("add `struct` here to parse `{}` as a public struct", ident);
+            let mut err = self.struct_span_err(sp, "missing `struct` for struct definition");
+            err.span_suggestion_short(
+                sp,
+                &msg,
+                " struct ".into(),
+                Applicability::MaybeIncorrect, // speculative
+            );
+            return Err(err);
+        } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
+            let ident = self.parse_ident().unwrap();
+            self.bump(); // `(`
+            let kw_name = self.recover_first_param();
+            self.consume_block(token::Paren, ConsumeClosingDelim::Yes);
+            let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
+                self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
+                self.bump(); // `{`
+                ("fn", kw_name, false)
+            } else if self.check(&token::OpenDelim(token::Brace)) {
+                self.bump(); // `{`
+                ("fn", kw_name, false)
+            } else if self.check(&token::Colon) {
+                let kw = "struct";
+                (kw, kw, false)
+            } else {
+                ("fn` or `struct", "function or struct", true)
+            };
+
+            let msg = format!("missing `{}` for {} definition", kw, kw_name);
+            let mut err = self.struct_span_err(sp, &msg);
+            if !ambiguous {
+                self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                let suggestion =
+                    format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name);
+                err.span_suggestion_short(
+                    sp,
+                    &suggestion,
+                    format!(" {} ", kw),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                if let Ok(snippet) = self.span_to_snippet(ident_sp) {
+                    err.span_suggestion(
+                        full_sp,
+                        "if you meant to call a macro, try",
+                        format!("{}!", snippet),
+                        // this is the `ambiguous` conditional branch
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.help(
+                        "if you meant to call a macro, remove the `pub` \
+                                  and add a trailing `!` after the identifier",
+                    );
+                }
+            }
+            return Err(err);
+        } else if self.look_ahead(1, |t| *t == token::Lt) {
+            let ident = self.parse_ident().unwrap();
+            self.eat_to_tokens(&[&token::Gt]);
+            self.bump(); // `>`
+            let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
+                ("fn", self.recover_first_param(), false)
+            } else if self.check(&token::OpenDelim(token::Brace)) {
+                ("struct", "struct", false)
+            } else {
+                ("fn` or `struct", "function or struct", true)
+            };
+            let msg = format!("missing `{}` for {} definition", kw, kw_name);
+            let mut err = self.struct_span_err(sp, &msg);
+            if !ambiguous {
+                err.span_suggestion_short(
+                    sp,
+                    &format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name),
+                    format!(" {} ", kw),
+                    Applicability::MachineApplicable,
+                );
+            }
+            return Err(err);
+        } else {
+            Ok(())
+        }
     }
 
     pub(super) fn mk_item_with_info(
