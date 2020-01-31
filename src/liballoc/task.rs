@@ -83,5 +83,5 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     RawWaker::new(
         Arc::into_raw(waker) as *const (),
         &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
-    ))
+    )
 }
