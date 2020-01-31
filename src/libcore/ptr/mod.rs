@@ -471,7 +471,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for writes.
+/// * `dst` must be [valid] for both reads and writes.
 ///
 /// * `dst` must be properly aligned.
 ///
