@@ -480,7 +480,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
-            let ty = self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Opaque);
+            let ty = self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Param);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }

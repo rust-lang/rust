@@ -30,6 +30,7 @@ use crate::{
     Binders, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate, ProjectionTy, Substs,
     TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
+use hir_expand::name::Name;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a, DB: HirDatabase> {
@@ -69,6 +70,10 @@ pub enum ImplTraitLoweringMode {
     /// i.e. for arguments of the function we're currently checking, and return
     /// types of functions we're calling.
     Opaque,
+    /// `impl Trait` gets lowered into a type variable. Used for argument
+    /// position impl Trait currently, since it allows us to support that
+    /// without Chalk.
+    Param,
     /// `impl Trait` gets lowered into a variable that can unify with some
     /// type. This is used in places where values flow 'in', i.e. for arguments
     /// of functions we're calling, and the return type of the function we're
@@ -136,6 +141,11 @@ impl Ty {
                             })
                             .collect();
                         Ty::Opaque(predicates)
+                    }
+                    ImplTraitLoweringMode::Param => {
+                        let idx = ctx.impl_trait_counter.get();
+                        ctx.impl_trait_counter.set(idx + 1);
+                        Ty::Param { idx: idx as u32, name: Name::missing() }
                     }
                     ImplTraitLoweringMode::Variable => {
                         let idx = ctx.impl_trait_counter.get();
