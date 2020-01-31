@@ -286,11 +286,9 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     );
 
     return if r == 0 {
-        debug_assert!(update_panic_count(0) == 0);
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
         update_panic_count(-1);
-        debug_assert!(update_panic_count(0) == 0);
         Err(mem::transmute(raw::TraitObject {
             data: any_data as *mut _,
             vtable: any_vtable as *mut _,
