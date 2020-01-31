@@ -76,30 +76,25 @@ where
                 return Some(Err(AlwaysRequiresDrop));
             }
 
-            let components = match needs_drop_components(ty) {
+            let components = match needs_drop_components(ty, &tcx.data_layout) {
                 Err(e) => return Some(Err(e)),
                 Ok(components) => components,
             };
             debug!("needs_drop_components({:?}) = {:?}", ty, components);
 
+            let queue_type = move |this: &mut Self, component: Ty<'tcx>| {
+                if this.seen_tys.insert(component) {
+                    this.unchecked_tys.push((component, level + 1));
+                }
+            };
+
             for component in components {
                 match component.kind {
                     _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
 
-                    ty::Array(elem_ty, len) => {
-                        // Zero-length arrays never contain anything to drop.
-                        if len.try_eval_usize(tcx, self.param_env) != Some(0) {
-                            if self.seen_tys.insert(elem_ty) {
-                                self.unchecked_tys.push((elem_ty, level + 1));
-                            }
-                        }
-                    }
-
                     ty::Closure(def_id, substs) => {
                         for upvar_ty in substs.as_closure().upvar_tys(def_id, tcx) {
-                            if self.seen_tys.insert(upvar_ty) {
-                                self.unchecked_tys.push((upvar_ty, level + 1));
-                            }
+                            queue_type(self, upvar_ty);
                         }
                     }
 
@@ -116,21 +111,19 @@ where
                                 self.param_env,
                                 required_ty.subst(tcx, substs),
                             );
-                            if self.seen_tys.insert(subst_ty) {
-                                self.unchecked_tys.push((subst_ty, level + 1));
-                            }
+                            queue_type(self, subst_ty);
                         }
                     }
-                    ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
+                    ty::Array(..) | ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
                         if ty == component {
-                            // Return the type to the caller so they can decide
-                            // what to do with it.
+                            // Return the type to the caller: they may be able
+                            // to normalize further than we can.
                             return Some(Ok(component));
-                        } else if self.seen_tys.insert(component) {
+                        } else {
                             // Store the type for later. We can't return here
                             // because we would then lose any other components
                             // of the type.
-                            self.unchecked_tys.push((component, level + 1));
+                            queue_type(self, component);
                         }
                     }
                     _ => return Some(Err(AlwaysRequiresDrop)),
