@@ -68,6 +68,7 @@ extern "rust-intrinsic" {
     // memory, which is not valid for either `&` or `&mut`.
 
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -77,6 +78,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -86,6 +88,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -97,6 +100,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -108,6 +112,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -117,6 +122,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -128,6 +134,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -139,6 +146,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -150,6 +158,7 @@ extern "rust-intrinsic" {
     /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -162,6 +171,7 @@ extern "rust-intrinsic" {
     pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -171,6 +181,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -180,6 +191,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -191,6 +203,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -202,6 +215,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -211,6 +225,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -222,6 +237,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -233,6 +249,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -244,6 +261,7 @@ extern "rust-intrinsic" {
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -256,6 +274,7 @@ extern "rust-intrinsic" {
     pub fn atomic_cxchgweak_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Loads the current value of the pointer.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -263,6 +282,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
     pub fn atomic_load<T>(src: *const T) -> T;
     /// Loads the current value of the pointer.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -270,6 +290,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::load`](../../std/sync/atomic/struct.AtomicBool.html#method.load).
     pub fn atomic_load_acq<T>(src: *const T) -> T;
     /// Loads the current value of the pointer.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `load` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -279,6 +300,7 @@ extern "rust-intrinsic" {
     pub fn atomic_load_unordered<T>(src: *const T) -> T;
 
     /// Stores the value at the specified memory location.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -286,6 +308,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
     pub fn atomic_store<T>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -293,6 +316,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::store`](../../std/sync/atomic/struct.AtomicBool.html#method.store).
     pub fn atomic_store_rel<T>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `store` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -302,6 +326,7 @@ extern "rust-intrinsic" {
     pub fn atomic_store_unordered<T>(dst: *mut T, val: T);
 
     /// Stores the value at the specified memory location, returning the old value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -309,6 +334,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg<T>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -316,6 +342,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_acq<T>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -323,6 +350,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_rel<T>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -330,6 +358,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `swap` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -338,6 +367,7 @@ extern "rust-intrinsic" {
     pub fn atomic_xchg_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Adds to the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -345,6 +375,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd<T>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -352,6 +383,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acq<T>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -359,6 +391,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_rel<T>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -366,6 +399,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -374,6 +408,7 @@ extern "rust-intrinsic" {
     pub fn atomic_xadd_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Subtract from the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -381,6 +416,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub<T>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -388,6 +424,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_acq<T>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -395,6 +432,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_rel<T>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -402,6 +440,7 @@ extern "rust-intrinsic" {
     /// [`AtomicIsize::fetch_sub`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_sub).
     pub fn atomic_xsub_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_sub` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -410,6 +449,7 @@ extern "rust-intrinsic" {
     pub fn atomic_xsub_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Bitwise and with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -417,6 +457,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and<T>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -424,6 +465,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_acq<T>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -431,6 +473,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_rel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -438,6 +481,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_and`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_and).
     pub fn atomic_and_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_and` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -446,6 +490,7 @@ extern "rust-intrinsic" {
     pub fn atomic_and_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Bitwise nand with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -453,6 +498,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand<T>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -460,6 +506,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_acq<T>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -467,6 +514,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_rel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -474,6 +522,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_nand`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_nand).
     pub fn atomic_nand_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic::AtomicBool` type via the `fetch_nand` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -482,6 +531,7 @@ extern "rust-intrinsic" {
     pub fn atomic_nand_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Bitwise or with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -489,6 +539,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or<T>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -496,6 +547,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_acq<T>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -503,6 +555,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_rel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -510,6 +563,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_or`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_or).
     pub fn atomic_or_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_or` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -518,6 +572,7 @@ extern "rust-intrinsic" {
     pub fn atomic_or_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Bitwise xor with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
@@ -525,6 +580,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor<T>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -532,6 +588,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_acq<T>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
@@ -539,6 +596,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_rel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
@@ -546,6 +604,7 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::fetch_xor`](../../std/sync/atomic/struct.AtomicBool.html#method.fetch_xor).
     pub fn atomic_xor_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_xor` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -554,6 +613,7 @@ extern "rust-intrinsic" {
     pub fn atomic_xor_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
@@ -561,6 +621,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
@@ -568,6 +629,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_acq<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
@@ -575,6 +637,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_rel<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
@@ -582,6 +645,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_max`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_max).
     pub fn atomic_max_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
@@ -590,6 +654,7 @@ extern "rust-intrinsic" {
     pub fn atomic_max_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Minimum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
@@ -597,6 +662,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
@@ -604,6 +670,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acq<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
@@ -611,6 +678,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_rel<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
@@ -618,6 +686,7 @@ extern "rust-intrinsic" {
     /// [`AtomicI32::fetch_min`](../../std/sync/atomic/struct.AtomicI32.html#method.fetch_min).
     pub fn atomic_min_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a sized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
@@ -626,6 +695,7 @@ extern "rust-intrinsic" {
     pub fn atomic_min_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Minimum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
@@ -633,6 +703,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
@@ -640,6 +711,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acq<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
@@ -647,6 +719,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_rel<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
@@ -654,6 +727,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_min`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_min).
     pub fn atomic_umin_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
@@ -662,6 +736,7 @@ extern "rust-intrinsic" {
     pub fn atomic_umin_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// Maximum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html#variant.SeqCst)
@@ -669,6 +744,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html#variant.Acquire)
@@ -676,6 +752,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acq<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html#variant.Release)
@@ -683,6 +760,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_rel<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html#variant.AcqRel)
@@ -690,6 +768,7 @@ extern "rust-intrinsic" {
     /// [`AtomicU32::fetch_max`](../../std/sync/atomic/struct.AtomicU32.html#method.fetch_max).
     pub fn atomic_umax_acqrel<T>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsized comparison.
+    ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html#variant.Relaxed)
@@ -734,6 +813,7 @@ extern "rust-intrinsic" {
 extern "rust-intrinsic" {
 
     /// An atomic fence.
+    ///
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
@@ -741,6 +821,7 @@ extern "rust-intrinsic" {
     /// as the `order`.
     pub fn atomic_fence();
     /// An atomic fence.
+    ///
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
@@ -748,6 +829,7 @@ extern "rust-intrinsic" {
     /// as the `order`.
     pub fn atomic_fence_acq();
     /// An atomic fence.
+    ///
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
@@ -755,6 +837,7 @@ extern "rust-intrinsic" {
     /// as the `order`.
     pub fn atomic_fence_rel();
     /// An atomic fence.
+    ///
     /// The stabilized version of this intrinsic is available in
     /// [`std::sync::atomic::fence`](../../std/sync/atomic/fn.fence.html)
     /// by passing
@@ -881,6 +964,7 @@ extern "rust-intrinsic" {
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::type_name`](../../std/any/fn.type_name.html)
     #[rustc_const_unstable(feature = "const_type_name", issue = "none")]
@@ -889,6 +973,7 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
     #[rustc_const_unstable(feature = "const_type_id", issue = "none")]
@@ -1220,10 +1305,12 @@ extern "rust-intrinsic" {
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Performs a volatile load from the `src` pointer.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::read_volatile`](../../std/ptr/fn.read_volatile.html).
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
@@ -1236,162 +1323,198 @@ extern "rust-intrinsic" {
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
     pub fn sqrtf64(x: f64) -> f64;
 
     /// Raises an `f32` to an integer power.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::powi`](../../std/primitive.f32.html#method.powi)
     pub fn powif32(a: f32, x: i32) -> f32;
     /// Raises an `f64` to an integer power.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::powi`](../../std/primitive.f64.html#method.powi)
     pub fn powif64(a: f64, x: i32) -> f64;
 
     /// Returns the sine of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::sin`](../../std/primitive.f32.html#method.sin)
     pub fn sinf32(x: f32) -> f32;
     /// Returns the sine of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::sin`](../../std/primitive.f64.html#method.sin)
     pub fn sinf64(x: f64) -> f64;
 
     /// Returns the cosine of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::cos`](../../std/primitive.f32.html#method.cos)
     pub fn cosf32(x: f32) -> f32;
     /// Returns the cosine of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::cos`](../../std/primitive.f64.html#method.cos)
     pub fn cosf64(x: f64) -> f64;
 
     /// Raises an `f32` to an `f32` power.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::powf`](../../std/primitive.f32.html#method.powf)
     pub fn powf32(a: f32, x: f32) -> f32;
     /// Raises an `f64` to an `f64` power.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::powf`](../../std/primitive.f64.html#method.powf)
     pub fn powf64(a: f64, x: f64) -> f64;
 
     /// Returns the exponential of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::exp`](../../std/primitive.f32.html#method.exp)
     pub fn expf32(x: f32) -> f32;
     /// Returns the exponential of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::exp`](../../std/primitive.f64.html#method.exp)
     pub fn expf64(x: f64) -> f64;
 
     /// Returns 2 raised to the power of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::exp2`](../../std/primitive.f32.html#method.exp2)
     pub fn exp2f32(x: f32) -> f32;
     /// Returns 2 raised to the power of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::exp2`](../../std/primitive.f64.html#method.exp2)
     pub fn exp2f64(x: f64) -> f64;
 
     /// Returns the natural logarithm of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::ln`](../../std/primitive.f32.html#method.ln)
     pub fn logf32(x: f32) -> f32;
     /// Returns the natural logarithm of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::ln`](../../std/primitive.f64.html#method.ln)
     pub fn logf64(x: f64) -> f64;
 
     /// Returns the base 10 logarithm of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::log10`](../../std/primitive.f32.html#method.log10)
     pub fn log10f32(x: f32) -> f32;
     /// Returns the base 10 logarithm of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::log10`](../../std/primitive.f64.html#method.log10)
     pub fn log10f64(x: f64) -> f64;
 
     /// Returns the base 2 logarithm of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::log2`](../../std/primitive.f32.html#method.log2)
     pub fn log2f32(x: f32) -> f32;
     /// Returns the base 2 logarithm of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::log2`](../../std/primitive.f64.html#method.log2)
     pub fn log2f64(x: f64) -> f64;
 
     /// Returns `a * b + c` for `f32` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
     pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
     /// Returns `a * b + c` for `f64` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 
     /// Returns the absolute value of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::abs`](../../std/primitive.f32.html#method.abs)
     pub fn fabsf32(x: f32) -> f32;
     /// Returns the absolute value of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::abs`](../../std/primitive.f64.html#method.abs)
     pub fn fabsf64(x: f64) -> f64;
 
     /// Returns the minimum of two `f32` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::min`](../../std/primitive.f32.html#method.min)
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::min`](../../std/primitive.f64.html#method.min)
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::max`](../../std/primitive.f32.html#method.max)
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::max`](../../std/primitive.f64.html#method.max)
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::copysign`](../../std/primitive.f32.html#method.copysign)
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::copysign`](../../std/primitive.f64.html#method.copysign)
     pub fn copysignf64(x: f64, y: f64) -> f64;
 
     /// Returns the largest integer less than or equal to an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::floor`](../../std/primitive.f32.html#method.floor)
     pub fn floorf32(x: f32) -> f32;
     /// Returns the largest integer less than or equal to an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::floor`](../../std/primitive.f64.html#method.floor)
     pub fn floorf64(x: f64) -> f64;
 
     /// Returns the smallest integer greater than or equal to an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::ceil`](../../std/primitive.f32.html#method.ceil)
     pub fn ceilf32(x: f32) -> f32;
     /// Returns the smallest integer greater than or equal to an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::ceil`](../../std/primitive.f64.html#method.ceil)
     pub fn ceilf64(x: f64) -> f64;
 
     /// Returns the integer part of an `f32`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::trunc`](../../std/primitive.f32.html#method.trunc)
     pub fn truncf32(x: f32) -> f32;
     /// Returns the integer part of an `f64`.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::trunc`](../../std/primitive.f64.html#method.trunc)
     pub fn truncf64(x: f64) -> f64;
@@ -1409,10 +1532,12 @@ extern "rust-intrinsic" {
     pub fn nearbyintf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f32::round`](../../std/primitive.f32.html#method.round)
     pub fn roundf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::f64::round`](../../std/primitive.f64.html#method.round)
     pub fn roundf64(x: f64) -> f64;
@@ -1443,6 +1568,7 @@ extern "rust-intrinsic" {
     pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `count_ones` method. For example,
     /// [`std::u32::count_ones`](../../std/primitive.u32.html#method.count_ones)
@@ -1450,6 +1576,7 @@ extern "rust-intrinsic" {
     pub fn ctpop<T>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `leading_zeros` method. For example,
     /// [`std::u32::leading_zeros`](../../std/primitive.u32.html#method.leading_zeros)
@@ -1498,6 +1625,7 @@ extern "rust-intrinsic" {
     pub fn ctlz_nonzero<T>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `trailing_zeros` method. For example,
     /// [`std::u32::trailing_zeros`](../../std/primitive.u32.html#method.trailing_zeros)
@@ -1546,6 +1674,7 @@ extern "rust-intrinsic" {
     pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `swap_bytes` method. For example,
     /// [`std::u32::swap_bytes`](../../std/primitive.u32.html#method.swap_bytes)
@@ -1553,6 +1682,7 @@ extern "rust-intrinsic" {
     pub fn bswap<T>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `reverse_bits` method. For example,
     /// [`std::u32::reverse_bits`](../../std/primitive.u32.html#method.reverse_bits)
@@ -1560,6 +1690,7 @@ extern "rust-intrinsic" {
     pub fn bitreverse<T>(x: T) -> T;
 
     /// Performs checked integer addition.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
     /// [`std::u32::overflowing_add`](../../std/primitive.u32.html#method.overflowing_add)
@@ -1567,6 +1698,7 @@ extern "rust-intrinsic" {
     pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_sub` method. For example,
     /// [`std::u32::overflowing_sub`](../../std/primitive.u32.html#method.overflowing_sub)
@@ -1574,6 +1706,7 @@ extern "rust-intrinsic" {
     pub fn sub_with_overflow<T>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_mul` method. For example,
     /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
@@ -1585,7 +1718,7 @@ extern "rust-intrinsic" {
     pub fn exact_div<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
-    /// where y = 0 or x = `T::min_value()` and y = -1.
+    /// where y = 0 or x = `T::min_value()` and y = -1
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_div` method. For example,
@@ -1603,6 +1736,7 @@ extern "rust-intrinsic" {
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_shl` method. For example,
     /// [`std::u32::wrapping_shl`](../../std/primitive.u32.html#method.wrapping_shl)
@@ -1610,6 +1744,7 @@ extern "rust-intrinsic" {
     pub fn unchecked_shl<T>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_shr` method. For example,
     /// [`std::u32::wrapping_shr`](../../std/primitive.u32.html#method.wrapping_shr)
@@ -1632,6 +1767,7 @@ extern "rust-intrinsic" {
     pub fn unchecked_mul<T>(x: T, y: T) -> T;
 
     /// Performs rotate left.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
@@ -1639,6 +1775,7 @@ extern "rust-intrinsic" {
     pub fn rotate_left<T>(x: T, y: T) -> T;
 
     /// Performs rotate right.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
     /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
@@ -1646,18 +1783,21 @@ extern "rust-intrinsic" {
     pub fn rotate_right<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,
     /// [`std::u32::wrapping_add`](../../std/primitive.u32.html#method.wrapping_add)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_sub` method. For example,
     /// [`std::u32::wrapping_sub`](../../std/primitive.u32.html#method.wrapping_sub)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_mul` method. For example,
     /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
@@ -1665,12 +1805,14 @@ extern "rust-intrinsic" {
     pub fn wrapping_mul<T>(a: T, b: T) -> T;
 
     /// Computes `a + b`, while saturating at numeric bounds.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_add` method. For example,
     /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_add<T>(a: T, b: T) -> T;
     /// Computes `a - b`, while saturating at numeric bounds.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
     /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
@@ -1679,6 +1821,7 @@ extern "rust-intrinsic" {
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
     pub fn discriminant_value<T>(v: &T) -> u64;
