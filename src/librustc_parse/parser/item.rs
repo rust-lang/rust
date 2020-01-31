@@ -740,7 +740,8 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
-        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
+
+        let (ident, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
@@ -751,17 +752,9 @@ impl<'a> Parser<'a> {
             self.parse_assoc_const()?
         };
 
-        Ok(AssocItem {
-            id: DUMMY_NODE_ID,
-            span: lo.to(self.prev_span),
-            ident: name,
-            attrs,
-            vis,
-            defaultness,
-            generics,
-            kind,
-            tokens: None,
-        })
+        let span = lo.to(self.prev_span);
+        let id = DUMMY_NODE_ID;
+        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, generics, kind, tokens: None })
     }
 
     /// This parses the grammar:
@@ -967,7 +960,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
-    /// Parses a foreign item.
+    /// Parses a foreign item (one in an `extern { ... }` block).
     pub fn parse_foreign_item(&mut self) -> PResult<'a, P<ForeignItem>> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
@@ -975,27 +968,17 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
 
-        if self.check_keyword(kw::Type) {
+        let (ident, kind) = if self.check_keyword(kw::Type) {
             // FOREIGN TYPE ITEM
-            self.parse_item_foreign_type(vis, lo, attrs)
+            self.parse_item_foreign_type()?
         } else if self.check_fn_front_matter() {
             // FOREIGN FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
-            let kind = ForeignItemKind::Fn(sig, generics, body);
-            let span = lo.to(self.prev_span);
-            Ok(P(ast::ForeignItem {
-                ident,
-                attrs,
-                kind,
-                id: DUMMY_NODE_ID,
-                span,
-                vis,
-                tokens: None,
-            }))
+            (ident, ForeignItemKind::Fn(sig, generics, body))
         } else if self.is_static_global() {
             // FOREIGN STATIC ITEM
             self.bump(); // `static`
-            self.parse_item_foreign_static(vis, lo, attrs)
+            self.parse_item_foreign_static()?
         } else if self.token.is_keyword(kw::Const) {
             // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
             self.bump(); // `const`
@@ -1007,66 +990,37 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 )
                 .emit();
-            self.parse_item_foreign_static(vis, lo, attrs)
+            self.parse_item_foreign_static()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", Some(&vis), &mut false)? {
-            let kind = ForeignItemKind::Macro(mac);
-            let span = lo.to(self.prev_span);
-            let ident = Ident::invalid();
-            Ok(P(ForeignItem { ident, span, id: DUMMY_NODE_ID, attrs, vis, kind, tokens: None }))
+            (Ident::invalid(), ForeignItemKind::Macro(mac))
         } else {
             if !attrs.is_empty() {
                 self.expected_item_err(&attrs)?;
             }
-            self.unexpected()
-        }
+            self.unexpected()?
+        };
+
+        let span = lo.to(self.prev_span);
+        Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
     }
 
     /// Parses a static item from a foreign module.
     /// Assumes that the `static` keyword is already parsed.
-    fn parse_item_foreign_static(
-        &mut self,
-        vis: ast::Visibility,
-        lo: Span,
-        attrs: Vec<Attribute>,
-    ) -> PResult<'a, P<ForeignItem>> {
+    fn parse_item_foreign_static(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
         let mutbl = self.parse_mutability();
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
-        let hi = self.token.span;
         self.expect_semi()?;
-        Ok(P(ForeignItem {
-            ident,
-            attrs,
-            kind: ForeignItemKind::Static(ty, mutbl),
-            id: DUMMY_NODE_ID,
-            span: lo.to(hi),
-            vis,
-            tokens: None,
-        }))
+        Ok((ident, ForeignItemKind::Static(ty, mutbl)))
     }
 
     /// Parses a type from a foreign module.
-    fn parse_item_foreign_type(
-        &mut self,
-        vis: ast::Visibility,
-        lo: Span,
-        attrs: Vec<Attribute>,
-    ) -> PResult<'a, P<ForeignItem>> {
+    fn parse_item_foreign_type(&mut self) -> PResult<'a, (Ident, ForeignItemKind)> {
         self.expect_keyword(kw::Type)?;
-
         let ident = self.parse_ident()?;
-        let hi = self.token.span;
         self.expect_semi()?;
-        Ok(P(ast::ForeignItem {
-            ident,
-            attrs,
-            kind: ForeignItemKind::Ty,
-            id: DUMMY_NODE_ID,
-            span: lo.to(hi),
-            vis,
-            tokens: None,
-        }))
+        Ok((ident, ForeignItemKind::Ty))
     }
 
     fn is_static_global(&mut self) -> bool {
