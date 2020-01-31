@@ -6,15 +6,60 @@ document.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[c8e3cfb...master](https://github.com/rust-lang/rust-clippy/compare/c8e3cfb...master)
+[69f99e7...master](https://github.com/rust-lang/rust-clippy/compare/69f99e7...master)
 
-## Rust 1.41
+## Rust 1.42
 
 Current Beta
 
+## Rust 1.41
+
+Current stable, released 2020-01-30
+
+[c8e3cfb...69f99e7](https://github.com/rust-lang/rust-clippy/compare/c8e3cfb...69f99e7)
+
+* New Lints:
+  * [`exit`] [#4697](https://github.com/rust-lang/rust-clippy/pull/4697)
+  * [`to_digit_is_some`] [#4801](https://github.com/rust-lang/rust-clippy/pull/4801)
+  * [`tabs_in_doc_comments`] [#4806](https://github.com/rust-lang/rust-clippy/pull/4806)
+  * [`large_stack_arrays`] [#4807](https://github.com/rust-lang/rust-clippy/pull/4807)
+  * [`same_functions_in_if_condition`] [#4814](https://github.com/rust-lang/rust-clippy/pull/4814)
+  * [`zst_offset`] [#4816](https://github.com/rust-lang/rust-clippy/pull/4816)
+  * [`as_conversions`] [#4821](https://github.com/rust-lang/rust-clippy/pull/4821)
+  * [`missing_errors_doc`] [#4884](https://github.com/rust-lang/rust-clippy/pull/4884)
+  * [`transmute_float_to_int`] [#4889](https://github.com/rust-lang/rust-clippy/pull/4889)
+* Remove plugin interface, see
+  [Inside Rust Blog](https://blog.rust-lang.org/inside-rust/2019/11/04/Clippy-removes-plugin-interface.html) for
+  details [#4714](https://github.com/rust-lang/rust-clippy/pull/4714)
+* Move [`use_self`] to nursery group [#4863](https://github.com/rust-lang/rust-clippy/pull/4863)
+* Deprecate [`into_iter_on_array`] [#4788](https://github.com/rust-lang/rust-clippy/pull/4788)
+* Expand [`string_lit_as_bytes`] to also trigger when literal has escapes
+  [#4808](https://github.com/rust-lang/rust-clippy/pull/4808)
+* Fix false positive in `comparison_chain` [#4842](https://github.com/rust-lang/rust-clippy/pull/4842)
+* Fix false positive in `while_immutable_condition` [#4730](https://github.com/rust-lang/rust-clippy/pull/4730)
+* Fix false positive in `explicit_counter_loop` [#4803](https://github.com/rust-lang/rust-clippy/pull/4803)
+* Fix false positive in `must_use_candidate` [#4794](https://github.com/rust-lang/rust-clippy/pull/4794)
+* Fix false positive in `print_with_newline` and `write_with_newline`
+  [#4769](https://github.com/rust-lang/rust-clippy/pull/4769)
+* Fix false positive in `derive_hash_xor_eq` [#4766](https://github.com/rust-lang/rust-clippy/pull/4766)
+* Fix false positive in `missing_inline_in_public_items` [#4870](https://github.com/rust-lang/rust-clippy/pull/4870)
+* Fix false positive in `string_add` [#4880](https://github.com/rust-lang/rust-clippy/pull/4880)
+* Fix false positive in `float_arithmetic` [#4851](https://github.com/rust-lang/rust-clippy/pull/4851)
+* Fix false positive in `cast_sign_loss` [#4883](https://github.com/rust-lang/rust-clippy/pull/4883)
+* Fix false positive in `manual_swap` [#4877](https://github.com/rust-lang/rust-clippy/pull/4877)
+* Fix ICEs occurring while checking some block expressions [#4772](https://github.com/rust-lang/rust-clippy/pull/4772)
+* Fix ICE in `use_self` [#4776](https://github.com/rust-lang/rust-clippy/pull/4776)
+* Fix ICEs related to `const_generics` [#4780](https://github.com/rust-lang/rust-clippy/pull/4780)
+* Display help when running `clippy-driver` without arguments, instead of ICEing
+  [#4810](https://github.com/rust-lang/rust-clippy/pull/4810)
+* Clippy has its own ICE message now [#4588](https://github.com/rust-lang/rust-clippy/pull/4588)
+* Show deprecated lints in the documentation again [#4757](https://github.com/rust-lang/rust-clippy/pull/4757)
+* Improve Documentation by adding positive examples to some lints
+  [#4832](https://github.com/rust-lang/rust-clippy/pull/4832)
+
 ## Rust 1.40
 
-Current stable, released 2019-12-19
+Released 2019-12-19
 
 [4e7e71b...c8e3cfb](https://github.com/rust-lang/rust-clippy/compare/4e7e71b...c8e3cfb)
 
