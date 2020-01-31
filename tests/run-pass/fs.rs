@@ -41,8 +41,14 @@ fn main() {
     // Reading until EOF should get the whole text.
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
-    // Cloning a file should be successful
-    file.try_clone().unwrap();
+
+    // Cloning a file should be successful.
+    let file = File::open(&path).unwrap();
+    let mut cloned = file.try_clone().unwrap();
+    // Reading from a cloned file should get the same text.
+    let mut contents = Vec::new();
+    cloned.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
 
     // Test that seeking to the beginning and reading until EOF gets the text again.
     file.seek(SeekFrom::Start(0)).unwrap();
