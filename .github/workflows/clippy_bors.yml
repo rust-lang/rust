@@ -149,8 +149,50 @@ jobs:
         /usr/bin/find ~/.cargo/bin ! -type d -exec strip {} \;
         cargo cache --autoclean
       shell: bash
-  integration:
+  integration_build:
     needs: changelog
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+    - name: Cache cargo dir
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+    - name: Master Toolchain Setup
+      run: bash setup-toolchain.sh
+
+    - name: Build Integration Test
+      run: cargo test --test integration --features integration --no-run
+    - name: Extract Binaries
+      run: |
+        DIR=$CARGO_TARGET_DIR/debug
+        find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
+        mv $DIR/integration-* $DIR/integration
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v1
+      with:
+        name: target
+        path: target
+
+    - name: Run cargo-cache --autoclean
+      run: |
+        cargo install cargo-cache --debug
+        find ~/.cargo/bin ! -type d -exec strip {} \;
+        cargo cache --autoclean
+  integration:
+    needs: integration_build
     strategy:
       fail-fast: false
       max-parallel: 6
@@ -194,12 +236,18 @@ jobs:
     - name: Master Toolchain Setup
       run: bash setup-toolchain.sh
 
-    - name: Build
-      run: cargo build --features integration
+    - name: Download target dir
+      uses: actions/download-artifact@v1
+      with:
+        name: target
+        path: target
+    - name: Make Binaries Executable
+      run: chmod +x $CARGO_TARGET_DIR/debug/*
     - name: Test ${{ matrix.integration }}
-      run: cargo test --test integration --features integration
+      run: $CARGO_TARGET_DIR/debug/integration
       env:
         INTEGRATION: ${{ matrix.integration }}
+        RUSTUP_TOOLCHAIN: master
 
     - name: Run cargo-cache --autoclean
       run: |
