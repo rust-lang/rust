@@ -475,6 +475,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// * `dst` must be properly aligned.
 ///
+/// * `dst` must point to a properly initialized value of type `T`.
+///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// [valid]: ../ptr/index.html#safety
@@ -513,6 +515,8 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
+///
+/// * `src` must point to a properly initialized value of type `T`.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
@@ -627,6 +631,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `src` must be [valid] for reads.
+///
+/// * `src` must point to a properly initialized value of type `T`.
 ///
 /// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
@@ -921,6 +927,8 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// * `src` must be [valid] for reads.
 ///
 /// * `src` must be properly aligned.
+///
+/// * `src` must point to a properly initialized value of type `T`.
 ///
 /// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
