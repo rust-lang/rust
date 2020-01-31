@@ -6,7 +6,7 @@ LL | impl m1::X for X {
    |
    = help: implement the missing item: `const CONSTANT: u32 = 42;`
    = help: implement the missing item: `type Type = Type;`
-   = help: implement the missing item: `fn method(&self, _: std::string::String) -> <Self as m1::X>::Type { unimplemented!() }`
+   = help: implement the missing item: `fn method(&self, _: std::string::String) -> <Self as m1::X>::Type { todo!() }`
 
 error: aborting due to previous error
 
