@@ -171,12 +171,12 @@ pub fn run(
     println!(
         "Expressions of unknown type: {} ({}%)",
         num_exprs_unknown,
-        if num_exprs > 0 { (num_exprs_unknown * 100 / num_exprs) } else { 100 }
+        if num_exprs > 0 { num_exprs_unknown * 100 / num_exprs } else { 100 }
     );
     println!(
         "Expressions of partially unknown type: {} ({}%)",
         num_exprs_partially_unknown,
-        if num_exprs > 0 { (num_exprs_partially_unknown * 100 / num_exprs) } else { 100 }
+        if num_exprs > 0 { num_exprs_partially_unknown * 100 / num_exprs } else { 100 }
     );
     println!("Type mismatches: {}", num_type_mismatches);
     println!("Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
