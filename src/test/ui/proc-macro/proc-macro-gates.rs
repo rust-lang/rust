@@ -45,13 +45,4 @@ fn attrs() {
     //~^ ERROR: custom attributes cannot be applied to expressions
 }
 
-fn main() {
-    if let identity!(Some(_x)) = Some(3) {}
-    //~^ ERROR: procedural macros cannot be expanded to patterns
-
-    empty!(struct S;); //~ ERROR: procedural macros cannot be expanded to statements
-    empty!(let _x = 3;); //~ ERROR: procedural macros cannot be expanded to statements
-
-    let _x = identity!(3); //~ ERROR: procedural macros cannot be expanded to expressions
-    let _x = [empty!(3)]; //~ ERROR: procedural macros cannot be expanded to expressions
-}
+fn main() {}

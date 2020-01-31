@@ -679,7 +679,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    self.gate_proc_macro_expansion_kind(span, fragment_kind);
                     let tok_result = match expander.expand(self.cx, span, mac.args.inner_tokens()) {
                         Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
                         Ok(ts) => ts,
@@ -844,36 +843,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if !self.cx.ecfg.proc_macro_hygiene() {
             annotatable.visit_with(&mut GateProcMacroInput { parse_sess: self.cx.parse_sess });
         }
-    }
-
-    fn gate_proc_macro_expansion_kind(&self, span: Span, kind: AstFragmentKind) {
-        let kind = match kind {
-            AstFragmentKind::Expr | AstFragmentKind::OptExpr => "expressions",
-            AstFragmentKind::Pat => "patterns",
-            AstFragmentKind::Stmts => "statements",
-            AstFragmentKind::Ty
-            | AstFragmentKind::Items
-            | AstFragmentKind::TraitItems
-            | AstFragmentKind::ImplItems
-            | AstFragmentKind::ForeignItems => return,
-            AstFragmentKind::Arms
-            | AstFragmentKind::Fields
-            | AstFragmentKind::FieldPats
-            | AstFragmentKind::GenericParams
-            | AstFragmentKind::Params
-            | AstFragmentKind::StructFields
-            | AstFragmentKind::Variants => panic!("unexpected AST fragment kind"),
-        };
-        if self.cx.ecfg.proc_macro_hygiene() {
-            return;
-        }
-        feature_err(
-            self.cx.parse_sess,
-            sym::proc_macro_hygiene,
-            span,
-            &format!("procedural macros cannot be expanded to {}", kind),
-        )
-        .emit();
     }
 
     fn parse_ast_fragment(

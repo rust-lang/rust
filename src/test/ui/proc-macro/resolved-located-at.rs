@@ -1,7 +1,5 @@
 // aux-build:resolved-located-at.rs
 
-#![feature(proc_macro_hygiene)]
-
 #[macro_use]
 extern crate resolved_located_at;
 

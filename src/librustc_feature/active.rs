@@ -430,8 +430,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
 
-    /// Allows macro invocations on modules expressions and statements and
-    /// procedural macros to expand to non-items.
+    /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
 
     /// Allows unsized rvalues at arguments and parameters.

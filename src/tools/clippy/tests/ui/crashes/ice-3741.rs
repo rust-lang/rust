@@ -1,7 +1,6 @@
 // aux-build:proc_macro_crash.rs
 // run-pass
 
-#![feature(proc_macro_hygiene)]
 #![warn(clippy::suspicious_else_formatting)]
 
 extern crate proc_macro_crash;

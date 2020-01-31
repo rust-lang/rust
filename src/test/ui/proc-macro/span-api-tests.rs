@@ -1,10 +1,7 @@
 // run-pass
+// ignore-pretty
 // aux-build:span-api-tests.rs
 // aux-build:span-test-macros.rs
-
-// ignore-pretty
-
-#![feature(proc_macro_hygiene)]
 
 #[macro_use]
 extern crate span_test_macros;

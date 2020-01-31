@@ -1,7 +1,5 @@
 // aux-build:multispan.rs
 
-#![feature(proc_macro_hygiene)]
-
 extern crate multispan;
 
 use multispan::hello;
