@@ -213,9 +213,7 @@ fn validate_and_turn_into_const<'tcx>(
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
         }) {
-            Ok(_) => {
-                ErrorHandled::Reported
-            }
+            Ok(_) => ErrorHandled::Reported,
             Err(err) => err,
         }
     })

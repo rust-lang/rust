@@ -120,19 +120,18 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     }
                 }
                 lint.emit();
-            }
-        , Some(lint_root)) {
-            Ok(_) => {
-                ErrorHandled::Reported
-            }
+            },
+            Some(lint_root),
+        ) {
+            Ok(_) => ErrorHandled::Reported,
             Err(err) => err,
         }
     }
 
-   /// Sets the message passed in via `message`, then adds the span labels for you, before applying
-   /// further modifications in `emit`. It's up to you to call emit(), stash(..), etc. within the
-   /// `emit` method. If you don't need to do any additional processing, just use
-   /// struct_generic.
+    /// Sets the message passed in via `message`, then adds the span labels for you, before applying
+    /// further modifications in `emit`. It's up to you to call emit(), stash(..), etc. within the
+    /// `emit` method. If you don't need to do any additional processing, just use
+    /// struct_generic.
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,

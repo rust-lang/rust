@@ -1580,7 +1580,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             id,
                             span,
                             |lint| {
-                                let mut err = lint.build(&format!("lifetime parameter `{}` only used once", name));
+                                let mut err = lint.build(&format!(
+                                    "lifetime parameter `{}` only used once",
+                                    name
+                                ));
                                 if span == lifetime.span {
                                     // spans are the same for in-band lifetime declarations
                                     err.span_label(span, "this lifetime is only used here");
@@ -1588,7 +1591,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     err.span_label(span, "this lifetime...");
                                     err.span_label(lifetime.span, "...is used only here");
                                 }
-                                self.suggest_eliding_single_use_lifetime(&mut err, def_id, lifetime);
+                                self.suggest_eliding_single_use_lifetime(
+                                    &mut err, def_id, lifetime,
+                                );
                                 err.emit();
                             },
                         );
@@ -1616,10 +1621,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             id,
                             span,
                             |lint| {
-                                let mut err = lint.build(&format!("lifetime parameter `{}` never used", name));
+                                let mut err = lint
+                                    .build(&format!("lifetime parameter `{}` never used", name));
                                 if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                                    if let Some(generics) = self.tcx.hir().get_generics(parent_def_id) {
-                                        let unused_lt_span = self.lifetime_deletion_span(name, generics);
+                                    if let Some(generics) =
+                                        self.tcx.hir().get_generics(parent_def_id)
+                                    {
+                                        let unused_lt_span =
+                                            self.lifetime_deletion_span(name, generics);
                                         if let Some(span) = unused_lt_span {
                                             err.span_suggestion(
                                                 span,

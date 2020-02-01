@@ -1157,9 +1157,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                             param.span,
                             |lint| {
                                 lint.build(&format!(
-                                "defaults for type parameters are only allowed in \
+                                    "defaults for type parameters are only allowed in \
                                         `struct`, `enum`, `type`, or `trait` definitions."
-                                )).emit();
+                                ))
+                                .emit();
                             },
                         );
                     }

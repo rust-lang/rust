@@ -624,15 +624,13 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                         lint_hir_id,
                         source_info.span,
                         |lint| {
-                            lint.build(
-                                &format!(
-                                    "{} is unsafe and requires unsafe function or block (error E0133)",
-                                    description
-                                )
-                            )
+                            lint.build(&format!(
+                                "{} is unsafe and requires unsafe function or block (error E0133)",
+                                description
+                            ))
                             .note(&details.as_str())
                             .emit()
-                        }
+                        },
                     )
                 }
             }

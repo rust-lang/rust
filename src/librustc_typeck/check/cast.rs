@@ -468,27 +468,20 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        fcx.tcx.struct_span_lint_hir(
-            lint,
-            self.expr.hir_id,
-            self.span,
-            |err| {
-                err.build(
-                    &format!(
-                        "trivial {}cast: `{}` as `{}`",
-                        adjective,
-                        fcx.ty_to_string(t_expr),
-                        fcx.ty_to_string(t_cast)
-                    )
-                )
-                .help(&format!(
-                    "cast can be replaced by coercion; this might \
+        fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span, |err| {
+            err.build(&format!(
+                "trivial {}cast: `{}` as `{}`",
+                adjective,
+                fcx.ty_to_string(t_expr),
+                fcx.ty_to_string(t_cast)
+            ))
+            .help(&format!(
+                "cast can be replaced by coercion; this might \
                                    require {}a temporary variable",
-                    type_asc_or
-                ))
-                .emit();
-            },
-        );
+                type_asc_or
+            ))
+            .emit();
+        });
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {

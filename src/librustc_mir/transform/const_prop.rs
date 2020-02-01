@@ -923,17 +923,24 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                     | PanicInfo::DivisionByZero
                                     | PanicInfo::RemainderByZero => msg.description().to_owned(),
                                     PanicInfo::BoundsCheck { ref len, ref index } => {
-                                        let len =
-                                            self.eval_operand(len, source_info).expect("len must be const");
+                                        let len = self
+                                            .eval_operand(len, source_info)
+                                            .expect("len must be const");
                                         let len = match self.ecx.read_scalar(len) {
-                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
+                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw {
+                                                data,
+                                                ..
+                                            })) => data,
                                             other => bug!("const len not primitive: {:?}", other),
                                         };
                                         let index = self
                                             .eval_operand(index, source_info)
                                             .expect("index must be const");
                                         let index = match self.ecx.read_scalar(index) {
-                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw { data, .. })) => data,
+                                            Ok(ScalarMaybeUndef::Scalar(Scalar::Raw {
+                                                data,
+                                                ..
+                                            })) => data,
                                             other => bug!("const index not primitive: {:?}", other),
                                         };
                                         format!(

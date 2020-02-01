@@ -1285,7 +1285,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             self.fcx.body_id,
             self.span,
             |lint| {
-                let mut diag = lint.build("a method with this name may be added to the standard library in the future");
+                let mut diag = lint.build(
+                    "a method with this name may be added to the standard library in the future",
+                );
                 // FIXME: This should be a `span_suggestion` instead of `help`
                 // However `self.span` only
                 // highlights the method name, so we can't use it. Also consider reusing the code from

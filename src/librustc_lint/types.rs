@@ -76,33 +76,29 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
         // (`..=`) instead only if it is the `end` that is
         // overflowing and only by 1.
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-            cx.struct_span_lint(
-                OVERFLOWING_LITERALS,
-                parent_expr.span,
-                |lint| {
-                    let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
-                    if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
-                        use ast::{LitIntType, LitKind};
-                        // We need to preserve the literal's suffix,
-                        // as it may determine typing information.
-                        let suffix = match lit.node {
-                            LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
-                            LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
-                            LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
-                            _ => bug!(),
-                        };
-                        let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                        err.span_suggestion(
-                            parent_expr.span,
-                            &"use an inclusive range instead",
-                            suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
-                        overwritten = true;
-                    }
-                },
-            );
+            cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
+                let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
+                if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                    use ast::{LitIntType, LitKind};
+                    // We need to preserve the literal's suffix,
+                    // as it may determine typing information.
+                    let suffix = match lit.node {
+                        LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
+                        LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
+                        LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+                        _ => bug!(),
+                    };
+                    let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+                    err.span_suggestion(
+                        parent_expr.span,
+                        &"use an inclusive range instead",
+                        suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    overwritten = true;
+                }
+            });
         }
     }
     overwritten
@@ -165,32 +161,29 @@ fn report_bin_hex_error(
             (t.name_str(), actually.to_string())
         }
     };
-    cx.struct_span_lint(
-        OVERFLOWING_LITERALS,
-        expr.span,
-        |lint| {
-            let mut err = lint.build(&format!("literal out of range for {}", t));
-            err.note(&format!(
-                "the literal `{}` (decimal `{}`) does not fit into \
+    cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
+        let mut err = lint.build(&format!("literal out of range for {}", t));
+        err.note(&format!(
+            "the literal `{}` (decimal `{}`) does not fit into \
                     an `{}` and will become `{}{}`",
-                repr_str, val, t, actually, t
-            ));
-            if let Some(sugg_ty) = get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative) {
-                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
-                    let (sans_suffix, _) = repr_str.split_at(pos);
-                    err.span_suggestion(
-                        expr.span,
-                        &format!("consider using `{}` instead", sugg_ty),
-                        format!("{}{}", sans_suffix, sugg_ty),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    err.help(&format!("consider using `{}` instead", sugg_ty));
-                }
+            repr_str, val, t, actually, t
+        ));
+        if let Some(sugg_ty) = get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative)
+        {
+            if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                let (sans_suffix, _) = repr_str.split_at(pos);
+                err.span_suggestion(
+                    expr.span,
+                    &format!("consider using `{}` instead", sugg_ty),
+                    format!("{}{}", sans_suffix, sugg_ty),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.help(&format!("consider using `{}` instead", sugg_ty));
             }
-            err.emit();
-        },
-    );
+        }
+        err.emit();
+    });
 }
 
 // This function finds the next fitting type and generates a suggestion string.

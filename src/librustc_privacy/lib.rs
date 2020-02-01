@@ -1786,15 +1786,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                 self.item_id,
                 self.span,
                 |lint| {
-                    lint.build(
-                            &format!(
-                            "{} `{}` from private dependency '{}' in public \
+                    lint.build(&format!(
+                        "{} `{}` from private dependency '{}' in public \
                                                 interface",
-                            kind,
-                            descr,
-                            self.tcx.crate_name(def_id.krate)
-                            )
-                    ).emit()
+                        kind,
+                        descr,
+                        self.tcx.crate_name(def_id.krate)
+                    ))
+                    .emit()
                 },
             );
         }
@@ -1818,9 +1817,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                 err.emit();
             } else {
                 let err_code = if kind == "trait" { "E0445" } else { "E0446" };
-                self.tcx.struct_span_lint_hir(lint::builtin::PRIVATE_IN_PUBLIC, hir_id, self.span, |lint| {
-                    lint.build(&format!("{} (error {})", msg, err_code)).emit()
-                });
+                self.tcx.struct_span_lint_hir(
+                    lint::builtin::PRIVATE_IN_PUBLIC,
+                    hir_id,
+                    self.span,
+                    |lint| lint.build(&format!("{} (error {})", msg, err_code)).emit(),
+                );
             }
         }
 

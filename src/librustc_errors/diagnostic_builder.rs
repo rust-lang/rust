@@ -106,7 +106,11 @@ impl<'a> DiagnosticBuilder<'a> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     pub fn emit_unless(&mut self, delay: bool) {
-        if delay { self.delay_as_bug(); } else { self.emit(); }
+        if delay {
+            self.delay_as_bug();
+        } else {
+            self.emit();
+        }
     }
 
     /// Stashes diagnostic for possible later improvement in a different,

@@ -16,13 +16,13 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::{self, TyCtxt, TypeFoldable};
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::DUMMY_SP;
-use rustc::lint::LintDiagnosticBuilder;
 
 use super::util::impl_trait_ref_and_oblig;
 use super::{FulfillmentContext, SelectionContext};
@@ -357,9 +357,10 @@ pub(super) fn specialization_graph_provider(
                         }
                         Err(cname) => {
                             let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
-                                Some(s) => {
-                                    format!("conflicting implementation in crate `{}`:\n- {}", cname, s)
-                                }
+                                Some(s) => format!(
+                                    "conflicting implementation in crate `{}`:\n- {}",
+                                    cname, s
+                                ),
                                 None => format!("conflicting implementation in crate `{}`", cname),
                             };
                             err.note(&msg);
@@ -396,7 +397,6 @@ pub(super) fn specialization_graph_provider(
                         )
                     }
                 };
-
             }
         } else {
             let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);
