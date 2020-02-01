@@ -285,7 +285,7 @@ impl<'tcx> Instance<'tcx> {
                 _ => {
                     if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
                         let ty = substs.type_at(0);
-                        if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
+                        if ty.needs_drop(tcx, param_env.with_reveal_all()) {
                             debug!(" => nontrivial drop glue");
                             ty::InstanceDef::DropGlue(def_id, Some(ty))
                         } else {
