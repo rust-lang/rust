@@ -287,30 +287,26 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                         })
                     {
                         let ty_path = cx.tcx.def_path_str(edef.did);
-                        cx.tcx
-                            .struct_span_lint_hir(
-                                BINDINGS_WITH_VARIANT_NAME,
-                                p.hir_id,
-                                p.span,
-                                |lint| {
-                                    lint
-                                        .build(
-                                            &format!(
-                                                "pattern binding `{}` is named the same as one \
+                        cx.tcx.struct_span_lint_hir(
+                            BINDINGS_WITH_VARIANT_NAME,
+                            p.hir_id,
+                            p.span,
+                            |lint| {
+                                lint.build(&format!(
+                                    "pattern binding `{}` is named the same as one \
                                                 of the variants of the type `{}`",
-                                                ident, ty_path
-                                            )
-                                        )
-                                        .code(error_code!(E0170))
-                                        .span_suggestion(
-                                            p.span,
-                                            "to match on the variant, qualify the path",
-                                            format!("{}::{}", ty_path, ident),
-                                            Applicability::MachineApplicable,
-                                        )
-                                        .emit();
-                                },
-                            )
+                                    ident, ty_path
+                                ))
+                                .code(error_code!(E0170))
+                                .span_suggestion(
+                                    p.span,
+                                    "to match on the variant, qualify the path",
+                                    format!("{}::{}", ty_path, ident),
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
+                            },
+                        )
                     }
                 }
             }

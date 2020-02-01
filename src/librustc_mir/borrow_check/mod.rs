@@ -379,12 +379,8 @@ fn do_mir_borrowck<'a, 'tcx>(
         }
 
         let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-        tcx.struct_span_lint_hir(
-            UNUSED_MUT,
-            lint_root,
-            span,
-            |lint| {
-                lint.build("variable does not need to be mutable")
+        tcx.struct_span_lint_hir(UNUSED_MUT, lint_root, span, |lint| {
+            lint.build("variable does not need to be mutable")
                 .span_suggestion_short(
                     mut_span,
                     "remove this `mut`",
@@ -392,8 +388,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                     Applicability::MachineApplicable,
                 )
                 .emit();
-            },
-        )
+        })
     }
 
     // Buffer any move errors that we collected and de-duplicated.

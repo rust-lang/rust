@@ -180,7 +180,6 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         };
         let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
-
             let msg = "`extern crate` is not idiomatic in the new edition";
             let help = format!("convert it to a `{}`", visibility_qualified(&item.vis, "use"));
 

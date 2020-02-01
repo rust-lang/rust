@@ -676,7 +676,8 @@ fn build_diagnostic(
         |lint| {
             let mut diag = lint.build(&format!("`[{}]` {}", path_str, err_msg));
             if let Some(link_range) = link_range {
-                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
+                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
+                {
                     diag.set_span(sp);
                     diag.span_label(sp, short_err_msg);
                 } else {
@@ -684,7 +685,8 @@ fn build_diagnostic(
                     //                       ^     ~~~~
                     //                       |     link_range
                     //                       last_new_line_offset
-                    let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+                    let last_new_line_offset =
+                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
                     let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
                     // Print the line containing the `link_range` and manually mark it with '^'s.
@@ -804,7 +806,8 @@ fn ambiguity_error(
             let mut diag = lint.build(&msg);
 
             if let Some(link_range) = link_range {
-                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
+                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
+                {
                     diag.set_span(sp);
                     diag.span_label(sp, "ambiguous link");
 
@@ -851,7 +854,8 @@ fn ambiguity_error(
                     //                       ^     ~~~~
                     //                       |     link_range
                     //                       last_new_line_offset
-                    let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+                    let last_new_line_offset =
+                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
                     let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
                     // Print the line containing the `link_range` and manually mark it with '^'s.
@@ -868,7 +872,6 @@ fn ambiguity_error(
             diag.emit();
         },
     );
-
 }
 
 /// Given an enum variant's res, return the res of its enum and the associated fragment.

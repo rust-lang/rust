@@ -342,12 +342,9 @@ pub fn look_for_tests<'tcx>(
 
     if check_missing_code == true && tests.found_tests == 0 {
         let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
-        cx.tcx.struct_span_lint_hir(
-            lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-            hir_id,
-            sp,
-            |lint| lint.build("missing code example in this documentation").emit(),
-        );
+        cx.tcx.struct_span_lint_hir(lint::builtin::MISSING_DOC_CODE_EXAMPLES, hir_id, sp, |lint| {
+            lint.build("missing code example in this documentation").emit()
+        });
     } else if check_missing_code == false
         && tests.found_tests > 0
         && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)

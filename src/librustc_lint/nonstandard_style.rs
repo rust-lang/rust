@@ -109,12 +109,14 @@ impl NonCamelCaseTypes {
         if !is_camel_case(name) {
             let msg = format!("{} `{}` should have an upper camel case name", sort, name);
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
-                lint.build(&msg).span_suggestion(
-                    ident.span,
-                    "convert the identifier to upper camel case",
-                    to_camel_case(name),
-                    Applicability::MaybeIncorrect,
-                ).emit()
+                lint.build(&msg)
+                    .span_suggestion(
+                        ident.span,
+                        "convert the identifier to upper camel case",
+                        to_camel_case(name),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit()
             })
         }
     }
@@ -243,7 +245,6 @@ impl NonSnakeCase {
 
                 err.emit();
             });
-
         }
     }
 }
@@ -394,13 +395,13 @@ impl NonUpperCaseGlobals {
 
             cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
                 lint.build(&format!("{} `{}` should have an upper case name", sort, name))
-                .span_suggestion(
-                    ident.span,
-                    "convert the identifier to upper case",
-                    uc,
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                    .span_suggestion(
+                        ident.span,
+                        "convert the identifier to upper case",
+                        uc,
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
             })
         }
     }

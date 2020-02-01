@@ -11,7 +11,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::{Span, Symbol};
 
-
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
 pub enum LintSource {
@@ -175,7 +174,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     }
 }
 
-
 pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a>);
 
 impl<'a> LintDiagnosticBuilder<'a> {
@@ -186,7 +184,7 @@ impl<'a> LintDiagnosticBuilder<'a> {
     }
 
     /// Create a LintDiagnosticBuilder from some existing DiagnosticBuilder.
-    pub fn new(err: DiagnosticBuilder<'a>) -> LintDiagnosticBuilder<'a>{
+    pub fn new(err: DiagnosticBuilder<'a>) -> LintDiagnosticBuilder<'a> {
         LintDiagnosticBuilder(err)
     }
 }
@@ -207,14 +205,17 @@ pub fn struct_lint_level<'s, 'd>(
         level: Level,
         src: LintSource,
         span: Option<MultiSpan>,
-        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>) {
+        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
+    ) {
         let mut err = match (level, span) {
             (Level::Allow, _) => {
                 return;
             }
             (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn, None) => sess.struct_warn(""),
-            (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
+            (Level::Deny, Some(span)) | (Level::Forbid, Some(span)) => {
+                sess.struct_span_err(span, "")
+            }
             (Level::Deny, None) | (Level::Forbid, None) => sess.struct_err(""),
         };
 

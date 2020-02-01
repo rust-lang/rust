@@ -37,7 +37,9 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                 .span_label(span, format!("expected one of {}", expected.join(", ")))
                 .emit();
         }
-        AttrError::MissingSince => { struct_span_err!(diag, span, E0542, "missing 'since'").emit(); },
+        AttrError::MissingSince => {
+            struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        }
         AttrError::MissingFeature => {
             struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
         }

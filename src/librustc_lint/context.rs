@@ -20,6 +20,7 @@ use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc::lint::add_elided_lifetime_in_path_suggestion;
+use rustc::lint::LintDiagnosticBuilder;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
@@ -27,7 +28,6 @@ use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
-use rustc::lint::LintDiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -505,7 +505,8 @@ pub trait LintContext: Sized {
                         Ok(ref s) => {
                             // FIXME(Manishearth) ideally the emitting code
                             // can tell us whether or not this is global
-                            let opt_colon = if s.trim_start().starts_with("::") { "" } else { "::" };
+                            let opt_colon =
+                                if s.trim_start().starts_with("::") { "" } else { "::" };
 
                             (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
                         }
@@ -519,7 +520,9 @@ pub trait LintContext: Sized {
                         "names from parent modules are not accessible without an explicit import",
                     );
                 }
-                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
+                BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(
+                    span_def,
+                ) => {
                     db.span_note(span_def, "the macro is defined here");
                 }
                 BuiltinLintDiagnostics::ElidedLifetimesInPaths(
@@ -585,7 +588,7 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: S,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     ) {
         self.lookup(lint, Some(span), decorate);
     }

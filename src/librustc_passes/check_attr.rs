@@ -93,13 +93,9 @@ impl CheckAttrVisitor<'tcx> {
             | Target::Method(MethodKind::Trait { body: true })
             | Target::Method(MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx
-                    .struct_span_lint_hir(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span,
-                        |lint| lint.build("`#[inline]` is ignored on function prototypes").emit(),
-                    );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on function prototypes").emit()
+                });
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -349,17 +345,16 @@ impl CheckAttrVisitor<'tcx> {
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            self.tcx
-                .struct_span_lint_hir(
-                    CONFLICTING_REPR_HINTS,
-                    hir_id,
-                    hint_spans.collect::<Vec<Span>>(),
-                    |lint| {
-                        lint.build("conflicting representation hints")
-                            .code(rustc_errors::error_code!(E0566))
-                            .emit();
-                    }
-                );
+            self.tcx.struct_span_lint_hir(
+                CONFLICTING_REPR_HINTS,
+                hir_id,
+                hint_spans.collect::<Vec<Span>>(),
+                |lint| {
+                    lint.build("conflicting representation hints")
+                        .code(rustc_errors::error_code!(E0566))
+                        .emit();
+                },
+            );
         }
     }
 

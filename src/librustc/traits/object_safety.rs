@@ -238,7 +238,10 @@ fn object_safety_violations_for_trait(
                         ));
                         let node = tcx.hir().get_if_local(trait_def_id);
                         let msg = if let Some(hir::Node::Item(item)) = node {
-                            err.span_label(item.ident.span, "this trait cannot be made into an object...");
+                            err.span_label(
+                                item.ident.span,
+                                "this trait cannot be made into an object...",
+                            );
                             format!("...because {}", violation.error_msg())
                         } else {
                             format!(
@@ -252,7 +255,12 @@ fn object_safety_violations_for_trait(
                                 err.help(&note);
                             }
                             (Some(_), Some((note, Some((sugg, span))))) => {
-                                err.span_suggestion(span, &note, sugg, Applicability::MachineApplicable);
+                                err.span_suggestion(
+                                    span,
+                                    &note,
+                                    sugg,
+                                    Applicability::MachineApplicable,
+                                );
                             }
                             // Only provide the help if its a local trait, otherwise it's not actionable.
                             _ => {}

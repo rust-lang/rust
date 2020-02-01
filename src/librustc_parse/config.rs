@@ -317,9 +317,9 @@ impl<'a> StripUnconfigured<'a> {
                     Ok(r) => return Some(r),
                     Err(mut e) => {
                         e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
-                        .note(CFG_ATTR_NOTE_REF)
-                        .emit();
-                    },
+                            .note(CFG_ATTR_NOTE_REF)
+                            .emit();
+                    }
                 }
             }
             _ => self.error_malformed_cfg_attr_missing(attr.span),

@@ -22,17 +22,13 @@ impl EarlyLintPass for NonAsciiIdents {
         if name_str.is_ascii() {
             return;
         }
-        cx.struct_span_lint(
-            NON_ASCII_IDENTS,
-            ident.span,
-            |lint| lint.build("identifier contains non-ASCII characters").emit(),
-        );
+        cx.struct_span_lint(NON_ASCII_IDENTS, ident.span, |lint| {
+            lint.build("identifier contains non-ASCII characters").emit()
+        });
         if !name_str.chars().all(GeneralSecurityProfile::identifier_allowed) {
-            cx.struct_span_lint(
-                UNCOMMON_CODEPOINTS,
-                ident.span,
-                |lint| lint.build("identifier contains uncommon Unicode codepoints").emit(),
-            )
+            cx.struct_span_lint(UNCOMMON_CODEPOINTS, ident.span, |lint| {
+                lint.build("identifier contains uncommon Unicode codepoints").emit()
+            })
         }
     }
 }

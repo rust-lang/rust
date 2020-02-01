@@ -608,10 +608,10 @@ fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol,
         lint.build(&format!(
             "the feature `{}` has been stable since {} and no longer requires \
                       an attribute to enable",
-                feature, since
-            )).emit();
-        }
-    );
+            feature, since
+        ))
+        .emit();
+    });
 }
 
 fn duplicate_feature_err(sess: &Session, span: Span, feature: Symbol) {
