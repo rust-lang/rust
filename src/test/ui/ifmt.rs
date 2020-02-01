@@ -99,7 +99,6 @@ pub fn main() {
     let a: &dyn fmt::Debug = &1;
     t!(format!("{:?}", a), "1");
 
-
     // Formatting strings and their arguments
     t!(format!("{}", "a"), "a");
     t!(format!("{:4}", "a"), "a   ");
@@ -187,10 +186,6 @@ pub fn main() {
     // Ergonomic format_args!
     t!(format!("{0:x} {0:X}", 15), "f F");
     t!(format!("{0:x} {0:X} {}", 15), "f F 15");
-    // NOTE: For now the longer test cases must not be followed immediately by
-    // >1 empty lines, or the pretty printer will break. Since no one wants to
-    // touch the current pretty printer (#751), we have no choice but to work
-    // around it. Some of the following test cases are also affected.
     t!(format!("{:x}{0:X}{a:x}{:X}{1:x}{a:X}", 13, 14, a=15), "dDfEeF");
     t!(format!("{a:x} {a:X}", a=15), "f F");
 
@@ -200,7 +195,6 @@ pub fn main() {
                "abcd hijk 4\nabc hij 3");
     t!(format!("{a:.*} {0} {:.*}", 4, 3, "efgh", a="abcdef"), "abcd 4 efg");
     t!(format!("{:.a$} {a} {a:#x}", "aaaaaa", a=2), "aa 2 0x2");
-
 
     // Test that pointers don't get truncated.
     {
