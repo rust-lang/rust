@@ -343,6 +343,7 @@ impl WatchThread {
                 .args(&args)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
+                .stdin(Stdio::null())
                 .spawn()
                 .expect("couldn't launch cargo");
 
