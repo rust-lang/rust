@@ -15,7 +15,9 @@ error[E0038]: the trait `A` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-self.rs:3:13
    |
 LL | trait A: Sized {
-   |          ----- traits that require `Self: Sized` cannot be made into an object
+   |       -  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
 LL |     fn f(a: A) -> A;
    |             ^ the trait `A` cannot be made into an object
 
@@ -35,10 +37,14 @@ LL |     fn f(a: Self) -> Self;
 error[E0038]: the trait `B` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-self.rs:8:13
    |
+LL | trait B {
+   |       - this trait cannot be made into an object...
 LL |     fn f(a: B) -> B;
    |        -    ^ the trait `B` cannot be made into an object
    |        |
-   |        associated function `f` has no `self` parameter
+   |        ...because associated function `f` has no `self` parameter
+   |
+   = help: consider turning `f` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
 
 error: aborting due to 4 previous errors
 

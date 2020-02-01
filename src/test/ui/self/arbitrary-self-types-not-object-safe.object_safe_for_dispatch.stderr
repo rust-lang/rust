@@ -1,12 +1,15 @@
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/arbitrary-self-types-not-object-safe.rs:33:13
    |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
 LL |     fn foo(self: &Rc<Self>) -> usize;
-   |        --- method `foo`'s `self` parameter cannot be dispatched on
+   |        --- ...because method `foo`'s `self` parameter cannot be dispatched on
 ...
 LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
    |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
+   = help: consider changing method `foo`'s `self` parameter to be `&self`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::rc::Rc<dyn Foo>>` for `std::rc::Rc<usize>`
    = note: required by cast to type `std::rc::Rc<dyn Foo>`
 

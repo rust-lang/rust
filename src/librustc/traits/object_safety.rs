@@ -43,12 +43,9 @@ pub enum ObjectSafetyViolation {
 impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
-            ObjectSafetyViolation::SizedSelf(_) => {
-                "traits that require `Self: Sized` cannot be made into an object".into()
-            }
+            ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
             ObjectSafetyViolation::SupertraitSelf => {
-                "the trait cannot use `Self` as a type parameter \
-                 in the supertraits or where-clauses"
+                "it cannot use `Self` as a type parameter in the supertraits or `where`-clauses"
                     .into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) => {
@@ -63,17 +60,43 @@ impl ObjectSafetyViolation {
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
-            ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
+            ) => {
+                format!("method `{}` references the `Self` type in its `where` clause", name).into()
+            }
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
                 format!("method `{}` has generic type parameters", name).into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
                 format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
             }
+            ObjectSafetyViolation::AssocConst(_, DUMMY_SP) => {
+                "it cannot contain associated consts".into()
+            }
             ObjectSafetyViolation::AssocConst(name, _) => {
-                format!("the trait cannot contain associated consts like `{}`", name).into()
+                format!("it cannot contain associated consts like `{}`", name).into()
             }
         }
+    }
+
+    pub fn solution(&self) -> Option<String> {
+        Some(match *self {
+            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf => {
+                return None;
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) => format!(
+                "consider turning `{}` into a method by giving it a `&self` argument or \
+                 constraining it with `where Self: Sized`",
+                name
+            ),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
+                format!("consider changing method `{}`'s `self` parameter to be `&self`", name)
+                    .into()
+            }
+            ObjectSafetyViolation::AssocConst(name, _)
+            | ObjectSafetyViolation::Method(name, ..) => {
+                format!("consider moving `{}` to another trait", name)
+            }
+        })
     }
 
     pub fn spans(&self) -> SmallVec<[Span; 1]> {
@@ -190,7 +213,21 @@ fn object_safety_violations_for_trait(
                         tcx.def_path_str(trait_def_id)
                     ),
                 );
-                err.span_label(*span, violation.error_msg());
+                let node = tcx.hir().get_if_local(trait_def_id);
+                let msg = if let Some(hir::Node::Item(item)) = node {
+                    err.span_label(item.ident.span, "this trait cannot be made into an object...");
+                    format!("...because {}", violation.error_msg())
+                } else {
+                    format!(
+                        "the trait cannot be made into an object because {}",
+                        violation.error_msg()
+                    )
+                };
+                err.span_label(*span, &msg);
+                if let (Some(_), Some(note)) = (node, violation.solution()) {
+                    // Only provide the help if its a local trait, otherwise it's not actionable.
+                    err.help(&note);
+                }
                 err.emit();
                 false
             } else {

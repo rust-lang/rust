@@ -4,7 +4,7 @@ error[E0038]: the trait `Baz` cannot be made into an object
 LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
    |                               ^^^^^^^ the trait `Baz` cannot be made into an object
    |
-   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+   = note: the trait cannot be made into an object because it cannot use `Self` as a type parameter in the supertraits or `where`-clauses
 
 error: aborting due to previous error
 

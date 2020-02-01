@@ -4,7 +4,7 @@ error[E0038]: the trait `B` cannot be made into an object
 LL | trait C<T>: A<dyn B<T, Output=usize>> {}
    |               ^^^^^^^^^^^^^^^^^^^^^^ the trait `B` cannot be made into an object
    |
-   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+   = note: the trait cannot be made into an object because it cannot use `Self` as a type parameter in the supertraits or `where`-clauses
 
 error: aborting due to previous error
 

@@ -1034,6 +1034,10 @@ pub fn report_object_safety_error(
     violations: Vec<ObjectSafetyViolation>,
 ) -> DiagnosticBuilder<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
+    let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
+        hir::Node::Item(item) => Some(item.ident.span),
+        _ => None,
+    });
     let span = tcx.sess.source_map().def_span(span);
     let mut err = struct_span_err!(
         tcx.sess,
@@ -1045,6 +1049,7 @@ pub fn report_object_safety_error(
     err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
 
     let mut reported_violations = FxHashSet::default();
+    let mut had_span_label = false;
     for violation in violations {
         if let ObjectSafetyViolation::SizedSelf(sp) = &violation {
             if !sp.is_empty() {
@@ -1055,14 +1060,27 @@ pub fn report_object_safety_error(
         }
         if reported_violations.insert(violation.clone()) {
             let spans = violation.spans();
+            let msg = if trait_span.is_none() || spans.is_empty() {
+                format!("the trait cannot be made into an object because {}", violation.error_msg())
+            } else {
+                had_span_label = true;
+                format!("...because {}", violation.error_msg())
+            };
             if spans.is_empty() {
-                err.note(&violation.error_msg());
+                err.note(&msg);
             } else {
                 for span in spans {
-                    err.span_label(span, violation.error_msg());
+                    err.span_label(span, &msg);
                 }
             }
+            if let (Some(_), Some(note)) = (trait_span, violation.solution()) {
+                // Only provide the help if its a local trait, otherwise it's not actionable.
+                err.help(&note);
+            }
         }
+    }
+    if let (Some(trait_span), true) = (trait_span, had_span_label) {
+        err.span_label(trait_span, "this trait cannot be made into an object...");
     }
 
     if tcx.sess.trait_methods_not_found.borrow().contains(&span) {
