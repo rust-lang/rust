@@ -38,7 +38,9 @@
 
 (defconst rust-analyzer--action-handlers
   '(("rust-analyzer.applySourceChange" .
-     (lambda (p) (rust-analyzer--apply-source-change-command p)))))
+     (lambda (p) (rust-analyzer--apply-source-change-command p)))
+    ("rust-analyzer.selectAndApplySourceChange" .
+     (lambda (p) (rust-analyzer--select-and-apply-source-change-command p)))))
 
 (defun rust-analyzer--uri-filename (text-document)
   (lsp--uri-to-path (gethash "uri" text-document)))
@@ -70,6 +72,12 @@
 (defun rust-analyzer--apply-source-change-command (p)
   (let ((data (-> p (ht-get "arguments") (lsp-seq-first))))
     (rust-analyzer--apply-source-change data)))
+
+(defun rust-analyzer--select-and-apply-source-change-command (p)
+  (let* ((options (-> p (ht-get "arguments") (lsp-seq-first)))
+         (chosen-option (lsp--completing-read "Select option:" options
+                                              (-lambda ((&hash "label")) label))))
+    (rust-analyzer--apply-source-change chosen-option)))
 
 (lsp-register-client
  (make-lsp-client
@@ -143,7 +151,8 @@
 
 (defun rust-analyzer-run (runnable)
   (interactive (list (rust-analyzer--select-runnable)))
-  (-let (((&hash "env" "bin" "args" "label") runnable))
+  (-let* (((&hash "env" "bin" "args" "label") runnable)
+          (compilation-environment (-map (-lambda ((k v)) (concat k "=" v)) (ht-items env))))
     (compilation-start
      (string-join (append (list bin) args '()) " ")
      ;; cargo-process-mode is nice, but try to work without it...
