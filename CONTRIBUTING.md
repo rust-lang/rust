@@ -50,6 +50,9 @@ is a bug or not, feel free to file a bug anyway.
 **If you believe reporting your bug publicly represents a security risk to Rust users,
 please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/policies/security)**.
 
+If you're using the nightly channel, please check if the bug exists in the
+latest toolchain before filing your bug. It might be fixed already.
+
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
 as it's possible that someone else has already reported your error. This doesn't
