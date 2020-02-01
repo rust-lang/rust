@@ -71,15 +71,15 @@ impl<'a> Parser<'a> {
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
         }
 
-        let lo_colon = self.token.span;
-        if self.eat(&token::Colon) {
+        if self.token.kind == token::Colon {
             // <Bar as Baz<T>>:Qux
             //                ^
-            let span = lo_colon.to(self.prev_span);
+            self.bump();
+
             self.diagnostic()
-                .struct_span_err(span, "found single colon where type path was expected")
+                .struct_span_err(self.prev_span, "found single colon where type path was expected")
                 .span_suggestion(
-                    span,
+                    self.prev_span,
                     "use double colon",
                     "::".to_string(),
                     Applicability::MachineApplicable,
