@@ -1,16 +1,24 @@
+use std::path::PathBuf;
+use std::process::Command;
+
+#[allow(dead_code)]
+mod cargo;
+
+fn clippy_path() -> PathBuf {
+    let build_info = cargo::BuildInfo::new();
+    build_info.target_lib().join("cargo-clippy")
+}
+
 #[test]
 fn dogfood_clippy() {
     // run clippy on itself and fail the test if lint warnings are reported
     if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
     }
-    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let clippy_binary = std::path::Path::new(&root_dir)
-        .join("target")
-        .join(env!("PROFILE"))
-        .join("cargo-clippy");
+    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let clippy_binary = clippy_path();
 
-    let output = std::process::Command::new(clippy_binary)
+    let output = Command::new(clippy_binary)
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
@@ -37,11 +45,8 @@ fn dogfood_subprojects() {
     if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
     }
-    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let clippy_binary = std::path::Path::new(&root_dir)
-        .join("target")
-        .join(env!("PROFILE"))
-        .join("cargo-clippy");
+    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let clippy_binary = clippy_path();
 
     for d in &[
         "clippy_workspace_tests",
@@ -51,7 +56,7 @@ fn dogfood_subprojects() {
         "clippy_dev",
         "rustc_tools_util",
     ] {
-        let output = std::process::Command::new(&clippy_binary)
+        let output = Command::new(&clippy_binary)
             .current_dir(root_dir.join(d))
             .env("CLIPPY_DOGFOOD", "1")
             .env("CARGO_INCREMENTAL", "0")
