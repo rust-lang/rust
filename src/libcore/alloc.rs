@@ -1227,10 +1227,3 @@ pub unsafe trait AllocRef {
         }
     }
 }
-
-// In order to rename `Alloc` to `AllocRef`, some submoduleshas to be updated as well. The CI fails
-// if either of the submodules fails to compile. The submodules have their own CI depending on a
-// specific Rust version, which don't have `AllocRef` yet. This alias is used to make the submodules
-// compile and pass the CI.
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub use self::AllocRef as Alloc;
