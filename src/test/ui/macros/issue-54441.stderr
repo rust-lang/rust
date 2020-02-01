@@ -1,13 +1,11 @@
-error: expected one of `async`, `const`, `crate`, `extern`, `fn`, `pub`, `static`, `type`, or `unsafe`, found keyword `let`
-  --> $DIR/issue-54441.rs:3:9
+error: missing `fn`, `type`, or `static` for extern-item declaration
+  --> $DIR/issue-54441.rs:1:1
    |
-LL |         let
-   |         ^^^ expected one of 9 possible tokens
-...
-LL |     m!();
-   |     ----- in this macro invocation
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |
+LL | |     () => {
+LL | |         let
+   | |________^ missing `fn`, `type`, or `static`
 
 error: aborting due to previous error
 

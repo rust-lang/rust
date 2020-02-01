@@ -1,10 +1,10 @@
-error: unmatched visibility `pub`
+error: unmatched visibility `pub(crate)`
   --> $DIR/pub-restricted-error-fn.rs:1:1
    |
 LL | pub(crate) () fn foo() {}
    | ^^^^^^^^^^ the unmatched visibility
    |
-   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
+   = help: you likely meant to define an item, e.g., `pub(crate) fn foo() {}`
 
 error: expected item, found `(`
   --> $DIR/pub-restricted-error-fn.rs:1:12
