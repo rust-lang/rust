@@ -8,7 +8,7 @@ use crate::DirectoryOwnership;
 
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym};
 use syntax::ast;
 use syntax::ast::{AttrStyle, AttrVec, Attribute, Mac, MacStmtStyle};
 use syntax::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
@@ -52,13 +52,11 @@ impl<'a> Parser<'a> {
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
-        // Starts like a simple path, being careful to avoid contextual keywords
-        // such as a union items, item with `crate` visibility or auto trait items.
-        // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
-        // like a path (1 token), but it fact not a path.
-        if self.token.is_path_start()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item() // Confirm we don't steal syntax from `parse_item_`.
+        // Starts like a simple path, being careful to avoid contextual keywords,
+        // e.g., `union`, items with `crate` visibility, or `auto trait` items.
+        // We aim to parse an arbitrary path `a::b` but not something that starts like a path
+        // (1 token), but it fact not a path. Also, we avoid stealing syntax from `parse_item_`.
+        if self.token.is_path_start() && !self.token.is_qpath_start() && !self.is_path_start_item()
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
@@ -161,10 +159,6 @@ impl<'a> Parser<'a> {
                     .emit();
             }
         }
-    }
-
-    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
     fn recover_stmt_local(

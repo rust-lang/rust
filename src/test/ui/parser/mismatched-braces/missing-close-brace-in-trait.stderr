@@ -7,11 +7,11 @@ LL | trait T {
 LL | fn main() {}
    |                                                                 ^
 
-error: expected one of `async`, `const`, `default`, `extern`, `fn`, `type`, or `unsafe`, found keyword `struct`
-  --> $DIR/missing-close-brace-in-trait.rs:5:12
+error: missing `fn`, `type`, or `const` for associated-item declaration
+  --> $DIR/missing-close-brace-in-trait.rs:5:11
    |
 LL | pub(crate) struct Bar<T>();
-   |            ^^^^^^ expected one of 7 possible tokens
+   |           ^ missing `fn`, `type`, or `const`
 
 error[E0601]: `main` function not found in crate `missing_close_brace_in_trait`
   --> $DIR/missing-close-brace-in-trait.rs:1:1

@@ -7,11 +7,11 @@ LL |     fn how_are_you(&self -> Empty {
    |                   |     help: `)` may belong here
    |                   unclosed delimiter
 
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `)`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, `}`, or identifier, found `)`
   --> $DIR/issue-58856-2.rs:11:1
    |
 LL |     }
-   |      - expected one of 10 possible tokens
+   |      - expected one of 11 possible tokens
 LL | }
    | ^ unexpected token
 

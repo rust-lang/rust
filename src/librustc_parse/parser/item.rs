@@ -8,8 +8,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult, StashKey};
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::BytePos;
-use syntax::ast::{self, AttrKind, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use syntax::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{Async, Const, Defaultness, IsAuto, PathSegment, Unsafe};
 use syntax::ast::{BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind};
@@ -90,18 +89,18 @@ impl<'a> Parser<'a> {
         }
 
         // FAILURE TO PARSE ITEM
-        match vis.node {
-            VisibilityKind::Inherited => {}
-            _ => {
-                self.struct_span_err(vis.span, "unmatched visibility `pub`")
-                    .span_label(vis.span, "the unmatched visibility")
-                    .help("you likely meant to define an item, e.g., `pub fn foo() {}`")
-                    .emit();
-            }
+        if let VisibilityKind::Inherited = vis.node {
+        } else {
+            let vs = pprust::vis_to_string(&vis);
+            let vs = vs.trim_end();
+            self.struct_span_err(vis.span, &format!("unmatched visibility `{}`", vs))
+                .span_label(vis.span, "the unmatched visibility")
+                .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
+                .emit();
         }
 
-        if !attributes_allowed && !attrs.is_empty() {
-            self.expected_item_err(&attrs)?;
+        if !attributes_allowed {
+            self.recover_attrs_no_item(&attrs)?;
         }
         Ok(None)
     }
@@ -165,7 +164,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
             self.parse_item_struct()?
-        } else if self.is_union_item() {
+        } else if self.is_kw_followed_by_ident(kw::Union) {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
@@ -175,15 +174,12 @@ impl<'a> Parser<'a> {
         } else if self.is_macro_rules_item() {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis)?
-        } else if vis.node.is_pub()
-            && self.check_ident()
-            && self.look_ahead(1, |t| *t != token::Not)
-        {
+        } else if vis.node.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
         } else if macros_allowed && self.token.is_path_start() {
             // MACRO INVOCATION ITEM
-            self.parse_item_macro(vis)?
+            (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -193,10 +189,15 @@ impl<'a> Parser<'a> {
     /// When parsing a statement, would the start of a path be an item?
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_crate_vis() // no: `crate::b`, yes: `crate $item`
-        || self.is_union_item() // no: `union::b`, yes: `union U { .. }`
+        || self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
         || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || self.is_macro_rules_item() // no: `macro_rules::b`, yes: `macro_rules! mac`
+    }
+
+    /// Are we sure this could not possibly be a macro invocation?
+    fn isnt_macro_invocation(&mut self) -> bool {
+        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::ModSep)
     }
 
     /// Recover on encountering a struct or method definition where the user
@@ -297,33 +298,33 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item macro, e.g., `item!();`.
-    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
-        self.complain_if_pub_macro(&vis.node, vis.span);
-
-        // Item macro
-        let path = self.parse_path(PathStyle::Mod)?;
-        self.expect(&token::Not)?;
-        let args = self.parse_mac_args()?;
-        if args.need_semicolon() && !self.eat(&token::Semi) {
-            self.report_invalid_macro_expansion_item();
-        }
-
-        let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
-        Ok((Ident::invalid(), ItemKind::Mac(mac)))
+    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, Mac> {
+        let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
+        self.expect(&token::Not)?; // `!`
+        let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
+        self.eat_semi_for_macro_if_needed(&args);
+        self.complain_if_pub_macro(vis, false);
+        Ok(Mac { path, args, prior_type_ascription: self.last_type_ascription })
     }
 
-    /// Emits an expected-item-after-attributes error.
-    fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
-        let message = match attrs.last() {
-            Some(&Attribute { kind: AttrKind::DocComment(_), .. }) => {
-                "expected item after doc comment"
-            }
-            _ => "expected item after attributes",
+    /// Recover if we parsed attributes and expected an item but there was none.
+    fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
+        let (start, end) = match attrs {
+            [] => return Ok(()),
+            [x0] => (x0, x0),
+            [x0, .., xn] => (x0, xn),
         };
-
-        let mut err = self.struct_span_err(self.prev_span, message);
-        if attrs.last().unwrap().is_doc_comment() {
-            err.span_label(self.prev_span, "this doc comment doesn't document anything");
+        let msg = if end.is_doc_comment() {
+            "expected item after doc comment"
+        } else {
+            "expected item after attributes"
+        };
+        let mut err = self.struct_span_err(end.span, msg);
+        if end.is_doc_comment() {
+            err.span_label(end.span, "this doc comment doesn't document anything");
+        }
+        if let [.., penultimate, _] = attrs {
+            err.span_label(start.span.to(penultimate.span), "other attributes here");
         }
         Err(err)
     }
@@ -332,38 +333,19 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
-    /// Parses a macro invocation inside a `trait`, `impl` or `extern` block.
+    /// Parses a macro invocation inside a `trait`, `impl`, or `extern` block.
     fn parse_assoc_macro_invoc(
         &mut self,
         item_kind: &str,
-        vis: Option<&Visibility>,
+        vis: &Visibility,
         at_end: &mut bool,
     ) -> PResult<'a, Option<Mac>> {
-        if self.token.is_path_start() && !(self.is_async_fn() && self.token.span.rust_2015()) {
-            let prev_span = self.prev_span;
-            let path = self.parse_path(PathStyle::Mod)?;
-
-            if path.segments.len() == 1 {
-                if !self.eat(&token::Not) {
-                    return Err(self.missing_assoc_item_kind_err(item_kind, prev_span));
-                }
-            } else {
-                self.expect(&token::Not)?;
-            }
-
-            if let Some(vis) = vis {
-                self.complain_if_pub_macro(&vis.node, prev_span);
-            }
-
+        if self.isnt_macro_invocation() {
+            Err(self.missing_assoc_item_kind_err(item_kind, self.prev_span))
+        } else if self.token.is_path_start() {
+            let mac = self.parse_item_macro(vis)?;
             *at_end = true;
-
-            // eat a matched-delimiter token tree:
-            let args = self.parse_mac_args()?;
-            if args.need_semicolon() {
-                self.expect_semi()?;
-            }
-
-            Ok(Some(Mac { path, args, prior_type_ascription: self.last_type_ascription }))
+            Ok(Some(mac))
         } else {
             Ok(None)
         }
@@ -389,7 +371,7 @@ impl<'a> Parser<'a> {
         //   |        ^ missing `fn`, `type`, or `const`
         //     pub  path(
         //        ^^ `sp` below will point to this
-        let sp = prev_span.between(self.prev_span);
+        let sp = prev_span.between(self.token.span);
         let mut err = self
             .struct_span_err(sp, &format!("{} for {}-item declaration", expected_kinds, item_type));
         err.span_label(sp, expected_kinds);
@@ -706,10 +688,13 @@ impl<'a> Parser<'a> {
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
             (ident, AssocItemKind::Fn(sig, body), generics)
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
+        } else if self.check_keyword(kw::Const) {
+            self.parse_assoc_const()?
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", &vis, at_end)? {
             (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
-            self.parse_assoc_const()?
+            self.recover_attrs_no_item(&attrs)?;
+            self.unexpected()?
         };
 
         let span = lo.to(self.prev_span);
@@ -813,7 +798,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
         match self.token.kind {
-            token::Ident(name, false) if name == kw::Underscore => {
+            token::Ident(name @ kw::Underscore, false) => {
                 let span = self.token.span;
                 self.bump();
                 Ok(Ident::new(name, span))
@@ -928,12 +913,10 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
             self.parse_item_foreign_static()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", Some(&vis), at_end)? {
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", &vis, at_end)? {
             (Ident::invalid(), ForeignItemKind::Macro(mac))
         } else {
-            if !attrs.is_empty() {
-                self.expected_item_err(&attrs)?;
-            }
+            self.recover_attrs_no_item(&attrs)?;
             self.unexpected()?
         };
         Ok(P(self.mk_item(lo, ident, kind, vis, attrs)))
@@ -1189,11 +1172,6 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    fn is_union_item(&self) -> bool {
-        self.token.is_keyword(kw::Union)
-            && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
-    }
-
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
@@ -1343,24 +1321,26 @@ impl<'a> Parser<'a> {
 
     /// Parses a declarative macro 2.0 definition.
     /// The `macro` keyword has already been parsed.
+    /// ```
+    /// MacBody = "{" TOKEN_STREAM "}" ;
+    /// MacParams = "(" TOKEN_STREAM ")" ;
+    /// DeclMac = "macro" Ident MacParams? MacBody ;
+    /// ```
     fn parse_item_decl_macro(&mut self, lo: Span) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let body = if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_mac_args()?
+            self.parse_mac_args()? // `MacBody`
         } else if self.check(&token::OpenDelim(token::Paren)) {
-            let params = self.parse_token_tree();
+            let params = self.parse_token_tree(); // `MacParams`
             let pspan = params.span();
-            let body = if self.check(&token::OpenDelim(token::Brace)) {
-                self.parse_token_tree()
-            } else {
+            if !self.check(&token::OpenDelim(token::Brace)) {
                 return self.unexpected();
-            };
+            }
+            let body = self.parse_token_tree(); // `MacBody`
+            // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
-            let tokens = TokenStream::new(vec![
-                params.into(),
-                TokenTree::token(token::FatArrow, pspan.between(bspan)).into(),
-                body.into(),
-            ]);
+            let arrow = TokenTree::token(token::FatArrow, pspan.between(bspan)); // `=>`
+            let tokens = TokenStream::new(vec![params.into(), arrow.into(), body.into()]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(MacArgs::Delimited(dspan, MacDelimiter::Brace, tokens))
         } else {
@@ -1380,65 +1360,68 @@ impl<'a> Parser<'a> {
 
     /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
-        self.complain_if_pub_macro(&vis.node, vis.span);
         self.expect_keyword(sym::macro_rules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`
 
         let ident = self.parse_ident()?;
         let body = self.parse_mac_args()?;
-        if body.need_semicolon() && !self.eat(&token::Semi) {
-            self.report_invalid_macro_expansion_item();
-        }
+        self.eat_semi_for_macro_if_needed(&body);
+        self.complain_if_pub_macro(vis, true);
 
         Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
     }
 
-    fn complain_if_pub_macro(&self, vis: &VisibilityKind, sp: Span) {
-        match *vis {
-            VisibilityKind::Inherited => {}
-            _ => {
-                let mut err = if self.token.is_keyword(sym::macro_rules) {
-                    let mut err =
-                        self.struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
-                    err.span_suggestion(
-                        sp,
-                        "try exporting the macro",
-                        "#[macro_export]".to_owned(),
-                        Applicability::MaybeIncorrect, // speculative
-                    );
-                    err
-                } else {
-                    let mut err =
-                        self.struct_span_err(sp, "can't qualify macro invocation with `pub`");
-                    err.help("try adjusting the macro to put `pub` inside the invocation");
-                    err
-                };
-                err.emit();
-            }
+    /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
+    /// If that's not the case, emit an error.
+    fn complain_if_pub_macro(&self, vis: &Visibility, macro_rules: bool) {
+        if let VisibilityKind::Inherited = vis.node {
+            return;
+        }
+
+        let vstr = pprust::vis_to_string(vis);
+        let vstr = vstr.trim_end();
+        if macro_rules {
+            let msg = format!("can't qualify macro_rules invocation with `{}`", vstr);
+            self.struct_span_err(vis.span, &msg)
+                .span_suggestion(
+                    vis.span,
+                    "try exporting the macro",
+                    "#[macro_export]".to_owned(),
+                    Applicability::MaybeIncorrect, // speculative
+                )
+                .emit();
+        } else {
+            self.struct_span_err(vis.span, "can't qualify macro invocation with `pub`")
+                .span_suggestion(
+                    vis.span,
+                    "remove the visibility",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .help(&format!("try adjusting the macro to put `{}` inside the invocation", vstr))
+                .emit();
         }
     }
 
-    fn report_invalid_macro_expansion_item(&self) {
-        let has_close_delim = self
-            .sess
-            .source_map()
-            .span_to_snippet(self.prev_span)
-            .map(|s| s.ends_with(")") || s.ends_with("]"))
-            .unwrap_or(false);
+    fn eat_semi_for_macro_if_needed(&mut self, args: &MacArgs) {
+        if args.need_semicolon() && !self.eat(&token::Semi) {
+            self.report_invalid_macro_expansion_item(args);
+        }
+    }
 
+    fn report_invalid_macro_expansion_item(&self, args: &MacArgs) {
         let mut err = self.struct_span_err(
             self.prev_span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
-
-        // To avoid ICE, we shouldn't emit actual suggestions when it hasn't closing delims
-        if has_close_delim {
+        if self.unclosed_delims.is_empty() {
+            let DelimSpan { open, close } = match args {
+                MacArgs::Empty | MacArgs::Eq(..) => unreachable!(),
+                MacArgs::Delimited(dspan, ..) => *dspan,
+            };
             err.multipart_suggestion(
                 "change the delimiters to curly braces",
-                vec![
-                    (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), '{'.to_string()),
-                    (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
-                ],
+                vec![(open, "{".to_string()), (close, '}'.to_string())],
                 Applicability::MaybeIncorrect,
             );
         } else {
@@ -1449,14 +1432,13 @@ impl<'a> Parser<'a> {
                 Applicability::HasPlaceholders,
             );
         }
-
         err.span_suggestion(
             self.prev_span.shrink_to_hi(),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,
-        )
-        .emit();
+        );
+        err.emit();
     }
 
     /// Checks if current token is one of tokens which cannot be nested like `kw::Enum`. In case
