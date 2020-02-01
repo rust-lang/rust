@@ -2404,7 +2404,7 @@ where
 {
     #[cfg(not(test))]
     fn from(s: [T; N]) -> Vec<T> {
-        (box s as Box<[T]>).into_vec()
+        <[T]>::into_vec(box s)
     }
     #[cfg(test)]
     fn from(s: [T; N]) -> Vec<T> {
