@@ -256,15 +256,7 @@ impl ParenthesizedArgs {
     }
 }
 
-pub use rustc_session::node_id::NodeId;
-
-/// `NodeId` used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
-
-/// When parsing and doing expansions, we initially give all AST nodes this AST
-/// node value. Then later, in the renumber pass, we renumber them to have
-/// small, positive ids.
-pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
+pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 
 /// A modifier on a bound, e.g., `?Sized` or `?const Trait`.
 ///
@@ -431,8 +423,6 @@ pub struct WhereEqPredicate {
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
 }
-
-pub use rustc_session::parse::CrateConfig;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
@@ -1427,7 +1417,7 @@ pub enum MacDelimiter {
 }
 
 impl MacDelimiter {
-    crate fn to_token(self) -> DelimToken {
+    pub fn to_token(self) -> DelimToken {
         match self {
             MacDelimiter::Parenthesis => DelimToken::Paren,
             MacDelimiter::Bracket => DelimToken::Bracket,
@@ -1490,7 +1480,7 @@ pub struct StrLit {
 }
 
 impl StrLit {
-    crate fn as_lit(&self) -> Lit {
+    pub fn as_lit(&self) -> Lit {
         let token_kind = match self.style {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),

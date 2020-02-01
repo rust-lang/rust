@@ -1,4 +1,4 @@
-use crate::print::pp::Printer;
+use crate::pp::Printer;
 use std::borrow::Cow;
 
 impl Printer {

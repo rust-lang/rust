@@ -49,6 +49,7 @@ use rustc_hir::{HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 
+use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::any::type_name;
@@ -56,7 +57,6 @@ use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
 use syntax::ast;
-use syntax::attr;
 
 #[macro_use]
 mod plumbing;

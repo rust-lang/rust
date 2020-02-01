@@ -17,6 +17,8 @@ syntax = { path = "../libsyntax" }
 arena = { path = "../libarena" }
 rustc = { path = "../librustc" }
 rustc_ast_lowering = { path = "../librustc_ast_lowering" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_expand = { path = "../librustc_expand" }

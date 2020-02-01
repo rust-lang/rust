@@ -9,21 +9,21 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::{parse_in, validate_attr};
+use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
+use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, AttrItem, Attribute, MetaItem};
-use syntax::attr;
 use syntax::attr::HasAttrs;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::sess::{feature_err, ParseSess};
 use syntax::util::map_in_place::MapInPlace;
 
 use smallvec::SmallVec;

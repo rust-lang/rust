@@ -1,16 +1,16 @@
 //! Parsing and validation of builtin attributes
 
-use super::{mark_used, MetaItemKind};
-use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::print::pprust;
-use crate::sess::{feature_err, ParseSess};
+use super::{find_by_name, mark_used};
 
+use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
+use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem};
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
@@ -1042,4 +1042,22 @@ pub fn find_transparency(
     }
     let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
     (transparency.map_or(fallback, |t| t.0), error)
+}
+
+pub fn allow_internal_unstable<'a>(
+    attrs: &[Attribute],
+    diag: &'a rustc_errors::Handler,
+) -> Option<impl Iterator<Item = Symbol> + 'a> {
+    let attr = find_by_name(attrs, sym::allow_internal_unstable)?;
+    let list = attr.meta_item_list().or_else(|| {
+        diag.span_err(attr.span, "allow_internal_unstable expects list of feature names");
+        None
+    })?;
+    Some(list.into_iter().filter_map(move |it| {
+        let name = it.ident().map(|ident| ident.name);
+        if name.is_none() {
+            diag.span_err(it.span(), "`allow_internal_unstable` expects feature names");
+        }
+        name
+    }))
 }

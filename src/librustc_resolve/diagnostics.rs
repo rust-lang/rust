@@ -4,6 +4,7 @@ use log::debug;
 use rustc::bug;
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -16,7 +17,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 use syntax::ast::{self, Ident, Path};
-use syntax::print::pprust;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};

@@ -3,6 +3,7 @@ use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
 use crate::session::config::OptLevel;
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
+use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -12,7 +13,6 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use std::fmt;
 use std::hash::Hash;
-use syntax::attr::InlineAttr;
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]

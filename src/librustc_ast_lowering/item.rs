@@ -7,13 +7,13 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_session::node_id::NodeMap;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::node_id::NodeMap;
 use syntax::visit::{self, Visitor};
 
 use log::debug;

@@ -5,6 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
+use rustc_attr::{self as attr, ConstStability, Deprecation, RustcDeprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
@@ -12,12 +13,12 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
-use rustc_session::lint::{self, BuiltinLintDiagnostics, Lint, LintBuffer};
+use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
+use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
+use rustc_session::parse::feature_err_issue;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 use syntax::ast::CRATE_NODE_ID;
-use syntax::attr::{self, ConstStability, Deprecation, RustcDeprecation, Stability};
-use syntax::sess::feature_err_issue;
 
 use std::num::NonZeroU32;
 
@@ -97,7 +98,7 @@ pub fn report_unstable(
     issue: Option<NonZeroU32>,
     is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
+    soft_handler: impl FnOnce(&'static Lint, Span, &str),
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -119,7 +120,7 @@ pub fn report_unstable(
     let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
         if is_soft {
-            soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
+            soft_handler(SOFT_UNSTABLE, span, &msg)
         } else {
             feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg)
                 .emit();
@@ -175,19 +176,19 @@ fn deprecation_message_common(message: String, reason: Option<Symbol>) -> String
 
 pub fn deprecation_message(depr: &Deprecation, path: &str) -> (String, &'static Lint) {
     let message = format!("use of deprecated item '{}'", path);
-    (deprecation_message_common(message, depr.note), lint::builtin::DEPRECATED)
+    (deprecation_message_common(message, depr.note), DEPRECATED)
 }
 
 pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String, &'static Lint) {
     let (message, lint) = if deprecation_in_effect(&depr.since.as_str()) {
-        (format!("use of deprecated item '{}'", path), lint::builtin::DEPRECATED)
+        (format!("use of deprecated item '{}'", path), DEPRECATED)
     } else {
         (
             format!(
                 "use of item '{}' that will be deprecated in future version {}",
                 path, depr.since
             ),
-            lint::builtin::DEPRECATED_IN_FUTURE,
+            DEPRECATED_IN_FUTURE,
         )
     };
     (deprecation_message_common(message, Some(depr.reason)), lint)

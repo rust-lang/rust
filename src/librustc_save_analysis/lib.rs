@@ -13,11 +13,17 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
+use rustc_ast_pretty::pprust::{self, param_to_string, ty_to_string};
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_span::source_map::Spanned;
+use rustc_span::*;
+use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
+use syntax::util::comments::strip_doc_comment_decoration;
+use syntax::visit::{self, Visitor};
 
 use std::cell::Cell;
 use std::default::Default;
@@ -25,14 +31,6 @@ use std::env;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-
-use rustc_span::source_map::Spanned;
-use rustc_span::*;
-use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
-use syntax::print::pprust;
-use syntax::print::pprust::{param_to_string, ty_to_string};
-use syntax::util::comments::strip_doc_comment_decoration;
-use syntax::visit::{self, Visitor};
 
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;

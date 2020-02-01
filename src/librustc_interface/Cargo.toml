@@ -14,6 +14,7 @@ log = "0.4"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_builtin_macros = { path = "../librustc_builtin_macros" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_parse = { path = "../librustc_parse" }

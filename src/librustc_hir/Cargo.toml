@@ -10,6 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -17,6 +18,5 @@ rustc_index = { path = "../librustc_index" }
 rustc_span = { path = "../librustc_span" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-rustc_session = { path = "../librustc_session" }
 syntax = { path = "../libsyntax" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

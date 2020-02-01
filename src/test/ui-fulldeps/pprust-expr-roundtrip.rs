@@ -19,19 +19,21 @@
 
 #![feature(rustc_private)]
 
+extern crate rustc_ast_pretty;
 extern crate rustc_data_structures;
 extern crate syntax;
 extern crate rustc_parse;
+extern crate rustc_session;
 extern crate rustc_span;
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_parse::new_parser_from_source_str;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Spanned, DUMMY_SP, FileName};
 use rustc_span::source_map::FilePathMapping;
 use syntax::ast::*;
-use syntax::sess::ParseSess;
 use syntax::mut_visit::{self, MutVisitor, visit_clobber};
-use syntax::print::pprust;
 use syntax::ptr::P;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {

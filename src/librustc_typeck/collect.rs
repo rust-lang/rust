@@ -33,6 +33,7 @@ use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ReprOptions, ToPredicate};
+use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, StashKey};
@@ -46,7 +47,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
-use syntax::attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
 
 struct OnlySelfBounds(bool);
 

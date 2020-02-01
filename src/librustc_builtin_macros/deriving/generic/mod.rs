@@ -181,15 +181,15 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{GenericArg, GenericParamKind, VariantData};
-use syntax::attr;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};

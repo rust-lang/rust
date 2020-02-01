@@ -76,13 +76,13 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
+use rustc_ast_pretty::pprust;
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
 use rustc_parse::Directory;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast::{Ident, Name};
-use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::sess::ParseSess;
 use syntax::token::{self, DocComment, Nonterminal, Token};
 use syntax::tokenstream::TokenStream;
 

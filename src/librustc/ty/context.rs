@@ -41,32 +41,34 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use rustc_data_structures::sync;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
-use rustc_hir::{HirId, Node, TraitCandidate};
-use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
-use rustc_session::config::CrateType;
-use rustc_session::config::{BorrowckMode, OutputFilenames};
-use rustc_session::Session;
-
+use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
-use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_errors::DiagnosticBuilder;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
+use rustc_hir::{HirId, Node, TraitCandidate};
+use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_session::config::CrateType;
+use rustc_session::config::{BorrowckMode, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
-use rustc_session::node_id::NodeMap;
+use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
+use syntax::ast;
+use syntax::expand::allocator::AllocatorKind;
+use syntax::node_id::NodeMap;
+
 use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
@@ -78,9 +80,6 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
-use syntax::ast;
-use syntax::attr;
-use syntax::expand::allocator::AllocatorKind;
 
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 

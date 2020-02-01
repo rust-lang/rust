@@ -12,6 +12,8 @@ doctest = false
 [dependencies]
 bitflags = "1.0"
 log = "0.4"
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_lexer = { path = "../librustc_lexer" }

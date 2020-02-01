@@ -20,6 +20,7 @@ use rustc::bug;
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty;
+use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::SyntaxExtension;
@@ -34,7 +35,6 @@ use rustc_span::{Span, DUMMY_SP};
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
-use syntax::attr;
 use syntax::token::{self, Token};
 use syntax::visit::{self, Visitor};
 

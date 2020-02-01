@@ -1723,7 +1723,7 @@ pub fn add_upstream_native_libraries(
 
 pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
-        Some(ref cfg) => syntax::attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
     }
 }

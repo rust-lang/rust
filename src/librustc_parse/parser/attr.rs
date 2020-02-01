@@ -1,9 +1,9 @@
 use super::{Parser, PathStyle, TokenType};
+use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::{Span, Symbol};
 use syntax::ast;
 use syntax::attr;
-use syntax::print::pprust;
 use syntax::token::{self, Nonterminal};
 use syntax::util::comments;
 

@@ -34,6 +34,7 @@ use std::u32;
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use rustc_attr as attr;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
@@ -41,7 +42,6 @@ use rustc_span::source_map::{self, respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 use syntax::ast::{self, Ident};
-use syntax::attr;
 
 pub use cstore_impl::{provide, provide_extern};
 
