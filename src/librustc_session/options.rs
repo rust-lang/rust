@@ -263,6 +263,8 @@ macro_rules! options {
         pub const parse_sanitizer_list: Option<&str> =
             Some("comma separated list of sanitizers");
         pub const parse_sanitizer_memory_track_origins: Option<&str> = None;
+        pub const parse_cfguard: Option<&str> =
+            Some("either `disabled`, `nochecks`, or `checks`");
         pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&str> =
@@ -288,7 +290,7 @@ macro_rules! options {
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
-            SymbolManglingVersion};
+            SymbolManglingVersion, CFGuard};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -497,6 +499,16 @@ macro_rules! options {
                     false
                 }
             }
+        }
+
+        fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
+            match v {
+                Some("disabled") => *slot = CFGuard::Disabled,
+                Some("nochecks") => *slot = CFGuard::NoChecks,
+                Some("checks") => *slot = CFGuard::Checks,
+                _ => return false,
+            }
+            true
         }
 
         fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
@@ -950,6 +962,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          (such as entering an empty infinite loop) by inserting llvm.sideeffect"),
     deduplicate_diagnostics: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "deduplicate identical diagnostics"),
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [UNTRACKED],
+        "use Windows Control Flow Guard (`disabled`, `nochecks` or `checks`)"),
     no_link: bool = (false, parse_bool, [TRACKED],
         "compile without linking"),
 }

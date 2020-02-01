@@ -1,7 +1,7 @@
 use rustc::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::config::{
-    self, DebugInfo, OutputFilenames, OutputType, PrintRequest, Sanitizer,
+    self, CFGuard, DebugInfo, OutputFilenames, OutputType, PrintRequest, Sanitizer,
 };
 use rustc::session::search_paths::PathKind;
 /// For all the linkers we support, and information they might
@@ -1292,6 +1292,10 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
 
     if sess.opts.cg.profile_generate.enabled() {
         cmd.pgo_gen();
+    }
+
+    if sess.opts.debugging_opts.control_flow_guard != CFGuard::Disabled {
+        cmd.control_flow_guard();
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to

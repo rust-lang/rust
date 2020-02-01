@@ -70,6 +70,19 @@ impl FromStr for Sanitizer {
     }
 }
 
+/// The different settings that the `-Z control_flow_guard` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CFGuard {
+    /// Do not emit Control Flow Guard metadata or checks.
+    Disabled,
+
+    /// Emit Control Flow Guard metadata but no checks.
+    NoChecks,
+
+    /// Emit Control Flow Guard metadata and checks.
+    Checks,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum OptLevel {
     No,         // -O0
@@ -1980,8 +1993,8 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel, OutputTypes,
-        Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
+        OutputTypes, Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
     };
     use crate::lint;
     use crate::utils::NativeLibraryKind;
@@ -2053,6 +2066,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(CFGuard);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
