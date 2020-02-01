@@ -1749,6 +1749,7 @@ impl<'a> State<'a> {
             Consistent,
             &fields[..],
             |s, field| {
+                s.print_outer_attributes(&field.attrs);
                 s.ibox(INDENT_UNIT);
                 if !field.is_shorthand {
                     s.print_ident(field.ident);
