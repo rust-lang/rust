@@ -119,7 +119,7 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::{attr::Attrs, visibility::Visibility, AssocItemId};
+pub use hir_def::{attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId};
 use rustc_hash::FxHashSet;
 
 impl Module {
@@ -238,11 +238,16 @@ impl Module {
         item: ModuleDef,
     ) -> Option<hir_def::path::ModPath> {
         // FIXME expose namespace choice
-        hir_def::find_path::find_path(
-            db,
-            hir_def::item_scope::ItemInNs::Types(item.into()),
-            self.into(),
-        )
+        hir_def::find_path::find_path(db, determine_item_namespace(item), self.into())
+    }
+}
+
+fn determine_item_namespace(module_def: ModuleDef) -> ItemInNs {
+    match module_def {
+        ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
+            ItemInNs::Values(module_def.into())
+        }
+        _ => ItemInNs::Types(module_def.into()),
     }
 }
 
