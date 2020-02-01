@@ -11,8 +11,6 @@
 use crate::prelude::*;
 
 pub(super) fn optimize_function(ctx: &mut Context, cold_ebbs: &EntitySet<Ebb>) {
-    return; // FIXME add ebb arguments back
-
     // FIXME Move the ebb in place instead of remove and append once
     // bytecodealliance/cranelift#1339 is implemented.
 

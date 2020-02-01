@@ -32,12 +32,6 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     // Predefine ebb's
     let start_ebb = bcx.create_ebb();
     let ebb_map: IndexVec<BasicBlock, Ebb> = (0..mir.basic_blocks().len()).map(|_| bcx.create_ebb()).collect();
-    let mut cold_ebbs = EntitySet::new();
-    for (bb, &ebb) in ebb_map.iter_enumerated() {
-        if mir.basic_blocks()[bb].is_cleanup {
-            cold_ebbs.insert(ebb);
-        }
-    }
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
@@ -55,7 +49,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         ebb_map,
         local_map: HashMap::new(),
         caller_location: None, // set by `codegen_fn_prelude`
-        cold_ebbs,
+        cold_ebbs: EntitySet::new(),
 
         clif_comments,
         constants_cx: &mut cx.constants_cx,
@@ -148,13 +142,17 @@ pub fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func
 
 fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
+        let ebb = fx.get_ebb(bb);
+        fx.bcx.switch_to_block(ebb);
+
         if bb_data.is_cleanup {
             // Unwinding after panicking is not supported
             continue;
-        }
 
-        let ebb = fx.get_ebb(bb);
-        fx.bcx.switch_to_block(ebb);
+            // FIXME once unwinding is supported uncomment next lines
+            // // Unwinding is unlikely to happen, so mark cleanup ebb's as cold.
+            // fx.cold_ebbs.insert(ebb);
+        }
 
         fx.bcx.ins().nop();
         for stmt in &bb_data.statements {
