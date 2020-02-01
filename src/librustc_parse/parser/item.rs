@@ -333,24 +333,6 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
     }
 
-    /// Parses a macro invocation inside a `trait`, `impl`, or `extern` block.
-    fn parse_assoc_macro_invoc(
-        &mut self,
-        item_kind: &str,
-        vis: &Visibility,
-        at_end: &mut bool,
-    ) -> PResult<'a, Option<Mac>> {
-        if self.isnt_macro_invocation() {
-            Err(self.missing_assoc_item_kind_err(item_kind, self.prev_span))
-        } else if self.token.is_path_start() {
-            let mac = self.parse_item_macro(vis)?;
-            *at_end = true;
-            Ok(Some(mac))
-        } else {
-            Ok(None)
-        }
-    }
-
     fn missing_assoc_item_kind_err(
         &self,
         item_type: &str,
@@ -690,7 +672,11 @@ impl<'a> Parser<'a> {
             (ident, AssocItemKind::Fn(sig, body), generics)
         } else if self.check_keyword(kw::Const) {
             self.parse_assoc_const()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", &vis, at_end)? {
+        } else if self.isnt_macro_invocation() {
+            return Err(self.missing_assoc_item_kind_err("associated", self.prev_span));
+        } else if self.token.is_path_start() {
+            let mac = self.parse_item_macro(&vis)?;
+            *at_end = true;
             (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
             self.recover_attrs_no_item(&attrs)?;
@@ -913,7 +899,11 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
             self.parse_item_foreign_static()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("extern", &vis, at_end)? {
+        } else if self.isnt_macro_invocation() {
+            return Err(self.missing_assoc_item_kind_err("extern", self.prev_span));
+        } else if self.token.is_path_start() {
+            let mac = self.parse_item_macro(&vis)?;
+            *at_end = true;
             (Ident::invalid(), ForeignItemKind::Macro(mac))
         } else {
             self.recover_attrs_no_item(&attrs)?;
