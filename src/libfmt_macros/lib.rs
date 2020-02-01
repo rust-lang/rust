@@ -481,12 +481,14 @@ impl<'a> Parser<'a> {
 
         // fill character
         if let Some(&(_, c)) = self.cur.peek() {
-            match self.cur.clone().nth(1) {
-                Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
-                    spec.fill = Some(c);
-                    self.cur.next();
+            if c != '}' {
+                match self.cur.clone().nth(1) {
+                    Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
+                        spec.fill = Some(c);
+                        self.cur.next();
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
         // Alignment

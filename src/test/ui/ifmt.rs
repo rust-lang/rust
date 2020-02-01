@@ -237,6 +237,11 @@ pub fn main() {
     format!("{foo}", foo="test",);
 
     test_refcell();
+
+    // test that } cannot be a fill character
+    t!(format!("{:}<}}", 4), "4<}");
+    t!(format!("{:}>}}", 4), "4>}");
+    t!(format!("{:}^}}", 4), "4^}");
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
