@@ -28,7 +28,9 @@ export class ColorTheme {
     static fromRules(rules: TextMateRule[]): ColorTheme {
         const res = new ColorTheme();
         for (const rule of rules) {
-            const scopes = typeof rule.scope === 'string'
+            const scopes = typeof rule.scope === 'undefined'
+                ? []
+                : typeof rule.scope === 'string'
                 ? [rule.scope]
                 : rule.scope;
             for (const scope of scopes) {
