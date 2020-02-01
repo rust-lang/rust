@@ -2,6 +2,7 @@ use crate::obligation_forest::{ForestObligation, ObligationForest};
 use graphviz as dot;
 use std::env::var_os;
 use std::fs::File;
+use std::io::BufWriter;
 use std::path::Path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -31,7 +32,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         let file_path = dir.as_ref().join(format!("{:010}_{}.gv", counter, description));
 
-        let mut gv_file = File::create(file_path).unwrap();
+        let mut gv_file = BufWriter::new(File::create(file_path).unwrap());
 
         dot::render(&self, &mut gv_file).unwrap();
     }

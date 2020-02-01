@@ -49,7 +49,7 @@ use syntax::ast;
 
 use std::env;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
@@ -235,7 +235,7 @@ fn dump_graph(tcx: TyCtxt<'_>) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
-        let mut file = File::create(&txt_path).unwrap();
+        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
         for &(ref source, ref target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }
