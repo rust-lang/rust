@@ -1751,12 +1751,15 @@ impl<'a> State<'a> {
         attrs: &[Attribute],
     ) {
         self.print_path(path, true, 0);
+        self.nbsp();
         self.s.word("{");
         self.print_inner_attributes_inline(attrs);
         self.commasep_cmnt(
             Consistent,
             &fields[..],
             |s, field| {
+                s.print_outer_attributes(&field.attrs);
+                s.space_if_not_bol();
                 s.ibox(INDENT_UNIT);
                 if !field.is_shorthand {
                     s.print_ident(field.ident);
@@ -1769,6 +1772,7 @@ impl<'a> State<'a> {
         );
         match *wth {
             Some(ref expr) => {
+                self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
