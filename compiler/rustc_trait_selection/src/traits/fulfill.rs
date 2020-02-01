@@ -678,10 +678,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 }
 
 /// Returns the set of inference variables contained in a trait ref.
-fn trait_ref_infer_vars<'a, 'tcx>(
-    selcx: &mut SelectionContext<'a, 'tcx>,
+fn trait_ref_infer_vars<'a, 'tcx, 'b>(
+    selcx: &'b mut SelectionContext<'a, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Vec<TyOrConstInferVar<'tcx>> {
+) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> + 'b + Captures<'a> + Captures<'tcx> {
     selcx
         .infcx()
         .resolve_vars_if_possible(&trait_ref)
