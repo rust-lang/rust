@@ -2208,6 +2208,14 @@ impl AsRef<str> for String {
     }
 }
 
+#[stable(feature = "string_as_mut", since = "1.43.0")]
+impl AsMut<str> for String {
+    #[inline]
+    fn as_mut(&mut self) -> &mut str {
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<[u8]> for String {
     #[inline]
