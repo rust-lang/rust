@@ -82,13 +82,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
+    /// We avoid emitting this if not followed by an identifier, as our assumption that the user
+    /// intended this to be a qualified path may not be correct.
     ///
     /// ```ignore (diagnostics)
     /// <Bar as Baz<T>>:Qux
     ///                ^ help: use double colon
     /// ```
     fn recover_colon_before_qpath_proj(&mut self) -> bool {
-        if self.token.kind != token::Colon {
+        if self.token.kind != token::Colon
+            || self.look_ahead(1, |t| !t.is_ident() || t.is_reserved_ident())
+        {
             return false;
         }
 
