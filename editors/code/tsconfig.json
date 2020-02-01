@@ -13,7 +13,8 @@
         "noUnusedParameters": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
-        "newLine": "LF"
+        "newLine": "LF",
+        "esModuleInterop": true,
     },
     "exclude": [
         "node_modules"
