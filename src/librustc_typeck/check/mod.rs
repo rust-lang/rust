@@ -837,8 +837,11 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return tcx.has_typeck_tables(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    primary_body_of(tcx, id).is_some()
+    if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
+        primary_body_of(tcx, id).is_some()
+    } else {
+        false
+    }
 }
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
