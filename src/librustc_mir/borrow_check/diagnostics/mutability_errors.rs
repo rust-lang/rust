@@ -257,12 +257,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_suggestion(
-                    local_decl.source_info.span,
-                    "consider changing this to be mutable",
-                    format!("mut {}", self.local_names[local].unwrap()),
-                    Applicability::MachineApplicable,
-                );
+
+                if let ty::Ref(_, _, Mutability::Mut) = local_decl.ty.kind {
+                    err.span_suggestion(
+                        span,
+                        "remove the unnecessary `&mut` here",
+                        self.local_names[local].unwrap().to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_suggestion(
+                        local_decl.source_info.span,
+                        "consider changing this to be mutable",
+                        format!("mut {}", self.local_names[local].unwrap()),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
 
             // Also suggest adding mut for upvars
