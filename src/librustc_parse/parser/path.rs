@@ -81,17 +81,24 @@ impl<'a> Parser<'a> {
         Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_span) }))
     }
 
+    /// Recover from an invalid single colon, when the user likely meant a qualified path.
+    ///
+    /// ```ignore (diagnostics)
+    /// <Bar as Baz<T>>:Qux
+    ///                ^ help: use double colon
+    /// ```
     fn recover_colon_before_qpath_proj(&mut self) -> bool {
         if self.token.kind != token::Colon {
             return false;
         }
 
-        // <Bar as Baz<T>>:Qux
-        //                ^
-        self.bump();
+        self.bump(); // colon
 
         self.diagnostic()
-            .struct_span_err(self.prev_span, "found single colon where type path was expected")
+            .struct_span_err(
+                self.prev_span,
+                "found single colon before projection in qualified path",
+            )
             .span_suggestion(
                 self.prev_span,
                 "use double colon",

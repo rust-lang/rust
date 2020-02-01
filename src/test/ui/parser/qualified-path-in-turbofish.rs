@@ -15,5 +15,5 @@ fn template<T>() -> i64 {
 
 fn main() {
     template::<<Impl as T>:Ty>();
-    //~^ ERROR found single colon where type path was expected
+    //~^ ERROR found single colon before projection in qualified path
 }
