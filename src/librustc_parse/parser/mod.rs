@@ -671,12 +671,12 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOp(token::Shl) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
+                let span = self.sess.source_map().next_point(self.token.span);
                 self.bump_with(token::Lt, span);
                 true
             }
             token::LArrow => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
+                let span = self.sess.source_map().next_point(self.token.span);
                 self.bump_with(token::BinOp(token::Minus), span);
                 true
             }
