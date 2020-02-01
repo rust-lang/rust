@@ -48,7 +48,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
@@ -574,7 +574,7 @@ fn write_out_deps(
             });
         }
 
-        let mut file = fs::File::create(&deps_filename)?;
+        let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
         for path in out_filenames {
             writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
         }

@@ -769,6 +769,11 @@ impl<'a> Resolver<'a> {
         span: Span,
     ) -> bool {
         if let Some(suggestion) = suggestion {
+            // We shouldn't suggest underscore.
+            if suggestion.candidate == kw::Underscore {
+                return false;
+            }
+
             let msg = format!(
                 "{} {} with a similar name exists",
                 suggestion.res.article(),
