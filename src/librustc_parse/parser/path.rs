@@ -71,21 +71,7 @@ impl<'a> Parser<'a> {
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
         }
 
-        if self.token.kind == token::Colon {
-            // <Bar as Baz<T>>:Qux
-            //                ^
-            self.bump();
-
-            self.diagnostic()
-                .struct_span_err(self.prev_span, "found single colon where type path was expected")
-                .span_suggestion(
-                    self.prev_span,
-                    "use double colon",
-                    "::".to_string(),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
-        } else {
+        if !self.recover_colon_before_qpath_proj() {
             self.expect(&token::ModSep)?;
         }
 
@@ -93,6 +79,28 @@ impl<'a> Parser<'a> {
         self.parse_path_segments(&mut path.segments, style)?;
 
         Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_span) }))
+    }
+
+    fn recover_colon_before_qpath_proj(&mut self) -> bool {
+        if self.token.kind != token::Colon {
+            return false;
+        }
+
+        // <Bar as Baz<T>>:Qux
+        //                ^
+        self.bump();
+
+        self.diagnostic()
+            .struct_span_err(self.prev_span, "found single colon where type path was expected")
+            .span_suggestion(
+                self.prev_span,
+                "use double colon",
+                "::".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        true
     }
 
     /// Parses simple paths.
