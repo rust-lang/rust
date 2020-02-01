@@ -1355,6 +1355,13 @@ pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
     })
 }
 
+/// Check if parent of a hir node is a trait implementation block.
+/// For example, `f` in
+/// ```rust,ignore
+/// impl Trait for S {
+///     fn f() {}
+/// }
+/// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
     if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
         matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), .. })

@@ -1147,6 +1147,7 @@ Released 2018-09-13
 [`float_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_arithmetic
 [`float_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_cmp
 [`float_cmp_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_cmp_const
+[`fn_params_excessive_bools`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_params_excessive_bools
 [`fn_to_numeric_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_to_numeric_cast
 [`fn_to_numeric_cast_with_truncation`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_to_numeric_cast_with_truncation
 [`for_kv_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_kv_map
@@ -1342,6 +1343,7 @@ Released 2018-09-13
 [`string_extend_chars`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_extend_chars
 [`string_lit_as_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_lit_as_bytes
 [`string_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_to_string
+[`struct_excessive_bools`]: https://rust-lang.github.io/rust-clippy/master/index.html#struct_excessive_bools
 [`suspicious_arithmetic_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_arithmetic_impl
 [`suspicious_assignment_formatting`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_assignment_formatting
 [`suspicious_else_formatting`]: https://rust-lang.github.io/rust-clippy/master/index.html#suspicious_else_formatting
