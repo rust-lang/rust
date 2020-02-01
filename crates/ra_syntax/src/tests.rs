@@ -1,19 +1,28 @@
 use std::{
     fmt::Write,
-    path::{Component, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use test_utils::{collect_tests, dir_tests, project_dir, read_text};
 
-use crate::{fuzz, SourceFile};
+use crate::{fuzz, tokenize, Location, SourceFile, SyntaxError, TextRange, Token};
 
 #[test]
 fn lexer_tests() {
-    dir_tests(&test_data_dir(), &["lexer"], |text, _| {
-        // FIXME: add tests for errors (their format is up to discussion)
-        let (tokens, _errors) = crate::tokenize(text);
-        dump_tokens(&tokens, text)
-    })
+    // FIXME:
+    // * Add tests for unicode escapes in byte-character and [raw]-byte-string literals
+    // * Add tests for unescape errors
+
+    dir_tests(&test_data_dir(), &["lexer/ok"], |text, path| {
+        let (tokens, errors) = tokenize(text);
+        assert_errors_are_absent(&errors, path);
+        dump_tokens_and_errors(&tokens, &errors, text)
+    });
+    dir_tests(&test_data_dir(), &["lexer/err"], |text, path| {
+        let (tokens, errors) = tokenize(text);
+        assert_errors_are_present(&errors, path);
+        dump_tokens_and_errors(&tokens, &errors, text)
+    });
 }
 
 #[test]
@@ -33,18 +42,13 @@ fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
-        assert_eq!(
-            errors,
-            &[] as &[crate::SyntaxError],
-            "There should be no errors in the file {:?}",
-            path.display(),
-        );
+        assert_errors_are_absent(&errors, path);
         parse.debug_dump()
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
-        assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
+        assert_errors_are_present(&errors, path);
         parse.debug_dump()
     });
 }
@@ -76,7 +80,7 @@ fn self_hosting_parsing() {
         .into_iter()
         .filter_entry(|entry| {
             !entry.path().components().any(|component| {
-                // Get all files which are not in the crates/ra_syntax/tests/data folder
+                // Get all files which are not in the crates/ra_syntax/test_data folder
                 component == Component::Normal(OsStr::new("test_data"))
             })
         })
@@ -102,15 +106,47 @@ fn test_data_dir() -> PathBuf {
     project_dir().join("crates/ra_syntax/test_data")
 }
 
-fn dump_tokens(tokens: &[crate::Token], text: &str) -> String {
+fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
+    assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
+}
+fn assert_errors_are_absent(errors: &[SyntaxError], path: &Path) {
+    assert_eq!(
+        errors,
+        &[] as &[SyntaxError],
+        "There should be no errors in the file {:?}",
+        path.display(),
+    );
+}
+
+fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) -> String {
     let mut acc = String::new();
     let mut offset = 0;
     for token in tokens {
-        let len: u32 = token.len.into();
-        let len = len as usize;
-        let token_text = &text[offset..offset + len];
-        offset += len;
-        write!(acc, "{:?} {} {:?}\n", token.kind, token.len, token_text).unwrap()
+        let token_len = token.len.to_usize();
+        let token_text = &text[offset..offset + token_len];
+        offset += token_len;
+        writeln!(acc, "{:?} {} {:?}", token.kind, token_len, token_text).unwrap();
     }
-    acc
+    for err in errors {
+        let err_range = location_to_range(err.location());
+        writeln!(
+            acc,
+            "> error{:?} token({:?}) msg({})",
+            err.location(),
+            &text[err_range],
+            err.kind()
+        )
+        .unwrap();
+    }
+    return acc;
+
+    // FIXME: copy-pasted this from `ra_ide/src/diagnostics.rs`
+    // `Location` will be refactored soon in new PR, see todos here:
+    // https://github.com/rust-analyzer/rust-analyzer/issues/223
+    fn location_to_range(location: Location) -> TextRange {
+        match location {
+            Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
+            Location::Range(range) => range,
+        }
+    }
 }

@@ -1,0 +1,39 @@
+INT_NUMBER 2 "0b"
+WHITESPACE 1 "\n"
+INT_NUMBER 2 "0o"
+WHITESPACE 1 "\n"
+INT_NUMBER 2 "0x"
+WHITESPACE 2 "\n\n"
+INT_NUMBER 3 "0b_"
+WHITESPACE 1 "\n"
+INT_NUMBER 3 "0o_"
+WHITESPACE 1 "\n"
+INT_NUMBER 3 "0x_"
+WHITESPACE 2 "\n\n"
+INT_NUMBER 9 "0bnoDigit"
+WHITESPACE 1 "\n"
+INT_NUMBER 9 "0onoDigit"
+WHITESPACE 1 "\n"
+INT_NUMBER 9 "0xnoDigit"
+WHITESPACE 2 "\n\n"
+INT_NUMBER 3 "0xG"
+WHITESPACE 1 "\n"
+INT_NUMBER 3 "0xg"
+WHITESPACE 2 "\n\n"
+INT_NUMBER 4 "0x_g"
+WHITESPACE 1 "\n"
+INT_NUMBER 4 "0x_G"
+WHITESPACE 1 "\n"
+> error[0; 2) token("0b") msg(Missing digits after the integer base prefix)
+> error[3; 5) token("0o") msg(Missing digits after the integer base prefix)
+> error[6; 8) token("0x") msg(Missing digits after the integer base prefix)
+> error[10; 13) token("0b_") msg(Missing digits after the integer base prefix)
+> error[14; 17) token("0o_") msg(Missing digits after the integer base prefix)
+> error[18; 21) token("0x_") msg(Missing digits after the integer base prefix)
+> error[23; 32) token("0bnoDigit") msg(Missing digits after the integer base prefix)
+> error[33; 42) token("0onoDigit") msg(Missing digits after the integer base prefix)
+> error[43; 52) token("0xnoDigit") msg(Missing digits after the integer base prefix)
+> error[54; 57) token("0xG") msg(Missing digits after the integer base prefix)
+> error[58; 61) token("0xg") msg(Missing digits after the integer base prefix)
+> error[63; 67) token("0x_g") msg(Missing digits after the integer base prefix)
+> error[68; 72) token("0x_G") msg(Missing digits after the integer base prefix)
