@@ -31,6 +31,7 @@ use crate::{
     TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 use hir_def::TypeParamId;
+use hir_def::generics::TypeParamProvenance;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a, DB: HirDatabase> {
@@ -149,6 +150,7 @@ impl Ty {
                             let generics = generics(ctx.db, def);
                             let param = generics
                                 .iter()
+                                .filter(|(_, data)| data.provenance == TypeParamProvenance::ArgumentImplTrait)
                                 .nth(idx as usize)
                                 .map_or(Ty::Unknown, |(id, _)| Ty::Param(id));
                             param
