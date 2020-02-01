@@ -2402,8 +2402,13 @@ impl<T, const N: usize> From<[T; N]> for Vec<T>
 where
     [T; N]: LengthAtMost32,
 {
-    fn from(arr: [T; N]) -> Self {
-        <[T]>::into_vec(box arr)
+    #[cfg(not(test))]
+    fn from(s: [T; N]) -> Vec<T> {
+        (box s as Box<[T]>).into_vec()
+    }
+    #[cfg(test)]
+    fn from(s: [T; N]) -> Vec<T> {
+        crate::slice::into_vec(box s)
     }
 }
 
