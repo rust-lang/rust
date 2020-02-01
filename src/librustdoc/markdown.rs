@@ -1,6 +1,6 @@
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
@@ -76,10 +76,21 @@ pub fn render(
 
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let mut images_to_copy = Vec::new();
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).to_string()
+        MarkdownWithToc(
+            text,
+            &mut ids,
+            error_codes,
+            edition,
+            &playground,
+            &mut images_to_copy,
+            &None,
+        )
+        .to_string()
     } else {
-        Markdown(text, &[], &mut ids, error_codes, edition, &playground).to_string()
+        Markdown(text, &[], &mut ids, error_codes, edition, &playground, &mut images_to_copy, &None)
+            .to_string()
     };
 
     let err = write!(
@@ -122,7 +133,27 @@ pub fn render(
             diag.struct_err(&format!("cannot write to `{}`: {}", output.display(), e)).emit();
             6
         }
-        Ok(_) => 0,
+        Ok(_) => {
+            generate_static_images(&output, &images_to_copy);
+            0
+        }
+    }
+}
+
+pub fn generate_static_images<P: AsRef<Path>>(target_dir: P, images_to_copy: &[(String, PathBuf)]) {
+    if images_to_copy.is_empty() {
+        return;
+    }
+    let target_dir = target_dir.as_ref().join("static");
+    let _ = fs::create_dir(&target_dir);
+    for (hash, image_to_copy) in images_to_copy {
+        if fs::copy(image_to_copy, target_dir.join(hash)).is_err() {
+            eprintln!(
+                "Couldn't copy `{}` into `{}`...",
+                image_to_copy.display(),
+                target_dir.display()
+            );
+        }
     }
 }
 

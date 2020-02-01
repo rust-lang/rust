@@ -72,6 +72,7 @@ use crate::html::item_type::ItemType;
 use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::html::{highlight, layout, static_files};
+use crate::markdown::generate_static_images;
 
 use minifier;
 
@@ -203,6 +204,10 @@ crate struct SharedContext {
     pub edition: Edition,
     pub codes: ErrorCodes,
     playground: Option<markdown::Playground>,
+    /// Local images to move into the static folder.
+    ///
+    /// The tuple contains the hash as first argument and the image original path.
+    pub images_to_copy: RefCell<Vec<(String, PathBuf)>>,
 }
 
 impl Context {
@@ -482,9 +487,10 @@ pub fn run(
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         playground,
+        images_to_copy: RefCell::new(Vec::new()),
     };
 
-    let dst = output;
+    let dst = output.clone();
     scx.ensure_dir(&dst)?;
     krate = sources::render(&dst, &mut scx, krate)?;
     let (new_crate, index, cache) =
@@ -1349,6 +1355,8 @@ impl Context {
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
+        generate_static_images(&self.dst, &*self.shared.images_to_copy.borrow());
+
         Ok(())
     }
 
@@ -1801,6 +1809,7 @@ fn render_markdown(
     is_hidden: bool,
 ) {
     let mut ids = cx.id_map.borrow_mut();
+    let mut images_to_copy = cx.shared.images_to_copy.borrow_mut();
     write!(
         w,
         "<div class='docblock{}'>{}{}</div>",
@@ -1812,7 +1821,9 @@ fn render_markdown(
             &mut ids,
             cx.shared.codes,
             cx.shared.edition,
-            &cx.shared.playground
+            &cx.shared.playground,
+            &mut images_to_copy,
+            &cx.shared.static_root_path,
         )
         .to_string()
     )
@@ -3660,6 +3671,7 @@ fn render_impl(
         write!(w, "</h3>");
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
+            let mut images_to_copy = cx.shared.images_to_copy.borrow_mut();
             write!(
                 w,
                 "<div class='docblock'>{}</div>",
@@ -3669,7 +3681,9 @@ fn render_impl(
                     &mut ids,
                     cx.shared.codes,
                     cx.shared.edition,
-                    &cx.shared.playground
+                    &cx.shared.playground,
+                    &mut images_to_copy,
+                    &cx.shared.static_root_path,
                 )
                 .to_string()
             );

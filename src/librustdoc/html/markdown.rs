@@ -23,10 +23,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
+use std::hash::{Hash, Hasher};
 use std::ops::Range;
+use std::path::{Path, PathBuf};
 use std::str;
 
 use crate::html::highlight;
@@ -44,7 +47,7 @@ fn opts() -> Options {
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
 /// the rendered version of the contained markdown string.
-pub struct Markdown<'a>(
+pub struct Markdown<'a, 'b>(
     pub &'a str,
     /// A list of link replacements.
     pub &'a [(String, String)],
@@ -52,17 +55,25 @@ pub struct Markdown<'a>(
     pub &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
     pub ErrorCodes,
-    /// Default edition to use when parsing doctests (to add a `fn main`).
+    /// Default edition to use when parsing dcotests (to add a `fn main`).
     pub Edition,
     pub &'a Option<Playground>,
+    /// images_to_copy
+    pub &'b mut Vec<(String, PathBuf)>,
+    /// static_root_path
+    pub &'b Option<String>,
 );
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-pub struct MarkdownWithToc<'a>(
+pub struct MarkdownWithToc<'a, 'b>(
     pub &'a str,
     pub &'a mut IdMap,
     pub ErrorCodes,
     pub Edition,
     pub &'a Option<Playground>,
+    /// images_to_copy
+    pub &'b mut Vec<(String, PathBuf)>,
+    /// static_root_path
+    pub &'b Option<String>,
 );
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(
@@ -550,6 +561,56 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
+struct LocalImages<'a, 'b, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    images_to_copy: &'b mut Vec<(String, PathBuf)>,
+    static_root_path: &'b Option<String>,
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> LocalImages<'a, 'b, I> {
+    fn new(
+        iter: I,
+        images_to_copy: &'b mut Vec<(String, PathBuf)>,
+        static_root_path: &'b Option<String>,
+    ) -> Self {
+        LocalImages { inner: iter, images_to_copy, static_root_path }
+    }
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LocalImages<'a, 'b, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.inner.next();
+        if let Some(Event::Start(Tag::Image(type_, ref url, ref title))) = event {
+            if url.starts_with("http://") || url.starts_with("https://") {
+                // Not a local image, move on!
+            }
+            if let Ok(url) = Path::new(&url.clone().into_string()).canonicalize() {
+                let mut hasher = DefaultHasher::new();
+                url.hash(&mut hasher);
+                let hash = format!("{:x}", hasher.finish());
+                let static_folder_path = format!("static/{}", hash);
+                if self.images_to_copy.iter().find(|(h, _)| *h == hash).is_none() {
+                    self.images_to_copy.push((hash, url));
+                }
+                return Some(match self.static_root_path {
+                    Some(p) => {
+                        let s = format!("../{}", Path::new(p).join(&static_folder_path).display());
+                        Event::Start(Tag::Image(type_, CowStr::Boxed(s.into()), title.clone()))
+                    }
+                    None => Event::Start(Tag::Image(
+                        type_,
+                        CowStr::Boxed(format!("../{}", static_folder_path).into()),
+                        title.clone(),
+                    )),
+                });
+            }
+        }
+        event
+    }
+}
+
 pub fn find_testable_code<T: test::Tester>(
     doc: &str,
     tests: &mut T,
@@ -720,9 +781,18 @@ impl LangString {
     }
 }
 
-impl Markdown<'_> {
+impl Markdown<'_, '_> {
     pub fn to_string(self) -> String {
-        let Markdown(md, links, mut ids, codes, edition, playground) = self;
+        let Markdown(
+            md,
+            links,
+            mut ids,
+            codes,
+            edition,
+            playground,
+            images_to_copy,
+            static_root_path,
+        ) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -742,6 +812,7 @@ impl Markdown<'_> {
 
         let p = HeadingLinks::new(p, None, &mut ids);
         let p = LinkReplacer::new(p, links);
+        let p = LocalImages::new(p, images_to_copy, static_root_path);
         let p = CodeBlocks::new(p, codes, edition, playground);
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
@@ -750,9 +821,17 @@ impl Markdown<'_> {
     }
 }
 
-impl MarkdownWithToc<'_> {
+impl MarkdownWithToc<'_, '_> {
     pub fn to_string(self) -> String {
-        let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
+        let MarkdownWithToc(
+            md,
+            mut ids,
+            codes,
+            edition,
+            playground,
+            images_to_copy,
+            static_root_path,
+        ) = self;
 
         let p = Parser::new_ext(md, opts());
 
@@ -762,6 +841,7 @@ impl MarkdownWithToc<'_> {
 
         {
             let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
+            let p = LocalImages::new(p, images_to_copy, static_root_path);
             let p = CodeBlocks::new(p, codes, edition, playground);
             let p = Footnotes::new(p);
             html::push_html(&mut s, p);

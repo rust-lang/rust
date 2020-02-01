@@ -30,6 +30,7 @@ impl ExternalHtml {
         edition: Edition,
         playground: &Option<Playground>,
     ) -> Option<ExternalHtml> {
+        let mut images_to_copy = Vec::new();
         let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
         let ih = load_external_files(in_header, diag)?;
         let bc = load_external_files(before_content, diag)?;
@@ -37,14 +38,16 @@ impl ExternalHtml {
         let bc = format!(
             "{}{}",
             bc,
-            Markdown(&m_bc, &[], id_map, codes, edition, playground).to_string()
+            Markdown(&m_bc, &[], id_map, codes, edition, playground, &mut images_to_copy, &None)
+                .to_string()
         );
         let ac = load_external_files(after_content, diag)?;
         let m_ac = load_external_files(md_after_content, diag)?;
         let ac = format!(
             "{}{}",
             ac,
-            Markdown(&m_ac, &[], id_map, codes, edition, playground).to_string()
+            Markdown(&m_ac, &[], id_map, codes, edition, playground, &mut images_to_copy, &None)
+                .to_string()
         );
         Some(ExternalHtml { in_header: ih, before_content: bc, after_content: ac })
     }
