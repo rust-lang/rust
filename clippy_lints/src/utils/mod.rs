@@ -34,6 +34,7 @@ use rustc::ty::{
     subst::GenericArg,
     Binder, Ty, TyCtxt,
 };
+use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -47,7 +48,6 @@ use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
 use syntax::ast::{self, Attribute, LitKind};
-use syntax::attr;
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;

@@ -3,6 +3,7 @@
 
 use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite};
 use matches::matches;
+use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
@@ -12,7 +13,6 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
 use syntax::ast;
-use syntax::print::pprust::token_kind_to_string;
 use syntax::token;
 use syntax::util::parser::AssocOp;
 
