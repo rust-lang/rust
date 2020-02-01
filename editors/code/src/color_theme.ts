@@ -31,8 +31,8 @@ export class ColorTheme {
             const scopes = typeof rule.scope === 'undefined'
                 ? []
                 : typeof rule.scope === 'string'
-                ? [rule.scope]
-                : rule.scope;
+                    ? [rule.scope]
+                    : rule.scope;
             for (const scope of scopes) {
                 res.rules.set(scope, rule.settings);
             }
