@@ -2631,4 +2631,25 @@ impl Node<'_> {
             _ => None,
         }
     }
+
+    pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
+        match self {
+            Node::TraitItem(TraitItem { kind: TraitItemKind::Method(fn_sig, _), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Method(fn_sig, _), .. })
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
+            Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
+                Some(fn_decl)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn generics(&self) -> Option<&Generics<'_>> {
+        match self {
+            Node::TraitItem(TraitItem { generics, .. })
+            | Node::ImplItem(ImplItem { generics, .. })
+            | Node::Item(Item { kind: ItemKind::Fn(_, generics, _), .. }) => Some(generics),
+            _ => None,
+        }
+    }
 }

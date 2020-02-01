@@ -9,7 +9,10 @@ LL |     fn foo() -> Self;
 LL | fn car() -> dyn NotObjectSafe {
    |             ^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
    |
-   = help: consider turning `foo` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      ^^^^^^^^^^^^^^^^^
 
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:13
@@ -22,7 +25,10 @@ LL |     fn foo() -> Self;
 LL | fn cat() -> Box<dyn NotObjectSafe> {
    |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
    |
-   = help: consider turning `foo` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

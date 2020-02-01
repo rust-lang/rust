@@ -15,7 +15,10 @@ LL |     fn foo();
 LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
    |                    ^^^^^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
    |
-   = help: consider turning `foo` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() where Self: Sized;
+   |              ^^^^^^^^^^^^^^^^^
 
 error[E0033]: type `&dyn SomeTrait` cannot be dereferenced
   --> $DIR/E0033.rs:10:9

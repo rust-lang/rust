@@ -20,7 +20,10 @@ LL |     fn static_fn() {}
 LL | fn return_non_object_safe_ref() -> &'static dyn NonObjectSafe2 {
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe2` cannot be made into an object
    |
-   = help: consider turning `static_fn` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
+help: consider turning `static_fn` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn static_fn() where Self: Sized {}
+   |                    ^^^^^^^^^^^^^^^^^
 
 error[E0038]: the trait `NonObjectSafe3` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:27:35
@@ -41,7 +44,7 @@ error[E0038]: the trait `NonObjectSafe4` cannot be made into an object
 LL | trait NonObjectSafe4 {
    |       -------------- this trait cannot be made into an object...
 LL |     fn foo(&self, &Self);
-   |        --- ...because method `foo` references the `Self` type in its parameters or return type
+   |                   ----- ...because method `foo` references the `Self` type in this parameter
 ...
 LL | fn return_non_object_safe_rc() -> std::rc::Rc<dyn NonObjectSafe4> {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe4` cannot be made into an object

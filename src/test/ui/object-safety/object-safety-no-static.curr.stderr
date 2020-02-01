@@ -9,7 +9,10 @@ LL |     fn foo() {}
 LL | fn diverges() -> Box<dyn Foo> {
    |                  ^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = help: consider turning `foo` into a method by giving it a `&self` argument or constraining it with `where Self: Sized`
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() where Self: Sized {}
+   |              ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

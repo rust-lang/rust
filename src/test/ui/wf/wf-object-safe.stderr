@@ -4,7 +4,7 @@ error[E0038]: the trait `A` cannot be made into an object
 LL | trait A {
    |       - this trait cannot be made into an object...
 LL |     fn foo(&self, _x: &Self);
-   |        --- ...because method `foo` references the `Self` type in its parameters or return type
+   |                       ----- ...because method `foo` references the `Self` type in this parameter
 ...
 LL |     let _x: &dyn A;
    |             ^^^^^^ the trait `A` cannot be made into an object

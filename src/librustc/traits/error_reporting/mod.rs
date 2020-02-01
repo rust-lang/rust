@@ -1073,9 +1073,15 @@ pub fn report_object_safety_error(
                     err.span_label(span, &msg);
                 }
             }
-            if let (Some(_), Some(note)) = (trait_span, violation.solution()) {
+            match (trait_span, violation.solution()) {
+                (Some(_), Some((note, None))) => {
+                    err.help(&note);
+                }
+                (Some(_), Some((note, Some((sugg, span))))) => {
+                    err.span_suggestion(span, &note, sugg, Applicability::MachineApplicable);
+                }
                 // Only provide the help if its a local trait, otherwise it's not actionable.
-                err.help(&note);
+                _ => {}
             }
         }
     }

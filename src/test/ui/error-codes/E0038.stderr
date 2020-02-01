@@ -4,7 +4,7 @@ error[E0038]: the trait `Trait` cannot be made into an object
 LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn foo(&self) -> Self;
-   |        --- ...because method `foo` references the `Self` type in its parameters or return type
+   |                      ---- ...because method `foo` references the `Self` type in its return type
 ...
 LL | fn call_foo(x: Box<dyn Trait>) {
    |                ^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object
