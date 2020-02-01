@@ -1717,6 +1717,18 @@ impl<'a> Parser<'a> {
         Ok(FnHeader { constness, unsafety, asyncness, ext })
     }
 
+    /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
+    fn ban_async_in_2015(&self, span: Span) {
+        if span.rust_2015() {
+            let diag = self.diagnostic();
+            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
+                .note("to use `async fn`, switch to Rust 2018")
+                .help("set `edition = \"2018\"` in `Cargo.toml`")
+                .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
+                .emit();
+        }
+    }
+
     /// Parses the parameter list and result type of a function declaration.
     pub(super) fn parse_fn_decl(
         &mut self,
