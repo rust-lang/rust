@@ -14,7 +14,7 @@ use ra_db::{
 use super::{builtin, AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase, display::HirDisplay, utils::generics, ApplicationTy, GenericPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
+    ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -522,11 +522,11 @@ fn convert_where_clauses(
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
     for pred in generic_predicates.iter() {
-        if pred.is_error() {
+        if pred.value.is_error() {
             // skip errored predicates completely
             continue;
         }
-        result.push(pred.clone().subst_type_params(db, def, substs).to_chalk(db));
+        result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result
 }

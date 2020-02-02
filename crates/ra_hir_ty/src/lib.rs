@@ -749,28 +749,7 @@ pub trait TypeWalk {
         self
     }
 
-    /// Replaces type parameters in this type using the given `Substs`. (So e.g.
-    /// if `self` is `&[T]`, where type parameter T has index 0, and the
-    /// `Substs` contain `u32` at index 0, we'll have `&[u32]` afterwards.)
-    // TODO: this should mostly not be used anymore
-    fn subst_type_params(self, db: &impl HirDatabase, def: GenericDefId, substs: &Substs) -> Self
-    where
-        Self: Sized,
-    {
-        let generics = generics(db, def);
-        self.fold(&mut |ty| match ty {
-            Ty::Param(id) => {
-                if let Some(idx) = generics.param_idx(id) {
-                    substs.get(idx as usize).cloned().unwrap_or(Ty::Param(id))
-                } else {
-                    ty
-                }
-            }
-            ty => ty,
-        })
-    }
-
-    /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
+    /// Substitutes `Ty::Bound` vars with the given substitution.
     fn subst_bound_vars(mut self, substs: &Substs) -> Self
     where
         Self: Sized,
@@ -1045,9 +1024,10 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        let bounds = f.db.generic_predicates_for_param(*id);
                         write!(f, "impl ")?;
-                        write_bounds_like_dyn_trait(&bounds, f)?;
+                        let bounds = f.db.generic_predicates_for_param(*id);
+                        let substs = Substs::type_params(&generics);
+                        write_bounds_like_dyn_trait(&bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(), f)?;
                     }
                 }
             }

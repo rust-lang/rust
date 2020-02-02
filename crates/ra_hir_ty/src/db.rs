@@ -50,10 +50,10 @@ pub trait HirDatabase: DefDatabase {
     fn generic_predicates_for_param(
         &self,
         param_id: TypeParamId,
-    ) -> Arc<[GenericPredicate]>;
+    ) -> Arc<[Binders<GenericPredicate>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDefId) -> Arc<[GenericPredicate]>;
+    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<GenericPredicate>]>;
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> Substs;
