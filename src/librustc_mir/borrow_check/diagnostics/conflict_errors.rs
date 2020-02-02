@@ -217,12 +217,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         tcx.hir().get_generics(tcx.closure_base_def_id(self.mir_def_id))
                     {
                         suggest_constraining_type_param(
+                            tcx,
                             generics,
                             &mut err,
                             &param.name.as_str(),
                             "Copy",
                             tcx.sess.source_map(),
                             span,
+                            None,
                         );
                     }
                 }
