@@ -1,4 +1,4 @@
-use hir::{self, db::HirDatabase};
+use hir::{self, db::HirDatabase, ModPath};
 use ra_syntax::{
     ast::{self, NameOwner},
     AstNode, Direction, SmolStr,
@@ -20,10 +20,10 @@ pub fn auto_import_text_edit(
     position: &SyntaxNode,
     // The statement to use as anchor (last resort)
     anchor: &SyntaxNode,
-    // The path to import as a sequence of strings
-    target: &[SmolStr],
+    path_to_import: &ModPath,
     edit: &mut TextEditBuilder,
 ) {
+    let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
     let container = position.ancestors().find_map(|n| {
         if let Some(module) = ast::Module::cast(n.clone()) {
             return module.item_list().map(|it| it.syntax().clone());
@@ -32,8 +32,8 @@ pub fn auto_import_text_edit(
     });
 
     if let Some(container) = container {
-        let action = best_action_for_target(container, anchor.clone(), target);
-        make_assist(&action, target, edit);
+        let action = best_action_for_target(container, anchor.clone(), &target);
+        make_assist(&action, &target, edit);
     }
 }
 

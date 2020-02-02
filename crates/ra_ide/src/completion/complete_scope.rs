@@ -6,6 +6,7 @@ use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
+use hir::{ModPath, PathKind};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
@@ -54,58 +55,76 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
 }
 
-fn build_import_label(name: &str, path: &[SmolStr]) -> String {
+fn build_import_label(name: &str, path: &ModPath) -> String {
     let mut buf = String::with_capacity(64);
     buf.push_str(name);
     buf.push_str(" (");
-    fmt_import_path(path, &mut buf);
+    buf.push_str(&path.to_string());
     buf.push_str(")");
     buf
-}
-
-fn fmt_import_path(path: &[SmolStr], buf: &mut String) {
-    let mut segments = path.iter();
-    if let Some(s) = segments.next() {
-        buf.push_str(&s);
-    }
-    for s in segments {
-        buf.push_str("::");
-        buf.push_str(&s);
-    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ImportResolver {
     // todo: use fst crate or something like that
-    dummy_names: Vec<(SmolStr, Vec<SmolStr>)>,
+    dummy_names: Vec<(SmolStr, ModPath)>,
 }
 
 impl ImportResolver {
     pub(crate) fn new() -> Self {
+        use hir::name;
+
         let dummy_names = vec![
-            (SmolStr::new("fmt"), vec![SmolStr::new("std"), SmolStr::new("fmt")]),
-            (SmolStr::new("io"), vec![SmolStr::new("std"), SmolStr::new("io")]),
-            (SmolStr::new("iter"), vec![SmolStr::new("std"), SmolStr::new("iter")]),
-            (SmolStr::new("hash"), vec![SmolStr::new("std"), SmolStr::new("hash")]),
+            (
+                SmolStr::new("fmt"),
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![fmt]] },
+            ),
+            (
+                SmolStr::new("io"),
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![io]] },
+            ),
+            (
+                SmolStr::new("iter"),
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![iter]] },
+            ),
+            (
+                SmolStr::new("hash"),
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![hash]] },
+            ),
             (
                 SmolStr::new("Debug"),
-                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Debug")],
+                ModPath {
+                    kind: PathKind::Plain,
+                    segments: vec![name![std], name![fmt], name![Debug]],
+                },
             ),
             (
                 SmolStr::new("Display"),
-                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Display")],
+                ModPath {
+                    kind: PathKind::Plain,
+                    segments: vec![name![std], name![fmt], name![Display]],
+                },
             ),
             (
                 SmolStr::new("Hash"),
-                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hash")],
+                ModPath {
+                    kind: PathKind::Plain,
+                    segments: vec![name![std], name![hash], name![Hash]],
+                },
             ),
             (
                 SmolStr::new("Hasher"),
-                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hasher")],
+                ModPath {
+                    kind: PathKind::Plain,
+                    segments: vec![name![std], name![hash], name![Hasher]],
+                },
             ),
             (
                 SmolStr::new("Iterator"),
-                vec![SmolStr::new("std"), SmolStr::new("iter"), SmolStr::new("Iterator")],
+                ModPath {
+                    kind: PathKind::Plain,
+                    segments: vec![name![std], name![iter], name![Iterator]],
+                },
             ),
         ];
 
@@ -115,7 +134,7 @@ impl ImportResolver {
     // Returns a map of importable items filtered by name.
     // The map associates item name with its full path.
     // todo: should return Resolutions
-    pub(crate) fn all_names(&self, name: &str) -> FxHashMap<SmolStr, Vec<SmolStr>> {
+    pub(crate) fn all_names(&self, name: &str) -> FxHashMap<SmolStr, ModPath> {
         if name.len() > 1 {
             self.dummy_names.iter().filter(|(n, _)| n.contains(name)).cloned().collect()
         } else {

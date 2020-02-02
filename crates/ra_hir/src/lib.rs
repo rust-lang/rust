@@ -59,6 +59,7 @@ pub use hir_def::{
     ModuleDefId, // FIXME this is exposed and should be used for implementing the `TestImportsLocator` in `ra_assists` only, should be removed later along with the trait and the implementation.
 };
 pub use hir_expand::{
-    name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
+    name::{name, Name},
+    HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
 };
 pub use hir_ty::{display::HirDisplay, CallableDef};

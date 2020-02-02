@@ -16,13 +16,13 @@ use ra_syntax::ast;
 
 use crate::{type_ref::TypeRef, InFile};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
     pub kind: PathKind,
     pub segments: Vec<Name>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,
     /// `self::` is `Super(0)`

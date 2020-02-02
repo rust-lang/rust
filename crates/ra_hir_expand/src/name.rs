@@ -187,6 +187,13 @@ pub mod known {
         PartialOrd,
         Eq,
         PartialEq,
+        // FIXME delete those after `ImportResolver` is removed.
+        hash,
+        fmt,
+        io,
+        Display,
+        Iterator,
+        Hasher,
     );
 
     // self/Self cannot be used as an identifier
