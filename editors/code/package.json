@@ -21,7 +21,9 @@
         "vscode:prepublish": "rollup -c",
         "package": "vsce package",
         "watch": "tsc -watch -p ./",
-        "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
+        "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix",
+        "bump-deps:dry-run": "npm-check-updates",
+        "bump-deps": "npm-check-updates --upgrade && npm install"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
@@ -32,10 +34,11 @@
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.1",
         "@rollup/plugin-node-resolve": "^6.1.0",
-        "@rollup/plugin-typescript": "^2.1.0",
+        "@rollup/plugin-typescript": "^3.0.0",
         "@types/node": "^12.12.25",
         "@types/seedrandom": "^2.4.28",
         "@types/vscode": "^1.41.0",
+        "npm-check-updates": "^4.0.1",
         "rollup": "^1.30.1",
         "tslint": "^5.20.1",
         "typescript": "^3.7.5",
