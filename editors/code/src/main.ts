@@ -11,7 +11,7 @@ let ctx!: Ctx;
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
 
-    // Commands which invokes manually via command pallet, shortcut, etc.
+    // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
