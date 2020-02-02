@@ -288,10 +288,12 @@ pub enum Ty {
     Projection(ProjectionTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
+    // TODO fix documentation
     Param(TypeParamId),
 
     /// A bound type variable. Used during trait resolution to represent Chalk
     /// variables, and in `Dyn` and `Opaque` bounds to represent the `Self` type.
+    // TODO fix documentation
     Bound(u32),
 
     /// A type variable used during type checking. Not to be confused with a

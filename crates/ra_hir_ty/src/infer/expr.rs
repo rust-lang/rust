@@ -587,6 +587,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.write_method_resolution(tgt_expr, func);
                 (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
             }
+            // TODO fix this
             None => (receiver_ty, Binders::new(0, Ty::Unknown), None),
         };
         let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);

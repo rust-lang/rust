@@ -37,10 +37,9 @@ pub struct TyLoweringContext<'a, DB: HirDatabase> {
     pub db: &'a DB,
     pub resolver: &'a Resolver,
     /// Note: Conceptually, it's thinkable that we could be in a location where
-    /// some type params are quantified universally (and should be represented
-    /// as placeholders), and others are quantified existentially (and should be
-    /// converted to variables). I think in practice, this isn't possible
-    /// currently, so this should be fine for now.
+    /// some type params should be represented as placeholders, and others
+    /// should be converted to variables. I think in practice, this isn't
+    /// possible currently, so this should be fine for now.
     pub type_param_mode: TypeParamLoweringMode,
     pub impl_trait_mode: ImplTraitLoweringMode,
     pub impl_trait_counter: std::cell::Cell<u16>,
@@ -71,8 +70,8 @@ pub enum ImplTraitLoweringMode {
     /// types of functions we're calling.
     Opaque,
     /// `impl Trait` gets lowered into a type variable. Used for argument
-    /// position impl Trait currently, since it allows us to support that
-    /// without Chalk.
+    /// position impl Trait when inside the respective function, since it allows
+    /// us to support that without Chalk.
     Param,
     /// `impl Trait` gets lowered into a variable that can unify with some
     /// type. This is used in places where values flow 'in', i.e. for arguments
