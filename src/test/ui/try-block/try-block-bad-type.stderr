@@ -10,7 +10,7 @@ LL |         Err("")?;
              <i32 as std::convert::From<i16>>
              <i32 as std::convert::From<i8>>
              <i32 as std::convert::From<std::num::NonZeroI32>>
-           and 2 others
+           and 3 others
    = note: required by `std::convert::From::from`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == &str`
