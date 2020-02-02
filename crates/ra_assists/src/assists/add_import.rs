@@ -20,7 +20,6 @@ pub fn auto_import_text_edit(
     position: &SyntaxNode,
     // The statement to use as anchor (last resort)
     anchor: &SyntaxNode,
-    // The path to import as a sequence of strings
     path_to_import: &ModPath,
     edit: &mut TextEditBuilder,
 ) {
