@@ -127,13 +127,13 @@ class HintsUpdater {
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
-        let client = this.ctx.client;
+        const client = this.ctx.client;
         if (!client) return null;
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
-        let tokenSource = new vscode.CancellationTokenSource();
-        let prev = this.pending.get(documentUri);
+        const tokenSource = new vscode.CancellationTokenSource();
+        const prev = this.pending.get(documentUri);
         if (prev) prev.cancel();
         this.pending.set(documentUri, tokenSource);
         try {

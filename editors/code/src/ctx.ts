@@ -20,7 +20,7 @@ export class Ctx {
     }
 
     async restartServer() {
-        let old = this.client;
+        const old = this.client;
         if (old) {
             await old.stop();
         }

@@ -21,7 +21,7 @@ function collectGarbage(ctx: Ctx): Cmd {
 
 function showReferences(ctx: Ctx): Cmd {
     return (uri: string, position: lc.Position, locations: lc.Location[]) => {
-        let client = ctx.client;
+        const client = ctx.client;
         if (client) {
             vscode.commands.executeCommand(
                 'editor.action.showReferences',

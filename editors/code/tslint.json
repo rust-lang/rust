@@ -3,6 +3,7 @@
         "semicolon": [
             true,
             "always"
-        ]
+        ],
+        "prefer-const": true
     }
 }
