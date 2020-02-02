@@ -9,7 +9,6 @@ use std::{
     collections::BTreeMap,
     collections::HashSet,
     io::{stderr, Write},
-    mem,
     sync::{
         atomic::{AtomicBool, Ordering},
         RwLock,
@@ -50,6 +49,8 @@ pub fn set_filter(f: Filter) {
     *old = filter_data;
 }
 
+pub type Label = &'static str;
+
 /// This function starts a profiling scope in the current execution stack with a given description.
 /// It returns a Profile structure and measure elapsed time between this method invocation and Profile structure drop.
 /// It supports nested profiling scopes in case when this function invoked multiple times at the execution stack. In this case the profiling information will be nested at the output.
@@ -77,10 +78,10 @@ pub fn set_filter(f: Filter) {
 ///  0ms - profile
 ///      0ms - profile2
 /// ```
-pub fn profile(desc: &str) -> Profiler {
-    assert!(!desc.is_empty());
+pub fn profile(label: Label) -> Profiler {
+    assert!(!label.is_empty());
     if !PROFILING_ENABLED.load(Ordering::Relaxed) {
-        return Profiler { desc: None };
+        return Profiler { label: None };
     }
 
     PROFILE_STACK.with(|stack| {
@@ -93,35 +94,35 @@ pub fn profile(desc: &str) -> Profiler {
             };
         }
         if stack.starts.len() > stack.filter_data.depth {
-            return Profiler { desc: None };
+            return Profiler { label: None };
         }
         let allowed = &stack.filter_data.allowed;
-        if stack.starts.is_empty() && !allowed.is_empty() && !allowed.contains(desc) {
-            return Profiler { desc: None };
+        if stack.starts.is_empty() && !allowed.is_empty() && !allowed.contains(label) {
+            return Profiler { label: None };
         }
 
         stack.starts.push(Instant::now());
-        Profiler { desc: Some(desc.to_string()) }
+        Profiler { label: Some(label) }
     })
 }
 
-pub fn print_time(desc: &str) -> impl Drop + '_ {
-    struct Guard<'a> {
-        desc: &'a str,
+pub fn print_time(label: Label) -> impl Drop {
+    struct Guard {
+        label: Label,
         start: Instant,
     }
 
-    impl Drop for Guard<'_> {
+    impl Drop for Guard {
         fn drop(&mut self) {
-            eprintln!("{}: {:?}", self.desc, self.start.elapsed())
+            eprintln!("{}: {:?}", self.label, self.start.elapsed())
         }
     }
 
-    Guard { desc, start: Instant::now() }
+    Guard { label, start: Instant::now() }
 }
 
 pub struct Profiler {
-    desc: Option<String>,
+    label: Option<Label>,
 }
 
 pub struct Filter {
@@ -174,7 +175,7 @@ struct ProfileStack {
 struct Message {
     level: usize,
     duration: Duration,
-    message: String,
+    label: Label,
 }
 
 impl ProfileStack {
@@ -200,14 +201,13 @@ thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(Profile
 impl Drop for Profiler {
     fn drop(&mut self) {
         match self {
-            Profiler { desc: Some(desc) } => {
+            Profiler { label: Some(label) } => {
                 PROFILE_STACK.with(|stack| {
                     let mut stack = stack.borrow_mut();
                     let start = stack.starts.pop().unwrap();
                     let duration = start.elapsed();
                     let level = stack.starts.len();
-                    let message = mem::replace(desc, String::new());
-                    stack.messages.push(Message { level, duration, message });
+                    stack.messages.push(Message { level, duration, label: label });
                     if level == 0 {
                         let stdout = stderr();
                         let longer_than = stack.filter_data.longer_than;
@@ -221,7 +221,7 @@ impl Drop for Profiler {
                     }
                 });
             }
-            Profiler { desc: None } => (),
+            Profiler { label: None } => (),
         }
     }
 }
@@ -244,7 +244,7 @@ fn print_for_idx(
 ) {
     let current = &msgs[current_idx];
     let current_indent = "    ".repeat(current.level);
-    writeln!(out, "{}{:5}ms - {}", current_indent, current.duration.as_millis(), current.message)
+    writeln!(out, "{}{:5}ms - {}", current_indent, current.duration.as_millis(), current.label)
         .expect("printing profiling info");
 
     let longer_than_millis = longer_than.as_millis();
@@ -257,7 +257,7 @@ fn print_for_idx(
         if child.duration.as_millis() > longer_than_millis {
             print_for_idx(*child_idx, children_map, msgs, longer_than, out);
         } else {
-            let pair = short_children.entry(&child.message).or_insert((Duration::default(), 0));
+            let pair = short_children.entry(child.label).or_insert((Duration::default(), 0));
             pair.0 += child.duration;
             pair.1 += 1;
         }
@@ -409,9 +409,9 @@ mod tests {
     fn test_longer_than() {
         let mut result = vec![];
         let msgs = vec![
-            Message { level: 1, duration: Duration::from_nanos(3), message: "bar".to_owned() },
-            Message { level: 1, duration: Duration::from_nanos(2), message: "bar".to_owned() },
-            Message { level: 0, duration: Duration::from_millis(1), message: "foo".to_owned() },
+            Message { level: 1, duration: Duration::from_nanos(3), label: "bar" },
+            Message { level: 1, duration: Duration::from_nanos(2), label: "bar" },
+            Message { level: 0, duration: Duration::from_millis(1), label: "foo" },
         ];
         print(&msgs, Duration::from_millis(0), &mut result);
         // The calls to `bar` are so short that they'll be rounded to 0ms and should get collapsed
@@ -426,8 +426,8 @@ mod tests {
     fn test_unaccounted_for_topmost() {
         let mut result = vec![];
         let msgs = vec![
-            Message { level: 1, duration: Duration::from_millis(2), message: "bar".to_owned() },
-            Message { level: 0, duration: Duration::from_millis(5), message: "foo".to_owned() },
+            Message { level: 1, duration: Duration::from_millis(2), label: "bar" },
+            Message { level: 0, duration: Duration::from_millis(5), label: "foo" },
         ];
         print(&msgs, Duration::from_millis(0), &mut result);
         assert_eq!(
@@ -445,11 +445,11 @@ mod tests {
     fn test_unaccounted_for_multiple_levels() {
         let mut result = vec![];
         let msgs = vec![
-            Message { level: 2, duration: Duration::from_millis(3), message: "baz".to_owned() },
-            Message { level: 1, duration: Duration::from_millis(5), message: "bar".to_owned() },
-            Message { level: 2, duration: Duration::from_millis(2), message: "baz".to_owned() },
-            Message { level: 1, duration: Duration::from_millis(4), message: "bar".to_owned() },
-            Message { level: 0, duration: Duration::from_millis(9), message: "foo".to_owned() },
+            Message { level: 2, duration: Duration::from_millis(3), label: "baz" },
+            Message { level: 1, duration: Duration::from_millis(5), label: "bar" },
+            Message { level: 2, duration: Duration::from_millis(2), label: "baz" },
+            Message { level: 1, duration: Duration::from_millis(4), label: "bar" },
+            Message { level: 0, duration: Duration::from_millis(9), label: "foo" },
         ];
         print(&msgs, Duration::from_millis(0), &mut result);
         assert_eq!(

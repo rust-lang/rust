@@ -145,6 +145,8 @@ impl LibraryData {
         root_id: SourceRootId,
         files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
     ) -> LibraryData {
+        let _p = profile("LibraryData::prepare");
+
         #[cfg(not(feature = "wasm"))]
         let iter = files.par_iter();
         #[cfg(feature = "wasm")]
