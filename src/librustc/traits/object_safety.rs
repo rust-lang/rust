@@ -32,7 +32,7 @@ pub enum ObjectSafetyViolation {
 
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
-    SupertraitSelf,
+    SupertraitSelf(SmallVec<[Span; 1]>),
 
     /// Method has something illegal.
     Method(ast::Name, MethodViolationCode, Span),
@@ -45,9 +45,13 @@ impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
             ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            ObjectSafetyViolation::SupertraitSelf => {
-                "it cannot use `Self` as a type parameter in the supertraits or `where`-clauses"
-                    .into()
+            ObjectSafetyViolation::SupertraitSelf(ref spans) => {
+                if spans.iter().any(|sp| *sp != DUMMY_SP) {
+                    "it uses `Self` as a type parameter in this".into()
+                } else {
+                    "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
+                        .into()
+                }
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{}` has no `self` parameter", name).into()
@@ -87,7 +91,7 @@ impl ObjectSafetyViolation {
 
     pub fn solution(&self) -> Option<(String, Option<(String, Span)>)> {
         Some(match *self {
-            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf => {
+            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {
                 return None;
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(sugg), _) => (
@@ -118,7 +122,8 @@ impl ObjectSafetyViolation {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
         match self {
-            ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
+            ObjectSafetyViolation::SupertraitSelf(spans)
+            | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
             | ObjectSafetyViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
@@ -162,8 +167,9 @@ pub fn astconv_object_safety_violations(
 ) -> Vec<ObjectSafetyViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     let violations = traits::supertrait_def_ids(tcx, trait_def_id)
-        .filter(|&def_id| predicates_reference_self(tcx, def_id, true))
-        .map(|_| ObjectSafetyViolation::SupertraitSelf)
+        .map(|def_id| predicates_reference_self(tcx, def_id, true))
+        .filter(|spans| !spans.is_empty())
+        .map(|spans| ObjectSafetyViolation::SupertraitSelf(spans))
         .collect();
 
     debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);
@@ -266,8 +272,9 @@ fn object_safety_violations_for_trait(
         let spans = get_sized_bounds(tcx, trait_def_id);
         violations.push(ObjectSafetyViolation::SizedSelf(spans));
     }
-    if predicates_reference_self(tcx, trait_def_id, false) {
-        violations.push(ObjectSafetyViolation::SupertraitSelf);
+    let spans = predicates_reference_self(tcx, trait_def_id, false);
+    if !spans.is_empty() {
+        violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
     }
 
     violations.extend(
@@ -337,7 +344,11 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
         .unwrap_or_else(SmallVec::new)
 }
 
-fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_only: bool) -> bool {
+fn predicates_reference_self(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    supertraits_only: bool,
+) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
         tcx.super_predicates_of(trait_def_id)
@@ -349,12 +360,16 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
     predicates
         .predicates
         .iter()
-        .map(|(predicate, _)| predicate.subst_supertrait(tcx, &trait_ref))
-        .any(|predicate| {
+        .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
+        .filter_map(|(predicate, &sp)| {
             match predicate {
                 ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    data.skip_binder().input_types().skip(1).any(has_self_ty)
+                    if data.skip_binder().input_types().skip(1).any(has_self_ty) {
+                        Some(sp)
+                    } else {
+                        None
+                    }
                 }
                 ty::Predicate::Projection(ref data) => {
                     // And similarly for projections. This should be redundant with
@@ -369,12 +384,18 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
                     //
                     // This is ALT2 in issue #56288, see that for discussion of the
                     // possible alternatives.
-                    data.skip_binder()
+                    if data
+                        .skip_binder()
                         .projection_ty
                         .trait_ref(tcx)
                         .input_types()
                         .skip(1)
                         .any(has_self_ty)
+                    {
+                        Some(sp)
+                    } else {
+                        None
+                    }
                 }
                 ty::Predicate::WellFormed(..)
                 | ty::Predicate::ObjectSafe(..)
@@ -382,9 +403,10 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
                 | ty::Predicate::RegionOutlives(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => false,
+                | ty::Predicate::ConstEvaluatable(..) => None,
             }
         })
+        .collect()
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
