@@ -288,11 +288,11 @@ mod impls {
 }
 
 macro_rules! gen_fn_struct_unopt {
-    (impl $imp:ident, $method:ident in $m:path; with $z:ty) => {
+    (impl $imp:ident, $method:ident in $m:ident; with $z:ty) => {
         gen_fn_struct_unopt!(impl $imp, $method in $m; with $z,
             #[unstable(feature = stringify!($m))]);
     };
-    (impl $imp:ident, $method:ident in $m:path; with $z:ty, #[$attr:meta]) => {
+    (impl $imp:ident, $method:ident in $m:ident; with $z:ty, #[$attr:meta]) => {
         #[$attr]
         mod $m {
             use crate::ops::$imp;
@@ -375,5 +375,90 @@ macro_rules! gen_fn_struct_unopt {
         }
     };
 }
+
+macro_rules! gen_fn_struct_biopt {
+    (impl $imp:ident, $method:ident in $m:path; with $z:ty) => {
+        gen_fn_struct_biopt!(impl $imp, $method in $m; with $z,
+            #[unstable(feature = stringify!($m))]);
+    };
+    (impl $imp:ident, $method:ident in $m:ident; with $z:ty, #[$attr:meta]) => {
+        #[$attr]
+        mod $m {
+            use crate::ops::$imp;
+            #[$attr]
+            struct $z<F1, F2> {
+                f1: F1,
+                f2: F2,
+            }
+            #[$attr]
+            impl<A, F1: ?Sized, F2: ?Sized> $imp<F2> for F1
+            where
+                F: FnOnce<A>,
+            {
+                type Output = $z<F1, F2>;
+                fn $method(self, rhs: F2) -> Self::Output {
+                    $z { f: self }
+                }
+            }
+            #[$attr]
+            impl<A, F: ?Sized> Fn<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                extern "rust-call" fn call(&self, args: A) -> <F::Output as $imp>::Output {
+                    $imp::$method(((**self).f1).call(args), ((**self).f2).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnMut<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
+                    $imp::$method(((**self).f1).call(args), ((**self).f2).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnOnce<A> for &$z<F>
+            where
+                F: Fn<A>,
+            {
+                type Output = F::Output;
+
+                extern "rust-call" fn call_once(self, args: A) -> <F::Output as $imp>::Output {
+                    $imp::$method(((**self).f1).call(args), ((**self).f2).call(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnMut<A> for &mut $z<F>
+            where
+                F: FnMut<A>,
+            {
+                extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
+                    $imp::$method(((**self).f1).call_mut(args), ((**self).f2).call_mut(args))
+                }
+            }
+
+            #[$attr]
+            impl<A, F: ?Sized> FnOnce<A> for &mut $z<F>
+            where
+                F: FnMut<A>,
+            {
+                type Output = F::Output;
+                extern "rust-call" fn call_once(self, args: A) -> <F::Output as $imp>::Output {
+                    $imp::$method(((**self).f1).call_mut(args), ((**self).f2).call_mut(args))
+                }
+            }
+        }
+    };
+}
+
 gen_fn_struct_unopt!(impl Not, not in fn_not_impl; with FnNot);
 gen_fn_struct_unopt!(impl Neg, neg in fn_neg_impl; with FnNeg);
+
+gen_fn_struct_biopt!(impl BitOr, bitor in fn_bitor_impl; with FnOr);
+gen_fn_struct_biopt!(impl BitAnd, bitand in fn_bitand_impl; with FnAnd);
+gen_fn_struct_biopt!(impl BitXor, bitxor in fn_bitxor_impl; with FnXor);
