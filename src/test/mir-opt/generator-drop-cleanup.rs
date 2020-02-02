@@ -13,8 +13,8 @@ fn main() {
 
 // START rustc.main-{{closure}}.generator_drop.0.mir
 // bb0: {
-//     _6 = discriminant((*_1));
-//     switchInt(move _6) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
+//     _7 = discriminant((*_1));
+//     switchInt(move _7) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
 // }
 // bb1: {
 //     StorageDead(_4);
@@ -37,7 +37,6 @@ fn main() {
 //     goto -> bb3;
 // }
 // bb7: {
-//     StorageLive(_2);
 //     StorageLive(_3);
 //     StorageLive(_4);
 //     goto -> bb1;

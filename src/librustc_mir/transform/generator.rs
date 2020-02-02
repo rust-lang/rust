@@ -380,28 +380,35 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     PinArgVisitor { ref_gen_ty, tcx }.visit_body(body);
 }
 
-fn replace_result_variable<'tcx>(
-    ret_ty: Ty<'tcx>,
+/// Allocates a new local and replaces all references of `local` with it. Returns the new local.
+///
+/// `local` will be changed to a new local decl with type `ty`.
+///
+/// Note that the new local will be uninitialized. It is the caller's responsibility to assign some
+/// valid value to it before its first use.
+fn replace_local<'tcx>(
+    local: Local,
+    ty: Ty<'tcx>,
     body: &mut BodyAndCache<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
     let source_info = source_info(body);
-    let new_ret = LocalDecl {
+    let new_decl = LocalDecl {
         mutability: Mutability::Mut,
-        ty: ret_ty,
+        ty,
         user_ty: UserTypeProjections::none(),
         source_info,
         internal: false,
         is_block_tail: None,
         local_info: LocalInfo::Other,
     };
-    let new_ret_local = Local::new(body.local_decls.len());
-    body.local_decls.push(new_ret);
-    body.local_decls.swap(RETURN_PLACE, new_ret_local);
+    let new_local = Local::new(body.local_decls.len());
+    body.local_decls.push(new_decl);
+    body.local_decls.swap(local, new_local);
 
-    RenameLocalVisitor { from: RETURN_PLACE, to: new_ret_local, tcx }.visit_body(body);
+    RenameLocalVisitor { from: local, to: new_local, tcx }.visit_body(body);
 
-    new_ret_local
+    new_local
 }
 
 struct StorageIgnored(liveness::LiveVarSet);
@@ -794,6 +801,10 @@ fn compute_layout<'tcx>(
     (remap, layout, storage_liveness)
 }
 
+/// Replaces the entry point of `body` with a block that switches on the generator discriminant and
+/// dispatches to blocks according to `cases`.
+///
+/// After this function, the former entry point of the function will be bb1.
 fn insert_switch<'tcx>(
     body: &mut BodyAndCache<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
@@ -1093,6 +1104,13 @@ fn create_cases<'tcx>(
 
                 // Create StorageLive instructions for locals with live storage
                 for i in 0..(body.local_decls.len()) {
+                    if i == 2 {
+                        // The resume argument is live on function entry. Don't insert a
+                        // `StorageLive`, or the following `Assign` will read from uninitialized
+                        // memory.
+                        continue;
+                    }
+
                     let l = Local::new(i);
                     if point.storage_liveness.contains(l) && !transform.remap.contains_key(&l) {
                         statements
@@ -1109,6 +1127,10 @@ fn create_cases<'tcx>(
                             point.resume_arg,
                             Rvalue::Use(Operand::Move(resume_arg.into())),
                         )),
+                    });
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::StorageDead(resume_arg),
                     });
                 }
 
@@ -1166,7 +1188,28 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
-        let new_ret_local = replace_result_variable(ret_ty, body, tcx);
+        let new_ret_local = replace_local(RETURN_PLACE, ret_ty, body, tcx);
+
+        // We also replace the resume argument and insert an `Assign`.
+        // This is needed because the resume argument might be live across a `yield`, and the
+        // transform assumes that any local live across a `yield` is assigned to before that.
+        let resume_local = Local::new(2);
+        let new_resume_local =
+            replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
+
+        // When first entering the generator, move the resume argument into its new local.
+        let source_info = source_info(body);
+        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
+        stmts.insert(
+            0,
+            Statement {
+                source_info,
+                kind: StatementKind::Assign(box (
+                    new_resume_local.into(),
+                    Rvalue::Use(Operand::Move(resume_local.into())),
+                )),
+            },
+        );
 
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
