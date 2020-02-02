@@ -5,6 +5,10 @@ LL | fn a(B<) {}
    |       ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | fn a(self: B<) {}
+   |      ^^^^^^^
 help: if this is a type, explicitly ignore the parameter name
    |
 LL | fn a(_: B<) {}

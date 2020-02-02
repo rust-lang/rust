@@ -5,6 +5,10 @@ LL | fn foo(Option<i32>, String) {}
    |              ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | fn foo(self: Option<i32>, String) {}
+   |        ^^^^^^^^^^^^
 help: if this is a type, explicitly ignore the parameter name
    |
 LL | fn foo(_: Option<i32>, String) {}
@@ -33,6 +37,10 @@ LL | fn bar(x, y: usize) {}
    |         ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | fn bar(self: x, y: usize) {}
+   |        ^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL | fn bar(x: TypeName, y: usize) {}
