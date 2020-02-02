@@ -1051,6 +1051,9 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     /// * The requested modulo `m` is a power-of-two, so `mpow` can be an argument;
     /// * `x < m`; (if `x >= m`, pass in `x % m` instead)
     ///
+    /// It also sometimes leaves reducing the result modulu `m` to the caller, so the result may be
+    /// larger than `m`.
+    ///
     /// Implementation of this function shall not panic. Ever.
     #[inline]
     fn mod_pow_2_inv(x: usize, mpow: usize, mask: usize) -> usize {
@@ -1067,6 +1070,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
 
         if mpow <= INV_TABLE_MOD_POW {
+            // This is explicitly left here, as benchmarking shows this improves performance.
             table_inverse & mask
         } else {
             // We iterate "up" using the following formula:
@@ -1089,7 +1093,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
                 if going_modpow >= mpow {
-                    return inverse & mask;
+                    return inverse;
                 }
                 going_modpow <<= 1;
             }
@@ -1147,6 +1151,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         let a2minus1 = a2.wrapping_sub(1);
         let s2 = smoda >> gcdpow;
         let minusp2 = a2.wrapping_sub(pmoda >> gcdpow);
+        // mod_pow_2_inv returns a result which may be out of `a'`-s range, but it's fine to
+        // multiply modulu usize::max_value() here, and then take modulu `a'` afterwards.
         return (minusp2.wrapping_mul(mod_pow_2_inv(s2, apow.wrapping_sub(gcdpow), a2minus1)))
             & a2minus1;
     }
