@@ -59,20 +59,20 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     // Increment the reference count of the arc to clone it.
     unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
         let waker: Arc<W> = Arc::from_raw(waker as *const W);
-        mem::forget(waker.clone());
+        mem::forget(Arc::clone(&waker));
         raw_waker(waker)
     }
 
     // Wake by value, moving the Arc into the Wake::wake function
     unsafe fn wake<W: Wake + Send + Sync + 'static>(waker: *const ()) {
         let waker: Arc<W> = Arc::from_raw(waker as *const W);
-        Wake::wake(waker);
+        <W as Wake>::wake(waker);
     }
 
     // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
     unsafe fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
         let waker: ManuallyDrop<Arc<W>> = ManuallyDrop::new(Arc::from_raw(waker as *const W));
-        Wake::wake_by_ref(&waker);
+        <W as Wake>::wake_by_ref(&waker);
     }
 
     // Decrement the reference count of the Arc on drop
