@@ -403,7 +403,6 @@ fn loop_turn(
         let sender = libdata_sender.clone();
         pool.execute(move || {
             log::info!("indexing {:?} ... ", root);
-            let _p = profile(&format!("indexed {:?}", root));
             let data = LibraryData::prepare(root, files);
             sender.send(data).unwrap();
         });
