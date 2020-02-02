@@ -22,8 +22,11 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attrs, db::DefDatabase, path::ModPath, visibility::RawVisibility, FileAstId, HirFileId,
-    InFile,
+    attr::Attrs,
+    db::DefDatabase,
+    path::{ImportAlias, ModPath},
+    visibility::RawVisibility,
+    FileAstId, HirFileId, InFile,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -145,19 +148,12 @@ impl_arena_id!(Import);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
     pub(super) path: ModPath,
-    pub(super) alias: ImportAlias,
+    pub(super) alias: Option<ImportAlias>,
     pub(super) is_glob: bool,
     pub(super) is_prelude: bool,
     pub(super) is_extern_crate: bool,
     pub(super) is_macro_use: bool,
     pub(super) visibility: RawVisibility,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportAlias {
-    NoAlias,
-    Unnamed, // use Foo as _;
-    Alias(Name),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -360,10 +356,10 @@ impl RawItemsCollector {
             let path = ModPath::from_name_ref(&name_ref);
             let visibility =
                 RawVisibility::from_ast_with_hygiene(extern_crate.visibility(), &self.hygiene);
-            let alias = extern_crate.alias().map_or(ImportAlias::NoAlias, |a| {
+            let alias = extern_crate.alias().map(|a| {
                 a.name()
                     .map(|it| it.as_name())
-                    .map_or(ImportAlias::Unnamed, |a| ImportAlias::Alias(a))
+                    .map_or(ImportAlias::Underscore, |a| ImportAlias::Alias(a))
             });
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
