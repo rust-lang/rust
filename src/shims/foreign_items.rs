@@ -1,3 +1,6 @@
+mod windows;
+mod posix;
+
 use std::{convert::TryInto, iter};
 
 use rustc_hir::def_id::DefId;
@@ -167,6 +170,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Next: functions that return.
+        match link_name {
+            "__rust_maybe_catch_panic" => {
+                this.handle_catch_panic(args, dest, ret)?;
+                return Ok(None);
+            }
+
+            _ => this.emulate_foreign_item_by_name(link_name, args, dest)?,
+        };
+
+        this.dump_place(*dest);
+        this.go_to_block(ret);
+
+        Ok(None)
+    }
+
+    fn emulate_foreign_item_by_name(
+        &mut self,
+        link_name: &str,
+        args: &[OpTy<'tcx, Tag>],
+        dest: PlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
@@ -339,11 +366,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "__rust_maybe_catch_panic" => {
-                this.handle_catch_panic(args, dest, ret)?;
-                return Ok(None);
-            }
-
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
                 let right = this.read_scalar(args[1])?.not_undef()?;
@@ -399,140 +421,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            | "__errno_location"
-            | "__error"
-            => {
-                let errno_place = this.machine.last_error.unwrap();
-                this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
-            }
-
-            "getenv" => {
-                let result = this.getenv(args[0])?;
-                this.write_scalar(result, dest)?;
-            }
-
-            "unsetenv" => {
-                let result = this.unsetenv(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "setenv" => {
-                let result = this.setenv(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "getcwd" => {
-                let result = this.getcwd(args[0], args[1])?;
-                this.write_scalar(result, dest)?;
-            }
-
-            "chdir" => {
-                let result = this.chdir(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "open"
-            | "open64"
-            => {
-                let result = this.open(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "fcntl" => {
-                let result = this.fcntl(args[0], args[1], args.get(2).cloned())?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "close"
-            | "close$NOCANCEL"
-            => {
-                let result = this.close(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "read" => {
-                let result = this.read(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "write" => {
-                let fd = this.read_scalar(args[0])?.to_i32()?;
-                let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_machine_usize(tcx)?;
-                trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
-                let result = if fd == 1 || fd == 2 {
-                    // stdout/stderr
-                    use std::io::{self, Write};
-
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(n))?;
-                    // We need to flush to make sure this actually appears on the screen
-                    let res = if fd == 1 {
-                        // Stdout is buffered, flush to make sure it appears on the screen.
-                        // This is the write() syscall of the interpreted program, we want it
-                        // to correspond to a write() syscall on the host -- there is no good
-                        // in adding extra buffering here.
-                        let res = io::stdout().write(buf_cont);
-                        io::stdout().flush().unwrap();
-                        res
-                    } else {
-                        // No need to flush, stderr is not buffered.
-                        io::stderr().write(buf_cont)
-                    };
-                    match res {
-                        Ok(n) => n as i64,
-                        Err(_) => -1,
-                    }
-                } else {
-                    this.write(args[0], args[1], args[2])?
-                };
-                // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            | "lseek64"
-            | "lseek"
-            => {
-                let result = this.lseek64(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "unlink" => {
-                let result = this.unlink(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "symlink" => {
-                let result = this.symlink(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "stat$INODE64" => {
-                let result = this.stat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "lstat$INODE64" => {
-                let result = this.lstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "fstat$INODE64" => {
-                let result = this.fstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
 
             "rename" => {
                 let result = this.rename(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "clock_gettime" => {
-                let result = this.clock_gettime(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-            }
-
-            "gettimeofday" => {
-                let result = this.gettimeofday(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
@@ -950,59 +841,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // which one it is.
                 this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
             }
-            "WriteFile" => {
-                let handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
-                let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_u32()?;
-                let written_place = this.deref_operand(args[3])?;
-                // Spec says to always write `0` first.
-                this.write_null(written_place.into())?;
-                let written = if handle == -11 || handle == -12 {
-                    // stdout/stderr
-                    use std::io::{self, Write};
-
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(u64::from(n)))?;
-                    let res = if handle == -11 {
-                        io::stdout().write(buf_cont)
-                    } else {
-                        io::stderr().write(buf_cont)
-                    };
-                    res.ok().map(|n| n as u32)
-                } else {
-                    eprintln!("Miri: Ignored output to handle {}", handle);
-                    // Pretend it all went well.
-                    Some(n)
-                };
-                // If there was no error, write back how much was written.
-                if let Some(n) = written {
-                    this.write_scalar(Scalar::from_u32(n), written_place.into())?;
-                }
-                // Return whether this was a success.
-                this.write_scalar(
-                    Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
-                    dest,
-                )?;
-            }
             "GetConsoleMode" => {
                 // Everything is a pipe.
                 this.write_null(dest)?;
-            }
-            "GetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPWSTR lpBuffer (32-bit pointer to a string of 16-bit Unicode chars)
-                // lpBuffer : ptr to buffer that receives contents of the env_var as a null-terminated string.
-                // Return `# of chars` stored in the buffer pointed to by lpBuffer, excluding null-terminator.
-                // Return 0 upon failure.
-
-                // This is not the env var you are looking for.
-                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
-                this.write_null(dest)?;
-            }
-            "SetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPCWSTR lpValue (32-bit ptr to a const string of 16-bit Unicode chars)
-                // Return nonzero if success, else return 0.
-                throw_unsup_format!("can't set environment variable on Windows");
             }
             "GetCommandLineW" => {
                 this.write_scalar(
@@ -1018,13 +859,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
 
-            // We can't execute anything else.
-            _ => throw_unsup_format!("can't call foreign function: {}", link_name),
-        }
+            _ => match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
+                "linux" | "macos" => posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
+                "windows" => windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
+                target => throw_unsup_format!("The {} target platform is not supported", target),
+            }
+        };
 
-        this.dump_place(*dest);
-        this.go_to_block(ret);
-        Ok(None)
+        Ok(())
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
