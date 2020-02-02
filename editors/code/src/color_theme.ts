@@ -61,7 +61,7 @@ export class ColorTheme {
 }
 
 function loadThemeNamed(themeName: string): ColorTheme {
-    function isTheme(extension: vscode.Extension<any>): boolean {
+    function isTheme(extension: vscode.Extension<unknown>): boolean {
         return (
             extension.extensionKind === vscode.ExtensionKind.UI &&
             extension.packageJSON.contributes &&
