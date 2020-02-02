@@ -1,74 +1,74 @@
-error: cannot move out of `a` because it is borrowed
+error: cannot move out of value because it is borrowed
   --> $DIR/borrowck-pat-at-and-box.rs:37:9
    |
 LL |     let ref a @ box b = Box::new(NC);
    |         -----^^^^^^^-
    |         |           |
-   |         |           move out of `a` occurs here
-   |         borrow of `a` occurs here
+   |         |           value moved into `b` here
+   |         value borrowed, by `a`, here
 
-error: cannot borrow `a` as mutable because it is also borrowed as immutable
+error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:39:9
    |
 LL |     let ref a @ box ref mut b = Box::new(nc());
    |         -----^^^^^^^---------
    |         |           |
-   |         |           mutable borrow occurs here
-   |         immutable borrow occurs here
+   |         |           mutable borrow, by `b`, occurs here
+   |         immutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as mutable because it is also borrowed as immutable
+error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:41:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
    |         |           |
-   |         |           mutable borrow occurs here
-   |         immutable borrow occurs here
+   |         |           mutable borrow, by `b`, occurs here
+   |         immutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as mutable because it is also borrowed as immutable
+error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:43:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
    |         |           |
-   |         |           mutable borrow occurs here
-   |         immutable borrow occurs here
+   |         |           mutable borrow, by `b`, occurs here
+   |         immutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as mutable because it is also borrowed as immutable
+error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:46:9
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
    |         -----^^^^^^^---------
    |         |           |
-   |         |           mutable borrow occurs here
-   |         immutable borrow occurs here
+   |         |           mutable borrow, by `b`, occurs here
+   |         immutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as immutable because it is also borrowed as mutable
+error: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:52:9
    |
 LL |     let ref mut a @ box ref b = Box::new(NC);
    |         ---------^^^^^^^-----
    |         |               |
-   |         |               immutable borrow occurs here
-   |         mutable borrow occurs here
+   |         |               immutable borrow, by `b`, occurs here
+   |         mutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as immutable because it is also borrowed as mutable
+error: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:66:9
    |
 LL |         ref mut a @ box ref b => {
    |         ---------^^^^^^^-----
    |         |               |
-   |         |               immutable borrow occurs here
-   |         mutable borrow occurs here
+   |         |               immutable borrow, by `b`, occurs here
+   |         mutable borrow, by `a`, occurs here
 
-error: cannot borrow `a` as immutable because it is also borrowed as mutable
+error: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:58:11
    |
 LL |     fn f5(ref mut a @ box ref b: Box<NC>) {
    |           ---------^^^^^^^-----
    |           |               |
-   |           |               immutable borrow occurs here
-   |           mutable borrow occurs here
+   |           |               immutable borrow, by `b`, occurs here
+   |           mutable borrow, by `a`, occurs here
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-pat-at-and-box.rs:21:18

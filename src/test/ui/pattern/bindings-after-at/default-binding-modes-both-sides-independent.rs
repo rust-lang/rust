@@ -25,24 +25,24 @@ fn main() {
     let ref a @ b = &NotCopy; // OK
     let _: &&NotCopy = a;
 
-    let ref a @ b = NotCopy; //~ ERROR cannot move out of `a` because it is borrowed
+    let ref a @ b = NotCopy; //~ ERROR cannot move out of value because it is borrowed
     let _a: &NotCopy = a;
     let _b: NotCopy = b;
-    let ref mut a @ b = NotCopy; //~ ERROR cannot move out of `a` because it is borrowed
+    let ref mut a @ b = NotCopy; //~ ERROR cannot move out of value because it is borrowed
     //~^ ERROR cannot move out of `_` because it is borrowed
     let _a: &NotCopy = a;
     let _b: NotCopy = b;
     match Ok(NotCopy) {
         Ok(ref a @ b) | Err(b @ ref a) => {
-            //~^ ERROR cannot move out of `a` because it is borrowed
-            //~| ERROR borrow of moved value: `b`
+            //~^ ERROR cannot move out of value because it is borrowed
+            //~| ERROR borrow of moved value
             let _a: &NotCopy = a;
             let _b: NotCopy = b;
         }
     }
     match NotCopy {
         ref a @ b => {
-            //~^ ERROR cannot move out of `a` because it is borrowed
+            //~^ ERROR cannot move out of value because it is borrowed
             let _a: &NotCopy = a;
             let _b: NotCopy = b;
         }

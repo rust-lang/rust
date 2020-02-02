@@ -9,12 +9,12 @@ fn main() {
     fn u() -> U { U }
 
     fn f1(ref mut a @ ref mut b: U) {}
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     fn f2(ref mut a @ ref mut b: U) {}
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     fn f3(
         ref mut a @ [
-        //~^ ERROR cannot borrow `a` as mutable more than once at a time
+        //~^ ERROR cannot borrow value as mutable more than once at a time
             [ref b @ .., _],
             [_, ref mut mid @ ..],
             ..,
@@ -22,29 +22,29 @@ fn main() {
         ] : [[U; 4]; 5]
     ) {}
     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
-    //~| ERROR cannot move out of `b` because it is borrowed
+    //~^ ERROR cannot borrow value as mutable more than once at a time
+    //~| ERROR cannot move out of value because it is borrowed
 
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     //~| ERROR cannot borrow `_` as mutable more than once at a time
     drop(a);
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     drop(b);
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
 
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     //~| ERROR cannot borrow `_` as mutable more than once at a time
     *a = U;
     let ref mut a @ ref mut b = U;
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
     *b = U;
 
     let ref mut a @ (
-    //~^ ERROR cannot borrow `a` as mutable more than once at a time
+    //~^ ERROR cannot borrow value as mutable more than once at a time
         ref mut b,
         [
             ref mut c,
@@ -54,7 +54,7 @@ fn main() {
     ) = (U, [U, U, U]);
 
     let ref mut a @ (
-        //~^ ERROR cannot borrow `a` as mutable more than once at a time
+        //~^ ERROR cannot borrow value as mutable more than once at a time
             ref mut b,
             [
                 ref mut c,
@@ -80,21 +80,21 @@ fn main() {
 
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `a` as mutable more than once at a time
-            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
         }
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `a` as mutable more than once at a time
-            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             *b = U;
         }
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `a` as mutable more than once at a time
-            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             *a = Err(U);
@@ -105,8 +105,8 @@ fn main() {
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-            //~^ ERROR cannot borrow `a` as mutable more than once at a time
-            //~| ERROR cannot borrow `a` as mutable more than once at a time
+            //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             //~| ERROR cannot borrow `_` as mutable more than once at a time
             drop(a);
