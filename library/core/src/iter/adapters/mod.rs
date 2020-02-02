@@ -2095,9 +2095,9 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<S: Iterator, P, I: Iterator> SourceIter for TakeWhile<I, P>
-    where
-        P: FnMut(&I::Item) -> bool,
-        I: SourceIter<Source = S>,
+where
+    P: FnMut(&I::Item) -> bool,
+    I: SourceIter<Source = S>,
 {
     type Source = S;
 

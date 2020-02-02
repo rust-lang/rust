@@ -1,10 +1,10 @@
+use super::InPlaceIterable;
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::TrustedRandomAccess;
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
-use crate::ops::Try;
 use crate::iter::adapters::SourceIter;
-use super::InPlaceIterable;
+use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
@@ -522,8 +522,8 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
-    where
-        I: SourceIter<Source = S>,
+where
+    I: SourceIter<Source = S>,
 {
     type Source = S;
 
