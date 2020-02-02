@@ -396,12 +396,12 @@ macro_rules! gen_fn_struct_biopt {
                 F: FnOnce<A>,
             {
                 type Output = $z<F1, F2>;
-                fn $method(self, rhs: F2) -> Self::Output {
-                    $z { f: self }
+                fn $method(self, that: F2) -> Self::Output {
+                    $z { f1: self, f2: that }
                 }
             }
             #[$attr]
-            impl<A, F: ?Sized> Fn<A> for &$z<F>
+            impl<A, F1: ?Sized, F2: ?Sized> Fn<A> for &$z<F1, F2>
             where
                 F: Fn<A>,
             {
@@ -411,7 +411,7 @@ macro_rules! gen_fn_struct_biopt {
             }
 
             #[$attr]
-            impl<A, F: ?Sized> FnMut<A> for &$z<F>
+            impl<A, F1: ?Sized, F2: ?Sized> FnMut<A> for &$z<F1, F2>
             where
                 F: Fn<A>,
             {
@@ -421,7 +421,7 @@ macro_rules! gen_fn_struct_biopt {
             }
 
             #[$attr]
-            impl<A, F: ?Sized> FnOnce<A> for &$z<F>
+            impl<A, F1: ?Sized, F2: ?Sized> FnOnce<A> for &$z<F1, F2>
             where
                 F: Fn<A>,
             {
@@ -433,7 +433,7 @@ macro_rules! gen_fn_struct_biopt {
             }
 
             #[$attr]
-            impl<A, F: ?Sized> FnMut<A> for &mut $z<F>
+            impl<A, F1: ?Sized, F2: ?Sized> FnMut<A> for &mut $z<F1, F2>
             where
                 F: FnMut<A>,
             {
@@ -443,7 +443,7 @@ macro_rules! gen_fn_struct_biopt {
             }
 
             #[$attr]
-            impl<A, F: ?Sized> FnOnce<A> for &mut $z<F>
+            impl<A, F1: ?Sized, F2: ?Sized> FnOnce<A> for &mut $z<F>
             where
                 F: FnMut<A>,
             {
