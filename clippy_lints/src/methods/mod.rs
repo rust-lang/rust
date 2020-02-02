@@ -798,8 +798,9 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for the use of `iter.nth(0)`.
     ///
-    /// **Why is this bad?** `iter.nth(0)` is unnecessary, and `iter.next()`
-    /// is more readable.
+    /// **Why is this bad?** `iter.next()` is equivalent to
+    /// `iter.nth(0)`, as they both consume the next element,
+    ///  but is more readable.
     ///
     /// **Known problems:** None.
     ///
