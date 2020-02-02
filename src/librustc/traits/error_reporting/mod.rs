@@ -1340,6 +1340,44 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 &obligation.cause.code,
                 &mut vec![],
             );
+            self.suggest_unsized_bound_if_applicable(err, obligation);
+        }
+    }
+
+    fn suggest_unsized_bound_if_applicable(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let (
+            ty::Predicate::Trait(pred, _),
+            ObligationCauseCode::BindingObligation(item_def_id, span),
+        ) = (&obligation.predicate, &obligation.cause.code)
+        {
+            if let (Some(generics), true) = (
+                self.tcx.hir().get_if_local(*item_def_id).as_ref().and_then(|n| n.generics()),
+                Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
+            ) {
+                for param in generics.params {
+                    if param.span == *span
+                        && !param.bounds.iter().any(|bound| {
+                            bound.trait_def_id() == self.tcx.lang_items().sized_trait()
+                        })
+                    {
+                        let (span, separator) = match param.bounds {
+                            [] => (span.shrink_to_hi(), ":"),
+                            [.., bound] => (bound.span().shrink_to_hi(), " + "),
+                        };
+                        err.span_suggestion(
+                            span,
+                            "consider relaxing the implicit `Sized` restriction",
+                            format!("{} ?Sized", separator),
+                            Applicability::MachineApplicable,
+                        );
+                        return;
+                    }
+                }
+            }
         }
     }
 
