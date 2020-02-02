@@ -474,19 +474,18 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
-    fn lookup_and_emit<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: Option<S>, msg: &str) {
-        self.lookup(lint, span, |lint| lint.build(msg).emit());
-    }
-
-    fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(
+    fn lookup_with_diagnostics<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: &str,
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.lookup(lint, span, |lint| {
-            let mut db = lint.build(msg);
+            // We first generate a blank diagnostic.
+            let mut db = lint.build("");
+
+            // Now, set up surrounding context.
             let sess = self.sess();
             match diagnostic {
                 BuiltinLintDiagnostics::Normal => (),
@@ -567,8 +566,8 @@ pub trait LintContext: Sized {
                     stability::deprecation_suggestion(&mut db, suggestion, span)
                 }
             }
-
-            db.emit();
+            // Rewrap `db`, and pass control to the user.
+            decorate(LintDiagnosticBuilder::new(db));
         });
     }
 
@@ -579,11 +578,6 @@ pub trait LintContext: Sized {
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     );
 
-    /// Emit a lint at the appropriate level, for a particular span.
-    fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
-        self.lookup_and_emit(lint, Some(span), msg);
-    }
-
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -592,40 +586,9 @@ pub trait LintContext: Sized {
     ) {
         self.lookup(lint, Some(span), decorate);
     }
-
-    /// Emit a lint and note at the appropriate level, for a particular span.
-    fn span_lint_note(
-        &self,
-        lint: &'static Lint,
-        span: Span,
-        msg: &str,
-        note_span: Span,
-        note: &str,
-    ) {
-        self.lookup(lint, Some(span), |lint| {
-            let mut err = lint.build(msg);
-            if note_span == span {
-                err.note(note);
-            } else {
-                err.span_note(note_span, note);
-            }
-            err.emit();
-        });
-    }
-
-    /// Emit a lint and help at the appropriate level, for a particular span.
-    fn span_lint_help(&self, lint: &'static Lint, span: Span, msg: &str, help: &str) {
-        self.lookup(lint, Some(span), |err| {
-            let mut err = err.build(msg);
-            self.span_lint(lint, span, msg);
-            err.span_help(span, help);
-            err.emit();
-        });
-    }
-
     /// Emit a lint at the appropriate level, with no associated span.
-    fn lint(&self, lint: &'static Lint, msg: &str) {
-        self.lookup_and_emit(lint, None as Option<Span>, msg);
+    fn lint(&self, lint: &'static Lint, decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)) {
+        self.lookup(lint, None as Option<Span>, decorate);
     }
 }
 
