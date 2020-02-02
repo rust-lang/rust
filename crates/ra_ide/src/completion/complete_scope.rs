@@ -72,62 +72,58 @@ pub(crate) struct ImportResolver {
 
 impl ImportResolver {
     pub(crate) fn new() -> Self {
+        use hir::name;
+
         let dummy_names = vec![
             (
                 SmolStr::new("fmt"),
-                ModPath { kind: PathKind::Plain, segments: vec![hir::known::std, hir::known::fmt] },
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![fmt]] },
             ),
             (
                 SmolStr::new("io"),
-                ModPath { kind: PathKind::Plain, segments: vec![hir::known::std, hir::known::io] },
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![io]] },
             ),
             (
                 SmolStr::new("iter"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::iter],
-                },
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![iter]] },
             ),
             (
                 SmolStr::new("hash"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::hash],
-                },
+                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![hash]] },
             ),
             (
                 SmolStr::new("Debug"),
                 ModPath {
                     kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::fmt, hir::known::Debug],
+                    segments: vec![name![std], name![fmt], name![Debug]],
                 },
             ),
             (
                 SmolStr::new("Display"),
                 ModPath {
                     kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::fmt, hir::known::Display],
+                    segments: vec![name![std], name![fmt], name![Display]],
                 },
             ),
             (
                 SmolStr::new("Hash"),
                 ModPath {
                     kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::hash, hir::known::Hash],
+                    segments: vec![name![std], name![hash], name![Hash]],
                 },
             ),
             (
                 SmolStr::new("Hasher"),
                 ModPath {
                     kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::hash, hir::known::Hasher],
+                    segments: vec![name![std], name![hash], name![Hasher]],
                 },
             ),
             (
                 SmolStr::new("Iterator"),
                 ModPath {
                     kind: PathKind::Plain,
-                    segments: vec![hir::known::std, hir::known::iter, hir::known::Iterator],
+                    segments: vec![name![std], name![iter], name![Iterator]],
                 },
             ),
         ];
