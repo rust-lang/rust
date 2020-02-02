@@ -125,7 +125,13 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-        self.fields.higher_ranked_sub(b, a, self.a_is_expected)
+        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
+            self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+            self.fields.higher_ranked_sub(b, a, self.a_is_expected)
+        } else {
+            // Fast path for the common case.
+            self.relate(a.skip_binder(), b.skip_binder())?;
+            return Ok(a.clone());
+        }
     }
 }
