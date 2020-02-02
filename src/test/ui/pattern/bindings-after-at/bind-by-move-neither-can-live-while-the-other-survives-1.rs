@@ -12,7 +12,7 @@ struct X {
 fn main() {
     let x = Some(X { x: () });
     match x {
-        Some(ref _y @ _z) => {} //~ ERROR cannot move out of `_y` because it is borrowed
+        Some(ref _y @ _z) => {} //~ ERROR cannot move out of value because it is borrowed
         None => panic!(),
     }
 
@@ -26,7 +26,7 @@ fn main() {
 
     let mut x = Some(X { x: () });
     match x {
-        Some(ref mut _y @ _z) => {} //~ ERROR cannot move out of `_y` because it is borrowed
+        Some(ref mut _y @ _z) => {} //~ ERROR cannot move out of value because it is borrowed
         None => panic!(),
     }
 
