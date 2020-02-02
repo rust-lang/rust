@@ -5,10 +5,6 @@ LL |     entries: [T; D::dim()],
    |                     ^^^ function or associated item not found in `D`
    |
    = help: items from traits can only be used if the type parameter is bounded by the trait
-help: the following trait defines an item `dim`, perhaps you need to restrict type parameter `D` with it:
-   |
-LL | pub struct Vector<T, D: Dim + Dim> {
-   |                      ^^^^^^^^
 
 error: aborting due to previous error
 
