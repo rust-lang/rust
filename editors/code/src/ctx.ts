@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+
 import { Config } from './config';
 import { createClient } from './client';
 
@@ -52,12 +53,12 @@ export class Ctx {
     overrideCommand(name: string, factory: (ctx: Ctx) => Cmd) {
         const defaultCmd = `default:${name}`;
         const override = factory(this);
-        const original = (...args: any[]) =>
+        const original = (...args: unknown[]) =>
             vscode.commands.executeCommand(defaultCmd, ...args);
         try {
             const d = vscode.commands.registerCommand(
                 name,
-                async (...args: any[]) => {
+                async (...args: unknown[]) => {
                     if (!(await override(...args))) {
                         return await original(...args);
                     }
@@ -73,11 +74,11 @@ export class Ctx {
         }
     }
 
-    get subscriptions(): { dispose(): any }[] {
+    get subscriptions(): Disposable[] {
         return this.extCtx.subscriptions;
     }
 
-    pushCleanup(d: { dispose(): any }) {
+    pushCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
     }
 
@@ -86,12 +87,15 @@ export class Ctx {
     }
 }
 
-export type Cmd = (...args: any[]) => any;
+export interface Disposable {
+    dispose(): void;
+}
+export type Cmd = (...args: any[]) => unknown;
 
 export async function sendRequestWithRetry<R>(
     client: lc.LanguageClient,
     method: string,
-    param: any,
+    param: unknown,
     token?: vscode.CancellationToken,
 ): Promise<R> {
     for (const delay of [2, 4, 6, 8, 10, null]) {

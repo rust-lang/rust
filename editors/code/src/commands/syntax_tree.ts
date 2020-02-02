@@ -55,7 +55,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 
 // We need to order this after LS updates, but there's no API for that.
 // Hence, good old setTimeout.
-function afterLs(f: () => any) {
+function afterLs(f: () => void) {
     setTimeout(f, 10);
 }
 
