@@ -21,10 +21,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```toml
-    /// # This will pull in both winapi v0.3.4 and v0.2.8, triggering a warning.
+    /// # This will pull in both winapi v0.3.x and v0.2.x, triggering a warning.
     /// [dependencies]
-    /// ctrlc = "3.1.0"
-    /// ansi_term = "0.11.0"
+    /// ctrlc = "=3.1.0"
+    /// ansi_term = "=0.11.0"
     /// ```
     pub MULTIPLE_CRATE_VERSIONS,
     cargo,
