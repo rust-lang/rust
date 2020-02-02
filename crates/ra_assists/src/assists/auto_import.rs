@@ -1,7 +1,7 @@
 use hir::{db::HirDatabase, ModPath};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::USE_ITEM,
+    SyntaxKind::{NAME_REF, USE_ITEM},
     SyntaxNode,
 };
 
@@ -36,6 +36,8 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     if path_to_import_syntax.ancestors().find(|ancestor| ancestor.kind() == USE_ITEM).is_some() {
         return None;
     }
+    let name_to_import =
+        path_to_import_syntax.descendants().find(|child| child.kind() == NAME_REF)?;
 
     let module = path_to_import_syntax.ancestors().find_map(ast::Module::cast);
     let position = match module.and_then(|it| it.item_list()) {
@@ -52,7 +54,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     }
 
     let proposed_imports = imports_locator
-        .find_imports(&path_to_import_syntax.to_string())
+        .find_imports(&name_to_import.to_string())
         .into_iter()
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
@@ -121,21 +123,29 @@ mod tests {
             r"
             use PubMod::PubStruct1;
 
-            PubStruct2<|>
+            struct Test {
+                test: Pub<|>Struct2<u8>,
+            }
 
             pub mod PubMod {
                 pub struct PubStruct1;
-                pub struct PubStruct2;
+                pub struct PubStruct2<T> {
+                    _t: T,
+                }
             }
             ",
             r"
             use PubMod::{PubStruct2, PubStruct1};
 
-            PubStruct2<|>
+            struct Test {
+                test: Pub<|>Struct2<u8>,
+            }
 
             pub mod PubMod {
                 pub struct PubStruct1;
-                pub struct PubStruct2;
+                pub struct PubStruct2<T> {
+                    _t: T,
+                }
             }
             ",
         );
