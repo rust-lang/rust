@@ -70,16 +70,15 @@ impl<'a> Parser<'a> {
     /// Parses one of the items allowed by the flags.
     fn parse_item_implementation(
         &mut self,
-        attrs: Vec<Attribute>,
+        mut attrs: Vec<Attribute>,
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
         maybe_whole!(self, NtItem, |item| {
-            let mut item = item.into_inner();
-            let mut attrs = attrs;
+            let mut item = item;
             mem::swap(&mut item.attrs, &mut attrs);
             item.attrs.extend(attrs);
-            Some(P(item))
+            Some(item)
         });
 
         let lo = self.token.span;
@@ -1715,8 +1714,6 @@ impl<'a> Parser<'a> {
 
 /// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
 pub(super) struct ParamCfg {
-    /// Is `self` is allowed as the first parameter?
-    pub is_self_allowed: bool,
     /// `is_name_required` decides if, per-parameter,
     /// the parameter must have a pattern or just a type.
     pub is_name_required: fn(&token::Token) -> bool,
@@ -1732,8 +1729,8 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
-        let (ident, decl, generics) =
-            self.parse_fn_sig(ParamCfg { is_self_allowed: false, is_name_required: |_| true })?;
+        let cfg = ParamCfg { is_name_required: |_| true };
+        let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
         let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
         self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
@@ -1747,20 +1744,13 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         extern_sp: Span,
     ) -> PResult<'a, P<ForeignItem>> {
+        let cfg = ParamCfg { is_name_required: |_| true };
         self.expect_keyword(kw::Fn)?;
-        let (ident, decl, generics) =
-            self.parse_fn_sig(ParamCfg { is_self_allowed: false, is_name_required: |_| true })?;
+        let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
         let span = lo.to(self.token.span);
         self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
-        Ok(P(ast::ForeignItem {
-            ident,
-            attrs,
-            kind: ForeignItemKind::Fn(decl, generics),
-            id: DUMMY_NODE_ID,
-            span,
-            vis,
-            tokens: None,
-        }))
+        let kind = ForeignItemKind::Fn(decl, generics);
+        Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
     }
 
     fn parse_assoc_fn(
@@ -1770,8 +1760,7 @@ impl<'a> Parser<'a> {
         is_name_required: fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) =
-            self.parse_fn_sig(ParamCfg { is_self_allowed: true, is_name_required })?;
+        let (ident, decl, generics) = self.parse_fn_sig(&ParamCfg { is_name_required })?;
         let sig = FnSig { header, decl };
         let body = self.parse_assoc_fn_body(at_end, attrs)?;
         Ok((ident, AssocItemKind::Fn(sig, body), generics))
@@ -1847,7 +1836,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the "signature", including the identifier, parameters, and generics of a function.
-    fn parse_fn_sig(&mut self, cfg: ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
+    fn parse_fn_sig(&mut self, cfg: &ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         let decl = self.parse_fn_decl(cfg, true)?;
@@ -1858,7 +1847,7 @@ impl<'a> Parser<'a> {
     /// Parses the parameter list and result type of a function declaration.
     pub(super) fn parse_fn_decl(
         &mut self,
-        cfg: ParamCfg,
+        cfg: &ParamCfg,
         ret_allow_plus: bool,
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
@@ -1868,11 +1857,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
-    fn parse_fn_params(&mut self, mut cfg: ParamCfg) -> PResult<'a, Vec<Param>> {
-        let is_trait_item = cfg.is_self_allowed;
-        // Parse the arguments, starting out with `self` being possibly allowed...
+    fn parse_fn_params(&mut self, cfg: &ParamCfg) -> PResult<'a, Vec<Param>> {
+        let mut first_param = true;
+        // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
-            let param = p.parse_param_general(&cfg, is_trait_item).or_else(|mut e| {
+            let param = p.parse_param_general(&cfg, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_span;
                 // Skip every token until next possible arg or end.
@@ -1881,7 +1870,7 @@ impl<'a> Parser<'a> {
                 Ok(dummy_arg(Ident::new(kw::Invalid, lo.to(p.prev_span))))
             });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
-            cfg.is_self_allowed = false;
+            first_param = false;
             param
         })?;
         // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
@@ -1889,21 +1878,17 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
-    /// error.
-    /// This version of parse param doesn't necessarily require identifier names.
-    fn parse_param_general(&mut self, cfg: &ParamCfg, is_trait_item: bool) -> PResult<'a, Param> {
+    /// Parses a single function parameter.
+    ///
+    /// - `self` is syntactically allowed when `first_param` holds.
+    fn parse_param_general(&mut self, cfg: &ParamCfg, first_param: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
 
         // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
         if let Some(mut param) = self.parse_self_param()? {
             param.attrs = attrs.into();
-            return if cfg.is_self_allowed {
-                Ok(param)
-            } else {
-                self.recover_bad_self_param(param, is_trait_item)
-            };
+            return if first_param { Ok(param) } else { self.recover_bad_self_param(param) };
         }
 
         let is_name_required = match self.token.kind {
@@ -1915,13 +1900,9 @@ impl<'a> Parser<'a> {
 
             let pat = self.parse_fn_param_pat()?;
             if let Err(mut err) = self.expect(&token::Colon) {
-                return if let Some(ident) = self.parameter_without_type(
-                    &mut err,
-                    pat,
-                    is_name_required,
-                    cfg.is_self_allowed,
-                    is_trait_item,
-                ) {
+                return if let Some(ident) =
+                    self.parameter_without_type(&mut err, pat, is_name_required, first_param)
+                {
                     err.emit();
                     Ok(dummy_arg(ident))
                 } else {
@@ -1975,8 +1956,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
-    ///
-    /// See `parse_self_param_with_attrs` to collect attributes.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| {

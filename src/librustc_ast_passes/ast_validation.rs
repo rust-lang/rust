@@ -23,6 +23,12 @@ use syntax::expand::is_proc_macro_attr;
 use syntax::visit::{self, Visitor};
 use syntax::walk_list;
 
+/// Is `self` allowed semantically as the first parameter in an `FnDecl`?
+enum SelfSemantic {
+    Yes,
+    No,
+}
+
 /// A syntactic context that disallows certain kinds of bounds (e.g., `?Trait` or `?const Trait`).
 #[derive(Clone, Copy)]
 enum BoundContext {
@@ -302,7 +308,13 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_fn_decl(&self, fn_decl: &FnDecl) {
+    fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
+        self.check_decl_cvaradic_pos(fn_decl);
+        self.check_decl_attrs(fn_decl);
+        self.check_decl_self_param(fn_decl, self_semantic);
+    }
+
+    fn check_decl_cvaradic_pos(&self, fn_decl: &FnDecl) {
         match &*fn_decl.inputs {
             [Param { ty, span, .. }] => {
                 if let TyKind::CVarArgs = ty.kind {
@@ -324,7 +336,9 @@ impl<'a> AstValidator<'a> {
             }
             _ => {}
         }
+    }
 
+    fn check_decl_attrs(&self, fn_decl: &FnDecl) {
         fn_decl
             .inputs
             .iter()
@@ -350,6 +364,21 @@ impl<'a> AstValidator<'a> {
                     )
                 }
             });
+    }
+
+    fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
+        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
+            if param.is_self() {
+                self.err_handler()
+                    .struct_span_err(
+                        param.span,
+                        "`self` parameter is only allowed in associated functions",
+                    )
+                    .span_label(param.span, "not semantically valid as function parameter")
+                    .note("associated functions are those in `impl` or `trait` definitions")
+                    .emit();
+            }
+        }
     }
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
@@ -504,7 +533,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
             ExprKind::Closure(_, _, _, fn_decl, _, _) => {
-                self.check_fn_decl(fn_decl);
+                self.check_fn_decl(fn_decl, SelfSemantic::No);
             }
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 struct_span_err!(
@@ -524,7 +553,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
             TyKind::BareFn(ref bfty) => {
-                self.check_fn_decl(&bfty.decl);
+                self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _| {
                     struct_span_err!(
                         self.session,
@@ -685,7 +714,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Fn(ref sig, ref generics, _) => {
                 self.visit_fn_header(&sig.header);
-                self.check_fn_decl(&sig.decl);
+                self.check_fn_decl(&sig.decl, SelfSemantic::No);
                 // We currently do not permit const generics in `const fn`, as
                 // this is tantamount to allowing compile-time dependent typing.
                 if sig.header.constness.node == Constness::Const {
@@ -793,7 +822,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.kind {
             ForeignItemKind::Fn(ref decl, _) => {
-                self.check_fn_decl(decl);
+                self.check_fn_decl(decl, SelfSemantic::No);
                 Self::check_decl_no_pat(decl, |span, _| {
                     struct_span_err!(
                         self.session,
@@ -987,9 +1016,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             AssocItemKind::Const(_, body) => {
                 self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
             }
-            AssocItemKind::Fn(sig, body) => {
+            AssocItemKind::Fn(_, body) => {
                 self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
-                self.check_fn_decl(&sig.decl);
             }
             AssocItemKind::TyAlias(bounds, body) => {
                 self.check_impl_item_provided(ii.span, body, "type", " = <type>;");
@@ -1005,7 +1033,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.check_defaultness(ti.span, ti.defaultness);
 
         if let AssocItemKind::Fn(sig, block) = &ti.kind {
-            self.check_fn_decl(&sig.decl);
             self.check_trait_fn_not_async(ti.span, sig.header.asyncness.node);
             self.check_trait_fn_not_const(sig.header.constness);
             if block.is_none() {
@@ -1035,6 +1062,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem) {
         if let AssocItemKind::Fn(sig, _) = &item.kind {
+            self.check_fn_decl(&sig.decl, SelfSemantic::Yes);
             self.check_c_varadic_type(&sig.decl);
         }
         visit::walk_assoc_item(self, item);

@@ -853,26 +853,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     sp
                                 };
-                                // FIXME: contrast `t.def_id` against `param.bounds` to not suggest
-                                // traits already there. That can happen when the cause is that
-                                // we're in a const scope or associated function used as a method.
-                                err.span_suggestions(
-                                    sp,
-                                    &message(format!(
-                                        "restrict type parameter `{}` with",
-                                        param.name.ident(),
-                                    )),
-                                    candidates.iter().map(|t| {
-                                        format!(
-                                            "{}{} {}{}",
+                                let trait_def_ids: FxHashSet<DefId> = param
+                                    .bounds
+                                    .iter()
+                                    .filter_map(|bound| bound.trait_def_id())
+                                    .collect();
+                                if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
+                                    err.span_suggestions(
+                                        sp,
+                                        &message(format!(
+                                            "restrict type parameter `{}` with",
                                             param.name.ident(),
-                                            if impl_trait { " +" } else { ":" },
-                                            self.tcx.def_path_str(t.def_id),
-                                            if has_bounds.is_some() { " + " } else { "" },
-                                        )
-                                    }),
-                                    Applicability::MaybeIncorrect,
-                                );
+                                        )),
+                                        candidates.iter().map(|t| {
+                                            format!(
+                                                "{}{} {}{}",
+                                                param.name.ident(),
+                                                if impl_trait { " +" } else { ":" },
+                                                self.tcx.def_path_str(t.def_id),
+                                                if has_bounds.is_some() { " + " } else { "" },
+                                            )
+                                        }),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                                 suggested = true;
                             }
                             Node::Item(hir::Item {

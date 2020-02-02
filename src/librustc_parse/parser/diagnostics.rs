@@ -1336,8 +1336,7 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
-        is_self_allowed: bool,
-        is_trait_item: bool,
+        first_param: bool,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
@@ -1357,13 +1356,12 @@ impl<'a> Parser<'a> {
             return Some(ident);
         } else if let PatKind::Ident(_, ident, _) = pat.kind {
             if require_name
-                && (is_trait_item
-                    || self.token == token::Comma
+                && (self.token == token::Comma
                     || self.token == token::Lt
                     || self.token == token::CloseDelim(token::Paren))
             {
                 // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
-                if is_self_allowed {
+                if first_param {
                     err.span_suggestion(
                         pat.span,
                         "if this is a `self` type, give it a parameter name",
@@ -1420,21 +1418,12 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    pub(super) fn recover_bad_self_param(
-        &mut self,
-        mut param: ast::Param,
-        is_trait_item: bool,
-    ) -> PResult<'a, ast::Param> {
+    pub(super) fn recover_bad_self_param(&mut self, mut param: Param) -> PResult<'a, Param> {
         let sp = param.pat.span;
         param.ty.kind = TyKind::Err;
-        let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
-        if is_trait_item {
-            err.span_label(sp, "must be the first associated function parameter");
-        } else {
-            err.span_label(sp, "not valid as function parameter");
-            err.note("`self` is only valid as the first parameter of an associated function");
-        }
-        err.emit();
+        self.struct_span_err(sp, "unexpected `self` parameter in function")
+            .span_label(sp, "must be the first parameter of an associated function")
+            .emit();
         Ok(param)
     }
 
