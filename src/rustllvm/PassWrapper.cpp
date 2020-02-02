@@ -26,6 +26,7 @@
 #include "llvm/Transforms/Instrumentation.h"
 #if LLVM_VERSION_GE(9, 0)
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Support/TimeProfiler.h"
 #endif
 #if LLVM_VERSION_GE(8, 0)
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
@@ -55,6 +56,23 @@ extern "C" void LLVMInitializePasses() {
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
   initializeTarget(Registry);
+}
+
+extern "C" void LLVMTimeTraceProfilerInitialize() {
+#if LLVM_VERSION_GE(9, 0)
+  timeTraceProfilerInitialize();
+#endif
+}
+
+extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
+#if LLVM_VERSION_GE(9, 0)
+  StringRef FN(FileName);
+  std::error_code EC;
+  raw_fd_ostream OS(FN, EC, sys::fs::CD_CreateAlways);
+
+  timeTraceProfilerWrite(OS);
+  timeTraceProfilerCleanup();
+#endif
 }
 
 enum class LLVMRustPassKind {

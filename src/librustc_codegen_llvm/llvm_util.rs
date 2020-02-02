@@ -113,11 +113,29 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
+    if sess.opts.debugging_opts.llvm_time_trace && get_major_version() >= 9 {
+        // time-trace is not thread safe and running it in parallel will cause seg faults.
+        if !sess.opts.debugging_opts.no_parallel_llvm {
+            bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
+        }
+
+        llvm::LLVMTimeTraceProfilerInitialize();
+    }
+
     llvm::LLVMInitializePasses();
 
     ::rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+}
+
+pub fn time_trace_profiler_finish(file_name: &str) {
+    unsafe {
+        if get_major_version() >= 9 {
+            let file_name = CString::new(file_name).unwrap();
+            llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
+        }
+    }
 }
 
 // WARNING: the features after applying `to_llvm_feature` must be known
