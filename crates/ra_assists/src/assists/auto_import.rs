@@ -79,12 +79,8 @@ pub(crate) fn auto_import<F: ImportsLocator>(
 fn import_to_action(import: String, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
     let mut action_builder = ActionBuilder::default();
     action_builder.label(format!("Import `{}`", &import));
-    auto_import_text_edit(
-        position,
-        anchor,
-        &[SmolStr::new(import)],
-        action_builder.text_edit_builder(),
-    );
+    let import_segments = import.split("::").map(SmolStr::new).collect::<Vec<_>>();
+    auto_import_text_edit(position, anchor, &import_segments, action_builder.text_edit_builder());
     action_builder
 }
 
@@ -115,6 +111,34 @@ mod tests {
 
             pub mod PubMod {
                 pub struct PubStruct;
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn auto_imports_are_merged() {
+        check_assist_with_imports_locator(
+            auto_import,
+            TestImportsLocator::new,
+            r"
+            use PubMod::PubStruct1;
+
+            PubStruct2<|>
+
+            pub mod PubMod {
+                pub struct PubStruct1;
+                pub struct PubStruct2;
+            }
+            ",
+            r"
+            use PubMod::{PubStruct2, PubStruct1};
+
+            PubStruct2<|>
+
+            pub mod PubMod {
+                pub struct PubStruct1;
+                pub struct PubStruct2;
             }
             ",
         );
