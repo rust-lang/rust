@@ -15,6 +15,7 @@
         "noFallthroughCasesInSwitch": true,
         "newLine": "LF",
         "esModuleInterop": true,
+        "importHelpers": true
     },
     "exclude": [
         "node_modules"
