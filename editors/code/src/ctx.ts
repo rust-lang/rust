@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+
 import { Config } from './config';
 import { createClient } from './client';
 
@@ -73,11 +74,11 @@ export class Ctx {
         }
     }
 
-    get subscriptions(): { dispose(): unknown }[] {
+    get subscriptions(): Disposable[] {
         return this.extCtx.subscriptions;
     }
 
-    pushCleanup(d: { dispose(): unknown }) {
+    pushCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
     }
 
@@ -86,6 +87,9 @@ export class Ctx {
     }
 }
 
+export interface Disposable {
+    dispose(): void;
+}
 export type Cmd = (...args: any[]) => unknown;
 
 export async function sendRequestWithRetry<R>(

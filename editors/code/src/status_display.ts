@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressReport, WorkDoneProgressEnd } from 'vscode-languageclient';
+import { WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressReport, WorkDoneProgressEnd, Disposable } from 'vscode-languageclient';
 
 import { Ctx } from './ctx';
 
@@ -14,7 +14,7 @@ export function activateStatusDisplay(ctx: Ctx) {
     });
 }
 
-class StatusDisplay implements vscode.Disposable {
+class StatusDisplay implements vscode.Disposable, Disposable {
     packageName?: string;
 
     private i: number = 0;
