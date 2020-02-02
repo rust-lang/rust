@@ -63,6 +63,18 @@ pub fn clone_100_and_clear(b: &mut Bencher) {
 }
 
 #[bench]
+pub fn clone_100_and_drain_half(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| {
+        let mut set = src.clone();
+        for i in set.iter().copied().filter(|i| i % 2 == 0).collect::<Vec<_>>() {
+            set.remove(&i);
+        }
+        assert_eq!(set.len(), 100 / 2);
+    })
+}
+
+#[bench]
 pub fn clone_100_and_into_iter(b: &mut Bencher) {
     let src = pos(100);
     b.iter(|| src.clone().into_iter().count())
@@ -113,6 +125,18 @@ pub fn clone_10k(b: &mut Bencher) {
 pub fn clone_10k_and_clear(b: &mut Bencher) {
     let src = pos(10_000);
     b.iter(|| src.clone().clear())
+}
+
+#[bench]
+pub fn clone_10k_and_drain_half(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| {
+        let mut set = src.clone();
+        for i in set.iter().copied().filter(|i| i % 2 == 0).collect::<Vec<_>>() {
+            set.remove(&i);
+        }
+        assert_eq!(set.len(), 10_000 / 2);
+    })
 }
 
 #[bench]
