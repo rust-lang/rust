@@ -393,7 +393,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> $imp<F2> for F1
             where
-                F: FnOnce<A>,
+                F1: FnOnce<A>,
+                F2: FnOnce<A>,
             {
                 type Output = $z<F1, F2>;
                 fn $method(self, that: F2) -> Self::Output {
@@ -403,7 +404,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> Fn<A> for &$z<F1, F2>
             where
-                F: Fn<A>,
+                F1: Fn<A>,
+                F2: Fn<A>,
             {
                 extern "rust-call" fn call(&self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((**self).f1).call(args), ((**self).f2).call(args))
@@ -413,7 +415,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> FnMut<A> for &$z<F1, F2>
             where
-                F: Fn<A>,
+                F1: Fn<A>,
+                F2: Fn<A>,
             {
                 extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((**self).f1).call(args), ((**self).f2).call(args))
@@ -423,7 +426,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> FnOnce<A> for &$z<F1, F2>
             where
-                F: Fn<A>,
+                F1: Fn<A>,
+                F2: Fn<A>,
             {
                 type Output = F::Output;
 
@@ -435,7 +439,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> FnMut<A> for &mut $z<F1, F2>
             where
-                F: FnMut<A>,
+                F1: FnMut<A>,
+                F2: FnMut<A>,
             {
                 extern "rust-call" fn call_mut(&mut self, args: A) -> <F::Output as $imp>::Output {
                     $imp::$method(((**self).f1).call_mut(args), ((**self).f2).call_mut(args))
@@ -445,7 +450,8 @@ macro_rules! gen_fn_struct_biopt {
             #[$attr]
             impl<A, F1: ?Sized, F2: ?Sized> FnOnce<A> for &mut $z<F>
             where
-                F: FnMut<A>,
+                F1: FnMut<A>,
+                F2: FnMut<A>,
             {
                 type Output = F::Output;
                 extern "rust-call" fn call_once(self, args: A) -> <F::Output as $imp>::Output {
