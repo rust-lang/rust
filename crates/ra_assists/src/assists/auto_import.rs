@@ -1,7 +1,6 @@
-use hir::db::HirDatabase;
+use hir::{db::HirDatabase, ModPath};
 use ra_syntax::{
     ast::{self, AstNode},
-    SmolStr,
     SyntaxKind::USE_ITEM,
     SyntaxNode,
 };
@@ -58,7 +57,6 @@ pub(crate) fn auto_import<F: ImportsLocator>(
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
         .take(20)
-        .map(|import| import.to_string())
         .collect::<std::collections::BTreeSet<_>>();
     if proposed_imports.is_empty() {
         return None;
@@ -76,11 +74,10 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     )
 }
 
-fn import_to_action(import: String, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
+fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
     let mut action_builder = ActionBuilder::default();
     action_builder.label(format!("Import `{}`", &import));
-    let import_segments = import.split("::").map(SmolStr::new).collect::<Vec<_>>();
-    auto_import_text_edit(position, anchor, &import_segments, action_builder.text_edit_builder());
+    auto_import_text_edit(position, anchor, &import, action_builder.text_edit_builder());
     action_builder
 }
 
