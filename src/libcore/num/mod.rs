@@ -111,6 +111,17 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
+            #[stable(feature = "from_nonzeroopt", since = "1.43.0")]
+            impl From<$Int> for Option<$Ty> {
+                doc_comment! {
+                    concat!(
+"Converts an `", stringify!($Int), "` into an `Option<", stringify!($Ty), ">`"),
+                    fn from(n: $Int) -> Self {
+                        $Ty::new(n)
+                    }
+                }
+            }
+
             impl_nonzero_fmt! {
                 #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
