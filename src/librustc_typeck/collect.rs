@@ -2979,10 +2979,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
                     no_sanitize_span,
-                    "`no_sanitize` will have no effect after inlining",
+                    |lint| {
+                        lint.build("`no_sanitize` will have no effect after inlining")
+                            .span_note(inline_span, "inlining requested here")
+                            .emit();
+                    },
                 )
-                .span_note(inline_span, "inlining requested here")
-                .emit();
             }
         }
     }

@@ -266,10 +266,10 @@ fn lint_int_literal<'a, 'tcx>(
             }
         }
 
-        cx.span_lint(
+        cx.struct_span_lint(
             OVERFLOWING_LITERALS,
             e.span,
-            &format!("literal out of range for `{}`", t.name_str()),
+            |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
         );
     }
 }
@@ -321,10 +321,10 @@ fn lint_uint_literal<'a, 'tcx>(
             report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);
             return;
         }
-        cx.span_lint(
+        cx.struct_span_lint(
             OVERFLOWING_LITERALS,
             e.span,
-            &format!("literal out of range for `{}`", t.name_str()),
+            |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
         );
     }
 }
@@ -355,10 +355,10 @@ fn lint_literal<'a, 'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.span_lint(
+                cx.struct_span_lint(
                     OVERFLOWING_LITERALS,
                     e.span,
-                    &format!("literal out of range for `{}`", t.name_str()),
+                    |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
                 );
             }
         }
@@ -377,10 +377,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.span_lint(
+                    cx.struct_span_lint(
                         UNUSED_COMPARISONS,
                         e.span,
-                        "comparison is useless due to type limits",
+                        |lint| lint.build("comparison is useless due to type limits").emit(),
                     );
                 }
             }
@@ -1055,14 +1055,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             // We only warn if the largest variant is at least thrice as large as
             // the second-largest.
             if largest > slargest * 3 && slargest > 0 {
-                cx.span_lint(
+                cx.struct_span_lint(
                     VARIANT_SIZE_DIFFERENCES,
                     enum_definition.variants[largest_index].span,
-                    &format!(
+                    |lint| lint.build(&format!(
                         "enum variant is more than three times \
                                           larger ({} bytes) than the next largest",
                         largest
-                    ),
+                    )).emit(),
                 );
             }
         }

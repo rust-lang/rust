@@ -104,16 +104,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.span_lint(
+            cx.struct_span_lint(
                 UNUSED_MUST_USE,
                 expr.span,
-                &format!("unused {} that must be used", must_use_op),
+                |lint| lint.build(&format!("unused {} that must be used", must_use_op)).emit(),
             );
             op_warned = true;
         }
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
+            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| lint.build("unused result").emit());
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
@@ -247,7 +247,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(ref expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
-                cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
+                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| lint.build("path statement with no effect").emit());
             }
         }
     }
@@ -288,17 +288,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 
         if !attr::is_used(attr) {
             debug!("emitting warning for: {:?}", attr);
-            cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
+            cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| lint.build("unused attribute").emit());
             // Is it a builtin attribute that must be used at the crate level?
             if attr_info.map_or(false, |(_, ty, ..)| ty == &AttributeType::CrateLevel) {
-                let msg = match attr.style {
-                    ast::AttrStyle::Outer => {
-                        "crate-level attribute should be an inner attribute: add an exclamation \
-                         mark: `#![foo]`"
-                    }
-                    ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
-                };
-                cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
+                cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
+                    let msg = match attr.style {
+                        ast::AttrStyle::Outer => {
+                            "crate-level attribute should be an inner attribute: add an exclamation \
+                             mark: `#![foo]`"
+                        }
+                        ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
+                    };
+                    lint.build(msg).emit()
+                });
             }
         } else {
             debug!("Attr was used: {:?}", attr);
@@ -635,8 +637,9 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested(_) => return,
             };
 
-            let msg = format!("braces around {} is unnecessary", node_name);
-            cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
+            cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint|
+            lint.build(&format!("braces around {} is unnecessary", node_name)).emit()
+            );
         }
     }
 }
@@ -666,15 +669,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
 
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
-                let msg = match m {
-                    adjustment::AutoBorrowMutability::Not => {
-                        "unnecessary allocation, use `&` instead"
-                    }
-                    adjustment::AutoBorrowMutability::Mut { .. } => {
-                        "unnecessary allocation, use `&mut` instead"
-                    }
-                };
-                cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
+                cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
+                    let msg = match m {
+                        adjustment::AutoBorrowMutability::Not => {
+                            "unnecessary allocation, use `&` instead"
+                        }
+                        adjustment::AutoBorrowMutability::Mut { .. } => {
+                            "unnecessary allocation, use `&mut` instead"
+                        }
+                    };
+                    lint.build(msg).emit()
+                });
             }
         }
     }
