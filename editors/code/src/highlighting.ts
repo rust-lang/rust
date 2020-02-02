@@ -40,7 +40,7 @@ export function activateHighlighting(ctx: Ctx) {
         async (editor: vscode.TextEditor | undefined) => {
             if (!editor || editor.document.languageId !== 'rust') return;
             if (!ctx.config.highlightingOn) return;
-            let client = ctx.client;
+            const client = ctx.client;
             if (!client) return;
 
             const params: lc.TextDocumentIdentifier = {
@@ -106,7 +106,7 @@ class Highlighter {
     }
 
     public setHighlights(editor: vscode.TextEditor, highlights: Decoration[]) {
-        let client = this.ctx.client;
+        const client = this.ctx.client;
         if (!client) return;
         // Initialize decorations if necessary
         //
@@ -175,7 +175,7 @@ function initDecorations(): Map<string, vscode.TextEditorDecorationType> {
     const res = new Map();
     TAG_TO_SCOPES.forEach((scopes, tag) => {
         if (!scopes) throw `unmapped tag: ${tag}`;
-        let rule = theme.lookup(scopes);
+        const rule = theme.lookup(scopes);
         const decor = createDecorationFromTextmate(rule);
         res.set(tag, decor);
     });

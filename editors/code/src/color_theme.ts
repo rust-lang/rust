@@ -69,7 +69,7 @@ function loadThemeNamed(themeName: string): ColorTheme {
         );
     }
 
-    let themePaths = vscode.extensions.all
+    const themePaths = vscode.extensions.all
         .filter(isTheme)
         .flatMap(ext => {
             return ext.packageJSON.contributes.themes
