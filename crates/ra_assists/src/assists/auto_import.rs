@@ -211,4 +211,28 @@ mod tests {
             }",
         );
     }
+
+    #[test]
+    fn function_import() {
+        check_assist_with_imports_locator(
+            auto_import,
+            TestImportsLocator::new,
+            r"
+            test_function<|>
+
+            pub mod PubMod {
+                pub fn test_function() {};
+            }
+            ",
+            r"
+            use PubMod::test_function;
+
+            test_function<|>
+
+            pub mod PubMod {
+                pub fn test_function() {};
+            }
+            ",
+        );
+    }
 }
