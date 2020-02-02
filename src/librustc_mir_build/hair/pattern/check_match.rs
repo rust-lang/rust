@@ -648,9 +648,6 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
                 match tables.extract_binding_mode(sess, hir_id, span) {
-                    Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span) => {
-                        sess.delay_span_bug(span, "by-move in subpat unchecked by borrowck");
-                    }
                     Some(ty::BindByValue(_)) | None => {}
                     Some(ty::BindByReference(_)) => conflicts_ref.push(span),
                 }
