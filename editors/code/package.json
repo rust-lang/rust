@@ -141,6 +141,11 @@
                 "command": "rust-analyzer.run",
                 "key": "ctrl+r",
                 "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "rust-analyzer.onEnter",
+                "key": "enter",
+                "when": "editorTextFocus && editorLangId == rust"
             }
         ],
         "configuration": {
@@ -164,7 +169,7 @@
                 },
                 "rust-analyzer.enableEnhancedTyping": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Enables enhanced typing. NOTE: If using a VIM extension, you should set this to false"
                 },
                 "rust-analyzer.raLspServerPath": {
