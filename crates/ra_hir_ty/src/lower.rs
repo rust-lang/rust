@@ -10,12 +10,13 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::BuiltinType,
-    generics::{WherePredicate, WherePredicateTarget},
+    generics::{WherePredicate, WherePredicateTarget, TypeParamProvenance},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
     LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    TypeParamId
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -30,8 +31,6 @@ use crate::{
     Binders, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate, ProjectionTy, Substs,
     TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
-use hir_def::TypeParamId;
-use hir_def::generics::TypeParamProvenance;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a, DB: HirDatabase> {

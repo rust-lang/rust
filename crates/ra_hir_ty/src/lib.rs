@@ -44,11 +44,11 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    expr::ExprId, type_ref::Mutability, AdtId, AssocContainerId, DefWithBodyId, GenericDefId,
-    HasModule, Lookup, TraitId, TypeAliasId, TypeParamId, generics::TypeParamProvenance,
+    expr::ExprId, generics::TypeParamProvenance, type_ref::Mutability, AdtId, AssocContainerId,
+    DefWithBodyId, GenericDefId, HasModule, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
-use ra_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::name::Name;
+use ra_db::{impl_intern_key, salsa, CrateId};
 
 use crate::{
     db::HirDatabase,
@@ -360,9 +360,7 @@ impl Substs {
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub(crate) fn type_params(generic_params: &Generics) -> Substs {
-        Substs(
-            generic_params.iter().map(|(id, _)| Ty::Param(id)).collect(),
-        )
+        Substs(generic_params.iter().map(|(id, _)| Ty::Param(id)).collect())
     }
 
     /// Return Substs that replace each parameter by a bound variable.
@@ -448,7 +446,9 @@ pub struct Binders<T> {
 }
 
 impl<T> Binders<T> {
-    pub fn new(num_binders: usize, value: T) -> Self { Self { num_binders, value } }
+    pub fn new(num_binders: usize, value: T) -> Self {
+        Self { num_binders, value }
+    }
 }
 
 impl<T: TypeWalk> Binders<T> {
@@ -906,8 +906,7 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
             TypeCtor::FnDef(def) => {
-                let sig = f.db.callable_item_signature(def)
-                    .subst(&self.parameters);
+                let sig = f.db.callable_item_signature(def).subst(&self.parameters);
                 let name = match def {
                     CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
                     CallableDef::StructId(s) => f.db.struct_data(s).name.clone(),
@@ -1037,17 +1036,19 @@ impl HirDisplay for Ty {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Param(id) => {
-                let generic_params = f.db.generic_params(id.parent);
-                let param_data = &generic_params.types[id.local_id];
+                let generics = generics(f.db, id.parent);
+                let param_data = &generics.params.types[id.local_id];
                 match param_data.provenance {
                     TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        write!(f, "impl TODO")?
+                        let bounds = f.db.generic_predicates_for_param(*id);
+                        write!(f, "impl ")?;
+                        write_bounds_like_dyn_trait(&bounds, f)?;
                     }
                 }
-            },
+            }
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 match self {
@@ -1055,72 +1056,78 @@ impl HirDisplay for Ty {
                     Ty::Opaque(_) => write!(f, "impl ")?,
                     _ => unreachable!(),
                 };
-                // Note: This code is written to produce nice results (i.e.
-                // corresponding to surface Rust) for types that can occur in
-                // actual Rust. It will have weird results if the predicates
-                // aren't as expected (i.e. self types = $0, projection
-                // predicates for a certain trait come after the Implemented
-                // predicate for that trait).
-                let mut first = true;
-                let mut angle_open = false;
-                for p in predicates.iter() {
-                    match p {
-                        GenericPredicate::Implemented(trait_ref) => {
-                            if angle_open {
-                                write!(f, ">")?;
-                            }
-                            if !first {
-                                write!(f, " + ")?;
-                            }
-                            // We assume that the self type is $0 (i.e. the
-                            // existential) here, which is the only thing that's
-                            // possible in actual Rust, and hence don't print it
-                            write!(f, "{}", f.db.trait_data(trait_ref.trait_).name.clone())?;
-                            if trait_ref.substs.len() > 1 {
-                                write!(f, "<")?;
-                                f.write_joined(&trait_ref.substs[1..], ", ")?;
-                                // there might be assoc type bindings, so we leave the angle brackets open
-                                angle_open = true;
-                            }
-                        }
-                        GenericPredicate::Projection(projection_pred) => {
-                            // in types in actual Rust, these will always come
-                            // after the corresponding Implemented predicate
-                            if angle_open {
-                                write!(f, ", ")?;
-                            } else {
-                                write!(f, "<")?;
-                                angle_open = true;
-                            }
-                            let name =
-                                f.db.type_alias_data(projection_pred.projection_ty.associated_ty)
-                                    .name
-                                    .clone();
-                            write!(f, "{} = ", name)?;
-                            projection_pred.ty.hir_fmt(f)?;
-                        }
-                        GenericPredicate::Error => {
-                            if angle_open {
-                                // impl Trait<X, {error}>
-                                write!(f, ", ")?;
-                            } else if !first {
-                                // impl Trait + {error}
-                                write!(f, " + ")?;
-                            }
-                            p.hir_fmt(f)?;
-                        }
-                    }
-                    first = false;
-                }
-                if angle_open {
-                    write!(f, ">")?;
-                }
+                write_bounds_like_dyn_trait(&predicates, f)?;
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
         }
         Ok(())
     }
+}
+
+fn write_bounds_like_dyn_trait(
+    predicates: &[GenericPredicate],
+    f: &mut HirFormatter<impl HirDatabase>,
+) -> fmt::Result {
+    // Note: This code is written to produce nice results (i.e.
+    // corresponding to surface Rust) for types that can occur in
+    // actual Rust. It will have weird results if the predicates
+    // aren't as expected (i.e. self types = $0, projection
+    // predicates for a certain trait come after the Implemented
+    // predicate for that trait).
+    let mut first = true;
+    let mut angle_open = false;
+    for p in predicates.iter() {
+        match p {
+            GenericPredicate::Implemented(trait_ref) => {
+                if angle_open {
+                    write!(f, ">")?;
+                }
+                if !first {
+                    write!(f, " + ")?;
+                }
+                // We assume that the self type is $0 (i.e. the
+                // existential) here, which is the only thing that's
+                // possible in actual Rust, and hence don't print it
+                write!(f, "{}", f.db.trait_data(trait_ref.trait_).name.clone())?;
+                if trait_ref.substs.len() > 1 {
+                    write!(f, "<")?;
+                    f.write_joined(&trait_ref.substs[1..], ", ")?;
+                    // there might be assoc type bindings, so we leave the angle brackets open
+                    angle_open = true;
+                }
+            }
+            GenericPredicate::Projection(projection_pred) => {
+                // in types in actual Rust, these will always come
+                // after the corresponding Implemented predicate
+                if angle_open {
+                    write!(f, ", ")?;
+                } else {
+                    write!(f, "<")?;
+                    angle_open = true;
+                }
+                let name =
+                    f.db.type_alias_data(projection_pred.projection_ty.associated_ty).name.clone();
+                write!(f, "{} = ", name)?;
+                projection_pred.ty.hir_fmt(f)?;
+            }
+            GenericPredicate::Error => {
+                if angle_open {
+                    // impl Trait<X, {error}>
+                    write!(f, ", ")?;
+                } else if !first {
+                    // impl Trait + {error}
+                    write!(f, " + ")?;
+                }
+                p.hir_fmt(f)?;
+            }
+        }
+        first = false;
+    }
+    if angle_open {
+        write!(f, ">")?;
+    }
+    Ok(())
 }
 
 impl TraitRef {

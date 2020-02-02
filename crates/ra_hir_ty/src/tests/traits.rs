@@ -856,11 +856,11 @@ trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
 }
-fn bar(impl Trait<u64>) {}
+fn bar(x: impl Trait<u16>) {}
 struct S<T>(T);
 impl<T> Trait<T> for S<T> {}
 
-fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
+fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
     x;
     y;
     let z = S(1);
@@ -876,27 +876,32 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
         @r###"
     [30; 34) 'self': &Self
     [55; 59) 'self': &Self
-    [99; 101) '{}': ()
-    [111; 112) 'x': impl Trait<u64>
-    [131; 132) 'y': &impl Trait<u64>
-    [152; 269) '{     ...2(); }': ()
-    [158; 159) 'x': impl Trait<u64>
-    [165; 166) 'y': &impl Trait<u64>
-    [176; 177) 'z': impl Trait<u64>
-    [180; 183) 'bar': fn bar() -> impl Trait<u64>
-    [180; 185) 'bar()': impl Trait<u64>
-    [191; 192) 'x': impl Trait<u64>
-    [191; 198) 'x.foo()': u64
-    [204; 205) 'y': &impl Trait<u64>
-    [204; 211) 'y.foo()': u64
-    [217; 218) 'z': impl Trait<u64>
-    [217; 224) 'z.foo()': u64
-    [230; 231) 'x': impl Trait<u64>
-    [230; 238) 'x.foo2()': i64
-    [244; 245) 'y': &impl Trait<u64>
-    [244; 252) 'y.foo2()': i64
-    [258; 259) 'z': impl Trait<u64>
-    [258; 266) 'z.foo2()': i64
+    [78; 79) 'x': impl Trait<u16>
+    [98; 100) '{}': ()
+    [155; 156) 'x': impl Trait<u64>
+    [175; 176) 'y': &impl Trait<u32>
+    [196; 324) '{     ...2(); }': ()
+    [202; 203) 'x': impl Trait<u64>
+    [209; 210) 'y': &impl Trait<u32>
+    [220; 221) 'z': S<u16>
+    [224; 225) 'S': S<u16>(u16) -> S<u16>
+    [224; 228) 'S(1)': S<u16>
+    [226; 227) '1': u16
+    [234; 237) 'bar': fn bar<S<u16>>(S<u16>) -> ()
+    [234; 240) 'bar(z)': ()
+    [238; 239) 'z': S<u16>
+    [246; 247) 'x': impl Trait<u64>
+    [246; 253) 'x.foo()': u64
+    [259; 260) 'y': &impl Trait<u32>
+    [259; 266) 'y.foo()': u32
+    [272; 273) 'z': S<u16>
+    [272; 279) 'z.foo()': u16
+    [285; 286) 'x': impl Trait<u64>
+    [285; 293) 'x.foo2()': i64
+    [299; 300) 'y': &impl Trait<u32>
+    [299; 307) 'y.foo2()': i64
+    [313; 314) 'z': S<u16>
+    [313; 321) 'z.foo2()': i64
     "###
     );
 }

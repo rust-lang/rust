@@ -479,8 +479,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
-            let ty = self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Param);
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver).with_impl_trait_mode(ImplTraitLoweringMode::Param);
+        let param_tys = data.params.iter().map(|type_ref| Ty::from_hir(&ctx, type_ref)).collect::<Vec<_>>();
+        for (ty, pat) in param_tys.into_iter().zip(body.params.iter()) {
+            let ty = self.insert_type_vars(ty);
+            let ty = self.normalize_associated_types_in(ty);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
