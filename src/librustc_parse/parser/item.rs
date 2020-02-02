@@ -70,16 +70,15 @@ impl<'a> Parser<'a> {
     /// Parses one of the items allowed by the flags.
     fn parse_item_implementation(
         &mut self,
-        attrs: Vec<Attribute>,
+        mut attrs: Vec<Attribute>,
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
         maybe_whole!(self, NtItem, |item| {
-            let mut item = item.into_inner();
-            let mut attrs = attrs;
+            let mut item = item;
             mem::swap(&mut item.attrs, &mut attrs);
             item.attrs.extend(attrs);
-            Some(P(item))
+            Some(item)
         });
 
         let lo = self.token.span;
