@@ -8,7 +8,8 @@
     "version": "0.1.0",
     "publisher": "matklad",
     "repository": {
-        "url": "https://github.com/matklad/rust-analyzer/"
+        "url": "https://github.com/rust-analyzer/rust-analyzer.git",
+        "type": "git"
     },
     "categories": [
         "Other"
