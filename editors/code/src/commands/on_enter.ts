@@ -1,28 +1,43 @@
+import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { applySourceChange, SourceChange } from '../source_change';
 import { Cmd, Ctx } from '../ctx';
 
-export function onEnter(ctx: Ctx): Cmd {
+async function handleKeypress(ctx: Ctx) {
+    const editor = ctx.activeRustEditor;
+    const client = ctx.client;
+    if (!editor) return false;
+    if (!client) return false;
+
+    const request: lc.TextDocumentPositionParams = {
+        textDocument: { uri: editor.document.uri.toString() },
+        position: client.code2ProtocolConverter.asPosition(
+            editor.selection.active,
+        ),
+    };
+    const change = await client.sendRequest<undefined | SourceChange>(
+        'rust-analyzer/onEnter',
+        request,
+    );
+    if (!change) return false;
+
+    await applySourceChange(ctx, change);
+    return true;
+}
+
+export function onEnterOverride(ctx: Ctx): Cmd {
     return async (event: { text: string }) => {
-        const editor = ctx.activeRustEditor;
-        const client = ctx.client;
-        if (!editor || event.text !== '\n') return false;
-        if (!client) return false;
+        if (event.text === '\n') {
+            handleKeypress(ctx);
+        }
+    };
+}
 
-        const request: lc.TextDocumentPositionParams = {
-            textDocument: { uri: editor.document.uri.toString() },
-            position: client.code2ProtocolConverter.asPosition(
-                editor.selection.active,
-            ),
-        };
-        const change = await client.sendRequest<undefined | SourceChange>(
-            'rust-analyzer/onEnter',
-            request,
-        );
-        if (!change) return false;
+export function onEnter(ctx: Ctx): Cmd {
+    return async () => {
+        if (handleKeypress(ctx)) return;
 
-        await applySourceChange(ctx, change);
-        return true;
+        await vscode.commands.executeCommand('default:type', { text: '\n' });
     };
 }
