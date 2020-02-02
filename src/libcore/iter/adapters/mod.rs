@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use crate::cmp;
 use crate::fmt;
 use crate::intrinsics;
