@@ -1,4 +1,5 @@
 // run-pass
+// ignore-test
 
 #![allow(unused_variables)]
 #![allow(unused_imports)]

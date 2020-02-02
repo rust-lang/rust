@@ -267,7 +267,8 @@ impl Span {
     /// at the macro call site will be able to refer to them as well.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn call_site() -> Span {
-        Span(bridge::client::Span::call_site())
+        let _ = bridge::client::Span::call_site;
+        Self::mixed_site()
     }
 
     /// A span that represents `macro_rules` hygiene, and sometimes resolves at the macro
