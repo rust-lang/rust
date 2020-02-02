@@ -331,12 +331,12 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("value");
-    /// assert_eq!(x.expect("the world is ending"), "value");
+    /// assert_eq!(x.expect("fruits are healthy"), "value");
     /// ```
     ///
     /// ```{.should_panic}
     /// let x: Option<&str> = None;
-    /// x.expect("the world is ending"); // panics with `the world is ending`
+    /// x.expect("fruits are healthy"); // panics with `fruits are healthy`
     /// ```
     #[inline]
     #[track_caller]
