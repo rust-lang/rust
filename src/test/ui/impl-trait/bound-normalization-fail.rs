@@ -1,4 +1,3 @@
-// compile-fail
 // ignore-tidy-linelength
 // edition:2018
 

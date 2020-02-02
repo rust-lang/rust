@@ -554,6 +554,9 @@ impl TestProps {
                 panic!("`{}-fail` header is only supported in UI tests", mode);
             }
         };
+        if config.mode == Mode::Ui && config.parse_name_directive(ln, "compile-fail") {
+            panic!("`compile-fail` header is useless in UI tests");
+        }
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
             check_ui("check");
             Some(FailMode::Check)
