@@ -372,10 +372,10 @@ impl<'a> AstValidator<'a> {
                 self.err_handler()
                     .struct_span_err(
                         param.span,
-                        "`self` parameter only allowed in associated `fn`s",
+                        "`self` parameter is only allowed in associated functions",
                     )
                     .span_label(param.span, "not semantically valid as function parameter")
-                    .note("associated `fn`s are those in `impl` or `trait` definitions")
+                    .note("associated functions are those in `impl` or `trait` definitions")
                     .emit();
             }
         }

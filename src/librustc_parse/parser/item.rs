@@ -1715,9 +1715,6 @@ impl<'a> Parser<'a> {
 
 /// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
 pub(super) struct ParamCfg {
-    /// Is `self` is *semantically* allowed as the first parameter?
-    /// This is only used for diagnostics.
-    pub in_assoc_item: bool,
     /// `is_name_required` decides if, per-parameter,
     /// the parameter must have a pattern or just a type.
     pub is_name_required: fn(&token::Token) -> bool,
@@ -1733,7 +1730,7 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
-        let cfg = ParamCfg { in_assoc_item: false, is_name_required: |_| true };
+        let cfg = ParamCfg { is_name_required: |_| true };
         let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
         let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
@@ -1748,7 +1745,7 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         extern_sp: Span,
     ) -> PResult<'a, P<ForeignItem>> {
-        let cfg = ParamCfg { in_assoc_item: false, is_name_required: |_| true };
+        let cfg = ParamCfg { is_name_required: |_| true };
         self.expect_keyword(kw::Fn)?;
         let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
         let span = lo.to(self.token.span);
@@ -1763,9 +1760,8 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         is_name_required: fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
-        let cfg = ParamCfg { in_assoc_item: true, is_name_required };
         let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
+        let (ident, decl, generics) = self.parse_fn_sig(&ParamCfg { is_name_required })?;
         let sig = FnSig { header, decl };
         let body = self.parse_assoc_fn_body(at_end, attrs)?;
         Ok((ident, AssocItemKind::Fn(sig, body), generics))
@@ -1893,11 +1889,7 @@ impl<'a> Parser<'a> {
         // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
         if let Some(mut param) = self.parse_self_param()? {
             param.attrs = attrs.into();
-            return if first_param {
-                Ok(param)
-            } else {
-                self.recover_bad_self_param(param, cfg.in_assoc_item)
-            };
+            return if first_param { Ok(param) } else { self.recover_bad_self_param(param) };
         }
 
         let is_name_required = match self.token.kind {
@@ -1909,13 +1901,9 @@ impl<'a> Parser<'a> {
 
             let pat = self.parse_fn_param_pat()?;
             if let Err(mut err) = self.expect(&token::Colon) {
-                return if let Some(ident) = self.parameter_without_type(
-                    &mut err,
-                    pat,
-                    is_name_required,
-                    first_param && cfg.in_assoc_item,
-                    cfg.in_assoc_item,
-                ) {
+                return if let Some(ident) =
+                    self.parameter_without_type(&mut err, pat, is_name_required, first_param)
+                {
                     err.emit();
                     Ok(dummy_arg(ident))
                 } else {

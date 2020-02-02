@@ -5,6 +5,10 @@ LL | fn foo(x) {
    |         ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | fn foo(self: x) {
+   |        ^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL | fn foo(x: TypeName) {
