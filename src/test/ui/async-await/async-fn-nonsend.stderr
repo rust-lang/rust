@@ -1,5 +1,5 @@
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:50:5
+  --> $DIR/async-fn-nonsend.rs:49:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
@@ -9,7 +9,7 @@ LL |     assert_send(local_dropped_before_await());
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:25:5
+  --> $DIR/async-fn-nonsend.rs:24:5
    |
 LL |     let x = non_send();
    |         - has type `impl std::fmt::Debug`
@@ -20,7 +20,7 @@ LL | }
    | - `x` is later dropped here
 
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:52:5
+  --> $DIR/async-fn-nonsend.rs:51:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
@@ -30,7 +30,7 @@ LL |     assert_send(non_send_temporary_in_match());
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:34:20
+  --> $DIR/async-fn-nonsend.rs:33:20
    |
 LL |     match Some(non_send()) {
    |                ---------- has type `impl std::fmt::Debug`
@@ -41,7 +41,7 @@ LL | }
    | - `non_send()` is later dropped here
 
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:54:5
+  --> $DIR/async-fn-nonsend.rs:53:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
@@ -51,7 +51,7 @@ LL |     assert_send(non_sync_with_method_call());
    |
    = help: the trait `std::marker::Send` is not implemented for `dyn std::fmt::Write`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:43:9
+  --> $DIR/async-fn-nonsend.rs:42:9
    |
 LL |     let f: &mut std::fmt::Formatter = panic!();
    |         - has type `&mut std::fmt::Formatter<'_>`

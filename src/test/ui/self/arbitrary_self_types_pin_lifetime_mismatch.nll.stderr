@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:8:46
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:6:46
    |
 LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                    -         -               ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
@@ -8,7 +8,7 @@ LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                    let's call the lifetime of this reference `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:10:69
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:8:69
    |
 LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
    |                    -          -                                     ^^^^^^^^^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
@@ -17,7 +17,7 @@ LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, 
    |                    let's call the lifetime of this reference `'2`
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:15:58
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:13:58
    |
 LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |            --  ---- has type `std::pin::Pin<&'1 Foo>`    ^^^ function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`

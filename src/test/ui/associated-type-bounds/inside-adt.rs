@@ -1,4 +1,3 @@
-// compile-fail
 #![feature(associated_type_bounds)]
 #![feature(untagged_unions)]
 
