@@ -107,8 +107,8 @@ impl NonCamelCaseTypes {
         let name = &ident.name.as_str();
 
         if !is_camel_case(name) {
-            let msg = format!("{} `{}` should have an upper camel case name", sort, name);
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
+                let msg = format!("{} `{}` should have an upper camel case name", sort, name);
                 lint.build(&msg)
                     .span_suggestion(
                         ident.span,
@@ -227,8 +227,8 @@ impl NonSnakeCase {
         if !is_snake_case(name) {
             let sc = NonSnakeCase::to_snake_case(name);
 
-            let msg = format!("{} `{}` should have a snake case name", sort, name);
             cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
+                let msg = format!("{} `{}` should have a snake case name", sort, name);
                 let mut err = lint.build(&msg);
                 // We have a valid span in almost all cases, but we don't have one when linting a crate
                 // name provided via the command line.
@@ -389,11 +389,9 @@ declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_, '_>, sort: &str, ident: &Ident) {
         let name = &ident.name.as_str();
-
         if name.chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
-
             cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
+                let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
                 lint.build(&format!("{} `{}` should have an upper case name", sort, name))
                     .span_suggestion(
                         ident.span,

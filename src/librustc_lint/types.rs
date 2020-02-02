@@ -151,17 +151,17 @@ fn report_bin_hex_error(
     negative: bool,
 ) {
     let size = layout::Integer::from_attr(&cx.tcx, ty).size();
-    let (t, actually) = match ty {
-        attr::IntType::SignedInt(t) => {
-            let actually = sign_extend(val, size) as i128;
-            (t.name_str(), actually.to_string())
-        }
-        attr::IntType::UnsignedInt(t) => {
-            let actually = truncate(val, size);
-            (t.name_str(), actually.to_string())
-        }
-    };
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
+        let (t, actually) = match ty {
+            attr::IntType::SignedInt(t) => {
+                let actually = sign_extend(val, size) as i128;
+                (t.name_str(), actually.to_string())
+            }
+            attr::IntType::UnsignedInt(t) => {
+                let actually = truncate(val, size);
+                (t.name_str(), actually.to_string())
+            }
+        };
         let mut err = lint.build(&format!("literal out of range for {}", t));
         err.note(&format!(
             "the literal `{}` (decimal `{}`) does not fit into \

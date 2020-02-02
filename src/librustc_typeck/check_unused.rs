@@ -123,17 +123,15 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         // We do this in any edition.
         if extern_crate.warn_if_unused {
             if let Some(&span) = unused_extern_crates.get(&extern_crate.def_id) {
-                let msg = "unused extern crate";
-
-                // Removal suggestion span needs to include attributes (Issue #54400)
-                let span_with_attrs = tcx
-                    .get_attrs(extern_crate.def_id)
-                    .iter()
-                    .map(|attr| attr.span)
-                    .fold(span, |acc, attr_span| acc.to(attr_span));
-
                 tcx.struct_span_lint_hir(lint, id, span, |lint| {
-                    lint.build(msg)
+                    // Removal suggestion span needs to include attributes (Issue #54400)
+                    let span_with_attrs = tcx
+                        .get_attrs(extern_crate.def_id)
+                        .iter()
+                        .map(|attr| attr.span)
+                        .fold(span, |acc, attr_span| acc.to(attr_span));
+
+                    lint.build("unused extern crate")
                         .span_suggestion_short(
                             span_with_attrs,
                             "remove it",
@@ -172,14 +170,14 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         if !tcx.get_attrs(extern_crate.def_id).is_empty() {
             continue;
         }
-
-        // Otherwise, we can convert it into a `use` of some kind.
-        let base_replacement = match extern_crate.orig_name {
-            Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
-            None => format!("use {};", item.ident.name),
-        };
-        let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
+            // Otherwise, we can convert it into a `use` of some kind.
+            let base_replacement = match extern_crate.orig_name {
+                Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
+                None => format!("use {};", item.ident.name),
+            };
+
+            let replacement = visibility_qualified(&item.vis, base_replacement);
             let msg = "`extern crate` is not idiomatic in the new edition";
             let help = format!("convert it to a `{}`", visibility_qualified(&item.vis, "use"));
 
