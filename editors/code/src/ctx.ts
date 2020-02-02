@@ -86,7 +86,7 @@ export class Ctx {
     }
 }
 
-export type Cmd = (...args: unknown[]) => unknown;
+export type Cmd = (...args: any[]) => unknown;
 
 export async function sendRequestWithRetry<R>(
     client: lc.LanguageClient,
