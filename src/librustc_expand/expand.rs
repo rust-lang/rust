@@ -364,7 +364,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
             }
             Some(ast::Item { span, kind, .. }) => {
-                self.cx.span_fatal(
+                krate.attrs = vec![];
+                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                self.cx.span_err(
                     span,
                     &format!(
                         "expected crate top-level item to be a module after macro expansion, found a {}",
