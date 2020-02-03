@@ -26,17 +26,9 @@ async function handleKeypress(ctx: Ctx) {
     return true;
 }
 
-export function onEnterOverride(ctx: Ctx): Cmd {
-    return async (event: { text: string }) => {
-        if (event.text === '\n') {
-            handleKeypress(ctx);
-        }
-    };
-}
-
 export function onEnter(ctx: Ctx): Cmd {
     return async () => {
-        if (handleKeypress(ctx)) return;
+        if (await handleKeypress(ctx)) return;
 
         await vscode.commands.executeCommand('default:type', { text: '\n' });
     };
