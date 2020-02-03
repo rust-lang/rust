@@ -23,12 +23,12 @@
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc::hir::map::Map;
+use rustc::lint::LintDiagnosticBuilder;
 use rustc::traits::misc::can_type_implement_copy;
 use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc::lint::LintDiagnosticBuilder;
 use rustc_feature::Stability;
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
 use rustc_hir as hir;
@@ -107,7 +107,9 @@ impl BoxPointers {
     fn check_heap_type(&self, cx: &LateContext<'_, '_>, span: Span, ty: Ty<'_>) {
         for leaf_ty in ty.walk() {
             if leaf_ty.is_box() {
-                cx.struct_span_lint(BOX_POINTERS, span, |lint| lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit());
+                cx.struct_span_lint(BOX_POINTERS, span, |lint| {
+                    lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit()
+                });
             }
         }
     }
@@ -214,7 +216,12 @@ declare_lint! {
 declare_lint_pass!(UnsafeCode => [UNSAFE_CODE]);
 
 impl UnsafeCode {
-    fn report_unsafe(&self, cx: &EarlyContext<'_>, span: Span, decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)) {
+    fn report_unsafe(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
             return;
@@ -227,13 +234,14 @@ impl UnsafeCode {
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if attr.check_name(sym::allow_internal_unsafe) {
-            self.report_unsafe(
-                cx,
-                attr.span,
-                |lint| lint.build("`allow_internal_unsafe` allows defining \
+            self.report_unsafe(cx, attr.span, |lint| {
+                lint.build(
+                    "`allow_internal_unsafe` allows defining \
                                                macros using unsafe without triggering \
-                                               the `unsafe_code` lint at their call site").emit(),
-            );
+                                               the `unsafe_code` lint at their call site",
+                )
+                .emit()
+            });
         }
     }
 
@@ -241,7 +249,9 @@ impl EarlyLintPass for UnsafeCode {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
-                self.report_unsafe(cx, blk.span, |lint| lint.build("usage of an `unsafe` block").emit());
+                self.report_unsafe(cx, blk.span, |lint| {
+                    lint.build("usage of an `unsafe` block").emit()
+                });
             }
         }
     }
@@ -249,11 +259,15 @@ impl EarlyLintPass for UnsafeCode {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
             ast::ItemKind::Trait(_, ast::Unsafety::Unsafe, ..) => {
-                self.report_unsafe(cx, it.span, |lint| lint.build("declaration of an `unsafe` trait").emit())
+                self.report_unsafe(cx, it.span, |lint| {
+                    lint.build("declaration of an `unsafe` trait").emit()
+                })
             }
 
             ast::ItemKind::Impl { unsafety: ast::Unsafety::Unsafe, .. } => {
-                self.report_unsafe(cx, it.span, |lint| lint.build("implementation of an `unsafe` trait").emit())
+                self.report_unsafe(cx, it.span, |lint| {
+                    lint.build("implementation of an `unsafe` trait").emit()
+                })
             }
 
             _ => return,
@@ -360,11 +374,9 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
-            cx.struct_span_lint(
-                MISSING_DOCS,
-                cx.tcx.sess.source_map().def_span(sp),
-                |lint| lint.build(&format!("missing documentation for {}", desc)).emit(),
-            );
+            cx.struct_span_lint(MISSING_DOCS, cx.tcx.sess.source_map().def_span(sp), |lint| {
+                lint.build(&format!("missing documentation for {}", desc)).emit()
+            });
         }
     }
 }
@@ -543,12 +555,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
             return;
         }
         if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
-            cx.struct_span_lint(
-                MISSING_COPY_IMPLEMENTATIONS,
-                item.span,
-                |lint| lint.build("type could implement `Copy`; consider adding `impl \
-                          Copy`").emit(),
-            )
+            cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
+                lint.build(
+                    "type could implement `Copy`; consider adding `impl \
+                          Copy`",
+                )
+                .emit()
+            })
         }
     }
 }
@@ -597,15 +610,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         }
 
         if !self.impling_types.as_ref().unwrap().contains(&item.hir_id) {
-            cx.struct_span_lint(
-                MISSING_DEBUG_IMPLEMENTATIONS,
-                item.span,
-                |lint| lint.build(&format!(
+            cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
+                lint.build(&format!(
                     "type does not implement `{}`; consider adding `#[derive(Debug)]` \
                      or a manual implementation",
                     cx.tcx.def_path_str(debug)
-                )).emit(),
-            );
+                ))
+                .emit()
+            });
         }
     }
 }
@@ -903,7 +915,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
         match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
                 if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
-                    cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
+                    cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
+                        lint.build(msg).emit()
+                    });
                 }
             }
             _ => (),
@@ -953,7 +967,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
         if attr.check_name(sym::feature) {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
-                    ctx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| lint.build("unstable feature").emit());
+                    ctx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| {
+                        lint.build("unstable feature").emit()
+                    });
                 }
             }
         }
@@ -1235,15 +1251,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                     ConstEvaluatable(..) => continue,
                 };
                 if predicate.is_global() {
-                    cx.struct_span_lint(
-                        TRIVIAL_BOUNDS,
-                        span,
-                        |lint| lint.build(&format!(
+                    cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
+                        lint.build(&format!(
                             "{} bound {} does not depend on any type \
                                 or lifetime parameters",
                             predicate_kind_name, predicate
-                        )).emit(),
-                    );
+                        ))
+                        .emit()
+                    });
                 }
             }
         }

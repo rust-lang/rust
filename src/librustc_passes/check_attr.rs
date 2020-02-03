@@ -103,24 +103,19 @@ impl CheckAttrVisitor<'tcx> {
             // accidentally, to to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
-                self.tcx
-                    .struct_span_lint_hir(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span,
-                        |lint| {
-                            lint.build("`#[inline]` is ignored on constants")
-                            .warn(
-                                "this was previously accepted by the compiler but is \
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on constants")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
                                being phased out; it will become a hard error in \
                                a future release!",
-                            )
-                            .note(
-                                "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
+                        )
+                        .note(
+                            "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
                                  for more information",
-                            )
-                            .emit();
-                        });
+                        )
+                        .emit();
+                });
                 true
             }
             _ => {
