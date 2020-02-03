@@ -42,8 +42,8 @@ be found.
 > cargo install mdbook-linkcheck
 ```
 
-You will need `mdbook` version `>= 0.2`. `linkcheck` will be run automatically
-when you run `mdbook build`.
+You will need `mdbook` version `>= 0.3.5` and `mdbook-linkcheck` version `>= 0.5`.
+`linkcheck` will be run automatically when you run `mdbook build`.
 
 ## How to fix toolstate failures
 
