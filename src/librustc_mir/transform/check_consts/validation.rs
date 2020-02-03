@@ -5,14 +5,12 @@ use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext,
 use rustc::mir::*;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
-use rustc::ty::{self, TyCtxt};
-use rustc_errors::struct_span_err;
-use rustc_hir::{def_id::DefId, HirId};
+use rustc::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
+use rustc_hir::{self as hir, def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-use std::borrow::Cow;
 use std::ops::Deref;
 
 use self::old_dataflow::IndirectlyMutableLocals;
@@ -20,7 +18,7 @@ use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
-use crate::const_eval::{is_const_fn, is_unstable_const_fn};
+use crate::const_eval::{is_const_fn, is_min_const_fn, is_unstable_const_fn};
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
 
 pub type IndirectlyMutableResults<'mir, 'tcx> =
@@ -155,20 +153,24 @@ impl Validator<'a, 'mir, 'tcx> {
         Validator { span: item.body.span, item, qualifs }
     }
 
-    pub fn check_body(&mut self) {
+    pub fn check_item(&mut self) {
         let Item { tcx, body, def_id, const_kind, .. } = *self.item;
 
-        let use_min_const_fn_checks = (const_kind == Some(ConstKind::ConstFn)
-            && crate::const_eval::is_min_const_fn(tcx, def_id))
-            && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+        // The local type and predicate checks are remnants from the old `min_const_fn`
+        // pass, so they only run on `const fn`s.
+        if const_kind == Some(ConstKind::ConstFn) {
+            self.check_item_predicates();
 
-        if use_min_const_fn_checks {
-            // Enforce `min_const_fn` for stable `const fn`s.
-            use crate::transform::qualify_min_const_fn::is_min_const_fn;
-            if let Err((span, err)) = is_min_const_fn(tcx, def_id, &body) {
-                error_min_const_fn_violation(tcx, span, err);
-                return;
+            for local in &body.local_decls {
+                self.span = local.source_info.span;
+                self.check_local_or_return_ty(local.ty);
             }
+
+            // impl trait is gone in MIR, so check the return type of a const fn by its signature
+            // instead of the type of the return place.
+            self.span = body.local_decls[RETURN_PLACE].source_info.span;
+            let return_ty = tcx.fn_sig(def_id).output();
+            self.check_local_or_return_ty(return_ty.skip_binder());
         }
 
         check_short_circuiting_in_const_local(self.item);
@@ -201,7 +203,7 @@ impl Validator<'a, 'mir, 'tcx> {
     where
         O: NonConstOp,
     {
-        trace!("check_op: op={:?}", op);
+        debug!("check_op: op={:?}", op);
 
         if op.is_allowed_in_item(self) {
             return;
@@ -209,8 +211,7 @@ impl Validator<'a, 'mir, 'tcx> {
 
         // If an operation is supported in miri (and is not already controlled by a feature gate) it
         // can be turned on with `-Zunleash-the-miri-inside-of-you`.
-        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate(self.tcx).is_none();
-
+        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate().is_none();
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(span, "skipping const checks");
             return;
@@ -231,6 +232,81 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
         } else {
             self.check_op_spanned(ops::StaticAccess, span)
+        }
+    }
+
+    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>) {
+        for ty in ty.walk() {
+            match ty.kind {
+                ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::MutBorrow),
+                ty::Opaque(..) => self.check_op(ops::ImplTrait),
+                ty::FnPtr(..) => self.check_op(ops::FnPtr),
+
+                ty::Dynamic(preds, _) => {
+                    for pred in preds.iter() {
+                        match pred.skip_binder() {
+                            ty::ExistentialPredicate::AutoTrait(_)
+                            | ty::ExistentialPredicate::Projection(_) => {
+                                self.check_op(ops::TraitBound(hir::Constness::Const))
+                            }
+                            ty::ExistentialPredicate::Trait(trait_ref) => {
+                                if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
+                                    self.check_op(ops::TraitBound(hir::Constness::Const))
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn check_item_predicates(&mut self) {
+        let Item { tcx, def_id, .. } = *self.item;
+
+        let mut current = def_id;
+        loop {
+            let predicates = tcx.predicates_of(current);
+            for (predicate, _) in predicates.predicates {
+                match predicate {
+                    Predicate::RegionOutlives(_)
+                    | Predicate::TypeOutlives(_)
+                    | Predicate::WellFormed(_)
+                    | Predicate::Projection(_)
+                    | Predicate::ConstEvaluatable(..) => continue,
+                    Predicate::ObjectSafe(_) => {
+                        bug!("object safe predicate on function: {:#?}", predicate)
+                    }
+                    Predicate::ClosureKind(..) => {
+                        bug!("closure kind predicate on function: {:#?}", predicate)
+                    }
+                    Predicate::Subtype(_) => {
+                        bug!("subtype predicate on function: {:#?}", predicate)
+                    }
+                    Predicate::Trait(pred, constness) => {
+                        if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
+                            continue;
+                        }
+                        match pred.skip_binder().self_ty().kind {
+                            ty::Param(ref p) => {
+                                let generics = tcx.generics_of(current);
+                                let def = generics.type_param(p, tcx);
+                                let span = tcx.def_span(def.def_id);
+
+                                self.check_op_spanned(ops::TraitBound(*constness), span);
+                            }
+                            // other kinds of bounds are either tautologies
+                            // or cause errors in other passes
+                            _ => continue,
+                        }
+                    }
+                }
+            }
+            match predicates.parent {
+                Some(parent) => current = parent,
+                None => break,
+            }
         }
     }
 }
@@ -298,17 +374,15 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         match *rvalue {
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
-            | Rvalue::UnaryOp(UnOp::Neg, _)
-            | Rvalue::UnaryOp(UnOp::Not, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf, _)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::Cast(CastKind::Pointer(_), ..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_)
             | Rvalue::Aggregate(..) => {}
 
-            Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
+            // `&mut` and `&raw mut`
+            Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutBorrow),
+
+            Rvalue::Ref(_, BorrowKind::Mut { .. }, ref place)
+            | Rvalue::Ref(_, BorrowKind::Unique, ref place) => {
                 let ty = place.ty(*self.body, self.tcx).ty;
                 let is_allowed = match ty.kind {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -327,15 +401,9 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 if !is_allowed {
-                    if let BorrowKind::Mut { .. } = kind {
-                        self.check_op(ops::MutBorrow);
-                    } else {
-                        self.check_op(ops::CellBorrow);
-                    }
+                    self.check_op(ops::MutBorrow);
                 }
             }
-
-            Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
@@ -351,6 +419,19 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
+            Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), ..)
+            | Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), ..)
+            | Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), ..) => {
+                self.check_op(ops::FnPtr)
+            }
+
+            Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), ..)
+            | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), ..) => {}
+
+            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ..) => {
+                self.check_op(ops::UnsizingCast)
+            }
+
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
@@ -363,24 +444,43 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(*self.body, self.tcx).kind {
-                    assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
-                    );
+            Rvalue::NullaryOp(NullOp::SizeOf, _) => {}
+            Rvalue::NullaryOp(NullOp::Box, _) => self.check_op(ops::HeapAllocation),
 
-                    self.check_op(ops::RawPtrComparison);
+            Rvalue::UnaryOp(op, ref place) => {
+                let ty = place.ty(*self.body, self.tcx);
+                match ty.kind {
+                    // Operations on the following primitive types are always allowed.
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {}
+
+                    // All other operations are forbidden
+                    _ => self.check_op(ops::Arithmetic(op.into(), ty)),
                 }
             }
 
-            Rvalue::NullaryOp(NullOp::Box, _) => {
-                self.check_op(ops::HeapAllocation);
+            Rvalue::CheckedBinaryOp(op, ref lhs, _) | Rvalue::BinaryOp(op, ref lhs, _) => {
+                let ty = lhs.ty(*self.body, self.tcx);
+                match ty.kind {
+                    ty::RawPtr(_) | ty::FnPtr(..) => {
+                        assert!(
+                            op == BinOp::Eq
+                                || op == BinOp::Ne
+                                || op == BinOp::Le
+                                || op == BinOp::Lt
+                                || op == BinOp::Ge
+                                || op == BinOp::Gt
+                                || op == BinOp::Offset
+                        );
+
+                        self.check_op(ops::RawPtrComparison);
+                    }
+
+                    // Operations on the following primitive types are always allowed.
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {}
+
+                    // All other operations are forbidden
+                    _ => self.check_op(ops::Arithmetic(op.into(), ty)),
+                }
             }
         }
     }
@@ -477,14 +577,22 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
                 self.super_statement(statement, location);
             }
-            StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                self.check_op(ops::IfOrMatch);
+
+            StatementKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
+
+            // Try to ensure that no `match` expressions have gotten throught the HIR const-checker.
+            StatementKind::FakeRead(FakeReadCause::ForMatchGuard, _)
+            | StatementKind::FakeRead(FakeReadCause::ForGuardBinding, _)
+            | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+                self.check_op(ops::IfOrMatch)
             }
-            // FIXME(eddyb) should these really do nothing?
-            StatementKind::FakeRead(..)
-            | StatementKind::StorageLive(_)
+
+            // Other `FakeRead`s are allowed
+            StatementKind::FakeRead(FakeReadCause::ForLet, _)
+            | StatementKind::FakeRead(FakeReadCause::ForIndex, _) => {}
+
+            StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::InlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}
@@ -496,10 +604,25 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         self.super_terminator_kind(kind, location);
 
         match kind {
+            TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Resume => {}
+
+            // Emitted when, e.g., doing integer division to detect division by zero.
+            TerminatorKind::Assert { .. } => {}
+
+            TerminatorKind::SwitchInt { .. } => self.check_op(ops::IfOrMatch),
+            TerminatorKind::Abort => self.check_op(ops::Abort),
+            TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
+                self.check_op(ops::Generator)
+            }
+
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(*self.body, self.tcx);
-
-                let def_id = match fn_ty.kind {
+                let callee = match fn_ty.kind {
                     ty::FnDef(def_id, _) => def_id,
 
                     ty::FnPtr(_) => {
@@ -512,21 +635,32 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     }
                 };
 
-                // At this point, we are calling a function whose `DefId` is known...
-                if is_const_fn(self.tcx, def_id) {
+                let Item { tcx, def_id: caller, .. } = *self.item;
+
+                if self.const_kind == Some(ConstKind::ConstFn)
+                    && is_min_const_fn(tcx, caller)
+                    && !is_min_const_fn(tcx, callee)
+                    && is_unstable_const_fn(tcx, callee)
+                        .map_or(true, |feature| !self.span.allows_unstable(feature))
+                {
+                    tcx.sess
+                        .span_err(self.span, "Stable `const fn`s cannot call unstable `const fn`s");
+                }
+
+                if is_const_fn(tcx, callee) {
                     return;
                 }
 
-                if is_lang_panic_fn(self.tcx, def_id) {
+                if is_lang_panic_fn(tcx, callee) {
                     self.check_op(ops::Panic);
-                } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
+                } else if let Some(feature) = is_unstable_const_fn(tcx, callee) {
                     // Exempt unstable const fns inside of macros with
                     // `#[allow_internal_unstable]`.
                     if !self.span.allows_unstable(feature) {
-                        self.check_op(ops::FnCallUnstable(def_id, feature));
+                        self.check_op(ops::FnCallUnstable(callee, feature));
                     }
                 } else {
-                    self.check_op(ops::FnCallNonConst(def_id));
+                    self.check_op(ops::FnCallNonConst(callee));
                 }
             }
 
@@ -557,17 +691,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     self.check_op_spanned(ops::LiveDrop, err_span);
                 }
             }
-
-            _ => {}
         }
     }
-}
-
-fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
-    struct_span_err!(tcx.sess, span, E0723, "{}", msg)
-        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
-        .help("add `#![feature(const_fn)]` to the crate attributes to enable")
-        .emit();
 }
 
 fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {

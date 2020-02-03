@@ -1,23 +1,25 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
+use rustc::mir;
 use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
-use rustc::ty::TyCtxt;
+use rustc::ty::Ty;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
+use rustc_hir::Constness;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
-use super::{ConstKind, Item};
+use super::{is_const_unstable, ConstKind, Item};
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
     /// Whether this operation can be evaluated by miri.
     const IS_SUPPORTED_IN_MIRI: bool = true;
 
-    /// Returns a boolean indicating whether the feature gate that would allow this operation is
-    /// enabled, or `None` if such a feature gate does not exist.
-    fn feature_gate(_tcx: TyCtxt<'tcx>) -> Option<bool> {
+    /// Returns the `Symbol` for the feature gate that would allow this operation, or `None` if
+    /// such a feature gate does not exist.
+    fn feature_gate() -> Option<Symbol> {
         None
     }
 
@@ -26,7 +28,7 @@ pub trait NonConstOp: std::fmt::Debug {
     /// This check should assume that we are not in a non-const `fn`, where all operations are
     /// legal.
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
-        Self::feature_gate(item.tcx).unwrap_or(false)
+        Self::feature_gate().map_or(false, |gate| feature_allowed(item, gate))
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -51,12 +53,48 @@ pub trait NonConstOp: std::fmt::Debug {
     }
 }
 
+#[derive(Debug)]
+pub struct Abort;
+impl NonConstOp for Abort {}
+
+#[derive(Debug)]
+pub enum ArithmeticOp {
+    Binary(mir::BinOp),
+    Unary(mir::UnOp),
+}
+
+impl From<mir::BinOp> for ArithmeticOp {
+    fn from(op: mir::BinOp) -> Self {
+        ArithmeticOp::Binary(op)
+    }
+}
+
+impl From<mir::UnOp> for ArithmeticOp {
+    fn from(op: mir::UnOp) -> Self {
+        ArithmeticOp::Unary(op)
+    }
+}
+
+#[derive(Debug)]
+pub struct Arithmetic<'a>(pub ArithmeticOp, pub Ty<'a>);
+impl NonConstOp for Arithmetic<'_> {
+    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
+        item.const_kind() != ConstKind::ConstFn || !min_const_fn_checks_enabled(item)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        let msg =
+            format!("operations on `{:?}` are not allowed in a {}", self.1, item.const_kind());
+        feature_err(&item.tcx.sess.parse_sess, sym::const_fn, span, &msg).emit()
+    }
+}
+
 /// A `Downcast` projection.
 #[derive(Debug)]
 pub struct Downcast;
 impl NonConstOp for Downcast {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_if_match)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_if_match)
     }
 }
 
@@ -65,11 +103,7 @@ impl NonConstOp for Downcast {
 pub struct FnCallIndirect;
 impl NonConstOp for FnCallIndirect {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = item
-            .tcx
-            .sess
-            .struct_span_err(span, &format!("function pointers are not allowed in const fn"));
-        err.emit();
+        item.tcx.sess.struct_span_err(span, "indirect function calls are not supported").emit()
     }
 }
 
@@ -121,6 +155,10 @@ impl NonConstOp for FnCallUnstable {
 }
 
 #[derive(Debug)]
+pub struct Generator;
+impl NonConstOp for Generator {}
+
+#[derive(Debug)]
 pub struct HeapAllocation;
 impl NonConstOp for HeapAllocation {
     const IS_SUPPORTED_IN_MIRI: bool = false;
@@ -149,8 +187,8 @@ impl NonConstOp for HeapAllocation {
 #[derive(Debug)]
 pub struct IfOrMatch;
 impl NonConstOp for IfOrMatch {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_if_match)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_if_match)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -158,6 +196,10 @@ impl NonConstOp for IfOrMatch {
         item.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
     }
 }
+
+#[derive(Debug)]
+pub struct InlineAsm;
+impl NonConstOp for InlineAsm {}
 
 #[derive(Debug)]
 pub struct LiveDrop;
@@ -177,8 +219,8 @@ impl NonConstOp for LiveDrop {
 #[derive(Debug)]
 pub struct Loop;
 impl NonConstOp for Loop {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_loop)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_loop)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -205,8 +247,8 @@ impl NonConstOp for CellBorrow {
 #[derive(Debug)]
 pub struct MutBorrow;
 impl NonConstOp for MutBorrow {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_mut_refs)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -214,11 +256,7 @@ impl NonConstOp for MutBorrow {
             &item.tcx.sess.parse_sess,
             sym::const_mut_refs,
             span,
-            &format!(
-                "references in {}s may only refer \
-                      to immutable values",
-                item.const_kind()
-            ),
+            &format!("mutable references in a {} are unstable", item.const_kind()),
         );
         err.span_label(span, format!("{}s require immutable values", item.const_kind()));
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
@@ -238,36 +276,18 @@ impl NonConstOp for MutBorrow {
 }
 
 #[derive(Debug)]
-pub struct MutAddressOf;
-impl NonConstOp for MutAddressOf {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
-    }
-
-    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        feature_err(
-            &item.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("`&raw mut` is not allowed in {}s", item.const_kind()),
-        )
-        .emit();
-    }
-}
-
-#[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_mut_refs)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_mut_refs)
     }
 }
 
 #[derive(Debug)]
 pub struct Panic;
 impl NonConstOp for Panic {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_panic)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_panic)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -284,8 +304,8 @@ impl NonConstOp for Panic {
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_compare_raw_pointers)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_compare_raw_pointers)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -302,8 +322,8 @@ impl NonConstOp for RawPtrComparison {
 #[derive(Debug)]
 pub struct RawPtrDeref;
 impl NonConstOp for RawPtrDeref {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_raw_ptr_deref)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_raw_ptr_deref)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -311,7 +331,7 @@ impl NonConstOp for RawPtrDeref {
             &item.tcx.sess.parse_sess,
             sym::const_raw_ptr_deref,
             span,
-            &format!("dereferencing raw pointers in {}s is unstable", item.const_kind(),),
+            &format!("dereferencing raw pointers in {}s is unstable", item.const_kind()),
         )
         .emit();
     }
@@ -320,8 +340,8 @@ impl NonConstOp for RawPtrDeref {
 #[derive(Debug)]
 pub struct RawPtrToIntCast;
 impl NonConstOp for RawPtrToIntCast {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_raw_ptr_to_usize_cast)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_raw_ptr_to_usize_cast)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -329,9 +349,95 @@ impl NonConstOp for RawPtrToIntCast {
             &item.tcx.sess.parse_sess,
             sym::const_raw_ptr_to_usize_cast,
             span,
-            &format!("casting pointers to integers in {}s is unstable", item.const_kind(),),
+            &format!("casting pointers to integers in {}s is unstable", item.const_kind()),
         )
         .emit();
+    }
+}
+
+#[derive(Debug)]
+pub struct FnPtr;
+impl NonConstOp for FnPtr {
+    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
+        item.const_kind() != ConstKind::ConstFn
+            || !min_const_fn_checks_enabled(item)
+            || item.tcx.has_attr(item.def_id, sym::rustc_allow_const_fn_ptr)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_fn,
+            span,
+            "function pointers in const fn are unstable",
+        )
+        .emit()
+    }
+}
+
+/// See [#64992].
+///
+/// [#64992]: https://github.com/rust-lang/rust/issues/64992
+#[derive(Debug)]
+pub struct UnsizingCast;
+impl NonConstOp for UnsizingCast {
+    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
+        item.const_kind() != ConstKind::ConstFn || !min_const_fn_checks_enabled(item)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_fn,
+            span,
+            "unsizing casts are not allowed in const fn",
+        )
+        .emit()
+    }
+}
+
+#[derive(Debug)]
+pub struct ImplTrait;
+impl NonConstOp for ImplTrait {
+    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
+        item.const_kind() != ConstKind::ConstFn || !min_const_fn_checks_enabled(item)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_fn,
+            span,
+            "`impl Trait` in const fn is unstable",
+        )
+        .emit()
+    }
+}
+
+#[derive(Debug)]
+pub struct TraitBound(pub Constness);
+impl NonConstOp for TraitBound {
+    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
+        if item.const_kind() != ConstKind::ConstFn || !min_const_fn_checks_enabled(item) {
+            return true;
+        }
+
+        // Allow `T: ?const Trait`
+        if self.0 == Constness::NotConst {
+            feature_allowed(item, sym::const_trait_bound_opt_out)
+        } else {
+            false
+        }
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_fn,
+            span,
+            "trait bounds other than `Sized` on const fn parameters are unstable",
+        )
+        .emit()
     }
 }
 
@@ -388,11 +494,11 @@ pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
         // Union accesses are stable in all contexts except `const fn`.
-        item.const_kind() != ConstKind::ConstFn || Self::feature_gate(item.tcx).unwrap()
+        item.const_kind() != ConstKind::ConstFn || feature_allowed(item, sym::const_fn_union)
     }
 
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_fn_union)
+    fn feature_gate() -> Option<Symbol> {
+        Some(sym::const_fn_union)
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
@@ -403,5 +509,45 @@ impl NonConstOp for UnionAccess {
             "unions in const fn are unstable",
         )
         .emit();
+    }
+}
+
+/// Returns `true` if the feature with the given gate is allowed within this const context.
+fn feature_allowed(item: &Item<'_, '_>, feature_gate: Symbol) -> bool {
+    let Item { tcx, def_id, .. } = *item;
+
+    // All features require that the corresponding gate be enabled,
+    // even if the function has `#[allow_internal_unstable(the_gate)]`.
+    if !tcx.features().enabled(feature_gate) {
+        return false;
+    }
+
+    // If this crate is not using stability attributes, or this function is not claiming to be a
+    // stable `const fn`, that is all that is required.
+    if !tcx.features().staged_api {
+        return true;
+    }
+
+    if is_const_unstable(item.tcx, item.def_id) {
+        return true;
+    }
+
+    // However, we cannot allow stable `const fn`s to use unstable features without an explicit
+    // opt-in via `allow_internal_unstable`.
+    rustc_attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
+        .map_or(false, |mut features| features.any(|name| name == feature_gate))
+}
+
+fn min_const_fn_checks_enabled(item: &Item<'_, '_>) -> bool {
+    assert_eq!(item.const_kind(), ConstKind::ConstFn);
+
+    if item.tcx.features().staged_api {
+        // All functions except for unstable ones need to pass the min const fn checks. This
+        // includes private functions that are not marked unstable.
+        !is_const_unstable(item.tcx, item.def_id)
+    } else {
+        // Crates that are not using stability attributes can use `#![feature(const_fn)]` to opt out of
+        // the min_const_fn checks.
+        !item.tcx.features().const_fn
     }
 }

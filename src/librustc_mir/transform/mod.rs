@@ -29,7 +29,7 @@ pub mod inline;
 pub mod instcombine;
 pub mod no_landing_pads;
 pub mod promote_consts;
-pub mod qualify_min_const_fn;
+//pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod rustc_peek;
 pub mod simplify;
@@ -205,7 +205,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     };
 
     let mut validator = check_consts::validation::Validator::new(&item);
-    validator.check_body();
+    validator.check_item();
 
     // We return the qualifs in the return place for every MIR body, even though it is only used
     // when deciding to promote a reference to a `const` for now.

@@ -8,7 +8,6 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc::hir::map::Map;
-use rustc::hir::Hir;
 use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
