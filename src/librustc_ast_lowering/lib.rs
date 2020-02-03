@@ -530,6 +530,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
+        let proc_macros = c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id]).collect();
 
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
@@ -546,6 +547,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             body_ids,
             trait_impls: self.trait_impls,
             modules: self.modules,
+            proc_macros,
         }
     }
 
