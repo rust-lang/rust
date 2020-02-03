@@ -7,7 +7,7 @@ use crate::ops::Deref;
 /// A cell which can be written to only once.
 ///
 /// Unlike `RefCell`, a `OnceCell` only provides shared `&T` references to its value.
-/// Unlike `Cell`, a `OnceCell` doesn't require `T: Copy` to access its value.
+/// Unlike `Cell`, a `OnceCell` doesn't require copying or replacing the value to access it.
 ///
 /// # Examples
 ///
