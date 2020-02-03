@@ -9,8 +9,6 @@ use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
 #[cfg(feature = "linkcheck")]
-use failure::Error;
-#[cfg(feature = "linkcheck")]
 use mdbook::renderer::RenderContext;
 
 fn main() {
@@ -53,8 +51,18 @@ fn main() {
         ("linkcheck", Some(sub_matches)) => {
             #[cfg(feature = "linkcheck")]
             {
-                if let Err(err) = linkcheck(sub_matches) {
-                    eprintln!("Error: {}", err);
+                let (diags, files) = linkcheck(sub_matches).expect("Error while linkchecking.");
+                if !diags.is_empty() {
+                    let color = codespan_reporting::term::termcolor::ColorChoice::Auto;
+                    let mut writer =
+                        codespan_reporting::term::termcolor::StandardStream::stderr(color);
+                    let cfg = codespan_reporting::term::Config::default();
+
+                    for diag in diags {
+                        codespan_reporting::term::emit(&mut writer, &cfg, &files, &diag)
+                            .expect("Unable to emit linkcheck error.");
+                    }
+
                     std::process::exit(101);
                 }
             }
@@ -73,14 +81,57 @@ fn main() {
 }
 
 #[cfg(feature = "linkcheck")]
-pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
+pub fn linkcheck(
+    args: &ArgMatches<'_>,
+) -> Result<(Vec<codespan_reporting::diagnostic::Diagnostic>, codespan::Files), failure::Error> {
+    use mdbook_linkcheck::Reason;
+
     let book_dir = get_book_dir(args);
+    let src_dir = get_book_dir(args).join("src");
     let book = MDBook::load(&book_dir).unwrap();
-    let cfg = book.config;
-    let render_ctx = RenderContext::new(&book_dir, book.book, cfg, &book_dir);
+    let linkck_cfg = mdbook_linkcheck::get_config(&book.config)?;
+    let mut files = codespan::Files::new();
+    let target_files = mdbook_linkcheck::load_files_into_memory(&book.book, &mut files);
+    let render_ctx = RenderContext::new(&book_dir, book.book, book.config, &book_dir);
     let cache_file = render_ctx.destination.join("cache.json");
-    let color = codespan_reporting::term::termcolor::ColorChoice::Auto;
-    mdbook_linkcheck::run(&cache_file, color, &render_ctx)
+    let cache = mdbook_linkcheck::Cache::load(std::fs::File::open(cache_file)?)?;
+
+    let (links, incomplete) = mdbook_linkcheck::extract_links(target_files, &files);
+
+    let outcome =
+        mdbook_linkcheck::validate(&links, &linkck_cfg, &src_dir, &cache, &files, incomplete)?;
+
+    let mut is_real_error = false;
+
+    for link in outcome.invalid_links.iter() {
+        match &link.reason {
+            Reason::FileNotFound | Reason::TraversesParentDirectories => {
+                is_real_error = true;
+            }
+            Reason::UnsuccessfulServerResponse(status) => {
+                if status.is_client_error() {
+                    is_real_error = true;
+                } else {
+                    eprintln!("Unsuccessful server response for link `{}`", link.link.uri);
+                }
+            }
+            Reason::Client(err) => {
+                if err.is_timeout() {
+                    eprintln!("Timeout for link `{}`", link.link.uri);
+                } else if err.is_server_error() {
+                    eprintln!("Server error for link `{}`", link.link.uri);
+                } else {
+                    is_real_error = true;
+                }
+            }
+        }
+    }
+
+    if is_real_error {
+        Ok((outcome.generate_diagnostics(&files, linkck_cfg.warning_policy), files))
+    } else {
+        Ok((vec![], files))
+    }
 }
 
 // Build command implementation
