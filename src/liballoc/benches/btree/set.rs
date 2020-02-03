@@ -50,41 +50,110 @@ macro_rules! set_bench {
     };
 }
 
-const BUILD_SET_SIZE: usize = 100;
-
 #[bench]
-pub fn build_and_clear(b: &mut Bencher) {
-    b.iter(|| pos(BUILD_SET_SIZE).clear())
+pub fn clone_100(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| src.clone())
 }
 
 #[bench]
-pub fn build_and_drop(b: &mut Bencher) {
-    b.iter(|| pos(BUILD_SET_SIZE))
+pub fn clone_100_and_clear(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| src.clone().clear())
 }
 
 #[bench]
-pub fn build_and_into_iter(b: &mut Bencher) {
-    b.iter(|| pos(BUILD_SET_SIZE).into_iter().count())
+pub fn clone_100_and_into_iter(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| src.clone().into_iter().count())
 }
 
 #[bench]
-pub fn build_and_pop_all(b: &mut Bencher) {
+pub fn clone_100_and_pop_all(b: &mut Bencher) {
+    let src = pos(100);
     b.iter(|| {
-        let mut s = pos(BUILD_SET_SIZE);
-        while s.pop_first().is_some() {}
-        s
+        let mut set = src.clone();
+        while set.pop_first().is_some() {}
+        set
     });
 }
 
 #[bench]
-pub fn build_and_remove_all(b: &mut Bencher) {
+pub fn clone_100_and_remove_all(b: &mut Bencher) {
+    let src = pos(100);
     b.iter(|| {
-        let mut s = pos(BUILD_SET_SIZE);
-        while let Some(elt) = s.iter().copied().next() {
-            s.remove(&elt);
+        let mut set = src.clone();
+        while let Some(elt) = set.iter().copied().next() {
+            set.remove(&elt);
         }
-        s
+        set
     });
+}
+
+#[bench]
+pub fn clone_100_and_remove_half(b: &mut Bencher) {
+    let src = pos(100);
+    b.iter(|| {
+        let mut set = src.clone();
+        for i in (2..=100 as i32).step_by(2) {
+            set.remove(&i);
+        }
+        assert_eq!(set.len(), 100 / 2);
+        set
+    })
+}
+
+#[bench]
+pub fn clone_10k(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| src.clone())
+}
+
+#[bench]
+pub fn clone_10k_and_clear(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| src.clone().clear())
+}
+
+#[bench]
+pub fn clone_10k_and_into_iter(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| src.clone().into_iter().count())
+}
+
+#[bench]
+pub fn clone_10k_and_pop_all(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| {
+        let mut set = src.clone();
+        while set.pop_first().is_some() {}
+        set
+    });
+}
+
+#[bench]
+pub fn clone_10k_and_remove_all(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| {
+        let mut set = src.clone();
+        while let Some(elt) = set.iter().copied().next() {
+            set.remove(&elt);
+        }
+        set
+    });
+}
+
+#[bench]
+pub fn clone_10k_and_remove_half(b: &mut Bencher) {
+    let src = pos(10_000);
+    b.iter(|| {
+        let mut set = src.clone();
+        for i in (2..=10_000 as i32).step_by(2) {
+            set.remove(&i);
+        }
+        assert_eq!(set.len(), 10_000 / 2);
+        set
+    })
 }
 
 set_bench! {intersection_100_neg_vs_100_pos, intersection, count, [neg(100), pos(100)]}
