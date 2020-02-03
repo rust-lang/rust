@@ -1081,9 +1081,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
                 // usize::max_value()` instead, because we take the result `mod n` at the end
                 // anyway.
-                inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)))
-                    & (going_mod - 1);
-                if going_mod > m {
+                inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
+                if going_mod >= m {
                     return inverse & (m - 1);
                 }
                 going_mod = going_mod.wrapping_mul(going_mod);
@@ -1115,26 +1114,33 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
     let gcd = 1usize << gcdpow;
 
-    if p as usize & (gcd - 1) == 0 {
+    if p as usize & (gcd.wrapping_sub(1)) == 0 {
         // This branch solves for the following linear congruence equation:
         //
-        // $$ p + so ≡ 0 mod a $$
+        // ` p + so = 0 mod a `
         //
-        // $p$ here is the pointer value, $s$ – stride of `T`, $o$ offset in `T`s, and $a$ – the
+        // `p` here is the pointer value, `s` - stride of `T`, `o` offset in `T`s, and `a` - the
         // requested alignment.
         //
-        // g = gcd(a, s)
-        // o = (a - (p mod a))/g * ((s/g)⁻¹ mod a)
+        // With `g = gcd(a, s)`, and the above asserting that `p` is also divisible by `g`, we can
+        // denote `a' = a/g`, `s' = s/g`, `p' = p/g`, then this becomes equivalent to:
         //
-        // The first term is “the relative alignment of p to a”, the second term is “how does
-        // incrementing p by s bytes change the relative alignment of p”. Division by `g` is
-        // necessary to make this equation well formed if $a$ and $s$ are not co-prime.
+        // ` p' + s'o = 0 mod a' `
+        // ` o = (a' - (p' mod a')) * (s'^-1 mod a') `
         //
-        // Furthermore, the result produced by this solution is not “minimal”, so it is necessary
-        // to take the result $o mod lcm(s, a)$. We can replace $lcm(s, a)$ with just a $a / g$.
-        let j = a.wrapping_sub(pmoda) >> gcdpow;
-        let k = smoda >> gcdpow;
-        return intrinsics::unchecked_rem(j.wrapping_mul(mod_inv(k, a)), a >> gcdpow);
+        // The first term is "the relative alignment of `p` to `a`" (divided by the `g`), the second
+        // term is "how does incrementing `p` by `s` bytes change the relative alignment of `p`" (again
+        // divided by `g`).
+        // Division by `g` is necessary to make the inverse well formed if `a` and `s` are not
+        // co-prime.
+        //
+        // Furthermore, the result produced by this solution is not "minimal", so it is necessary
+        // to take the result `o mod lcm(s, a)`. We can replace `lcm(s, a)` with just a `a'`.
+        let a2 = a >> gcdpow;
+        let a2minus1 = a2.wrapping_sub(1);
+        let s2 = smoda >> gcdpow;
+        let minusp2 = a2.wrapping_sub(pmoda >> gcdpow);
+        return (minusp2.wrapping_mul(mod_inv(s2, a2))) & a2minus1;
     }
 
     // Cannot be aligned at all.

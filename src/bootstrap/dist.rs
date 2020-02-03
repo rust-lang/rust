@@ -105,6 +105,7 @@ impl Step for Docs {
         t!(fs::create_dir_all(&dst));
         let src = builder.doc_out(host);
         builder.cp_r(&src, &dst);
+        builder.install(&builder.src.join("src/doc/robots.txt"), &dst, 0o644);
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
