@@ -233,18 +233,6 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::StaticAccess, span)
         }
     }
-
-    fn check_immutable_borrow_like(&mut self, location: Location, place: &Place<'tcx>) {
-        let borrowed_place_has_mut_interior = HasMutInterior::in_place(
-            &self.item,
-            &mut |local| self.qualifs.has_mut_interior(local, location),
-            place.as_ref(),
-        );
-
-        if borrowed_place_has_mut_interior {
-            self.check_op(ops::CellBorrow);
-        }
-    }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
@@ -350,12 +338,17 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place) => {
-                self.check_immutable_borrow_like(location, place)
-            }
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                    &self.item,
+                    &mut |local| self.qualifs.has_mut_interior(local, location),
+                    place.as_ref(),
+                );
 
-            Rvalue::AddressOf(Mutability::Not, ref place) => {
-                self.check_immutable_borrow_like(location, place)
+                if borrowed_place_has_mut_interior {
+                    self.check_op(ops::CellBorrow);
+                }
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
