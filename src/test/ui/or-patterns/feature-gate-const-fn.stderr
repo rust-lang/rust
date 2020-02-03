@@ -1,5 +1,5 @@
 error[E0658]: or-pattern is not allowed in a `const fn`
-  --> $DIR/feature-gate-const-fn.rs:4:15
+  --> $DIR/feature-gate-const-fn.rs:3:15
    |
 LL | const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
    |               ^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const fn`
-  --> $DIR/feature-gate-const-fn.rs:7:9
+  --> $DIR/feature-gate-const-fn.rs:6:9
    |
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let Ok(y) | Err(y) = x;
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const`
-  --> $DIR/feature-gate-const-fn.rs:13:9
+  --> $DIR/feature-gate-const-fn.rs:12:9
    |
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let Ok(y) | Err(y) = x;
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `static`
-  --> $DIR/feature-gate-const-fn.rs:19:9
+  --> $DIR/feature-gate-const-fn.rs:18:9
    |
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     let Ok(y) | Err(y) = x;
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `static mut`
-  --> $DIR/feature-gate-const-fn.rs:25:9
+  --> $DIR/feature-gate-const-fn.rs:24:9
    |
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     let Ok(y) | Err(y) = x;
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const`
-  --> $DIR/feature-gate-const-fn.rs:32:13
+  --> $DIR/feature-gate-const-fn.rs:31:13
    |
 LL |         let Ok(y) | Err(y) = x;
    |             ^^^^^^^^^^^^^^
@@ -52,6 +52,19 @@ LL |         let Ok(y) | Err(y) = x;
    = note: for more information, see https://github.com/rust-lang/rust/issues/49146
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error: aborting due to 6 previous errors
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/feature-gate-const-fn.rs:31:25
+   |
+LL |         let Ok(y) | Err(y) = x;
+   |                         ^
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/feature-gate-const-fn.rs:31:16
+   |
+LL |         let Ok(y) | Err(y) = x;
+   |                ^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0019, E0658.
+For more information about an error, try `rustc --explain E0019`.

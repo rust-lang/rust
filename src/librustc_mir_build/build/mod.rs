@@ -899,7 +899,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             matches::ArmHasGuard(false),
                             Some((Some(&place), span)),
                         );
-                        unpack!(block = self.place_into_pattern(block, pattern, &place, false));
+                        unpack!(block = self.place_into_pattern(block, pattern, place, false));
                     }
                 }
                 self.source_scope = original_source_scope;

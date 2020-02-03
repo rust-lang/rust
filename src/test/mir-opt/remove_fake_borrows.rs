@@ -19,17 +19,17 @@ fn main() {
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb2, otherwise: bb1];
 // }
 // bb1: {
-//     goto -> bb4;
-// }
-// bb2: {
 //     _0 = const 1i32;
 //     goto -> bb7;
 // }
+// bb2: {
+//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb1];
+// }
 // bb3: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
+//     goto -> bb4;
 // }
 // bb4: {
 //     _4 = &shallow _1;
@@ -51,7 +51,7 @@ fn main() {
 // }
 // bb6: {
 //     StorageDead(_8);
-//     goto -> bb2;
+//     goto -> bb1;
 // }
 // bb7: {
 //     return;
@@ -65,17 +65,17 @@ fn main() {
 // bb0: {
 //     nop;
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb2, otherwise: bb1];
 // }
 // bb1: {
-//     goto -> bb4;
-// }
-// bb2: {
 //     _0 = const 1i32;
 //     goto -> bb7;
 // }
+// bb2: {
+//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb1];
+// }
 // bb3: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
+//     goto -> bb4;
 // }
 // bb4: {
 //     nop;
@@ -97,7 +97,7 @@ fn main() {
 // }
 // bb6: {
 //     StorageDead(_8);
-//     goto -> bb2;
+//     goto -> bb1;
 // }
 // bb7: {
 //     return;

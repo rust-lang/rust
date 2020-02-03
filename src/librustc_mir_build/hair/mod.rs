@@ -315,17 +315,6 @@ crate struct Arm<'tcx> {
     crate span: Span,
 }
 
-impl<'tcx> Arm<'tcx> {
-    // HACK(or_patterns; Centril | dlrobertson): Remove this and
-    // correctly handle each case in which this method is used.
-    crate fn top_pats_hack(&self) -> &[Pat<'tcx>] {
-        match &*self.pattern.kind {
-            PatKind::Or { pats } => pats,
-            _ => std::slice::from_ref(&self.pattern),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 crate enum Guard<'tcx> {
     If(ExprRef<'tcx>),

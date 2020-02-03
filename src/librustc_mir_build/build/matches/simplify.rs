@@ -16,6 +16,7 @@ use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::hair::{self, *};
 use rustc::mir::interpret::truncate;
+use rustc::mir::Place;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use rustc_attr::{SignedInt, UnsignedInt};
@@ -24,10 +25,33 @@ use rustc_hir::RangeEnd;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    crate fn simplify_candidate<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) {
+    /// Simplify a candidate so that all match pairs require a test.
+    ///
+    /// This method will also split a candidate where the only match-pair is an
+    /// or-pattern into multiple candidates. This is so that
+    ///
+    /// match x {
+    ///     0 | 1 => { ... },
+    ///     2 | 3 => { ... },
+    /// }
+    ///
+    /// only generates a single switch. If this happens this method returns
+    /// `true`.
+    pub(super) fn simplify_candidate<'pat>(
+        &mut self,
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
+
+            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
+                *match_pairs
+            {
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                return true;
+            }
+
             let mut changed = false;
             for match_pair in match_pairs {
                 match self.simplify_match_pair(match_pair, candidate) {
@@ -40,9 +64,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             if !changed {
-                return; // if we were not able to simplify any, done.
+                // Move or-patterns to the end, because they can result in us
+                // creating additional candidates, so we want to test them as
+                // late as possible.
+                candidate
+                    .match_pairs
+                    .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                return false; // if we were not able to simplify any, done.
             }
         }
+    }
+
+    /// Given `candidate` that has a single or-pattern for its match-pairs,
+    /// creates a fresh candidate for each of its input subpatterns passed via
+    /// `pats`.
+    fn create_or_subcandidates<'pat>(
+        &mut self,
+        candidate: &Candidate<'pat, 'tcx>,
+        place: Place<'tcx>,
+        pats: &'pat [Pat<'tcx>],
+    ) -> Vec<Candidate<'pat, 'tcx>> {
+        pats.iter()
+            .map(|pat| {
+                let mut candidate = Candidate::new(place, pat, candidate.has_guard);
+                self.simplify_candidate(&mut candidate);
+                candidate
+            })
+            .collect()
     }
 
     /// Tries to simplify `match_pair`, returning `Ok(())` if

@@ -1,5 +1,5 @@
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:9:25
+  --> $DIR/inconsistent-modes.rs:7:25
    |
 LL |     let Ok(a) | Err(ref a): Result<&u8, u8> = Ok(&0);
    |            -            ^ bound in different ways
@@ -7,7 +7,7 @@ LL |     let Ok(a) | Err(ref a): Result<&u8, u8> = Ok(&0);
    |            first binding
 
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:11:29
+  --> $DIR/inconsistent-modes.rs:9:29
    |
 LL |     let Ok(ref mut a) | Err(a): Result<u8, &mut u8> = Ok(0);
    |                    -        ^ bound in different ways
@@ -15,25 +15,25 @@ LL |     let Ok(ref mut a) | Err(a): Result<u8, &mut u8> = Ok(0);
    |                    first binding
 
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:13:33
+  --> $DIR/inconsistent-modes.rs:11:33
    |
 LL |     let Ok(ref a) | Err(ref mut a): Result<&u8, &mut u8> = Ok(&0);
    |                - first binding  ^ bound in different ways
 
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:16:39
+  --> $DIR/inconsistent-modes.rs:14:39
    |
 LL |     let Ok((ref a, b)) | Err((ref mut a, ref b)) = Ok((0, &0));
    |                 - first binding       ^ bound in different ways
 
 error[E0409]: variable `b` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:16:46
+  --> $DIR/inconsistent-modes.rs:14:46
    |
 LL |     let Ok((ref a, b)) | Err((ref mut a, ref b)) = Ok((0, &0));
    |                    - first binding           ^ bound in different ways
 
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:22:38
+  --> $DIR/inconsistent-modes.rs:20:38
    |
 LL |     let Ok(Ok(a) | Err(a)) | Err(ref a) = Err(0);
    |                        -             ^ bound in different ways
@@ -41,23 +41,15 @@ LL |     let Ok(Ok(a) | Err(a)) | Err(ref a) = Err(0);
    |                        first binding
 
 error[E0409]: variable `a` is bound in inconsistent ways within the same match arm
-  --> $DIR/inconsistent-modes.rs:26:34
+  --> $DIR/inconsistent-modes.rs:24:34
    |
 LL |     let Ok([ Ok((Ok(ref a) | Err(a),)) | Err(a) ]) | Err(a) = Err(&1);
    |                         -        ^ bound in different ways
    |                         |
    |                         first binding
 
-warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
-  --> $DIR/inconsistent-modes.rs:3:12
-   |
-LL | #![feature(or_patterns)]
-   |            ^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0308]: mismatched types
-  --> $DIR/inconsistent-modes.rs:13:25
+  --> $DIR/inconsistent-modes.rs:11:25
    |
 LL |     let Ok(ref a) | Err(ref mut a): Result<&u8, &mut u8> = Ok(&0);
    |                         ^^^^^^^^^   -------------------- expected due to this
@@ -68,7 +60,7 @@ LL |     let Ok(ref a) | Err(ref mut a): Result<&u8, &mut u8> = Ok(&0);
               found type `&mut &mut u8`
 
 error[E0308]: mismatched types
-  --> $DIR/inconsistent-modes.rs:16:31
+  --> $DIR/inconsistent-modes.rs:14:31
    |
 LL |     let Ok((ref a, b)) | Err((ref mut a, ref b)) = Ok((0, &0));
    |                               ^^^^^^^^^            ----------- this expression has type `std::result::Result<({integer}, &{integer}), (_, _)>`

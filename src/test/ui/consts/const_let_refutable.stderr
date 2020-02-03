@@ -1,31 +1,19 @@
 error[E0005]: refutable pattern in function argument: `&[]`, `&[_]` and `&[_, _, _, ..]` not covered
   --> $DIR/const_let_refutable.rs:3:16
    |
-LL | const fn slice([a, b]: &[i32]) -> i32 {
-   |                ^^^^^^ patterns `&[]`, `&[_]` and `&[_, _, _, ..]` not covered
+LL | const fn slice(&[a, b]: &[i32]) -> i32 {
+   |                ^^^^^^^ patterns `&[]`, `&[_]` and `&[_, _, _, ..]` not covered
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `const <&i32 as std::ops::Add>::add` is not stable as `const fn`
-  --> $DIR/const_let_refutable.rs:4:5
+error[E0723]: loops and conditional expressions are not stable in const fn
+  --> $DIR/const_let_refutable.rs:3:17
    |
-LL |     a + b
-   |     ^^^^^
+LL | const fn slice(&[a, b]: &[i32]) -> i32 {
+   |                 ^^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0381]: use of possibly-uninitialized variable: `a`
-  --> $DIR/const_let_refutable.rs:4:5
-   |
-LL |     a + b
-   |     ^ use of possibly-uninitialized `a`
+error: aborting due to 2 previous errors
 
-error[E0381]: use of possibly-uninitialized variable: `b`
-  --> $DIR/const_let_refutable.rs:4:9
-   |
-LL |     a + b
-   |         ^ use of possibly-uninitialized `b`
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0005, E0381, E0723.
+Some errors have detailed explanations: E0005, E0723.
 For more information about an error, try `rustc --explain E0005`.

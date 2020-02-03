@@ -1,110 +1,104 @@
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:16:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:8:9
    |
 LL |         (1,) => {}
    |         ^^^^
    |
 note: the lint level is defined here
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:4:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:2:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:21:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:13:9
    |
 LL |         (2,) => {}
    |         ^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:27:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:19:9
    |
 LL |         (1 | 2,) => {}
    |         ^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:32:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:24:9
    |
 LL |         (1, 3) => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:33:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:25:9
    |
 LL |         (1, 4) => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:34:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:26:9
    |
 LL |         (2, 4) => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:35:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:27:9
    |
 LL |         (2 | 1, 4) => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:37:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:29:9
    |
 LL |         (1, 4 | 5) => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:42:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:34:9
    |
 LL |         (Some(1),) => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:43:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:35:9
    |
 LL |         (None,) => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:48:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:40:9
    |
-LL |         ((1..=4,),) => {},
+LL |         ((1..=4,),) => {}
    |         ^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:54:12
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:45:14
    |
-LL |          | 1,) => {}
-   |            ^
+LL |         (1 | 1,) => {}
+   |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:61:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:52:15
    |
 LL |             | 0] => {}
    |               ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:59:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:50:15
    |
 LL |             | 0
    |               ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:69:10
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:60:10
    |
 LL |         [1
    |          ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:75:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:66:14
    |
 LL |         Some(0
    |              ^
 
-error: or-patterns are not fully implemented yet
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:10:10
-   |
-LL |         (0 | _,) => {}
-   |          ^^^^^
-
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 
