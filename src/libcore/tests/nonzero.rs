@@ -125,6 +125,30 @@ fn test_from_signed_nonzero() {
 }
 
 #[test]
+fn test_from_nonzero_option() {
+    let one: Option<NonZeroU32> = NonZeroU32::new(1);
+    let one: u32 = one.into();
+
+    let zero: Option<NonZeroU32> = NonZeroU32::new(0);
+    let zero: u32 = zero.into();
+
+    assert_eq!(one, 1u32);
+    assert_eq!(zero, 0u32);
+}
+
+#[test]
+fn test_from_num() {
+    let one: u32 = 1;
+    let one: Option<NonZeroU32> = one.into();
+
+    let zero: u32 = 0;
+    let zero: Option<NonZeroU32> = zero.into();
+
+    assert_eq!(one.unwrap().get(), 1u32);
+    assert!(zero.is_none());
+}
+
+#[test]
 fn test_from_str() {
     assert_eq!("123".parse::<NonZeroU8>(), Ok(NonZeroU8::new(123).unwrap()));
     assert_eq!("0".parse::<NonZeroU8>().err().map(|e| e.kind().clone()), Some(IntErrorKind::Zero));
