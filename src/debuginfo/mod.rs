@@ -3,8 +3,6 @@ mod line_info;
 
 use crate::prelude::*;
 
-use rustc_span::CachingSourceMapView;
-
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::RegUnit;
 use cranelift_codegen::ValueLocRange;
@@ -36,8 +34,6 @@ pub struct DebugContext<'tcx> {
     unit_range_list: RangeList,
 
     types: HashMap<Ty<'tcx>, UnitEntryId>,
-
-    source_map: CachingSourceMapView<'tcx>,
 }
 
 impl<'tcx> DebugContext<'tcx> {
@@ -102,8 +98,6 @@ impl<'tcx> DebugContext<'tcx> {
             unit_range_list: RangeList(Vec::new()),
 
             types: HashMap::new(),
-
-            source_map: CachingSourceMapView::new(tcx.sess.source_map()),
         }
     }
 
