@@ -22,10 +22,6 @@ fn main() {
     v[10];
     v[1 << 3];
 
-    //
-    // Continue tests at end function to minimize the changes to this file's corresponding stderr.
-    //
-
     const N: usize = 15; // Out of bounds
     const M: usize = 3; // In bounds
     x[N]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.

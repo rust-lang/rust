@@ -13,7 +13,7 @@ LL |     x[1 << 3]; // Ok, let rustc's `const_err` lint handle `usize` indexing 
    |     ^^^^^^^^^
 
 error: index out of bounds: the len is 4 but the index is 15
-  --> $DIR/indexing_slicing_index.rs:31:5
+  --> $DIR/indexing_slicing_index.rs:27:5
    |
 LL |     x[N]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
    |     ^^^^
@@ -60,7 +60,7 @@ LL |     v[1 << 3];
    = help: Consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic.
-  --> $DIR/indexing_slicing_index.rs:33:5
+  --> $DIR/indexing_slicing_index.rs:29:5
    |
 LL |     v[N];
    |     ^^^^
@@ -68,7 +68,7 @@ LL |     v[N];
    = help: Consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic.
-  --> $DIR/indexing_slicing_index.rs:34:5
+  --> $DIR/indexing_slicing_index.rs:30:5
    |
 LL |     v[M];
    |     ^^^^
