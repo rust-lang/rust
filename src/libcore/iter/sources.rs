@@ -399,12 +399,12 @@ pub fn once<T>(value: T) -> Once<T> {
 ///
 /// [`once_with`]: fn.once_with.html
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 pub struct OnceWith<F> {
     gen: Option<F>,
 }
 
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> Iterator for OnceWith<F> {
     type Item = A;
 
@@ -420,24 +420,24 @@ impl<A, F: FnOnce() -> A> Iterator for OnceWith<F> {
     }
 }
 
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> DoubleEndedIterator for OnceWith<F> {
     fn next_back(&mut self) -> Option<A> {
         self.next()
     }
 }
 
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> ExactSizeIterator for OnceWith<F> {
     fn len(&self) -> usize {
         self.gen.iter().len()
     }
 }
 
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> FusedIterator for OnceWith<F> {}
 
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 
 /// Creates an iterator that lazily generates a value exactly once by invoking
@@ -458,8 +458,6 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// Basic usage:
 ///
 /// ```
-/// #![feature(iter_once_with)]
-///
 /// use std::iter;
 ///
 /// // one is the loneliest number
@@ -476,8 +474,6 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// `.foorc`:
 ///
 /// ```no_run
-/// #![feature(iter_once_with)]
-///
 /// use std::iter;
 /// use std::fs;
 /// use std::path::PathBuf;
@@ -500,7 +496,7 @@ unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
     OnceWith { gen: Some(gen) }
 }

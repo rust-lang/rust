@@ -327,7 +327,7 @@ pub use self::sources::{empty, Empty};
 pub use self::sources::{from_fn, FromFn};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{once, Once};
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
