@@ -651,6 +651,21 @@ pub enum CrateType {
     ProcMacro,
 }
 
+impl CrateType {
+    /// Whether the output of this crate type requires codegen to be generated.
+    ///
+    /// This is a bit of a hack to prevent bogus library names being outputted
+    /// from the PrintRequest code. Ideally that code would be fully aware of
+    /// the output requests, but that seems hard to do generally.
+    pub fn requires_codegen(self) -> bool {
+        use CrateType::*;
+        match self {
+            Cdylib | Dylib | Executable | Staticlib => true,
+            ProcMacro | Rlib => false,
+        }
+    }
+}
+
 impl_stable_hash_via_hash!(CrateType);
 
 #[derive(Clone, Hash)]

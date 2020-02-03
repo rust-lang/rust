@@ -669,9 +669,13 @@ impl RustcDefaultCalls {
                         continue;
                     }
                     let crate_types = rustc_interface::util::collect_crate_types(sess, attrs);
-                    for &style in &crate_types {
+                    let should_codegen = sess.opts.output_types.should_codegen();
+                    for &crate_type in &crate_types {
+                        if !should_codegen && crate_type.requires_codegen() {
+                            continue;
+                        }
                         let fname = rustc_codegen_utils::link::filename_for_input(
-                            sess, style, &id, &t_outputs,
+                            sess, crate_type, &id, &t_outputs,
                         );
                         println!("{}", fname.file_name().unwrap().to_string_lossy());
                     }
