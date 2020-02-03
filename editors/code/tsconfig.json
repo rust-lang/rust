@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
-        "moduleResolution": "node",
-        "module": "es2015",
+        "module": "commonjs",
         "target": "es2018",
         "outDir": "out",
         "lib": [
@@ -15,8 +14,7 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "newLine": "LF",
-        "esModuleInterop": true,
-        "importHelpers": true
+        "esModuleInterop": true
     },
     "exclude": [
         "node_modules"
