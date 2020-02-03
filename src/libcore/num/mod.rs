@@ -1646,9 +1646,10 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
@@ -1715,9 +1716,10 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
@@ -3639,9 +3641,10 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
         }
@@ -3699,9 +3702,10 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
         }
