@@ -80,12 +80,10 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
                 format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
             }
-            ObjectSafetyViolation::AssocConst(_, DUMMY_SP) => {
-                "it cannot contain associated consts".into()
+            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+                format!("it contains associated `const` `{}`", name).into()
             }
-            ObjectSafetyViolation::AssocConst(name, _) => {
-                format!("it cannot contain associated consts like `{}`", name).into()
-            }
+            ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
         }
     }
 
