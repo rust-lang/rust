@@ -711,6 +711,23 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning `None` if
 overflow occurred.
 
@@ -735,6 +752,23 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer multiplication. Computes `self * rhs`, returning `None` if
 overflow occurred.
 
@@ -755,6 +789,23 @@ $EndFeature, "
             pub fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                intrinsics::unchecked_mul(self, rhs)
             }
         }
 
@@ -2857,6 +2908,23 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", 
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning
 `None` if overflow occurred.
 
@@ -2879,6 +2947,23 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer multiplication. Computes `self * rhs`, returning
 `None` if overflow occurred.
 
@@ -2897,6 +2982,23 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFe
             pub fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                intrinsics::unchecked_mul(self, rhs)
             }
         }
 
