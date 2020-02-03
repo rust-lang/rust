@@ -39,15 +39,19 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            Inliner { tcx, source }.run_pass(body);
+        let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+        if mir_opt_level == 0 {
+            return;
         }
+
+        Inliner { tcx, source, use_simple_heuristic: mir_opt_level == 1 }.run_pass(body);
     }
 }
 
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
+    use_simple_heuristic: bool,
 }
 
 impl Inliner<'tcx> {
@@ -249,6 +253,10 @@ impl Inliner<'tcx> {
                 debug!("    callee is an exported function - not inlining");
                 return false;
             }
+        }
+
+        if self.use_simple_heuristic {
+            return callee_body.basic_blocks().len() == 1 && callee_body.basic_blocks()[BasicBlock::from_u32(0)].statements.len() < 10;
         }
 
         let mut threshold = if hinted { HINT_THRESHOLD } else { DEFAULT_THRESHOLD };
