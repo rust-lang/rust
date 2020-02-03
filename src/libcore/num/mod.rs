@@ -777,10 +777,11 @@ assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -835,10 +836,11 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -2937,10 +2939,11 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
                     0 => None,
                     // SAFETY: div by zero has been checked above and unsigned types have no other
@@ -2990,10 +2993,11 @@ Basic usage:
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
