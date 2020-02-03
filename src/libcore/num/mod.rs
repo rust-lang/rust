@@ -1091,8 +1091,9 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
             #[inline]
-            pub fn saturating_neg(self) -> Self {
+            pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
             }
         }
@@ -1117,8 +1118,9 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
             #[inline]
-            pub fn saturating_abs(self) -> Self {
+            pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
                     self.saturating_neg()
                 } else {
