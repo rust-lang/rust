@@ -307,11 +307,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let var_ty = self.monomorphized_place_ty(place.as_ref());
                 let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
                     && place.projection.is_empty()
+                    && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
                 {
-                    // FIXME(eddyb, #67586) take `var.source_info.scope` into
-                    // account to avoid using `ArgumentVariable` more than once
-                    // per argument local.
-
                     let arg_index = place.local.index() - 1;
 
                     // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
