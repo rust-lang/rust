@@ -383,6 +383,8 @@ symbols! {
         infer_static_outlives_requirements,
         inline,
         intel,
+        into_future,
+        IntoFuture,
         into_iter,
         IntoIterator,
         into_result,
