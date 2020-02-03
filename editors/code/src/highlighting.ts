@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import seedrandom from 'seedrandom';
 
 import { ColorTheme, TextMateRuleSettings } from './color_theme';
 
@@ -70,9 +69,9 @@ interface Decoration {
 
 // Based on this HSL-based color generator: https://gist.github.com/bendc/76c48ce53299e6078a76
 function fancify(seed: string, shade: 'light' | 'dark') {
-    const random = seedrandom(seed);
+    const random = randomU32Numbers(hashString(seed))
     const randomInt = (min: number, max: number) => {
-        return Math.floor(random() * (max - min + 1)) + min;
+        return Math.abs(random()) % (max - min + 1) + min;
     };
 
     const h = randomInt(0, 360);
@@ -246,3 +245,23 @@ const TAG_TO_SCOPES = new Map<string, string[]>([
     ["keyword.unsafe", ["keyword.other.unsafe"]],
     ["keyword.control", ["keyword.control"]],
 ]);
+
+function randomU32Numbers(seed: number) {
+    let random = seed | 0;
+    return () => {
+        random ^= random << 13;
+        random ^= random >> 17;
+        random ^= random << 5;
+        random |= 0;
+        return random
+    }
+}
+
+function hashString(str: string): number {
+    let res = 0;
+    for (let i = 0; i < str.length; ++i) {
+        const c = str.codePointAt(i)!!;
+        res = (res * 31 + c) & ~0;
+    }
+    return res;
+}
