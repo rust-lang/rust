@@ -1280,10 +1280,11 @@ assert_eq!((-128i8).wrapping_div(-1), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
             }
         }
@@ -1340,10 +1341,11 @@ assert_eq!((-128i8).wrapping_rem(-1), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
             }
         }
@@ -3320,10 +3322,11 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3371,10 +3374,11 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
