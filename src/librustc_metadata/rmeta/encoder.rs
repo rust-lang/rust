@@ -34,7 +34,6 @@ use std::path::Path;
 use std::u32;
 use syntax::ast;
 use syntax::attr;
-use syntax::expand::is_proc_macro_attr;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -1328,13 +1327,7 @@ impl EncodeContext<'tcx> {
         let is_proc_macro = self.tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            Some(self.lazy(tcx.hir().krate().items.values().filter_map(|item| {
-                if item.attrs.iter().any(|attr| is_proc_macro_attr(attr)) {
-                    Some(item.hir_id.owner)
-                } else {
-                    None
-                }
-            })))
+            Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner)))
         } else {
             None
         }
