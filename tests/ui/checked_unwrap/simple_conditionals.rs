@@ -39,4 +39,6 @@ fn main() {
                         // it will always panic but the lint is not smart enough to see this (it
                         // only checks if conditions).
     }
+
+    assert!(x.is_ok(), "{:?}", x.unwrap_err()); // ok, it's a common test pattern
 }
