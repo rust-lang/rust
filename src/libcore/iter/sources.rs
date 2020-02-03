@@ -398,7 +398,7 @@ pub fn once<T>(value: T) -> Once<T> {
 /// See its documentation for more.
 ///
 /// [`once_with`]: fn.once_with.html
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 pub struct OnceWith<F> {
     gen: Option<F>,
