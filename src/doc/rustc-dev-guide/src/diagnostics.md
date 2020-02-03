@@ -31,7 +31,7 @@ usually have names like `span_err` or `struct_span_err` or `span_warn`, etc...
 There are lots of them; they emit different types of "errors", such as
 warnings, errors, fatal errors, suggestions, etc.
 
-[parsesses]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.ParseSess.html
+[parsesses]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html
 [session]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
 
 In general, there are two classes of such methods: ones that emit an error
@@ -315,7 +315,7 @@ processed. [`Session`][sessbl] and [`ParseSess`][parsebl] both have
 system automatically takes care of handling buffered lints later.
 
 [sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.buffer_lint
-[parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.ParseSess.html#method.buffer_lint
+[parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.ParseSess.html#method.buffer_lint
 
 Thus, to define a lint that runs early in the compilation, one defines a lint
 like normal but invokes the lint with `buffer_lint`.

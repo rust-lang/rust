@@ -175,7 +175,7 @@ a new unstable feature:
 8. Get your PR reviewed and land it. You have now successfully
    implemented a feature in Rust!
 
-[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.GatedSpans.html
+[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html
 [`rustc_ast_passes::feature_gate::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_passes/feature_gate/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
