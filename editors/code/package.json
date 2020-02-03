@@ -18,9 +18,9 @@
         "vscode": "^1.41.0"
     },
     "scripts": {
-        "vscode:prepublish": "tsc -p ./ && rollup -c",
+        "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package",
-        "watch": "tsc -watch -p ./",
+        "watch": "tsc --watch",
         "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
     },
     "dependencies": {
