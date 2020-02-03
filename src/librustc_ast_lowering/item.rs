@@ -66,15 +66,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         if let Some(hir_id) = item_hir_id {
             self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                 let this = &mut ItemLowerer { lctx: this };
-                if let ItemKind::Impl { constness, ref of_trait, .. } = item.kind {
-                    if let Const::Yes(span) = constness {
-                        this.lctx
-                            .diagnostic()
-                            .struct_span_err(item.span, "const trait impls are not yet implemented")
-                            .span_label(span, "const because of this")
-                            .emit();
-                    }
-
+                if let ItemKind::Impl { ref of_trait, .. } = item.kind {
                     this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
                 } else {
                     visit::walk_item(this, item);
