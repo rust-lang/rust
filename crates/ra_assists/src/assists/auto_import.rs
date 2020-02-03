@@ -1,7 +1,6 @@
 use hir::{db::HirDatabase, ModPath};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::{NAME_REF, USE_ITEM},
     SyntaxNode,
 };
 
@@ -33,11 +32,11 @@ pub(crate) fn auto_import<F: ImportsLocator>(
 ) -> Option<Assist> {
     let path_to_import: ast::Path = ctx.find_node_at_offset()?;
     let path_to_import_syntax = path_to_import.syntax();
-    if path_to_import_syntax.ancestors().find(|ancestor| ancestor.kind() == USE_ITEM).is_some() {
+    if path_to_import_syntax.ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;
     }
     let name_to_import =
-        path_to_import_syntax.descendants().find(|child| child.kind() == NAME_REF)?;
+        path_to_import_syntax.descendants().find_map(ast::NameRef::cast)?.syntax().to_string();
 
     let module = path_to_import_syntax.ancestors().find_map(ast::Module::cast);
     let position = match module.and_then(|it| it.item_list()) {
@@ -54,7 +53,7 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     }
 
     let proposed_imports = imports_locator
-        .find_imports(&name_to_import.to_string())
+        .find_imports(&name_to_import)
         .into_iter()
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
