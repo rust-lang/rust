@@ -29,7 +29,6 @@ pub mod inline;
 pub mod instcombine;
 pub mod no_landing_pads;
 pub mod promote_consts;
-//pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod rustc_peek;
 pub mod simplify;
