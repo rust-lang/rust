@@ -4,22 +4,20 @@
 use cargo_metadata::Message;
 use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
 use lsp_types::{
-    Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressEnd,
-    WorkDoneProgressReport,
+    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use std::{
-    collections::HashMap,
     io::{BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
-    sync::Arc,
     thread::JoinHandle,
     time::Instant,
 };
 
 mod conv;
 
-use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic, SuggestedFix};
+use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
@@ -38,7 +36,6 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
-    pub state: Arc<CheckState>,
     cmd_send: Option<Sender<CheckCommand>>,
     handle: Option<JoinHandle<()>>,
 }
@@ -46,7 +43,6 @@ pub struct CheckWatcher {
 impl CheckWatcher {
     pub fn new(options: &CheckOptions, workspace_root: PathBuf) -> CheckWatcher {
         let options = options.clone();
-        let state = Arc::new(CheckState::new());
 
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
@@ -54,13 +50,12 @@ impl CheckWatcher {
             let mut check = CheckWatcherThread::new(options, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
-        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle), state }
+        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle) }
     }
 
     /// Returns a CheckWatcher that doesn't actually do anything
     pub fn dummy() -> CheckWatcher {
-        let state = Arc::new(CheckState::new());
-        CheckWatcher { task_recv: never(), cmd_send: None, handle: None, state }
+        CheckWatcher { task_recv: never(), cmd_send: None, handle: None }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -87,84 +82,13 @@ impl std::ops::Drop for CheckWatcher {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct CheckState {
-    diagnostic_collection: HashMap<Url, Vec<Diagnostic>>,
-    suggested_fix_collection: HashMap<Url, Vec<SuggestedFix>>,
-}
-
-impl CheckState {
-    fn new() -> CheckState {
-        CheckState {
-            diagnostic_collection: HashMap::new(),
-            suggested_fix_collection: HashMap::new(),
-        }
-    }
-
-    /// Clear the cached diagnostics, and schedule updating diagnostics by the
-    /// server, to clear stale results.
-    pub fn clear(&mut self) -> Vec<Url> {
-        let cleared_files: Vec<Url> = self.diagnostic_collection.keys().cloned().collect();
-        self.diagnostic_collection.clear();
-        self.suggested_fix_collection.clear();
-        cleared_files
-    }
-
-    pub fn diagnostics_for(&self, uri: &Url) -> Option<&[Diagnostic]> {
-        self.diagnostic_collection.get(uri).map(|d| d.as_slice())
-    }
-
-    pub fn fixes_for(&self, uri: &Url) -> Option<&[SuggestedFix]> {
-        self.suggested_fix_collection.get(uri).map(|d| d.as_slice())
-    }
-
-    pub fn add_diagnostic_with_fixes(&mut self, file_uri: Url, diagnostic: DiagnosticWithFixes) {
-        for fix in diagnostic.suggested_fixes {
-            self.add_suggested_fix_for_diagnostic(fix, &diagnostic.diagnostic);
-        }
-        self.add_diagnostic(file_uri, diagnostic.diagnostic);
-    }
-
-    fn add_diagnostic(&mut self, file_uri: Url, diagnostic: Diagnostic) {
-        let diagnostics = self.diagnostic_collection.entry(file_uri).or_default();
-
-        // If we're building multiple targets it's possible we've already seen this diagnostic
-        let is_duplicate = diagnostics.iter().any(|d| are_diagnostics_equal(d, &diagnostic));
-        if is_duplicate {
-            return;
-        }
-
-        diagnostics.push(diagnostic);
-    }
-
-    fn add_suggested_fix_for_diagnostic(
-        &mut self,
-        mut suggested_fix: SuggestedFix,
-        diagnostic: &Diagnostic,
-    ) {
-        let file_uri = suggested_fix.location.uri.clone();
-        let file_suggestions = self.suggested_fix_collection.entry(file_uri).or_default();
-
-        let existing_suggestion: Option<&mut SuggestedFix> =
-            file_suggestions.iter_mut().find(|s| s == &&suggested_fix);
-        if let Some(existing_suggestion) = existing_suggestion {
-            // The existing suggestion also applies to this new diagnostic
-            existing_suggestion.diagnostics.push(diagnostic.clone());
-        } else {
-            // We haven't seen this suggestion before
-            suggested_fix.diagnostics.push(diagnostic.clone());
-            file_suggestions.push(suggested_fix);
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum CheckTask {
     /// Request a clearing of all cached diagnostics from the check watcher
     ClearDiagnostics,
 
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic(Url, DiagnosticWithFixes),
+    AddDiagnostic { url: Url, diagnostic: Diagnostic, fixes: Vec<CodeActionOrCommand> },
 
     /// Request check progress notification to client
     Status(WorkDoneProgress),
@@ -279,10 +203,17 @@ impl CheckWatcherThread {
                         None => return,
                     };
 
-                let MappedRustDiagnostic { location, diagnostic, suggested_fixes } = map_result;
+                let MappedRustDiagnostic { location, diagnostic, fixes } = map_result;
+                let fixes = fixes
+                    .into_iter()
+                    .map(|fix| {
+                        CodeAction { diagnostics: Some(vec![diagnostic.clone()]), ..fix }.into()
+                    })
+                    .collect();
 
-                let diagnostic = DiagnosticWithFixes { diagnostic, suggested_fixes };
-                task_send.send(CheckTask::AddDiagnostic(location.uri, diagnostic)).unwrap();
+                task_send
+                    .send(CheckTask::AddDiagnostic { url: location.uri, diagnostic, fixes })
+                    .unwrap();
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
@@ -294,7 +225,7 @@ impl CheckWatcherThread {
 #[derive(Debug)]
 pub struct DiagnosticWithFixes {
     diagnostic: Diagnostic,
-    suggested_fixes: Vec<SuggestedFix>,
+    fixes: Vec<CodeAction>,
 }
 
 /// WatchThread exists to wrap around the communication needed to be able to
@@ -428,11 +359,4 @@ impl std::ops::Drop for WatchThread {
             let _ = handle.join();
         }
     }
-}
-
-fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
-    left.source == right.source
-        && left.severity == right.severity
-        && left.range == right.range
-        && left.message == right.message
 }

@@ -57,5 +57,5 @@ MappedRustDiagnostic {
         ),
         tags: None,
     },
-    suggested_fixes: [],
+    fixes: [],
 }

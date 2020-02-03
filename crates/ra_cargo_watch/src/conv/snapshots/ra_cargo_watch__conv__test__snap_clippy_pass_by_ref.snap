@@ -61,25 +61,39 @@ MappedRustDiagnostic {
         ),
         tags: None,
     },
-    suggested_fixes: [
-        SuggestedFix {
+    fixes: [
+        CodeAction {
             title: "consider passing by value instead: \'self\'",
-            location: Location {
-                uri: "file:///test/compiler/mir/tagset.rs",
-                range: Range {
-                    start: Position {
-                        line: 41,
-                        character: 23,
-                    },
-                    end: Position {
-                        line: 41,
-                        character: 28,
-                    },
+            kind: Some(
+                "quickfix",
+            ),
+            diagnostics: None,
+            edit: Some(
+                WorkspaceEdit {
+                    changes: Some(
+                        {
+                            "file:///test/compiler/mir/tagset.rs": [
+                                TextEdit {
+                                    range: Range {
+                                        start: Position {
+                                            line: 41,
+                                            character: 23,
+                                        },
+                                        end: Position {
+                                            line: 41,
+                                            character: 28,
+                                        },
+                                    },
+                                    new_text: "self",
+                                },
+                            ],
+                        },
+                    ),
+                    document_changes: None,
                 },
-            },
-            replacement: "self",
-            applicability: Unspecified,
-            diagnostics: [],
+            ),
+            command: None,
+            is_preferred: None,
         },
     ],
 }

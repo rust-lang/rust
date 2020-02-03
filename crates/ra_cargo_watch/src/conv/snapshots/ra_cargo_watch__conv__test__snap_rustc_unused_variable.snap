@@ -46,25 +46,39 @@ MappedRustDiagnostic {
             ],
         ),
     },
-    suggested_fixes: [
-        SuggestedFix {
+    fixes: [
+        CodeAction {
             title: "consider prefixing with an underscore: \'_foo\'",
-            location: Location {
-                uri: "file:///test/driver/subcommand/repl.rs",
-                range: Range {
-                    start: Position {
-                        line: 290,
-                        character: 8,
-                    },
-                    end: Position {
-                        line: 290,
-                        character: 11,
-                    },
+            kind: Some(
+                "quickfix",
+            ),
+            diagnostics: None,
+            edit: Some(
+                WorkspaceEdit {
+                    changes: Some(
+                        {
+                            "file:///test/driver/subcommand/repl.rs": [
+                                TextEdit {
+                                    range: Range {
+                                        start: Position {
+                                            line: 290,
+                                            character: 8,
+                                        },
+                                        end: Position {
+                                            line: 290,
+                                            character: 11,
+                                        },
+                                    },
+                                    new_text: "_foo",
+                                },
+                            ],
+                        },
+                    ),
+                    document_changes: None,
                 },
-            },
-            replacement: "_foo",
-            applicability: MachineApplicable,
-            diagnostics: [],
+            ),
+            command: None,
+            is_preferred: None,
         },
     ],
 }

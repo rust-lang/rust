@@ -1,12 +1,11 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
 use cargo_metadata::diagnostic::{
-    Applicability, Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan,
-    DiagnosticSpanMacroExpansion,
+    Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
 };
 use lsp_types::{
-    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
-    NumberOrString, Position, Range, Url,
+    CodeAction, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag,
+    Location, NumberOrString, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use std::{
     fmt::Write,
@@ -117,38 +116,9 @@ fn is_deprecated(rd: &RustDiagnostic) -> bool {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct SuggestedFix {
-    pub title: String,
-    pub location: Location,
-    pub replacement: String,
-    pub applicability: Applicability,
-    pub diagnostics: Vec<Diagnostic>,
-}
-
-impl std::cmp::PartialEq<SuggestedFix> for SuggestedFix {
-    fn eq(&self, other: &SuggestedFix) -> bool {
-        if self.title == other.title
-            && self.location == other.location
-            && self.replacement == other.replacement
-        {
-            // Applicability doesn't impl PartialEq...
-            match (&self.applicability, &other.applicability) {
-                (Applicability::MachineApplicable, Applicability::MachineApplicable) => true,
-                (Applicability::HasPlaceholders, Applicability::HasPlaceholders) => true,
-                (Applicability::MaybeIncorrect, Applicability::MaybeIncorrect) => true,
-                (Applicability::Unspecified, Applicability::Unspecified) => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
-}
-
 enum MappedRustChildDiagnostic {
     Related(DiagnosticRelatedInformation),
-    SuggestedFix(SuggestedFix),
+    SuggestedFix(CodeAction),
     MessageLine(String),
 }
 
@@ -176,12 +146,20 @@ fn map_rust_child_diagnostic(
             rd.message.clone()
         };
 
-        MappedRustChildDiagnostic::SuggestedFix(SuggestedFix {
+        let edit = {
+            let edits = vec![TextEdit::new(location.range, suggested_replacement.clone())];
+            let mut edit_map = std::collections::HashMap::new();
+            edit_map.insert(location.uri, edits);
+            WorkspaceEdit::new(edit_map)
+        };
+
+        MappedRustChildDiagnostic::SuggestedFix(CodeAction {
             title,
-            location,
-            replacement: suggested_replacement.clone(),
-            applicability: span.suggestion_applicability.clone().unwrap_or(Applicability::Unknown),
-            diagnostics: vec![],
+            kind: Some("quickfix".to_string()),
+            diagnostics: None,
+            edit: Some(edit),
+            command: None,
+            is_preferred: None,
         })
     } else {
         MappedRustChildDiagnostic::Related(DiagnosticRelatedInformation {
@@ -195,7 +173,7 @@ fn map_rust_child_diagnostic(
 pub(crate) struct MappedRustDiagnostic {
     pub location: Location,
     pub diagnostic: Diagnostic,
-    pub suggested_fixes: Vec<SuggestedFix>,
+    pub fixes: Vec<CodeAction>,
 }
 
 /// Converts a Rust root diagnostic to LSP form
@@ -250,15 +228,13 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
-    let mut suggested_fixes = vec![];
+    let mut fixes = vec![];
     let mut message = rd.message.clone();
     for child in &rd.children {
         let child = map_rust_child_diagnostic(&child, workspace_root);
         match child {
             MappedRustChildDiagnostic::Related(related) => related_information.push(related),
-            MappedRustChildDiagnostic::SuggestedFix(suggested_fix) => {
-                suggested_fixes.push(suggested_fix)
-            }
+            MappedRustChildDiagnostic::SuggestedFix(code_action) => fixes.push(code_action.into()),
             MappedRustChildDiagnostic::MessageLine(message_line) => {
                 write!(&mut message, "\n{}", message_line).unwrap();
 
@@ -295,7 +271,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         tags: if !tags.is_empty() { Some(tags) } else { None },
     };
 
-    Some(MappedRustDiagnostic { location, diagnostic, suggested_fixes })
+    Some(MappedRustDiagnostic { location, diagnostic, fixes })
 }
 
 /// Returns a `Url` object from a given path, will lowercase drive letters if present.
