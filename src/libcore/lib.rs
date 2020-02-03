@@ -74,6 +74,7 @@
 #![feature(const_if_match)]
 #![feature(const_int_checked)]
 #![feature(const_int_euclidean)]
+#![feature(const_int_overflowing)]
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
