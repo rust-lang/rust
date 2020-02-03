@@ -266,11 +266,9 @@ fn lint_int_literal<'a, 'tcx>(
             }
         }
 
-        cx.struct_span_lint(
-            OVERFLOWING_LITERALS,
-            e.span,
-            |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
-        );
+        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+            lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+        });
     }
 }
 
@@ -321,11 +319,9 @@ fn lint_uint_literal<'a, 'tcx>(
             report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);
             return;
         }
-        cx.struct_span_lint(
-            OVERFLOWING_LITERALS,
-            e.span,
-            |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
-        );
+        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+            lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+        });
     }
 }
 
@@ -355,11 +351,9 @@ fn lint_literal<'a, 'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.struct_span_lint(
-                    OVERFLOWING_LITERALS,
-                    e.span,
-                    |lint| lint.build(&format!("literal out of range for `{}`", t.name_str())).emit(),
-                );
+                cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+                    lint.build(&format!("literal out of range for `{}`", t.name_str())).emit()
+                });
             }
         }
         _ => {}
@@ -377,11 +371,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.struct_span_lint(
-                        UNUSED_COMPARISONS,
-                        e.span,
-                        |lint| lint.build("comparison is useless due to type limits").emit(),
-                    );
+                    cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
+                        lint.build("comparison is useless due to type limits").emit()
+                    });
                 }
             }
             hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
@@ -1058,11 +1050,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 cx.struct_span_lint(
                     VARIANT_SIZE_DIFFERENCES,
                     enum_definition.variants[largest_index].span,
-                    |lint| lint.build(&format!(
-                        "enum variant is more than three times \
+                    |lint| {
+                        lint.build(&format!(
+                            "enum variant is more than three times \
                                           larger ({} bytes) than the next largest",
-                        largest
-                    )).emit(),
+                            largest
+                        ))
+                        .emit()
+                    },
                 );
             }
         }

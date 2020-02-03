@@ -104,11 +104,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.struct_span_lint(
-                UNUSED_MUST_USE,
-                expr.span,
-                |lint| lint.build(&format!("unused {} that must be used", must_use_op)).emit(),
-            );
+            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
+                lint.build(&format!("unused {} that must be used", must_use_op)).emit()
+            });
             op_warned = true;
         }
 
@@ -247,7 +245,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(ref expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
-                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| lint.build("path statement with no effect").emit());
+                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
+                    lint.build("path statement with no effect").emit()
+                });
             }
         }
     }
@@ -288,7 +288,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 
         if !attr::is_used(attr) {
             debug!("emitting warning for: {:?}", attr);
-            cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| lint.build("unused attribute").emit());
+            cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
+                lint.build("unused attribute").emit()
+            });
             // Is it a builtin attribute that must be used at the crate level?
             if attr_info.map_or(false, |(_, ty, ..)| ty == &AttributeType::CrateLevel) {
                 cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
@@ -637,9 +639,9 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested(_) => return,
             };
 
-            cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint|
-            lint.build(&format!("braces around {} is unnecessary", node_name)).emit()
-            );
+            cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint| {
+                lint.build(&format!("braces around {} is unnecessary", node_name)).emit()
+            });
         }
     }
 }

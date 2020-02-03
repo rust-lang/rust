@@ -37,7 +37,13 @@ struct EarlyContextAndPass<'a, T: EarlyLintPass> {
 impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            let rustc_session::lint::BufferedEarlyLint { span, msg, node_id: _, lint_id: _, diagnostic } = early_lint;
+            let rustc_session::lint::BufferedEarlyLint {
+                span,
+                msg,
+                node_id: _,
+                lint_id: _,
+                diagnostic,
+            } = early_lint;
             self.context.lookup_with_diagnostics(
                 early_lint.lint_id.lint,
                 Some(span),
