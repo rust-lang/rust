@@ -866,8 +866,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // FIXME do something with _path?
                 let hir_id = self.tcx.hir().node_to_hir_id(p.id);
                 let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
-                    Some(ty) => ty.ty_adt_def().unwrap(),
-                    None => {
+                    Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
+                    _ => {
                         visit::walk_pat(self, p);
                         return;
                     }
