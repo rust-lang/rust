@@ -3,7 +3,7 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use rustc_span::FileName;
+use rustc_span::{CachingSourceMapView, FileName};
 
 use cranelift_codegen::binemit::CodeOffset;
 
@@ -74,12 +74,12 @@ fn line_program_add_file(
 
 impl<'tcx> DebugContext<'tcx> {
     pub(super) fn emit_location(&mut self, entry_id: UnitEntryId, span: Span) {
-        let loc = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+        let (file, line, col) = self.source_map.byte_pos_to_line_and_col(span.lo()).unwrap();
 
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
             &mut self.dwarf.line_strings,
-            &loc.file.name,
+            &file.name,
         );
 
         let entry = self.dwarf.unit.get_mut(entry_id);
@@ -90,12 +90,12 @@ impl<'tcx> DebugContext<'tcx> {
         );
         entry.set(
             gimli::DW_AT_decl_line,
-            AttributeValue::Udata(loc.line as u64),
+            AttributeValue::Udata(line as u64),
         );
         // FIXME: probably omit this
         entry.set(
             gimli::DW_AT_decl_column,
-            AttributeValue::Udata(loc.col.to_usize() as u64),
+            AttributeValue::Udata(col.to_usize() as u64),
         );
     }
 }
@@ -108,6 +108,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
         let tcx = self.debug_context.tcx;
+        let mut source_map = CachingSourceMapView::new(tcx.sess.source_map());
 
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
@@ -124,25 +125,25 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let line_strings = &mut self.debug_context.dwarf.line_strings;
         let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
-            let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
+            let (file, line, col) = source_map.byte_pos_to_line_and_col(span.lo()).unwrap();
 
             // line_program_add_file is very slow.
             // Optimize for the common case of the current file not being changed.
             let current_file_changed = if let Some(last_file) = &mut last_file {
                 // If the allocations are not equal, then the files may still be equal, but that
                 // is not a problem, as this is just an optimization.
-                !Lrc::ptr_eq(last_file, &loc.file)
+                !Lrc::ptr_eq(last_file, &file)
             } else {
                 true
             };
             if current_file_changed {
-                let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
+                let file_id = line_program_add_file(line_program, line_strings, &file.name);
                 line_program.row().file = file_id;
-                last_file = Some(loc.file.clone());
+                last_file = Some(file.clone());
             }
 
-            line_program.row().line = loc.line as u64;
-            line_program.row().column = loc.col.to_u32() as u64 + 1;
+            line_program.row().line = line as u64;
+            line_program.row().column = col.to_u32() as u64 + 1;
             line_program.generate_row();
         };
 
