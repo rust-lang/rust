@@ -1,0 +1,2 @@
+COMMENT 25 "/** /*! /* comment */ */\n"
+> error[0; 25) token("/** /*! /* comment */ */\n") msg(Missing trailing `*/` symbols to terminate the block comment)

@@ -1,0 +1,2 @@
+STRING 3 "\"\\n"
+> error[0; 3) token("\"\\n") msg(Missing trailing `"` symbol to terminate the string literal)

@@ -41,7 +41,9 @@ use crate::syntax_node::GreenNode;
 pub use crate::{
     algo::InsertPosition,
     ast::{AstNode, AstToken},
-    parsing::{classify_literal, tokenize, Token},
+    parsing::{
+        lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token, TokenizeError,
+    },
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::{Location, SyntaxError, SyntaxErrorKind},
     syntax_node::{

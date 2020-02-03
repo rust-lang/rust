@@ -1,0 +1,62 @@
+FLOAT_NUMBER 2 "0e"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 2 "0E"
+WHITESPACE 2 "\n\n"
+FLOAT_NUMBER 4 "42e+"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 4 "42e-"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 4 "42E+"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 4 "42E-"
+WHITESPACE 2 "\n\n"
+INT_NUMBER 2 "42"
+DOT 1 "."
+IDENT 1 "e"
+PLUS 1 "+"
+WHITESPACE 1 "\n"
+INT_NUMBER 2 "42"
+DOT 1 "."
+IDENT 1 "e"
+MINUS 1 "-"
+WHITESPACE 1 "\n"
+INT_NUMBER 2 "42"
+DOT 1 "."
+IDENT 1 "E"
+PLUS 1 "+"
+WHITESPACE 1 "\n"
+INT_NUMBER 2 "42"
+DOT 1 "."
+IDENT 1 "E"
+MINUS 1 "-"
+WHITESPACE 2 "\n\n"
+FLOAT_NUMBER 6 "42.2e+"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 6 "42.2e-"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 6 "42.2E+"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 6 "42.2E-"
+WHITESPACE 2 "\n\n"
+FLOAT_NUMBER 9 "42.2e+f32"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 9 "42.2e-f32"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 9 "42.2E+f32"
+WHITESPACE 1 "\n"
+FLOAT_NUMBER 9 "42.2E-f32"
+WHITESPACE 1 "\n"
+> error[0; 2) token("0e") msg(Missing digits after the exponent symbol)
+> error[3; 5) token("0E") msg(Missing digits after the exponent symbol)
+> error[7; 11) token("42e+") msg(Missing digits after the exponent symbol)
+> error[12; 16) token("42e-") msg(Missing digits after the exponent symbol)
+> error[17; 21) token("42E+") msg(Missing digits after the exponent symbol)
+> error[22; 26) token("42E-") msg(Missing digits after the exponent symbol)
+> error[53; 59) token("42.2e+") msg(Missing digits after the exponent symbol)
+> error[60; 66) token("42.2e-") msg(Missing digits after the exponent symbol)
+> error[67; 73) token("42.2E+") msg(Missing digits after the exponent symbol)
+> error[74; 80) token("42.2E-") msg(Missing digits after the exponent symbol)
+> error[82; 91) token("42.2e+f32") msg(Missing digits after the exponent symbol)
+> error[92; 101) token("42.2e-f32") msg(Missing digits after the exponent symbol)
+> error[102; 111) token("42.2E+f32") msg(Missing digits after the exponent symbol)
+> error[112; 121) token("42.2E-f32") msg(Missing digits after the exponent symbol)

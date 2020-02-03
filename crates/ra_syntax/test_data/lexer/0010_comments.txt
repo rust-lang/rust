@@ -1,6 +1,0 @@
-SHEBANG 19 "#!/usr/bin/env bash"
-WHITESPACE 1 "\n"
-COMMENT 8 "// hello"
-WHITESPACE 1 "\n"
-COMMENT 9 "//! World"
-WHITESPACE 1 "\n"

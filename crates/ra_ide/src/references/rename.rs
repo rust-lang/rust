@@ -2,7 +2,9 @@
 
 use hir::ModuleSource;
 use ra_db::{RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt};
-use ra_syntax::{algo::find_node_at_offset, ast, tokenize, AstNode, SyntaxKind, SyntaxNode};
+use ra_syntax::{
+    algo::find_node_at_offset, ast, lex_single_valid_syntax_kind, AstNode, SyntaxKind, SyntaxNode,
+};
 use ra_text_edit::TextEdit;
 
 use crate::{
@@ -17,11 +19,9 @@ pub(crate) fn rename(
     position: FilePosition,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
-    let tokens = tokenize(new_name);
-    if tokens.len() != 1
-        || (tokens[0].kind != SyntaxKind::IDENT && tokens[0].kind != SyntaxKind::UNDERSCORE)
-    {
-        return None;
+    match lex_single_valid_syntax_kind(new_name)? {
+        SyntaxKind::IDENT | SyntaxKind::UNDERSCORE => (),
+        _ => return None,
     }
 
     let parse = db.parse(position.file_id);
