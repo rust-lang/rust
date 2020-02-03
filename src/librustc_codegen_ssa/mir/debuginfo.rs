@@ -1,12 +1,12 @@
 use crate::traits::*;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
+use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Size};
-use rustc::ty::TyCtxt;
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
 
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
 
 use super::OperandValue;
@@ -22,6 +22,19 @@ pub struct FunctionDebugContext<D> {
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
+}
+
+/// Like `mir::VarDebugInfo`, but within a `mir::Local`.
+#[derive(Copy, Clone)]
+pub struct PerLocalVarDebugInfo<'tcx, D> {
+    pub name: Symbol,
+    pub source_info: mir::SourceInfo,
+
+    /// `DIVariable` returned by `create_dbg_var`.
+    pub dbg_var: Option<D>,
+
+    /// `.place.projection` from `mir::VarDebugInfo`.
+    pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,6 +116,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) use `llvm.dbg.value` (which would work for operands),
     // not just `llvm.dbg.declare` (which requires `alloca`).
     pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
+        let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
+
         // FIXME(eddyb) maybe name the return place as `_0` or `return`?
         if local == mir::RETURN_PLACE {
             return;
@@ -112,35 +127,63 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().copied().find(|var| var.place.projection.is_empty());
-        let has_proj = || vars.iter().any(|var| !var.place.projection.is_empty());
+        let whole_local_var = vars.iter().find(|var| var.projection.is_empty()).copied();
+        let has_proj = || vars.iter().any(|var| !var.projection.is_empty());
 
-        let (fallback_var, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
+        let fallback_var = if self.mir.local_kind(local) == mir::LocalKind::Arg {
             let arg_index = local.index() - 1;
 
             // Add debuginfo even to unnamed arguments.
             // FIXME(eddyb) is this really needed?
-            let var = if arg_index == 0 && has_proj() {
+            if arg_index == 0 && has_proj() {
                 // Hide closure environments from debuginfo.
                 // FIXME(eddyb) shouldn't `ArgumentVariable` indices
                 // be offset to account for the hidden environment?
                 None
+            } else if whole_local_var.is_some() {
+                // No need to make up anything, there is a `mir::VarDebugInfo`
+                // covering the whole local.
+                // FIXME(eddyb) take `whole_local_var.source_info.scope` into
+                // account, just in case it doesn't use `ArgumentVariable`
+                // (after #67586 gets fixed).
+                None
             } else {
-                Some(mir::VarDebugInfo {
-                    name: kw::Invalid,
-                    source_info: self.mir.local_decls[local].source_info,
-                    place: local.into(),
+                let name = kw::Invalid;
+                let decl = &self.mir.local_decls[local];
+                let (scope, span) = if full_debug_info {
+                    self.debug_loc(decl.source_info)
+                } else {
+                    (None, decl.source_info.span)
+                };
+                let dbg_var = scope.map(|scope| {
+                    // FIXME(eddyb) is this `+ 1` needed at all?
+                    let kind = VariableKind::ArgumentVariable(arg_index + 1);
+
+                    self.cx.create_dbg_var(
+                        self.debug_context.as_ref().unwrap(),
+                        name,
+                        self.monomorphize(&decl.ty),
+                        scope,
+                        kind,
+                        span,
+                    )
+                });
+
+                Some(PerLocalVarDebugInfo {
+                    name,
+                    source_info: decl.source_info,
+                    dbg_var,
+                    projection: ty::List::empty(),
                 })
-            };
-            (var, VariableKind::ArgumentVariable(arg_index + 1))
+            }
         } else {
-            (None, VariableKind::LocalVariable)
+            None
         };
 
         let local_ref = &self.locals[local];
 
         if !bx.sess().fewer_names() {
-            let name = match whole_local_var.or(fallback_var.as_ref()) {
+            let name = match whole_local_var.or(fallback_var) {
                 Some(var) if var.name != kw::Invalid => var.name.to_string(),
                 _ => format!("{:?}", local),
             };
@@ -163,7 +206,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
 
-        if bx.sess().opts.debuginfo != DebugInfo::Full {
+        if !full_debug_info {
             return;
         }
 
@@ -178,11 +221,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => return,
         };
 
-        let vars = vars.iter().copied().chain(if whole_local_var.is_none() {
-            fallback_var.as_ref()
-        } else {
-            None
-        });
+        let vars = vars.iter().copied().chain(fallback_var);
 
         for var in vars {
             let mut layout = base.layout;
@@ -190,10 +229,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // FIXME(eddyb) use smallvec here.
             let mut indirect_offsets = vec![];
 
-            let kind =
-                if var.place.projection.is_empty() { kind } else { VariableKind::LocalVariable };
-
-            for elem in &var.place.projection[..] {
+            for elem in &var.projection[..] {
                 match *elem {
                     mir::ProjectionElem::Deref => {
                         indirect_offsets.push(Size::ZERO);
@@ -202,7 +238,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 .ty
                                 .builtin_deref(true)
                                 .unwrap_or_else(|| {
-                                    span_bug!(var.source_info.span, "cannot deref `{}`", layout.ty,)
+                                    span_bug!(var.source_info.span, "cannot deref `{}`", layout.ty)
                                 })
                                 .ty,
                         );
@@ -219,24 +255,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => span_bug!(
                         var.source_info.span,
                         "unsupported var debuginfo place `{:?}`",
-                        var.place,
+                        mir::Place { local, projection: var.projection },
                     ),
                 }
             }
 
             let (scope, span) = self.debug_loc(var.source_info);
             if let Some(scope) = scope {
-                bx.declare_local(
-                    debug_context,
-                    var.name,
-                    layout.ty,
-                    scope,
-                    base.llval,
-                    direct_offset,
-                    &indirect_offsets,
-                    kind,
-                    span,
-                );
+                if let Some(dbg_var) = var.dbg_var {
+                    bx.dbg_var_addr(
+                        debug_context,
+                        dbg_var,
+                        scope,
+                        base.llval,
+                        direct_offset,
+                        &indirect_offsets,
+                        span,
+                    );
+                }
             }
         }
     }
@@ -248,20 +284,60 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
     }
-}
 
-/// Partition all `VarDebuginfo` in `body`, by their base `Local`.
-pub fn per_local_var_debug_info(
-    tcx: TyCtxt<'tcx>,
-    body: &'a mir::Body<'tcx>,
-) -> Option<IndexVec<mir::Local, Vec<&'a mir::VarDebugInfo<'tcx>>>> {
-    if tcx.sess.opts.debuginfo == DebugInfo::Full || !tcx.sess.fewer_names() {
-        let mut per_local = IndexVec::from_elem(vec![], &body.local_decls);
-        for var in &body.var_debug_info {
-            per_local[var.place.local].push(var);
+    /// Partition all `VarDebugInfo` in `self.mir`, by their base `Local`.
+    pub fn compute_per_local_var_debug_info(
+        &self,
+    ) -> Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>> {
+        let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
+
+        if !(full_debug_info || !self.cx.sess().fewer_names()) {
+            return None;
+        }
+
+        let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
+        for var in &self.mir.var_debug_info {
+            let (scope, span) = if full_debug_info {
+                self.debug_loc(var.source_info)
+            } else {
+                (None, var.source_info.span)
+            };
+            let dbg_var = scope.map(|scope| {
+                let place = var.place;
+                let var_ty = self.monomorphized_place_ty(place.as_ref());
+                let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
+                    && place.projection.is_empty()
+                {
+                    // FIXME(eddyb, #67586) take `var.source_info.scope` into
+                    // account to avoid using `ArgumentVariable` more than once
+                    // per argument local.
+
+                    let arg_index = place.local.index() - 1;
+
+                    // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
+                    // offset in closures to account for the hidden environment?
+                    // Also, is this `+ 1` needed at all?
+                    VariableKind::ArgumentVariable(arg_index + 1)
+                } else {
+                    VariableKind::LocalVariable
+                };
+                self.cx.create_dbg_var(
+                    self.debug_context.as_ref().unwrap(),
+                    var.name,
+                    var_ty,
+                    scope,
+                    var_kind,
+                    span,
+                )
+            });
+
+            per_local[var.place.local].push(PerLocalVarDebugInfo {
+                name: var.name,
+                source_info: var.source_info,
+                dbg_var,
+                projection: var.place.projection,
+            });
         }
         Some(per_local)
-    } else {
-        None
     }
 }

@@ -57,6 +57,7 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
 
     type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
+    type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
 }
 
 impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {

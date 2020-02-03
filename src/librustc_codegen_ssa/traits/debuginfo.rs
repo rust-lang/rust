@@ -30,20 +30,32 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
-}
 
-pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
-    fn declare_local(
-        &mut self,
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn create_dbg_var(
+        &self,
         dbg_context: &FunctionDebugContext<Self::DIScope>,
         variable_name: Name,
         variable_type: Ty<'tcx>,
+        scope_metadata: Self::DIScope,
+        variable_kind: VariableKind,
+        span: Span,
+    ) -> Self::DIVariable;
+}
+
+pub trait DebugInfoBuilderMethods: BackendTypes {
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn dbg_var_addr(
+        &mut self,
+        dbg_context: &FunctionDebugContext<Self::DIScope>,
+        dbg_var: Self::DIVariable,
         scope_metadata: Self::DIScope,
         variable_alloca: Self::Value,
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
-        variable_kind: VariableKind,
         span: Span,
     );
     fn set_source_location(
