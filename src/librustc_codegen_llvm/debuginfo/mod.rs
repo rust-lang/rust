@@ -290,7 +290,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // Get the linkage_name, which is just the symbol name
         let linkage_name = mangled_name_of_instance(self, instance);
 
-        let scope_line = span_start(self, span).line;
+        // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
+        let scope_line = loc.line;
 
         let function_name = CString::new(name).unwrap();
         let linkage_name = SmallCStr::new(&linkage_name.name.as_str());
@@ -547,10 +548,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
-        let file = span_start(self, span).file;
-        let file_metadata = file_metadata(self, &file.name, dbg_context.defining_crate);
-
         let loc = span_start(self, span);
+        let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
+
         let type_metadata = type_metadata(self, variable_type, span);
 
         let (argument_index, dwarf_tag) = match variable_kind {
