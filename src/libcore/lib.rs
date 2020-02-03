@@ -76,6 +76,7 @@
 #![feature(const_int_euclidean)]
 #![feature(const_int_overflowing)]
 #![feature(const_int_saturating)]
+#![feature(const_int_unchecked_arith)]
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
