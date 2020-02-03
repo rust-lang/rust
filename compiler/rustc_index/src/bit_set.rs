@@ -59,6 +59,13 @@ impl<T: Idx> BitSet<T> {
         result
     }
 
+    pub fn resize(&mut self, domain_size: usize) {
+        let num_words = num_words(domain_size);
+        self.domain_size = domain_size;
+        self.words.resize(num_words, 0);
+        self.clear_excess_bits();
+    }
+
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {

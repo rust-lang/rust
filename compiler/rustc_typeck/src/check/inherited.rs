@@ -33,7 +33,7 @@ pub struct Inherited<'a, 'tcx> {
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
-    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx> + 'tcx>>,
 
     // Some additional `Sized` obligations badly affect type inference.
     // These obligations are added in a later stage of typeck.
@@ -68,6 +68,12 @@ pub struct Inherited<'a, 'tcx> {
     pub(super) opaque_types_vars: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
     pub(super) body_id: Option<hir::BodyId>,
+}
+
+impl<'a, 'tcx> Drop for Inherited<'a, 'tcx> {
+    fn drop(&mut self) {
+        self.fulfillment_cx.get_mut().deregister(&self.infcx);
+    }
 }
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {

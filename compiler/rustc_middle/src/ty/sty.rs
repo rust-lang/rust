@@ -1041,7 +1041,11 @@ impl<T> Binder<T> {
     where
         T: TypeFoldable<'tcx>,
     {
-        if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
+        if self.0.has_escaping_bound_vars() {
+            None
+        } else {
+            Some(self.skip_binder())
+        }
     }
 
     /// Given two things that have the same binder level,
@@ -1463,6 +1467,18 @@ pub struct TyVid {
     pub index: u32,
 }
 
+impl Idx for TyVid {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= u32::max_value() as usize);
+        TyVid { index: idx as u32 }
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self.index as usize
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 pub struct ConstVid<'tcx> {
     pub index: u32,
@@ -1474,9 +1490,33 @@ pub struct IntVid {
     pub index: u32,
 }
 
+impl Idx for IntVid {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= u32::max_value() as usize);
+        IntVid { index: idx as u32 }
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self.index as usize
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 pub struct FloatVid {
     pub index: u32,
+}
+
+impl Idx for FloatVid {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= u32::max_value() as usize);
+        FloatVid { index: idx as u32 }
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self.index as usize
+    }
 }
 
 rustc_index::newtype_index! {
@@ -1877,7 +1917,11 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
+        if let Adt(def, _) = self.kind() {
+            def.is_phantom_data()
+        } else {
+            false
+        }
     }
 
     #[inline]

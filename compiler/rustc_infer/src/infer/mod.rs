@@ -11,6 +11,8 @@ pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::logged_unification_table as lut;
+use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
@@ -148,10 +150,10 @@ pub struct InferCtxtInner<'tcx> {
     const_unification_storage: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_storage: ut::UnificationTableStorage<ty::IntVid>,
+    int_unification_table: lut::LoggedUnificationTable<ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
+    float_unification_table: lut::LoggedUnificationTable<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     /// This is initially `Some(_)` but when
@@ -202,10 +204,10 @@ impl<'tcx> InferCtxtInner<'tcx> {
             projection_cache: Default::default(),
             type_variable_storage: type_variable::TypeVariableStorage::new(),
             undo_log: InferCtxtUndoLogs::default(),
-            const_unification_storage: ut::UnificationTableStorage::new(),
-            int_unification_storage: ut::UnificationTableStorage::new(),
-            float_unification_storage: ut::UnificationTableStorage::new(),
-            region_constraint_storage: Some(RegionConstraintStorage::new()),
+            const_unification_table: ut::UnificationTableStorage::new(),
+            int_unification_table: lut::LoggedUnificationTable::new(),
+            float_unification_table: lut::LoggedUnificationTable::new(),
+            region_constraints: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
     }

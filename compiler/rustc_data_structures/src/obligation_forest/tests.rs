@@ -5,9 +5,15 @@ use std::marker::PhantomData;
 
 impl<'a> super::ForestObligation for &'a str {
     type CacheKey = &'a str;
+    type Variable = ();
+    type WatcherOffset = ();
 
     fn as_cache_key(&self) -> Self::CacheKey {
         self
+    }
+
+    fn stalled_on(&self) -> &[Self::Variable] {
+        &[]
     }
 }
 
@@ -66,7 +72,7 @@ where
 
 impl<OF, BF, O, E> ObligationProcessor for ClosureObligationProcessor<OF, BF, O, E>
 where
-    O: super::ForestObligation + fmt::Debug,
+    O: super::ForestObligation<WatcherOffset = ()> + fmt::Debug,
     E: fmt::Debug,
     OF: FnMut(&mut O) -> ProcessResult<O, E>,
     BF: FnMut(&[O]),
@@ -86,6 +92,17 @@ where
         I: Clone + Iterator<Item = &'c Self::Obligation>,
     {
     }
+
+    fn unblocked(
+        &self,
+        _offset: &<Self::Obligation as ForestObligation>::WatcherOffset,
+        _f: impl FnMut(<Self::Obligation as ForestObligation>::Variable) -> bool,
+    ) {
+    }
+    fn register(&self) -> <Self::Obligation as ForestObligation>::WatcherOffset {}
+    fn deregister(&self, _offset: <Self::Obligation as ForestObligation>::WatcherOffset) {}
+    fn watch_variable(&self, _var: <Self::Obligation as ForestObligation>::Variable) {}
+    fn unwatch_variable(&self, _var: <Self::Obligation as ForestObligation>::Variable) {}
 }
 
 #[test]

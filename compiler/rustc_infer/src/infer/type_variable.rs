@@ -5,6 +5,8 @@ use rustc_span::Span;
 
 use crate::infer::InferCtxtUndoLogs;
 
+use rustc_data_structures::logged_unification_table as lut;
+use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 use std::cmp;
@@ -64,7 +66,7 @@ pub struct TypeVariableStorage<'tcx> {
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
-    eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
+    eq_relations: lut::LoggedUnificationTable<TyVidEqKey<'tcx>, TyVid>,
 
     /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -156,7 +158,7 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub fn new() -> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
             values: sv::SnapshotVecStorage::new(),
-            eq_relations: ut::UnificationTableStorage::new(),
+            eq_relations: lut::LoggedUnificationTable::new(),
             sub_relations: ut::UnificationTableStorage::new(),
         }
     }
@@ -203,6 +205,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+
         self.sub_relations().union(a, b);
     }
 
@@ -409,6 +412,30 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             })
             .collect()
     }
+
+    pub fn drain_modified_set(
+        &mut self,
+        offset: &ms::Offset<ty::TyVid>,
+        f: impl FnMut(ty::TyVid) -> bool,
+    ) {
+        self.eq_relations.drain_modified_set(offset, f)
+    }
+
+    pub fn register_unify_watcher(&mut self) -> ms::Offset<ty::TyVid> {
+        self.eq_relations.register()
+    }
+
+    pub fn deregister_unify_watcher(&mut self, offset: ms::Offset<ty::TyVid>) {
+        self.eq_relations.deregister(offset);
+    }
+
+    pub fn watch_variable(&mut self, vid: ty::TyVid) {
+        self.eq_relations.watch_variable(vid);
+    }
+
+    pub fn unwatch_variable(&mut self, vid: ty::TyVid) {
+        self.eq_relations.unwatch_variable(vid);
+    }
 }
 
 impl sv::SnapshotVecDelegate for Delegate {
@@ -431,6 +458,13 @@ impl sv::SnapshotVecDelegate for Delegate {
     }
 }
 
+impl sv::SnapshotVecDelegate for UnifiedVarsDelegate {
+    type Value = Vec<ty::TyVid>;
+    type Undo = ();
+
+    fn reverse(_values: &mut Vec<Self::Value>, _action: ()) {}
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 /// These structs (a newtyped TyVid) are used as the unification key
@@ -447,6 +481,12 @@ pub(crate) struct TyVidEqKey<'tcx> {
 impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
     fn from(vid: ty::TyVid) -> Self {
         TyVidEqKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> From<TyVidEqKey<'tcx>> for ty::TyVid {
+    fn from(vid: TyVidEqKey<'tcx>) -> Self {
+        vid.vid
     }
 }
 

@@ -153,7 +153,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             ),
             cause,
         );
-        if let Err(e) = fulfillcx.select_where_possible(&self.infcx) {
+        if let Err(e) = fulfillcx.select_all_where_possible(&self.infcx) {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
             // by design).
