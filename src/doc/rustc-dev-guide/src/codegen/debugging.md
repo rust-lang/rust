@@ -123,6 +123,8 @@ tutorial above):
 - The `-Ztime-llvm-passes` option measures the time of each LLVM pass
 - The `-Zverify-llvm-ir` option will verify the LLVM IR for correctness
 - The `-Zno-parallel-llvm` will disable parallel compilation of distinct compilation units
+- The `-Zllvm-time-trace` option will output a Chrome profiler compatible JSON file
+  which contains details and timings for LLVM passes.
 
 ### Filing LLVM bug reports
 
