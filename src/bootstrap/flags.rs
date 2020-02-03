@@ -571,7 +571,7 @@ fn split(s: &[String]) -> Vec<String> {
 }
 
 fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
-    match matches.opt_str("warnings").as_ref().map(|v| v.as_str()) {
+    match matches.opt_str("warnings").as_deref() {
         Some("deny") => Some(true),
         Some("warn") => Some(false),
         Some(value) => {
