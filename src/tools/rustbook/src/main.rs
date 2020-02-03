@@ -8,9 +8,6 @@ use clap::{App, AppSettings, ArgMatches, SubCommand};
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
-#[cfg(feature = "linkcheck")]
-use mdbook::renderer::RenderContext;
-
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
 'The output directory for your book{n}(Defaults to ./book when omitted)'";
@@ -87,14 +84,12 @@ pub fn linkcheck(
     use mdbook_linkcheck::Reason;
 
     let book_dir = get_book_dir(args);
-    let src_dir = get_book_dir(args).join("src");
+    let src_dir = book_dir.join("src");
     let book = MDBook::load(&book_dir).unwrap();
     let linkck_cfg = mdbook_linkcheck::get_config(&book.config)?;
     let mut files = codespan::Files::new();
     let target_files = mdbook_linkcheck::load_files_into_memory(&book.book, &mut files);
-    let render_ctx = RenderContext::new(&book_dir, book.book, book.config, &book_dir);
-    let cache_file = render_ctx.destination.join("cache.json");
-    let cache = mdbook_linkcheck::Cache::load(std::fs::File::open(cache_file)?)?;
+    let cache = mdbook_linkcheck::Cache::default();
 
     let (links, incomplete) = mdbook_linkcheck::extract_links(target_files, &files);
 
