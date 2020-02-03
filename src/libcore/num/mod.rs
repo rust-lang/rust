@@ -802,10 +802,11 @@ assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -860,10 +861,11 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -1298,10 +1300,11 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self.overflowing_div_euclid(rhs).0
             }
         }
@@ -1356,10 +1359,11 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self.overflowing_rem_euclid(rhs).0
             }
         }
@@ -1669,9 +1673,10 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
@@ -1736,10 +1741,11 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
@@ -1981,11 +1987,12 @@ assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn div_euclid(self, rhs: Self) -> Self {
+            pub const fn div_euclid(self, rhs: Self) -> Self {
                 let q = self / rhs;
                 if self % rhs < 0 {
                     return if rhs > 0 { q - 1 } else { q + 1 }
@@ -2020,11 +2027,12 @@ assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn rem_euclid(self, rhs: Self) -> Self {
+            pub const fn rem_euclid(self, rhs: Self) -> Self {
                 let r = self % rhs;
                 if r < 0 {
                     if rhs < 0 {
@@ -2939,10 +2947,11 @@ assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -2992,10 +3001,11 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -3315,10 +3325,11 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3366,10 +3377,11 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
@@ -3645,9 +3657,10 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
         }
@@ -3704,9 +3717,10 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
         }
@@ -3897,11 +3911,12 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn div_euclid(self, rhs: Self) -> Self {
+            pub const fn div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3926,11 +3941,12 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn rem_euclid(self, rhs: Self) -> Self {
+            pub const fn rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
