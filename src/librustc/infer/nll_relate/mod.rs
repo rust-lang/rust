@@ -529,6 +529,10 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
+        if a == b {
+            return Ok(a);
+        }
+
         match (&a.kind, &b.kind) {
             (_, &ty::Infer(ty::TyVar(vid))) => {
                 if D::forbid_inference_vars() {
@@ -637,6 +641,13 @@ where
         // - Instantiate binders on `a` existentially in U1.
 
         debug!("binders({:?}: {:?}, ambient_variance={:?})", a, b, self.ambient_variance);
+
+        if !a.skip_binder().has_escaping_bound_vars() && !b.skip_binder().has_escaping_bound_vars()
+        {
+            // Fast path for the common case.
+            self.relate(a.skip_binder(), b.skip_binder())?;
+            return Ok(a.clone());
+        }
 
         if self.ambient_covariance() {
             // Covariance, so we want `for<..> A <: for<..> B` --
