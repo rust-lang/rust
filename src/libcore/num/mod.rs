@@ -701,10 +701,11 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
@@ -725,10 +726,11 @@ assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
@@ -749,10 +751,11 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
@@ -889,8 +892,9 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
@@ -910,10 +914,11 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
@@ -933,10 +938,11 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
@@ -958,8 +964,9 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[inline]
-            pub fn checked_abs(self) -> Option<Self> {
+            pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
                     self.checked_neg()
                 } else {
@@ -2855,10 +2862,11 @@ Basic usage:
 assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
@@ -2877,10 +2885,11 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
@@ -2899,10 +2908,11 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
@@ -3029,8 +3039,9 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
@@ -3049,10 +3060,11 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
@@ -3071,10 +3083,11 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
