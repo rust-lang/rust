@@ -34,7 +34,7 @@ pub trait Qualif {
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         if let [proj_base @ .., elem] = place.projection {
@@ -66,7 +66,7 @@ pub trait Qualif {
 
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         Self::in_projection_structurally(cx, per_local, place)
@@ -74,7 +74,7 @@ pub trait Qualif {
 
     fn in_place(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         match place {
@@ -85,7 +85,7 @@ pub trait Qualif {
 
     fn in_operand(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         operand: &Operand<'tcx>,
     ) -> bool {
         match *operand {
@@ -126,7 +126,7 @@ pub trait Qualif {
 
     fn in_rvalue_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         match *rvalue {
@@ -170,7 +170,7 @@ pub trait Qualif {
 
     fn in_rvalue(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         Self::in_rvalue_structurally(cx, per_local, rvalue)
@@ -178,7 +178,7 @@ pub trait Qualif {
 
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
-        _per_local: &impl Fn(Local) -> bool,
+        _per_local: &mut impl FnMut(Local) -> bool,
         _callee: &Operand<'tcx>,
         _args: &[Operand<'tcx>],
         return_ty: Ty<'tcx>,
@@ -208,7 +208,7 @@ impl Qualif for HasMutInterior {
 
     fn in_rvalue(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         match *rvalue {
@@ -249,7 +249,7 @@ impl Qualif for NeedsDrop {
 
     fn in_rvalue(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &impl Fn(Local) -> bool,
+        per_local: &mut impl FnMut(Local) -> bool,
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         if let Rvalue::Aggregate(ref kind, _) = *rvalue {

@@ -253,7 +253,7 @@ impl Validator<'a, 'mir, 'tcx> {
 
         let borrowed_place_has_mut_interior = HasMutInterior::in_place(
             &self.item,
-            &|local| self.qualifs.has_mut_interior_eager_seek(local),
+            &mut |local| self.qualifs.has_mut_interior_eager_seek(local),
             place.as_ref(),
         );
 
