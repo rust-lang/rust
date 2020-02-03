@@ -1142,17 +1142,19 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
-                self.checked_mul(rhs).unwrap_or_else(|| {
-                    if (self < 0) == (rhs < 0) {
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
+                match self.checked_mul(rhs) {
+                    Some(x) => x,
+                    None => if (self < 0) == (rhs < 0) {
                         Self::max_value()
                     } else {
                         Self::min_value()
                     }
-                })
+                }
             }
         }
 
@@ -3195,11 +3197,15 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
-                self.checked_mul(rhs).unwrap_or(Self::max_value())
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
+                match self.checked_mul(rhs) {
+                    Some(x) => x,
+                    None => Self::max_value(),
+                }
             }
         }
 
