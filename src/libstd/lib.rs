@@ -163,11 +163,11 @@
 //! [`Iterator`]: iter/trait.Iterator.html
 //! [`Mutex`]: sync/struct.Mutex.html
 //! [`Option<T>`]: option/enum.Option.html
-//! [`Rc`]: rc/index.html
+//! [`Rc`]: rc/struct.Rc.html
 //! [`RefCell`]: cell/struct.RefCell.html
 //! [`Result<T, E>`]: result/enum.Result.html
 //! [`String`]: string/struct.String.html
-//! [`Vec<T>`]: vec/index.html
+//! [`Vec<T>`]: vec/struct.Vec.html
 //! [array]: primitive.array.html
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
