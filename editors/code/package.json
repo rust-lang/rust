@@ -145,7 +145,7 @@
             {
                 "command": "rust-analyzer.onEnter",
                 "key": "enter",
-                "when": "editorTextFocus && editorLangId == rust"
+                "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
             }
         ],
         "configuration": {
