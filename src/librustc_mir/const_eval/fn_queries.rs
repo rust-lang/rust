@@ -26,6 +26,8 @@ pub fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
 pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
+    // FIXME: check for `rustc_const_unstable` on the containing impl. This should be done by
+    // propagating it down so it is return by the `lookup_const_stability` query.
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
         if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
@@ -111,7 +113,18 @@ pub fn provide(providers: &mut Providers<'_>) {
         if let Some(whitelisted) = is_const_intrinsic(tcx, def_id) {
             whitelisted
         } else if let Some(fn_like) = FnLikeNode::from_node(node) {
-            fn_like.constness() == hir::Constness::Const
+            if fn_like.constness() == hir::Constness::Const {
+                return true;
+            }
+
+            // If the function itself is not annotated with `const`, it may still be a `const fn`
+            // if it resides in a const trait impl.
+            let parent_id = tcx.hir().get_parent_did(hir_id);
+            if def_id != parent_id && !parent_id.is_top_level_module() {
+                is_const_impl_raw(tcx, LocalDefId::from_def_id(parent_id))
+            } else {
+                false
+            }
         } else if let hir::Node::Ctor(_) = node {
             true
         } else {
