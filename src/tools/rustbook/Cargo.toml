@@ -6,13 +6,14 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [features]
-linkcheck = ["mdbook-linkcheck", "codespan-reporting"]
+linkcheck = ["mdbook-linkcheck", "codespan-reporting", "codespan"]
 
 [dependencies]
 clap = "2.25.0"
 failure = "0.1"
 mdbook-linkcheck = { version = "0.5.0", optional = true }
 # Keep in sync with mdbook-linkcheck.
+codespan = { version = "0.5", optional = true }
 codespan-reporting = { version = "0.5", optional = true }
 
 
