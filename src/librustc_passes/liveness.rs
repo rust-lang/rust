@@ -824,6 +824,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let mut any_changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
+            // This is a special case, pulled out from the code below, where we
+            // don't have to do anything. It occurs about 60-70% of the time.
+            if this.rwu_table.packed_rwus[succ_idx] == INV_INV_FALSE {
+                return;
+            }
+
             let mut changed = false;
             let mut rwu = this.rwu_table.get(idx);
             let succ_rwu = this.rwu_table.get(succ_idx);
