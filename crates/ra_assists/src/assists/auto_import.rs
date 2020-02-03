@@ -63,16 +63,12 @@ pub(crate) fn auto_import<F: ImportsLocator>(
         return None;
     }
 
-    ctx.add_assist_group(
-        AssistId("auto_import"),
-        format!("Import {}", path_to_import_syntax),
-        || {
-            proposed_imports
-                .into_iter()
-                .map(|import| import_to_action(import, &position, &path_to_import_syntax))
-                .collect()
-        },
-    )
+    ctx.add_assist_group(AssistId("auto_import"), format!("Import {}", name_to_import), || {
+        proposed_imports
+            .into_iter()
+            .map(|import| import_to_action(import, &position, &path_to_import_syntax))
+            .collect()
+    })
 }
 
 fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
