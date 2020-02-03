@@ -87,7 +87,6 @@
 #![feature(intrinsics)]
 #![feature(try_find)]
 #![feature(is_sorted)]
-#![feature(iter_once_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]

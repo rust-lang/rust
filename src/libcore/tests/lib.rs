@@ -13,7 +13,6 @@
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(is_sorted)]
-#![feature(iter_once_with)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]
