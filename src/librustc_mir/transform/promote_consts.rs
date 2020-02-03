@@ -407,7 +407,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     // FIXME(eddyb) maybe cache this?
     fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
-        let per_local = &|l| self.qualif_local::<Q>(l);
+        let per_local = &mut |l| self.qualif_local::<Q>(l);
 
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
