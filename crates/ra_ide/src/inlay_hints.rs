@@ -376,7 +376,7 @@ fn main() {
     let mut start = 0;
     (0..2).for_each(|increment| {
         start += increment;
-    })
+    });
 
     let multiply = |a, b, c, d| a * b * c * d;
     let _: i32 = multiply(1, 2, 3, 4);
@@ -399,37 +399,37 @@ fn main() {
                 label: "i32",
             },
             InlayHint {
-                range: [114; 122),
+                range: [115; 123),
                 kind: TypeHint,
                 label: "|…| -> i32",
             },
             InlayHint {
-                range: [126; 127),
+                range: [127; 128),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [129; 130),
+                range: [130; 131),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [132; 133),
+                range: [133; 134),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [135; 136),
+                range: [136; 137),
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: [200; 212),
+                range: [201; 213),
                 kind: TypeHint,
                 label: "&|…| -> i32",
             },
             InlayHint {
-                range: [235; 244),
+                range: [236; 245),
                 kind: TypeHint,
                 label: "|| -> i32",
             },
