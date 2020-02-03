@@ -822,8 +822,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             return false;
         }
 
-        let mut changed = false;
+        let mut any_changed = false;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
+            let mut changed = false;
             let mut rwu = this.rwu_table.get(idx);
             let succ_rwu = this.rwu_table.get(succ_idx);
             if succ_rwu.reader.is_valid() && !rwu.reader.is_valid() {
@@ -843,6 +844,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             if changed {
                 this.rwu_table.assign_unpacked(idx, rwu);
+                any_changed = true;
             }
         });
 
@@ -851,9 +853,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ln,
             self.ln_str(succ_ln),
             first_merge,
-            changed
+            any_changed
         );
-        return changed;
+        return any_changed;
     }
 
     // Indicates that a local variable was *defined*; we know that no
