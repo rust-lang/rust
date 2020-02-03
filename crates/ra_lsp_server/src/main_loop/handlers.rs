@@ -657,7 +657,6 @@ pub fn handle_code_action(
         .filter(|(diag_range, _fix)| diag_range.intersection(&range).is_some())
         .map(|(_range, fix)| fix);
 
-    // TODO: When done, we won't need this, only the one pulling from world.diagnostics
     for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
