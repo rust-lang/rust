@@ -3,7 +3,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_attr as attr;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
@@ -119,6 +119,19 @@ pub fn provide(providers: &mut Providers<'_>) {
         }
     }
 
+    /// Checks whether the given item is an `impl` that has a `const` modifier.
+    fn is_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let node = tcx.hir().get(hir_id);
+        matches!(
+            node,
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl { constness: hir::Constness::Const, .. },
+                ..
+            })
+        )
+    }
+
     fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         is_const_fn(tcx, def_id)
             && match tcx.lookup_const_stability(def_id) {
@@ -148,6 +161,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
     *providers = Providers {
         is_const_fn_raw,
+        is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, LocalDefId::from_def_id(def_id)),
         is_promotable_const_fn,
         const_fn_is_allowed_fn_ptr,
         ..*providers
