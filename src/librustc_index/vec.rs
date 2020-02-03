@@ -200,7 +200,7 @@ macro_rules! newtype_index {
             }
         }
 
-        impl ::std::iter::Step for $type {
+        unsafe impl ::std::iter::Step for $type {
             #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
@@ -210,32 +210,22 @@ macro_rules! newtype_index {
             }
 
             #[inline]
-            fn replace_one(&mut self) -> Self {
-                ::std::mem::replace(self, Self::from_u32(1))
-            }
-
-            #[inline]
-            fn replace_zero(&mut self) -> Self {
-                ::std::mem::replace(self, Self::from_u32(0))
-            }
-
-            #[inline]
-            fn add_one(&self) -> Self {
+            fn successor(&self) -> Self {
                 Self::from_usize(Self::index(*self) + 1)
             }
 
             #[inline]
-            fn sub_one(&self) -> Self {
+            fn predecessor(&self) -> Self {
                 Self::from_usize(Self::index(*self) - 1)
             }
 
             #[inline]
-            fn add_usize(&self, u: usize) -> Option<Self> {
+            fn forward(&self, u: usize) -> Option<Self> {
                 Self::index(*self).checked_add(u).map(Self::from_usize)
             }
 
             #[inline]
-            fn sub_usize(&self, u: usize) -> Option<Self> {
+            fn backward(&self, u: usize) -> Option<Self> {
                 Self::index(*self).checked_sub(u).map(Self::from_usize)
             }
         }
