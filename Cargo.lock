@@ -3086,6 +3086,7 @@ dependencies = [
  "fmt_macros",
  "graphviz",
  "jobserver",
+ "lazy_static 1.4.0",
  "log",
  "measureme",
  "parking_lot",
