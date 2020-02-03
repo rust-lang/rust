@@ -18,9 +18,9 @@
         "vscode": "^1.41.0"
     },
     "scripts": {
-        "vscode:prepublish": "rollup -c",
+        "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package",
-        "watch": "tsc -watch -p ./",
+        "watch": "tsc --watch",
         "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
     },
     "dependencies": {
@@ -30,7 +30,6 @@
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.2",
         "@rollup/plugin-node-resolve": "^7.1.1",
-        "@rollup/plugin-typescript": "^2.0.0",
         "@types/node": "^12.12.25",
         "@types/vscode": "^1.41.0",
         "rollup": "^1.31.0",
