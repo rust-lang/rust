@@ -44,6 +44,7 @@ use rustc_hir::Node;
 use rustc_hir::*;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
@@ -541,11 +542,17 @@ pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
 ///
 /// # Example
 /// ```rust,ignore
-/// snippet_block(cx, expr.span, "..")
+/// snippet_block(cx, expr.span, "..", None)
 /// ```
-pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet_block<'a, T: LintContext>(
+    cx: &T,
+    span: Span,
+    default: &'a str,
+    indent_relative_to: Option<Span>,
+) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
-    trim_multiline(snip, true)
+    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
+    trim_multiline(snip, true, indent)
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
@@ -554,27 +561,73 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
     default: &'a str,
+    indent_relative_to: Option<Span>,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
     let snip = snippet_with_applicability(cx, span, default, applicability);
-    trim_multiline(snip, true)
+    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
+    trim_multiline(snip, true, indent)
 }
 
-/// Returns a new Span that covers the full last line of the given Span
-pub fn last_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
+/// Returns a new Span that extends the original Span to the first non-whitespace char of the first
+/// line.
+///
+/// ```rust,ignore
+///     let x = ();
+/// //          ^^
+/// // will be converted to
+///     let x = ();
+/// //  ^^^^^^^^^^
+/// ```
+pub fn first_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
+    if let Some(first_char_pos) = first_char_in_first_line(cx, span) {
+        span.with_lo(first_char_pos)
+    } else {
+        span
+    }
+}
+
+fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePos> {
+    let line_span = line_span(cx, span);
+    if let Some(snip) = snippet_opt(cx, line_span) {
+        snip.find(|c: char| !c.is_whitespace())
+            .map(|pos| line_span.lo() + BytePos::from_usize(pos))
+    } else {
+        None
+    }
+}
+
+/// Returns the indentation of the line of a span
+///
+/// ```rust,ignore
+/// let x = ();
+/// //      ^^ -- will return 0
+///     let x = ();
+/// //          ^^ -- will return 4
+/// ```
+pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
+    if let Some(snip) = snippet_opt(cx, line_span(cx, span)) {
+        snip.find(|c: char| !c.is_whitespace())
+    } else {
+        None
+    }
+}
+
+/// Extends the span to the beginning of the spans line, incl. whitespaces.
+///
+/// ```rust,ignore
+///        let x = ();
+/// //             ^^
+/// // will be converted to
+///        let x = ();
+/// // ^^^^^^^^^^^^^^
+/// ```
+fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
+    let span = original_sp(span, DUMMY_SP);
     let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = source_map_and_line.line;
-    let line_start = &source_map_and_line.sf.lines[line_no];
-    let span = Span::new(*line_start, span.hi(), span.ctxt());
-    if_chain! {
-        if let Some(snip) = snippet_opt(cx, span);
-        if let Some(first_ch_pos) = snip.find(|c: char| !c.is_whitespace());
-        then {
-            span.with_lo(span.lo() + BytePos::from_usize(first_ch_pos))
-        } else {
-            span
-        }
-    }
+    let line_start = source_map_and_line.sf.lines[line_no];
+    Span::new(line_start, span.hi(), span.ctxt())
 }
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
@@ -584,8 +637,9 @@ pub fn expr_block<'a, T: LintContext>(
     expr: &Expr<'_>,
     option: Option<String>,
     default: &'a str,
+    indent_relative_to: Option<Span>,
 ) -> Cow<'a, str> {
-    let code = snippet_block(cx, expr.span, default);
+    let code = snippet_block(cx, expr.span, default, indent_relative_to);
     let string = option.unwrap_or_default();
     if expr.span.from_expansion() {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
@@ -600,14 +654,14 @@ pub fn expr_block<'a, T: LintContext>(
 
 /// Trim indentation from a multiline string with possibility of ignoring the
 /// first line.
-pub fn trim_multiline(s: Cow<'_, str>, ignore_first: bool) -> Cow<'_, str> {
-    let s_space = trim_multiline_inner(s, ignore_first, ' ');
-    let s_tab = trim_multiline_inner(s_space, ignore_first, '\t');
-    trim_multiline_inner(s_tab, ignore_first, ' ')
+pub fn trim_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
+    let s_space = trim_multiline_inner(s, ignore_first, indent, ' ');
+    let s_tab = trim_multiline_inner(s_space, ignore_first, indent, '\t');
+    trim_multiline_inner(s_tab, ignore_first, indent, ' ')
 }
 
-fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_, str> {
-    let x = s
+fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>, ch: char) -> Cow<'_, str> {
+    let mut x = s
         .lines()
         .skip(ignore_first as usize)
         .filter_map(|l| {
@@ -620,6 +674,9 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
         })
         .min()
         .unwrap_or(0);
+    if let Some(indent) = indent {
+        x = x.saturating_sub(indent);
+    }
     if x > 0 {
         Cow::Owned(
             s.lines()

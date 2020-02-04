@@ -434,7 +434,7 @@ fn report_single_match_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let els_str = els.map_or(String::new(), |els| {
-        format!(" else {}", expr_block(cx, els, None, ".."))
+        format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
     span_lint_and_sugg(
         cx,
@@ -447,7 +447,7 @@ fn report_single_match_single_pattern(
             "if let {} = {} {}{}",
             snippet(cx, arms[0].pat.span, ".."),
             snippet(cx, ex.span, ".."),
-            expr_block(cx, &arms[0].body, None, ".."),
+            expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
             els_str,
         ),
         Applicability::HasPlaceholders,
@@ -523,17 +523,21 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
                             (false, false) => Some(format!(
                                 "if {} {} else {}",
                                 snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, ".."),
-                                expr_block(cx, false_expr, None, "..")
+                                expr_block(cx, true_expr, None, "..", Some(expr.span)),
+                                expr_block(cx, false_expr, None, "..", Some(expr.span))
                             )),
                             (false, true) => Some(format!(
                                 "if {} {}",
                                 snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..")
+                                expr_block(cx, true_expr, None, "..", Some(expr.span))
                             )),
                             (true, false) => {
                                 let test = Sugg::hir(cx, ex, "..");
-                                Some(format!("if {} {}", !test, expr_block(cx, false_expr, None, "..")))
+                                Some(format!(
+                                    "if {} {}",
+                                    !test,
+                                    expr_block(cx, false_expr, None, "..", Some(expr.span))
+                                ))
                             },
                             (true, true) => None,
                         };
