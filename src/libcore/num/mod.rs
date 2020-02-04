@@ -4,7 +4,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::convert::Infallible;
+use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -98,6 +98,20 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                         nonzero.0
                     }
                 }
+            }
+
+            #[stable(feature = "try_from_nonzero", since = "1.43.0")]
+            impl TryFrom<$Int> for $Ty {
+                type Error = ();
+                doc_comment! {
+                    concat!(
+"Converts a `", stringify!($Ty), "` into an `", stringify!($Int),
+"` if it is non-zero"),
+                    fn try_from(int: $Int) -> Result<Self, ()> {
+                        Self::new(int).ok_or(())
+                    }
+                }
+
             }
 
             impl_nonzero_fmt! {
