@@ -1438,10 +1438,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits = traits::expand_trait_aliases(
-            tcx,
-            bounds.trait_bounds.iter().map(|&(a, b, _)| (a.clone(), b)),
-        );
+        let expanded_traits =
+            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
