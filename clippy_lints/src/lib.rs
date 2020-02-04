@@ -218,7 +218,6 @@ pub mod if_let_some_result;
 pub mod if_not_else;
 pub mod implicit_return;
 pub mod indexing_slicing;
-pub mod infallible_destructuring_match;
 pub mod infinite_iter;
 pub mod inherent_impl;
 pub mod inherent_to_string;
@@ -555,7 +554,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &implicit_return::IMPLICIT_RETURN,
         &indexing_slicing::INDEXING_SLICING,
         &indexing_slicing::OUT_OF_BOUNDS_INDEXING,
-        &infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         &infinite_iter::INFINITE_ITER,
         &infinite_iter::MAYBE_INFINITE_ITER,
         &inherent_impl::MULTIPLE_INHERENT_IMPL,
@@ -600,10 +598,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &map_clone::MAP_CLONE,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
         &map_unit_fn::RESULT_MAP_UNIT_FN,
+        &matches::INFALLIBLE_DESTRUCTURING_MATCH,
         &matches::MATCH_AS_REF,
         &matches::MATCH_BOOL,
         &matches::MATCH_OVERLAPPING_ARM,
         &matches::MATCH_REF_PATS,
+        &matches::MATCH_SINGLE_BINDING,
         &matches::MATCH_WILD_ERR_ARM,
         &matches::SINGLE_MATCH,
         &matches::SINGLE_MATCH_ELSE,
@@ -864,7 +864,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box types::Casts);
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
-    store.register_late_pass(|| box matches::Matches);
+    store.register_late_pass(|| box matches::Matches::default());
     store.register_late_pass(|| box minmax::MinMaxPass);
     store.register_late_pass(|| box open_options::OpenOptions);
     store.register_late_pass(|| box zero_div_zero::ZeroDiv);
@@ -941,7 +941,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box question_mark::QuestionMark);
     store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
     store.register_late_pass(|| box map_unit_fn::MapUnit);
-    store.register_late_pass(|| box infallible_destructuring_match::InfallibleDestructingMatch);
     store.register_late_pass(|| box inherent_impl::MultipleInherentImpl::default());
     store.register_late_pass(|| box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
     store.register_late_pass(|| box unwrap::Unwrap);
@@ -1166,7 +1165,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&identity_op::IDENTITY_OP),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
-        LintId::of(&infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&infinite_iter::INFINITE_ITER),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY),
@@ -1201,10 +1199,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
+        LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_AS_REF),
         LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),
         LintId::of(&matches::MATCH_REF_PATS),
+        LintId::of(&matches::MATCH_SINGLE_BINDING),
         LintId::of(&matches::MATCH_WILD_ERR_ARM),
         LintId::of(&matches::SINGLE_MATCH),
         LintId::of(&matches::WILDCARD_IN_OR_PATTERNS),
@@ -1382,7 +1382,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::DOUBLE_MUST_USE),
         LintId::of(&functions::MUST_USE_UNIT),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
-        LintId::of(&infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
         LintId::of(&len_zero::LEN_ZERO),
@@ -1395,6 +1394,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&map_clone::MAP_CLONE),
+        LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),
         LintId::of(&matches::MATCH_REF_PATS),
@@ -1483,6 +1483,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(&matches::MATCH_AS_REF),
+        LintId::of(&matches::MATCH_SINGLE_BINDING),
         LintId::of(&matches::WILDCARD_IN_OR_PATTERNS),
         LintId::of(&methods::CHARS_NEXT_CMP),
         LintId::of(&methods::CLONE_ON_COPY),

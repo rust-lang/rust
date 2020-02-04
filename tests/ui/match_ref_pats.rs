@@ -26,6 +26,7 @@ fn ref_pats() {
     }
     // False positive: only wildcard pattern.
     let w = Some(0);
+    #[allow(clippy::match_single_binding)]
     match w {
         _ => println!("none"),
     }
