@@ -126,9 +126,8 @@ fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
         None => return path.to_path_buf(),
     };
     for part in path.components() {
-        match part {
-            Component::Normal(s) => ret.push(s),
-            _ => {}
+        if let Component::Normal(s) = part {
+            ret.push(s)
         }
     }
     ret

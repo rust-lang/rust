@@ -16,7 +16,6 @@ use crate::flags::Flags;
 pub use crate::flags::Subcommand;
 use build_helper::t;
 use serde::Deserialize;
-use toml;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -440,7 +439,7 @@ impl Config {
                     }
                 }
             })
-            .unwrap_or_else(|| TomlConfig::default());
+            .unwrap_or_else(TomlConfig::default);
 
         let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
@@ -539,7 +538,7 @@ impl Config {
             config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.clone();
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
         }
 
         if let Some(ref rust) = toml.rust {
@@ -606,7 +605,7 @@ impl Config {
                 target.ar = cfg.ar.clone().map(PathBuf::from);
                 target.ranlib = cfg.ranlib.clone().map(PathBuf::from);
                 target.linker = cfg.linker.clone().map(PathBuf::from);
-                target.crt_static = cfg.crt_static.clone();
+                target.crt_static = cfg.crt_static;
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);

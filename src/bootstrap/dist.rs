@@ -828,7 +828,7 @@ impl Step for Analysis {
         assert!(builder.config.extended);
         let name = pkgname(builder, "rust-analysis");
 
-        if &compiler.host != builder.config.build {
+        if compiler.host != builder.config.build {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -877,7 +877,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
             Some(path) => path,
             None => return false,
         };
-        if spath.ends_with("~") || spath.ends_with(".pyc") {
+        if spath.ends_with('~') || spath.ends_with(".pyc") {
             return false;
         }
 

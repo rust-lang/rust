@@ -444,7 +444,7 @@ impl Build {
             builder.execute_cli();
         } else {
             let builder = builder::Builder::new(&self);
-            let _ = builder.execute_cli();
+            builder.execute_cli();
         }
 
         // Check for postponed failures from `test --no-fail-fast`.
@@ -839,7 +839,7 @@ impl Build {
             .target_config
             .get(&target)
             .and_then(|t| t.musl_root.as_ref())
-            .or(self.config.musl_root.as_ref())
+            .or_else(|| self.config.musl_root.as_ref())
             .map(|p| &**p)
     }
 
