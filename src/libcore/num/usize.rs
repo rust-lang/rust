@@ -4,4 +4,4 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-uint_module! { usize }
+int_module! { usize }

@@ -155,10 +155,6 @@ mod internal_macros;
 #[macro_use]
 mod int_macros;
 
-#[path = "num/uint_macros.rs"]
-#[macro_use]
-mod uint_macros;
-
 #[path = "num/i128.rs"]
 pub mod i128;
 #[path = "num/i16.rs"]

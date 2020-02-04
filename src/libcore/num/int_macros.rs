@@ -1,5 +1,12 @@
 #![doc(hidden)]
 
+macro_rules! doc_comment {
+    ($x:expr, $($tt:tt)*) => {
+        #[doc = $x]
+        $($tt)*
+    };
+}
+
 macro_rules! int_module {
     ($T:ident) => (int_module!($T, #[stable(feature = "rust1", since = "1.0.0")]););
     ($T:ident, #[$attr:meta]) => (
