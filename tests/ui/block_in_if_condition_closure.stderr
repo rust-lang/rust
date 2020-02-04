@@ -1,0 +1,24 @@
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> $DIR/block_in_if_condition_closure.rs:19:17
+   |
+LL |               |x| {
+   |  _________________^
+LL | |                 let target = 3;
+LL | |                 x == target
+LL | |             },
+   | |_____________^
+   |
+   = note: `-D clippy::block-in-if-condition-stmt` implied by `-D warnings`
+
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> $DIR/block_in_if_condition_closure.rs:28:13
+   |
+LL |           |x| {
+   |  _____________^
+LL | |             let target = 3;
+LL | |             x == target
+LL | |         },
+   | |_________^
+
+error: aborting due to 2 previous errors
+
