@@ -256,7 +256,16 @@ impl Inliner<'tcx> {
         }
 
         if self.use_simple_heuristic {
-            return callee_body.basic_blocks().len() == 1 && callee_body.basic_blocks()[BasicBlock::from_u32(0)].statements.len() < 10;
+            use rustc::mir::StatementKind::*;
+
+            return callee_body.basic_blocks().len() == 1
+                && callee_body.basic_blocks()[BasicBlock::from_u32(0)]
+                    .statements
+                    .iter()
+                    .filter(|stmt| !matches!(stmt.kind, StorageLive(_) | StorageDead(_)))
+                    .take(5)
+                    .count()
+                    <= 4;
         }
 
         let mut threshold = if hinted { HINT_THRESHOLD } else { DEFAULT_THRESHOLD };
