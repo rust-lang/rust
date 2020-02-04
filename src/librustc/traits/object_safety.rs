@@ -13,24 +13,26 @@ use super::elaborate_predicates;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use smallvec::{smallvec, SmallVec};
 use syntax::ast;
 
 use std::borrow::Cow;
 use std::iter::{self};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
-    SizedSelf,
+    SizedSelf(SmallVec<[Span; 1]>),
 
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
-    SupertraitSelf,
+    SupertraitSelf(SmallVec<[Span; 1]>),
 
     /// Method has something illegal.
     Method(ast::Name, MethodViolationCode, Span),
@@ -42,50 +44,91 @@ pub enum ObjectSafetyViolation {
 impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match *self {
-            ObjectSafetyViolation::SizedSelf => {
-                "the trait cannot require that `Self : Sized`".into()
+            ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            ObjectSafetyViolation::SupertraitSelf(ref spans) => {
+                if spans.iter().any(|sp| *sp != DUMMY_SP) {
+                    "it uses `Self` as a type parameter in this".into()
+                } else {
+                    "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
+                        .into()
+                }
             }
-            ObjectSafetyViolation::SupertraitSelf => {
-                "the trait cannot use `Self` as a type parameter \
-                 in the supertraits or where-clauses"
-                    .into()
-            }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) => {
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{}` has no `self` parameter", name).into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, _) => format!(
-                "method `{}` references the `Self` type in its parameters or return type",
+            ObjectSafetyViolation::Method(
                 name,
-            )
-            .into(),
+                MethodViolationCode::ReferencesSelfInput(_),
+                DUMMY_SP,
+            ) => format!("method `{}` references the `Self` type in its parameters", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
+                format!("method `{}` references the `Self` type in this parameter", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfOutput, _) => {
+                format!("method `{}` references the `Self` type in its return type", name).into()
+            }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
-            ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
+            ) => {
+                format!("method `{}` references the `Self` type in its `where` clause", name).into()
+            }
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
                 format!("method `{}` has generic type parameters", name).into()
             }
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
                 format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
             }
-            ObjectSafetyViolation::AssocConst(name, _) => {
-                format!("the trait cannot contain associated consts like `{}`", name).into()
+            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+                format!("it contains associated `const` `{}`", name).into()
             }
+            ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
         }
     }
 
-    pub fn span(&self) -> Option<Span> {
+    pub fn solution(&self) -> Option<(String, Option<(String, Span)>)> {
+        Some(match *self {
+            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {
+                return None;
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(sugg), _) => (
+                format!(
+                    "consider turning `{}` into a method by giving it a `&self` argument or \
+                     constraining it so it does not apply to trait objects",
+                    name
+                ),
+                sugg.map(|(sugg, sp)| (sugg.to_string(), sp)),
+            ),
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::UndispatchableReceiver,
+                span,
+            ) => (
+                format!("consider changing method `{}`'s `self` parameter to be `&self`", name)
+                    .into(),
+                Some(("&Self".to_string(), span)),
+            ),
+            ObjectSafetyViolation::AssocConst(name, _)
+            | ObjectSafetyViolation::Method(name, ..) => {
+                (format!("consider moving `{}` to another trait", name), None)
+            }
+        })
+    }
+
+    pub fn spans(&self) -> SmallVec<[Span; 1]> {
         // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
-        match *self {
+        match self {
+            ObjectSafetyViolation::SupertraitSelf(spans)
+            | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
             | ObjectSafetyViolation::Method(_, _, span)
-                if span != DUMMY_SP =>
+                if *span != DUMMY_SP =>
             {
-                Some(span)
+                smallvec![*span]
             }
-            _ => None,
+            _ => smallvec![],
         }
     }
 }
@@ -94,10 +137,13 @@ impl ObjectSafetyViolation {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`
-    StaticMethod,
+    StaticMethod(Option<(&'static str, Span)>),
 
-    /// e.g., `fn foo(&self, x: Self)` or `fn foo(&self) -> Self`
-    ReferencesSelf,
+    /// e.g., `fn foo(&self, x: Self)`
+    ReferencesSelfInput(usize),
+
+    /// e.g., `fn foo(&self) -> Self`
+    ReferencesSelfOutput,
 
     /// e.g., `fn foo(&self) where Self: Clone`
     WhereClauseReferencesSelf,
@@ -119,8 +165,9 @@ pub fn astconv_object_safety_violations(
 ) -> Vec<ObjectSafetyViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     let violations = traits::supertrait_def_ids(tcx, trait_def_id)
-        .filter(|&def_id| predicates_reference_self(tcx, def_id, true))
-        .map(|_| ObjectSafetyViolation::SupertraitSelf)
+        .map(|def_id| predicates_reference_self(tcx, def_id, true))
+        .filter(|spans| !spans.is_empty())
+        .map(|spans| ObjectSafetyViolation::SupertraitSelf(spans))
         .collect();
 
     debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);
@@ -168,7 +215,7 @@ fn object_safety_violations_for_trait(
         .filter(|item| item.kind == ty::AssocKind::Method)
         .filter_map(|item| {
             object_safety_violation_for_method(tcx, trait_def_id, &item)
-                .map(|code| ObjectSafetyViolation::Method(item.ident.name, code, item.ident.span))
+                .map(|(code, span)| ObjectSafetyViolation::Method(item.ident.name, code, span))
         })
         .filter(|violation| {
             if let ObjectSafetyViolation::Method(
@@ -179,7 +226,7 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                tcx.struct_span_lint_hir(
+                let mut err = tcx.struct_span_lint_hir(
                     WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
@@ -187,9 +234,29 @@ fn object_safety_violations_for_trait(
                         "the trait `{}` cannot be made into an object",
                         tcx.def_path_str(trait_def_id)
                     ),
-                )
-                .note(&violation.error_msg())
-                .emit();
+                );
+                let node = tcx.hir().get_if_local(trait_def_id);
+                let msg = if let Some(hir::Node::Item(item)) = node {
+                    err.span_label(item.ident.span, "this trait cannot be made into an object...");
+                    format!("...because {}", violation.error_msg())
+                } else {
+                    format!(
+                        "the trait cannot be made into an object because {}",
+                        violation.error_msg()
+                    )
+                };
+                err.span_label(*span, &msg);
+                match (node, violation.solution()) {
+                    (Some(_), Some((note, None))) => {
+                        err.help(&note);
+                    }
+                    (Some(_), Some((note, Some((sugg, span))))) => {
+                        err.span_suggestion(span, &note, sugg, Applicability::MachineApplicable);
+                    }
+                    // Only provide the help if its a local trait, otherwise it's not actionable.
+                    _ => {}
+                }
+                err.emit();
                 false
             } else {
                 true
@@ -199,10 +266,13 @@ fn object_safety_violations_for_trait(
 
     // Check the trait itself.
     if trait_has_sized_self(tcx, trait_def_id) {
-        violations.push(ObjectSafetyViolation::SizedSelf);
+        // We don't want to include the requirement from `Sized` itself to be `Sized` in the list.
+        let spans = get_sized_bounds(tcx, trait_def_id);
+        violations.push(ObjectSafetyViolation::SizedSelf(spans));
     }
-    if predicates_reference_self(tcx, trait_def_id, false) {
-        violations.push(ObjectSafetyViolation::SupertraitSelf);
+    let spans = predicates_reference_self(tcx, trait_def_id, false);
+    if !spans.is_empty() {
+        violations.push(ObjectSafetyViolation::SupertraitSelf(spans));
     }
 
     violations.extend(
@@ -219,7 +289,64 @@ fn object_safety_violations_for_trait(
     violations
 }
 
-fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_only: bool) -> bool {
+fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
+    tcx.hir()
+        .get_if_local(trait_def_id)
+        .and_then(|node| match node {
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(.., generics, bounds, _),
+                ..
+            }) => Some(
+                generics
+                    .where_clause
+                    .predicates
+                    .iter()
+                    .filter_map(|pred| {
+                        match pred {
+                            hir::WherePredicate::BoundPredicate(pred)
+                                if pred.bounded_ty.hir_id.owner_def_id() == trait_def_id =>
+                            {
+                                // Fetch spans for trait bounds that are Sized:
+                                // `trait T where Self: Pred`
+                                Some(pred.bounds.iter().filter_map(|b| match b {
+                                    hir::GenericBound::Trait(
+                                        trait_ref,
+                                        hir::TraitBoundModifier::None,
+                                    ) if trait_has_sized_self(
+                                        tcx,
+                                        trait_ref.trait_ref.trait_def_id(),
+                                    ) =>
+                                    {
+                                        Some(trait_ref.span)
+                                    }
+                                    _ => None,
+                                }))
+                            }
+                            _ => None,
+                        }
+                    })
+                    .flatten()
+                    .chain(bounds.iter().filter_map(|b| match b {
+                        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
+                            if trait_has_sized_self(tcx, trait_ref.trait_ref.trait_def_id()) =>
+                        {
+                            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
+                            Some(trait_ref.span)
+                        }
+                        _ => None,
+                    }))
+                    .collect::<SmallVec<[Span; 1]>>(),
+            ),
+            _ => None,
+        })
+        .unwrap_or_else(SmallVec::new)
+}
+
+fn predicates_reference_self(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    supertraits_only: bool,
+) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
         tcx.super_predicates_of(trait_def_id)
@@ -231,12 +358,16 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
     predicates
         .predicates
         .iter()
-        .map(|(predicate, _)| predicate.subst_supertrait(tcx, &trait_ref))
-        .any(|predicate| {
+        .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
+        .filter_map(|(predicate, &sp)| {
             match predicate {
                 ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    data.skip_binder().input_types().skip(1).any(has_self_ty)
+                    if data.skip_binder().input_types().skip(1).any(has_self_ty) {
+                        Some(sp)
+                    } else {
+                        None
+                    }
                 }
                 ty::Predicate::Projection(ref data) => {
                     // And similarly for projections. This should be redundant with
@@ -251,12 +382,18 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
                     //
                     // This is ALT2 in issue #56288, see that for discussion of the
                     // possible alternatives.
-                    data.skip_binder()
+                    if data
+                        .skip_binder()
                         .projection_ty
                         .trait_ref(tcx)
                         .input_types()
                         .skip(1)
                         .any(has_self_ty)
+                    {
+                        Some(sp)
+                    } else {
+                        None
+                    }
                 }
                 ty::Predicate::WellFormed(..)
                 | ty::Predicate::ObjectSafe(..)
@@ -264,9 +401,10 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
                 | ty::Predicate::RegionOutlives(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => false,
+                | ty::Predicate::ConstEvaluatable(..) => None,
             }
         })
+        .collect()
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
@@ -304,7 +442,7 @@ fn object_safety_violation_for_method(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     method: &ty::AssocItem,
-) -> Option<MethodViolationCode> {
+) -> Option<(MethodViolationCode, Span)> {
     debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
@@ -312,7 +450,26 @@ fn object_safety_violation_for_method(
         return None;
     }
 
-    virtual_call_violation_for_method(tcx, trait_def_id, method)
+    let violation = virtual_call_violation_for_method(tcx, trait_def_id, method);
+    // Get an accurate span depending on the violation.
+    violation.map(|v| {
+        let node = tcx.hir().get_if_local(method.def_id);
+        let span = match (v, node) {
+            (MethodViolationCode::ReferencesSelfInput(arg), Some(node)) => node
+                .fn_decl()
+                .and_then(|decl| decl.inputs.get(arg + 1))
+                .map_or(method.ident.span, |arg| arg.span),
+            (MethodViolationCode::UndispatchableReceiver, Some(node)) => node
+                .fn_decl()
+                .and_then(|decl| decl.inputs.get(0))
+                .map_or(method.ident.span, |arg| arg.span),
+            (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
+                node.fn_decl().map_or(method.ident.span, |decl| decl.output.span())
+            }
+            _ => method.ident.span,
+        };
+        (v, span)
+    })
 }
 
 /// Returns `Some(_)` if this method cannot be called on a trait
@@ -326,18 +483,26 @@ fn virtual_call_violation_for_method<'tcx>(
 ) -> Option<MethodViolationCode> {
     // The method's first parameter must be named `self`
     if !method.method_has_self_argument {
-        return Some(MethodViolationCode::StaticMethod);
+        // We'll attempt to provide a structured suggestion for `Self: Sized`.
+        let sugg =
+            tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
+                |generics| match generics.where_clause.predicates {
+                    [] => (" where Self: Sized", generics.where_clause.span),
+                    [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
+                },
+            );
+        return Some(MethodViolationCode::StaticMethod(sugg));
     }
 
     let sig = tcx.fn_sig(method.def_id);
 
-    for input_ty in &sig.skip_binder().inputs()[1..] {
+    for (i, input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
-            return Some(MethodViolationCode::ReferencesSelf);
+            return Some(MethodViolationCode::ReferencesSelfInput(i));
         }
     }
     if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output().skip_binder()) {
-        return Some(MethodViolationCode::ReferencesSelf);
+        return Some(MethodViolationCode::ReferencesSelfOutput);
     }
 
     // We can't monomorphize things like `fn foo<A>(...)`.

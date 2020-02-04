@@ -32,7 +32,7 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
 
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
-    pub illegal_sized_bound: bool,
+    pub illegal_sized_bound: Option<Span>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -112,7 +112,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
-        if !illegal_sized_bound {
+        if illegal_sized_bound.is_none() {
             let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
             self.add_obligations(method_ty, all_substs, &method_predicates);
         }
@@ -561,23 +561,31 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn predicates_require_illegal_sized_bound(
         &self,
         predicates: &ty::InstantiatedPredicates<'tcx>,
-    ) -> bool {
+    ) -> Option<Span> {
         let sized_def_id = match self.tcx.lang_items().sized_trait() {
             Some(def_id) => def_id,
-            None => return false,
+            None => return None,
         };
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
             .filter_map(|predicate| match predicate {
                 ty::Predicate::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
-                    Some(trait_pred)
+                    let span = predicates
+                        .predicates
+                        .iter()
+                        .zip(predicates.spans.iter())
+                        .filter_map(|(p, span)| if *p == predicate { Some(*span) } else { None })
+                        .next()
+                        .unwrap_or(rustc_span::DUMMY_SP);
+                    Some((trait_pred, span))
                 }
                 _ => None,
             })
-            .any(|trait_pred| match trait_pred.skip_binder().self_ty().kind {
-                ty::Dynamic(..) => true,
-                _ => false,
+            .filter_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
+                ty::Dynamic(..) => Some(span),
+                _ => None,
             })
+            .next()
     }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {

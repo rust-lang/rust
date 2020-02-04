@@ -1,8 +1,10 @@
 error: the trait `X` cannot be made into an object
   --> $DIR/issue-50781.rs:6:8
    |
+LL | trait X {
+   |       - this trait cannot be made into an object...
 LL |     fn foo(&self) where Self: Trait;
-   |        ^^^
+   |        ^^^ ...because method `foo` references the `Self` type in its `where` clause
    |
 note: the lint level is defined here
   --> $DIR/issue-50781.rs:1:9
@@ -11,7 +13,7 @@ LL | #![deny(where_clauses_object_safety)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #51443 <https://github.com/rust-lang/rust/issues/51443>
-   = note: method `foo` references the `Self` type in where clauses
+   = help: consider moving `foo` to another trait
 
 error: aborting due to previous error
 

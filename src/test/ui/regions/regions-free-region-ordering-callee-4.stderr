@@ -1,12 +1,8 @@
 error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-free-region-ordering-callee-4.rs:5:1
+  --> $DIR/regions-free-region-ordering-callee-4.rs:5:68
    |
-LL | / fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
-LL | |
-LL | |     // Do not infer ordering from closure argument types.
-LL | |     let z: Option<&'a &'b usize> = None;
-LL | | }
-   | |_^
+LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
+   |                                                                    ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined on the function body at 5:14
   --> $DIR/regions-free-region-ordering-callee-4.rs:5:14

@@ -2,12 +2,14 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized3.rs:7:13
    |
 LL | fn f1<X: ?Sized>(x: &X) {
-   |       -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |       - this type parameter needs to be `std::marker::Sized`
 LL |     f2::<X>(x);
    |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f2<X>(x: &X) {
-   |    -- - required by this bound in `f2`
+   |    -- -- help: consider relaxing the implicit `Sized` restriction: `: ?Sized`
+   |       |
+   |       required by this bound in `f2`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -16,12 +18,14 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized3.rs:18:13
    |
 LL | fn f3<X: ?Sized + T>(x: &X) {
-   |       -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |       - this type parameter needs to be `std::marker::Sized`
 LL |     f4::<X>(x);
    |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f4<X: T>(x: &X) {
-   |    -- - required by this bound in `f4`
+   |    -- -   - help: consider relaxing the implicit `Sized` restriction: `+  ?Sized`
+   |       |
+   |       required by this bound in `f4`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -33,7 +37,7 @@ LL | fn f5<Y>(x: &Y) {}
    |    -- - required by this bound in `f5`
 ...
 LL | fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
-   |       -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |       - this type parameter needs to be `std::marker::Sized`
 LL |     f5(x1);
    |        ^^ doesn't have a size known at compile-time
    |
@@ -45,7 +49,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized3.rs:40:8
    |
 LL | fn f9<X: ?Sized>(x1: Box<S<X>>) {
-   |       -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |       - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(*x1, 34));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -58,7 +62,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized3.rs:45:9
    |
 LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
-   |        -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |        - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(32, *x1));
    |         ^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -75,7 +79,7 @@ LL | fn f5<Y>(x: &Y) {}
    |    -- - required by this bound in `f5`
 ...
 LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
-   |        -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |        - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(32, *x1));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |

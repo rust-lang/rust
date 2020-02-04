@@ -1,15 +1,13 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-in-fn-where-clause.rs:9:1
+  --> $DIR/wf-in-fn-where-clause.rs:10:14
    |
-LL |   trait MustBeCopy<T:Copy> {
-   |   ------------------------ required by `MustBeCopy`
+LL | trait MustBeCopy<T:Copy> {
+   | ------------------------ required by `MustBeCopy`
 ...
-LL | / fn bar<T,U>()
-LL | |     where T: MustBeCopy<U>
-   | |                           - help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
-LL | | {
-LL | | }
-   | |_^ the trait `std::marker::Copy` is not implemented for `U`
+LL |     where T: MustBeCopy<U>
+   |              ^^^^^^^^^^^^^- help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
+   |              |
+   |              the trait `std::marker::Copy` is not implemented for `U`
 
 error: aborting due to previous error
 

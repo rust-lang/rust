@@ -7,19 +7,13 @@ LL | struct NoData<T>;
    = help: consider removing `T`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
-  --> $DIR/issue-20413.rs:8:1
+  --> $DIR/issue-20413.rs:8:36
    |
-LL |   trait Foo {
-   |   --------- required by `Foo`
+LL | trait Foo {
+   | --------- required by `Foo`
 ...
-LL | / impl<T> Foo for T where NoData<T>: Foo {
-LL | |
-LL | |   fn answer(self) {
-LL | |
-LL | |     let val: NoData<T> = NoData;
-LL | |   }
-LL | | }
-   | |_^
+LL | impl<T> Foo for T where NoData<T>: Foo {
+   |                                    ^^^
    |
    = help: consider adding a `#![recursion_limit="256"]` attribute to your crate
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
@@ -151,16 +145,13 @@ LL | | }
    = note: required because of the requirements on the impl of `Foo` for `NoData<T>`
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
-  --> $DIR/issue-20413.rs:10:3
+  --> $DIR/issue-20413.rs:8:36
    |
-LL |   trait Foo {
-   |   --------- required by `Foo`
+LL | trait Foo {
+   | --------- required by `Foo`
 ...
-LL | /   fn answer(self) {
-LL | |
-LL | |     let val: NoData<T> = NoData;
-LL | |   }
-   | |___^
+LL | impl<T> Foo for T where NoData<T>: Foo {
+   |                                    ^^^
    |
    = help: consider adding a `#![recursion_limit="256"]` attribute to your crate
    = note: required because of the requirements on the impl of `Foo` for `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`

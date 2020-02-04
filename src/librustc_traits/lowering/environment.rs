@@ -161,7 +161,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     }
 
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates } =
+    let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     let clauses = predicates

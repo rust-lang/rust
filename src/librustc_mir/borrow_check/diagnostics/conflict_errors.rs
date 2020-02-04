@@ -3,7 +3,7 @@ use rustc::mir::{
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
-use rustc::traits::error_reporting::suggest_constraining_type_param;
+use rustc::traits::error_reporting::suggestions::suggest_constraining_type_param;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -217,12 +217,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         tcx.hir().get_generics(tcx.closure_base_def_id(self.mir_def_id))
                     {
                         suggest_constraining_type_param(
+                            tcx,
                             generics,
                             &mut err,
                             &param.name.as_str(),
                             "Copy",
                             tcx.sess.source_map(),
                             span,
+                            None,
                         );
                     }
                 }

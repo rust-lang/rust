@@ -6,8 +6,8 @@
 
 trait ExtraCopy<T:Copy> { }
 
-trait SomeTrait<T> { //~ ERROR E0277
-    type Type1: ExtraCopy<T>;
+trait SomeTrait<T> {
+    type Type1: ExtraCopy<T>; //~ ERROR E0277
 }
 
 

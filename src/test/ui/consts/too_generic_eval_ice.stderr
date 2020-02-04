@@ -18,7 +18,7 @@ LL | pub struct Foo<A, B>(A, B);
    | --------------------------- required by `Foo`
 LL | 
 LL | impl<A, B> Foo<A, B> {
-   |      - help: consider restricting this bound: `A: std::marker::Sized`
+   |      - this type parameter needs to be `std::marker::Sized`
 ...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -33,7 +33,7 @@ LL | pub struct Foo<A, B>(A, B);
    | --------------------------- required by `Foo`
 LL | 
 LL | impl<A, B> Foo<A, B> {
-   |         - help: consider restricting this bound: `B: std::marker::Sized`
+   |         - this type parameter needs to be `std::marker::Sized`
 ...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

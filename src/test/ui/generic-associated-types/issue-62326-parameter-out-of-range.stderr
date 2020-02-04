@@ -1,15 +1,10 @@
 error[E0280]: the requirement `for<'a> <Self as Iterator>::Item<'a>: 'a` is not satisfied
-  --> $DIR/issue-62326-parameter-out-of-range.rs:6:1
+  --> $DIR/issue-62326-parameter-out-of-range.rs:7:20
    |
-LL |   trait Iterator {
-   |   ^-------------
-   |   |
-   |  _required by `Iterator`
-   | |
-LL | |
-LL | |     type Item<'a>: 'a;
-LL | | }
-   | |_^
+LL | trait Iterator {
+   | -------------- required by `Iterator`
+LL |     type Item<'a>: 'a;
+   |                    ^^
 
 error: aborting due to previous error
 

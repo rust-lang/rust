@@ -1,34 +1,31 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-fn-where-clause.rs:8:1
+  --> $DIR/wf-fn-where-clause.rs:8:24
    |
-LL |   trait ExtraCopy<T:Copy> { }
-   |   ----------------------- required by `ExtraCopy`
+LL | trait ExtraCopy<T:Copy> { }
+   | ----------------------- required by `ExtraCopy`
 LL | 
-LL |   fn foo<T,U>() where T: ExtraCopy<U>
-   |   ^                                  - help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
-   |  _|
-   | |
-LL | | {
-LL | | }
-   | |_^ the trait `std::marker::Copy` is not implemented for `U`
+LL | fn foo<T,U>() where T: ExtraCopy<U>
+   |                        ^^^^^^^^^^^^- help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
+   |                        |
+   |                        the trait `std::marker::Copy` is not implemented for `U`
 
 error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` cannot be known at compilation time
-  --> $DIR/wf-fn-where-clause.rs:12:1
+  --> $DIR/wf-fn-where-clause.rs:12:16
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::marker::Copy + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::vec::Vec`
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object
-  --> $DIR/wf-fn-where-clause.rs:12:1
+  --> $DIR/wf-fn-where-clause.rs:12:16
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
+   |                ^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
+   = note: the trait cannot be made into an object because it requires `Self: Sized`
 
 error: aborting due to 3 previous errors
 

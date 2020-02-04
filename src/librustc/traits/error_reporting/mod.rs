@@ -27,7 +27,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use syntax::ast;
@@ -1034,6 +1033,10 @@ pub fn report_object_safety_error(
     violations: Vec<ObjectSafetyViolation>,
 ) -> DiagnosticBuilder<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
+    let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
+        hir::Node::Item(item) => Some(item.ident.span),
+        _ => None,
+    });
     let span = tcx.sess.source_map().def_span(span);
     let mut err = struct_span_err!(
         tcx.sess,
@@ -1045,13 +1048,44 @@ pub fn report_object_safety_error(
     err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
 
     let mut reported_violations = FxHashSet::default();
+    let mut had_span_label = false;
     for violation in violations {
-        if reported_violations.insert(violation.clone()) {
-            match violation.span() {
-                Some(span) => err.span_label(span, violation.error_msg()),
-                None => err.note(&violation.error_msg()),
-            };
+        if let ObjectSafetyViolation::SizedSelf(sp) = &violation {
+            if !sp.is_empty() {
+                // Do not report `SizedSelf` without spans pointing at `SizedSelf` obligations
+                // with a `Span`.
+                reported_violations.insert(ObjectSafetyViolation::SizedSelf(vec![].into()));
+            }
         }
+        if reported_violations.insert(violation.clone()) {
+            let spans = violation.spans();
+            let msg = if trait_span.is_none() || spans.is_empty() {
+                format!("the trait cannot be made into an object because {}", violation.error_msg())
+            } else {
+                had_span_label = true;
+                format!("...because {}", violation.error_msg())
+            };
+            if spans.is_empty() {
+                err.note(&msg);
+            } else {
+                for span in spans {
+                    err.span_label(span, &msg);
+                }
+            }
+            match (trait_span, violation.solution()) {
+                (Some(_), Some((note, None))) => {
+                    err.help(&note);
+                }
+                (Some(_), Some((note, Some((sugg, span))))) => {
+                    err.span_suggestion(span, &note, sugg, Applicability::MachineApplicable);
+                }
+                // Only provide the help if its a local trait, otherwise it's not actionable.
+                _ => {}
+            }
+        }
+    }
+    if let (Some(trait_span), true) = (trait_span, had_span_label) {
+        err.span_label(trait_span, "this trait cannot be made into an object...");
     }
 
     if tcx.sess.trait_methods_not_found.borrow().contains(&span) {
@@ -1305,6 +1339,44 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 &obligation.cause.code,
                 &mut vec![],
             );
+            self.suggest_unsized_bound_if_applicable(err, obligation);
+        }
+    }
+
+    fn suggest_unsized_bound_if_applicable(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let (
+            ty::Predicate::Trait(pred, _),
+            ObligationCauseCode::BindingObligation(item_def_id, span),
+        ) = (&obligation.predicate, &obligation.cause.code)
+        {
+            if let (Some(generics), true) = (
+                self.tcx.hir().get_if_local(*item_def_id).as_ref().and_then(|n| n.generics()),
+                Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
+            ) {
+                for param in generics.params {
+                    if param.span == *span
+                        && !param.bounds.iter().any(|bound| {
+                            bound.trait_def_id() == self.tcx.lang_items().sized_trait()
+                        })
+                    {
+                        let (span, separator) = match param.bounds {
+                            [] => (span.shrink_to_hi(), ":"),
+                            [.., bound] => (bound.span().shrink_to_hi(), " + "),
+                        };
+                        err.span_suggestion(
+                            span,
+                            "consider relaxing the implicit `Sized` restriction",
+                            format!("{} ?Sized", separator),
+                            Applicability::MachineApplicable,
+                        );
+                        return;
+                    }
+                }
+            }
         }
     }
 
@@ -1353,75 +1425,4 @@ impl ArgKind {
             _ => ArgKind::Arg("_".to_owned(), t.to_string()),
         }
     }
-}
-
-/// Suggest restricting a type param with a new bound.
-pub fn suggest_constraining_type_param(
-    generics: &hir::Generics<'_>,
-    err: &mut DiagnosticBuilder<'_>,
-    param_name: &str,
-    constraint: &str,
-    source_map: &SourceMap,
-    span: Span,
-) -> bool {
-    let restrict_msg = "consider further restricting this bound";
-    if let Some(param) =
-        generics.params.iter().filter(|p| p.name.ident().as_str() == param_name).next()
-    {
-        if param_name.starts_with("impl ") {
-            // `impl Trait` in argument:
-            // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
-            err.span_suggestion(
-                param.span,
-                restrict_msg,
-                // `impl CurrentTrait + MissingTrait`
-                format!("{} + {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else if generics.where_clause.predicates.is_empty() && param.bounds.is_empty() {
-            // If there are no bounds whatsoever, suggest adding a constraint
-            // to the type parameter:
-            // `fn foo<T>(t: T) {}` → `fn foo<T: Trait>(t: T) {}`
-            err.span_suggestion(
-                param.span,
-                "consider restricting this bound",
-                format!("{}: {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else if !generics.where_clause.predicates.is_empty() {
-            // There is a `where` clause, so suggest expanding it:
-            // `fn foo<T>(t: T) where T: Debug {}` →
-            // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
-            err.span_suggestion(
-                generics.where_clause.span().unwrap().shrink_to_hi(),
-                &format!("consider further restricting type parameter `{}`", param_name),
-                format!(", {}: {}", param_name, constraint),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            // If there is no `where` clause lean towards constraining to the
-            // type parameter:
-            // `fn foo<X: Bar, T>(t: T, x: X) {}` → `fn foo<T: Trait>(t: T) {}`
-            // `fn foo<T: Bar>(t: T) {}` → `fn foo<T: Bar + Trait>(t: T) {}`
-            let sp = param.span.with_hi(span.hi());
-            let span = source_map.span_through_char(sp, ':');
-            if sp != param.span && sp != span {
-                // Only suggest if we have high certainty that the span
-                // covers the colon in `foo<T: Trait>`.
-                err.span_suggestion(
-                    span,
-                    restrict_msg,
-                    format!("{}: {} + ", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                err.span_label(
-                    param.span,
-                    &format!("consider adding a `where {}: {}` bound", param_name, constraint),
-                );
-            }
-        }
-        return true;
-    }
-    false
 }

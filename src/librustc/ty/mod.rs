@@ -1015,6 +1015,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     ) -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)).collect(),
+            spans: self.predicates.iter().map(|(_, sp)| *sp).collect(),
         }
     }
 
@@ -1028,6 +1029,7 @@ impl<'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)));
+        instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 
     pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
@@ -1044,7 +1046,8 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|&(p, _)| p))
+        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
+        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
     }
 
     pub fn instantiate_supertrait(
@@ -1059,6 +1062,7 @@ impl<'tcx> GenericPredicates<'tcx> {
                 .iter()
                 .map(|(pred, _)| pred.subst_supertrait(tcx, poly_trait_ref))
                 .collect(),
+            spans: self.predicates.iter().map(|(_, sp)| *sp).collect(),
         }
     }
 }
@@ -1511,11 +1515,12 @@ impl<'tcx> Predicate<'tcx> {
 #[derive(Clone, Debug, TypeFoldable)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
+    pub spans: Vec<Span>,
 }
 
 impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: vec![] }
+        InstantiatedPredicates { predicates: vec![], spans: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
