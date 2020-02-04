@@ -693,7 +693,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.sess,
                         fn_decl_span,
                         E0628,
-                        "too many parameters for generator (expected 0 or 1 parameters)"
+                        "too many parameters for a generator (expected 0 or 1 parameters)"
                     )
                     .emit();
                 }
