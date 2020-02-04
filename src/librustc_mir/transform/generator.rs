@@ -1128,10 +1128,6 @@ fn create_cases<'tcx>(
                             Rvalue::Use(Operand::Move(resume_arg.into())),
                         )),
                     });
-                    statements.push(Statement {
-                        source_info,
-                        kind: StatementKind::StorageDead(resume_arg),
-                    });
                 }
 
                 // Then jump to the real target
