@@ -64,12 +64,9 @@ impl ImportsLocator for ImportsLocatorIde<'_> {
             .into_iter()
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(db, &import_candidate))
-            .filter_map(|name_definition_to_import| {
-                if let NameKind::Def(module_def) = name_definition_to_import.kind {
-                    Some(module_def)
-                } else {
-                    None
-                }
+            .filter_map(|name_definition_to_import| match name_definition_to_import.kind {
+                NameKind::Def(module_def) => Some(module_def),
+                _ => None,
             })
             .collect()
     }
