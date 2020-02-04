@@ -266,3 +266,29 @@ jobs:
         cargo install cargo-cache --debug
         find ~/.cargo/bin ! -type d -exec strip {} \;
         cargo cache --autoclean
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+
+  end-success:
+    name: bors test finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [base, integration]
+
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors test finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [base, integration]
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1
