@@ -341,16 +341,15 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.compute_is_empty();
-        if self.is_empty.unwrap_or_default() {
+        if self.is_empty() {
             return None;
         }
         let is_iterating = self.start < self.end;
-        self.is_empty = Some(!is_iterating);
         Some(if is_iterating {
             let n = self.start.add_one();
             mem::replace(&mut self.start, n)
         } else {
+            self.exhausted = true;
             self.start.clone()
         })
     }
@@ -369,8 +368,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        self.compute_is_empty();
-        if self.is_empty.unwrap_or_default() {
+        if self.is_empty() {
             return None;
         }
 
@@ -379,13 +377,12 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
-                    self.is_empty = Some(false);
                     self.start = plus_n.add_one();
                     return Some(plus_n);
                 }
                 Some(Equal) => {
-                    self.is_empty = Some(true);
                     self.start = plus_n.clone();
+                    self.exhausted = true;
                     return Some(plus_n);
                 }
                 _ => {}
@@ -393,7 +390,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
 
         self.start = self.end.clone();
-        self.is_empty = Some(true);
+        self.exhausted = true;
         None
     }
 
@@ -404,8 +401,6 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Ok = B>,
     {
-        self.compute_is_empty();
-
         if self.is_empty() {
             return Try::from_ok(init);
         }
@@ -418,7 +413,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             accum = f(accum, n)?;
         }
 
-        self.is_empty = Some(true);
+        self.exhausted = true;
 
         if self.start == self.end {
             accum = f(accum, self.start.clone())?;
@@ -447,24 +442,22 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.compute_is_empty();
-        if self.is_empty.unwrap_or_default() {
+        if self.is_empty() {
             return None;
         }
         let is_iterating = self.start < self.end;
-        self.is_empty = Some(!is_iterating);
         Some(if is_iterating {
             let n = self.end.sub_one();
             mem::replace(&mut self.end, n)
         } else {
+            self.exhausted = true;
             self.end.clone()
         })
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<A> {
-        self.compute_is_empty();
-        if self.is_empty.unwrap_or_default() {
+        if self.is_empty() {
             return None;
         }
 
@@ -473,13 +466,12 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
 
             match minus_n.partial_cmp(&self.start) {
                 Some(Greater) => {
-                    self.is_empty = Some(false);
                     self.end = minus_n.sub_one();
                     return Some(minus_n);
                 }
                 Some(Equal) => {
-                    self.is_empty = Some(true);
                     self.end = minus_n.clone();
+                    self.exhausted = true;
                     return Some(minus_n);
                 }
                 _ => {}
@@ -487,7 +479,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         }
 
         self.end = self.start.clone();
-        self.is_empty = Some(true);
+        self.exhausted = true;
         None
     }
 
@@ -498,8 +490,6 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Ok = B>,
     {
-        self.compute_is_empty();
-
         if self.is_empty() {
             return Try::from_ok(init);
         }
@@ -512,7 +502,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
             accum = f(accum, n)?;
         }
 
-        self.is_empty = Some(true);
+        self.exhausted = true;
 
         if self.start == self.end {
             accum = f(accum, self.start.clone())?;
