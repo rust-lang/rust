@@ -3,12 +3,6 @@ name: Clippy Test (bors)
 on:
   push:
     branches: [auto, try]
-    # Don't run tests, when only textfiles were modified
-    paths-ignore:
-    - 'COPYRIGHT'
-    - 'LICENSE-*'
-    - '**.md'
-    - '**.txt'
 
 env:
   RUST_BACKTRACE: 1
