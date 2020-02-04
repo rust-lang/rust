@@ -213,8 +213,6 @@ impl f32 {
     /// Returns `true` if this value is `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let nan = f32::NAN;
     /// let f = 7.0_f32;
     ///
@@ -239,8 +237,6 @@ impl f32 {
     /// `false` otherwise.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 7.0f32;
     /// let inf = f32::INFINITY;
     /// let neg_inf = f32::NEG_INFINITY;
@@ -261,8 +257,6 @@ impl f32 {
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 7.0f32;
     /// let inf = f32::INFINITY;
     /// let neg_inf = f32::NEG_INFINITY;
@@ -286,8 +280,6 @@ impl f32 {
     /// [subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
     /// let max = f32::MAX;
     /// let lower_than_min = 1.0e-40_f32;
@@ -315,7 +307,6 @@ impl f32 {
     ///
     /// ```
     /// use std::num::FpCategory;
-    /// use std::f32;
     ///
     /// let num = 12.4_f32;
     /// let inf = f32::INFINITY;
@@ -375,8 +366,6 @@ impl f32 {
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.recip() - (1.0 / x)).abs();
     ///
@@ -391,7 +380,7 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// use std::f32::{self, consts};
+    /// use std::f32::consts;
     ///
     /// let angle = consts::PI;
     ///
@@ -410,7 +399,7 @@ impl f32 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// use std::f32::{self, consts};
+    /// use std::f32::consts;
     ///
     /// let angle = 180.0f32;
     ///

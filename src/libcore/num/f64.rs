@@ -212,8 +212,6 @@ impl f64 {
     /// Returns `true` if this value is `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let nan = f64::NAN;
     /// let f = 7.0_f64;
     ///
@@ -238,8 +236,6 @@ impl f64 {
     /// `false` otherwise.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 7.0f64;
     /// let inf = f64::INFINITY;
     /// let neg_inf = f64::NEG_INFINITY;
@@ -260,8 +256,6 @@ impl f64 {
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let f = 7.0f64;
     /// let inf: f64 = f64::INFINITY;
     /// let neg_inf: f64 = f64::NEG_INFINITY;
@@ -285,8 +279,6 @@ impl f64 {
     /// [subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
@@ -314,7 +306,6 @@ impl f64 {
     ///
     /// ```
     /// use std::num::FpCategory;
-    /// use std::f64;
     ///
     /// let num = 12.4_f64;
     /// let inf = f64::INFINITY;
