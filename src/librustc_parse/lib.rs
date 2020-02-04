@@ -2,7 +2,6 @@
 
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;

@@ -282,12 +282,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
-    if !cfg!(bootstrap) {
-        atomic_store(
-            &mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32,
-            ptr!(exception_cleanup) as u32,
-        );
-    }
+    atomic_store(&mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32, ptr!(exception_cleanup) as u32);
     atomic_store(
         &mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
         ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32,
@@ -300,12 +295,10 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         &mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
         ptr!(&TYPE_DESCRIPTOR as *const _) as u32,
     );
-    if !cfg!(bootstrap) {
-        atomic_store(
-            &mut CATCHABLE_TYPE.copyFunction as *mut _ as *mut u32,
-            ptr!(exception_copy) as u32,
-        );
-    }
+    atomic_store(
+        &mut CATCHABLE_TYPE.copyFunction as *mut _ as *mut u32,
+        ptr!(exception_copy) as u32,
+    );
 
     extern "system" {
         #[unwind(allowed)]

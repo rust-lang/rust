@@ -12,14 +12,15 @@
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
 # `0.x.0` for Cargo where they were released on `date`.
 
-date: 2019-12-18
+date: 2020-01-30
 rustc: beta
 cargo: beta
 
-# We use a nightly rustfmt to format the source because it solves some bootstrapping
-# issues with use of new syntax in this repo. If you're looking at the beta/stable branch, this key should be omitted,
-# as we don't want to depend on rustfmt from nightly there.
-rustfmt: nightly-2019-12-18
+# We use a nightly rustfmt to format the source because it solves some
+# bootstrapping issues with use of new syntax in this repo. If you're looking at
+# the beta/stable branch, this key should be omitted, as we don't want to depend
+# on rustfmt from nightly there.
+rustfmt: nightly-2020-01-31
 
 # When making a stable release the process currently looks like:
 #

@@ -4,8 +4,6 @@
 //!
 //! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
-#![cfg_attr(bootstrap, feature(slice_patterns))]
-
 pub mod ast_validation;
 pub mod feature_gate;
 pub mod node_count;
