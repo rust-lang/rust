@@ -114,6 +114,11 @@
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.onEnter",
+                "title": "Enhanced enter key",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [
@@ -136,6 +141,11 @@
                 "command": "rust-analyzer.run",
                 "key": "ctrl+r",
                 "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "rust-analyzer.onEnter",
+                "key": "enter",
+                "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
             }
         ],
         "configuration": {
@@ -156,11 +166,6 @@
                     "type": "object",
                     "default": {},
                     "description": "Fine grained feature flags to disable annoying features"
-                },
-                "rust-analyzer.enableEnhancedTyping": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enables enhanced typing. NOTE: If using a VIM extension, you should set this to false"
                 },
                 "rust-analyzer.raLspServerPath": {
                     "type": [

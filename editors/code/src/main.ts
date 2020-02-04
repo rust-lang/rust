@@ -21,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('reload', commands.reload);
+    ctx.registerCommand('onEnter', commands.onEnter);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
@@ -28,9 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
 
-    if (ctx.config.enableEnhancedTyping) {
-        ctx.overrideCommand('type', commands.onEnter);
-    }
     activateStatusDisplay(ctx);
 
     activateHighlighting(ctx);
