@@ -237,7 +237,6 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
-#![feature(assoc_int_consts)]
 #![feature(associated_type_bounds)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]

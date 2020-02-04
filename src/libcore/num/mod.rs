@@ -257,11 +257,10 @@ macro_rules! int_impl {
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
         }
 
@@ -273,11 +272,10 @@ $EndFeature, "
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MAX: Self = !Self::MIN;
         }
 
@@ -2435,10 +2433,9 @@ macro_rules! uint_impl {
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MIN: Self = 0;
         }
 
@@ -2450,11 +2447,10 @@ Basic usage:
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MAX: Self = !0;
         }
 

@@ -154,15 +154,15 @@ pub mod consts {
 #[cfg(not(test))]
 impl f32 {
     /// The radix or base of the internal representation of `f32`.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const RADIX: u32 = 2;
 
     /// Number of significant digits in base 2.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 24;
 
     /// Approximate number of significant digits in base 10.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const DIGITS: u32 = 6;
 
     /// [Machine epsilon] value for `f32`.
@@ -170,41 +170,41 @@ impl f32 {
     /// This is the difference between `1.0` and the next larger representable number.
     ///
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const EPSILON: f32 = 1.19209290e-07_f32;
 
     /// Smallest finite `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN: f32 = -3.40282347e+38_f32;
     /// Smallest positive normal `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
     /// Largest finite `f32` value.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f32 = 3.40282347e+38_f32;
 
     /// One greater than the minimum possible normal power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -125;
     /// Maximum possible power of 2 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 128;
 
     /// Minimum possible normal power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_10_EXP: i32 = -37;
     /// Maximum possible power of 10 exponent.
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 38;
 
     /// Not a Number (NaN).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
     /// Negative infinity (-∞).
-    #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
 
     /// Returns `true` if this value is `NaN`.
