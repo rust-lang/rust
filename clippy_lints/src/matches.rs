@@ -285,7 +285,8 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:**  Suggested replacements may be incorrect when `match`
+    /// is actually binding temporary value, bringing a 'dropped while borrowed' error.
     ///
     /// **Example:**
     /// ```rust
@@ -835,23 +836,22 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
     };
 
     // Do we need to add ';' to suggestion ?
-    if_chain! {
-        if let ExprKind::Block(block, _) = &arms[0].body.kind;
-        if block.stmts.len() == 1;
-        if let StmtKind::Semi(s) = block.stmts.get(0).unwrap().kind;
-        then {
-            match s.kind {
-                ExprKind::Block(_, _) => (),
-                _ => {
-                    // expr_ty(body) == ()
-                    if cx.tables.expr_ty(&arms[0].body).is_unit() {
-                        snippet_body.push(';');
-                    }
-                }
+    match match_body.kind {
+        ExprKind::Block(block, _) => {
+            // macro + expr_ty(body) == ()
+            if block.span.from_expansion() && cx.tables.expr_ty(&match_body).is_unit() {
+                snippet_body.push(';');
             }
-        }
+        },
+        _ => {
+            // expr_ty(body) == ()
+            if cx.tables.expr_ty(&match_body).is_unit() {
+                snippet_body.push(';');
+            }
+        },
     }
 
+    let mut applicability = Applicability::MaybeIncorrect;
     match arms[0].pat.kind {
         PatKind::Binding(..) | PatKind::Tuple(_, _) | PatKind::Struct(..) => {
             span_lint_and_sugg(
@@ -862,11 +862,11 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
                 "consider using `let` statement",
                 format!(
                     "let {} = {};\n{}",
-                    snippet(cx, bind_names, ".."),
-                    snippet(cx, matched_vars, ".."),
+                    snippet_with_applicability(cx, bind_names, "..", &mut applicability),
+                    snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
                     snippet_body
                 ),
-                Applicability::MachineApplicable,
+                applicability,
             );
         },
         PatKind::Wild => {
