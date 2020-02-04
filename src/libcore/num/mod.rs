@@ -701,7 +701,7 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -726,7 +726,7 @@ assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -751,7 +751,7 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -777,7 +777,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -806,7 +806,7 @@ assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -836,7 +836,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -866,7 +866,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -894,7 +894,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -916,7 +916,7 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -940,7 +940,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -966,7 +966,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
@@ -1091,7 +1091,7 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
-            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
@@ -1118,7 +1118,7 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
-            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
@@ -1146,7 +1146,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1284,7 +1284,7 @@ assert_eq!((-128i8).wrapping_div(-1), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1314,7 +1314,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1345,7 +1345,7 @@ assert_eq!((-128i8).wrapping_rem(-1), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1374,7 +1374,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1654,7 +1654,7 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
@@ -1689,7 +1689,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -1724,7 +1724,7 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
@@ -1758,7 +1758,7 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2004,7 +2004,7 @@ assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2044,7 +2044,7 @@ assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2872,7 +2872,7 @@ Basic usage:
 assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2895,7 +2895,7 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2918,7 +2918,7 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2941,7 +2941,7 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2968,7 +2968,7 @@ assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2995,7 +2995,7 @@ Basic usage:
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3023,7 +3023,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3051,7 +3051,7 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -3072,7 +3072,7 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3095,7 +3095,7 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_checked", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3205,7 +3205,7 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_saturating", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3328,7 +3328,7 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3355,7 +3355,7 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3380,7 +3380,7 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3408,7 +3408,7 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3657,7 +3657,7 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
@@ -3689,7 +3689,7 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3718,7 +3718,7 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_int_overflowing", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
@@ -3750,7 +3750,7 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3944,7 +3944,7 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3974,7 +3974,7 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
-            #[rustc_const_unstable(feature = "const_int_euclidean", issue = "53718")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
