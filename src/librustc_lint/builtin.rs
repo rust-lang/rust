@@ -567,7 +567,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
 declare_lint! {
     MISSING_DEBUG_IMPLEMENTATIONS,
     Allow,
-    "detects missing implementations of fmt::Debug"
+    "detects missing implementations of Debug"
 }
 
 #[derive(Default)]
@@ -611,9 +611,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             cx.span_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
-                "type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` \
-                          or a manual implementation",
-            )
+                &format!(
+                    "type does not implement `{}`; consider adding `#[derive(Debug)]` \
+                     or a manual implementation",
+                    cx.tcx.def_path_str(debug)
+                ),
+            );
         }
     }
 }
