@@ -8,7 +8,7 @@ async function handleKeypress(ctx: Ctx) {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor) return false;
-    if (!client) return false;
+    if (!editor || !client) return false;
 
     const request: lc.TextDocumentPositionParams = {
         textDocument: { uri: editor.document.uri.toString() },
