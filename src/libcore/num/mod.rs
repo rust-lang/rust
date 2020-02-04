@@ -105,7 +105,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 type Error = ();
                 doc_comment! {
                     concat!(
-"Converts a `", stringify!($Ty), "` into an `", stringify!($Int),
+"Converts a `", stringify!($Int), "` into an `", stringify!($Ty),
 "` if it is non-zero"),
                     fn try_from(int: $Int) -> Result<Self, ()> {
                         Self::new(int).ok_or(())
