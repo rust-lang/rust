@@ -675,13 +675,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T>,
     {
-        match self.length {
-            0 => None,
-            _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().first_kv(),
+        let front = self.root.as_mut().first_leaf_edge();
+        if let Ok(kv) = front.right_kv() {
+            Some(OccupiedEntry {
+                handle: kv.forget_node_type(),
                 length: &mut self.length,
                 _marker: PhantomData,
-            }),
+            })
+        } else {
+            None
         }
     }
 
@@ -736,13 +738,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T>,
     {
-        match self.length {
-            0 => None,
-            _ => Some(OccupiedEntry {
-                handle: self.root.as_mut().last_kv(),
+        let back = self.root.as_mut().last_leaf_edge();
+        if let Ok(kv) = back.left_kv() {
+            Some(OccupiedEntry {
+                handle: kv.forget_node_type(),
                 length: &mut self.length,
                 _marker: PhantomData,
-            }),
+            })
+        } else {
+            None
         }
     }
 
