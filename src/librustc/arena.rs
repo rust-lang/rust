@@ -216,6 +216,7 @@ arena_types!(declare_arena, [], 'tcx);
 
 arena_types!(impl_arena_allocatable, [], 'tcx);
 
+#[marker]
 pub trait ArenaAllocatable {}
 
 impl<T: Copy> ArenaAllocatable for T {}

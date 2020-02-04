@@ -36,7 +36,7 @@
 #![feature(drain_filter)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
-#![feature(overlapping_marker_traits)]
+#![feature(marker_trait_attr)]
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]

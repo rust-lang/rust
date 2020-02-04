@@ -344,9 +344,6 @@ declare_features! (
     /// Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
-    /// Allows overlapping impls of marker traits.
-    (active, overlapping_marker_traits, "1.18.0", Some(29864), None),
-
     /// Allows a test to fail without failing the whole suite.
     (active, allow_fail, "1.19.0", Some(46488), None),
 

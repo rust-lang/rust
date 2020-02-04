@@ -2647,9 +2647,7 @@ impl<'tcx> ::std::ops::Deref for Attributes<'tcx> {
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
     Permitted {
-        /// Whether or not the impl is permitted due to the trait being
-        /// a marker trait (a trait with #[marker], or a trait with
-        /// no associated items and #![feature(overlapping_marker_traits)] enabled)
+        /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
         marker: bool,
     },
     /// These impls are allowed to overlap, but that raises
@@ -2796,15 +2794,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | (ImplPolarity::Negative, ImplPolarity::Negative) => {}
         };
 
-        let is_marker_overlap = if self.features().overlapping_marker_traits {
-            let trait1_is_empty = self.impl_trait_ref(def_id1).map_or(false, |trait_ref| {
-                self.associated_item_def_ids(trait_ref.def_id).is_empty()
-            });
-            let trait2_is_empty = self.impl_trait_ref(def_id2).map_or(false, |trait_ref| {
-                self.associated_item_def_ids(trait_ref.def_id).is_empty()
-            });
-            trait1_is_empty && trait2_is_empty
-        } else {
+        let is_marker_overlap = {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
                 trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
