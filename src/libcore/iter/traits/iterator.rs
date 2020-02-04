@@ -1114,8 +1114,23 @@ pub trait Iterator {
     /// The `-3` is no longer there, because it was consumed in order to see if
     /// the iteration should stop, but wasn't placed back into the iterator.
     ///
+    /// Note that unlike [`take_while`] this iterator is **not** fused:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    /// use std::convert::identity;
+    ///
+    /// let mut iter = vec![Some(0), None, Some(1)].into_iter().map_while(identity);
+    /// assert_eq!(iter.next(), Some(0));
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    ///
+    /// If you need fused iterator, use [`fuse`].
+    ///
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`fuse`]: #method.fuse
     #[inline]
     #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
