@@ -4,8 +4,6 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
 
-use term;
-
 use super::{
     bench::fmt_bench_samples,
     cli::TestOpts,

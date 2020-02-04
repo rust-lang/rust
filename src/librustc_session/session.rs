@@ -33,7 +33,6 @@ use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
-use std;
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;

@@ -11,7 +11,6 @@ use rustc_hir::def::Namespace::TypeNS;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_interface::interface;
-use rustc_lint;
 use rustc_resolve as resolve;
 use rustc_session::lint;
 

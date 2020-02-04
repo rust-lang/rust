@@ -1,7 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
-use syn;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Ident, LitStr, Token};
 

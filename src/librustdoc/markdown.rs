@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
-use testing;
 
 use crate::config::{Options, RenderOptions};
 use crate::externalfiles::{load_string, LoadStringError};

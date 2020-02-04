@@ -31,7 +31,6 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, AdtKind, GenericParamDefKind, List, ToPredicate, Ty, TyCtxt, WithConstness};
 use crate::util::common::ErrorReported;
-use chalk_engine;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
