@@ -336,7 +336,7 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 1);", $EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -673,8 +673,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::max_value() - 2).checked_add(1), Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
+"::MAX - 2).checked_add(1), Some(", stringify!($SelfT), "::MAX - 1));
+assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -698,8 +698,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::min_value() + 2).checked_sub(1), Some(", stringify!($SelfT), "::min_value() + 1));
-assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
+"::MIN + 2).checked_sub(1), Some(", stringify!($SelfT), "::MIN + 1));
+assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -723,8 +723,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(", stringify!($SelfT),
-"::max_value().checked_mul(1), Some(", stringify!($SelfT), "::max_value()));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
+"::MAX.checked_mul(1), Some(", stringify!($SelfT), "::MAX));
+assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -748,8 +748,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::min_value() + 1).checked_div(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::min_value().checked_div(-1), None);
+"::MIN + 1).checked_div(-1), Some(", stringify!($Max), "));
+assert_eq!(", stringify!($SelfT), "::MIN.checked_div(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
 $EndFeature, "
 ```"),
@@ -778,8 +778,8 @@ Basic usage:
 
 ```
 assert_eq!((", stringify!($SelfT),
-"::min_value() + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
+"::MIN + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
+assert_eq!(", stringify!($SelfT), "::MIN.checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
@@ -959,7 +959,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);",
+assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);",
 $EndFeature, "
 ```"),
 
@@ -1000,10 +1000,10 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_add(-1), ", stringify!($SelfT),
-"::min_value());",
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(100), ", stringify!($SelfT),
+"::MAX);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_add(-1), ", stringify!($SelfT),
+"::MIN);",
 $EndFeature, "
 ```"),
 
@@ -1027,10 +1027,10 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_sub(-1), ", stringify!($SelfT),
-"::max_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub(100), ", stringify!($SelfT),
+"::MIN);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($SelfT),
+"::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1055,10 +1055,10 @@ Basic usage:
 ", $Feature, "#![feature(saturating_neg)]
 assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_neg(), ", stringify!($SelfT),
-"::max_value());
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_neg(), ", stringify!($SelfT),
-"::min_value() + 1);",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
+"::MAX);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT),
+"::MIN + 1);",
 $EndFeature, "
 ```"),
 
@@ -1082,10 +1082,10 @@ Basic usage:
 ", $Feature, "#![feature(saturating_neg)]
 assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_abs(), ", stringify!($SelfT),
-"::max_value());
-assert_eq!((", stringify!($SelfT), "::min_value() + 1).saturating_abs(), ", stringify!($SelfT),
-"::max_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
+"::MAX);
+assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($SelfT),
+"::MAX);",
 $EndFeature, "
 ```"),
 
@@ -1171,8 +1171,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_add(27), 127);
-assert_eq!(", stringify!($SelfT), "::max_value().wrapping_add(2), ", stringify!($SelfT),
-"::min_value() + 1);",
+assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add(2), ", stringify!($SelfT),
+"::MIN + 1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1195,8 +1195,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(0", stringify!($SelfT), ".wrapping_sub(127), -127);
-assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::max_value()), ",
-stringify!($SelfT), "::max_value());",
+assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::MAX), ",
+stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1367,8 +1367,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);
-assert_eq!(", stringify!($SelfT), "::min_value().wrapping_neg(), ", stringify!($SelfT),
-"::min_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.wrapping_neg(), ", stringify!($SelfT),
+"::MIN);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
@@ -1458,8 +1458,8 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").wrapping_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().wrapping_abs(), ", stringify!($SelfT),
-"::min_value());
+assert_eq!(", stringify!($SelfT), "::MIN.wrapping_abs(), ", stringify!($SelfT),
+"::MIN);
 assert_eq!((-128i8).wrapping_abs() as u8, 128);",
 $EndFeature, "
 ```"),
@@ -1831,8 +1831,8 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));
 assert_eq!((-10", stringify!($SelfT), ").overflowing_abs(), (10, false));
-assert_eq!((", stringify!($SelfT), "::min_value()).overflowing_abs(), (", stringify!($SelfT),
-"::min_value(), true));",
+assert_eq!((", stringify!($SelfT), "::MIN).overflowing_abs(), (", stringify!($SelfT),
+"::MIN, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
@@ -2028,10 +2028,10 @@ assert_eq!((-a).rem_euclid(-b), 1);
 
 # Overflow behavior
 
-The absolute value of `", stringify!($SelfT), "::min_value()` cannot be represented as an
+The absolute value of `", stringify!($SelfT), "::MIN` cannot be represented as an
 `", stringify!($SelfT), "`, and attempting to calculate it will cause an overflow. This means that
 code in debug mode will trigger a panic on this case and optimized code will return `",
-stringify!($SelfT), "::min_value()` without a panic.
+stringify!($SelfT), "::MIN` without a panic.
 
 # Examples
 
@@ -2505,7 +2505,7 @@ assert_eq!(n.count_ones(), 3);", $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 0);", $EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -2523,7 +2523,7 @@ Basic usage:
 Basic usage:
 
 ```
-", $Feature, "let n = ", stringify!($SelfT), "::max_value() >> 2;
+", $Feature, "let n = ", stringify!($SelfT), "::MAX >> 2;
 
 assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
@@ -2565,7 +2565,7 @@ Basic usage:
 
 ```
 ", $Feature, "#![feature(leading_trailing_ones)]
-let n = !(", stringify!($SelfT), "::max_value() >> 2);
+let n = !(", stringify!($SelfT), "::MAX >> 2);
 
 assert_eq!(n.leading_ones(), 2);", $EndFeature, "
 ```"),
@@ -2839,9 +2839,9 @@ if overflow occurred.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
-"Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
+", $Feature, "assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(1), ",
+"Some(", stringify!($SelfT), "::MAX - 1));
+assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
@@ -2887,7 +2887,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
@@ -3087,7 +3087,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
             #[must_use = "this returns the result of the operation, \
@@ -3224,7 +3224,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
-assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::max_value()), 199);",
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::MAX), 199);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -3247,7 +3247,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_sub(100), 0);
-assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::max_value()), 101);",
+assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::MAX), 101);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -4029,7 +4029,7 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT),
 ".checked_next_power_of_two(), Some(2));
 assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);",
+assert_eq!(", stringify!($SelfT), "::MAX.checked_next_power_of_two(), None);",
 $EndFeature, "
 ```"),
             #[inline]
@@ -4053,7 +4053,7 @@ Basic usage:
 ", $Feature, "
 assert_eq!(2", stringify!($SelfT), ".wrapping_next_power_of_two(), 2);
 assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);
-assert_eq!(", stringify!($SelfT), "::max_value().wrapping_next_power_of_two(), 0);",
+assert_eq!(", stringify!($SelfT), "::MAX.wrapping_next_power_of_two(), 0);",
 $EndFeature, "
 ```"),
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
