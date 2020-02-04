@@ -805,8 +805,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
@@ -836,8 +835,6 @@ if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
@@ -864,8 +861,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".checked_neg(), Some(-5));
 assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
@@ -936,8 +932,7 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!((-5", stringify!($SelfT), ").checked_abs(), Some(5));
 assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
@@ -1115,8 +1110,7 @@ numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(10", stringify!($SelfT), ".saturating_mul(12), 120);
 assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT), "::MAX);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);",
@@ -1148,8 +1142,7 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
@@ -1536,8 +1529,7 @@ occur. If an overflow would have occurred then the wrapped value is returned.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT),
 "::MIN, true));", $EndFeature, "
@@ -1564,8 +1556,7 @@ would occur. If an overflow would have occurred then the wrapped value is return
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT),
 "::MAX, true));", $EndFeature, "
@@ -1622,8 +1613,7 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT),
 "::MIN, true));",
@@ -1658,8 +1648,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringify!($SelfT),
 "::MIN, true));
@@ -1693,8 +1681,7 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));",
 $EndFeature, "
@@ -1729,8 +1716,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
@@ -1761,8 +1746,6 @@ minimum value will be returned again and `true` will be returned for an overflow
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
 assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($SelfT),
 "::MIN, true));", $EndFeature, "
@@ -3187,8 +3170,7 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(2", stringify!($SelfT), ".saturating_mul(10), 20);
 assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($SelfT),
 "::MAX);", $EndFeature, "
@@ -3215,8 +3197,7 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
 assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
 $EndFeature, "
@@ -3553,8 +3534,7 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
@@ -3581,8 +3561,7 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
 assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));",
 $EndFeature, "
@@ -4868,7 +4847,6 @@ impl usize {
 ///
 /// ```
 /// use std::num::FpCategory;
-/// use std::f32;
 ///
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;
