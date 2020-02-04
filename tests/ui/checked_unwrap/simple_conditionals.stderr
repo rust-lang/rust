@@ -1,5 +1,5 @@
 error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:7:9
+  --> $DIR/simple_conditionals.rs:15:9
    |
 LL |     if x.is_some() {
    |        ----------- the check is happening here
@@ -13,7 +13,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
-  --> $DIR/simple_conditionals.rs:9:9
+  --> $DIR/simple_conditionals.rs:17:9
    |
 LL |     if x.is_some() {
    |        ----------- because of this check
@@ -28,7 +28,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
-  --> $DIR/simple_conditionals.rs:12:9
+  --> $DIR/simple_conditionals.rs:20:9
    |
 LL |     if x.is_none() {
    |        ----------- because of this check
@@ -36,7 +36,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:14:9
+  --> $DIR/simple_conditionals.rs:22:9
    |
 LL |     if x.is_none() {
    |        ----------- the check is happening here
@@ -45,7 +45,18 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:18:9
+  --> $DIR/simple_conditionals.rs:7:13
+   |
+LL |         if $a.is_some() {
+   |            ------------ the check is happening here
+LL |             $a.unwrap(); // unnecessary
+   |             ^^^^^^^^^^^
+...
+LL |     m!(x);
+   |     ------ in this macro invocation
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/simple_conditionals.rs:27:9
    |
 LL |     if x.is_ok() {
    |        --------- the check is happening here
@@ -53,7 +64,7 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: This call to `unwrap_err()` will always panic.
-  --> $DIR/simple_conditionals.rs:19:9
+  --> $DIR/simple_conditionals.rs:28:9
    |
 LL |     if x.is_ok() {
    |        --------- because of this check
@@ -62,7 +73,7 @@ LL |         x.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
-  --> $DIR/simple_conditionals.rs:21:9
+  --> $DIR/simple_conditionals.rs:30:9
    |
 LL |     if x.is_ok() {
    |        --------- because of this check
@@ -71,7 +82,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:22:9
+  --> $DIR/simple_conditionals.rs:31:9
    |
 LL |     if x.is_ok() {
    |        --------- the check is happening here
@@ -80,7 +91,7 @@ LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
-  --> $DIR/simple_conditionals.rs:25:9
+  --> $DIR/simple_conditionals.rs:34:9
    |
 LL |     if x.is_err() {
    |        ---------- because of this check
@@ -88,7 +99,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:26:9
+  --> $DIR/simple_conditionals.rs:35:9
    |
 LL |     if x.is_err() {
    |        ---------- the check is happening here
@@ -97,7 +108,7 @@ LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
 error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
-  --> $DIR/simple_conditionals.rs:28:9
+  --> $DIR/simple_conditionals.rs:37:9
    |
 LL |     if x.is_err() {
    |        ---------- the check is happening here
@@ -106,7 +117,7 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: This call to `unwrap_err()` will always panic.
-  --> $DIR/simple_conditionals.rs:29:9
+  --> $DIR/simple_conditionals.rs:38:9
    |
 LL |     if x.is_err() {
    |        ---------- because of this check
@@ -114,5 +125,5 @@ LL |     if x.is_err() {
 LL |         x.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

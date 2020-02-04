@@ -1,6 +1,14 @@
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(clippy::if_same_then_else)]
 
+macro_rules! m {
+    ($a:expr) => {
+        if $a.is_some() {
+            $a.unwrap(); // unnecessary
+        }
+    };
+}
+
 fn main() {
     let x = Some(());
     if x.is_some() {
@@ -13,6 +21,7 @@ fn main() {
     } else {
         x.unwrap(); // unnecessary
     }
+    m!(x);
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
         x.unwrap(); // unnecessary
