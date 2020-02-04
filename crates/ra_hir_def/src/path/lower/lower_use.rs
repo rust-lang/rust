@@ -4,20 +4,17 @@
 use std::iter;
 
 use either::Either;
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{AsName, Name},
-};
+use hir_expand::{hygiene::Hygiene, name::AsName};
 use ra_syntax::ast::{self, NameOwner};
 use test_utils::tested_by;
 
-use crate::path::{ModPath, PathKind};
+use crate::path::{ImportAlias, ModPath, PathKind};
 
 pub(crate) fn lower_use_tree(
     prefix: Option<ModPath>,
     tree: ast::UseTree,
     hygiene: &Hygiene,
-    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, Option<Name>),
+    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, Option<ImportAlias>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -34,7 +31,11 @@ pub(crate) fn lower_use_tree(
             lower_use_tree(prefix.clone(), child_tree, hygiene, cb);
         }
     } else {
-        let alias = tree.alias().and_then(|a| a.name()).map(|a| a.as_name());
+        let alias = tree.alias().map(|a| {
+            a.name()
+                .map(|it| it.as_name())
+                .map_or(ImportAlias::Underscore, |a| ImportAlias::Alias(a))
+        });
         let is_glob = tree.has_star();
         if let Some(ast_path) = tree.path() {
             // Handle self in a path.

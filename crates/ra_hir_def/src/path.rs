@@ -34,6 +34,14 @@ pub enum PathKind {
     DollarCrate(CrateId),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportAlias {
+    /// Unnamed alias, as in `use Foo as _;`
+    Underscore,
+    /// Named alias
+    Alias(Name),
+}
+
 impl ModPath {
     pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
         lower::lower_path(path, hygiene).map(|it| it.mod_path)
@@ -57,7 +65,7 @@ impl ModPath {
     pub(crate) fn expand_use_item(
         item_src: InFile<ast::UseItem>,
         hygiene: &Hygiene,
-        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<Name>),
+        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
     ) {
         if let Some(tree) = item_src.value.use_tree() {
             lower::lower_use_tree(None, tree, hygiene, &mut cb);

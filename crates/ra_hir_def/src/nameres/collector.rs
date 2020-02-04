@@ -22,7 +22,7 @@ use crate::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
-    path::{ModPath, PathKind},
+    path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
     visibility::Visibility,
     AdtId, AstId, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
@@ -438,7 +438,11 @@ where
         } else {
             match import.path.segments.last() {
                 Some(last_segment) => {
-                    let name = import.alias.clone().unwrap_or_else(|| last_segment.clone());
+                    let name = match &import.alias {
+                        Some(ImportAlias::Alias(name)) => name.clone(),
+                        Some(ImportAlias::Underscore) => last_segment.clone(), // FIXME rust-analyzer#2736
+                        None => last_segment.clone(),
+                    };
                     log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
