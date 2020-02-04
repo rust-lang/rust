@@ -1,3 +1,6 @@
+// make sure that TryInto is implemented for NonZero{integer}
+//
+// build-pass
 use std::num::NonZeroUsize;
 use std::convert::TryInto;
 
