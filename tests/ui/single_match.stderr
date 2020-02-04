@@ -13,8 +13,8 @@ LL | |     };
 help: try this
    |
 LL |     if let Some(y) = x {
-LL |     println!("{:?}", y);
-LL | };
+LL |         println!("{:?}", y);
+LL |     };
    |
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`

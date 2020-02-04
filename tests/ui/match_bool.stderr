@@ -40,8 +40,8 @@ LL | |     };
 help: consider using an `if`/`else` expression
    |
 LL |     if !test {
-LL |     println!("Noooo!");
-LL | };
+LL |         println!("Noooo!");
+LL |     };
    |
 
 error: you seem to be trying to match on a boolean expression
@@ -58,8 +58,8 @@ LL | |     };
 help: consider using an `if`/`else` expression
    |
 LL |     if !test {
-LL |     println!("Noooo!");
-LL | };
+LL |         println!("Noooo!");
+LL |     };
    |
 
 error: you seem to be trying to match on a boolean expression
@@ -76,8 +76,8 @@ LL | |     };
 help: consider using an `if`/`else` expression
    |
 LL |     if !(test && test) {
-LL |     println!("Noooo!");
-LL | };
+LL |         println!("Noooo!");
+LL |     };
    |
 
 error: equal expressions as operands to `&&`
@@ -103,10 +103,10 @@ LL | |     };
 help: consider using an `if`/`else` expression
    |
 LL |     if test {
-LL |     println!("Yes!");
-LL | } else {
-LL |     println!("Noooo!");
-LL | };
+LL |         println!("Yes!");
+LL |     } else {
+LL |         println!("Noooo!");
+LL |     };
    |
 
 error: aborting due to 8 previous errors

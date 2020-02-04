@@ -13,8 +13,8 @@ LL | |     }
 help: try
    |
 LL |     } else if y == "world" {
-LL |     println!("world!")
-LL | }
+LL |         println!("world!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -31,8 +31,8 @@ LL | |     }
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
-LL |     println!("world!")
-LL | }
+LL |         println!("world!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -51,11 +51,11 @@ LL | |     }
 help: try
    |
 LL |     } else if y == "world" {
-LL |     println!("world")
-LL | }
-LL | else {
-LL |     println!("!")
-LL | }
+LL |         println!("world")
+LL |     }
+LL |     else {
+LL |         println!("!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -74,11 +74,11 @@ LL | |     }
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
-LL |     println!("world")
-LL | }
-LL | else {
-LL |     println!("!")
-LL | }
+LL |         println!("world")
+LL |     }
+LL |     else {
+LL |         println!("!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -97,11 +97,11 @@ LL | |     }
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
-LL |     println!("world")
-LL | }
-LL | else {
-LL |     println!("!")
-LL | }
+LL |         println!("world")
+LL |     }
+LL |     else {
+LL |         println!("!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -120,11 +120,11 @@ LL | |     }
 help: try
    |
 LL |     } else if x == "hello" {
-LL |     println!("world")
-LL | }
-LL | else {
-LL |     println!("!")
-LL | }
+LL |         println!("world")
+LL |     }
+LL |     else {
+LL |         println!("!")
+LL |     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -143,11 +143,11 @@ LL | |     }
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
-LL |     println!("world")
-LL | }
-LL | else {
-LL |     println!("!")
-LL | }
+LL |         println!("world")
+LL |     }
+LL |     else {
+LL |         println!("!")
+LL |     }
    |
 
 error: aborting due to 7 previous errors

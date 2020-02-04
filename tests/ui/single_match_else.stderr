@@ -14,9 +14,9 @@ LL | |     }
 help: try this
    |
 LL |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
-LL |     let x = 5;
-LL |     None
-LL | }
+LL |         let x = 5;
+LL |         None
+LL |     }
    |
 
 error: aborting due to previous error
