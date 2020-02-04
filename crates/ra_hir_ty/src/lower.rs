@@ -276,7 +276,7 @@ impl Ty {
             TypeNs::SelfType(impl_id) => {
                 let generics = generics(ctx.db, impl_id.into());
                 let substs = match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Substs::type_params(&generics),
+                    TypeParamLoweringMode::Placeholder => Substs::type_params_for_generics(&generics),
                     TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
                 };
                 ctx.db.impl_self_ty(impl_id).subst(&substs)
@@ -284,7 +284,7 @@ impl Ty {
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(ctx.db, adt.into());
                 let substs = match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Substs::type_params(&generics),
+                    TypeParamLoweringMode::Placeholder => Substs::type_params_for_generics(&generics),
                     TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
                 };
                 ctx.db.ty(adt.into()).subst(&substs)

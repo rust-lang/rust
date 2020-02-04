@@ -13,6 +13,7 @@ use hir_def::{
     AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
     LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, UnionId,
+    GenericDefId
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -21,7 +22,8 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+    Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    Substs
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -270,7 +272,13 @@ impl StructField {
 
     pub fn ty(&self, db: &impl HirDatabase) -> Type {
         let var_id = self.parent.into();
-        let ty = db.field_types(var_id)[self.id].clone();
+        let generic_def_id: GenericDefId = match self.parent {
+            VariantDef::Struct(it) => it.id.into(),
+            VariantDef::Union(it) => it.id.into(),
+            VariantDef::EnumVariant(it) => it.parent.id.into(),
+        };
+        let substs = Substs::type_params(db, generic_def_id);
+        let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
         Type::new(db, self.parent.module(db).id.krate.into(), var_id, ty)
     }
 
@@ -789,11 +797,7 @@ impl ImplBlock {
     pub fn target_ty(&self, db: &impl HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db);
-        let ctx = hir_ty::TyLoweringContext {
-            db,
-            resolver: &resolver,
-            impl_trait_mode: hir_ty::ImplTraitLoweringMode::Disallowed,
-        };
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::from_hir(&ctx, &impl_data.target_type);
         Type {
@@ -856,9 +860,10 @@ impl Type {
     fn from_def(
         db: &impl HirDatabase,
         krate: CrateId,
-        def: impl HasResolver + Into<TyDefId>,
+        def: impl HasResolver + Into<TyDefId> + Into<GenericDefId>,
     ) -> Type {
-        let ty = db.ty(def.into());
+        let substs = Substs::type_params(db, def);
+        let ty = db.ty(def.into()).subst(&substs);
         Type::new(db, krate, def, ty)
     }
 
@@ -955,7 +960,7 @@ impl Type {
             match a_ty.ctor {
                 TypeCtor::Tuple { .. } => {
                     for ty in a_ty.parameters.iter() {
-                        let ty = ty.clone().subst(&a_ty.parameters);
+                        let ty = ty.clone();
                         res.push(self.derived(ty));
                     }
                 }

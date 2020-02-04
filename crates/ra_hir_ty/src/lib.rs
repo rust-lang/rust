@@ -361,8 +361,14 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn type_params(generic_params: &Generics) -> Substs {
+    pub(crate) fn type_params_for_generics(generic_params: &Generics) -> Substs {
         Substs(generic_params.iter().map(|(id, _)| Ty::Param(id)).collect())
+    }
+
+    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
+    pub fn type_params(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> Substs {
+        let params = generics(db, def.into());
+        Substs::type_params_for_generics(&params)
     }
 
     /// Return Substs that replace each parameter by a bound variable.
@@ -1026,7 +1032,7 @@ impl HirDisplay for Ty {
                     TypeParamProvenance::ArgumentImplTrait => {
                         write!(f, "impl ")?;
                         let bounds = f.db.generic_predicates_for_param(*id);
-                        let substs = Substs::type_params(&generics);
+                        let substs = Substs::type_params_for_generics(&generics);
                         write_bounds_like_dyn_trait(&bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(), f)?;
                     }
                 }
