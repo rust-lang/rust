@@ -6,7 +6,7 @@ import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
 
-let ctx!: Ctx;
+let ctx: Ctx | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
