@@ -654,7 +654,7 @@ pub fn expr_block<'a, T: LintContext>(
 
 /// Trim indentation from a multiline string with possibility of ignoring the
 /// first line.
-pub fn trim_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
+fn trim_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
     let s_space = trim_multiline_inner(s, ignore_first, indent, ' ');
     let s_tab = trim_multiline_inner(s_space, ignore_first, indent, '\t');
     trim_multiline_inner(s_tab, ignore_first, indent, ' ')
