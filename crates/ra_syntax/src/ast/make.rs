@@ -2,7 +2,7 @@
 //! of smaller pieces.
 use itertools::Itertools;
 
-use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {};", text))
@@ -179,7 +179,16 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
-    parse.tree().syntax().descendants().find_map(N::cast).unwrap()
+    let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
+    let node = node.syntax().clone();
+    let node = unroot(node);
+    let node = N::cast(node).unwrap();
+    assert_eq!(node.syntax().text_range().start(), 0.into());
+    node
+}
+
+fn unroot(n: SyntaxNode) -> SyntaxNode {
+    SyntaxNode::new_root(n.green().clone())
 }
 
 pub mod tokens {
