@@ -71,8 +71,13 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
-        let qualif =
-            Q::in_call(self.item, &|l| self.qualifs_per_local.contains(l), func, args, return_ty);
+        let qualif = Q::in_call(
+            self.item,
+            &mut |l| self.qualifs_per_local.contains(l),
+            func,
+            args,
+            return_ty,
+        );
         if !return_place.is_indirect() {
             self.assign_qualif_direct(return_place, qualif);
         }
@@ -105,7 +110,7 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif = Q::in_rvalue(self.item, &|l| self.qualifs_per_local.contains(l), rvalue);
+        let qualif = Q::in_rvalue(self.item, &mut |l| self.qualifs_per_local.contains(l), rvalue);
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -120,7 +125,8 @@ where
         // here; that occurs in `apply_call_return_effect`.
 
         if let mir::TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
-            let qualif = Q::in_operand(self.item, &|l| self.qualifs_per_local.contains(l), value);
+            let qualif =
+                Q::in_operand(self.item, &mut |l| self.qualifs_per_local.contains(l), value);
             if !dest.is_indirect() {
                 self.assign_qualif_direct(dest, qualif);
             }

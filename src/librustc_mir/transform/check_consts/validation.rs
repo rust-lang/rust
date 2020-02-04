@@ -64,7 +64,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn needs_drop(&mut self, local: Local, location: Location) -> bool {
         if !self.needs_drop.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -76,7 +76,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn has_mut_interior(&mut self, local: Local, location: Location) -> bool {
         if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -84,17 +84,6 @@ impl Qualifs<'a, 'mir, 'tcx> {
         self.has_mut_interior.cursor.seek_before(location);
         self.has_mut_interior.cursor.get().contains(local)
             || self.indirectly_mutable(local, location)
-    }
-
-    /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
-    /// `indirectly_mutable` cursors to be updated beforehand.
-    fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
-        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
-            return false;
-        }
-
-        self.has_mut_interior.cursor.get().contains(local)
-            || self.indirectly_mutable.get().contains(local)
     }
 
     fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
@@ -120,8 +109,8 @@ impl Qualifs<'a, 'mir, 'tcx> {
         let return_loc = item.body.terminator_loc(return_block);
 
         ConstQualifs {
-            needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
+            needs_drop: self.needs_drop(RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior(RETURN_PLACE, return_loc),
         }
     }
 }
@@ -244,23 +233,6 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::StaticAccess, span)
         }
     }
-
-    fn check_immutable_borrow_like(&mut self, location: Location, place: &Place<'tcx>) {
-        // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
-        // seek the cursors beforehand.
-        self.qualifs.has_mut_interior.cursor.seek_before(location);
-        self.qualifs.indirectly_mutable.seek(location);
-
-        let borrowed_place_has_mut_interior = HasMutInterior::in_place(
-            &self.item,
-            &|local| self.qualifs.has_mut_interior_eager_seek(local),
-            place.as_ref(),
-        );
-
-        if borrowed_place_has_mut_interior {
-            self.check_op(ops::CellBorrow);
-        }
-    }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
@@ -366,12 +338,17 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place) => {
-                self.check_immutable_borrow_like(location, place)
-            }
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                    &self.item,
+                    &mut |local| self.qualifs.has_mut_interior(local, location),
+                    place.as_ref(),
+                );
 
-            Rvalue::AddressOf(Mutability::Not, ref place) => {
-                self.check_immutable_borrow_like(location, place)
+                if borrowed_place_has_mut_interior {
+                    self.check_op(ops::CellBorrow);
+                }
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -571,7 +548,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop_lazy_seek(local, location)
+                    self.qualifs.needs_drop(local, location)
                 } else {
                     true
                 };
