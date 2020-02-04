@@ -1198,87 +1198,6 @@ pub fn is_normalizable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, param_env: ty::Para
     })
 }
 
-#[cfg(test)]
-mod test {
-    use super::{trim_multiline, without_block_comments};
-
-    #[test]
-    fn test_trim_multiline_single_line() {
-        assert_eq!("", trim_multiline("".into(), false));
-        assert_eq!("...", trim_multiline("...".into(), false));
-        assert_eq!("...", trim_multiline("    ...".into(), false));
-        assert_eq!("...", trim_multiline("\t...".into(), false));
-        assert_eq!("...", trim_multiline("\t\t...".into(), false));
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_trim_multiline_block() {
-        assert_eq!("\
-    if x {
-        y
-    } else {
-        z
-    }", trim_multiline("    if x {
-            y
-        } else {
-            z
-        }".into(), false));
-        assert_eq!("\
-    if x {
-    \ty
-    } else {
-    \tz
-    }", trim_multiline("    if x {
-        \ty
-        } else {
-        \tz
-        }".into(), false));
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_trim_multiline_empty_line() {
-        assert_eq!("\
-    if x {
-        y
-
-    } else {
-        z
-    }", trim_multiline("    if x {
-            y
-
-        } else {
-            z
-        }".into(), false));
-    }
-
-    #[test]
-    fn test_without_block_comments_lines_without_block_comments() {
-        let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {:?}", result);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);
-        assert_eq!(result, vec!["", "#[crate_type = \"lib\"]", ""]);
-
-        let result = without_block_comments(vec!["/* rust", "", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* one-line comment */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested", "/* multi-line", "comment", "*/", "test", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested /* inline /* comment */ test */ */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["foo", "bar", "baz"]);
-        assert_eq!(result, vec!["foo", "bar", "baz"]);
-    }
-}
-
 pub fn match_def_path<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, did: DefId, syms: &[&str]) -> bool {
     let path = cx.get_def_path(did);
     path.len() == syms.len() && path.into_iter().zip(syms.iter()).all(|(a, &b)| a.as_str() == b)
@@ -1424,5 +1343,86 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
         matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), .. })
     } else {
         false
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{trim_multiline, without_block_comments};
+
+    #[test]
+    fn test_trim_multiline_single_line() {
+        assert_eq!("", trim_multiline("".into(), false, None));
+        assert_eq!("...", trim_multiline("...".into(), false, None));
+        assert_eq!("...", trim_multiline("    ...".into(), false, None));
+        assert_eq!("...", trim_multiline("\t...".into(), false, None));
+        assert_eq!("...", trim_multiline("\t\t...".into(), false, None));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_trim_multiline_block() {
+        assert_eq!("\
+    if x {
+        y
+    } else {
+        z
+    }", trim_multiline("    if x {
+            y
+        } else {
+            z
+        }".into(), false, None));
+        assert_eq!("\
+    if x {
+    \ty
+    } else {
+    \tz
+    }", trim_multiline("    if x {
+        \ty
+        } else {
+        \tz
+        }".into(), false, None));
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_trim_multiline_empty_line() {
+        assert_eq!("\
+    if x {
+        y
+
+    } else {
+        z
+    }", trim_multiline("    if x {
+            y
+
+        } else {
+            z
+        }".into(), false, None));
+    }
+
+    #[test]
+    fn test_without_block_comments_lines_without_block_comments() {
+        let result = without_block_comments(vec!["/*", "", "*/"]);
+        println!("result: {:?}", result);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);
+        assert_eq!(result, vec!["", "#[crate_type = \"lib\"]", ""]);
+
+        let result = without_block_comments(vec!["/* rust", "", "*/"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* one-line comment */"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* nested", "/* multi-line", "comment", "*/", "test", "*/"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["/* nested /* inline /* comment */ test */ */"]);
+        assert!(result.is_empty());
+
+        let result = without_block_comments(vec!["foo", "bar", "baz"]);
+        assert_eq!(result, vec!["foo", "bar", "baz"]);
     }
 }
