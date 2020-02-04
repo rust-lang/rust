@@ -310,19 +310,22 @@ pub struct Linker {
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        let r = self
-            .codegen_backend
-            .join_codegen_and_link(
-                self.ongoing_codegen,
-                &self.sess,
-                &self.dep_graph,
-                &self.prepare_outputs,
-            )
-            .map_err(|_| ErrorReported);
+        let codegen_results =
+            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess, &self.dep_graph)?;
         let prof = self.sess.prof.clone();
         let dep_graph = self.dep_graph;
         prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
-        r
+
+        if !self
+            .sess
+            .opts
+            .output_types
+            .keys()
+            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
+        {
+            return Ok(());
+        }
+        self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }
 
