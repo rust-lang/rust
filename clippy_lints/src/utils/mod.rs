@@ -534,16 +534,40 @@ pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     cx.sess().source_map().span_to_snippet(span).ok()
 }
 
-/// Converts a span (from a block) to a code snippet if available, otherwise use
-/// default.
-/// This trims the code of indentation, except for the first line. Use it for
-/// blocks or block-like
+/// Converts a span (from a block) to a code snippet if available, otherwise use default.
+///
+/// This trims the code of indentation, except for the first line. Use it for blocks or block-like
 /// things which need to be printed as such.
 ///
+/// The `indent_relative_to` arg can be used, to provide a span, where the indentation of the
+/// resulting snippet of the given span.
+///
 /// # Example
+///
 /// ```rust,ignore
-/// snippet_block(cx, expr.span, "..", None)
+/// snippet_block(cx, block.span, "..", None)
+/// // where, `block` is the block of the if expr
+///     if x {
+///         y;
+///     }
+/// // will return the snippet
+/// {
+///     y;
+/// }
 /// ```
+///
+/// ```rust,ignore
+/// snippet_block(cx, block.span, "..", Some(if_expr.span))
+/// // where, `block` is the block of the if expr
+///     if x {
+///         y;
+///     }
+/// // will return the snippet
+/// {
+///         y;
+///     } // aligned with `if`
+/// ```
+/// Note that the first line of the snippet always has 0 indentation.
 pub fn snippet_block<'a, T: LintContext>(
     cx: &T,
     span: Span,
