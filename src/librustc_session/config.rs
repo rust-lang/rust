@@ -22,8 +22,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, FatalError, Handler, HandlerFlags};
 
-use getopts;
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -816,7 +814,6 @@ mod opt {
     #![allow(dead_code)]
 
     use super::RustcOptGroup;
-    use getopts;
 
     pub type R = RustcOptGroup;
     pub type S = &'static str;
@@ -1862,7 +1859,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 pub mod nightly_options {
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use crate::early_error;
-    use getopts;
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {

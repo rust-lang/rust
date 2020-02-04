@@ -20,7 +20,6 @@ use std::str;
 use syntax::ast;
 use syntax::with_globals;
 use tempfile::Builder as TempFileBuilder;
-use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;

@@ -2,7 +2,6 @@ use crate::traits;
 use crate::traits::project::Normalized;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::{self, Lift, Ty, TyCtxt};
-use chalk_engine;
 use rustc_span::symbol::Symbol;
 use smallvec::SmallVec;
 

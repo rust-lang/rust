@@ -11,8 +11,6 @@ use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 
-use getopts;
-
 use std::collections::BTreeMap;
 
 use std::collections::hash_map::DefaultHasher;

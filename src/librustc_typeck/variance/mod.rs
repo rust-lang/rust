@@ -3,7 +3,6 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/variance.html
 
-use arena;
 use hir::Node;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};

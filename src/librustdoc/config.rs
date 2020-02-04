@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use getopts;
 use rustc::lint::Level;
 use rustc::session;
 use rustc::session::config::{
@@ -13,7 +12,6 @@ use rustc::session::config::{
 use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::search_paths::SearchPath;
-use rustc_driver;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
 

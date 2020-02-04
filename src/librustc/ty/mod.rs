@@ -46,7 +46,6 @@ use rustc_target::abi::Align;
 use syntax::ast::{self, Constness, Ident, Name};
 use syntax::node_id::{NodeId, NodeMap, NodeSet};
 
-use smallvec;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;

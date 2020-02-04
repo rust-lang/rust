@@ -1,6 +1,5 @@
 //! Module converting command-line arguments into test configuration.
 
-use getopts;
 use std::env;
 use std::path::PathBuf;
 

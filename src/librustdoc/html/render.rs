@@ -73,8 +73,6 @@ use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, Mar
 use crate::html::sources;
 use crate::html::{highlight, layout, static_files};
 
-use minifier;
-
 #[cfg(test)]
 mod tests;
 
