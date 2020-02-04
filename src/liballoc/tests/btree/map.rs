@@ -23,6 +23,11 @@ fn test_basic_large() {
         assert_eq!(map.len(), i + 1);
     }
 
+    assert_eq!(map.first_key_value(), Some((&0, &0)));
+    assert_eq!(map.last_key_value(), Some((&(size - 1), &(10 * (size - 1)))));
+    assert_eq!(map.first_entry().unwrap().key(), &0);
+    assert_eq!(map.last_entry().unwrap().key(), &(size - 1));
+
     for i in 0..size {
         assert_eq!(map.get(&i).unwrap(), &(i * 10));
     }
