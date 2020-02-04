@@ -1,166 +1,130 @@
 // run-pass
 
-#![feature(const_int_checked)]
-#![feature(const_int_euclidean)]
-#![feature(const_int_overflowing)]
-#![feature(const_int_saturating)]
-#![feature(const_int_wrapping)]
+#![feature(saturating_neg)]
+#![feature(const_checked_int_methods)]
+#![feature(const_euclidean_int_methods)]
+#![feature(const_overflowing_int_methods)]
+#![feature(const_saturating_int_methods)]
+#![feature(const_wrapping_int_methods)]
 
-macro_rules! assert_same_const {
-    ($(const $ident:ident: $ty:ty = $exp:expr;)+) => {
-        $(const $ident: $ty = $exp;)+
+use std::i8;
 
-        pub fn main() {
-            $(assert_eq!($exp, $ident);)+
+macro_rules! suite {
+    ($(
+        $fn:ident -> $ty:ty { $( $label:ident : $expr:expr, $result:expr; )* }
+    )*) => { $(
+        fn $fn() {
+            $(
+                const $label: $ty = $expr;
+                assert_eq!($label, $result);
+            )*
         }
-    }
+    )* }
 }
 
-assert_same_const! {
-    // `const_int_checked`
-    const CHECKED_ADD_I32_A: Option<i32> = 5i32.checked_add(2);
-    const CHECKED_ADD_I8_A: Option<i8> = 127i8.checked_add(2);
-    const CHECKED_ADD_U8_A: Option<u8> = 255u8.checked_add(2);
+suite!(
+    checked -> Option<i8> {
+        // `const_checked_int_methods`
+        C1: 5i8.checked_add(2), Some(7);
+        C2: 127i8.checked_add(2), None;
 
-    const CHECKED_SUB_I32_A: Option<i32> = 5i32.checked_sub(2);
-    const CHECKED_SUB_I8_A: Option<i8> = (-127 as i8).checked_sub(2);
-    const CHECKED_SUB_U8_A: Option<u8> = 1u8.checked_sub(2);
+        C3: 5i8.checked_sub(2), Some(3);
+        C4: (-127i8).checked_sub(2), None;
 
-    const CHECKED_MUL_I32_A: Option<i32> = 5i32.checked_mul(7777);
-    const CHECKED_MUL_I8_A: Option<i8> = (-127 as i8).checked_mul(-99);
-    const CHECKED_MUL_U8_A: Option<u8> = 1u8.checked_mul(3);
+        C5: 1i8.checked_mul(3), Some(3);
+        C6: 5i8.checked_mul(122), None;
+        C7: (-127i8).checked_mul(-99), None;
 
-    const CHECKED_DIV_I32_A: Option<i32> = 5i32.checked_div(7777);
-    const CHECKED_DIV_I8_A: Option<i8> = (-127 as i8).checked_div(-99);
-    const CHECKED_DIV_U8_A: Option<u8> = 1u8.checked_div(3);
+        C8: (i8::min_value() + 1).checked_div(-1), Some(127);
+        C9: i8::min_value().checked_div(-1), None;
+        C10: 1i8.checked_div(0), None;
 
-    const CHECKED_REM_I32_A: Option<i32> = 5i32.checked_rem(7777);
-    const CHECKED_REM_I8_A: Option<i8> = (-127 as i8).checked_rem(-99);
-    const CHECKED_REM_U8_A: Option<u8> = 1u8.checked_rem(3);
-    const CHECKED_REM_U8_B: Option<u8> = 1u8.checked_rem(0);
+        C11: 5i8.checked_rem(2), Some(1);
+        C12: 5i8.checked_rem(0), None;
+        C13: i8::MIN.checked_rem(-1), None;
 
-    const CHECKED_NEG_I32_A: Option<i32> = 5i32.checked_neg();
-    const CHECKED_NEG_I8_A: Option<i8> = (-127 as i8).checked_neg();
-    const CHECKED_NEG_U8_A: Option<u8> = 1u8.checked_neg();
-    const CHECKED_NEG_U8_B: Option<u8> = u8::min_value().checked_neg();
+        C14: 5i8.checked_neg(), Some(-5);
+        C15: i8::MIN.checked_neg(), None;
 
-    const CHECKED_SHL_I32_A: Option<i32> = 5i32.checked_shl(77777);
-    const CHECKED_SHL_I8_A: Option<i8> = (-127 as i8).checked_shl(2);
-    const CHECKED_SHL_U8_A: Option<u8> = 1u8.checked_shl(8);
-    const CHECKED_SHL_U8_B: Option<u8> = 1u8.checked_shl(0);
+        C16: 0x1i8.checked_shl(4), Some(0x10);
+        C17: 0x1i8.checked_shl(129), None;
 
-    const CHECKED_SHR_I32_A: Option<i32> = 5i32.checked_shr(77777);
-    const CHECKED_SHR_I8_A: Option<i8> = (-127 as i8).checked_shr(2);
-    const CHECKED_SHR_U8_A: Option<u8> = 1u8.checked_shr(8);
-    const CHECKED_SHR_U8_B: Option<u8> = 1u8.checked_shr(0);
+        C18: 0x10i8.checked_shr(4), Some(0x1);
+        C19: 0x10i8.checked_shr(128), None;
 
-    const CHECKED_ABS_I32_A: Option<i32> = 5i32.checked_abs();
-    const CHECKED_ABS_I8_A: Option<i8> = (-127 as i8).checked_abs();
-    const CHECKED_ABS_I8_B: Option<i8> = 1i8.checked_abs();
-    const CHECKED_ABS_I8_C: Option<i8> = i8::min_value().checked_abs();
 
-    // `const_int_overflowing`
-    const DIV_A: (i8, bool) = 8i8.overflowing_div(2);
-    const DIV_B: (i8, bool) = 8i8.overflowing_div(3);
-    const DIV_C: (i8, bool) = i8::min_value().overflowing_div(-1i8);
-    const DIV_D: (u8, bool) = 8u8.overflowing_div(2);
-    const DIV_E: (u8, bool) = 8u8.overflowing_div(3);
+        C20: (-5i8).checked_abs(), Some(5);
+        C21: i8::MIN.checked_abs(), None;
 
-    const REM_A: (i8, bool) = 8i8.overflowing_rem(2);
-    const REM_B: (i8, bool) = 8i8.overflowing_rem(3);
-    const REM_C: (i8, bool) = i8::min_value().overflowing_rem(-1i8);
-    const REM_D: (u8, bool) = 8u8.overflowing_rem(2);
-    const REM_E: (u8, bool) = 8u8.overflowing_rem(3);
+        // `const_euclidean_int_methods`
+        C22: (i8::min_value() + 1).checked_div_euclid(-1), Some(127);
+        C23: i8::min_value().checked_div_euclid(-1), None;
+        C24: (1i8).checked_div_euclid(0), None;
 
-    // `const_int_saturating`
-    const ADD_INT_U32_NO: u32 = (42 as u32).saturating_add(2);
-    const ADD_INT_U32: u32 = u32::max_value().saturating_add(1);
-    const ADD_INT_U128: u128 = u128::max_value().saturating_add(1);
-    const ADD_INT_I128: i128 = i128::max_value().saturating_add(1);
-    const ADD_INT_I128_NEG: i128 = i128::min_value().saturating_add(-1);
+        C25: 5i8.checked_rem_euclid(2), Some(1);
+        C26: 5i8.checked_rem_euclid(0), None;
+        C27: i8::MIN.checked_rem_euclid(-1), None;
+    }
 
-    const SUB_INT_U32_NO: u32 = (42 as u32).saturating_sub(2);
-    const SUB_INT_U32: u32 = (1 as u32).saturating_sub(2);
-    const SUB_INT_I32_NO: i32 = (-42 as i32).saturating_sub(2);
-    const SUB_INT_I32_NEG: i32 = i32::min_value().saturating_sub(1);
-    const SUB_INT_I32_POS: i32 = i32::max_value().saturating_sub(-1);
-    const SUB_INT_U128: u128 = (0 as u128).saturating_sub(1);
-    const SUB_INT_I128_NEG: i128 = i128::min_value().saturating_sub(1);
-    const SUB_INT_I128_POS: i128 = i128::max_value().saturating_sub(-1);
+    saturating_and_wrapping -> i8 {
+        // `const_saturating_int_methods`
+        C28: 100i8.saturating_add(1), 101;
+        C29: i8::max_value().saturating_add(100), i8::max_value();
+        C30: i8::min_value().saturating_add(-1), i8::min_value();
 
-    const MUL_INT_U32_NO: u32 = (42 as u32).saturating_mul(2);
-    const MUL_INT_U32: u32 = (1 as u32).saturating_mul(2);
-    const MUL_INT_I32_NO: i32 = (-42 as i32).saturating_mul(2);
-    const MUL_INT_I32_NEG: i32 = i32::min_value().saturating_mul(1);
-    const MUL_INT_I32_POS: i32 = i32::max_value().saturating_mul(2);
-    const MUL_INT_U128: u128 = (0 as u128).saturating_mul(1);
-    const MUL_INT_I128_NEG: i128 = i128::min_value().saturating_mul(2);
-    const MUL_INT_I128_POS: i128 = i128::max_value().saturating_mul(2);
+        C31: 100i8.saturating_sub(127), -27;
+        C32: i8::min_value().saturating_sub(100), i8::min_value();
+        C33: i8::max_value().saturating_sub(-1), i8::max_value();
 
-    const NEG_INT_I8: i8 = (-42i8).saturating_neg();
-    const NEG_INT_I8_B: i8 = i8::min_value().saturating_neg();
-    const NEG_INT_I32: i32 = i32::min_value().saturating_neg();
-    const NEG_INT_I32_B: i32 = i32::max_value().saturating_neg();
-    const NEG_INT_I128: i128 = i128::min_value().saturating_neg();
-    const NEG_INT_I128_B: i128 = i128::max_value().saturating_neg();
+        C34: 10i8.saturating_mul(12), 120;
+        C35: i8::MAX.saturating_mul(10), i8::MAX;
+        C36: i8::MIN.saturating_mul(10), i8::MIN;
 
-    const ABS_INT_I8_A: i8 = 4i8.saturating_abs();
-    const ABS_INT_I8_B: i8 = -4i8.saturating_abs();
-    const ABS_INT_I8_C: i8 = i8::min_value().saturating_abs();
-    const ABS_INT_I32_A: i32 = 4i32.saturating_abs();
-    const ABS_INT_I32_B: i32 = -4i32.saturating_abs();
-    const ABS_INT_I32_C: i32 = i32::min_value().saturating_abs();
-    const ABS_INT_I128_A: i128 = 4i128.saturating_abs();
-    const ABS_INT_I128_B: i128 = -4i128.saturating_abs();
-    const ABS_INT_I128_C: i128 = i128::min_value().saturating_abs();
+        C37: 100i8.saturating_neg(), -100;
+        C38: (-100i8).saturating_neg(), 100;
+        C39: i8::min_value().saturating_neg(), i8::max_value();
+        C40: i8::max_value().saturating_neg(), i8::min_value() + 1;
 
-    // `const_int_euclidean`
-    const CHECKED_DIV_I32_A: Option<i32> = 5i32.checked_div_euclid(7777);
-    const CHECKED_DIV_I8_A: Option<i8> = (-127 as i8).checked_div_euclid(-99);
-    const CHECKED_DIV_I8_B: Option<i8> = (-127 as i8).checked_div_euclid(1);
-    const CHECKED_DIV_I8_C: Option<i8> = i8::min_value().checked_div_euclid(-1);
-    const CHECKED_DIV_U8_A: Option<u8> = 1u8.checked_div_euclid(3);
+        C57: 100i8.saturating_abs(), 100;
+        C58: (-100i8).saturating_abs(), 100;
+        C59: i8::min_value().saturating_abs(), i8::max_value();
+        C60: (i8::min_value() + 1).saturating_abs(), i8::max_value();
 
-    const CHECKED_REM_I32_A: Option<i32> = 5i32.checked_rem_euclid(7777);
-    const CHECKED_REM_I8_A: Option<i8> = (-127 as i8).checked_rem_euclid(-99);
-    const CHECKED_REM_I8_B: Option<i8> = (-127 as i8).checked_rem_euclid(0);
-    const CHECKED_REM_I8_C: Option<i8> = i8::min_value().checked_rem_euclid(-1);
-    const CHECKED_REM_U8_A: Option<u8> = 1u8.checked_rem_euclid(3);
+        // `const_wrapping_int_methods`
+        C41: 100i8.wrapping_div(10), 10;
+        C42: (-128i8).wrapping_div(-1), -128;
 
-    const WRAPPING_DIV_I32_A: i32 = 5i32.wrapping_div_euclid(7777);
-    const WRAPPING_DIV_I8_A: i8 = (-127 as i8).wrapping_div_euclid(-99);
-    const WRAPPING_DIV_I8_B: i8 = (-127 as i8).wrapping_div_euclid(1);
-    const WRAPPING_DIV_I8_C: i8 = i8::min_value().wrapping_div_euclid(-1);
-    const WRAPPING_DIV_U8_A: u8 = 1u8.wrapping_div_euclid(3);
+        C43: 100i8.wrapping_rem(10), 0;
+        C44: (-128i8).wrapping_rem(-1), 0;
 
-    const WRAPPING_REM_I32_A: i32 = 5i32.wrapping_rem_euclid(7777);
-    const WRAPPING_REM_I8_A: i8 = (-127 as i8).wrapping_rem_euclid(-99);
-    const WRAPPING_REM_I8_B: i8 = (-127 as i8).wrapping_rem_euclid(1);
-    const WRAPPING_REM_I8_C: i8 = i8::min_value().wrapping_rem_euclid(-1);
-    const WRAPPING_REM_U8_A: u8 = 1u8.wrapping_rem_euclid(3);
+        // `const_euclidean_int_methods`
+        C45: 100i8.wrapping_div_euclid(10), 10;
+        C46: (-128i8).wrapping_div_euclid(-1), -128;
 
-    const OVERFLOWING_DIV_I32_A: (i32, bool) = 5i32.overflowing_div_euclid(7777);
-    const OVERFLOWING_DIV_I8_A: (i8, bool) = (-127 as i8).overflowing_div_euclid(-99);
-    const OVERFLOWING_DIV_I8_B: (i8, bool) = (-127 as i8).overflowing_div_euclid(1);
-    const OVERFLOWING_DIV_I8_C: (i8, bool) = i8::min_value().overflowing_div_euclid(-1);
-    const OVERFLOWING_DIV_U8_A: (u8, bool) = 1u8.overflowing_div_euclid(3);
+        C47: 100i8.wrapping_rem_euclid(10), 0;
+        C48: (-128i8).wrapping_rem_euclid(-1), 0;
+    }
 
-    const OVERFLOWING_REM_I32_A: (i32, bool) = 5i32.overflowing_rem_euclid(7777);
-    const OVERFLOWING_REM_I8_A: (i8, bool) = (-127 as i8).overflowing_rem_euclid(-99);
-    const OVERFLOWING_REM_I8_B: (i8, bool) = (-127 as i8).overflowing_rem_euclid(1);
-    const OVERFLOWING_REM_I8_C: (i8, bool) = i8::min_value().overflowing_rem_euclid(-1);
-    const OVERFLOWING_REM_U8_A: (u8, bool) = 1u8.overflowing_rem_euclid(3);
+    overflowing -> (i8, bool) {
+        // `const_overflowing_int_methods`
+        C49: 5i8.overflowing_div(2), (2, false);
+        C50: i8::MIN.overflowing_div(-1), (i8::MIN, true);
 
-    // `const_int_wrapping`
-    const DIV_A: i8 = 8i8.wrapping_div(2);
-    const DIV_B: i8 = 8i8.wrapping_div(3);
-    const DIV_C: i8 = i8::min_value().wrapping_div(-1i8);
-    const DIV_D: u8 = 8u8.wrapping_div(2);
-    const DIV_E: u8 = 8u8.wrapping_div(3);
+        C51: 5i8.overflowing_rem(2), (1, false);
+        C52: i8::MIN.overflowing_rem(-1), (0, true);
 
-    const REM_A: i8 = 8i8.wrapping_rem(2);
-    const REM_B: i8 = 8i8.wrapping_rem(3);
-    const REM_C: i8 = i8::min_value().wrapping_rem(-1i8);
-    const REM_D: u8 = 8u8.wrapping_rem(2);
-    const REM_E: u8 = 8u8.wrapping_rem(3);
+        // `const_euclidean_int_methods`
+        C53: 5i8.overflowing_div_euclid(2), (2, false);
+        C54: i8::MIN.overflowing_div_euclid(-1), (i8::MIN, true);
+
+        C55: 5i8.overflowing_rem_euclid(2), (1, false);
+        C56: i8::MIN.overflowing_rem_euclid(-1), (0, true);
+
+    }
+);
+
+fn main() {
+   checked();
+   saturating_and_wrapping();
+   overflowing();
 }
