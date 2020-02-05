@@ -1,7 +1,12 @@
-use hir::db::HirDatabase;
-use ra_syntax::ast::{self, AstNode};
+use std::iter::successors;
 
-use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
+use hir::db::HirDatabase;
+use ra_syntax::{
+    ast::{self, AstNode},
+    Direction, TextUnit,
+};
+
+use crate::{Assist, AssistCtx, AssistId, TextRange};
 
 // Assist: merge_match_arms
 //
@@ -29,51 +34,52 @@ use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
 // ```
 pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
-
-    // We check if the following match arm matches this one. We could, but don't,
-    // compare to the previous match arm as well.
-    let next = current_arm.syntax().next_sibling();
-    let next_arm = ast::MatchArm::cast(next?)?;
-
     // Don't try to handle arms with guards for now - can add support for this later
-    if current_arm.guard().is_some() || next_arm.guard().is_some() {
+    if current_arm.guard().is_some() {
         return None;
     }
-
     let current_expr = current_arm.expr()?;
-    let next_expr = next_arm.expr()?;
+    let current_text_range = current_arm.syntax().text_range();
+    let cursor_offset_back = current_text_range.end() - ctx.frange.range.start();
 
-    // Check for match arm equality by comparing lengths and then string contents
-    if current_expr.syntax().text_range().len() != next_expr.syntax().text_range().len() {
+    // We check if the following match arms match this one. We could, but don't,
+    // compare to the previous match arm as well.
+    let arms_to_merge = successors(Some(current_arm), next_arm)
+        .take_while(|arm| {
+            if arm.guard().is_some() {
+                return false;
+            }
+            match arm.expr() {
+                Some(expr) => expr.syntax().text() == current_expr.syntax().text(),
+                None => false,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if arms_to_merge.len() <= 1 {
         return None;
     }
-    if current_expr.syntax().text() != next_expr.syntax().text() {
-        return None;
-    }
-
-    let cursor_to_end = current_arm.syntax().text_range().end() - ctx.frange.range.start();
 
     ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", |edit| {
-        let pats = if contains_placeholder(&current_arm) || contains_placeholder(&next_arm) {
+        let pats = if arms_to_merge.iter().any(contains_placeholder) {
             "_".into()
         } else {
-            let ps: Vec<String> = current_arm
-                .pats()
+            arms_to_merge
+                .iter()
+                .flat_map(ast::MatchArm::pats)
                 .map(|x| x.syntax().to_string())
-                .chain(next_arm.pats().map(|x| x.syntax().to_string()))
-                .collect();
-            ps.join(" | ")
+                .collect::<Vec<String>>()
+                .join(" | ")
         };
 
         let arm = format!("{} => {}", pats, current_expr.syntax().text());
-        let offset = TextUnit::from_usize(arm.len()) - cursor_to_end;
 
-        let start = current_arm.syntax().text_range().start();
-        let end = next_arm.syntax().text_range().end();
+        let start = arms_to_merge.first().unwrap().syntax().text_range().start();
+        let end = arms_to_merge.last().unwrap().syntax().text_range().end();
 
-        edit.target(current_arm.syntax().text_range());
+        edit.target(current_text_range);
+        edit.set_cursor(start + TextUnit::from_usize(arm.len()) - cursor_offset_back);
         edit.replace(TextRange::from_to(start, end), arm);
-        edit.set_cursor(start + offset);
     })
 }
 
@@ -82,6 +88,10 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
         ra_syntax::ast::Pat::PlaceholderPat(..) => true,
         _ => false,
     })
+}
+
+fn next_arm(arm: &ast::MatchArm) -> Option<ast::MatchArm> {
+    arm.syntax().siblings(Direction::Next).skip(1).find_map(ast::MatchArm::cast)
 }
 
 #[cfg(test)]
@@ -183,6 +193,37 @@ mod tests {
             }
             "#,
         );
+    }
+
+    #[test]
+    fn merges_all_subsequent_arms() {
+        check_assist(
+            merge_match_arms,
+            r#"
+            enum X { A, B, C, D, E }
+
+            fn main() {
+                match X::A {
+                    X::A =><|> 92,
+                    X::B => 92,
+                    X::C => 92,
+                    X::D => 62,
+                    _ => panic!(),
+                }
+            }
+            "#,
+            r#"
+            enum X { A, B, C, D, E }
+
+            fn main() {
+                match X::A {
+                    X::A | X::B | X::C =><|> 92,
+                    X::D => 62,
+                    _ => panic!(),
+                }
+            }
+            "#,
+        )
     }
 
     #[test]
