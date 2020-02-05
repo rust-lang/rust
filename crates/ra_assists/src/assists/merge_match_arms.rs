@@ -40,7 +40,17 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
     }
     let current_expr = current_arm.expr()?;
     let current_text_range = current_arm.syntax().text_range();
-    let cursor_offset_back = current_text_range.end() - ctx.frange.range.start();
+
+    enum CursorPos {
+        InExpr(TextUnit),
+        InPat(TextUnit),
+    }
+    let cursor_pos = ctx.frange.range.start();
+    let cursor_pos = if current_expr.syntax().text_range().contains(cursor_pos) {
+        CursorPos::InExpr(current_text_range.end() - cursor_pos)
+    } else {
+        CursorPos::InPat(cursor_pos)
+    };
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
@@ -78,7 +88,10 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         let end = arms_to_merge.last().unwrap().syntax().text_range().end();
 
         edit.target(current_text_range);
-        edit.set_cursor(start + TextUnit::from_usize(arm.len()) - cursor_offset_back);
+        edit.set_cursor(match cursor_pos {
+            CursorPos::InExpr(back_offset) => start + TextUnit::from_usize(arm.len()) - back_offset,
+            CursorPos::InPat(offset) => offset,
+        });
         edit.replace(TextRange::from_to(start, end), arm);
     })
 }
@@ -204,7 +217,7 @@ mod tests {
 
             fn main() {
                 match X::A {
-                    X::A =><|> 92,
+                    X::A<|> => 92,
                     X::B => 92,
                     X::C => 92,
                     X::D => 62,
@@ -217,7 +230,7 @@ mod tests {
 
             fn main() {
                 match X::A {
-                    X::A | X::B | X::C =><|> 92,
+                    X::A<|> | X::B | X::C => 92,
                     X::D => 62,
                     _ => panic!(),
                 }
