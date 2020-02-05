@@ -12,9 +12,9 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let (x, y, z) = (a, b, c);
-LL | {
-LL |     println!("{} {} {}", x, y, z);
-LL | }
+LL |     {
+LL |         println!("{} {} {}", x, y, z);
+LL |     }
    |
 
 error: this match could be written as a `let` statement
@@ -28,7 +28,7 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let (x, y, z) = (a, b, c);
-LL | println!("{} {} {}", x, y, z);
+LL |     println!("{} {} {}", x, y, z);
    |
 
 error: this match could be replaced by its body itself
@@ -53,9 +53,9 @@ LL | |     }
 help: consider using the match body instead
    |
 LL |     {
-LL |     let x = 29;
-LL |     println!("x has a value of {}", x);
-LL | }
+LL |         let x = 29;
+LL |         println!("x has a value of {}", x);
+LL |     }
    |
 
 error: this match could be replaced by its body itself
@@ -73,11 +73,11 @@ LL | |     }
 help: consider using the match body instead
    |
 LL |     {
-LL |     let e = 5 * a;
-LL |     if e >= 5 {
-LL |         println!("e is superior to 5");
+LL |         let e = 5 * a;
+LL |         if e >= 5 {
+LL |             println!("e is superior to 5");
+LL |         }
 LL |     }
-LL | }
    |
 
 error: this match could be written as a `let` statement
@@ -91,7 +91,7 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let Point { x, y } = p;
-LL | println!("Coords: ({}, {})", x, y);
+LL |     println!("Coords: ({}, {})", x, y);
    |
 
 error: this match could be written as a `let` statement
@@ -105,7 +105,7 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let Point { x: x1, y: y1 } = p;
-LL | println!("Coords: ({}, {})", x1, y1);
+LL |     println!("Coords: ({}, {})", x1, y1);
    |
 
 error: this match could be written as a `let` statement
@@ -119,7 +119,7 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let ref r = x;
-LL | println!("Got a reference to {}", r);
+LL |     println!("Got a reference to {}", r);
    |
 
 error: this match could be written as a `let` statement
@@ -133,7 +133,7 @@ LL | |     }
 help: consider using `let` statement
    |
 LL |     let ref mut mr = x;
-LL | println!("Got a mutable reference to {}", mr);
+LL |     println!("Got a mutable reference to {}", mr);
    |
 
 error: aborting due to 9 previous errors
