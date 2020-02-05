@@ -13,7 +13,6 @@ use rustc_hir::def_id::DefId;
 use rustc_resolve::ParentScope;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
-use syntax;
 use syntax::ast::{self, Ident};
 
 use std::ops::Range;

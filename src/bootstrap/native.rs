@@ -15,8 +15,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::{output, t};
-use cc;
-use cmake;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
@@ -205,7 +203,7 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
         }
 
-        if enabled_llvm_projects.len() > 0 {
+        if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();
             enabled_llvm_projects.dedup();
             cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));

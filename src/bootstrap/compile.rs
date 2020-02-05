@@ -18,7 +18,6 @@ use std::str;
 use build_helper::{output, t, up_to_date};
 use filetime::FileTime;
 use serde::Deserialize;
-use serde_json;
 
 use crate::builder::Cargo;
 use crate::dist;
@@ -149,7 +148,8 @@ fn copy_third_party_objects(
     // which is provided by std for this target.
     if target == "x86_64-fortanix-unknown-sgx" {
         let src_path_env = "X86_FORTANIX_SGX_LIBS";
-        let src = env::var(src_path_env).expect(&format!("{} not found in env", src_path_env));
+        let src =
+            env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
         copy_and_stamp(Path::new(&src), "libunwind.a");
     }
 
@@ -361,7 +361,7 @@ impl Step for StartupObjects {
                 );
             }
 
-            let target = sysroot_dir.join(file.to_string() + ".o");
+            let target = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy(dst_file, &target);
             target_deps.push(target);
         }
@@ -515,7 +515,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
         .env("CFG_VERSION", builder.rust_version())
         .env("CFG_PREFIX", builder.config.prefix.clone().unwrap_or_default());
 
-    let libdir_relative = builder.config.libdir_relative().unwrap_or(Path::new("lib"));
+    let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
     if let Some(ref ver_date) = builder.rust_info.commit_date() {
@@ -843,11 +843,11 @@ pub fn run_cargo(
         };
         for filename in filenames {
             // Skip files like executables
-            if !filename.ends_with(".rlib")
-                && !filename.ends_with(".lib")
-                && !filename.ends_with(".a")
-                && !is_dylib(&filename)
-                && !(is_check && filename.ends_with(".rmeta"))
+            if !(filename.ends_with(".rlib")
+                || filename.ends_with(".lib")
+                || filename.ends_with(".a")
+                || is_dylib(&filename)
+                || (is_check && filename.ends_with(".rmeta")))
             {
                 continue;
             }
@@ -905,7 +905,7 @@ pub fn run_cargo(
     for (prefix, extension, expected_len) in toplevel {
         let candidates = contents.iter().filter(|&&(_, ref filename, ref meta)| {
             filename.starts_with(&prefix[..])
-                && filename[prefix.len()..].starts_with("-")
+                && filename[prefix.len()..].starts_with('-')
                 && filename.ends_with(&extension[..])
                 && meta.len() == expected_len
         });

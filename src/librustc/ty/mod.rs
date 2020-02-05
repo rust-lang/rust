@@ -46,7 +46,6 @@ use rustc_target::abi::Align;
 use syntax::ast::{self, Constness, Ident, Name};
 use syntax::node_id::{NodeId, NodeMap, NodeSet};
 
-use smallvec;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -1348,7 +1347,7 @@ pub trait ToPredicate<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(&self) -> Predicate<'tcx> {
         ty::Predicate::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value.clone() }),
+            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
             self.constness,
         )
     }

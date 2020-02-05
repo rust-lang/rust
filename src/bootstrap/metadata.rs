@@ -5,7 +5,6 @@ use std::process::Command;
 
 use build_helper::output;
 use serde::Deserialize;
-use serde_json;
 
 use crate::cache::INTERNER;
 use crate::{Build, Crate};

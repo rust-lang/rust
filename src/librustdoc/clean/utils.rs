@@ -16,7 +16,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 

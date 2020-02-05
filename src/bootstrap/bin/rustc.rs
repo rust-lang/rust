@@ -47,7 +47,7 @@ fn main() {
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
-    let on_fail = env::var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
+    let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
@@ -64,7 +64,7 @@ fn main() {
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
             if target == "all"
-                || target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
+                || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
             {
                 cmd.arg("-Ztime");
             }
@@ -189,7 +189,7 @@ fn main() {
                 crate_name,
                 is_test,
                 dur.as_secs(),
-                dur.subsec_nanos() / 1_000_000
+                dur.subsec_millis()
             );
 
             match status.code() {

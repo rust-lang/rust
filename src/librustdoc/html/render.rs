@@ -73,8 +73,6 @@ use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, Mar
 use crate::html::sources;
 use crate::html::{highlight, layout, static_files};
 
-use minifier;
-
 #[cfg(test)]
 mod tests;
 
@@ -3629,14 +3627,7 @@ fn render_impl(
                 for it in &i.inner_impl().items {
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
                         write!(w, "<span class=\"where fmt-newline\">  ");
-                        assoc_type(
-                            w,
-                            it,
-                            &vec![],
-                            Some(&tydef.type_),
-                            AssocItemLink::Anchor(None),
-                            "",
-                        );
+                        assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "");
                         write!(w, ";</span>");
                     }
                 }
