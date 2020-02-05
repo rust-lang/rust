@@ -206,6 +206,14 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
+fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AssocItemsIterator<'tcx> {
+    ty::AssocItemsIterator {
+        items: tcx.arena.alloc_from_iter(
+            tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did)),
+        ),
+    }
+}
+
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
 }
@@ -356,6 +364,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         asyncness,
         associated_item,
         associated_item_def_ids,
+        associated_items,
         adt_sized_constraint,
         def_span,
         param_env,
