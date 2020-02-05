@@ -1,9 +1,12 @@
-use format_buf::format;
 use hir::db::HirDatabase;
-use ra_fmt::extract_trivial_expression;
-use ra_syntax::{ast, AstNode};
+use ra_fmt::unwrap_trivial_block;
+use ra_syntax::{
+    ast::{self, make},
+    AstNode,
+};
 
 use crate::{Assist, AssistCtx, AssistId};
+use ast::edit::IndentLevel;
 
 // Assist: replace_if_let_with_match
 //
@@ -43,32 +46,24 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Opt
     };
 
     ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", |edit| {
-        let match_expr = build_match_expr(expr, pat, then_block, else_block);
+        let match_expr = {
+            let then_arm = {
+                let then_expr = unwrap_trivial_block(then_block);
+                make::match_arm(vec![pat], then_expr)
+            };
+            let else_arm = {
+                let else_expr = unwrap_trivial_block(else_block);
+                make::match_arm(vec![make::placeholder_pat().into()], else_expr)
+            };
+            make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
+        };
+
+        let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
+
         edit.target(if_expr.syntax().text_range());
-        edit.replace_node_and_indent(if_expr.syntax(), match_expr);
-        edit.set_cursor(if_expr.syntax().text_range().start())
+        edit.set_cursor(if_expr.syntax().text_range().start());
+        edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr.into());
     })
-}
-
-fn build_match_expr(
-    expr: ast::Expr,
-    pat1: ast::Pat,
-    arm1: ast::BlockExpr,
-    arm2: ast::BlockExpr,
-) -> String {
-    let mut buf = String::new();
-    format!(buf, "match {} {{\n", expr.syntax().text());
-    format!(buf, "    {} => {}\n", pat1.syntax().text(), format_arm(&arm1));
-    format!(buf, "    _ => {}\n", format_arm(&arm2));
-    buf.push_str("}");
-    buf
-}
-
-fn format_arm(block: &ast::BlockExpr) -> String {
-    match extract_trivial_expression(block) {
-        Some(e) if !e.syntax().text().contains_char('\n') => format!("{},", e.syntax().text()),
-        _ => block.syntax().text().to_string(),
-    }
 }
 
 #[cfg(test)]

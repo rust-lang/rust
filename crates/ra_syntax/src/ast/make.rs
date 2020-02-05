@@ -122,11 +122,18 @@ pub fn match_arm(pats: impl IntoIterator<Item = ast::Pat>, expr: ast::Expr) -> a
 }
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-    let arms_str = arms.into_iter().map(|arm| format!("\n    {}", arm.syntax())).join(",");
-    return from_text(&format!("{},\n", arms_str));
+    let arms_str = arms
+        .into_iter()
+        .map(|arm| {
+            let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
+            let comma = if needs_comma { "," } else { "" };
+            format!("    {}{}\n", arm.syntax(), comma)
+        })
+        .collect::<String>();
+    return from_text(&format!("{}", arms_str));
 
     fn from_text(text: &str) -> ast::MatchArmList {
-        ast_from_text(&format!("fn f() {{ match () {{{}}} }}", text))
+        ast_from_text(&format!("fn f() {{ match () {{\n{}}} }}", text))
     }
 }
 
