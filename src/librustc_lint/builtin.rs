@@ -645,15 +645,15 @@ impl EarlyLintPass for AnonymousParameters {
                     match arg.pat.kind {
                         ast::PatKind::Ident(_, ident, None) => {
                             if ident.name == kw::Invalid {
-                                let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
-
-                                let (ty_snip, appl) = if let Ok(snip) = ty_snip {
-                                    (snip, Applicability::MachineApplicable)
-                                } else {
-                                    ("<type>".to_owned(), Applicability::HasPlaceholders)
-                                };
-
                                 cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
+                                    let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+
+                                    let (ty_snip, appl) = if let Ok(snip) = ty_snip {
+                                        (snip, Applicability::MachineApplicable)
+                                    } else {
+                                        ("<type>".to_owned(), Applicability::HasPlaceholders)
+                                    };
+
                                     lint.build(
                                         "anonymous parameters are deprecated and will be \
                                      removed in the next edition.",
@@ -869,8 +869,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, sym::no_mangle) {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    let msg = "const items should never be `#[no_mangle]`";
                     cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, |lint| {
+                        let msg = "const items should never be `#[no_mangle]`";
                         let mut err = lint.build(msg);
 
                         // account for "pub const" (#45562)
@@ -910,11 +910,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 
-        let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
-                   consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
                 if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+                    let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
+                               consider instead using an UnsafeCell";
                     cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
                         lint.build(msg).emit()
                     });
@@ -1335,12 +1335,12 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             let suggestion = "use `..=` for an inclusive range";
             if parenthesise {
                 self.node_id = Some(pat.id);
-                let end = expr_to_string(&end);
-                let replace = match start {
-                    Some(start) => format!("&({}..={})", expr_to_string(&start), end),
-                    None => format!("&(..={})", end),
-                };
                 cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
+                    let end = expr_to_string(&end);
+                    let replace = match start {
+                        Some(start) => format!("&({}..={})", expr_to_string(&start), end),
+                        None => format!("&(..={})", end),
+                    };
                     lint.build(msg)
                         .span_suggestion(
                             pat.span,

@@ -516,18 +516,18 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
         .as_local_hir_id(def_id)
         .unwrap_or_else(|| bug!("checking unsafety for non-local def id {:?}", def_id));
 
-    // FIXME: when we make this a hard error, this should have its
-    // own error code.
-    let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
-        "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
-         type or const parameters (error E0133)"
-            .to_string()
-    } else {
-        "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
-         does not derive Copy (error E0133)"
-            .to_string()
-    };
     tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
+        // FIXME: when we make this a hard error, this should have its
+        // own error code.
+        let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
+            "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
+             type or const parameters (error E0133)"
+                .to_string()
+        } else {
+            "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
+             does not derive Copy (error E0133)"
+                .to_string()
+        };
         lint.build(&message).emit()
     });
 }
@@ -560,8 +560,8 @@ fn is_enclosed(
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
-    let msg = "unnecessary `unsafe` block";
     tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
+        let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
         db.span_label(span, msg);
         if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {

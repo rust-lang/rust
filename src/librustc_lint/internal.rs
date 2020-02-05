@@ -37,9 +37,9 @@ impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         if let Some(replace) = self.map.get(&ident.name) {
-            // FIXME: We can avoid a copy here. Would require us to take String instead of &str.
-            let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
             cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, |lint| {
+                // FIXME: We can avoid a copy here. Would require us to take String instead of &str.
+                let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
                 lint.build(&msg)
                     .span_suggestion(
                         ident.span,

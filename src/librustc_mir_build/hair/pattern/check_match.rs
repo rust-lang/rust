@@ -286,12 +286,12 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
-                        let ty_path = cx.tcx.def_path_str(edef.did);
                         cx.tcx.struct_span_lint_hir(
                             BINDINGS_WITH_VARIANT_NAME,
                             p.hir_id,
                             p.span,
                             |lint| {
+                                let ty_path = cx.tcx.def_path_str(edef.did);
                                 lint.build(&format!(
                                     "pattern binding `{}` is named the same as one \
                                                 of the variants of the type `{}`",
@@ -338,12 +338,14 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
-    let msg = match source {
-        hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
-        hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
-        _ => bug!(),
-    };
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| lint.build(msg).emit());
+    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| {
+        let msg = match source {
+            hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
+            hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
+            _ => bug!(),
+        };
+        lint.build(msg).emit()
+    });
 }
 
 /// Check for unreachable patterns.

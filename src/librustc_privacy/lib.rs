@@ -1805,12 +1805,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
         let (vis, vis_span, vis_descr) = def_id_visibility(self.tcx, def_id);
         if !vis.is_at_least(self.required_visibility, self.tcx) {
-            let msg = format!("{} {} `{}` in public interface", vis_descr, kind, descr);
+            let make_msg = || format!("{} {} `{}` in public interface", vis_descr, kind, descr);
             if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                 let mut err = if kind == "trait" {
-                    struct_span_err!(self.tcx.sess, self.span, E0445, "{}", msg)
+                    struct_span_err!(self.tcx.sess, self.span, E0445, "{}", make_msg())
                 } else {
-                    struct_span_err!(self.tcx.sess, self.span, E0446, "{}", msg)
+                    struct_span_err!(self.tcx.sess, self.span, E0446, "{}", make_msg())
                 };
                 err.span_label(self.span, format!("can't leak {} {}", vis_descr, kind));
                 err.span_label(vis_span, format!("`{}` declared as {}", descr, vis_descr));
@@ -1821,7 +1821,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     self.span,
-                    |lint| lint.build(&format!("{} (error {})", msg, err_code)).emit(),
+                    |lint| lint.build(&format!("{} (error {})", make_msg(), err_code)).emit(),
                 );
             }
         }
