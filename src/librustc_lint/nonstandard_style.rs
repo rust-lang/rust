@@ -225,9 +225,8 @@ impl NonSnakeCase {
         let name = &ident.name.as_str();
 
         if !is_snake_case(name) {
-            let sc = NonSnakeCase::to_snake_case(name);
-
             cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
+                let sc = NonSnakeCase::to_snake_case(name);
                 let msg = format!("{} `{}` should have a snake case name", sort, name);
                 let mut err = lint.build(&msg);
                 // We have a valid span in almost all cases, but we don't have one when linting a crate

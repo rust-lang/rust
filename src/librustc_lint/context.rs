@@ -571,6 +571,8 @@ pub trait LintContext: Sized {
         });
     }
 
+    // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
+    // set the span in their `decorate` function (preferably using set_span).
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
