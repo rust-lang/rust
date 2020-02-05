@@ -382,13 +382,15 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or a default.
+    /// Moves the value `v` out of the `Option<T>` if it is [`Some(v)`],
+    /// or returns a provided a default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
     /// which is lazily evaluated.
     ///
     /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`Some(v)`]: #variant.Some
     ///
     /// # Examples
     ///
@@ -405,7 +407,11 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or computes it from a closure.
+    /// Moves the value `v` out of the `Option<T>` if it is [`Some(v)`],
+    /// or computes it from a closure.
+    ///
+    /// [`Some(v)`]: #variant.Some
+    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -416,10 +422,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
+    pub fn unwrap_or_else<F: FnOnce() -> T>(self, op: F) -> T {
         match self {
             Some(x) => x,
-            None => f(),
+            None => op(),
         }
     }
 

@@ -792,14 +792,15 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Consumes a result, yielding the content of an [`Ok`].
-    /// Else, it returns `optb`.
+    /// Moves the value `v` out of the `Result<T, E>` if it is [`Ok(v)`],
+    /// or returns a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
     /// which is lazily evaluated.
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Ok(v)`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
     /// [`unwrap_or_else`]: #method.unwrap_or_else
     ///
@@ -808,27 +809,27 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// let optb = 2;
+    /// let default = 2;
     /// let x: Result<u32, &str> = Ok(9);
-    /// assert_eq!(x.unwrap_or(optb), 9);
+    /// assert_eq!(x.unwrap_or(default), 9);
     ///
     /// let x: Result<u32, &str> = Err("error");
-    /// assert_eq!(x.unwrap_or(optb), optb);
+    /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, optb: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => optb,
+            Err(_) => default,
         }
     }
 
-    /// Consumes a result, yielding the content of an [`Ok`].
-    /// If the value is an [`Err`] then it calls `op` with its value.
+    /// Moves the value `v` out of the `Result<T, E>` if it is [`Ok(v)`],
+    /// or computes it from a closure.
     ///
+    /// [`Ok(v)`]: enum.Result.html#variant.Ok
     /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -931,13 +932,14 @@ impl<T: Clone, E> Result<&mut T, E> {
 }
 
 impl<T, E: fmt::Debug> Result<T, E> {
-    /// Consumes a result, yielding the content of an [`Ok`].
+    /// Moves the value `v` out of the `Result<T, E>` if it is [`Ok(v)`].
     ///
     /// # Panics
     ///
     /// Panics if the value is an [`Err`], with a panic message provided by the
     /// [`Err`]'s value.
     ///
+    /// [`Ok(v)`]: enum.Result.html#variant.Ok
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
     ///
@@ -994,13 +996,14 @@ impl<T, E: fmt::Debug> Result<T, E> {
 }
 
 impl<T: fmt::Debug, E> Result<T, E> {
-    /// Consumes a result, yielding the content of an [`Err`].
+    /// Moves the value `v` out of the `Result<T, E>` if it is [`Err(v)`].
     ///
     /// # Panics
     ///
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
     ///
+    /// [`Err(v)`]: enum.Result.html#variant.Err
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
     ///
