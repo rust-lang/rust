@@ -1,9 +1,9 @@
-use crate::completion::{CompletionContext, Completions};
+use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionKind, CompletionItemKind};
 
 use ast::{ NameOwner };
 use hir::{ self, db::HirDatabase };
 
-use ra_syntax::{ ast, ast::AstNode };
+use ra_syntax::{ SyntaxKind, ast, ast::AstNode, TextRange };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let item_list = ast::ItemList::cast(ctx.token.parent());
@@ -23,6 +23,37 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     if target_trait.is_none() {
         return;
     }
+
+    // for cases where the user has already started writing the function def, navigate
+    // the previous tokens in order to find the location of that token so that we may 
+    // replace it with our completion.
+    let start_position = {        
+        let mut prev_token = ctx.token
+            .prev_token()
+            .clone();
+
+        while let Some(token) = &prev_token {
+            match token.kind() {
+                SyntaxKind::FN_KW => break,
+
+                // todo:    attempt to find a better way of determining when to stop as
+                //          the following feels sketchy.
+                SyntaxKind::IMPL_KW |
+                SyntaxKind::L_CURLY |
+                SyntaxKind::R_CURLY => {
+                    prev_token = None;
+                    break;
+                }
+                _ => {}
+            }
+
+            prev_token = token.prev_token().clone();
+        }
+
+        prev_token
+            .map(|t| t.text_range())
+            .unwrap_or(ctx.source_range())
+    };
 
     let trait_ = target_trait.unwrap();
 
@@ -97,7 +128,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
     for item in missing_items {
         match item {
-            hir::AssocItem::Function(f) => acc.add_function_impl(ctx, f),
+            hir::AssocItem::Function(f) => add_function_impl(acc, ctx, f, start_position),
             _ => {}
         }
     }
@@ -120,6 +151,40 @@ fn resolve_target_trait(
         }
         _ => None,
     }
+}
+
+pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function, start: TextRange) {
+    use crate::display::FunctionSignature;
+
+    let display = FunctionSignature::from_hir(ctx.db, func.clone());
+
+    let func_name = func.name(ctx.db);
+
+    let label = if func.params(ctx.db).len() > 0 {
+        format!("fn {}(..)", func_name.to_string())
+    } else {
+        format!("fn {}()", func_name.to_string())
+    };
+
+    let builder = CompletionItem::new(CompletionKind::Reference, start, label);
+
+    let completion_kind = if func.has_self_param(ctx.db) {
+        CompletionItemKind::Method
+    } else {
+        CompletionItemKind::Function
+    };
+    
+    let snippet = {
+        let mut s = format!("{}", display);
+        s.push_str(" {}");
+        s
+    };
+
+    builder
+        .insert_text(snippet)
+        .kind(completion_kind)
+        .lookup_by(func_name.to_string())
+        .add_to(acc);
 }
 
 #[cfg(test)]
@@ -152,7 +217,7 @@ mod tests {
                 label: "fn foo()",
                 source_range: [138; 138),
                 delete: [138; 138),
-                insert: "fn foo() { $0}",
+                insert: "fn foo() {}",
                 kind: Function,
                 lookup: "foo",
             },
@@ -184,9 +249,96 @@ mod tests {
                 label: "fn bar()",
                 source_range: [193; 193),
                 delete: [193; 193),
-                insert: "fn bar() { $0}",
+                insert: "fn bar() {}",
                 kind: Function,
                 lookup: "bar",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn generic_fn() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn foo<T>();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "fn foo()",
+                source_range: [141; 141),
+                delete: [141; 141),
+                insert: "fn foo<T>() {}",
+                kind: Function,
+                lookup: "foo",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn generic_constrait_fn() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn foo<T>() where T: Into<String>;
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "fn foo()",
+                source_range: [163; 163),
+                delete: [163; 163),
+                insert: "fn foo<T>()\nwhere T: Into<String> {}",
+                kind: Function,
+                lookup: "foo",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn start_from_fn_kw() {
+        let completions = complete(
+            r"
+            trait Test {
+                fn foo();
+            }
+
+            struct T1;
+
+            impl Test for T1 {
+                fn <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "fn foo()",
+                source_range: [138; 140),
+                delete: [138; 140),
+                insert: "fn foo() {}",
+                kind: Function,
+                lookup: "foo",
             },
         ]
         "###);
