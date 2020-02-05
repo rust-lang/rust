@@ -11,9 +11,7 @@ pub trait HashStableContext: syntax::HashStableContext + rustc_target::HashStabl
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
-    fn hash_item_id(&mut self, _: ItemId, hasher: &mut StableHasher);
-    fn hash_impl_item_id(&mut self, _: ImplItemId, hasher: &mut StableHasher);
-    fn hash_trait_item_id(&mut self, _: TraitItemId, hasher: &mut StableHasher);
+    fn hash_reference_to_item(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_hir_mod(&mut self, _: &Mod<'_>, hasher: &mut StableHasher);
     fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
@@ -40,19 +38,19 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_item_id(*self, hasher)
+        hcx.hash_reference_to_item(self.id, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_impl_item_id(*self, hasher)
+        hcx.hash_reference_to_item(self.hir_id, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_trait_item_id(*self, hasher)
+        hcx.hash_reference_to_item(self.hir_id, hasher)
     }
 }
 
