@@ -23,9 +23,9 @@ export class Config {
     lruCapacity: null | number = null;
     displayInlayHints = true;
     maxInlayHintLength: null | number = null;
-    excludeGlobs = [];
+    excludeGlobs: string[] = [];
     useClientWatching = true;
-    featureFlags = {};
+    featureFlags: Record<string, boolean> = {};
     // for internal use
     withSysroot: null | boolean = null;
     cargoWatchOptions: CargoWatchOptions = {

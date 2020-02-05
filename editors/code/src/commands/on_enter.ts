@@ -7,7 +7,7 @@ import { Cmd, Ctx } from '../ctx';
 async function handleKeypress(ctx: Ctx) {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
-    if (!editor) return false;
+
     if (!editor || !client) return false;
 
     const request: lc.TextDocumentPositionParams = {

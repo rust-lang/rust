@@ -69,7 +69,7 @@ interface Decoration {
 
 // Based on this HSL-based color generator: https://gist.github.com/bendc/76c48ce53299e6078a76
 function fancify(seed: string, shade: 'light' | 'dark') {
-    const random = randomU32Numbers(hashString(seed))
+    const random = randomU32Numbers(hashString(seed));
     const randomInt = (min: number, max: number) => {
         return Math.abs(random()) % (max - min + 1) + min;
     };
@@ -253,14 +253,14 @@ function randomU32Numbers(seed: number) {
         random ^= random >> 17;
         random ^= random << 5;
         random |= 0;
-        return random
-    }
+        return random;
+    };
 }
 
 function hashString(str: string): number {
     let res = 0;
     for (let i = 0; i < str.length; ++i) {
-        const c = str.codePointAt(i)!!;
+        const c = str.codePointAt(i)!;
         res = (res * 31 + c) & ~0;
     }
     return res;

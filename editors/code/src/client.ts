@@ -7,25 +7,21 @@ import { Config } from './config';
 
 export function createClient(config: Config): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
-    // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
-    let folder: string = '.';
-    if (workspace.workspaceFolders !== undefined) {
-        folder = workspace.workspaceFolders[0].uri.fsPath.toString();
-    }
+    // TODO?: Workspace folders support Uri's (eg: file://test.txt).
+    // It might be a good idea to test if the uri points to a file.
+    const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const command = expandPathResolving(config.raLspServerPath);
-    if (spawnSync(command, ["--version"]).status !== 0) {
+    const raLspServerPath = expandPathResolving(config.raLspServerPath);
+    if (spawnSync(raLspServerPath, ["--version"]).status !== 0) {
         window.showErrorMessage(
-            `Unable to execute '${command} --version'
-
-Perhaps it is not in $PATH?
-
-PATH=${process.env.PATH}
-`);
+            `Unable to execute '${raLspServerPath} --version'\n\n` +
+            `Perhaps it is not in $PATH?\n\n` +
+            `PATH=${process.env.PATH}\n`
+        );
     }
     const run: lc.Executable = {
-        command,
-        options: { cwd: folder },
+        command: raLspServerPath,
+        options: { cwd: workspaceFolderPath },
     };
     const serverOptions: lc.ServerOptions = {
         run,
@@ -43,8 +39,7 @@ PATH=${process.env.PATH}
             cargoWatchEnable: config.cargoWatchOptions.enable,
             cargoWatchArgs: config.cargoWatchOptions.arguments,
             cargoWatchCommand: config.cargoWatchOptions.command,
-            cargoWatchAllTargets:
-                config.cargoWatchOptions.allTargets,
+            cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
             excludeGlobs: config.excludeGlobs,
             useClientWatching: config.useClientWatching,
             featureFlags: config.featureFlags,
