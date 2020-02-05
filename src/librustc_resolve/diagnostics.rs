@@ -491,7 +491,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Lookup typo candidate in scope for a macro or import.
-    fn early_lookup_typo_candidate(
+    crate fn early_lookup_typo_candidate(
         &mut self,
         scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,

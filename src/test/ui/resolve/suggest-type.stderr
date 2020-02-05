@@ -1,0 +1,39 @@
+error[E0433]: failed to resolve: use of undeclared type or module `Cstring`
+  --> $DIR/suggest-type.rs:8:13
+   |
+LL |     let _ = Cstring::new("hello").unwrap();
+   |             ^^^^^^^
+   |             |
+   |             use of undeclared type or module `Cstring`
+   |             help: did you mean (notice the capitalization): `CString`
+
+error[E0433]: failed to resolve: use of undeclared type or module `CStRiNg`
+  --> $DIR/suggest-type.rs:11:13
+   |
+LL |     let _ = CStRiNg::new("hello").unwrap();
+   |             ^^^^^^^
+   |             |
+   |             use of undeclared type or module `CStRiNg`
+   |             help: did you mean: `CString`
+
+error[E0433]: failed to resolve: use of undeclared type or module `cStrIng`
+  --> $DIR/suggest-type.rs:14:13
+   |
+LL |     let _ = cStrIng::new("hello").unwrap();
+   |             ^^^^^^^
+   |             |
+   |             use of undeclared type or module `cStrIng`
+   |             help: did you mean (notice the capitalization): `CString`
+
+error[E0433]: failed to resolve: use of undeclared type or module `foO`
+  --> $DIR/suggest-type.rs:17:13
+   |
+LL |     let _ = foO::bar();
+   |             ^^^
+   |             |
+   |             use of undeclared type or module `foO`
+   |             help: did you mean (notice the capitalization): `foo`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0433`.
