@@ -258,7 +258,7 @@ fn generic_extension<'cx>(
                 }
 
                 let directory = Directory {
-                    path: Cow::from(cx.current_expansion.module.directory.as_path()),
+                    path: cx.current_expansion.module.directory.clone(),
                     ownership: cx.current_expansion.directory_ownership,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
@@ -1215,7 +1215,7 @@ fn parser_from_cx<'cx>(
     tts: TokenStream,
 ) -> Parser<'cx> {
     let directory = Directory {
-        path: Cow::from(current_expansion.module.directory.as_path()),
+        path: current_expansion.module.directory.clone(),
         ownership: current_expansion.directory_ownership,
     };
     Parser::new(sess, tts, Some(directory), true, true, rustc_parse::MACRO_ARGUMENTS)
