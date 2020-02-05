@@ -689,9 +689,14 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
         // unnecessary implicit clone later in Rc::make_mut.
         drop(eof_items);
 
+        // If there are no possible next positions AND we aren't waiting for the black-box parser,
+        // then there is a syntax error.
+        if bb_items.is_empty() && next_items.is_empty() {
+            return Failure(parser.token.clone(), "no rules expected this token in macro call");
+        }
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -712,11 +717,6 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
                     }
                 ),
             );
-        }
-        // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then there is a syntax error.
-        else if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.token.clone(), "no rules expected this token in macro call");
         }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {
