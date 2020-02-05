@@ -1,3 +1,4 @@
+use super::ty::{AllowPlus, RecoverQPath};
 use super::{Parser, TokenType};
 use crate::maybe_whole;
 use rustc_errors::{pluralize, Applicability, PResult};
@@ -224,7 +225,7 @@ impl<'a> Parser<'a> {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                     let span = ident.span.to(self.prev_span);
-                    let output = self.parse_ret_ty(false, false)?;
+                    let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No)?;
                     ParenthesizedArgs { inputs, output, span }.into()
                 };
 

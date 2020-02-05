@@ -36,7 +36,7 @@ use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, Nod
 use syntax::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use syntax::ast::{Ident, Name};
 use syntax::token::{self, Token};
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, Visitor};
 
 use log::debug;
 use std::cell::Cell;
@@ -1234,11 +1234,17 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.parent_scope.legacy = orig_current_legacy_scope;
     }
 
-    fn visit_trait_item(&mut self, item: &'b AssocItem) {
+    fn visit_assoc_item(&mut self, item: &'b AssocItem, ctxt: AssocCtxt) {
         let parent = self.parent_scope.module;
 
         if let AssocItemKind::Macro(_) = item.kind {
             self.visit_invoc(item.id);
+            return;
+        }
+
+        if let AssocCtxt::Impl = ctxt {
+            self.resolve_visibility(&item.vis);
+            visit::walk_assoc_item(self, item, ctxt);
             return;
         }
 
@@ -1260,16 +1266,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let expansion = self.parent_scope.expansion;
         self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
 
-        visit::walk_trait_item(self, item);
-    }
-
-    fn visit_impl_item(&mut self, item: &'b ast::AssocItem) {
-        if let ast::AssocItemKind::Macro(..) = item.kind {
-            self.visit_invoc(item.id);
-        } else {
-            self.resolve_visibility(&item.vis);
-            visit::walk_impl_item(self, item);
-        }
+        visit::walk_assoc_item(self, item, ctxt);
     }
 
     fn visit_token(&mut self, t: Token) {

@@ -1020,18 +1020,8 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
-                self.head("");
-                self.print_fn(
-                    decl,
-                    ast::FnHeader::default(),
-                    Some(item.ident),
-                    generics,
-                    &item.vis,
-                );
-                self.end(); // end head-ibox
-                self.s.word(";");
-                self.end(); // end the outer fn box
+            ast::ForeignItemKind::Fn(ref sig, ref gen, ref body) => {
+                self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
             }
             ast::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
@@ -1154,11 +1144,8 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
-            ast::ItemKind::Fn(ref sig, ref param_names, ref body) => {
-                self.head("");
-                self.print_fn(&sig.decl, sig.header, Some(item.ident), param_names, &item.vis);
-                self.s.word(" ");
-                self.print_block_with_attrs(body, &item.attrs);
+            ast::ItemKind::Fn(ref sig, ref gen, ref body) => {
+                self.print_fn_full(sig, item.ident, gen, &item.vis, body.as_deref(), &item.attrs);
             }
             ast::ItemKind::Mod(ref _mod) => {
                 self.head(visibility_qualified(&item.vis, "mod"));
@@ -1483,16 +1470,8 @@ impl<'a> State<'a> {
                 self.print_associated_const(item.ident, ty, expr.as_deref(), &item.vis);
             }
             ast::AssocItemKind::Fn(sig, body) => {
-                if body.is_some() {
-                    self.head("");
-                }
-                self.print_fn(&sig.decl, sig.header, Some(item.ident), &item.generics, &item.vis);
-                if let Some(body) = body {
-                    self.nbsp();
-                    self.print_block_with_attrs(body, &item.attrs);
-                } else {
-                    self.s.word(";");
-                }
+                let body = body.as_deref();
+                self.print_fn_full(sig, item.ident, &item.generics, &item.vis, body, &item.attrs);
             }
             ast::AssocItemKind::TyAlias(bounds, ty) => {
                 self.print_associated_type(item.ident, bounds, ty.as_deref());
@@ -2412,6 +2391,27 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_fn_full(
+        &mut self,
+        sig: &ast::FnSig,
+        name: ast::Ident,
+        generics: &ast::Generics,
+        vis: &ast::Visibility,
+        body: Option<&ast::Block>,
+        attrs: &[ast::Attribute],
+    ) {
+        if body.is_some() {
+            self.head("");
+        }
+        self.print_fn(&sig.decl, sig.header, Some(name), generics, vis);
+        if let Some(body) = body {
+            self.nbsp();
+            self.print_block_with_attrs(body, attrs);
+        } else {
+            self.s.word(";");
+        }
+    }
+
     crate fn print_fn(
         &mut self,
         decl: &ast::FnDecl,
@@ -2698,13 +2698,9 @@ impl<'a> State<'a> {
             where_clause: ast::WhereClause { predicates: Vec::new(), span: rustc_span::DUMMY_SP },
             span: rustc_span::DUMMY_SP,
         };
-        self.print_fn(
-            decl,
-            ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() },
-            name,
-            &generics,
-            &dummy_spanned(ast::VisibilityKind::Inherited),
-        );
+        let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
+        let vis = dummy_spanned(ast::VisibilityKind::Inherited);
+        self.print_fn(decl, header, name, &generics, &vis);
         self.end();
     }
 
