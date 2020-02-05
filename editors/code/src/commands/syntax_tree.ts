@@ -22,6 +22,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
             if (doc.languageId !== 'rust') return;
             afterLs(() => tdcp.eventEmitter.fire(tdcp.uri));
         },
+        null,
         ctx.subscriptions,
     );
 
@@ -30,6 +31,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
             if (!editor || editor.document.languageId !== 'rust') return;
             tdcp.eventEmitter.fire(tdcp.uri);
         },
+        null,
         ctx.subscriptions,
     );
 

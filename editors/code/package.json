@@ -21,7 +21,7 @@
         "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package",
         "watch": "tsc --watch",
-        "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
+        "fmt": "tsfmt -r && tslint -p tsconfig.json -c tslint.json 'src/**/*.ts' --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
