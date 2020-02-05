@@ -84,11 +84,7 @@ with a bunch of variable declarations. They look like this:
 
 ```mir
 let mut _0: ();                      // return place
-scope 1 {
-    let mut _1: std::vec::Vec<i32>;  // "vec" in scope 1 at src/main.rs:2:9: 2:16
-}
-scope 2 {
-}
+let mut _1: std::vec::Vec<i32>;      // in scope 0 at src/main.rs:2:9: 2:16
 let mut _2: ();
 let mut _3: &mut std::vec::Vec<i32>;
 let mut _4: ();
@@ -97,11 +93,27 @@ let mut _5: &mut std::vec::Vec<i32>;
 
 You can see that variables in MIR don't have names, they have indices,
 like `_0` or `_1`.  We also intermingle the user's variables (e.g.,
-`_1`) with temporary values (e.g., `_2` or `_3`). You can tell the
-difference between user-defined variables have a comment that gives
-you their original name (`// "vec" in scope 1...`). The "scope" blocks
-(e.g., `scope 1 { .. }`) describe the lexical structure of the source
-program (which names were in scope when).
+`_1`) with temporary values (e.g., `_2` or `_3`). You can tell apart
+user-defined variables because they have debuginfo associated to them (see below).
+
+**User variable debuginfo.** Below the variable declarations, we find the only
+hint that `_1` represents a user variable:
+```mir
+scope 1 {
+    debug vec => _1;                 // in scope 1 at src/main.rs:2:9: 2:16
+}
+```
+Each `debug <Name> => <Place>;` annotation describes a named user variable,
+and where (i.e. the place) a debugger can find the data of that variable.
+Here the mapping is trivial, but optimizations may complicate the place,
+or lead to multiple user variables sharing the same place.
+Additionally, closure captures are described using the same system, and so
+they're complicated even without optimizations, e.g.: `debug x => (*((*_1).0: &T));`.
+
+The "scope" blocks (e.g., `scope 1 { .. }`) describe the lexical structure of
+the source program (which names were in scope when), so any part of the program
+annotated with `// in scope 0` would be missing `vec`, if you were stepping
+through the code in a debugger, for example.
 
 **Basic blocks.** Reading further, we see our first **basic block** (naturally
 it may look slightly different when you view it, and I am ignoring some of the
