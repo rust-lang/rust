@@ -21,7 +21,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use syntax::ast::{self, AttrStyle, AttrVec, CrateSugar, Extern, Ident, Unsafety, DUMMY_NODE_ID};
 use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use syntax::ptr::P;
@@ -615,8 +615,8 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOpEq(token::Plus) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::Eq, span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi()));
                 true
             }
             _ => false,
@@ -633,8 +633,9 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::AndAnd => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::And), span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Ok(self
+                    .bump_with(token::BinOp(token::And), self.token.span.with_lo(start_point.hi())))
             }
             _ => self.unexpected(),
         }
@@ -650,8 +651,9 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::OrOr => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::Or), span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Ok(self
+                    .bump_with(token::BinOp(token::Or), self.token.span.with_lo(start_point.hi())))
             }
             _ => self.unexpected(),
         }
@@ -671,13 +673,16 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOp(token::Shl) => {
-                let span = self.sess.source_map().next_point(self.token.span);
-                self.bump_with(token::Lt, span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(token::Lt, self.token.span.with_lo(start_point.hi()));
                 true
             }
             token::LArrow => {
-                let span = self.sess.source_map().next_point(self.token.span);
-                self.bump_with(token::BinOp(token::Minus), span);
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                self.bump_with(
+                    token::BinOp(token::Minus),
+                    self.token.span.with_lo(start_point.hi()),
+                );
                 true
             }
             _ => false,
@@ -707,16 +712,16 @@ impl<'a> Parser<'a> {
                 Some(())
             }
             token::BinOp(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Gt, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Gt, self.token.span.with_lo(start_point.hi())))
             }
             token::BinOpEq(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Ge, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Ge, self.token.span.with_lo(start_point.hi())))
             }
             token::Ge => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Eq, span))
+                let start_point = self.sess.source_map().start_point(self.token.span);
+                Some(self.bump_with(token::Eq, self.token.span.with_lo(start_point.hi())))
             }
             _ => None,
         };
