@@ -40,37 +40,11 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         }
     }
 
-    // The following implementations of HashStable for `ItemId`, `TraitItemId`, and
-    // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
-    // the HIR, since they just signify a HIR nodes own path. But `ItemId` et al
-    // are used when another item in the HIR is *referenced* and we certainly
-    // want to pick up on a reference changing its target, so we hash the NodeIds
-    // in "DefPath Mode".
-
-    fn hash_item_id(&mut self, id: hir::ItemId, hasher: &mut StableHasher) {
+    fn hash_reference_to_item(&mut self, id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
-        let hir::ItemId { id } = id;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             id.hash_stable(hcx, hasher);
-        })
-    }
-
-    fn hash_impl_item_id(&mut self, id: hir::ImplItemId, hasher: &mut StableHasher) {
-        let hcx = self;
-        let hir::ImplItemId { hir_id } = id;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hir_id.hash_stable(hcx, hasher);
-        })
-    }
-
-    fn hash_trait_item_id(&mut self, id: hir::TraitItemId, hasher: &mut StableHasher) {
-        let hcx = self;
-        let hir::TraitItemId { hir_id } = id;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hir_id.hash_stable(hcx, hasher);
         })
     }
 
