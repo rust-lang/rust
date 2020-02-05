@@ -15,6 +15,16 @@ pub struct ExpectedFound<T> {
     pub found: T,
 }
 
+impl<T> ExpectedFound<T> {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound { expected: a, found: b }
+        } else {
+            ExpectedFound { expected: b, found: a }
+        }
+    }
+}
+
 // Data structures used in type unification
 #[derive(Clone, Debug, TypeFoldable)]
 pub enum TypeError<'tcx> {

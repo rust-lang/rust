@@ -9,6 +9,7 @@ use crate::ty::fold::TypeFolder;
 use crate::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use syntax::ast;
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;

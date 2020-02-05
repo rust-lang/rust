@@ -61,6 +61,7 @@ pub mod region_constraints;
 pub mod resolve;
 mod sub;
 pub mod type_variable;
+mod types;
 pub mod unify_key;
 
 #[must_use]
@@ -553,16 +554,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 universe: Cell::new(ty::UniverseIndex::ROOT),
             })
         })
-    }
-}
-
-impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
     }
 }
 

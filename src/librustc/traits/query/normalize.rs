@@ -13,6 +13,8 @@ use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
+pub use rustc::traits::query::NormalizationResult;
+
 impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
@@ -57,13 +59,6 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
             Ok(Normalized { value: value1, obligations: normalizer.obligations })
         }
     }
-}
-
-/// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
-pub struct NormalizationResult<'tcx> {
-    /// Result of normalization.
-    pub normalized_ty: Ty<'tcx>,
 }
 
 struct QueryNormalizer<'cx, 'tcx> {

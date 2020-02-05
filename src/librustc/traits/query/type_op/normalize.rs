@@ -4,19 +4,7 @@ use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
-pub struct Normalize<T> {
-    pub value: T,
-}
-
-impl<'tcx, T> Normalize<T>
-where
-    T: fmt::Debug + TypeFoldable<'tcx>,
-{
-    pub fn new(value: T) -> Self {
-        Self { value }
-    }
-}
+pub use rustc::traits::query::type_op::Normalize;
 
 impl<'tcx, T> super::QueryTypeOp<'tcx> for Normalize<T>
 where
