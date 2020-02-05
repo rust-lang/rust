@@ -89,6 +89,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 }
 
+const INITIAL_BM: BindingMode = BindingMode::BindByValue(hir::Mutability::Not);
+
+/// Mode for adjusting the expected type and binding mode.
+enum AdjustMode {
+    /// Peel off all immediate reference types.
+    Peel,
+    /// Reset binding mode to the inital mode.
+    Reset,
+    /// Pass on the input binding mode and expected type.
+    Pass,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check the given top level pattern against the `expected` type.
     ///
@@ -105,8 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Option<Span>,
         origin_expr: bool,
     ) {
-        let def_bm = BindingMode::BindByValue(hir::Mutability::Not);
-        self.check_pat(pat, expected, def_bm, TopInfo { expected, origin_expr, span });
+        self.check_pat(pat, expected, INITIAL_BM, TopInfo { expected, origin_expr, span });
     }
 
     /// Type check the given `pat` against the `expected` type
@@ -123,12 +134,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("check_pat(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
-        let path_resolution = match &pat.kind {
+        let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
             _ => None,
         };
-        let is_nrp = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
-        let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, is_nrp);
+        let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
+        let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, adjust_mode);
 
         let ty = match pat.kind {
             PatKind::Wild => expected,
@@ -141,7 +152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
             PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, path_resolution.unwrap(), qpath, expected)
+                self.check_pat_path(pat, path_res.unwrap(), qpath, expected)
             }
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
@@ -223,15 +234,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
-        is_non_ref_pat: bool,
+        adjust_mode: AdjustMode,
     ) -> (Ty<'tcx>, BindingMode) {
-        if is_non_ref_pat {
-            debug!("pattern is non reference pattern");
-            self.peel_off_references(pat, expected, def_bm)
-        } else {
-            // When you encounter a `&pat` pattern, reset to "by
-            // value". This is so that `x` and `y` here are by value,
-            // as they appear to be:
+        match adjust_mode {
+            AdjustMode::Pass => (expected, def_bm),
+            AdjustMode::Reset => (expected, INITIAL_BM),
+            AdjustMode::Peel => self.peel_off_references(pat, expected, def_bm),
+        }
+    }
+
+    /// How should the binding mode and expected type be adjusted?
+    ///
+    /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
+    fn calc_adjust_mode(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> AdjustMode {
+        match &pat.kind {
+            // Type checking these product-like types successfully always require
+            // that the expected type be of those types and not reference types.
+            PatKind::Struct(..)
+            | PatKind::TupleStruct(..)
+            | PatKind::Tuple(..)
+            | PatKind::Box(_)
+            | PatKind::Range(..)
+            | PatKind::Slice(..) => AdjustMode::Peel,
+            // String and byte-string literals result in types `&str` and `&[u8]` respectively.
+            // All other literals result in non-reference types.
+            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo {}`.
+            PatKind::Lit(lt) => match self.check_expr(lt).kind {
+                ty::Ref(..) => AdjustMode::Pass,
+                _ => AdjustMode::Peel,
+            },
+            PatKind::Path(_) => match opt_path_res.unwrap() {
+                // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
+                // Peeling the reference types too early will cause type checking failures.
+                // Although it would be possible to *also* peel the types of the constants too.
+                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => AdjustMode::Pass,
+                // In the `ValueNS`, we have `SelfCtor(..) | Ctor(_, Const), _)` remaining which
+                // could successfully compile. The former being `Self` requires a unit struct.
+                // In either case, and unlike constants, the pattern itself cannot be
+                // a reference type wherefore peeling doesn't give up any expressivity.
+                _ => AdjustMode::Peel,
+            },
+            // When encountering a `& mut? pat` pattern, reset to "by value".
+            // This is so that `x` and `y` here are by value, as they appear to be:
             //
             // ```
             // match &(&22, &44) {
@@ -240,47 +284,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            let def_bm = match pat.kind {
-                PatKind::Ref(..) => ty::BindByValue(hir::Mutability::Not),
-                _ => def_bm,
-            };
-            (expected, def_bm)
-        }
-    }
-
-    /// Is the pattern a "non reference pattern"?
-    /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
-    fn is_non_ref_pat(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> bool {
-        match pat.kind {
-            PatKind::Struct(..)
-            | PatKind::TupleStruct(..)
-            | PatKind::Tuple(..)
-            | PatKind::Box(_)
-            | PatKind::Range(..)
-            | PatKind::Slice(..) => true,
-            PatKind::Lit(ref lt) => {
-                let ty = self.check_expr(lt);
-                match ty.kind {
-                    ty::Ref(..) => false,
-                    _ => true,
-                }
-            }
-            PatKind::Path(_) => match opt_path_res.unwrap() {
-                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => false,
-                _ => true,
-            },
-            // FIXME(or_patterns; Centril | dlrobertson): To keep things compiling
-            // for or-patterns at the top level, we need to make `p_0 | ... | p_n`
-            // a "non reference pattern". For example the following currently compiles:
-            // ```
-            // match &1 {
-            //     e @ &(1...2) | e @ &(3...4) => {}
-            //     _ => {}
-            // }
-            // ```
-            //
-            // We should consider whether we should do something special in nested or-patterns.
-            PatKind::Or(_) | PatKind::Wild | PatKind::Binding(..) | PatKind::Ref(..) => false,
+            PatKind::Ref(..) => AdjustMode::Reset,
+            // A `_` pattern works with any expected type, so there's no need to do anything.
+            PatKind::Wild
+            // Bindings also work with whatever the expected type is,
+            // and moreover if we peel references off, that will give us the wrong binding type.
+            // Also, we can have a subpattern `binding @ pat`.
+            // Each side of the `@` should be treated independently (like with OR-patterns).
+            | PatKind::Binding(..)
+            // An OR-pattern just propagates to each individual alternative.
+            // This is maximally flexible, allowing e.g., `Some(mut x) | &Some(mut x)`.
+            // In that example, `Some(mut x)` results in `Peel` whereas `&Some(mut x)` in `Reset`.
+            | PatKind::Or(_) => AdjustMode::Pass,
         }
     }
 
@@ -508,7 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
         let eq_ty = match bm {
             ty::BindByReference(mutbl) => {
-                // If the binding is like `ref x | ref const x | ref mut x`
+                // If the binding is like `ref x | ref mut x`,
                 // then `x` is assigned a value of type `&M T` where M is the
                 // mutability and T is the expected type.
                 //
