@@ -132,6 +132,10 @@ pub struct Session {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
+
+    /// Path for libraries that will take preference over libraries shipped by Rust.
+    /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
+    pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
 }
 
 pub struct PerfStats {
@@ -1068,6 +1072,7 @@ fn build_session_(
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
+        system_library_path: OneThread::new(RefCell::new(Default::default())),
     };
 
     validate_commandline_args_with_session_available(&sess);
