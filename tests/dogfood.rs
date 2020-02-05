@@ -1,12 +1,15 @@
+use lazy_static::lazy_static;
 use std::path::PathBuf;
 use std::process::Command;
 
 #[allow(dead_code)]
 mod cargo;
 
-fn clippy_path() -> PathBuf {
-    let build_info = cargo::BuildInfo::new();
-    build_info.target_lib().join("cargo-clippy")
+lazy_static! {
+    static ref CLIPPY_PATH: PathBuf = {
+        let build_info = cargo::BuildInfo::new();
+        build_info.target_lib().join("cargo-clippy")
+    };
 }
 
 #[test]
@@ -16,9 +19,8 @@ fn dogfood_clippy() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let clippy_binary = clippy_path();
 
-    let output = Command::new(clippy_binary)
+    let output = Command::new(&*CLIPPY_PATH)
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
@@ -46,7 +48,6 @@ fn dogfood_subprojects() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let clippy_binary = clippy_path();
 
     for d in &[
         "clippy_workspace_tests",
@@ -56,7 +57,7 @@ fn dogfood_subprojects() {
         "clippy_dev",
         "rustc_tools_util",
     ] {
-        let output = Command::new(&clippy_binary)
+        let output = Command::new(&*CLIPPY_PATH)
             .current_dir(root_dir.join(d))
             .env("CLIPPY_DOGFOOD", "1")
             .env("CARGO_INCREMENTAL", "0")
