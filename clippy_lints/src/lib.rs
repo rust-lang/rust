@@ -55,8 +55,6 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
 
-use std::path::Path;
-
 /// Macro used to declare a Clippy lint.
 ///
 /// Every lint declaration consists of 4 parts:
@@ -341,42 +339,41 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Co
 
 #[doc(hidden)]
 pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
+    use std::path::Path;
     match utils::conf::file_from_args(args) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
-            let file_name = if let Some(file_name) = file_name {
-                Some(file_name)
-            } else {
-                match utils::conf::lookup_conf_file() {
-                    Ok(path) => path,
+            let file_name = match file_name {
+                Some(file_name) => file_name,
+                None => match utils::conf::lookup_conf_file() {
+                    Ok(Some(path)) => path,
+                    Ok(None) => return Conf::default(),
                     Err(error) => {
                         sess.struct_err(&format!("error finding Clippy's configuration file: {}", error))
                             .emit();
-                        None
+                        return Conf::default();
                     },
-                }
+                },
             };
 
-            let file_name = file_name.map(|file_name| {
-                if file_name.is_relative() {
-                    sess.local_crate_source_file
-                        .as_deref()
-                        .and_then(Path::parent)
-                        .unwrap_or_else(|| Path::new(""))
-                        .join(file_name)
-                } else {
-                    file_name
-                }
-            });
+            let file_name = if file_name.is_relative() {
+                sess.local_crate_source_file
+                    .as_deref()
+                    .and_then(Path::parent)
+                    .unwrap_or_else(|| Path::new(""))
+                    .join(file_name)
+            } else {
+                file_name
+            };
 
-            let (conf, errors) = utils::conf::read(file_name.as_ref().map(AsRef::as_ref));
+            let (conf, errors) = utils::conf::read(&file_name);
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {
                 sess.struct_err(&format!(
                     "error reading Clippy's configuration file `{}`: {}",
-                    file_name.as_ref().and_then(|p| p.to_str()).unwrap_or(""),
+                    file_name.display(),
                     error
                 ))
                 .emit();
@@ -388,7 +385,7 @@ pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
             sess.struct_span_err(span, err)
                 .span_note(span, "Clippy will use default configuration")
                 .emit();
-            toml::from_str("").expect("we never error on empty config files")
+            Conf::default()
         },
     }
 }

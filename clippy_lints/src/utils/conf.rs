@@ -4,22 +4,20 @@
 
 use lazy_static::lazy_static;
 use rustc_span::source_map;
-use std::default::Default;
-use std::io::Read;
+use source_map::Span;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::{env, fmt, fs, io, path};
-use syntax::ast;
+use std::{env, fmt, fs, io};
+use syntax::ast::{LitKind, MetaItemKind, NestedMetaItem};
 
 /// Gets the configuration file from arguments.
-pub fn file_from_args(args: &[ast::NestedMetaItem]) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {
-    for arg in args.iter().filter_map(syntax::ast::NestedMetaItem::meta_item) {
+pub fn file_from_args(args: &[NestedMetaItem]) -> Result<Option<PathBuf>, (&'static str, Span)> {
+    for arg in args.iter().filter_map(NestedMetaItem::meta_item) {
         if arg.check_name(sym!(conf_file)) {
             return match arg.kind {
-                ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {
-                    Err(("`conf_file` must be a named value", arg.span))
-                },
-                ast::MetaItemKind::NameValue(ref value) => {
-                    if let ast::LitKind::Str(ref file, _) = value.kind {
+                MetaItemKind::Word | MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
+                MetaItemKind::NameValue(ref value) => {
+                    if let LitKind::Str(ref file, _) = value.kind {
                         Ok(Some(file.to_string().into()))
                     } else {
                         Err(("`conf_file` value must be a string", value.span))
@@ -37,15 +35,15 @@ pub fn file_from_args(args: &[ast::NestedMetaItem]) -> Result<Option<path::PathB
 pub enum Error {
     /// An I/O error.
     Io(io::Error),
-    /// Not valid toml or doesn't fit the expected conf format
+    /// Not valid toml or doesn't fit the expected config format
     Toml(String),
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match *self {
-            Self::Io(ref err) => err.fmt(f),
-            Self::Toml(ref err) => err.fmt(f),
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(err) => err.fmt(f),
+            Self::Toml(err) => err.fmt(f),
         }
     }
 }
@@ -61,59 +59,61 @@ lazy_static! {
 }
 
 macro_rules! define_Conf {
-    ($(#[$doc: meta] ($rust_name: ident, $rust_name_str: expr, $default: expr => $($ty: tt)+),)+) => {
-        pub use self::helpers::Conf;
+    ($(#[$doc:meta] ($config:ident, $config_str:literal: $Ty:ty, $default:expr),)+) => {
         mod helpers {
             use serde::Deserialize;
             /// Type used to store lint configuration.
             #[derive(Deserialize)]
-            #[serde(rename_all="kebab-case", deny_unknown_fields)]
+            #[serde(rename_all = "kebab-case", deny_unknown_fields)]
             pub struct Conf {
-                $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
-                          pub $rust_name: define_Conf!(TY $($ty)+),)+
+                $(
+                    #[$doc]
+                    #[serde(default = $config_str)]
+                    #[serde(with = $config_str)]
+                    pub $config: $Ty,
+                )+
                 #[allow(dead_code)]
                 #[serde(default)]
                 third_party: Option<::toml::Value>,
             }
+
             $(
-                mod $rust_name {
+                mod $config {
                     use serde::Deserialize;
-                    crate fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
-                    -> Result<define_Conf!(TY $($ty)+), D::Error> {
-                        type T = define_Conf!(TY $($ty)+);
-                        Ok(T::deserialize(deserializer).unwrap_or_else(|e| {
-                            crate::utils::conf::ERRORS.lock().expect("no threading here")
-                                                        .push(crate::utils::conf::Error::Toml(e.to_string()));
-                            super::$rust_name()
-                        }))
+                    crate fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<$Ty, D::Error> {
+                        use super::super::{ERRORS, Error};
+                        Ok(
+                            <$Ty>::deserialize(deserializer).unwrap_or_else(|e| {
+                                ERRORS
+                                    .lock()
+                                    .expect("no threading here")
+                                    .push(Error::Toml(e.to_string()));
+                                super::$config()
+                            })
+                        )
                     }
                 }
 
                 #[must_use]
-                fn $rust_name() -> define_Conf!(TY $($ty)+) {
-                    define_Conf!(DEFAULT $($ty)+, $default)
+                fn $config() -> $Ty {
+                    let x = $default;
+                    x
                 }
             )+
         }
     };
-
-    // hack to convert tts
-    (TY $ty: ty) => { $ty };
-
-    // provide a nicer syntax to declare the default value of `Vec<String>` variables
-    (DEFAULT Vec<String>, $e: expr) => { $e.iter().map(|&e| e.to_owned()).collect() };
-    (DEFAULT $ty: ty, $e: expr) => { $e };
 }
 
+pub use self::helpers::Conf;
 define_Conf! {
     /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about
-    (blacklisted_names, "blacklisted_names", ["foo", "bar", "baz", "quux"] => Vec<String>),
+    (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "bar", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
-    (cognitive_complexity_threshold, "cognitive_complexity_threshold", 25 => u64),
+    (cognitive_complexity_threshold, "cognitive_complexity_threshold": u64, 25),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
-    (cyclomatic_complexity_threshold, "cyclomatic_complexity_threshold", None => Option<u64>),
+    (cyclomatic_complexity_threshold, "cyclomatic_complexity_threshold": Option<u64>, None),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
-    (doc_valid_idents, "doc_valid_idents", [
+    (doc_valid_idents, "doc_valid_idents": Vec<String>, [
         "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
         "DirectX",
         "ECMAScript",
@@ -129,31 +129,31 @@ define_Conf! {
         "TeX", "LaTeX", "BibTeX", "BibLaTeX",
         "MinGW",
         "CamelCase",
-    ] => Vec<String>),
+    ].iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
-    (too_many_arguments_threshold, "too_many_arguments_threshold", 7 => u64),
+    (too_many_arguments_threshold, "too_many_arguments_threshold": u64, 7),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
-    (type_complexity_threshold, "type_complexity_threshold", 250 => u64),
+    (type_complexity_threshold, "type_complexity_threshold": u64, 250),
     /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
-    (single_char_binding_names_threshold, "single_char_binding_names_threshold", 5 => u64),
+    (single_char_binding_names_threshold, "single_char_binding_names_threshold": u64, 5),
     /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
-    (too_large_for_stack, "too_large_for_stack", 200 => u64),
+    (too_large_for_stack, "too_large_for_stack": u64, 200),
     /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
-    (enum_variant_name_threshold, "enum_variant_name_threshold", 3 => u64),
+    (enum_variant_name_threshold, "enum_variant_name_threshold": u64, 3),
     /// Lint: LARGE_ENUM_VARIANT. The maximum size of a enum's variant to avoid box suggestion
-    (enum_variant_size_threshold, "enum_variant_size_threshold", 200 => u64),
+    (enum_variant_size_threshold, "enum_variant_size_threshold": u64, 200),
     /// Lint: VERBOSE_BIT_MASK. The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
-    (verbose_bit_mask_threshold, "verbose_bit_mask_threshold", 1 => u64),
+    (verbose_bit_mask_threshold, "verbose_bit_mask_threshold": u64, 1),
     /// Lint: DECIMAL_LITERAL_REPRESENTATION. The lower bound for linting decimal literals
-    (literal_representation_threshold, "literal_representation_threshold", 16384 => u64),
+    (literal_representation_threshold, "literal_representation_threshold": u64, 16384),
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
-    (trivial_copy_size_limit, "trivial_copy_size_limit", None => Option<u64>),
+    (trivial_copy_size_limit, "trivial_copy_size_limit": Option<u64>, None),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
-    (too_many_lines_threshold, "too_many_lines_threshold", 100 => u64),
+    (too_many_lines_threshold, "too_many_lines_threshold": u64, 100),
     /// Lint: LARGE_STACK_ARRAYS. The maximum allowed size for arrays on the stack
-    (array_size_threshold, "array_size_threshold", 512_000 => u64),
+    (array_size_threshold, "array_size_threshold": u64, 512_000),
     /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
-    (vec_box_size_threshold, "vec_box_size_threshold", 4096 => u64),
+    (vec_box_size_threshold, "vec_box_size_threshold": u64, 4096),
 }
 
 impl Default for Conf {
@@ -164,32 +164,26 @@ impl Default for Conf {
 }
 
 /// Search for the configuration file.
-pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
+pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
     // Start looking for a config file in CLIPPY_CONF_DIR, or failing that, CARGO_MANIFEST_DIR.
     // If neither of those exist, use ".".
-    let mut current = path::PathBuf::from(
-        env::var("CLIPPY_CONF_DIR")
-            .or_else(|_| env::var("CARGO_MANIFEST_DIR"))
-            .unwrap_or_else(|_| ".".to_string()),
-    );
+    let mut current = env::var_os("CLIPPY_CONF_DIR")
+        .or_else(|| env::var_os("CARGO_MANIFEST_DIR"))
+        .map_or_else(|| PathBuf::from("."), PathBuf::from);
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
             let config_file = current.join(config_file_name);
             match fs::metadata(&config_file) {
                 // Only return if it's a file to handle the unlikely situation of a directory named
                 // `clippy.toml`.
-                Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
+                Ok(ref md) if !md.is_dir() => return Ok(Some(config_file)),
                 // Return the error if it's something other than `NotFound`; otherwise we didn't
                 // find the project file yet, and continue searching.
-                Err(e) => {
-                    if e.kind() != io::ErrorKind::NotFound {
-                        return Err(e);
-                    }
-                },
-                _ => (),
+                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+                _ => {},
             }
         }
 
@@ -210,28 +204,14 @@ fn default(errors: Vec<Error>) -> (Conf, Vec<Error>) {
 /// Read the `toml` configuration file.
 ///
 /// In case of error, the function tries to continue as much as possible.
-pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
-    let path = if let Some(path) = path {
-        path
-    } else {
-        return default(Vec::new());
-    };
-
-    let file = match fs::File::open(path) {
-        Ok(mut file) => {
-            let mut buf = String::new();
-
-            if let Err(err) = file.read_to_string(&mut buf) {
-                return default(vec![err.into()]);
-            }
-
-            buf
-        },
+pub fn read(path: &Path) -> (Conf, Vec<Error>) {
+    let content = match fs::read_to_string(path) {
+        Ok(content) => content,
         Err(err) => return default(vec![err.into()]),
     };
 
     assert!(ERRORS.lock().expect("no threading -> mutex always safe").is_empty());
-    match toml::from_str(&file) {
+    match toml::from_str(&content) {
         Ok(toml) => {
             let mut errors = ERRORS.lock().expect("no threading -> mutex always safe").split_off(0);
 
