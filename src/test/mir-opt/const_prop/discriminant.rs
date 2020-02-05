@@ -31,7 +31,7 @@ fn main() {
 // START rustc.main.ConstProp.after.mir
 //  bb0: {
 //      ...
-//      _3 = const {0x01: std::option::Option<bool>};
+//      _3 = const {transmute(0x1): std::option::Option<bool>};
 //      _4 = const 1isize;
 //      switchInt(const 1isize) -> [1isize: bb2, otherwise: bb1];
 //  }

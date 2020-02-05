@@ -982,8 +982,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{{null reference to "), print(ty), write("}}"))
             }
             (Scalar::Raw { data, .. }, ty::Ref(..)) | (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
-                let pointer_width = self.tcx().data_layout.pointer_size.bytes();
-                p!(write("0x{:01$x}", data, pointer_width as usize * 2))
+                p!(write("0x{:x}", data))
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
                 let instance = {
@@ -995,9 +994,9 @@ pub trait PrettyPrinter<'tcx>:
             // For zsts just print their type as their value gives no extra information
             (Scalar::Raw { size: 0, .. }, _) => p!(print(ty)),
             // Nontrivial types with scalar bit representation
-            (Scalar::Raw { data, size }, _) => {
+            (Scalar::Raw { data, .. }, _) => {
                 let print = |mut this: Self| {
-                    write!(this, "0x{:01$x}", data, size as usize * 2)?;
+                    write!(this, "transmute(0x{:x})", data)?;
                     Ok(this)
                 };
                 self = if print_ty {

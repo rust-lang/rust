@@ -1,18 +1,18 @@
 // compile-flags: -C overflow-checks=no
 
-fn use_zst(_: ((), ())) { }
+fn use_zst(_: ((), ())) {}
 
 struct Temp {
-    x: u8
+    x: u8,
 }
 
-fn use_u8(_: u8) { }
+fn use_u8(_: u8) {}
 
 fn main() {
     let ((), ()) = ((), ());
     use_zst(((), ()));
 
-    use_u8((Temp { x : 40 }).x + 2);
+    use_u8((Temp { x: 40 }).x + 2);
 }
 
 // END RUST SOURCE
@@ -56,7 +56,7 @@ fn main() {
 //   StorageLive(_8);
 //   StorageLive(_10);
 //   StorageLive(_11);
-//   _11 = const {0x28 : Temp};
+//   _11 = const {transmute(0x28) : Temp};
 //   _10 = const 40u8;
 //   StorageDead(_10);
 //   _8 = const use_u8(const 42u8) -> bb2;
