@@ -40,6 +40,11 @@ debug-assertions = false
 debug = false
 debug-assertions = false
 
+[profile.release]	
+opt-level = 0	
+[profile.bench]	
+opt-level = 0
+
 # We want the RLS to use the version of Cargo that we've got vendored in this
 # repository to ensure that the same exact version of Cargo is used by both the
 # RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
