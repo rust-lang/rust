@@ -792,7 +792,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Consumes a result, yielding the content of an [`Ok`].
     /// Else, it returns `optb`.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
@@ -824,7 +824,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Consumes a result, yielding the content of an [`Ok`].
     /// If the value is an [`Err`] then it calls `op` with its value.
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
@@ -931,7 +931,7 @@ impl<T: Clone, E> Result<&mut T, E> {
 }
 
 impl<T, E: fmt::Debug> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Consumes a result, yielding the content of an [`Ok`].
     ///
     /// # Panics
     ///
@@ -964,7 +964,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Consumes a result, yielding the content of an [`Ok`].
     ///
     /// # Panics
     ///
@@ -994,7 +994,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
 }
 
 impl<T: fmt::Debug, E> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Err`].
+    /// Consumes a result, yielding the content of an [`Err`].
     ///
     /// # Panics
     ///

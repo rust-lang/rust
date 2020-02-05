@@ -1023,7 +1023,7 @@ impl<T: fmt::Debug> Option<T> {
         }
     }
 
-    /// Unwraps an option, expecting [`None`] and returning nothing.
+    /// Consumes an option, expecting [`None`] and returning nothing.
     ///
     /// # Panics
     ///
