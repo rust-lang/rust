@@ -52,7 +52,7 @@ impl BuildInfo {
     // `--extern dep=path`.
     // See https://github.com/rust-lang/rust-clippy/issues/4015.
     pub fn third_party_crates() -> Vec<(&'static str, PathBuf)> {
-        const THIRD_PARTY_CRATES: [&str; 3] = ["serde", "regex", "clippy_lints"];
+        const THIRD_PARTY_CRATES: [&str; 4] = ["serde", "serde_derive", "regex", "clippy_lints"];
         let cargo = env::var_os("CARGO");
         let cargo = cargo.as_deref().unwrap_or_else(|| OsStr::new("cargo"));
         let output = Command::new(cargo)
