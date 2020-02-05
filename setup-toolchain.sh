@@ -13,7 +13,7 @@ if [[ "$INSTALLED" == false || "$RTIM_PATH" == $CARGO_HOME/bin/rustup-toolchain-
     cargo +nightly install rustup-toolchain-install-master
 else
     VERSION=$(rustup-toolchain-install-master -V | grep -o "[0-9.]*")
-    REMOTE=$(cargo search rustup-toolchain-install-master | grep -o "[0-9.]*")
+    REMOTE=$(cargo +nightly search rustup-toolchain-install-master | grep -o "[0-9.]*")
     echo "info: skipping updating rustup-toolchain-install-master at $RTIM_PATH"
     echo "      current version : $VERSION"
     echo "      remote version  : $REMOTE"
