@@ -1051,10 +1051,10 @@ impl Step for Compiletest {
         cmd.arg("--docck-python").arg(builder.python());
 
         if builder.config.build.ends_with("apple-darwin") {
-            // Force /usr/bin/python on macOS for LLDB tests because we're loading the
+            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
             // LLDB plugin's compiled module which only works with the system python
             // (namely not Homebrew-installed python)
-            cmd.arg("--lldb-python").arg("/usr/bin/python");
+            cmd.arg("--lldb-python").arg("/usr/bin/python3");
         } else {
             cmd.arg("--lldb-python").arg(builder.python());
         }
