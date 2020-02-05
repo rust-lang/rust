@@ -703,7 +703,7 @@ pub trait PrettyPrinter<'tcx>:
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!(write("_"));
-                } else if let Some(n) = sz.try_eval_usize(self.tcx(), ty::ParamEnv::empty()) {
+                } else if let Some(n) = sz.val.try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
                 } else {
                     p!(write("_"));
@@ -916,26 +916,23 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         match (scalar, &ty.kind) {
-            // Single element arrays print their element (they are `#[transparent]`) enclosed in
-            // square brackets.
-            (_, ty::Array(t, n)) if n.eval_usize(self.tcx(), ty::ParamEnv::empty()) == 1 => {
-                p!(write("["));
-                self = self.pretty_print_const_scalar(scalar, t, print_ty)?;
-                p!(write("]"));
-            }
             // Byte strings (&[u8; N])
             (Scalar::Ptr(ptr), ty::Ref(_, ty::TyS { kind: ty::Array(t, n), .. }, _))
                 if *t == self.tcx().types.u8 =>
             {
-                let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
-                let byte_str = self
-                    .tcx()
-                    .alloc_map
-                    .lock()
-                    .unwrap_memory(ptr.alloc_id)
-                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(n))
-                    .unwrap();
-                p!(pretty_print_byte_str(byte_str));
+                match n.val.try_to_bits(self.tcx().data_layout.pointer_size) {
+                    Some(n) => {
+                        let byte_str = self
+                            .tcx()
+                            .alloc_map
+                            .lock()
+                            .unwrap_memory(ptr.alloc_id)
+                            .get_bytes(&self.tcx(), ptr, Size::from_bytes(n as u64))
+                            .unwrap();
+                        p!(pretty_print_byte_str(byte_str));
+                    }
+                    None => self.write_str("_")?,
+                }
             }
             // Bool
             (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
@@ -961,12 +958,11 @@ pub trait PrettyPrinter<'tcx>:
                 };
             }
             (Scalar::Raw { data, .. }, ty::Int(i)) => {
-                let bit_size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size().bits() as u128;
+                let size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size();
+                let bit_size = size.bits() as u128;
                 let min = 1u128 << (bit_size - 1);
                 let max = min - 1;
 
-                let ty = self.tcx().lift(&ty).unwrap();
-                let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
                 let i_str = i.name_str();
                 match data {
                     d if d == min => p!(write("std::{}::MIN", i_str)),
@@ -1092,8 +1088,9 @@ pub trait PrettyPrinter<'tcx>:
                 Ok(self)
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
-                let n = Size::from_bytes(n);
+                let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
+                // cast is ok because we already checked for pointer size (32 or 64 bit) above
+                let n = Size::from_bytes(n as u64);
                 let ptr = Pointer::new(AllocId(0), offset);
 
                 let byte_str = alloc.get_bytes(&self.tcx(), ptr, n).unwrap();
