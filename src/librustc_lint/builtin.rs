@@ -648,10 +648,10 @@ impl EarlyLintPass for AnonymousParameters {
                                 cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
                                     let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
-                                    let (ty_snip, appl) = if let Ok(snip) = ty_snip {
-                                        (snip, Applicability::MachineApplicable)
+                                    let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
+                                        (snip.as_str(), Applicability::MachineApplicable)
                                     } else {
-                                        ("<type>".to_owned(), Applicability::HasPlaceholders)
+                                        ("<type>", Applicability::HasPlaceholders)
                                     };
 
                                     lint.build(
@@ -1132,17 +1132,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         let mut suggested_changing_assoc_types = false;
         // There must not be a where clause
         if !type_alias_generics.where_clause.predicates.is_empty() {
-            let spans: Vec<_> = type_alias_generics
-                .where_clause
-                .predicates
-                .iter()
-                .map(|pred| pred.span())
-                .collect();
-            cx.struct_span_lint(
+            cx.lint(
                 TYPE_ALIAS_BOUNDS,
-                spans,
                 |lint| {
                     let mut err = lint.build("where clauses are not enforced in type aliases");
+                    let spans: Vec<_> = type_alias_generics
+                        .where_clause
+                        .predicates
+                        .iter()
+                        .map(|pred| pred.span())
+                        .collect();
+                    err.set_span(spans);
                     err.span_suggestion(
                         type_alias_generics.where_clause.span_for_predicates_or_empty_place(),
                         "the clause will not be checked when the type alias is used, and should be removed",
