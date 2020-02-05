@@ -29,7 +29,7 @@ LL |         my_recursive_macro!();
 LL |     my_recursive_macro!();
    |     ---------------------- in this macro invocation
    |
-   = help: consider adding a `#![recursion_limit="8"]` attribute to your crate
+   = help: consider adding a `#![recursion_limit="8"]` attribute to your crate (`trace_faulty_macros`)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:34:5
