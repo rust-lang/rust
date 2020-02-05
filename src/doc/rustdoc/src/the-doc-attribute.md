@@ -39,7 +39,7 @@ crate level, and ones that are useful at the item level.
 
 ## At the crate level
 
-These options control how the docs look at a macro level.
+These options control how the docs look at a crate level.
 
 ### `html_favicon_url`
 
