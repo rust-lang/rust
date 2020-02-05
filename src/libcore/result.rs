@@ -998,6 +998,34 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// # Panics
     ///
+    /// Panics if the value is an [`Ok`], with a panic message including the
+    /// passed message, and the content of the [`Ok`].
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```{.should_panic}
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
+    pub fn expect_err(self, msg: &str) -> E {
+        match self {
+            Ok(t) => unwrap_failed(msg, &t),
+            Err(e) => e,
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an [`Err`].
+    ///
+    /// # Panics
+    ///
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
     ///
@@ -1022,34 +1050,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
-            Err(e) => e,
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an [`Err`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a panic message including the
-    /// passed message, and the content of the [`Ok`].
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```{.should_panic}
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect_err", since = "1.17.0")]
-    pub fn expect_err(self, msg: &str) -> E {
-        match self {
-            Ok(t) => unwrap_failed(msg, &t),
             Err(e) => e,
         }
     }
