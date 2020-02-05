@@ -556,12 +556,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
             if r_bits.map_or(false, |b| b >= left_bits as u128) {
                 let lint_root = self.lint_root(source_info)?;
-                let dir = if op == BinOp::Shr { "right" } else { "left" };
                 self.tcx.struct_span_lint_hir(
                     ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
                     lint_root,
                     source_info.span,
-                    |lint| lint.build(&format!("attempt to shift {} with overflow", dir)).emit(),
+                    |lint| {
+                        let dir = if op == BinOp::Shr { "right" } else { "left" };
+                        lint.build(&format!("attempt to shift {} with overflow", dir)).emit()
+                    },
                 );
                 return None;
             }

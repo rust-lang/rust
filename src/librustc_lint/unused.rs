@@ -202,6 +202,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
+        // FIXME: Args desc_{pre,post}_path could be made lazy by taking Fn() -> &str, but this
+        // would make calling it a big awkward. Could also take String (so args are moved), but
+        // this would still require a copy into the format string, which would only be executed
+        // when needed.
         fn check_must_use_def(
             cx: &LateContext<'_, '_>,
             def_id: DefId,

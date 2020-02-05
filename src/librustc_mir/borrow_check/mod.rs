@@ -378,8 +378,8 @@ fn do_mir_borrowck<'a, 'tcx>(
             continue;
         }
 
-        let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
         tcx.struct_span_lint_hir(UNUSED_MUT, lint_root, span, |lint| {
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
             lint.build("variable does not need to be mutable")
                 .span_suggestion_short(
                     mut_span,

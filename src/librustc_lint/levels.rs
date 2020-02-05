@@ -234,12 +234,6 @@ impl<'s> LintLevelsBuilder<'s> {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                                let msg = format!(
-                                    "lint name `{}` is deprecated \
-                                     and may not have an effect in the future. \
-                                     Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
-                                    name
-                                );
                                 struct_lint_level(
                                     self.sess,
                                     lint,
@@ -247,6 +241,12 @@ impl<'s> LintLevelsBuilder<'s> {
                                     src,
                                     Some(li.span().into()),
                                     |lint| {
+                                        let msg = format!(
+                                            "lint name `{}` is deprecated \
+                                             and may not have an effect in the future. \
+                                             Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
+                                            name
+                                        );
                                         lint.build(&msg)
                                             .span_suggestion(
                                                 li.span(),
@@ -306,7 +306,6 @@ impl<'s> LintLevelsBuilder<'s> {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
-                        let msg = format!("unknown lint: `{}`", name);
                         struct_lint_level(
                             self.sess,
                             lint,
@@ -314,7 +313,7 @@ impl<'s> LintLevelsBuilder<'s> {
                             src,
                             Some(li.span().into()),
                             |lint| {
-                                let mut db = lint.build(&msg);
+                                let mut db = lint.build(&format!("unknown lint: `{}`", name));
                                 if let Some(suggestion) = suggestion {
                                     db.span_suggestion(
                                         li.span(),
