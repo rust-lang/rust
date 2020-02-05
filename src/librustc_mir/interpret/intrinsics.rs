@@ -218,19 +218,34 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 self.write_scalar(val, dest)?;
             }
-            sym::unchecked_shl | sym::unchecked_shr => {
+            sym::unchecked_shl
+            | sym::unchecked_shr
+            | sym::unchecked_add
+            | sym::unchecked_sub
+            | sym::unchecked_mul
+            | sym::unchecked_div
+            | sym::unchecked_rem => {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::unchecked_shl => BinOp::Shl,
                     sym::unchecked_shr => BinOp::Shr,
+                    sym::unchecked_add => BinOp::Add,
+                    sym::unchecked_sub => BinOp::Sub,
+                    sym::unchecked_mul => BinOp::Mul,
+                    sym::unchecked_div => BinOp::Div,
+                    sym::unchecked_rem => BinOp::Rem,
                     _ => bug!("Already checked for int ops"),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
-                    throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                    if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
+                        throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                    } else {
+                        throw_ub_format!("Overflow executing `{}`", intrinsic_name);
+                    }
                 }
                 self.write_scalar(val, dest)?;
             }
