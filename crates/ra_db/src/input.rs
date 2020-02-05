@@ -85,12 +85,21 @@ pub struct CrateId(pub u32);
 
 pub struct CrateName(SmolStr);
 
-impl<T: AsRef<str>> From<T> for CrateName {
-    fn from(name: T) -> Self {
-        // For root projects with dashes in their name,
-        // cargo metadata does not do any normalization
-        // so we do it ourselves
-        Self(SmolStr::new(name.as_ref().replace('-', "_")))
+impl CrateName {
+    /// Crates a crate name, checking for dashes in the string provided.
+    /// Dashes are not allowed in the crate names,
+    /// hence the input string is returned as `Err` for those cases.
+    pub fn new(name: &str) -> Result<CrateName, &str> {
+        if name.contains('-') {
+            Err(name)
+        } else {
+            Ok(Self(SmolStr::new(name)))
+        }
+    }
+
+    /// Crates a crate name, unconditionally replacing the dashes with underscores.
+    pub fn normalize_dashes(name: &str) -> CrateName {
+        Self(SmolStr::new(name.replace('-', "_")))
     }
 }
 
@@ -279,7 +288,7 @@ pub struct CyclicDependenciesError;
 
 #[cfg(test)]
 mod tests {
-    use super::{CfgOptions, CrateGraph, Dependency, Edition::Edition2018, Env, FileId};
+    use super::{CfgOptions, CrateGraph, CrateName, Dependency, Edition::Edition2018, Env, FileId};
 
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {
@@ -290,9 +299,9 @@ mod tests {
             graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
         let crate3 =
             graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
-        assert!(graph.add_dep(crate1, "crate2".into(), crate2).is_ok());
-        assert!(graph.add_dep(crate2, "crate3".into(), crate3).is_ok());
-        assert!(graph.add_dep(crate3, "crate1".into(), crate1).is_err());
+        assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
+        assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
+        assert!(graph.add_dep(crate3, CrateName::new("crate1").unwrap(), crate1).is_err());
     }
 
     #[test]
@@ -304,8 +313,8 @@ mod tests {
             graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
         let crate3 =
             graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
-        assert!(graph.add_dep(crate1, "crate2".into(), crate2).is_ok());
-        assert!(graph.add_dep(crate2, "crate3".into(), crate3).is_ok());
+        assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
+        assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
     }
 
     #[test]
@@ -315,7 +324,9 @@ mod tests {
             graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
         let crate2 =
             graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
-        assert!(graph.add_dep(crate1, "crate-name-with-dashes".into(), crate2).is_ok());
+        assert!(graph
+            .add_dep(crate1, CrateName::normalize_dashes("crate-name-with-dashes"), crate2)
+            .is_ok());
         assert_eq!(
             graph.dependencies(crate1).collect::<Vec<_>>(),
             vec![&Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
