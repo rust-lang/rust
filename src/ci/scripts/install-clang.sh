@@ -19,9 +19,7 @@ if isMacOS; then
     # native clang is configured to use the correct path, but our custom one
     # doesn't. This sets the SDKROOT environment variable to the SDK so that
     # our own clang can figure out the correct include path on its own.
-    if ! [[ -d "/usr/include" ]]; then
-        ciCommandSetEnv SDKROOT "$(xcrun --sdk macosx --show-sdk-path)"
-    fi
+    ciCommandSetEnv SDKROOT "$(xcrun --sdk macosx --show-sdk-path)"
 
     # Configure `AR` specifically so rustbuild doesn't try to infer it as
     # `clang-ar` by accident.
