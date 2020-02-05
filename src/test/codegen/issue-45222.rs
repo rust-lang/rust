@@ -25,28 +25,30 @@ pub fn check_foo2() -> u64 {
 }
 
 // Simplified example of #45222
-
-fn triangle_inc(n: u64) -> u64 {
-    let mut count = 0;
-    for j in 0 ..= n {
-        count += j;
-    }
-    count
-}
-
-// CHECK-LABEL: @check_triangle_inc
-#[no_mangle]
-pub fn check_triangle_inc() -> u64 {
-    // CHECK: ret i64 5000050000
-    triangle_inc(100000)
-}
+//
+// Temporarily disabled in #68835 to fix a soundness hole.
+//
+// fn triangle_inc(n: u64) -> u64 {
+//     let mut count = 0;
+//     for j in 0 ..= n {
+//         count += j;
+//     }
+//     count
+// }
+//
+// // COMMENTEDCHECK-LABEL: @check_triangle_inc
+// #[no_mangle]
+// pub fn check_triangle_inc() -> u64 {
+//     // COMMENTEDCHECK: ret i64 5000050000
+//     triangle_inc(100000)
+// }
 
 // Demo in #48012
 
 fn foo3r(n: u64) -> u64 {
     let mut count = 0;
     (0..n).for_each(|_| {
-        (0 ..= n).rev().for_each(|j| {
+        (0..=n).rev().for_each(|j| {
             count += j;
         })
     });
