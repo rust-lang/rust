@@ -48,7 +48,8 @@ LL | |         }
    = help: consider dropping the `else` clause
                    if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
                        continue;
-                   } {
+                   }
+                   {
                        println!("Blabber");
                        println!("Jabber");
                    }
@@ -89,7 +90,8 @@ LL | |                 }
    = help: consider dropping the `else` clause
                            if condition() {
                                continue; // should lint here
-                           } {
+                           }
+                           {
                                println!("bar-5");
                            }
 

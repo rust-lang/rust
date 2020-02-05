@@ -312,16 +312,16 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &
     let cond_code = snippet(ctx, data.if_cond.span, "..");
 
     let continue_code = snippet_block(ctx, data.if_block.span, "..", Some(data.if_expr.span));
-    // region B
+
     let else_code = snippet_block(ctx, data.else_expr.span, "..", Some(data.if_expr.span));
 
     let indent_if = indent_of(ctx, data.if_expr.span).unwrap_or(0);
     format!(
-        "{}if {} {} {}",
-        " ".repeat(indent_if),
+        "{indent}if {} {}\n{indent}{}",
         cond_code,
         continue_code,
         else_code,
+        indent = " ".repeat(indent_if),
     )
 }
 
@@ -389,9 +389,9 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     });
 }
 
-/// Eats at `s` from the end till a closing brace `}` is encountered, and then
-/// continues eating till a non-whitespace character is found.
-/// e.g., the string
+/// Eats at `s` from the end till a closing brace `}` is encountered, and then continues eating
+/// till a non-whitespace character is found.  e.g., the string. If no closing `}` is present, the
+/// string will be preserved.
 ///
 /// ```rust
 /// {
@@ -405,12 +405,9 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 ///     {
 ///         let x = 5;
 /// ```
-///
-/// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
-/// an empty string will be returned in that case.
 #[must_use]
 fn erode_from_back(s: &str) -> String {
-    let mut ret = String::from(s);
+    let mut ret = s.to_string();
     while ret.pop().map_or(false, |c| c != '}') {}
     while let Some(c) = ret.pop() {
         if !c.is_whitespace() {
@@ -418,7 +415,11 @@ fn erode_from_back(s: &str) -> String {
             break;
         }
     }
-    ret
+    if ret.is_empty() {
+        s.to_string()
+    } else {
+        ret
+    }
 }
 
 fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {
@@ -428,6 +429,7 @@ fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {
 #[cfg(test)]
 mod test {
     use super::erode_from_back;
+
     #[test]
     #[rustfmt::skip]
     fn test_erode_from_back() {
@@ -453,7 +455,7 @@ mod test {
 let x = 5;
 let y = something();
 ";
-        let expected = "";
+        let expected = input;
         let got = erode_from_back(input);
         assert_eq!(expected, got);
     }
