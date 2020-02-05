@@ -210,19 +210,16 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    /// Prints `{...}` around what `f` and optionally `t` print
+    /// Prints `{...}` around what `f` (and optionally `t`) print
     fn type_ascribed_value(
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        if print_ty {
-            self.write_str(": ")?;
-            self = t(self)?;
-        }
+        self.write_str(": ")?;
+        self = t(self)?;
         self.write_str("}")?;
         Ok(self)
     }
@@ -1003,14 +1000,15 @@ pub trait PrettyPrinter<'tcx>:
             (Scalar::Raw { size: 0, .. }, _) => p!(print(ty)),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
-                self = self.type_ascribed_value(
-                    |mut this| {
-                        write!(this, "0x{:01$x}", data, size as usize * 2)?;
-                        Ok(this)
-                    },
-                    |this| this.print_type(ty),
-                    print_ty,
-                )?
+                let print = |mut this: Self| {
+                    write!(this, "0x{:01$x}", data, size as usize * 2)?;
+                    Ok(this)
+                };
+                self = if print_ty {
+                    self.type_ascribed_value(print, |this| this.print_type(ty))?
+                } else {
+                    print(self)?
+                };
             }
             // Any pointer values not covered by a branch above
             (Scalar::Ptr(p), _) => {
@@ -1023,19 +1021,23 @@ pub trait PrettyPrinter<'tcx>:
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
     fn pretty_print_const_pointer(
-        self,
+        mut self,
         _: Pointer,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        self.type_ascribed_value(
-            |mut this| {
-                this.write_str("pointer")?;
-                Ok(this)
-            },
-            |this| this.print_type(ty),
-            print_ty,
-        )
+        if print_ty {
+            self.type_ascribed_value(
+                |mut this| {
+                    this.write_str("&_")?;
+                    Ok(this)
+                },
+                |this| this.print_type(ty),
+            )
+        } else {
+            self.write_str("&_")?;
+            Ok(self)
+        }
     }
 
     fn pretty_print_byte_str(mut self, byte_str: &'tcx [u8]) -> Result<Self::Const, Self::Error> {
@@ -1430,16 +1432,13 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
-        print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        if print_ty {
-            self.write_str(": ")?;
-            let was_in_value = std::mem::replace(&mut self.in_value, false);
-            self = t(self)?;
-            self.in_value = was_in_value;
-        }
+        self.write_str(": ")?;
+        let was_in_value = std::mem::replace(&mut self.in_value, false);
+        self = t(self)?;
+        self.in_value = was_in_value;
         self.write_str("}")?;
         Ok(self)
     }
@@ -1507,19 +1506,20 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
-        self.type_ascribed_value(
-            |mut this| {
-                define_scoped_cx!(this);
-                if this.print_alloc_ids {
-                    p!(write("{:?}", p));
-                } else {
-                    p!(write("pointer"));
-                }
-                Ok(this)
-            },
-            |this| this.print_type(ty),
-            print_ty,
-        )
+        let print = |mut this: Self| {
+            define_scoped_cx!(this);
+            if this.print_alloc_ids {
+                p!(write("{:?}", p));
+            } else {
+                p!(write("&_"));
+            }
+            Ok(this)
+        };
+        if print_ty {
+            self.type_ascribed_value(print, |this| this.print_type(ty))
+        } else {
+            print(self)
+        }
     }
 }
 
