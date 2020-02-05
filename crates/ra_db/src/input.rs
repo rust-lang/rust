@@ -83,6 +83,17 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
+pub struct CrateName(SmolStr);
+
+impl<T: AsRef<str>> From<T> for CrateName {
+    fn from(name: T) -> Self {
+        // For root projects with dashes in their name,
+        // cargo metadata does not do any normalization
+        // so we do it ourselves
+        Self(SmolStr::new(name.as_ref().replace('-', "_")))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CrateData {
     file_id: FileId,
@@ -131,13 +142,13 @@ impl CrateGraph {
     pub fn add_dep(
         &mut self,
         from: CrateId,
-        name: SmolStr,
+        name: CrateName,
         to: CrateId,
     ) -> Result<(), CyclicDependenciesError> {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependenciesError);
         }
-        self.arena.get_mut(&from).unwrap().add_dep(name, to);
+        self.arena.get_mut(&from).unwrap().add_dep(name.0, to);
         Ok(())
     }
 
@@ -268,7 +279,7 @@ pub struct CyclicDependenciesError;
 
 #[cfg(test)]
 mod tests {
-    use super::{CfgOptions, CrateGraph, Edition::Edition2018, Env, FileId, SmolStr};
+    use super::{CfgOptions, CrateGraph, Dependency, Edition::Edition2018, Env, FileId};
 
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {
@@ -279,9 +290,9 @@ mod tests {
             graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
         let crate3 =
             graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
-        assert!(graph.add_dep(crate1, SmolStr::new("crate2"), crate2).is_ok());
-        assert!(graph.add_dep(crate2, SmolStr::new("crate3"), crate3).is_ok());
-        assert!(graph.add_dep(crate3, SmolStr::new("crate1"), crate1).is_err());
+        assert!(graph.add_dep(crate1, "crate2".into(), crate2).is_ok());
+        assert!(graph.add_dep(crate2, "crate3".into(), crate3).is_ok());
+        assert!(graph.add_dep(crate3, "crate1".into(), crate1).is_err());
     }
 
     #[test]
@@ -293,7 +304,21 @@ mod tests {
             graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
         let crate3 =
             graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
-        assert!(graph.add_dep(crate1, SmolStr::new("crate2"), crate2).is_ok());
-        assert!(graph.add_dep(crate2, SmolStr::new("crate3"), crate3).is_ok());
+        assert!(graph.add_dep(crate1, "crate2".into(), crate2).is_ok());
+        assert!(graph.add_dep(crate2, "crate3".into(), crate3).is_ok());
+    }
+
+    #[test]
+    fn dashes_are_normalized() {
+        let mut graph = CrateGraph::default();
+        let crate1 =
+            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate2 =
+            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
+        assert!(graph.add_dep(crate1, "crate-name-with-dashes".into(), crate2).is_ok());
+        assert_eq!(
+            graph.dependencies(crate1).collect::<Vec<_>>(),
+            vec![&Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
+        );
     }
 }
