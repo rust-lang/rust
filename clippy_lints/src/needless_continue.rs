@@ -119,9 +119,9 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl EarlyLintPass for NeedlessContinue {
-    fn check_expr(&mut self, ctx: &EarlyContext<'_>, expr: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if !expr.span.from_expansion() {
-            check_and_warn(ctx, expr);
+            check_and_warn(cx, expr);
         }
     }
 }
@@ -283,24 +283,24 @@ const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "consider dropping the `else` clause
 
 const DROP_ELSE_BLOCK_MSG: &str = "consider dropping the `else` clause";
 
-fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
+fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
         LintType::ContinueInsideElseBlock => (
-            suggestion_snippet_for_continue_inside_else(ctx, data),
+            suggestion_snippet_for_continue_inside_else(cx, data),
             MSG_REDUNDANT_ELSE_BLOCK,
             data.else_expr,
         ),
         LintType::ContinueInsideThenBlock => (
-            suggestion_snippet_for_continue_inside_if(ctx, data),
+            suggestion_snippet_for_continue_inside_if(cx, data),
             MSG_ELSE_BLOCK_NOT_NEEDED,
             data.if_expr,
         ),
     };
     span_lint_and_help(
-        ctx,
+        cx,
         NEEDLESS_CONTINUE,
         expr.span,
         message,
@@ -308,14 +308,14 @@ fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str
     );
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
-    let cond_code = snippet(ctx, data.if_cond.span, "..");
+fn suggestion_snippet_for_continue_inside_if<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+    let cond_code = snippet(cx, data.if_cond.span, "..");
 
-    let continue_code = snippet_block(ctx, data.if_block.span, "..", Some(data.if_expr.span));
+    let continue_code = snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span));
 
-    let else_code = snippet_block(ctx, data.else_expr.span, "..", Some(data.if_expr.span));
+    let else_code = snippet_block(cx, data.else_expr.span, "..", Some(data.if_expr.span));
 
-    let indent_if = indent_of(ctx, data.if_expr.span).unwrap_or(0);
+    let indent_if = indent_of(cx, data.if_expr.span).unwrap_or(0);
     format!(
         "{indent}if {} {}\n{indent}{}",
         cond_code,
@@ -325,24 +325,24 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &
     )
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
-    let cond_code = snippet(ctx, data.if_cond.span, "..");
+fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+    let cond_code = snippet(cx, data.if_cond.span, "..");
 
     // Region B
-    let block_code = erode_from_back(&snippet_block(ctx, data.if_block.span, "..", Some(data.if_expr.span)));
+    let block_code = erode_from_back(&snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span)));
 
     // Region C
     // These is the code in the loop block that follows the if/else construction
     // we are complaining about. We want to pull all of this code into the
     // `then` block of the `if` statement.
     let indent = span_of_first_expr_in_block(data.if_block)
-        .and_then(|span| indent_of(ctx, span))
+        .and_then(|span| indent_of(cx, span))
         .unwrap_or(0);
     let to_annex = data.block_stmts[data.stmt_idx + 1..]
         .iter()
         .map(|stmt| original_sp(stmt.span, DUMMY_SP))
         .map(|span| {
-            let snip = snippet_block(ctx, span, "..", None).into_owned();
+            let snip = snippet_block(cx, span, "..", None).into_owned();
             snip.lines()
                 .map(|line| format!("{}{}", " ".repeat(indent), line))
                 .collect::<Vec<_>>()
@@ -351,7 +351,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext<'_>, data:
         .collect::<Vec<_>>()
         .join("\n");
 
-    let indent_if = indent_of(ctx, data.if_expr.span).unwrap_or(0);
+    let indent_if = indent_of(cx, data.if_expr.span).unwrap_or(0);
     format!(
         "{indent_if}if {} {}\n{indent}// merged code follows:\n{}\n{indent_if}}}",
         cond_code,
@@ -362,7 +362,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext<'_>, data:
     )
 }
 
-fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
+fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
@@ -376,13 +376,13 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
                 };
                 if needless_continue_in_else(else_expr, label) {
                     emit_warning(
-                        ctx,
+                        cx,
                         data,
                         DROP_ELSE_BLOCK_AND_MERGE_MSG,
                         LintType::ContinueInsideElseBlock,
                     );
                 } else if is_first_block_stmt_continue(then_block, label) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
+                    emit_warning(cx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
                 }
             });
         }
