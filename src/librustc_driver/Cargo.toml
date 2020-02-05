@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_driver"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 lazy_static = "1.0"
