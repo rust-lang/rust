@@ -935,6 +935,34 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Panics
     ///
+    /// Panics if the value is an [`Err`], with a panic message including the
+    /// passed message, and the content of the [`Err`].
+    ///
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```{.should_panic}
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect", since = "1.4.0")]
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed(msg, &e),
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an [`Ok`].
+    ///
+    /// # Panics
+    ///
     /// Panics if the value is an [`Err`], with a panic message provided by the
     /// [`Err`]'s value.
     ///
@@ -961,34 +989,6 @@ impl<T, E: fmt::Debug> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an [`Ok`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Err`], with a panic message including the
-    /// passed message, and the content of the [`Err`].
-    ///
-    /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```{.should_panic}
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect", since = "1.4.0")]
-    pub fn expect(self, msg: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
         }
     }
 }
