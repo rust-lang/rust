@@ -7,6 +7,21 @@ use crate::{
     SyntaxToken, T,
 };
 
+impl ast::Expr {
+    pub fn is_block_like(&self) -> bool {
+        match self {
+            ast::Expr::IfExpr(_)
+            | ast::Expr::LoopExpr(_)
+            | ast::Expr::ForExpr(_)
+            | ast::Expr::WhileExpr(_)
+            | ast::Expr::BlockExpr(_)
+            | ast::Expr::MatchExpr(_)
+            | ast::Expr::TryBlockExpr(_) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElseBranch {
     Block(ast::BlockExpr),
