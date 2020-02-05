@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
 use crate::{
-    CrateGraph, CrateId, Edition, Env, FileId, FilePosition, RelativePathBuf, SourceDatabaseExt,
-    SourceRoot, SourceRootId,
+    input::CrateName, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, RelativePathBuf,
+    SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -139,7 +139,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         for (from, to) in crate_deps {
             let from_id = crates[&from];
             let to_id = crates[&to];
-            crate_graph.add_dep(from_id, to.into(), to_id).unwrap();
+            crate_graph.add_dep(from_id, CrateName::new(&to).unwrap(), to_id).unwrap();
         }
     }
 

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
-use ra_db::{Env, RelativePathBuf};
+use ra_db::{CrateName, Env, RelativePathBuf};
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 
 use crate::{
@@ -107,7 +107,9 @@ impl MockAnalysis {
                     crate_graph.add_crate_root(file_id, Edition2018, cfg_options, Env::default());
                 let crate_name = path.parent().unwrap().file_name().unwrap();
                 if let Some(root_crate) = root_crate {
-                    crate_graph.add_dep(root_crate, crate_name.into(), other_crate).unwrap();
+                    crate_graph
+                        .add_dep(root_crate, CrateName::new(crate_name).unwrap(), other_crate)
+                        .unwrap();
                 }
             }
             change.add_file(source_root, file_id, path, Arc::new(contents));
