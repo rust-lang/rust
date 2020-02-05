@@ -32,6 +32,7 @@
 
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
+#![recursion_limit = "256"]
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
