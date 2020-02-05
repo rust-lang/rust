@@ -2260,10 +2260,10 @@ impl TraitRef<'_> {
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
-    /// The `'a` in `<'a> Foo<&'a T>`.
+    /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
 
-    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
+    /// The `Foo<&'a T>` in `for<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef<'hir>,
 
     pub span: Span,

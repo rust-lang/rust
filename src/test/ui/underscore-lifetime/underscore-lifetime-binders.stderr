@@ -28,13 +28,13 @@ error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:16:35
    |
 LL | fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y }
-   |                                   ^^ expected named lifetime parameter
+   |            ------     ------      ^^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or `y`
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo2<'lifetime>(_: &'_ u8, y: &'_ u8) -> &'lifetime u8 { y }
-   |        ^^^^^^^^^^^                           ^^^^^^^^^
+LL | fn foo2<'a>(_: &'a u8, y: &'a u8) -> &'a u8 { y }
+   |        ^^^^    ^^^^^^     ^^^^^^      ^^
 
 error: aborting due to 5 previous errors
 

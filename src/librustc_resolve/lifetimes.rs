@@ -5,9 +5,7 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::diagnostics::{
-    add_missing_lifetime_specifiers_label, report_missing_lifetime_specifiers,
-};
+use crate::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc::hir::map::Map;
 use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
@@ -153,8 +151,8 @@ struct NamedRegionMap {
     object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
-struct LifetimeContext<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+crate struct LifetimeContext<'a, 'tcx> {
+    crate tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -186,7 +184,7 @@ struct LifetimeContext<'a, 'tcx> {
 
     /// When encountering an undefined named lifetime, we will suggest introducing it in these
     /// places.
-    missing_named_lifetime_spots: Vec<&'tcx hir::Generics<'tcx>>,
+    crate missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -264,13 +262,14 @@ enum Elide {
 }
 
 #[derive(Clone, Debug)]
-struct ElisionFailureInfo {
+crate struct ElisionFailureInfo {
     /// Where we can find the argument pattern.
     parent: Option<hir::BodyId>,
     /// The index of the argument in the original definition.
     index: usize,
     lifetime_count: usize,
     have_bound_regions: bool,
+    crate span: Span,
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -389,7 +388,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
-                self.missing_named_lifetime_spots.push(generics);
+                self.missing_named_lifetime_spots.push(generics.into());
                 self.visit_early_late(None, &sig.decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
@@ -424,7 +423,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemKind::Trait(_, _, ref generics, ..)
             | hir::ItemKind::TraitAlias(ref generics, ..)
             | hir::ItemKind::Impl { ref generics, .. } => {
-                self.missing_named_lifetime_spots.push(generics);
+                self.missing_named_lifetime_spots.push(generics.into());
 
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
@@ -492,6 +491,21 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
+                let lifetime_span: Option<Span> = c
+                    .generic_params
+                    .iter()
+                    .filter_map(|param| match param.kind {
+                        GenericParamKind::Lifetime { .. } => Some(param.span),
+                        _ => None,
+                    })
+                    .last();
+                let (span, span_type) = if let Some(span) = lifetime_span {
+                    (span.shrink_to_hi(), ForLifetimeSpanType::TypeTail)
+                } else {
+                    (ty.span.shrink_to_lo(), ForLifetimeSpanType::TypeEmpty)
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
                 let scope = Scope::Binder {
                     lifetimes: c
                         .generic_params
@@ -514,6 +528,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.check_lifetime_params(old_scope, &c.generic_params);
                     intravisit::walk_ty(this, ty);
                 });
+                self.missing_named_lifetime_spots.pop();
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
@@ -696,7 +711,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
-        self.missing_named_lifetime_spots.push(&trait_item.generics);
+        self.missing_named_lifetime_spots.push((&trait_item.generics).into());
         match trait_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -753,7 +768,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
-        self.missing_named_lifetime_spots.push(&impl_item.generics);
+        self.missing_named_lifetime_spots.push((&impl_item.generics).into());
         match impl_item.kind {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
@@ -953,6 +968,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     ) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
+        let should_pop_missing_lt = self.is_trait_ref_fn_scope(trait_ref);
         if !self.trait_ref_hack
             || trait_ref.bound_generic_params.iter().any(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => true,
@@ -988,10 +1004,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.with(scope, |old_scope, this| {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
                 walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
-                this.visit_trait_ref(&trait_ref.trait_ref)
+                this.visit_trait_ref(&trait_ref.trait_ref);
             })
         } else {
-            self.visit_trait_ref(&trait_ref.trait_ref)
+            self.visit_trait_ref(&trait_ref.trait_ref);
+        }
+        if should_pop_missing_lt {
+            self.missing_named_lifetime_spots.pop();
         }
     }
 }
@@ -1824,29 +1843,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             self.insert_lifetime(lifetime_ref, def);
         } else {
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                lifetime_ref.span,
-                E0261,
-                "use of undeclared lifetime name `{}`",
-                lifetime_ref
-            );
-            err.span_label(lifetime_ref.span, "undeclared lifetime");
-            if !self.is_in_fn_syntax {
-                for generics in &self.missing_named_lifetime_spots {
-                    let (span, sugg) = match &generics.params {
-                        [] => (generics.span, format!("<{}>", lifetime_ref)),
-                        [param, ..] => (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref)),
-                    };
-                    err.span_suggestion(
-                        span,
-                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-            err.emit();
+            self.emit_undeclared_lifetime_error(lifetime_ref);
         }
     }
 
@@ -2230,6 +2227,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     index: i,
                     lifetime_count: gather.lifetimes.len(),
                     have_bound_regions: gather.have_bound_regions,
+                    span: input.span,
                 }
             })
             .collect();
@@ -2385,7 +2383,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
 
-        let mut err = report_missing_lifetime_specifiers(self.tcx.sess, span, lifetime_refs.len());
+        let mut err = self.report_missing_lifetime_specifiers(span, lifetime_refs.len());
         let mut add_label = true;
 
         if let Some(params) = error {
@@ -2394,13 +2392,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
         if add_label {
-            add_missing_lifetime_specifiers_label(
+            self.add_missing_lifetime_specifiers_label(
                 &mut err,
                 span,
                 lifetime_refs.len(),
                 &lifetime_names,
-                self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
-                &self.missing_named_lifetime_spots,
+                error.map(|p| &p[..]).unwrap_or(&[]),
             );
         }
 
@@ -2442,8 +2439,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let elided_len = elided_params.len();
 
         for (i, info) in elided_params.into_iter().enumerate() {
-            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions } = info;
+            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
+                info;
 
+            db.span_label(span, "");
             let help_name = if let Some(ident) =
                 parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
             {
@@ -2477,7 +2476,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if len == 0 {
             db.help(
                 "this function's return type contains a borrowed value, \
-                but there is no value for it to be borrowed from",
+                 but there is no value for it to be borrowed from",
             );
             self.suggest_lifetime(db, span, "consider giving it a 'static lifetime")
         } else if elided_len == 0 {
@@ -2491,14 +2490,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } else if elided_len == 1 {
             db.help(&format!(
                 "this function's return type contains a borrowed value, \
-                but the signature does not say which {} it is borrowed from",
+                 but the signature does not say which {} it is borrowed from",
                 m
             ));
             true
         } else {
             db.help(&format!(
                 "this function's return type contains a borrowed value, \
-                but the signature does not say whether it is borrowed from {}",
+                 but the signature does not say whether it is borrowed from {}",
                 m
             ));
             true

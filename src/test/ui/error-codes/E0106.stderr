@@ -6,8 +6,8 @@ LL |     x: &bool,
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct Foo<'lifetime> {
-LL |     x: &'lifetime bool,
+LL | struct Foo<'a> {
+LL |     x: &'a bool,
    |
 
 error[E0106]: missing lifetime specifier
@@ -18,9 +18,9 @@ LL |     B(&bool),
    |
 help: consider introducing a named lifetime parameter
    |
-LL | enum Bar<'lifetime> {
+LL | enum Bar<'a> {
 LL |     A(u8),
-LL |     B(&'lifetime bool),
+LL |     B(&'a bool),
    |
 
 error[E0106]: missing lifetime specifier
@@ -31,8 +31,8 @@ LL | type MyStr = &str;
    |
 help: consider introducing a named lifetime parameter
    |
-LL | type MyStr<'lifetime> = &'lifetime str;
-   |           ^^^^^^^^^^^   ^^^^^^^^^^
+LL | type MyStr<'a> = &'a str;
+   |           ^^^^   ^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/E0106.rs:17:10
@@ -42,8 +42,8 @@ LL |     baz: Baz,
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct Quux<'lifetime> {
-LL |     baz: Baz<'lifetime>,
+LL | struct Quux<'a> {
+LL |     baz: Baz<'a>,
    |
 
 error[E0106]: missing lifetime specifiers
