@@ -1,0 +1,34 @@
+error[E0119]: conflicting implementations of trait `std::ops::Add` for type `i32`:
+  --> $DIR/const-and-non-const-impl.rs:6:1
+   |
+LL | impl const std::ops::Add for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl std::ops::Add for i32;
+
+error[E0119]: conflicting implementations of trait `std::ops::Add` for type `Int`:
+  --> $DIR/const-and-non-const-impl.rs:24:1
+   |
+LL | impl std::ops::Add for Int {
+   | -------------------------- first implementation here
+...
+LL | impl const std::ops::Add for Int {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Int`
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/const-and-non-const-impl.rs:6:1
+   |
+LL | impl const std::ops::Add for i32 {
+   | ^^^^^^^^^^^-------------^^^^^---
+   | |          |                 |
+   | |          |                 `i32` is not defined in the current crate
+   | |          `i32` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0117, E0119.
+For more information about an error, try `rustc --explain E0117`.
