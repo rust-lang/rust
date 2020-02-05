@@ -10,6 +10,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(box_syntax)]
 #![feature(bool_to_option)]
+#![feature(half_open_range_patterns)]
 #![feature(nll)]
 
 #[macro_use]

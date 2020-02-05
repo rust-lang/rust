@@ -266,6 +266,7 @@
 #![feature(format_args_nl)]
 #![feature(generator_trait)]
 #![feature(global_asm)]
+#![feature(half_open_range_patterns)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]

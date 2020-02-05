@@ -66,7 +66,7 @@ impl CodePoint {
     #[inline]
     pub fn from_u32(value: u32) -> Option<CodePoint> {
         match value {
-            0..=0x10FFFF => Some(CodePoint { value }),
+            ..=0x10FFFF => Some(CodePoint { value }),
             _ => None,
         }
     }

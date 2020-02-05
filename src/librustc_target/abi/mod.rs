@@ -470,10 +470,10 @@ impl Integer {
     /// Finds the smallest Integer type which can represent the unsigned value.
     pub fn fit_unsigned(x: u128) -> Integer {
         match x {
-            0..=0x0000_0000_0000_00ff => I8,
-            0..=0x0000_0000_0000_ffff => I16,
-            0..=0x0000_0000_ffff_ffff => I32,
-            0..=0xffff_ffff_ffff_ffff => I64,
+            ..=0x0000_0000_0000_00ff => I8,
+            ..=0x0000_0000_0000_ffff => I16,
+            ..=0x0000_0000_ffff_ffff => I32,
+            ..=0xffff_ffff_ffff_ffff => I64,
             _ => I128,
         }
     }

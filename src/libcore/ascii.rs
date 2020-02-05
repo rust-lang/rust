@@ -108,7 +108,7 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 
     fn hexify(b: u8) -> u8 {
         match b {
-            0..=9 => b'0' + b,
+            ..=9 => b'0' + b,
             _ => b'a' + b - 10,
         }
     }

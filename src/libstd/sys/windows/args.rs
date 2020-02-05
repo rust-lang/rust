@@ -83,7 +83,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(
         // "However, if lpCmdLine starts with any amount of whitespace, CommandLineToArgvW
         // will consider the first argument to be an empty string. Excess whitespace at the
         // end of lpCmdLine is ignored."
-        0..=SPACE => {
+        ..=SPACE => {
             ret_val.push(OsString::new());
             &cmd_line[1..]
         }

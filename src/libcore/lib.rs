@@ -84,6 +84,7 @@
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
 #![feature(fundamental)]
+#![feature(half_open_range_patterns)]
 #![feature(intrinsics)]
 #![feature(try_find)]
 #![feature(is_sorted)]
