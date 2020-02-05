@@ -474,10 +474,10 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
-    fn lookup_with_diagnostics<S: Into<MultiSpan>>(
+    fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
-        span: Option<S>,
+        span: Option<impl Into<MultiSpan>>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
         diagnostic: BuiltinLintDiagnostics,
     ) {
