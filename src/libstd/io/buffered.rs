@@ -198,7 +198,7 @@ impl<R> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "buffered_io_capacity", issue = "68558")]
+    #[unstable(feature = "buffered_io_capacity", issue = "68833")]
     pub fn capacity(&self) -> usize {
         self.buf.len()
     }
@@ -616,7 +616,7 @@ impl<W: Write> BufWriter<W> {
     /// // Calculate how many bytes can be written without flushing
     /// let without_flush = capacity - buf_writer.buffer().len();
     /// ```
-    #[unstable(feature = "buffered_io_capacity", issue = "68558")]
+    #[unstable(feature = "buffered_io_capacity", issue = "68833")]
     pub fn capacity(&self) -> usize {
         self.buf.capacity()
     }
