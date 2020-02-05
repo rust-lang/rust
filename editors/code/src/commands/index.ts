@@ -35,7 +35,7 @@ export function showReferences(ctx: Ctx): Cmd {
 
 export function applySourceChange(ctx: Ctx): Cmd {
     return async (change: sourceChange.SourceChange) => {
-        sourceChange.applySourceChange(ctx, change);
+        await sourceChange.applySourceChange(ctx, change);
     };
 }
 

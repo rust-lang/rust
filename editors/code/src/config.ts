@@ -45,7 +45,7 @@ export class Config {
     private prevCargoWatchOptions: null | CargoWatchOptions = null;
 
     constructor(ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), ctx.subscriptions);
+        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), null, ctx.subscriptions);
         this.refresh();
     }
 

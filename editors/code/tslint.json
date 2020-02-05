@@ -4,6 +4,7 @@
             true,
             "always"
         ],
-        "prefer-const": true
+        "prefer-const": true,
+        "no-floating-promises": true
     }
 }

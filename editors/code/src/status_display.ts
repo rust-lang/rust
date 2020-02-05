@@ -9,12 +9,14 @@ const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 export function activateStatusDisplay(ctx: Ctx) {
     const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(statusDisplay);
-    ctx.onDidRestart(client => {
-        client.onProgress(WorkDoneProgress.type, 'rustAnalyzer/cargoWatcher', params => statusDisplay.handleProgressNotification(params));
-    });
+    ctx.onDidRestart(client => ctx.pushCleanup(client.onProgress(
+        WorkDoneProgress.type,
+        'rustAnalyzer/cargoWatcher',
+        params => statusDisplay.handleProgressNotification(params)
+    )));
 }
 
-class StatusDisplay implements vscode.Disposable, Disposable {
+class StatusDisplay implements Disposable {
     packageName?: string;
 
     private i: number = 0;

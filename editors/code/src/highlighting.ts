@@ -32,6 +32,7 @@ export function activateHighlighting(ctx: Ctx) {
 
     vscode.workspace.onDidChangeConfiguration(
         _ => highlighter.removeHighlights(),
+        null,
         ctx.subscriptions,
     );
 
@@ -52,6 +53,7 @@ export function activateHighlighting(ctx: Ctx) {
             );
             highlighter.setHighlights(editor, decorations);
         },
+        null,
         ctx.subscriptions,
     );
 }
