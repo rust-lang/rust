@@ -609,8 +609,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
             );
             err.help(&format!(
-                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                suggested_limit
+                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+                suggested_limit, self.cx.ecfg.crate_name,
             ));
             err.emit();
             self.cx.trace_macros_diag();
