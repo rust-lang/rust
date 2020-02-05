@@ -94,7 +94,7 @@ host.
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting.
   Colors can be configured via `editor.tokenColorCustomizations`.
   As an example, [Pale Fire](https://github.com/matklad/pale-fire/) color scheme tweaks rust colors.
-* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
+* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts the
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
