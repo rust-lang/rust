@@ -1,3 +1,4 @@
+use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
 use rustc_ast_pretty::pprust;
@@ -693,11 +694,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_report_ambiguous_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         impl_dyn_multi: bool,
         ty: &Ty,
     ) {
-        if !allow_plus && impl_dyn_multi {
+        if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
             let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
             self.struct_span_err(ty.span, "ambiguous `+` in a type")
                 .span_suggestion(
@@ -712,11 +713,11 @@ impl<'a> Parser<'a> {
 
     pub(super) fn maybe_recover_from_bad_type_plus(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         ty: &Ty,
     ) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if !allow_plus || !self.token.is_like_plus() {
+        if matches!(allow_plus, AllowPlus::No) || !self.token.is_like_plus() {
             return Ok(());
         }
 
@@ -935,47 +936,6 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         self.expect(&token::Semi).map(drop) // Error unconditionally
-    }
-
-    pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
-        &mut self,
-        ident: &Ident,
-        extern_sp: Span,
-    ) -> PResult<'a, ()> {
-        if self.token != token::Semi {
-            // This might be an incorrect fn definition (#62109).
-            let parser_snapshot = self.clone();
-            match self.parse_inner_attrs_and_block() {
-                Ok((_, body)) => {
-                    self.struct_span_err(ident.span, "incorrect `fn` inside `extern` block")
-                        .span_label(ident.span, "can't have a body")
-                        .span_label(body.span, "this body is invalid here")
-                        .span_label(
-                            extern_sp,
-                            "`extern` blocks define existing foreign functions and `fn`s \
-                             inside of them cannot have a body",
-                        )
-                        .help(
-                            "you might have meant to write a function accessible through ffi, \
-                               which can be done by writing `extern fn` outside of the \
-                               `extern` block",
-                        )
-                        .note(
-                            "for more information, visit \
-                               https://doc.rust-lang.org/std/keyword.extern.html",
-                        )
-                        .emit();
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    mem::replace(self, parser_snapshot);
-                    self.expect_semi()?;
-                }
-            }
-        } else {
-            self.bump();
-        }
-        Ok(())
     }
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,

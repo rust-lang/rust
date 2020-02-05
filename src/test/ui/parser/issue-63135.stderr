@@ -43,5 +43,11 @@ error: expected one of `:` or `|`, found `)`
 LL | fn i(n{...,f #
    |                ^ expected one of `:` or `|`
 
-error: aborting due to 6 previous errors
+error: expected `;` or `{`, found `<eof>`
+  --> $DIR/issue-63135.rs:3:16
+   |
+LL | fn i(n{...,f #
+   |                ^ expected `;` or `{`
+
+error: aborting due to 7 previous errors
 

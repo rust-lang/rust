@@ -24,7 +24,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit::{self, FnKind, Visitor};
+use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use syntax::{unwrap_or, walk_list};
 
 use log::debug;
@@ -437,7 +437,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(_, ref generics) => {
+            ForeignItemKind::Fn(_, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -452,13 +452,15 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, declaration: &'ast FnDecl, sp: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, _: NodeId) {
+        let rib_kind = match fn_kind {
+            FnKind::Fn(FnCtxt::Foreign, ..) => return visit::walk_fn(self, fn_kind, sp),
+            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
+            FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
+        };
         let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
         debug!("(resolving function) entering function");
-        let rib_kind = match fn_kind {
-            FnKind::ItemFn(..) => FnItemRibKind,
-            FnKind::Method(..) | FnKind::Closure(_) => NormalRibKind,
-        };
+        let declaration = fn_kind.decl();
 
         // Create a value rib for the function.
         self.with_rib(ValueNS, rib_kind, |this| {
@@ -471,8 +473,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 // Resolve the function body, potentially inside the body of an async closure
                 match fn_kind {
-                    FnKind::ItemFn(.., body) | FnKind::Method(.., body) => this.visit_block(body),
-                    FnKind::Closure(body) => this.visit_expr(body),
+                    FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
+                    FnKind::Closure(_, body) => this.visit_expr(body),
                 };
 
                 debug!("(resolving function) leaving function");
@@ -843,12 +845,16 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     });
                                                 }
                                             }
-                                            AssocItemKind::Fn(_, _) => {
-                                                visit::walk_trait_item(this, trait_item)
-                                            }
-                                            AssocItemKind::TyAlias(..) => {
-                                                visit::walk_trait_item(this, trait_item)
-                                            }
+                                            AssocItemKind::Fn(_, _) => visit::walk_assoc_item(
+                                                this,
+                                                trait_item,
+                                                AssocCtxt::Trait,
+                                            ),
+                                            AssocItemKind::TyAlias(..) => visit::walk_assoc_item(
+                                                this,
+                                                trait_item,
+                                                AssocCtxt::Trait,
+                                            ),
                                             AssocItemKind::Macro(_) => {
                                                 panic!("unexpanded macro in resolve!")
                                             }
@@ -1128,7 +1134,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 );
 
                                                 this.with_constant_rib(|this| {
-                                                    visit::walk_impl_item(this, impl_item)
+                                                    visit::walk_assoc_item(
+                                                        this,
+                                                        impl_item,
+                                                        AssocCtxt::Impl,
+                                                    )
                                                 });
                                             }
                                             AssocItemKind::Fn(..) => {
@@ -1139,7 +1149,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                                       impl_item.span,
                                                     |n, s| MethodNotMemberOfTrait(n, s));
 
-                                                visit::walk_impl_item(this, impl_item);
+                                                visit::walk_assoc_item(
+                                                    this,
+                                                    impl_item,
+                                                    AssocCtxt::Impl,
+                                                )
                                             }
                                             AssocItemKind::TyAlias(_, _) => {
                                                 // If this is a trait impl, ensure the type
@@ -1149,7 +1163,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                                       impl_item.span,
                                                     |n, s| TypeNotMemberOfTrait(n, s));
 
-                                                visit::walk_impl_item(this, impl_item);
+                                                visit::walk_assoc_item(
+                                                    this,
+                                                    impl_item,
+                                                    AssocCtxt::Impl,
+                                                )
                                             }
                                             AssocItemKind::Macro(_) =>
                                                 panic!("unexpanded macro in resolve!"),

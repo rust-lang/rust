@@ -32,6 +32,7 @@
 
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
+#![recursion_limit = "256"]
 
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
@@ -63,7 +64,7 @@ use syntax::attr;
 use syntax::node_id::NodeMap;
 use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, Visitor};
 use syntax::walk_list;
 
 use log::{debug, trace};
@@ -485,25 +486,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 });
             }
 
-            fn visit_trait_item(&mut self, item: &'tcx AssocItem) {
+            fn visit_assoc_item(&mut self, item: &'tcx AssocItem, ctxt: AssocCtxt) {
                 self.lctx.allocate_hir_id_counter(item.id);
-
-                match item.kind {
-                    AssocItemKind::Fn(_, None) => {
-                        // Ignore patterns in trait methods without bodies
-                        self.with_hir_id_owner(None, |this| visit::walk_trait_item(this, item));
-                    }
-                    _ => self.with_hir_id_owner(Some(item.id), |this| {
-                        visit::walk_trait_item(this, item);
-                    }),
-                }
-            }
-
-            fn visit_impl_item(&mut self, item: &'tcx AssocItem) {
-                self.lctx.allocate_hir_id_counter(item.id);
-                self.with_hir_id_owner(Some(item.id), |this| {
-                    visit::walk_impl_item(this, item);
-                });
+                let owner = match (&item.kind, ctxt) {
+                    // Ignore patterns in trait methods without bodies.
+                    (AssocItemKind::Fn(_, None), AssocCtxt::Trait) => None,
+                    _ => Some(item.id),
+                };
+                self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));
             }
 
             fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
