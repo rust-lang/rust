@@ -41,11 +41,11 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                 span,
                 msg,
                 node_id: _,
-                lint_id: _,
+                lint_id,
                 diagnostic,
             } = early_lint;
             self.context.lookup_with_diagnostics(
-                early_lint.lint_id.lint,
+                lint_id.lint,
                 Some(span),
                 |lint| lint.build(&msg).emit(),
                 diagnostic,
