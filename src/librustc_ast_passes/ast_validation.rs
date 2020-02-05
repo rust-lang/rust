@@ -81,6 +81,12 @@ struct AstValidator<'a> {
 }
 
 impl<'a> AstValidator<'a> {
+    fn with_in_trait_impl(&mut self, is_in: bool, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.in_trait_impl, is_in);
+        f(self);
+        self.in_trait_impl = old;
+    }
+
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.is_impl_trait_banned, true);
         f(self);
@@ -737,28 +743,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ref self_ty,
                 items: _,
             } => {
-                let old_in_trait_impl = mem::replace(&mut self.in_trait_impl, true);
-
-                self.invalid_visibility(&item.vis, None);
-                if let TyKind::Err = self_ty.kind {
-                    self.err_handler()
-                        .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
-                        .help("use `auto trait Trait {}` instead")
+                self.with_in_trait_impl(true, |this| {
+                    this.invalid_visibility(&item.vis, None);
+                    if let TyKind::Err = self_ty.kind {
+                        this.err_handler()
+                            .struct_span_err(
+                                item.span,
+                                "`impl Trait for .. {}` is an obsolete syntax",
+                            )
+                            .help("use `auto trait Trait {}` instead")
+                            .emit();
+                    }
+                    if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
+                        struct_span_err!(
+                            this.session,
+                            item.span,
+                            E0198,
+                            "negative impls cannot be unsafe"
+                        )
                         .emit();
-                }
-                if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
-                    struct_span_err!(
-                        self.session,
-                        item.span,
-                        E0198,
-                        "negative impls cannot be unsafe"
-                    )
-                    .emit();
-                }
+                    }
 
-                visit::walk_item(self, item);
-
-                self.in_trait_impl = old_in_trait_impl;
+                    visit::walk_item(this, item);
+                });
                 return; // Avoid visiting again.
             }
             ItemKind::Impl {
@@ -1142,7 +1149,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        visit::walk_assoc_item(self, item, ctxt);
+        self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));
     }
 }
 
