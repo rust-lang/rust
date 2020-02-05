@@ -1,6 +1,7 @@
-use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
 use hir::db::HirDatabase;
-use ra_syntax::ast::{AstNode, MatchArm};
+use ra_syntax::ast::{self, AstNode};
+
+use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
 
 // Assist: merge_match_arms
 //
@@ -27,12 +28,12 @@ use ra_syntax::ast::{AstNode, MatchArm};
 // }
 // ```
 pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let current_arm = ctx.find_node_at_offset::<MatchArm>()?;
+    let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
 
     // We check if the following match arm matches this one. We could, but don't,
     // compare to the previous match arm as well.
     let next = current_arm.syntax().next_sibling();
-    let next_arm = MatchArm::cast(next?)?;
+    let next_arm = ast::MatchArm::cast(next?)?;
 
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() || next_arm.guard().is_some() {
@@ -53,13 +54,6 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
     let cursor_to_end = current_arm.syntax().text_range().end() - ctx.frange.range.start();
 
     ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", |edit| {
-        fn contains_placeholder(a: &MatchArm) -> bool {
-            a.pats().any(|x| match x {
-                ra_syntax::ast::Pat::PlaceholderPat(..) => true,
-                _ => false,
-            })
-        }
-
         let pats = if contains_placeholder(&current_arm) || contains_placeholder(&next_arm) {
             "_".into()
         } else {
@@ -80,6 +74,13 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         edit.target(current_arm.syntax().text_range());
         edit.replace(TextRange::from_to(start, end), arm);
         edit.set_cursor(start + offset);
+    })
+}
+
+fn contains_placeholder(a: &ast::MatchArm) -> bool {
+    a.pats().any(|x| match x {
+        ra_syntax::ast::Pat::PlaceholderPat(..) => true,
+        _ => false,
     })
 }
 
