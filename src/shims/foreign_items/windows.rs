@@ -1,5 +1,6 @@
 use crate::*;
 use rustc::ty::layout::Size;
+use std::iter;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -10,6 +11,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
 
         match link_name {
             // Environment related shims
@@ -65,6 +67,132 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
                     dest,
                 )?;
+            }
+            // Windows API stubs.
+            // HANDLE = isize
+            // DWORD = ULONG = u32
+            // BOOL = i32
+            "GetProcessHeap" => {
+                // Just fake a HANDLE
+                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
+            }
+            "HeapAlloc" => {
+                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
+                let flags = this.read_scalar(args[1])?.to_u32()?;
+                let size = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
+                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap);
+                this.write_scalar(res, dest)?;
+            }
+            "HeapFree" => {
+                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
+                let _flags = this.read_scalar(args[1])?.to_u32()?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                this.free(ptr, MiriMemoryKind::WinHeap)?;
+                this.write_scalar(Scalar::from_int(1, Size::from_bytes(4)), dest)?;
+            }
+            "HeapReAlloc" => {
+                let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
+                let _flags = this.read_scalar(args[1])?.to_u32()?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                let size = this.read_scalar(args[3])?.to_machine_usize(this)?;
+                let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
+                this.write_scalar(res, dest)?;
+            }
+
+            "SetLastError" => {
+                this.set_last_error(this.read_scalar(args[0])?.not_undef()?)?;
+            }
+            "GetLastError" => {
+                let last_error = this.get_last_error()?;
+                this.write_scalar(last_error, dest)?;
+            }
+
+            "AddVectoredExceptionHandler" => {
+                // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
+                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+            }
+
+            | "InitializeCriticalSection"
+            | "EnterCriticalSection"
+            | "LeaveCriticalSection"
+            | "DeleteCriticalSection"
+            => {
+                // Nothing to do, not even a return value.
+            }
+
+            | "GetModuleHandleW"
+            | "GetProcAddress"
+            | "TryEnterCriticalSection"
+            | "GetConsoleScreenBufferInfo"
+            | "SetConsoleTextAttribute"
+            => {
+                // Pretend these do not exist / nothing happened, by returning zero.
+                this.write_null(dest)?;
+            }
+
+            "GetSystemInfo" => {
+                let system_info = this.deref_operand(args[0])?;
+                // Initialize with `0`.
+                this.memory.write_bytes(
+                    system_info.ptr,
+                    iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
+                )?;
+                // Set number of processors.
+                let dword_size = Size::from_bytes(4);
+                let num_cpus = this.mplace_field(system_info, 6)?;
+                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), num_cpus.into())?;
+            }
+
+            "TlsAlloc" => {
+                // This just creates a key; Windows does not natively support TLS destructors.
+
+                // Create key and return it.
+                let key = this.machine.tls.create_tls_key(None) as u128;
+
+                // Figure out how large a TLS key actually is. This is `c::DWORD`.
+                if dest.layout.size.bits() < 128
+                    && key >= (1u128 << dest.layout.size.bits() as u128)
+                {
+                    throw_unsup!(OutOfTls);
+                }
+                this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
+            }
+            "TlsGetValue" => {
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
+                let ptr = this.machine.tls.load_tls(key, tcx)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "TlsSetValue" => {
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
+                let new_ptr = this.read_scalar(args[1])?.not_undef()?;
+                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
+
+                // Return success (`1`).
+                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+            }
+            "GetStdHandle" => {
+                let which = this.read_scalar(args[0])?.to_i32()?;
+                // We just make this the identity function, so we know later in `WriteFile`
+                // which one it is.
+                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
+            }
+            "GetConsoleMode" => {
+                // Everything is a pipe.
+                this.write_null(dest)?;
+            }
+            "GetCommandLineW" => {
+                this.write_scalar(
+                    this.machine.cmd_line.expect("machine must be initialized"),
+                    dest,
+                )?;
+            }
+            // The actual name of 'RtlGenRandom'
+            "SystemFunction036" => {
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let len = this.read_scalar(args[1])?.to_u32()?;
+                this.gen_random(ptr, len as usize)?;
+                this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }

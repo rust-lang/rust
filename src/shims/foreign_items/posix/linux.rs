@@ -38,6 +38,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            "pthread_getattr_np" => {
+                this.write_null(dest)?;
+            }
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         };
 

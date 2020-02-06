@@ -53,6 +53,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
+            // macOS API stubs.
+            "pthread_attr_get_np" => {
+                this.write_null(dest)?;
+            }
+            "pthread_get_stackaddr_np" => {
+                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
+                this.write_scalar(stack_addr, dest)?;
+            }
+            "pthread_get_stacksize_np" => {
+                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
+                this.write_scalar(stack_size, dest)?;
+            }
+            "_tlv_atexit" => {
+                // FIXME: register the destructor.
+            }
+            "_NSGetArgc" => {
+                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
+            }
+            "_NSGetArgv" => {
+                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
+            }
+            "SecRandomCopyBytes" => {
+                let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                this.gen_random(ptr, len as usize)?;
+                this.write_null(dest)?;
+            }
+
+
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         };
 
