@@ -4,17 +4,19 @@
 extern crate rustc_ast_pretty;
 extern crate rustc_driver;
 extern crate rustc_hir;
-#[macro_use] extern crate rustc_lint;
-#[macro_use] extern crate rustc_session;
+#[macro_use]
+extern crate rustc_lint;
+#[macro_use]
+extern crate rustc_session;
 extern crate rustc_span;
 extern crate syntax;
 
 use rustc_ast_pretty::pprust;
-use rustc_hir::intravisit;
-use rustc_hir as hir;
-use rustc_hir::Node;
-use rustc_lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
 use rustc_driver::plugin::Registry;
+use rustc_hir as hir;
+use rustc_hir::intravisit;
+use rustc_hir::Node;
+use rustc_lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_span::source_map;
 
 #[plugin_registrar]
@@ -32,14 +34,15 @@ declare_lint! {
 declare_lint_pass!(MissingWhitelistedAttrPass => [MISSING_WHITELISTED_ATTR]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
-    fn check_fn(&mut self,
-                cx: &LateContext<'a, 'tcx>,
-                _: intravisit::FnKind<'tcx>,
-                _: &'tcx hir::FnDecl,
-                _: &'tcx hir::Body,
-                span: source_map::Span,
-                id: hir::HirId) {
-
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        _: intravisit::FnKind<'tcx>,
+        _: &'tcx hir::FnDecl,
+        _: &'tcx hir::Body,
+        span: source_map::Span,
+        id: hir::HirId,
+    ) {
         let item = match cx.tcx.hir().get(id) {
             Node::Item(item) => item,
             _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id)),
@@ -47,8 +50,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
 
         let whitelisted = |attr| pprust::attribute_to_string(attr).contains("whitelisted_attr");
         if !item.attrs.iter().any(whitelisted) {
-            cx.span_lint(MISSING_WHITELISTED_ATTR, span,
-                         "Missing 'whitelisted_attr' attribute");
+            cx.lint(MISSING_WHITELISTED_ATTR, |lint| {
+                lint.build("Missing 'whitelisted_attr' attribute").set_span(span).emit()
+            });
         }
     }
 }
