@@ -5,6 +5,7 @@ LL | #[derive(Debug, Copy, Clone)]
    |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
    = note: required because of the requirements on the impl of `IntoNullable` for `<Col as Expression>::SqlType`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

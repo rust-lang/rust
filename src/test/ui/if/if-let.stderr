@@ -10,6 +10,7 @@ LL | |     });
    | |_______- in this macro invocation
    |
    = note: `#[warn(irrefutable_let_patterns)]` on by default
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:6:13
@@ -21,6 +22,8 @@ LL | /     bar!(a, 1, {
 LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:26:5

@@ -30,6 +30,8 @@ LL |             let ...$e;
 ...
 LL |     mac!(0);
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

@@ -624,7 +624,7 @@ impl DebuggingOptions {
             treat_err_as_bug: self.treat_err_as_bug,
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
-            external_macro_backtrace: self.external_macro_backtrace,
+            macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
         }
     }

@@ -6,6 +6,8 @@ LL |         let s = S { x: 0 };
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `foo::S` is private
   --> $DIR/fields.rs:16:17
@@ -15,6 +17,8 @@ LL |         let _ = s.x;
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `foo::T` is private
   --> $DIR/fields.rs:18:17
@@ -24,6 +28,8 @@ LL |         let t = T(0);
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `foo::T` is private
   --> $DIR/fields.rs:19:17
@@ -33,6 +39,8 @@ LL |         let _ = t.0;
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

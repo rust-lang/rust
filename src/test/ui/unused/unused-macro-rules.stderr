@@ -22,6 +22,8 @@ LL | |         }
 ...
 LL |   create_macro!();
    |   ---------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unused macro definition
   --> $DIR/unused-macro-rules.rs:24:5

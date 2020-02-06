@@ -6,6 +6,8 @@ LL |         use a::$crate::b;
 ...
 LL | m!();
    | ----- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `a::$crate`
   --> $DIR/dollar-crate-is-keyword-2.rs:5:13
@@ -15,6 +17,8 @@ LL |         use a::$crate;
 ...
 LL | m!();
    | ----- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:7:21
@@ -24,6 +28,8 @@ LL |         type A = a::$crate;
 ...
 LL | m!();
    | ----- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

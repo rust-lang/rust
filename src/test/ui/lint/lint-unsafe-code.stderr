@@ -90,6 +90,8 @@ LL |         unsafe {}
 ...
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 14 previous errors
 

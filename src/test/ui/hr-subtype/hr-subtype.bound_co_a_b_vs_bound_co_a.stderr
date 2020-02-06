@@ -10,6 +10,7 @@ LL | |                                       for<'a>    fn(Co<'a>, Co<'a>)) }
    |
    = note: expected enum `std::option::Option<for<'a, 'b> fn(Co<'a>, Co<'b>)>`
               found enum `std::option::Option<for<'a> fn(Co<'a>, Co<'a>)>`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
