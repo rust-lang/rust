@@ -966,6 +966,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
+    /// This should usually be accessed with the `tcx.hir()` method.
     pub(crate) hir_map: hir_map::Map<'tcx>,
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate

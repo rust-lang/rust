@@ -43,7 +43,7 @@ rustc_queries! {
     }
 
     Other {
-        // Represents crate as a whole (as distinct from the to-level crate module).
+        // Represents crate as a whole (as distinct from the top-level crate module).
         // If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
         // we will have to assume that any change means that you need to be recompiled.
         // This is because the `hir_crate` query gives you access to all other items.
