@@ -125,6 +125,10 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
                 types::type_(p);
             }
         }
+        // test closure_params
+        // fn main() {
+        //    let foo = |bar, baz: Baz, qux: Qux::Quux| ();
+        // }
         Flavor::Closure => {
             patterns::pattern(p);
             if p.at(T![:]) && !p.at(T![::]) {
