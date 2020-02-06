@@ -9,8 +9,6 @@ mod assist_ctx;
 mod marks;
 #[cfg(test)]
 mod doc_tests;
-#[cfg(test)]
-mod test_db;
 pub mod ast_transform;
 
 use either::Either;
