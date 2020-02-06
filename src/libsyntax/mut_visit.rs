@@ -901,7 +901,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Fn(sig, generics, body) => {
             visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
-            vis.visit_block(body);
+            visit_opt(body, |body| vis.visit_block(body));
         }
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
@@ -1044,9 +1044,10 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     match kind {
-        ForeignItemKind::Fn(fdec, generics) => {
-            visitor.visit_fn_decl(fdec);
+        ForeignItemKind::Fn(sig, generics, body) => {
+            visit_fn_sig(sig, visitor);
             visitor.visit_generics(generics);
+            visit_opt(body, |body| visitor.visit_block(body));
         }
         ForeignItemKind::Static(t, _m) => visitor.visit_ty(t),
         ForeignItemKind::Ty => {}

@@ -8,7 +8,7 @@
 
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, FatalError};
+use rustc_errors::{error_code, struct_span_err, Applicability, FatalError};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
@@ -20,7 +20,7 @@ use std::mem;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use syntax::walk_list;
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
@@ -49,6 +49,13 @@ impl BoundContext {
 
 struct AstValidator<'a> {
     session: &'a Session,
+
+    /// The span of the `extern` in an `extern { ... }` block, if any.
+    extern_mod: Option<&'a Item>,
+
+    /// Are we inside a trait impl?
+    in_trait_impl: bool,
+
     has_proc_macro_decls: bool,
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
@@ -74,6 +81,12 @@ struct AstValidator<'a> {
 }
 
 impl<'a> AstValidator<'a> {
+    fn with_in_trait_impl(&mut self, is_in: bool, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.in_trait_impl, is_in);
+        f(self);
+        self.in_trait_impl = old;
+    }
+
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.is_impl_trait_banned, true);
         f(self);
@@ -389,13 +402,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
-        if body.is_some() {
-            return;
-        }
-
+    fn error_item_without_body(&self, sp: Span, ctx: &str, msg: &str, sugg: &str) {
         self.err_handler()
-            .struct_span_err(sp, &format!("associated {} in `impl` without body", ctx))
+            .struct_span_err(sp, msg)
             .span_suggestion(
                 self.session.source_map().end_point(sp),
                 &format!("provide a definition for the {}", ctx),
@@ -403,6 +412,13 @@ impl<'a> AstValidator<'a> {
                 Applicability::HasPlaceholders,
             )
             .emit();
+    }
+
+    fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
+        if body.is_none() {
+            let msg = format!("associated {} in `impl` without body", ctx);
+            self.error_item_without_body(sp, ctx, &msg, sugg);
+        }
     }
 
     fn check_impl_assoc_type_no_bounds(&self, bounds: &[GenericBound]) {
@@ -416,8 +432,71 @@ impl<'a> AstValidator<'a> {
             .emit();
     }
 
-    fn check_c_varadic_type(&self, decl: &FnDecl) {
-        for Param { ty, span, .. } in &decl.inputs {
+    /// An `fn` in `extern { ... }` cannot have a body `{ ... }`.
+    fn check_foreign_fn_bodyless(&self, ident: Ident, body: Option<&Block>) {
+        let body = match body {
+            None => return,
+            Some(body) => body,
+        };
+        self.err_handler()
+            .struct_span_err(ident.span, "incorrect function inside `extern` block")
+            .span_label(ident.span, "cannot have a body")
+            .span_suggestion(
+                body.span,
+                "remove the invalid body",
+                ";".to_string(),
+                Applicability::MaybeIncorrect,
+            )
+            .help(
+                "you might have meant to write a function accessible through FFI, \
+                which can be done by writing `extern fn` outside of the `extern` block",
+            )
+            .span_label(
+                self.current_extern_span(),
+                "`extern` blocks define existing foreign functions and functions \
+                inside of them cannot have a body",
+            )
+            .note("for more information, visit https://doc.rust-lang.org/std/keyword.extern.html")
+            .emit();
+    }
+
+    fn current_extern_span(&self) -> Span {
+        self.session.source_map().def_span(self.extern_mod.unwrap().span)
+    }
+
+    /// An `fn` in `extern { ... }` cannot have qualfiers, e.g. `async fn`.
+    fn check_foreign_fn_headerless(&self, ident: Ident, span: Span, header: FnHeader) {
+        if header.has_qualifiers() {
+            self.err_handler()
+                .struct_span_err(ident.span, "functions in `extern` blocks cannot have qualifiers")
+                .span_label(self.current_extern_span(), "in this `extern` block")
+                .span_suggestion(
+                    span.until(ident.span.shrink_to_lo()),
+                    "remove the qualifiers",
+                    "fn ".to_string(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+        }
+    }
+
+    /// Reject C-varadic type unless the function is foreign,
+    /// or free and `unsafe extern "C"` semantically.
+    fn check_c_varadic_type(&self, fk: FnKind<'a>) {
+        match (fk.ctxt(), fk.header()) {
+            (Some(FnCtxt::Foreign), _) => return,
+            (Some(FnCtxt::Free), Some(header)) => match header.ext {
+                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) | Extern::Implicit
+                    if header.unsafety == Unsafety::Unsafe =>
+                {
+                    return;
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+
+        for Param { ty, span, .. } in &fk.decl().inputs {
             if let TyKind::CVarArgs = ty.kind {
                 self.err_handler()
                     .struct_span_err(
@@ -425,6 +504,24 @@ impl<'a> AstValidator<'a> {
                         "only foreign or `unsafe extern \"C\" functions may be C-variadic",
                     )
                     .emit();
+            }
+        }
+    }
+
+    /// We currently do not permit const generics in `const fn`,
+    /// as this is tantamount to allowing compile-time dependent typing.
+    ///
+    /// FIXME(const_generics): Is this really true / necessary? Discuss with @varkor.
+    /// At any rate, the restriction feels too syntactic. Consider moving it to e.g. typeck.
+    fn check_const_fn_const_generic(&self, span: Span, sig: &FnSig, generics: &Generics) {
+        if sig.header.constness.node == Constness::Const {
+            // Look for const generics and error if we find any.
+            for param in &generics.params {
+                if let GenericParamKind::Const { .. } = param.kind {
+                    self.err_handler()
+                        .struct_span_err(span, "const parameters are not permitted in `const fn`")
+                        .emit();
+                }
             }
         }
     }
@@ -532,9 +629,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::Closure(_, _, _, fn_decl, _, _) => {
-                self.check_fn_decl(fn_decl, SelfSemantic::No);
-            }
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 struct_span_err!(
                     self.session,
@@ -647,31 +741,32 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 generics: _,
                 of_trait: Some(_),
                 ref self_ty,
-                ref items,
+                items: _,
             } => {
-                self.invalid_visibility(&item.vis, None);
-                if let TyKind::Err = self_ty.kind {
-                    self.err_handler()
-                        .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
-                        .help("use `auto trait Trait {}` instead")
-                        .emit();
-                }
-                if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
-                    struct_span_err!(
-                        self.session,
-                        item.span,
-                        E0198,
-                        "negative impls cannot be unsafe"
-                    )
-                    .emit();
-                }
-                for impl_item in items {
-                    self.invalid_visibility(&impl_item.vis, None);
-                    if let AssocItemKind::Fn(ref sig, _) = impl_item.kind {
-                        self.check_trait_fn_not_const(sig.header.constness);
-                        self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
+                self.with_in_trait_impl(true, |this| {
+                    this.invalid_visibility(&item.vis, None);
+                    if let TyKind::Err = self_ty.kind {
+                        this.err_handler()
+                            .struct_span_err(
+                                item.span,
+                                "`impl Trait for .. {}` is an obsolete syntax",
+                            )
+                            .help("use `auto trait Trait {}` instead")
+                            .emit();
                     }
-                }
+                    if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
+                        struct_span_err!(
+                            this.session,
+                            item.span,
+                            E0198,
+                            "negative impls cannot be unsafe"
+                        )
+                        .emit();
+                    }
+
+                    visit::walk_item(this, item);
+                });
+                return; // Avoid visiting again.
             }
             ItemKind::Impl {
                 unsafety,
@@ -712,40 +807,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(ref sig, ref generics, _) => {
-                self.visit_fn_header(&sig.header);
-                self.check_fn_decl(&sig.decl, SelfSemantic::No);
-                // We currently do not permit const generics in `const fn`, as
-                // this is tantamount to allowing compile-time dependent typing.
-                if sig.header.constness.node == Constness::Const {
-                    // Look for const generics and error if we find any.
-                    for param in &generics.params {
-                        match param.kind {
-                            GenericParamKind::Const { .. } => {
-                                self.err_handler()
-                                    .struct_span_err(
-                                        item.span,
-                                        "const parameters are not permitted in `const fn`",
-                                    )
-                                    .emit();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                // Reject C-varadic type unless the function is `unsafe extern "C"` semantically.
-                match sig.header.ext {
-                    Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. })
-                    | Extern::Implicit
-                        if sig.header.unsafety == Unsafety::Unsafe => {}
-                    _ => self.check_c_varadic_type(&sig.decl),
+            ItemKind::Fn(ref sig, ref generics, ref body) => {
+                self.check_const_fn_const_generic(item.span, sig, generics);
+
+                if body.is_none() {
+                    let msg = "free function without a body";
+                    self.error_item_without_body(item.span, "function", msg, " { <body> }");
                 }
             }
-            ItemKind::ForeignMod(..) => {
+            ItemKind::ForeignMod(_) => {
+                let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
                     Some("place qualifiers on individual foreign items instead"),
                 );
+                visit::walk_item(self, item);
+                self.extern_mod = old_item;
+                return; // Avoid visiting again.
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
@@ -796,7 +874,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.with_bound_context(BoundContext::TraitBounds, |this| {
                     walk_list!(this, visit_param_bound, bounds);
                 });
-                walk_list!(self, visit_trait_item, trait_items);
+                walk_list!(self, visit_assoc_item, trait_items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
@@ -820,19 +898,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
-        match fi.kind {
-            ForeignItemKind::Fn(ref decl, _) => {
-                self.check_fn_decl(decl, SelfSemantic::No);
-                Self::check_decl_no_pat(decl, |span, _| {
-                    struct_span_err!(
-                        self.session,
-                        span,
-                        E0130,
-                        "patterns aren't allowed in foreign function declarations"
-                    )
-                    .span_label(span, "pattern not allowed in foreign function")
-                    .emit();
-                });
+        match &fi.kind {
+            ForeignItemKind::Fn(sig, _, body) => {
+                self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
+                self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
             }
             ForeignItemKind::Static(..) | ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {}
         }
@@ -1011,67 +1080,84 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         })
     }
 
-    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
-        match &ii.kind {
-            AssocItemKind::Const(_, body) => {
-                self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
-            }
-            AssocItemKind::Fn(_, body) => {
-                self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
-            }
-            AssocItemKind::TyAlias(bounds, body) => {
-                self.check_impl_item_provided(ii.span, body, "type", " = <type>;");
-                self.check_impl_assoc_type_no_bounds(bounds);
-            }
-            _ => {}
-        }
-        visit::walk_impl_item(self, ii);
-    }
+    fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {
+        // Only associated `fn`s can have `self` parameters.
+        let self_semantic = match fk.ctxt() {
+            Some(FnCtxt::Assoc(_)) => SelfSemantic::Yes,
+            _ => SelfSemantic::No,
+        };
+        self.check_fn_decl(fk.decl(), self_semantic);
 
-    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
-        self.invalid_visibility(&ti.vis, None);
-        self.check_defaultness(ti.span, ti.defaultness);
+        self.check_c_varadic_type(fk);
 
-        if let AssocItemKind::Fn(sig, block) = &ti.kind {
-            self.check_trait_fn_not_async(ti.span, sig.header.asyncness.node);
-            self.check_trait_fn_not_const(sig.header.constness);
-            if block.is_none() {
-                Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
-                    if mut_ident {
-                        self.lint_buffer.buffer_lint(
-                            PATTERNS_IN_FNS_WITHOUT_BODY,
-                            ti.id,
-                            span,
-                            "patterns aren't allowed in methods without bodies",
-                        );
-                    } else {
-                        struct_span_err!(
-                            self.session,
-                            span,
-                            E0642,
-                            "patterns aren't allowed in methods without bodies"
-                        )
+        // Functions without bodies cannot have patterns.
+        if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
+            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                let (code, msg, label) = match ctxt {
+                    FnCtxt::Foreign => (
+                        error_code!(E0130),
+                        "patterns aren't allowed in foreign function declarations",
+                        "pattern not allowed in foreign function",
+                    ),
+                    _ => (
+                        error_code!(E0642),
+                        "patterns aren't allowed in functions without bodies",
+                        "pattern not allowed in function without body",
+                    ),
+                };
+                if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
+                    self.lint_buffer.buffer_lint(PATTERNS_IN_FNS_WITHOUT_BODY, id, span, msg);
+                } else {
+                    self.err_handler()
+                        .struct_span_err(span, msg)
+                        .span_label(span, label)
+                        .code(code)
                         .emit();
-                    }
-                });
+                }
+            });
+        }
+
+        visit::walk_fn(self, fk, span);
+    }
+
+    fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        if ctxt == AssocCtxt::Trait {
+            self.check_defaultness(item.span, item.defaultness);
+        }
+
+        if ctxt == AssocCtxt::Impl {
+            match &item.kind {
+                AssocItemKind::Const(_, body) => {
+                    self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
+                }
+                AssocItemKind::Fn(_, body) => {
+                    self.check_impl_item_provided(item.span, body, "function", " { <body> }");
+                }
+                AssocItemKind::TyAlias(bounds, body) => {
+                    self.check_impl_item_provided(item.span, body, "type", " = <type>;");
+                    self.check_impl_assoc_type_no_bounds(bounds);
+                }
+                _ => {}
             }
         }
 
-        visit::walk_trait_item(self, ti);
-    }
-
-    fn visit_assoc_item(&mut self, item: &'a AssocItem) {
-        if let AssocItemKind::Fn(sig, _) = &item.kind {
-            self.check_fn_decl(&sig.decl, SelfSemantic::Yes);
-            self.check_c_varadic_type(&sig.decl);
+        if ctxt == AssocCtxt::Trait || self.in_trait_impl {
+            self.invalid_visibility(&item.vis, None);
+            if let AssocItemKind::Fn(sig, _) = &item.kind {
+                self.check_trait_fn_not_const(sig.header.constness);
+                self.check_trait_fn_not_async(item.span, sig.header.asyncness.node);
+            }
         }
-        visit::walk_assoc_item(self, item);
+
+        self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));
     }
 }
 
 pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
     let mut validator = AstValidator {
         session,
+        extern_mod: None,
+        in_trait_impl: false,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
         bound_context: None,

@@ -19,24 +19,47 @@ use crate::tokenstream::{TokenStream, TokenTree};
 
 use rustc_span::Span;
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum AssocCtxt {
+    Trait,
+    Impl,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum FnCtxt {
+    Free,
+    Foreign,
+    Assoc(AssocCtxt),
+}
+
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
-    /// E.g., `fn foo()` or `extern "Abi" fn foo()`.
-    ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
-
-    /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a FnSig, &'a Visibility, &'a Block),
+    /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
+    Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, Option<&'a Block>),
 
     /// E.g., `|x, y| body`.
-    Closure(&'a Expr),
+    Closure(&'a FnDecl, &'a Expr),
 }
 
 impl<'a> FnKind<'a> {
     pub fn header(&self) -> Option<&'a FnHeader> {
         match *self {
-            FnKind::ItemFn(_, header, _, _) => Some(header),
-            FnKind::Method(_, sig, _, _) => Some(&sig.header),
-            FnKind::Closure(_) => None,
+            FnKind::Fn(_, _, sig, _, _) => Some(&sig.header),
+            FnKind::Closure(_, _) => None,
+        }
+    }
+
+    pub fn decl(&self) -> &'a FnDecl {
+        match self {
+            FnKind::Fn(_, _, sig, _, _) => &sig.decl,
+            FnKind::Closure(decl, _) => decl,
+        }
+    }
+
+    pub fn ctxt(&self) -> Option<FnCtxt> {
+        match self {
+            FnKind::Fn(ctxt, ..) => Some(*ctxt),
+            FnKind::Closure(..) => None,
         }
     }
 }
@@ -106,17 +129,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         walk_where_predicate(self, p)
     }
-    fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl, s: Span, _: NodeId) {
-        walk_fn(self, fk, fd, s)
+    fn visit_fn(&mut self, fk: FnKind<'ast>, s: Span, _: NodeId) {
+        walk_fn(self, fk, s)
     }
-    fn visit_trait_item(&mut self, i: &'ast AssocItem) {
-        walk_trait_item(self, i)
-    }
-    fn visit_impl_item(&mut self, i: &'ast AssocItem) {
-        walk_impl_item(self, i)
-    }
-    fn visit_assoc_item(&mut self, i: &'ast AssocItem) {
-        walk_assoc_item(self, i)
+    fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) {
+        walk_assoc_item(self, i, ctxt)
     }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) {
         walk_trait_ref(self, t)
@@ -287,13 +304,8 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn_header(&sig.header);
-            visitor.visit_fn(
-                FnKind::ItemFn(item.ident, &sig.header, &item.vis, body),
-                &sig.decl,
-                item.span,
-                item.id,
-            )
+            let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
+            visitor.visit_fn(kind, item.span, item.id)
         }
         ItemKind::Mod(ref module) => visitor.visit_mod(module, item.span, &item.attrs, item.id),
         ItemKind::ForeignMod(ref foreign_module) => {
@@ -321,17 +333,17 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
-            walk_list!(visitor, visit_impl_item, items);
+            walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition);
         }
-        ItemKind::Trait(.., ref generics, ref bounds, ref methods) => {
+        ItemKind::Trait(.., ref generics, ref bounds, ref items) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
-            walk_list!(visitor, visit_trait_item, methods);
+            walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
         }
         ItemKind::TraitAlias(ref generics, ref bounds) => {
             visitor.visit_generics(generics);
@@ -512,21 +524,22 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
     }
 }
 
-pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, foreign_item: &'a ForeignItem) {
-    visitor.visit_vis(&foreign_item.vis);
-    visitor.visit_ident(foreign_item.ident);
+pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignItem) {
+    visitor.visit_vis(&item.vis);
+    visitor.visit_ident(item.ident);
 
-    match foreign_item.kind {
-        ForeignItemKind::Fn(ref function_declaration, ref generics) => {
-            walk_fn_decl(visitor, function_declaration);
-            visitor.visit_generics(generics)
+    match item.kind {
+        ForeignItemKind::Fn(ref sig, ref generics, ref body) => {
+            visitor.visit_generics(generics);
+            let kind = FnKind::Fn(FnCtxt::Foreign, item.ident, sig, &item.vis, body.as_deref());
+            visitor.visit_fn(kind, item.span, item.id);
         }
         ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
         ForeignItemKind::Ty => (),
         ForeignItemKind::Macro(ref mac) => visitor.visit_mac(mac),
     }
 
-    walk_list!(visitor, visit_attribute, &foreign_item.attrs);
+    walk_list!(visitor, visit_attribute, &item.attrs);
 }
 
 pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
@@ -594,37 +607,21 @@ pub fn walk_fn_decl<'a, V: Visitor<'a>>(visitor: &mut V, function_declaration: &
     visitor.visit_fn_ret_ty(&function_declaration.output);
 }
 
-pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl, _span: Span)
-where
-    V: Visitor<'a>,
-{
+pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Span) {
     match kind {
-        FnKind::ItemFn(_, header, _, body) => {
-            visitor.visit_fn_header(header);
-            walk_fn_decl(visitor, declaration);
-            visitor.visit_block(body);
-        }
-        FnKind::Method(_, sig, _, body) => {
+        FnKind::Fn(_, _, sig, _, body) => {
             visitor.visit_fn_header(&sig.header);
-            walk_fn_decl(visitor, declaration);
-            visitor.visit_block(body);
+            walk_fn_decl(visitor, &sig.decl);
+            walk_list!(visitor, visit_block, body);
         }
-        FnKind::Closure(body) => {
-            walk_fn_decl(visitor, declaration);
+        FnKind::Closure(decl, body) => {
+            walk_fn_decl(visitor, decl);
             visitor.visit_expr(body);
         }
     }
 }
 
-pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
-    visitor.visit_assoc_item(item);
-}
-
-pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
-    visitor.visit_assoc_item(item);
-}
-
-pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
+pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem, ctxt: AssocCtxt) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
     walk_list!(visitor, visit_attribute, &item.attrs);
@@ -634,17 +631,9 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem)
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        AssocItemKind::Fn(ref sig, None) => {
-            visitor.visit_fn_header(&sig.header);
-            walk_fn_decl(visitor, &sig.decl);
-        }
-        AssocItemKind::Fn(ref sig, Some(ref body)) => {
-            visitor.visit_fn(
-                FnKind::Method(item.ident, sig, &item.vis, body),
-                &sig.decl,
-                item.span,
-                item.id,
-            );
+        AssocItemKind::Fn(ref sig, ref body) => {
+            let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), item.ident, sig, &item.vis, body.as_deref());
+            visitor.visit_fn(kind, item.span, item.id);
         }
         AssocItemKind::TyAlias(ref bounds, ref ty) => {
             walk_list!(visitor, visit_param_bound, bounds);
@@ -765,8 +754,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(_, _, _, ref function_declaration, ref body, _decl_span) => visitor
-            .visit_fn(FnKind::Closure(body), function_declaration, expression.span, expression.id),
+        ExprKind::Closure(_, _, _, ref decl, ref body, _decl_span) => {
+            visitor.visit_fn(FnKind::Closure(decl, body), expression.span, expression.id)
+        }
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);

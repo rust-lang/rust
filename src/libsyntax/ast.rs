@@ -2533,6 +2533,17 @@ pub struct FnHeader {
     pub ext: Extern,
 }
 
+impl FnHeader {
+    /// Does this function header have any qualifiers or is it empty?
+    pub fn has_qualifiers(&self) -> bool {
+        let Self { unsafety, asyncness, constness, ext } = self;
+        matches!(unsafety, Unsafety::Unsafe)
+            || asyncness.node.is_async()
+            || matches!(constness.node, Constness::Const)
+            || !matches!(ext, Extern::None)
+    }
+}
+
 impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
@@ -2565,7 +2576,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(FnSig, Generics, P<Block>),
+    Fn(FnSig, Generics, Option<P<Block>>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2667,7 +2678,7 @@ pub type ForeignItem = Item<ForeignItemKind>;
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign function.
-    Fn(P<FnDecl>, Generics),
+    Fn(FnSig, Generics, Option<P<Block>>),
     /// A foreign static item (`static ext: u8`).
     Static(P<Ty>, Mutability),
     /// A foreign type.

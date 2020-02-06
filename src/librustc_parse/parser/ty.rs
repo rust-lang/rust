@@ -36,6 +36,25 @@ impl BoundModifiers {
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub(super) enum AllowPlus {
+    Yes,
+    No,
+}
+
+#[derive(PartialEq)]
+pub(super) enum RecoverQPath {
+    Yes,
+    No,
+}
+
+// Is `...` (`CVarArgs`) legal at this level of type parsing?
+#[derive(PartialEq)]
+enum AllowCVariadic {
+    Yes,
+    No,
+}
+
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
 ///
@@ -48,14 +67,14 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(true, true, false)
+        self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::No)
     }
 
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the the type.
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(true, true, true)
+        self.parse_ty_common(AllowPlus::Yes, RecoverQPath::Yes, AllowCVariadic::Yes)
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
@@ -65,18 +84,19 @@ impl<'a> Parser<'a> {
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
     pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(false, true, false)
+        self.parse_ty_common(AllowPlus::No, RecoverQPath::Yes, AllowCVariadic::No)
     }
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
     pub(super) fn parse_ret_ty(
         &mut self,
-        allow_plus: bool,
-        allow_qpath_recovery: bool,
+        allow_plus: AllowPlus,
+        recover_qpath: RecoverQPath,
     ) -> PResult<'a, FunctionRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
-            FunctionRetTy::Ty(self.parse_ty_common(allow_plus, allow_qpath_recovery, false)?)
+            let ty = self.parse_ty_common(allow_plus, recover_qpath, AllowCVariadic::No)?;
+            FunctionRetTy::Ty(ty)
         } else {
             FunctionRetTy::Default(self.token.span.shrink_to_lo())
         })
@@ -84,11 +104,11 @@ impl<'a> Parser<'a> {
 
     fn parse_ty_common(
         &mut self,
-        allow_plus: bool,
-        allow_qpath_recovery: bool,
-        // Is `...` (`CVarArgs`) legal in the immediate top level call?
-        allow_c_variadic: bool,
+        allow_plus: AllowPlus,
+        recover_qpath: RecoverQPath,
+        allow_c_variadic: AllowCVariadic,
     ) -> PResult<'a, P<Ty>> {
+        let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         maybe_whole!(self, NtTy, |x| x);
 
@@ -124,7 +144,7 @@ impl<'a> Parser<'a> {
                 self.parse_ty_bare_fn(lifetime_defs)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
-                let parse_plus = allow_plus && self.check_plus();
+                let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(kw::Impl) {
@@ -144,7 +164,7 @@ impl<'a> Parser<'a> {
         } else if self.token.is_path_start() {
             self.parse_path_start_ty(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
-            if allow_c_variadic {
+            if allow_c_variadic == AllowCVariadic::Yes {
                 TyKind::CVarArgs
             } else {
                 // FIXME(Centril): Should we just allow `...` syntactically
@@ -172,7 +192,7 @@ impl<'a> Parser<'a> {
     /// Parses either:
     /// - `(TYPE)`, a parenthesized type.
     /// - `(TYPE,)`, a tuple with a single field of type TYPE.
-    fn parse_ty_tuple_or_parens(&mut self, lo: Span, allow_plus: bool) -> PResult<'a, TyKind> {
+    fn parse_ty_tuple_or_parens(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
@@ -182,7 +202,7 @@ impl<'a> Parser<'a> {
 
         if ts.len() == 1 && !trailing {
             let ty = ts.into_iter().nth(0).unwrap().into_inner();
-            let maybe_bounds = allow_plus && self.token.is_like_plus();
+            let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                 TyKind::Path(None, path) if maybe_bounds => {
@@ -288,7 +308,8 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         let ext = self.parse_extern()?;
         self.expect_keyword(kw::Fn)?;
-        let decl = self.parse_fn_decl(&ParamCfg { is_name_required: |_| false }, false)?;
+        let cfg = ParamCfg { is_name_required: |_| false };
+        let decl = self.parse_fn_decl(&cfg, AllowPlus::No)?;
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params, decl })))
     }
 
@@ -326,7 +347,7 @@ impl<'a> Parser<'a> {
     /// 1. a type macro, `mac!(...)`,
     /// 2. a bare trait object, `B0 + ... + Bn`,
     /// 3. or a path, `path::to::MyType`.
-    fn parse_path_start_ty(&mut self, lo: Span, allow_plus: bool) -> PResult<'a, TyKind> {
+    fn parse_path_start_ty(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
         // Simple path
         let path = self.parse_path(PathStyle::Type)?;
         if self.eat(&token::Not) {
@@ -336,7 +357,7 @@ impl<'a> Parser<'a> {
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
             }))
-        } else if allow_plus && self.check_plus() {
+        } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds(Vec::new(), path, lo, true)
         } else {
@@ -359,7 +380,7 @@ impl<'a> Parser<'a> {
         &mut self,
         colon_span: Option<Span>,
     ) -> PResult<'a, GenericBounds> {
-        self.parse_generic_bounds_common(true, colon_span)
+        self.parse_generic_bounds_common(AllowPlus::Yes, colon_span)
     }
 
     /// Parses bounds of a type parameter `BOUND + BOUND + ...`, possibly with trailing `+`.
@@ -367,7 +388,7 @@ impl<'a> Parser<'a> {
     /// See `parse_generic_bound` for the `BOUND` grammar.
     fn parse_generic_bounds_common(
         &mut self,
-        allow_plus: bool,
+        allow_plus: AllowPlus,
         colon_span: Option<Span>,
     ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
@@ -377,7 +398,7 @@ impl<'a> Parser<'a> {
                 Ok(bound) => bounds.push(bound),
                 Err(neg_sp) => negative_bounds.push(neg_sp),
             }
-            if !allow_plus || !self.eat_plus() {
+            if allow_plus == AllowPlus::No || !self.eat_plus() {
                 break;
             }
         }
