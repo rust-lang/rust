@@ -12,6 +12,7 @@ use crate::{
     db::RootDatabase,
     display::{ShortLabel, ToNav},
     expand::descend_into_macros,
+    ide_db::symbol_index,
     references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
@@ -94,7 +95,7 @@ pub(crate) fn reference_definition(
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(sb.db, name_ref.value)
+    let navs = symbol_index::index_resolve(sb.db, name_ref.value)
         .into_iter()
         .map(|s| s.to_nav(sb.db))
         .collect();

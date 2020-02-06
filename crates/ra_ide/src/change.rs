@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::{DebugData, RootDatabase},
-    symbol_index::{SymbolIndex, SymbolsDatabase},
+    ide_db::symbol_index::{SymbolIndex, SymbolsDatabase},
 };
 
 #[derive(Default)]

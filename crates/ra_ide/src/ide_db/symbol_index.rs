@@ -29,7 +29,7 @@ use std::{
 use fst::{self, Streamer};
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    SourceDatabaseExt, SourceRootId,
+    FileId, SourceDatabaseExt, SourceRootId,
 };
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -40,7 +40,7 @@ use ra_syntax::{
 #[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
 
-use crate::{db::RootDatabase, FileId, Query};
+use crate::{ide_db::RootDatabase, Query};
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
@@ -115,7 +115,7 @@ pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<F
     let mut query = Query::new(name.to_string());
     query.exact();
     query.limit(4);
-    crate::symbol_index::world_symbols(db, query)
+    world_symbols(db, query)
 }
 
 #[derive(Default)]

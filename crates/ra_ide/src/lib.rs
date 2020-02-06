@@ -14,7 +14,6 @@ mod ide_db;
 
 mod db;
 pub mod mock_analysis;
-mod symbol_index;
 mod change;
 mod source_change;
 
@@ -59,7 +58,11 @@ use ra_db::{
 };
 use ra_syntax::{SourceFile, TextRange, TextUnit};
 
-use crate::{db::LineIndexDatabase, display::ToNav, symbol_index::FileSymbol};
+use crate::{
+    db::LineIndexDatabase,
+    display::ToNav,
+    ide_db::symbol_index::{self, FileSymbol},
+};
 
 pub use crate::{
     assists::{Assist, AssistId},

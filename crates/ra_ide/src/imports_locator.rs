@@ -3,8 +3,8 @@
 
 use crate::{
     db::RootDatabase,
+    ide_db::symbol_index::{self, FileSymbol},
     references::{classify_name, NameDefinition, NameKind},
-    symbol_index::{self, FileSymbol},
     Query,
 };
 use hir::{db::HirDatabase, ModuleDef, SourceBinder};

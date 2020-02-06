@@ -15,7 +15,7 @@ use ra_syntax::{ast, Parse, SyntaxNode};
 
 use crate::{
     db::RootDatabase,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex},
+    ide_db::symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     FileId,
 };
 
