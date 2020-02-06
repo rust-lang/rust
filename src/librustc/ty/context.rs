@@ -966,7 +966,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    hir_map: hir_map::Map<'tcx>,
+    pub(crate) hir_map: hir_map::Map<'tcx>,
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1019,11 +1019,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        &self.hir_map
-    }
-
     pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }

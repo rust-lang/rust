@@ -107,7 +107,7 @@ pub fn run(options: Options) -> i32 {
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
                     collector: &mut collector,
-                    map: tcx.hir(),
+                    map: *tcx.hir(),
                     codes: ErrorCodes::from(
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),

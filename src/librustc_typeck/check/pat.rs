@@ -693,7 +693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let msg = format!(
                 "expected tuple struct or tuple variant, found {} `{}`",
                 res.descr(),
-                hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)),
+                hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false)),
             );
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
             match (res, &pat.kind) {
