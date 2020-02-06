@@ -6,8 +6,8 @@ LL |     a: &u64
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct A<'lifetime> {
-LL |     a: &'lifetime u64
+LL | struct A<'a> {
+LL |     a: &'a u64
    |
 
 error: aborting due to previous error
