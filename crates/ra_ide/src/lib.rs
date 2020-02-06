@@ -78,6 +78,7 @@ pub use crate::{
         feature_flags::FeatureFlags,
         line_index::{LineCol, LineIndex},
         line_index_utils::translate_offset_with_edit,
+        symbol_index::Query,
     },
     inlay_hints::{InlayHint, InlayKind},
     references::{
@@ -101,46 +102,6 @@ pub struct Diagnostic {
     pub range: TextRange,
     pub fix: Option<SourceChange>,
     pub severity: Severity,
-}
-
-#[derive(Debug)]
-pub struct Query {
-    query: String,
-    lowercased: String,
-    only_types: bool,
-    libs: bool,
-    exact: bool,
-    limit: usize,
-}
-
-impl Query {
-    pub fn new(query: String) -> Query {
-        let lowercased = query.to_lowercase();
-        Query {
-            query,
-            lowercased,
-            only_types: false,
-            libs: false,
-            exact: false,
-            limit: usize::max_value(),
-        }
-    }
-
-    pub fn only_types(&mut self) {
-        self.only_types = true;
-    }
-
-    pub fn libs(&mut self) {
-        self.libs = true;
-    }
-
-    pub fn exact(&mut self) {
-        self.exact = true;
-    }
-
-    pub fn limit(&mut self, limit: usize) {
-        self.limit = limit
-    }
 }
 
 /// Info associated with a text range.

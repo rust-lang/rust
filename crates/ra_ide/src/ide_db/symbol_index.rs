@@ -40,7 +40,47 @@ use ra_syntax::{
 #[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
 
-use crate::{ide_db::RootDatabase, Query};
+use crate::ide_db::RootDatabase;
+
+#[derive(Debug)]
+pub struct Query {
+    query: String,
+    lowercased: String,
+    only_types: bool,
+    libs: bool,
+    exact: bool,
+    limit: usize,
+}
+
+impl Query {
+    pub fn new(query: String) -> Query {
+        let lowercased = query.to_lowercase();
+        Query {
+            query,
+            lowercased,
+            only_types: false,
+            libs: false,
+            exact: false,
+            limit: usize::max_value(),
+        }
+    }
+
+    pub fn only_types(&mut self) {
+        self.only_types = true;
+    }
+
+    pub fn libs(&mut self) {
+        self.libs = true;
+    }
+
+    pub fn exact(&mut self) {
+        self.exact = true;
+    }
+
+    pub fn limit(&mut self, limit: usize) {
+        self.limit = limit
+    }
+}
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
 pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
