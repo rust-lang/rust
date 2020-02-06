@@ -262,7 +262,7 @@ declare_lint! {
 
 declare_lint! {
     pub COHERENCE_LEAK_CHECK,
-    Deny,
+    Warn,
     "distinct impls distinguished only by the leak-check code",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #56105 <https://github.com/rust-lang/rust/issues/56105>",
