@@ -7,28 +7,28 @@ fn main() {
     let x = "hello";
     let y = "world";
     if x == "hello" && y == "world" {
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if x == "hello" && x == "world" && y == "world" && y == "hello" {
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if 42 == 1337 && 'a' != 'A' {
-    println!("world!")
-}
+        println!("world!")
+    }
 
     // Works because any if with an else statement cannot be collapsed.
     if x == "hello" {
@@ -81,8 +81,8 @@ fn main() {
     }
 
     if x == "hello" && y == "world" { // Collapsible
-    println!("Hello world!");
-}
+        println!("Hello world!");
+    }
 
     if x == "hello" {
         print!("Hello ");

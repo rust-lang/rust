@@ -12,8 +12,8 @@ LL | |     }
 help: try
    |
 LL |     if x == "hello" && y == "world" {
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -29,8 +29,8 @@ LL | |     }
 help: try
    |
 LL |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -46,8 +46,8 @@ LL | |     }
 help: try
    |
 LL |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -63,8 +63,8 @@ LL | |     }
 help: try
    |
 LL |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -80,8 +80,8 @@ LL | |     }
 help: try
    |
 LL |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -97,8 +97,8 @@ LL | |     }
 help: try
    |
 LL |     if 42 == 1337 && 'a' != 'A' {
-LL |     println!("world!")
-LL | }
+LL |         println!("world!")
+LL |     }
    |
 
 error: this `if` statement can be collapsed
@@ -114,8 +114,8 @@ LL | |     }
 help: try
    |
 LL |     if x == "hello" && y == "world" { // Collapsible
-LL |     println!("Hello world!");
-LL | }
+LL |         println!("Hello world!");
+LL |     }
    |
 
 error: aborting due to 7 previous errors

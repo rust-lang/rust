@@ -2,7 +2,7 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    is_present_in_source, last_line_of_span, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
@@ -261,7 +261,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                             _ => {},
                                         }
                                     }
-                                    let line_span = last_line_of_span(cx, attr.span);
+                                    let line_span = first_line_of_span(cx, attr.span);
 
                                     if let Some(mut sugg) = snippet_opt(cx, line_span) {
                                         if sugg.contains("#[") {

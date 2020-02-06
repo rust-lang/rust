@@ -1,5 +1,4 @@
-error: This `else` block is redundant.
-
+error: this `else` block is redundant
   --> $DIR/needless_continue.rs:28:16
    |
 LL |           } else {
@@ -9,34 +8,33 @@ LL | |         }
    | |_________^
    |
    = note: `-D clippy::needless-continue` implied by `-D warnings`
-   = help: Consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block, like so:
-           if i % 2 == 0 && i % 3 == 0 {
-           println!("{}", i);
-           println!("{}", i + 1);
-           if i % 5 == 0 {
-               println!("{}", i + 2);
-           }
-           let i = 0;
-           println!("bar {} ", i);
-           // Merged code follows...println!("bleh");
-           {
-               println!("blah");
-           }
-           if !(!(i == 2) || !(i == 5)) {
-               println!("lama");
-           }
-           if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-               continue;
-           } else {
-               println!("Blabber");
-               println!("Jabber");
-           }
-           println!("bleh");
-           }
-           
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                   if i % 2 == 0 && i % 3 == 0 {
+                       println!("{}", i);
+                       println!("{}", i + 1);
+                       if i % 5 == 0 {
+                           println!("{}", i + 2);
+                       }
+                       let i = 0;
+                       println!("bar {} ", i);
+                       // merged code follows:
+                       println!("bleh");
+                       {
+                           println!("blah");
+                       }
+                       if !(!(i == 2) || !(i == 5)) {
+                           println!("lama");
+                       }
+                       if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+                           continue;
+                       } else {
+                           println!("Blabber");
+                           println!("Jabber");
+                       }
+                       println!("bleh");
+                   }
 
-error: There is no need for an explicit `else` block for this `if` expression
-
+error: there is no need for an explicit `else` block for this `if` expression
   --> $DIR/needless_continue.rs:43:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
@@ -47,16 +45,16 @@ LL | |             println!("Jabber");
 LL | |         }
    | |_________^
    |
-   = help: Consider dropping the `else` clause, and moving out the code in the `else` block, like so:
-           if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-               continue;
-           }
-           println!("Blabber");
-           println!("Jabber");
-           ...
+   = help: consider dropping the `else` clause
+                   if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+                       continue;
+                   }
+                   {
+                       println!("Blabber");
+                       println!("Jabber");
+                   }
 
-error: This `else` block is redundant.
-
+error: this `else` block is redundant
   --> $DIR/needless_continue.rs:100:24
    |
 LL |                   } else {
@@ -65,22 +63,21 @@ LL | |                     continue 'inner; // should lint here
 LL | |                 }
    | |_________________^
    |
-   = help: Consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block, like so:
-           if condition() {
-           println!("bar-3");
-           // Merged code follows...println!("bar-4");
-           update_condition();
-           if condition() {
-               continue; // should lint here
-           } else {
-               println!("bar-5");
-           }
-           println!("bar-6");
-           }
-           
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                           if condition() {
+                               println!("bar-3");
+                               // merged code follows:
+                               println!("bar-4");
+                               update_condition();
+                               if condition() {
+                                   continue; // should lint here
+                               } else {
+                                   println!("bar-5");
+                               }
+                               println!("bar-6");
+                           }
 
-error: There is no need for an explicit `else` block for this `if` expression
-
+error: there is no need for an explicit `else` block for this `if` expression
   --> $DIR/needless_continue.rs:106:17
    |
 LL | /                 if condition() {
@@ -90,12 +87,13 @@ LL | |                     println!("bar-5");
 LL | |                 }
    | |_________________^
    |
-   = help: Consider dropping the `else` clause, and moving out the code in the `else` block, like so:
-           if condition() {
-               continue;
-           }
-           println!("bar-5");
-           ...
+   = help: consider dropping the `else` clause
+                           if condition() {
+                               continue; // should lint here
+                           }
+                           {
+                               println!("bar-5");
+                           }
 
 error: aborting due to 4 previous errors
 

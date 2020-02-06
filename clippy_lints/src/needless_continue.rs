@@ -36,10 +36,10 @@
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{original_sp, DUMMY_SP};
-use std::borrow::Cow;
+use rustc_span::Span;
 use syntax::ast;
 
-use crate::utils::{snippet, snippet_block, span_lint_and_help, trim_multiline};
+use crate::utils::{indent_of, snippet, snippet_block, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** The lint checks for `if`-statements appearing in loops
@@ -119,9 +119,9 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl EarlyLintPass for NeedlessContinue {
-    fn check_expr(&mut self, ctx: &EarlyContext<'_>, expr: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if !expr.span.from_expansion() {
-            check_and_warn(ctx, expr);
+            check_and_warn(cx, expr);
         }
     }
 }
@@ -273,93 +273,96 @@ struct LintData<'a> {
     block_stmts: &'a [ast::Stmt],
 }
 
-const MSG_REDUNDANT_ELSE_BLOCK: &str = "This `else` block is redundant.\n";
+const MSG_REDUNDANT_ELSE_BLOCK: &str = "this `else` block is redundant";
 
-const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "There is no need for an explicit `else` block for this `if` \
-                                         expression\n";
+const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "there is no need for an explicit `else` block for this `if` \
+                                         expression";
 
-const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "Consider dropping the `else` clause and merging the code that \
-                                             follows (in the loop) with the `if` block, like so:\n";
+const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "consider dropping the `else` clause and merging the code that \
+                                             follows (in the loop) with the `if` block";
 
-const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the `else` clause, and moving out the code in the `else` \
-                                   block, like so:\n";
+const DROP_ELSE_BLOCK_MSG: &str = "consider dropping the `else` clause";
 
-fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
+fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
         LintType::ContinueInsideElseBlock => (
-            suggestion_snippet_for_continue_inside_else(ctx, data, header),
+            suggestion_snippet_for_continue_inside_else(cx, data),
             MSG_REDUNDANT_ELSE_BLOCK,
             data.else_expr,
         ),
         LintType::ContinueInsideThenBlock => (
-            suggestion_snippet_for_continue_inside_if(ctx, data, header),
+            suggestion_snippet_for_continue_inside_if(cx, data),
             MSG_ELSE_BLOCK_NOT_NEEDED,
             data.if_expr,
         ),
     };
-    span_lint_and_help(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
+    span_lint_and_help(
+        cx,
+        NEEDLESS_CONTINUE,
+        expr.span,
+        message,
+        &format!("{}\n{}", header, snip),
+    );
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(
-    ctx: &EarlyContext<'_>,
-    data: &'a LintData<'_>,
-    header: &str,
-) -> String {
-    let cond_code = snippet(ctx, data.if_cond.span, "..");
+fn suggestion_snippet_for_continue_inside_if<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+    let cond_code = snippet(cx, data.if_cond.span, "..");
 
-    let if_code = format!("if {} {{\n    continue;\n}}\n", cond_code);
-    /* ^^^^--- Four spaces of indentation. */
-    // region B
-    let else_code = snippet(ctx, data.else_expr.span, "..").into_owned();
-    let else_code = erode_block(&else_code);
-    let else_code = trim_multiline(Cow::from(else_code), false);
+    let continue_code = snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span));
 
-    let mut ret = String::from(header);
-    ret.push_str(&if_code);
-    ret.push_str(&else_code);
-    ret.push_str("\n...");
-    ret
+    let else_code = snippet_block(cx, data.else_expr.span, "..", Some(data.if_expr.span));
+
+    let indent_if = indent_of(cx, data.if_expr.span).unwrap_or(0);
+    format!(
+        "{indent}if {} {}\n{indent}{}",
+        cond_code,
+        continue_code,
+        else_code,
+        indent = " ".repeat(indent_if),
+    )
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(
-    ctx: &EarlyContext<'_>,
-    data: &'a LintData<'_>,
-    header: &str,
-) -> String {
-    let cond_code = snippet(ctx, data.if_cond.span, "..");
-    let mut if_code = format!("if {} {{\n", cond_code);
+fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+    let cond_code = snippet(cx, data.if_cond.span, "..");
 
     // Region B
-    let block_code = &snippet(ctx, data.if_block.span, "..").into_owned();
-    let block_code = erode_block(block_code);
-    let block_code = trim_multiline(Cow::from(block_code), false);
-
-    if_code.push_str(&block_code);
+    let block_code = erode_from_back(&snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span)));
 
     // Region C
     // These is the code in the loop block that follows the if/else construction
     // we are complaining about. We want to pull all of this code into the
     // `then` block of the `if` statement.
+    let indent = span_of_first_expr_in_block(data.if_block)
+        .and_then(|span| indent_of(cx, span))
+        .unwrap_or(0);
     let to_annex = data.block_stmts[data.stmt_idx + 1..]
         .iter()
         .map(|stmt| original_sp(stmt.span, DUMMY_SP))
-        .map(|span| snippet_block(ctx, span, "..").into_owned())
+        .map(|span| {
+            let snip = snippet_block(cx, span, "..", None).into_owned();
+            snip.lines()
+                .map(|line| format!("{}{}", " ".repeat(indent), line))
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
-    let mut ret = String::from(header);
-
-    ret.push_str(&if_code);
-    ret.push_str("\n// Merged code follows...");
-    ret.push_str(&to_annex);
-    ret.push_str("\n}\n");
-    ret
+    let indent_if = indent_of(cx, data.if_expr.span).unwrap_or(0);
+    format!(
+        "{indent_if}if {} {}\n{indent}// merged code follows:\n{}\n{indent_if}}}",
+        cond_code,
+        block_code,
+        to_annex,
+        indent = " ".repeat(indent),
+        indent_if = " ".repeat(indent_if),
+    )
 }
 
-fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
+fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
@@ -373,22 +376,22 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
                 };
                 if needless_continue_in_else(else_expr, label) {
                     emit_warning(
-                        ctx,
+                        cx,
                         data,
                         DROP_ELSE_BLOCK_AND_MERGE_MSG,
                         LintType::ContinueInsideElseBlock,
                     );
                 } else if is_first_block_stmt_continue(then_block, label) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
+                    emit_warning(cx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
                 }
             });
         }
     });
 }
 
-/// Eats at `s` from the end till a closing brace `}` is encountered, and then
-/// continues eating till a non-whitespace character is found.
-/// e.g., the string
+/// Eats at `s` from the end till a closing brace `}` is encountered, and then continues eating
+/// till a non-whitespace character is found.  e.g., the string. If no closing `}` is present, the
+/// string will be preserved.
 ///
 /// ```rust
 /// {
@@ -402,12 +405,9 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 ///     {
 ///         let x = 5;
 /// ```
-///
-/// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
-/// an empty string will be returned in that case.
 #[must_use]
-pub fn erode_from_back(s: &str) -> String {
-    let mut ret = String::from(s);
+fn erode_from_back(s: &str) -> String {
+    let mut ret = s.to_string();
     while ret.pop().map_or(false, |c| c != '}') {}
     while let Some(c) = ret.pop() {
         if !c.is_whitespace() {
@@ -415,41 +415,48 @@ pub fn erode_from_back(s: &str) -> String {
             break;
         }
     }
-    ret
+    if ret.is_empty() {
+        s.to_string()
+    } else {
+        ret
+    }
 }
 
-/// Eats at `s` from the front by first skipping all leading whitespace. Then,
-/// any number of opening braces are eaten, followed by any number of newlines.
-/// e.g.,  the string
-///
-/// ```ignore
-///         {
-///             something();
-///             inside_a_block();
-///         }
-/// ```
-///
-/// is transformed to
-///
-/// ```ignore
-///             something();
-///             inside_a_block();
-///         }
-/// ```
-#[must_use]
-pub fn erode_from_front(s: &str) -> String {
-    s.chars()
-        .skip_while(|c| c.is_whitespace())
-        .skip_while(|c| *c == '{')
-        .skip_while(|c| *c == '\n')
-        .collect::<String>()
+fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {
+    block.stmts.iter().next().map(|stmt| stmt.span)
 }
 
-/// If `s` contains the code for a block, delimited by braces, this function
-/// tries to get the contents of the block. If there is no closing brace
-/// present,
-/// an empty string is returned.
-#[must_use]
-pub fn erode_block(s: &str) -> String {
-    erode_from_back(&erode_from_front(s))
+#[cfg(test)]
+mod test {
+    use super::erode_from_back;
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_erode_from_back() {
+        let input = "\
+{
+    let x = 5;
+    let y = format!(\"{}\", 42);
+}";
+
+        let expected = "\
+{
+    let x = 5;
+    let y = format!(\"{}\", 42);";
+
+        let got = erode_from_back(input);
+        assert_eq!(expected, got);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_erode_from_back_no_brace() {
+        let input = "\
+let x = 5;
+let y = something();
+";
+        let expected = input;
+        let got = erode_from_back(input);
+        assert_eq!(expected, got);
+    }
 }

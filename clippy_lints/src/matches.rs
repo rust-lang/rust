@@ -3,9 +3,9 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, match_type,
-    match_var, multispan_sugg, remove_blocks, snippet, snippet_block, snippet_with_applicability, span_lint_and_help,
-    span_lint_and_note, span_lint_and_sugg, span_lint_and_then, walk_ptrs_ty,
+    expr_block, get_arg_name, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath,
+    match_type, match_var, multispan_sugg, remove_blocks, snippet, snippet_block, snippet_with_applicability,
+    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
@@ -434,7 +434,7 @@ fn report_single_match_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let els_str = els.map_or(String::new(), |els| {
-        format!(" else {}", expr_block(cx, els, None, ".."))
+        format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
     span_lint_and_sugg(
         cx,
@@ -447,7 +447,7 @@ fn report_single_match_single_pattern(
             "if let {} = {} {}{}",
             snippet(cx, arms[0].pat.span, ".."),
             snippet(cx, ex.span, ".."),
-            expr_block(cx, &arms[0].body, None, ".."),
+            expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
             els_str,
         ),
         Applicability::HasPlaceholders,
@@ -523,17 +523,21 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
                             (false, false) => Some(format!(
                                 "if {} {} else {}",
                                 snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, ".."),
-                                expr_block(cx, false_expr, None, "..")
+                                expr_block(cx, true_expr, None, "..", Some(expr.span)),
+                                expr_block(cx, false_expr, None, "..", Some(expr.span))
                             )),
                             (false, true) => Some(format!(
                                 "if {} {}",
                                 snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..")
+                                expr_block(cx, true_expr, None, "..", Some(expr.span))
                             )),
                             (true, false) => {
                                 let test = Sugg::hir(cx, ex, "..");
-                                Some(format!("if {} {}", !test, expr_block(cx, false_expr, None, "..")))
+                                Some(format!(
+                                    "if {} {}",
+                                    !test,
+                                    expr_block(cx, false_expr, None, "..", Some(expr.span))
+                                ))
                             },
                             (true, true) => None,
                         };
@@ -832,7 +836,7 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
     let mut snippet_body = if match_body.span.from_expansion() {
         Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
     } else {
-        snippet_block(cx, match_body.span, "..").to_owned().to_string()
+        snippet_block(cx, match_body.span, "..", Some(expr.span)).to_string()
     };
 
     // Do we need to add ';' to suggestion ?
@@ -861,10 +865,11 @@ fn check_match_single_binding(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[A
                 "this match could be written as a `let` statement",
                 "consider using `let` statement",
                 format!(
-                    "let {} = {};\n{}",
+                    "let {} = {};\n{}{}",
                     snippet_with_applicability(cx, bind_names, "..", &mut applicability),
                     snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
-                    snippet_body
+                    " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
+                    snippet_body,
                 ),
                 applicability,
             );

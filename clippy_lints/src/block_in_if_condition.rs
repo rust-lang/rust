@@ -2,6 +2,7 @@ use crate::utils::*;
 use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -79,8 +80,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        if let Some((check, then, _)) = higher::if_block(&expr) {
-            if let ExprKind::Block(block, _) = &check.kind {
+        if let Some((cond, _, _)) = higher::if_block(&expr) {
+            if let ExprKind::Block(block, _) = &cond.kind {
                 if block.rules == BlockCheckMode::DefaultBlock {
                     if block.stmts.is_empty() {
                         if let Some(ex) = &block.expr {
@@ -89,16 +90,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             if expr.span.from_expansion() || differing_macro_contexts(expr.span, ex.span) {
                                 return;
                             }
-                            span_lint_and_help(
+                            let mut applicability = Applicability::MachineApplicable;
+                            span_lint_and_sugg(
                                 cx,
                                 BLOCK_IN_IF_CONDITION_EXPR,
-                                check.span,
+                                cond.span,
                                 BRACED_EXPR_MESSAGE,
-                                &format!(
-                                    "try\nif {} {} ... ",
-                                    snippet_block(cx, ex.span, ".."),
-                                    snippet_block(cx, then.span, "..")
+                                "try",
+                                format!(
+                                    "{}",
+                                    snippet_block_with_applicability(
+                                        cx,
+                                        ex.span,
+                                        "..",
+                                        Some(expr.span),
+                                        &mut applicability
+                                    )
                                 ),
+                                applicability,
                             );
                         }
                     } else {
@@ -107,22 +116,30 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             return;
                         }
                         // move block higher
-                        span_lint_and_help(
+                        let mut applicability = Applicability::MachineApplicable;
+                        span_lint_and_sugg(
                             cx,
                             BLOCK_IN_IF_CONDITION_STMT,
-                            check.span,
+                            expr.span.with_hi(cond.span.hi()),
                             COMPLEX_BLOCK_MESSAGE,
-                            &format!(
-                                "try\nlet res = {};\nif res {} ... ",
-                                snippet_block(cx, block.span, ".."),
-                                snippet_block(cx, then.span, "..")
+                            "try",
+                            format!(
+                                "let res = {}; if res",
+                                snippet_block_with_applicability(
+                                    cx,
+                                    block.span,
+                                    "..",
+                                    Some(expr.span),
+                                    &mut applicability
+                                ),
                             ),
+                            applicability,
                         );
                     }
                 }
             } else {
                 let mut visitor = ExVisitor { found_block: None, cx };
-                walk_expr(&mut visitor, check);
+                walk_expr(&mut visitor, cond);
                 if let Some(block) = visitor.found_block {
                     span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);
                 }
