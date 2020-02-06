@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -2942,10 +2944,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         }
     }
 
-    let no_sanitize_flags = CodegenFnAttrFlags::NO_SANITIZE_ADDRESS
-        | CodegenFnAttrFlags::NO_SANITIZE_MEMORY
-        | CodegenFnAttrFlags::NO_SANITIZE_THREAD;
-    if codegen_fn_attrs.flags.intersects(no_sanitize_flags) {
+    if codegen_fn_attrs.flags.intersects(CodegenFnAttrFlags::NO_SANITIZE_ANY) {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
                 let hir_id = tcx.hir().as_local_hir_id(id).unwrap();

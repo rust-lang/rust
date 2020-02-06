@@ -78,6 +78,8 @@ bitflags! {
         const NO_SANITIZE_MEMORY  = 1 << 13;
         /// `#[no_sanitize(thread)]`: disables thread sanitizer instrumentation
         const NO_SANITIZE_THREAD  = 1 << 14;
+        /// All `#[no_sanitize(...)]` attributes.
+        const NO_SANITIZE_ANY = Self::NO_SANITIZE_ADDRESS.bits | Self::NO_SANITIZE_MEMORY.bits | Self::NO_SANITIZE_THREAD.bits;
     }
 }
 
