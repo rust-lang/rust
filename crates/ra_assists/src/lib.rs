@@ -16,6 +16,7 @@ pub mod ast_transform;
 use either::Either;
 use hir::{db::HirDatabase, ModuleDef};
 use ra_db::FileRange;
+use ra_ide_db::{imports_locator::ImportsLocatorIde, RootDatabase};
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
@@ -88,20 +89,19 @@ pub trait ImportsLocator {
     fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef>;
 }
 
+impl ImportsLocator for ImportsLocatorIde<'_> {
+    fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef> {
+        self.find_imports(name_to_import)
+    }
+}
+
 /// Return all the assists applicable at the given position
 /// and additional assists that need the imports locator functionality to work.
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists_with_imports_locator<H, F>(
-    db: &H,
-    range: FileRange,
-    mut imports_locator: F,
-) -> Vec<ResolvedAssist>
-where
-    H: HirDatabase + 'static,
-    F: ImportsLocator,
-{
+pub fn assists_with_imports_locator(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
+    let mut imports_locator = ImportsLocatorIde::new(db);
     AssistCtx::with_ctx(db, range, true, |ctx| {
         let mut assists = assists::all()
             .iter()

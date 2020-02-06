@@ -32,7 +32,6 @@ ra_cfg = { path = "../ra_cfg" }
 ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
-ra_assists = { path = "../ra_assists" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.

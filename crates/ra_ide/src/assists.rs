@@ -3,7 +3,7 @@
 use either::Either;
 use ra_assists::{AssistAction, AssistLabel};
 use ra_db::{FilePosition, FileRange};
-use ra_ide_db::{imports_locator::ImportsLocatorIde, RootDatabase};
+use ra_ide_db::RootDatabase;
 
 use crate::{FileId, SourceChange, SourceFileEdit};
 
@@ -17,7 +17,7 @@ pub struct Assist {
 }
 
 pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<Assist> {
-    ra_assists::assists_with_imports_locator(db, frange, ImportsLocatorIde::new(db))
+    ra_assists::assists_with_imports_locator(db, frange)
         .into_iter()
         .map(|assist| {
             let file_id = frange.file_id;

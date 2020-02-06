@@ -18,5 +18,6 @@ ra_text_edit = { path = "../ra_text_edit" }
 ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
 ra_db = { path = "../ra_db" }
+ra_ide_db = { path = "../ra_ide_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 test_utils = { path = "../test_utils" }
