@@ -1,8 +1,10 @@
-error[E0057]: this function takes 0 parameters but 1 parameter was supplied
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/issue-16939.rs:5:9
    |
 LL |     |t| f(t);
-   |         ^^^^ expected 0 parameters
+   |         ^ - supplied 1 argument
+   |         |
+   |         expected 0 arguments
 
 error: aborting due to previous error
 
