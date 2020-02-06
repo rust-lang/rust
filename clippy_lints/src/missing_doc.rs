@@ -36,7 +36,7 @@ pub struct MissingDoc {
     doc_hidden_stack: Vec<bool>,
 }
 
-impl ::std::default::Default for MissingDoc {
+impl Default for MissingDoc {
     #[must_use]
     fn default() -> Self {
         Self::new()
