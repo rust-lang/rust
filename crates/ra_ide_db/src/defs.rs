@@ -3,6 +3,8 @@
 //! has a `visibility`, which defines a search scope.
 //! Note that the reference search is possible for not all of the classified items.
 
+// FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
+
 use hir::{
     Adt, AssocItem, HasSource, ImplBlock, InFile, Local, MacroDef, Module, ModuleDef, SourceBinder,
     StructField, TypeParam, VariantDef,
