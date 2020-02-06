@@ -101,7 +101,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
                 // If.
                 let early_expression = &(early_expression.syntax().to_string() + ";");
                 let new_expr = if_indent_level
-                    .increase_indent(make::if_expression(&cond_expr, early_expression));
+                    .increase_indent(make::if_expression(cond_expr, early_expression));
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
             Some((path, bound_ident)) => {

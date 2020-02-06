@@ -158,7 +158,7 @@ pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::Whe
     }
 }
 
-pub fn if_expression(condition: &ast::Expr, statement: &str) -> ast::IfExpr {
+pub fn if_expression(condition: ast::Expr, statement: &str) -> ast::IfExpr {
     ast_from_text(&format!(
         "fn f() {{ if !{} {{\n    {}\n}}\n}}",
         condition.syntax().text(),
