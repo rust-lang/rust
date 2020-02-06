@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See docs for `FeatureFlags`.
 
 use rustc_hash::FxHashMap;
 

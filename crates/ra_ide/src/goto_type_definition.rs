@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
 use hir::db::AstDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
-    db::RootDatabase, display::ToNav, expand::descend_into_macros, FilePosition, NavigationTarget,
-    RangeInfo,
+    display::ToNav, expand::descend_into_macros, FilePosition, NavigationTarget, RangeInfo,
 };
 
 pub(crate) fn goto_type_definition(

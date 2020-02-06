@@ -1,8 +1,86 @@
-//! FIXME: write short doc here
+//! Code actions can specify desirable final position of the cursor.
+//!
+//! The position is specified as a `TextUnit` in the final file. We need to send
+//! it in `(Line, Column)` coordinate though. However, we only have a LineIndex
+//! for a file pre-edit!
+//!
+//! Code in this module applies this "to (Line, Column) after edit"
+//! transformation.
 
-use crate::{line_index::Utf16Char, LineCol, LineIndex};
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
+
+use crate::line_index::{LineCol, LineIndex, Utf16Char};
+
+pub fn translate_offset_with_edit(
+    line_index: &LineIndex,
+    offset: TextUnit,
+    text_edit: &TextEdit,
+) -> LineCol {
+    let mut state = Edits::from_text_edit(&text_edit);
+
+    let mut res = RunningLineCol::new();
+
+    macro_rules! test_step {
+        ($x:ident) => {
+            match &$x {
+                Step::Newline(n) => {
+                    if offset < *n {
+                        return res.to_line_col(offset);
+                    } else {
+                        res.add_line(*n);
+                    }
+                }
+                Step::Utf16Char(x) => {
+                    if offset < x.end() {
+                        // if the offset is inside a multibyte char it's invalid
+                        // clamp it to the start of the char
+                        let clamp = offset.min(x.start());
+                        return res.to_line_col(clamp);
+                    } else {
+                        res.adjust_col(*x);
+                    }
+                }
+            }
+        };
+    }
+
+    for orig_step in LineIndexStepIter::from(line_index) {
+        loop {
+            let translated_step = state.translate_step(&orig_step);
+            match state.next_steps(&translated_step) {
+                NextSteps::Use => {
+                    test_step!(translated_step);
+                    break;
+                }
+                NextSteps::ReplaceMany(ns) => {
+                    for n in ns {
+                        test_step!(n);
+                    }
+                    break;
+                }
+                NextSteps::AddMany(ns) => {
+                    for n in ns {
+                        test_step!(n);
+                    }
+                }
+            }
+        }
+    }
+
+    loop {
+        match state.next_inserted_steps() {
+            None => break,
+            Some(ns) => {
+                for n in ns {
+                    test_step!(n);
+                }
+            }
+        }
+    }
+
+    res.to_line_col(offset)
+}
 
 #[derive(Debug, Clone)]
 enum Step {
@@ -17,7 +95,7 @@ struct LineIndexStepIter<'a> {
     utf16_chars: Option<(TextUnit, std::slice::Iter<'a, Utf16Char>)>,
 }
 
-impl<'a> LineIndexStepIter<'a> {
+impl LineIndexStepIter<'_> {
     fn from(line_index: &LineIndex) -> LineIndexStepIter {
         let mut x = LineIndexStepIter { line_index, next_newline_idx: 0, utf16_chars: None };
         // skip first newline since it's not real
@@ -26,7 +104,7 @@ impl<'a> LineIndexStepIter<'a> {
     }
 }
 
-impl<'a> Iterator for LineIndexStepIter<'a> {
+impl Iterator for LineIndexStepIter<'_> {
     type Item = Step;
     fn next(&mut self) -> Option<Step> {
         self.utf16_chars
@@ -54,7 +132,7 @@ struct OffsetStepIter<'a> {
     offset: TextUnit,
 }
 
-impl<'a> Iterator for OffsetStepIter<'a> {
+impl Iterator for OffsetStepIter<'_> {
     type Item = Step;
     fn next(&mut self) -> Option<Step> {
         let (next, next_offset) = self
@@ -220,83 +298,15 @@ impl RunningLineCol {
     }
 }
 
-pub fn translate_offset_with_edit(
-    line_index: &LineIndex,
-    offset: TextUnit,
-    text_edit: &TextEdit,
-) -> LineCol {
-    let mut state = Edits::from_text_edit(&text_edit);
-
-    let mut res = RunningLineCol::new();
-
-    macro_rules! test_step {
-        ($x:ident) => {
-            match &$x {
-                Step::Newline(n) => {
-                    if offset < *n {
-                        return res.to_line_col(offset);
-                    } else {
-                        res.add_line(*n);
-                    }
-                }
-                Step::Utf16Char(x) => {
-                    if offset < x.end() {
-                        // if the offset is inside a multibyte char it's invalid
-                        // clamp it to the start of the char
-                        let clamp = offset.min(x.start());
-                        return res.to_line_col(clamp);
-                    } else {
-                        res.adjust_col(*x);
-                    }
-                }
-            }
-        };
-    }
-
-    for orig_step in LineIndexStepIter::from(line_index) {
-        loop {
-            let translated_step = state.translate_step(&orig_step);
-            match state.next_steps(&translated_step) {
-                NextSteps::Use => {
-                    test_step!(translated_step);
-                    break;
-                }
-                NextSteps::ReplaceMany(ns) => {
-                    for n in ns {
-                        test_step!(n);
-                    }
-                    break;
-                }
-                NextSteps::AddMany(ns) => {
-                    for n in ns {
-                        test_step!(n);
-                    }
-                }
-            }
-        }
-    }
-
-    loop {
-        match state.next_inserted_steps() {
-            None => break,
-            Some(ns) => {
-                for n in ns {
-                    test_step!(n);
-                }
-            }
-        }
-    }
-
-    res.to_line_col(offset)
-}
-
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::line_index;
     use proptest::{prelude::*, proptest};
     use ra_text_edit::test_utils::{arb_offset, arb_text_with_edit};
     use ra_text_edit::TextEdit;
+
+    use crate::line_index;
+
+    use super::*;
 
     #[derive(Debug)]
     struct ArbTextWithEditAndOffset {

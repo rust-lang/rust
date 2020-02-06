@@ -1,14 +1,15 @@
 //! This modules implements "expand macro" functionality in the IDE
 
-use crate::{db::RootDatabase, FilePosition};
 use hir::db::AstDatabase;
 use ra_db::SourceDatabase;
-use rustc_hash::FxHashMap;
-
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_node_at_offset, replace_descendants},
     ast, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, WalkEvent, T,
 };
+use rustc_hash::FxHashMap;
+
+use crate::FilePosition;
 
 pub struct ExpandedMacro {
     pub name: String,
@@ -185,7 +186,7 @@ fn some_thing() -> u32 {
         //- /lib.rs
         macro_rules! match_ast {
             (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
-        
+
             (match ($node:expr) {
                 $( ast::$ast:ident($it:ident) => $res:block, )*
                 _ => $catch_all:expr $(,)?
@@ -193,7 +194,7 @@ fn some_thing() -> u32 {
                 $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
                 { $catch_all }
             }};
-        }        
+        }
 
         fn main() {
             mat<|>ch_ast! {
@@ -227,11 +228,11 @@ fn some_thing() -> u32 {
             r#"
         //- /lib.rs
         macro_rules! match_ast {
-            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };        
+            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
             (match ($node:expr) {}) => {{}};
-        }        
+        }
 
-        fn main() {        
+        fn main() {
             let p = f(|it| {
                 let res = mat<|>ch_ast! { match c {}};
                 Some(res)
@@ -254,9 +255,9 @@ fn some_thing() -> u32 {
         }
         macro_rules! foo {
             () => {bar!()};
-        }        
+        }
 
-        fn main() {        
+        fn main() {
             let res = fo<|>o!();
         }
         "#,
@@ -277,9 +278,9 @@ fn some_thing() -> u32 {
         }
         macro_rules! foo {
             () => {$crate::bar!()};
-        }        
+        }
 
-        fn main() {        
+        fn main() {
             let res = fo<|>o!();
         }
         "#,

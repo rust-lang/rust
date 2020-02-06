@@ -10,7 +10,7 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, TextRange};
 use rustc_hash::FxHashMap;
 
-use crate::db::RootDatabase;
+use ra_ide_db::RootDatabase;
 
 use super::{NameDefinition, NameKind};
 

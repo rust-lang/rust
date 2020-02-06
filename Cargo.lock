@@ -1139,6 +1139,37 @@ dependencies = [
  "ra_db",
  "ra_fmt",
  "ra_hir",
+ "ra_ide_db",
+ "ra_prof",
+ "ra_syntax",
+ "ra_text_edit",
+ "rand 0.7.3",
+ "rayon",
+ "rustc-hash",
+ "superslice",
+ "test_utils",
+ "unicase",
+]
+
+[[package]]
+name = "ra_ide_db"
+version = "0.1.0"
+dependencies = [
+ "either",
+ "format-buf",
+ "fst",
+ "indexmap",
+ "insta",
+ "itertools",
+ "join_to_string",
+ "log",
+ "once_cell",
+ "proptest",
+ "ra_assists",
+ "ra_cfg",
+ "ra_db",
+ "ra_fmt",
+ "ra_hir",
  "ra_prof",
  "ra_syntax",
  "ra_text_edit",

@@ -19,6 +19,7 @@
 //! for each library (which is assumed to never change) and an FST for each Rust
 //! file in the current workspace, and run a query against the union of all
 //! those FSTs.
+
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -29,7 +30,7 @@ use std::{
 use fst::{self, Streamer};
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    SourceDatabaseExt, SourceRootId,
+    FileId, SourceDatabaseExt, SourceRootId,
 };
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -40,10 +41,50 @@ use ra_syntax::{
 #[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
 
-use crate::{db::RootDatabase, FileId, Query};
+use crate::RootDatabase;
+
+#[derive(Debug)]
+pub struct Query {
+    query: String,
+    lowercased: String,
+    only_types: bool,
+    libs: bool,
+    exact: bool,
+    limit: usize,
+}
+
+impl Query {
+    pub fn new(query: String) -> Query {
+        let lowercased = query.to_lowercase();
+        Query {
+            query,
+            lowercased,
+            only_types: false,
+            libs: false,
+            exact: false,
+            limit: usize::max_value(),
+        }
+    }
+
+    pub fn only_types(&mut self) {
+        self.only_types = true;
+    }
+
+    pub fn libs(&mut self) {
+        self.libs = true;
+    }
+
+    pub fn exact(&mut self) {
+        self.exact = true;
+    }
+
+    pub fn limit(&mut self, limit: usize) {
+        self.limit = limit
+    }
+}
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
-pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
+pub trait SymbolsDatabase: hir::db::HirDatabase {
     fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
     #[salsa::input]
     fn library_symbols(&self, id: SourceRootId) -> Arc<SymbolIndex>;
@@ -68,7 +109,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     Arc::new(SymbolIndex::new(symbols))
 }
 
-pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
+pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);
     impl Clone for Snap {
@@ -110,16 +151,16 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> 
     query.search(&buf)
 }
 
-pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
+pub fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
     let name = name_ref.text();
     let mut query = Query::new(name.to_string());
     query.exact();
     query.limit(4);
-    crate::symbol_index::world_symbols(db, query)
+    world_symbols(db, query)
 }
 
 #[derive(Default)]
-pub(crate) struct SymbolIndex {
+pub struct SymbolIndex {
     symbols: Vec<FileSymbol>,
     map: fst::Map,
 }
@@ -178,11 +219,11 @@ impl SymbolIndex {
         SymbolIndex { symbols, map }
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
-    pub(crate) fn memory_size(&self) -> usize {
+    pub fn memory_size(&self) -> usize {
         self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
@@ -262,12 +303,12 @@ fn is_type(kind: SyntaxKind) -> bool {
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct FileSymbol {
-    pub(crate) file_id: FileId,
-    pub(crate) name: SmolStr,
-    pub(crate) ptr: SyntaxNodePtr,
-    pub(crate) name_range: Option<TextRange>,
-    pub(crate) container_name: Option<SmolStr>,
+pub struct FileSymbol {
+    pub file_id: FileId,
+    pub name: SmolStr,
+    pub ptr: SyntaxNodePtr,
+    pub name_range: Option<TextRange>,
+    pub container_name: Option<SmolStr>,
 }
 
 fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec<FileSymbol> {
@@ -328,78 +369,4 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
         name_range: Some(name_range),
         container_name: None,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{display::NavigationTarget, mock_analysis::single_file, Query};
-    use ra_syntax::{
-        SmolStr,
-        SyntaxKind::{FN_DEF, STRUCT_DEF},
-    };
-
-    #[test]
-    fn test_world_symbols_with_no_container() {
-        let code = r#"
-    enum FooInner { }
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert!(s.container_name().is_none());
-    }
-
-    #[test]
-    fn test_world_symbols_include_container_name() {
-        let code = r#"
-fn foo() {
-    enum FooInner { }
-}
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-
-        let code = r#"
-mod foo {
-    struct FooInner;
-}
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-    }
-
-    #[test]
-    fn test_world_symbols_are_case_sensitive() {
-        let code = r#"
-fn foo() {}
-
-struct Foo;
-        "#;
-
-        let symbols = get_symbols_matching(code, "Foo");
-
-        let fn_match = symbols.iter().find(|s| s.name() == "foo").map(|s| s.kind());
-        let struct_match = symbols.iter().find(|s| s.name() == "Foo").map(|s| s.kind());
-
-        assert_eq!(fn_match, Some(FN_DEF));
-        assert_eq!(struct_match, Some(STRUCT_DEF));
-    }
-
-    fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
-        let (analysis, _) = single_file(text);
-        analysis.symbol_search(Query::new(query.into())).unwrap()
-    }
 }

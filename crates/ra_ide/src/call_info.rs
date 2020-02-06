@@ -1,15 +1,13 @@
 //! FIXME: write short doc here
 use hir::db::AstDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode,
 };
-
 use test_utils::tested_by;
 
-use crate::{
-    db::RootDatabase, expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature,
-};
+use crate::{expand::descend_into_macros, CallInfo, FilePosition, FunctionSignature};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {

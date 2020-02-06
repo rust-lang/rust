@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! A version of `std::time::Instant` that doesn't panic in WASM.
 
 #[cfg(not(feature = "wasm"))]
 pub use std::time::Instant;

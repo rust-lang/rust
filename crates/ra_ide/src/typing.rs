@@ -15,6 +15,7 @@
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
@@ -24,7 +25,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEdit;
 
-use crate::{db::RootDatabase, source_change::SingleFileChange, SourceChange, SourceFileEdit};
+use crate::{source_change::SingleFileChange, SourceChange, SourceFileEdit};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let parse = db.parse(position.file_id);

@@ -17,6 +17,7 @@ mod search_scope;
 use hir::{InFile, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -24,9 +25,7 @@ use ra_syntax::{
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, TextUnit, TokenAtOffset,
 };
 
-use crate::{
-    db::RootDatabase, display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo,
-};
+use crate::{display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},

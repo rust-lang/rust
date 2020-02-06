@@ -9,7 +9,7 @@ use super::{
     name_definition::{from_assoc_item, from_module_def, from_struct_field},
     NameDefinition, NameKind,
 };
-use crate::db::RootDatabase;
+use ra_ide_db::RootDatabase;
 
 pub(crate) fn classify_name(
     sb: &mut SourceBinder<RootDatabase>,

@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Defines a unit of change that can applied to a state of IDE to get the next
+//! state. Changes are transactional.
 
 use std::{fmt, sync::Arc, time};
 
@@ -14,8 +15,8 @@ use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::{DebugData, RootDatabase},
     symbol_index::{SymbolIndex, SymbolsDatabase},
+    DebugData, RootDatabase,
 };
 
 #[derive(Default)]
@@ -168,12 +169,12 @@ impl LibraryData {
 const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
-    pub(crate) fn request_cancellation(&mut self) {
+    pub fn request_cancellation(&mut self) {
         let _p = profile("RootDatabase::request_cancellation");
         self.salsa_runtime_mut().synthetic_write(Durability::LOW);
     }
 
-    pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
+    pub fn apply_change(&mut self, change: AnalysisChange) {
         let _p = profile("RootDatabase::apply_change");
         self.request_cancellation();
         log::info!("apply_change {:?}", change);
@@ -245,7 +246,7 @@ impl RootDatabase {
         self.set_source_root_with_durability(root_id, Arc::new(source_root), durability);
     }
 
-    pub(crate) fn maybe_collect_garbage(&mut self) {
+    pub fn maybe_collect_garbage(&mut self) {
         if cfg!(feature = "wasm") {
             return;
         }
@@ -255,7 +256,7 @@ impl RootDatabase {
         }
     }
 
-    pub(crate) fn collect_garbage(&mut self) {
+    pub fn collect_garbage(&mut self) {
         if cfg!(feature = "wasm") {
             return;
         }
@@ -282,7 +283,7 @@ impl RootDatabase {
         self.query(hir::db::BodyQuery).sweep(sweep);
     }
 
-    pub(crate) fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
         let mut acc: Vec<(String, Bytes)> = vec![];
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
         macro_rules! sweep_each_query {
