@@ -59,7 +59,7 @@ impl ResolvedAssist {
 ///
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.
-pub fn applicable_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
+pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
     AssistCtx::with_ctx(db, range, false, |ctx| {
         assists::all()
             .iter()
@@ -76,7 +76,7 @@ pub fn applicable_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
+pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
     AssistCtx::with_ctx(db, range, true, |ctx| {
         let mut a = assists::all()
             .iter()
@@ -301,7 +301,7 @@ mod tests {
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
 
-    use crate::helpers;
+    use crate::{helpers, resolved_assists};
 
     #[test]
     fn assist_order_field_struct() {
@@ -310,7 +310,7 @@ mod tests {
         let (db, file_id) = helpers::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assists = super::assists(&db, frange);
+        let assists = resolved_assists(&db, frange);
         let mut assists = assists.iter();
 
         assert_eq!(
@@ -333,7 +333,7 @@ mod tests {
         let (range, before) = extract_range(before);
         let (db, file_id) = helpers::with_single_file(&before);
         let frange = FileRange { file_id, range };
-        let assists = super::assists(&db, frange);
+        let assists = resolved_assists(&db, frange);
         let mut assists = assists.iter();
 
         assert_eq!(assists.next().expect("expected assist").label.label, "Extract into variable");

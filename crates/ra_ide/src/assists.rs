@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use either::Either;
-use ra_assists::{AssistAction, AssistLabel};
+use ra_assists::{resolved_assists, AssistAction, AssistLabel};
 use ra_db::{FilePosition, FileRange};
 use ra_ide_db::RootDatabase;
 
@@ -17,7 +17,7 @@ pub struct Assist {
 }
 
 pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<Assist> {
-    ra_assists::assists(db, frange)
+    resolved_assists(db, frange)
         .into_iter()
         .map(|assist| {
             let file_id = frange.file_id;
