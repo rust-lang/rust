@@ -1068,7 +1068,9 @@ impl<'a> Builder<'a> {
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
-            rustflags.arg("-Clto=thin");
+            if stage > 0 {
+                rustflags.arg("-Clto=thin");
+            }
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
         }
