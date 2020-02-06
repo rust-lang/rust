@@ -15,6 +15,6 @@ fn main() {
         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
         yield;
     };
-    Pin::new(&mut gen).resume();
+    Pin::new(&mut gen).resume(());
     // drops the RefCell and then the Ref, leading to use-after-free
 }

@@ -15,6 +15,6 @@ fn main() {
     // Safety: We shadow the original generator variable so have no safe API to
     // move it after this point.
     let mut generator = unsafe { Pin::new_unchecked(&mut generator) };
-    assert_eq!(generator.as_mut().resume(), GeneratorState::Yielded(()));
-    assert_eq!(generator.as_mut().resume(), GeneratorState::Complete(()));
+    assert_eq!(generator.as_mut().resume(()), GeneratorState::Yielded(()));
+    assert_eq!(generator.as_mut().resume(()), GeneratorState::Complete(()));
 }

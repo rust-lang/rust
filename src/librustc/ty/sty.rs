@@ -346,9 +346,17 @@ static_assert_size!(TyKind<'_>, 24);
 /// ## Generators
 ///
 /// Generators are handled similarly in `GeneratorSubsts`.  The set of
-/// type parameters is similar, but the role of CK and CS are
-/// different. CK represents the "yield type" and CS represents the
-/// "return type" of the generator.
+/// type parameters is similar, but `CK` and `CS` are replaced by the
+/// following type parameters:
+///
+/// * `GS`: The generator's "resume type", which is the type of the
+///   argument passed to `resume`, and the type of `yield` expressions
+///   inside the generator.
+/// * `GY`: The "yield type", which is the type of values passed to
+///   `yield` inside the generator.
+/// * `GR`: The "return type", which is the type of value returned upon
+///   completion of the generator.
+/// * `GW`: The "generator witness".
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
@@ -442,6 +450,7 @@ pub struct GeneratorSubsts<'tcx> {
 }
 
 struct SplitGeneratorSubsts<'tcx> {
+    resume_ty: Ty<'tcx>,
     yield_ty: Ty<'tcx>,
     return_ty: Ty<'tcx>,
     witness: Ty<'tcx>,
@@ -453,10 +462,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         let parent_len = generics.parent_count;
         SplitGeneratorSubsts {
-            yield_ty: self.substs.type_at(parent_len),
-            return_ty: self.substs.type_at(parent_len + 1),
-            witness: self.substs.type_at(parent_len + 2),
-            upvar_kinds: &self.substs[parent_len + 3..],
+            resume_ty: self.substs.type_at(parent_len),
+            yield_ty: self.substs.type_at(parent_len + 1),
+            return_ty: self.substs.type_at(parent_len + 2),
+            witness: self.substs.type_at(parent_len + 3),
+            upvar_kinds: &self.substs[parent_len + 4..],
         }
     }
 
@@ -485,6 +495,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         })
     }
 
+    /// Returns the type representing the resume type of the generator.
+    pub fn resume_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).resume_ty
+    }
+
     /// Returns the type representing the yield type of the generator.
     pub fn yield_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).yield_ty
@@ -505,10 +520,14 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         ty::Binder::dummy(self.sig(def_id, tcx))
     }
 
-    /// Returns the "generator signature", which consists of its yield
+    /// Returns the "generator signature", which consists of its resume, yield
     /// and return types.
     pub fn sig(self, def_id: DefId, tcx: TyCtxt<'_>) -> GenSig<'tcx> {
-        ty::GenSig { yield_ty: self.yield_ty(def_id, tcx), return_ty: self.return_ty(def_id, tcx) }
+        ty::GenSig {
+            resume_ty: self.resume_ty(def_id, tcx),
+            yield_ty: self.yield_ty(def_id, tcx),
+            return_ty: self.return_ty(def_id, tcx),
+        }
     }
 }
 
@@ -1072,6 +1091,7 @@ impl<'tcx> ProjectionTy<'tcx> {
 
 #[derive(Clone, Debug, TypeFoldable)]
 pub struct GenSig<'tcx> {
+    pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
 }
@@ -1079,6 +1099,9 @@ pub struct GenSig<'tcx> {
 pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
 
 impl<'tcx> PolyGenSig<'tcx> {
+    pub fn resume_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.resume_ty)
+    }
     pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|sig| sig.yield_ty)
     }

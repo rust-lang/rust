@@ -688,12 +688,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Option<hir::Movability> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
-                if !decl.inputs.is_empty() {
+                if decl.inputs.len() > 1 {
                     struct_span_err!(
                         self.sess,
                         fn_decl_span,
                         E0628,
-                        "generators cannot have explicit parameters"
+                        "too many parameters for a generator (expected 0 or 1 parameters)"
                     )
                     .emit();
                 }

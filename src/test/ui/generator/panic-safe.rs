@@ -17,13 +17,13 @@ fn main() {
     };
 
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        Pin::new(&mut foo).resume()
+        Pin::new(&mut foo).resume(())
     }));
     assert!(res.is_err());
 
     for _ in 0..10 {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            Pin::new(&mut foo).resume()
+            Pin::new(&mut foo).resume(())
         }));
         assert!(res.is_err());
     }

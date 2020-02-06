@@ -10,5 +10,5 @@ use std::ops::Generator;
 use std::pin::Pin;
 
 fn main() {
-    Pin::new(&mut foo::foo()).resume();
+    Pin::new(&mut foo::foo()).resume(());
 }

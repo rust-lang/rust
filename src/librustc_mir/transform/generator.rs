@@ -192,9 +192,10 @@ const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has been poisoned
 const POISONED: usize = GeneratorSubsts::POISONED;
 
-struct SuspensionPoint {
+struct SuspensionPoint<'tcx> {
     state: usize,
     resume: BasicBlock,
+    resume_arg: Place<'tcx>,
     drop: Option<BasicBlock>,
     storage_liveness: liveness::LiveVarSet,
 }
@@ -216,7 +217,7 @@ struct TransformVisitor<'tcx> {
     storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet>,
 
     // A list of suspension points, generated during the transform
-    suspension_points: Vec<SuspensionPoint>,
+    suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
@@ -303,8 +304,8 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 Operand::Move(Place::from(self.new_ret_local)),
                 None,
             )),
-            TerminatorKind::Yield { ref value, resume, drop } => {
-                Some((VariantIdx::new(0), Some(resume), value.clone(), drop))
+            TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
+                Some((VariantIdx::new(0), Some((resume, resume_arg)), value.clone(), drop))
             }
             _ => None,
         };
@@ -319,13 +320,14 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     self.make_state(state_idx, v),
                 )),
             });
-            let state = if let Some(resume) = resume {
+            let state = if let Some((resume, resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
                     resume,
+                    resume_arg,
                     drop,
                     storage_liveness: self.storage_liveness.get(&block).unwrap().clone(),
                 });
@@ -378,28 +380,35 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     PinArgVisitor { ref_gen_ty, tcx }.visit_body(body);
 }
 
-fn replace_result_variable<'tcx>(
-    ret_ty: Ty<'tcx>,
+/// Allocates a new local and replaces all references of `local` with it. Returns the new local.
+///
+/// `local` will be changed to a new local decl with type `ty`.
+///
+/// Note that the new local will be uninitialized. It is the caller's responsibility to assign some
+/// valid value to it before its first use.
+fn replace_local<'tcx>(
+    local: Local,
+    ty: Ty<'tcx>,
     body: &mut BodyAndCache<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
     let source_info = source_info(body);
-    let new_ret = LocalDecl {
+    let new_decl = LocalDecl {
         mutability: Mutability::Mut,
-        ty: ret_ty,
+        ty,
         user_ty: UserTypeProjections::none(),
         source_info,
         internal: false,
         is_block_tail: None,
         local_info: LocalInfo::Other,
     };
-    let new_ret_local = Local::new(body.local_decls.len());
-    body.local_decls.push(new_ret);
-    body.local_decls.swap(RETURN_PLACE, new_ret_local);
+    let new_local = Local::new(body.local_decls.len());
+    body.local_decls.push(new_decl);
+    body.local_decls.swap(local, new_local);
 
-    RenameLocalVisitor { from: RETURN_PLACE, to: new_ret_local, tcx }.visit_body(body);
+    RenameLocalVisitor { from: local, to: new_local, tcx }.visit_body(body);
 
-    new_ret_local
+    new_local
 }
 
 struct StorageIgnored(liveness::LiveVarSet);
@@ -792,6 +801,10 @@ fn compute_layout<'tcx>(
     (remap, layout, storage_liveness)
 }
 
+/// Replaces the entry point of `body` with a block that switches on the generator discriminant and
+/// dispatches to blocks according to `cases`.
+///
+/// After this function, the former entry point of the function will be bb1.
 fn insert_switch<'tcx>(
     body: &mut BodyAndCache<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
@@ -885,10 +898,11 @@ fn create_generator_drop_shim<'tcx>(
     drop_clean: BasicBlock,
 ) -> BodyAndCache<'tcx> {
     let mut body = body.clone();
+    body.arg_count = 1; // make sure the resume argument is not included here
 
     let source_info = source_info(&body);
 
-    let mut cases = create_cases(&mut body, transform, |point| point.drop);
+    let mut cases = create_cases(&mut body, transform, Operation::Drop);
 
     cases.insert(0, (UNRESUMED, drop_clean));
 
@@ -1006,7 +1020,7 @@ fn create_generator_resume_function<'tcx>(
         }
     }
 
-    let mut cases = create_cases(body, &transform, |point| Some(point.resume));
+    let mut cases = create_cases(body, &transform, Operation::Resume);
 
     use rustc::mir::interpret::PanicInfo::{ResumedAfterPanic, ResumedAfterReturn};
 
@@ -1056,14 +1070,27 @@ fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'tcx, F>(
+/// An operation that can be performed on a generator.
+#[derive(PartialEq, Copy, Clone)]
+enum Operation {
+    Resume,
+    Drop,
+}
+
+impl Operation {
+    fn target_block(self, point: &SuspensionPoint<'_>) -> Option<BasicBlock> {
+        match self {
+            Operation::Resume => Some(point.resume),
+            Operation::Drop => point.drop,
+        }
+    }
+}
+
+fn create_cases<'tcx>(
     body: &mut BodyAndCache<'tcx>,
     transform: &TransformVisitor<'tcx>,
-    target: F,
-) -> Vec<(usize, BasicBlock)>
-where
-    F: Fn(&SuspensionPoint) -> Option<BasicBlock>,
-{
+    operation: Operation,
+) -> Vec<(usize, BasicBlock)> {
     let source_info = source_info(body);
 
     transform
@@ -1071,17 +1098,36 @@ where
         .iter()
         .filter_map(|point| {
             // Find the target for this suspension point, if applicable
-            target(point).map(|target| {
+            operation.target_block(point).map(|target| {
                 let block = BasicBlock::new(body.basic_blocks().len());
                 let mut statements = Vec::new();
 
                 // Create StorageLive instructions for locals with live storage
                 for i in 0..(body.local_decls.len()) {
+                    if i == 2 {
+                        // The resume argument is live on function entry. Don't insert a
+                        // `StorageLive`, or the following `Assign` will read from uninitialized
+                        // memory.
+                        continue;
+                    }
+
                     let l = Local::new(i);
                     if point.storage_liveness.contains(l) && !transform.remap.contains_key(&l) {
                         statements
                             .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
                     }
+                }
+
+                if operation == Operation::Resume {
+                    // Move the resume argument to the destination place of the `Yield` terminator
+                    let resume_arg = Local::new(2); // 0 = return, 1 = self
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::Assign(box (
+                            point.resume_arg,
+                            Rvalue::Use(Operand::Move(resume_arg.into())),
+                        )),
+                    });
                 }
 
                 // Then jump to the real target
@@ -1138,7 +1184,29 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
-        let new_ret_local = replace_result_variable(ret_ty, body, tcx);
+        let new_ret_local = replace_local(RETURN_PLACE, ret_ty, body, tcx);
+
+        // We also replace the resume argument and insert an `Assign`.
+        // This is needed because the resume argument `_2` might be live across a `yield`, in which
+        // case there is no `Assign` to it that the transform can turn into a store to the generator
+        // state. After the yield the slot in the generator state would then be uninitialized.
+        let resume_local = Local::new(2);
+        let new_resume_local =
+            replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
+
+        // When first entering the generator, move the resume argument into its new local.
+        let source_info = source_info(body);
+        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
+        stmts.insert(
+            0,
+            Statement {
+                source_info,
+                kind: StatementKind::Assign(box (
+                    new_resume_local.into(),
+                    Rvalue::Use(Operand::Move(resume_local.into())),
+                )),
+            },
+        );
 
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
@@ -1162,9 +1230,9 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
         transform.visit_body(body);
 
-        // Update our MIR struct to reflect the changed we've made
+        // Update our MIR struct to reflect the changes we've made
         body.yield_ty = None;
-        body.arg_count = 1;
+        body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
         body.generator_layout = Some(layout);
 

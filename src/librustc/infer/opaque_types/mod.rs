@@ -744,6 +744,7 @@ where
 
                 substs.as_generator().return_ty(def_id, self.tcx).visit_with(self);
                 substs.as_generator().yield_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().resume_ty(def_id, self.tcx).visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
