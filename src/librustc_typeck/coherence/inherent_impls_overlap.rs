@@ -17,6 +17,30 @@ struct InherentOverlapChecker<'tcx> {
 }
 
 impl InherentOverlapChecker<'tcx> {
+    /// Checks whether any associated items in impls 1 and 2 share the same identifier and
+    /// namespace.
+    fn impls_have_common_items(&self, impl1: DefId, impl2: DefId) -> bool {
+        let impl_items1 = self.tcx.associated_items(impl1);
+        let impl_items2 = self.tcx.associated_items(impl2);
+
+        for item1 in &impl_items1[..] {
+            for item2 in &impl_items2[..] {
+                // Avoid costly `.modern()` calls as much as possible by doing them as late as we
+                // can. Compare raw symbols first.
+                if item1.ident.name == item2.ident.name
+                    && Namespace::from(item1.kind) == Namespace::from(item2.kind)
+                {
+                    // Symbols and namespace match, compare hygienically.
+                    if item1.ident.modern() == item2.ident.modern() {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
     fn check_for_common_items_in_impls(
         &self,
         impl1: DefId,
@@ -64,27 +88,21 @@ impl InherentOverlapChecker<'tcx> {
         }
     }
 
-    fn check_for_overlapping_inherent_impls(&self, ty_def_id: DefId) {
-        let impls = self.tcx.inherent_impls(ty_def_id);
-
-        for (i, &impl1_def_id) in impls.iter().enumerate() {
-            for &impl2_def_id in &impls[(i + 1)..] {
-                traits::overlapping_impls(
-                    self.tcx,
-                    impl1_def_id,
-                    impl2_def_id,
-                    IntercrateMode::Issue43355,
-                    // We go ahead and just skip the leak check for
-                    // inherent impls without warning.
-                    SkipLeakCheck::Yes,
-                    |overlap| {
-                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
-                        false
-                    },
-                    || true,
-                );
-            }
-        }
+    fn check_for_overlapping_inherent_impls(&self, impl1_def_id: DefId, impl2_def_id: DefId) {
+        traits::overlapping_impls(
+            self.tcx,
+            impl1_def_id,
+            impl2_def_id,
+            IntercrateMode::Issue43355,
+            // We go ahead and just skip the leak check for
+            // inherent impls without warning.
+            SkipLeakCheck::Yes,
+            |overlap| {
+                self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
+                false
+            },
+            || true,
+        );
     }
 }
 
@@ -95,8 +113,16 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::Union(..) => {
-                let type_def_id = self.tcx.hir().local_def_id(item.hir_id);
-                self.check_for_overlapping_inherent_impls(type_def_id);
+                let ty_def_id = self.tcx.hir().local_def_id(item.hir_id);
+                let impls = self.tcx.inherent_impls(ty_def_id);
+
+                for (i, &impl1_def_id) in impls.iter().enumerate() {
+                    for &impl2_def_id in &impls[(i + 1)..] {
+                        if self.impls_have_common_items(impl1_def_id, impl2_def_id) {
+                            self.check_for_overlapping_inherent_impls(impl1_def_id, impl2_def_id);
+                        }
+                    }
+                }
             }
             _ => {}
         }
