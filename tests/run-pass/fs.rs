@@ -45,6 +45,17 @@ fn main() {
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+    // Test seeking relative to the end of the file.
+    file.seek(SeekFrom::End(-1)).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[bytes.len() - 1..], contents.as_slice());
+    // Test seeking relative to the current position.
+    file.seek(SeekFrom::Start(5)).unwrap();
+    file.seek(SeekFrom::Current(-3)).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[2..], contents.as_slice());
 
     // Test that metadata of an absolute path is correct.
     test_metadata(bytes, &path).unwrap();
