@@ -5,7 +5,7 @@ use std::fmt;
 use crate::{TextRange, TextUnit};
 
 /// Represents the result of unsuccessful tokenization, parsing
-/// or semmantical analyzis.
+/// or tree validation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError(String, TextRange);
 
