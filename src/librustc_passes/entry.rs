@@ -1,4 +1,4 @@
-use rustc::hir::map as hir_map;
+use rustc::hir::Hir;
 use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
@@ -15,7 +15,7 @@ use syntax::entry::EntryPointType;
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
-    map: &'a hir_map::Map<'tcx>,
+    map: Hir<'tcx>,
 
     /// The top-level function called `main`.
     main_fn: Option<(HirId, Span)>,
