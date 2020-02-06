@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_fmt::unwrap_trivial_block;
 use ra_syntax::{
     ast::{self, make},
@@ -34,7 +33,7 @@ use ast::edit::IndentLevel;
 //     }
 // }
 // ```
-pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;

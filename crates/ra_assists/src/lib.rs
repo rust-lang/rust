@@ -148,7 +148,6 @@ fn sort_assists(assists: &mut Vec<ResolvedAssist>) {
 
 mod assists {
     use crate::{Assist, AssistCtx, ImportsLocator};
-    use hir::db::HirDatabase;
 
     mod add_derive;
     mod add_explicit_type;
@@ -176,7 +175,7 @@ mod assists {
     mod move_bounds;
     mod early_return;
 
-    pub(crate) fn all<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
+    pub(crate) fn all() -> &'static [fn(AssistCtx) -> Option<Assist>] {
         &[
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
@@ -210,8 +209,8 @@ mod assists {
         ]
     }
 
-    pub(crate) fn all_with_imports_locator<'a, DB: HirDatabase, F: ImportsLocator>(
-    ) -> &'a [fn(AssistCtx<DB>, &mut F) -> Option<Assist>] {
+    pub(crate) fn all_with_imports_locator<'a, F: ImportsLocator>(
+    ) -> &'a [fn(AssistCtx, &mut F) -> Option<Assist>] {
         &[auto_import::auto_import]
     }
 }
@@ -274,11 +273,7 @@ mod helpers {
         }
     }
 
-    pub(crate) fn check_assist(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
-        before: &str,
-        after: &str,
-    ) {
+    pub(crate) fn check_assist(assist: fn(AssistCtx) -> Option<Assist>, before: &str, after: &str) {
         let (before_cursor_pos, before) = extract_offset(before);
         let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange =
@@ -303,7 +298,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_with_imports_locator<F: ImportsLocator>(
-        assist: fn(AssistCtx<RootDatabase>, &mut F) -> Option<Assist>,
+        assist: fn(AssistCtx, &mut F) -> Option<Assist>,
         imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
         before: &str,
         after: &str,
@@ -335,7 +330,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx) -> Option<Assist>,
         before: &str,
         after: &str,
     ) {
@@ -357,7 +352,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_target(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
@@ -377,7 +372,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_target(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
@@ -396,7 +391,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_not_applicable(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx) -> Option<Assist>,
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
@@ -408,7 +403,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_with_imports_locator_not_applicable<F: ImportsLocator>(
-        assist: fn(AssistCtx<RootDatabase>, &mut F) -> Option<Assist>,
+        assist: fn(AssistCtx, &mut F) -> Option<Assist>,
         imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
         before: &str,
     ) {
@@ -424,7 +419,7 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_not_applicable(
-        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx) -> Option<Assist>,
         before: &str,
     ) {
         let (range, before) = extract_range(before);

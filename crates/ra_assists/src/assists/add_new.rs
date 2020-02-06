@@ -1,5 +1,5 @@
 use format_buf::format;
-use hir::{db::HirDatabase, InFile};
+use hir::InFile;
 use join_to_string::join;
 use ra_syntax::{
     ast::{
@@ -31,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 //
 // ```
-pub(crate) fn add_new(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
     let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
 
     // We want to only apply this to non-union structs with named fields
@@ -128,10 +128,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(
-    ctx: &AssistCtx<impl HirDatabase>,
-    strukt: &ast::StructDef,
-) -> Option<Option<ast::ImplBlock>> {
+fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<ast::ImplBlock>> {
     let db = ctx.db;
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())

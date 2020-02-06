@@ -43,7 +43,7 @@ enum AddMissingImplMembersMode {
 //
 // }
 // ```
-pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_missing_impl_members(ctx: AssistCtx) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,
         AddMissingImplMembersMode::NoDefaultMethods,
@@ -84,7 +84,7 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
 //
 // }
 // ```
-pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_missing_default_members(ctx: AssistCtx) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,
         AddMissingImplMembersMode::DefaultMethodsOnly,
@@ -94,7 +94,7 @@ pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> O
 }
 
 fn add_missing_impl_members_inner(
-    ctx: AssistCtx<impl HirDatabase>,
+    ctx: AssistCtx,
     mode: AddMissingImplMembersMode,
     assist_id: &'static str,
     label: &'static str,

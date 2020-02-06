@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner, TypeBoundsOwner},
     SyntaxElement,
@@ -22,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     f(x)
 // }
 // ```
-pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
     let type_param_list = ctx.find_node_at_offset::<ast::TypeParamList>()?;
 
     let mut type_params = type_param_list.type_params();

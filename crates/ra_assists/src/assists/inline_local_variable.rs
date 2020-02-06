@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
@@ -23,7 +22,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::BindPat(pat) => pat,

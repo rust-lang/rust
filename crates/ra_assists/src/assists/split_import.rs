@@ -1,6 +1,5 @@
 use std::iter::successors;
 
-use hir::db::HirDatabase;
 use ra_syntax::{ast, AstNode, TextUnit, T};
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -16,7 +15,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // use std::{collections::HashMap};
 // ```
-pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
     let colon_colon = ctx.find_token_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = successors(Some(path), |it| it.parent_path()).last()?;

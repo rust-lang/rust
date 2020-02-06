@@ -31,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 

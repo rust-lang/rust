@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{algo::non_trivia_sibling, Direction, T};
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -18,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     ((3, 4), (1, 2));
 // }
 // ```
-pub(crate) fn flip_comma(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
     let comma = ctx.find_token_at_offset(T![,])?;
     let prev = non_trivia_sibling(comma.clone().into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.clone().into(), Direction::Next)?;

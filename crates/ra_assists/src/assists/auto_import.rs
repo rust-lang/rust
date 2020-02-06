@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, ModPath};
+use hir::ModPath;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode,
@@ -27,7 +27,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn auto_import<F: ImportsLocator>(
-    ctx: AssistCtx<impl HirDatabase>,
+    ctx: AssistCtx,
     imports_locator: &mut F,
 ) -> Option<Assist> {
     let path_to_import: ast::Path = ctx.find_node_at_offset()?;

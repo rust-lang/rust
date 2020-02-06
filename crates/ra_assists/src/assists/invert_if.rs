@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::ast::{self, AstNode};
 use ra_syntax::T;
 
@@ -23,7 +22,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 
-pub(crate) fn invert_if(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
     let if_keyword = ctx.find_token_at_offset(T![if])?;
     let expr = ast::IfExpr::cast(if_keyword.parent())?;
     let if_range = if_keyword.text_range();
