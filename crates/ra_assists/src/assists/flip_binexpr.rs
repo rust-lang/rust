@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -18,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();

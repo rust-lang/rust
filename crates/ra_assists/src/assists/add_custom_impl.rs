@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{Assist, AssistCtx, AssistId};
-use hir::db::HirDatabase;
+
 use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -29,7 +29,7 @@ const DERIVE_TRAIT: &str = "derive";
 //
 // }
 // ```
-pub(crate) fn add_custom_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
     let input = ctx.find_node_at_offset::<ast::AttrInput>()?;
     let attr = input.syntax().parent().and_then(ast::Attr::cast)?;
 

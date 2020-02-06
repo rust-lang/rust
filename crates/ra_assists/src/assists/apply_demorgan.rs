@@ -1,5 +1,4 @@
 use super::invert_if::invert_boolean_expression;
-use hir::db::HirDatabase;
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -23,7 +22,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     if !(x == 4 && y) {}
 // }
 // ```
-pub(crate) fn apply_demorgan(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();

@@ -1,4 +1,4 @@
-use hir::{self, db::HirDatabase, ModPath};
+use hir::{self, ModPath};
 use ra_syntax::{
     ast::{self, NameOwner},
     AstNode, Direction, SmolStr,
@@ -50,7 +50,7 @@ pub fn auto_import_text_edit(
 //
 // fn process(map: HashMap<String, String>) {}
 // ```
-pub(crate) fn add_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_import(ctx: AssistCtx) -> Option<Assist> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {

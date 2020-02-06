@@ -1,6 +1,5 @@
 use std::iter::successors;
 
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     Direction, TextUnit,
@@ -32,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId, TextRange};
 //     }
 // }
 // ```
-pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
     let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() {

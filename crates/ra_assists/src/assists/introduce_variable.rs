@@ -1,5 +1,4 @@
 use format_buf::format;
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
@@ -28,7 +27,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     var_name * 4;
 // }
 // ```
-pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
     if ctx.frange.range.is_empty() {
         return None;
     }

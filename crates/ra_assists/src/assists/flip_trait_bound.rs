@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{
     algo::non_trivia_sibling,
     ast::{self, AstNode},
@@ -18,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // fn foo<T: Copy + Clone>() { }
 // ```
-pub(crate) fn flip_trait_bound(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
     // We want to replicate the behavior of `flip_binexpr` by only suggesting
     // the assist when the cursor is on a `+`
     let plus = ctx.find_token_at_offset(T![+])?;

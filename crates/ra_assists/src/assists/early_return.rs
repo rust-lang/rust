@@ -1,6 +1,5 @@
 use std::{iter::once, ops::RangeInclusive};
 
-use hir::db::HirDatabase;
 use ra_syntax::{
     algo::replace_children,
     ast::{self, edit::IndentLevel, make, Block, Pat::TupleStructPat},
@@ -36,7 +35,7 @@ use crate::{
 //     bar();
 // }
 // ```
-pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     if if_expr.else_branch().is_some() {
         return None;

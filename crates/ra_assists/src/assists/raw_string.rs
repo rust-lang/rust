@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast, AstToken,
     SyntaxKind::{RAW_STRING, STRING},
@@ -22,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     r#"Hello, World!"#;
 // }
 // ```
-pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
     ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", |edit| {
@@ -51,7 +50,7 @@ pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 //     "Hello, \"World!\"";
 // }
 // ```
-pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
     ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", |edit| {
@@ -77,7 +76,7 @@ pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
 //     r##"Hello, World!"##;
 // }
 // ```
-pub(crate) fn add_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     ctx.add_assist(AssistId("add_hash"), "Add # to raw string", |edit| {
         edit.target(token.text_range());
@@ -101,7 +100,7 @@ pub(crate) fn add_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 //     r"Hello, World!";
 // }
 // ```
-pub(crate) fn remove_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn remove_hash(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
     if text.starts_with("r\"") {

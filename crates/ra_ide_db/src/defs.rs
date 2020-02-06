@@ -92,7 +92,7 @@ pub fn classify_name(
             ast::FnDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Function = sb.to_def(src)?;
-                if parent.parent().and_then(ast::ItemList::cast).is_some() {
+                if parent.parent().and_then(ast::ItemList::cast).map_or(false, |it| it.syntax().parent().and_then(ast::Module::cast).is_none()) {
                     Some(from_assoc_item(sb.db, def.into()))
                 } else {
                     Some(from_module_def(sb.db, def.into(), None))

@@ -1,4 +1,3 @@
-use hir::db::HirDatabase;
 use ra_syntax::{
     ast,
     ast::{AstNode, AstToken, IfExpr, MatchArm},
@@ -32,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
     let match_arm = ctx.find_node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
     let space_before_guard = guard.syntax().prev_sibling_or_token();
@@ -89,7 +88,7 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx<impl HirDatabase>) -> Option
 //     }
 // }
 // ```
-pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let last_match_pat = match_arm.pats().last()?;
 

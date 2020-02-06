@@ -1,5 +1,5 @@
 use format_buf::format;
-use hir::db::HirDatabase;
+
 use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner, TypeParamsOwner},
@@ -27,7 +27,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //
 // }
 // ```
-pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     ctx.add_assist(AssistId("add_impl"), format!("Implement {}", name.text().as_str()), |edit| {

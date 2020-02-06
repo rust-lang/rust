@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, HirDisplay};
+use hir::HirDisplay;
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner, TypeAscriptionOwner},
     TextRange,
@@ -21,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let x: i32 = 92;
 // }
 // ```
-pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;

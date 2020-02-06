@@ -1,8 +1,9 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 use either::Either;
-use hir::{db::HirDatabase, InFile, SourceAnalyzer, SourceBinder};
-use ra_db::FileRange;
+use hir::{InFile, SourceAnalyzer, SourceBinder};
+use ra_db::{FileRange, SourceDatabase};
 use ra_fmt::{leading_indent, reindent};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextUnit,
@@ -49,14 +50,14 @@ pub(crate) enum Assist {
 /// moment, because the LSP API is pretty awkward in this place, and it's much
 /// easier to just compute the edit eagerly :-)
 #[derive(Debug)]
-pub(crate) struct AssistCtx<'a, DB> {
-    pub(crate) db: &'a DB,
+pub(crate) struct AssistCtx<'a> {
+    pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
     should_compute_edit: bool,
 }
 
-impl<'a, DB> Clone for AssistCtx<'a, DB> {
+impl<'a> Clone for AssistCtx<'a> {
     fn clone(&self) -> Self {
         AssistCtx {
             db: self.db,
@@ -67,17 +68,24 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
     }
 }
 
-impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
-    pub(crate) fn with_ctx<F, T>(db: &DB, frange: FileRange, should_compute_edit: bool, f: F) -> T
+impl<'a> AssistCtx<'a> {
+    pub(crate) fn with_ctx<F, T>(
+        db: &RootDatabase,
+        frange: FileRange,
+        should_compute_edit: bool,
+        f: F,
+    ) -> T
     where
-        F: FnOnce(AssistCtx<DB>) -> T,
+        F: FnOnce(AssistCtx) -> T,
     {
         let parse = db.parse(frange.file_id);
 
         let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
         f(ctx)
     }
+}
 
+impl<'a> AssistCtx<'a> {
     pub(crate) fn add_assist(
         self,
         id: AssistId,
@@ -141,7 +149,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
-    pub(crate) fn source_binder(&self) -> SourceBinder<'a, DB> {
+    pub(crate) fn source_binder(&self) -> SourceBinder<'a, RootDatabase> {
         SourceBinder::new(self.db)
     }
     pub(crate) fn source_analyzer(
