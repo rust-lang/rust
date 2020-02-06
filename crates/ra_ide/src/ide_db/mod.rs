@@ -2,6 +2,7 @@
 
 pub mod line_index;
 pub mod line_index_utils;
+pub mod feature_flags;
 
 use std::sync::Arc;
 
@@ -13,9 +14,8 @@ use ra_db::{
 use rustc_hash::FxHashMap;
 
 use crate::{
-    ide_db::line_index::LineIndex,
+    ide_db::{feature_flags::FeatureFlags, line_index::LineIndex},
     symbol_index::{self, SymbolsDatabase},
-    FeatureFlags,
 };
 
 #[salsa::database(

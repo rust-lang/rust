@@ -17,7 +17,6 @@ pub mod mock_analysis;
 mod symbol_index;
 mod change;
 mod source_change;
-mod feature_flags;
 
 mod status;
 mod completion;
@@ -70,10 +69,10 @@ pub use crate::{
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
-    feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
     ide_db::{
+        feature_flags::FeatureFlags,
         line_index::{LineCol, LineIndex},
         line_index_utils::translate_offset_with_edit,
     },
