@@ -1,8 +1,9 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 use either::Either;
 use hir::{db::HirDatabase, InFile, SourceAnalyzer, SourceBinder};
-use ra_db::FileRange;
+use ra_db::{FileRange, SourceDatabase};
 use ra_fmt::{leading_indent, reindent};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextUnit,
@@ -67,17 +68,24 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
     }
 }
 
-impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
-    pub(crate) fn with_ctx<F, T>(db: &DB, frange: FileRange, should_compute_edit: bool, f: F) -> T
+impl<'a> AssistCtx<'a, RootDatabase> {
+    pub(crate) fn with_ctx<F, T>(
+        db: &RootDatabase,
+        frange: FileRange,
+        should_compute_edit: bool,
+        f: F,
+    ) -> T
     where
-        F: FnOnce(AssistCtx<DB>) -> T,
+        F: FnOnce(AssistCtx<RootDatabase>) -> T,
     {
         let parse = db.parse(frange.file_id);
 
         let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
         f(ctx)
     }
+}
 
+impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     pub(crate) fn add_assist(
         self,
         id: AssistId,

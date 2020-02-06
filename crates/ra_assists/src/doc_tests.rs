@@ -8,7 +8,7 @@ mod generated;
 use ra_db::{fixture::WithFixture, FileRange};
 use test_utils::{assert_eq_text, extract_range_or_offset};
 
-use crate::test_db::TestDB;
+use ra_ide_db::RootDatabase;
 
 fn check(assist_id: &str, before: &str, after: &str) {
     // FIXME we cannot get the imports search functionality here yet, but still need to generate a test and a doc for an assist
@@ -16,7 +16,7 @@ fn check(assist_id: &str, before: &str, after: &str) {
         return;
     }
     let (selection, before) = extract_range_or_offset(before);
-    let (db, file_id) = TestDB::with_single_file(&before);
+    let (db, file_id) = RootDatabase::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
     let assist = crate::assists(&db, frange)

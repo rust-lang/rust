@@ -14,7 +14,7 @@ mod test_db;
 pub mod ast_transform;
 
 use either::Either;
-use hir::{db::HirDatabase, ModuleDef};
+use hir::ModuleDef;
 use ra_db::FileRange;
 use ra_ide_db::{imports_locator::ImportsLocatorIde, RootDatabase};
 use ra_syntax::{TextRange, TextUnit};
@@ -62,10 +62,7 @@ impl ResolvedAssist {
 ///
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.
-pub fn applicable_assists<H>(db: &H, range: FileRange) -> Vec<AssistLabel>
-where
-    H: HirDatabase + 'static,
-{
+pub fn applicable_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
     AssistCtx::with_ctx(db, range, false, |ctx| {
         assists::all()
             .iter()
@@ -126,10 +123,7 @@ pub fn assists_with_imports_locator(db: &RootDatabase, range: FileRange) -> Vec<
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
-pub fn assists<H>(db: &H, range: FileRange) -> Vec<ResolvedAssist>
-where
-    H: HirDatabase + 'static,
-{
+pub fn assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
     AssistCtx::with_ctx(db, range, true, |ctx| {
         let mut a = assists::all()
             .iter()
@@ -231,17 +225,18 @@ mod helpers {
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{test_db::TestDB, Assist, AssistCtx, ImportsLocator};
+    use crate::{Assist, AssistCtx, ImportsLocator};
+    use ra_ide_db::RootDatabase;
     use std::sync::Arc;
 
     // FIXME remove the `ModuleDefId` reexport from `ra_hir` when this gets removed.
     pub(crate) struct TestImportsLocator {
-        db: Arc<TestDB>,
+        db: Arc<RootDatabase>,
         test_file_id: FileId,
     }
 
     impl TestImportsLocator {
-        pub(crate) fn new(db: Arc<TestDB>, test_file_id: FileId) -> Self {
+        pub(crate) fn new(db: Arc<RootDatabase>, test_file_id: FileId) -> Self {
             TestImportsLocator { db, test_file_id }
         }
     }
@@ -282,12 +277,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
         after: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -310,13 +305,13 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_with_imports_locator<F: ImportsLocator>(
-        assist: fn(AssistCtx<TestDB>, &mut F) -> Option<Assist>,
-        imports_locator_provider: fn(db: Arc<TestDB>, file_id: FileId) -> F,
+        assist: fn(AssistCtx<RootDatabase>, &mut F) -> Option<Assist>,
+        imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
         before: &str,
         after: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let db = Arc::new(db);
         let mut imports_locator = imports_locator_provider(Arc::clone(&db), file_id);
         let frange =
@@ -342,12 +337,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
         after: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -364,12 +359,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_target(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -384,12 +379,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_target(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -403,11 +398,11 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_not_applicable(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
@@ -415,12 +410,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_with_imports_locator_not_applicable<F: ImportsLocator>(
-        assist: fn(AssistCtx<TestDB>, &mut F) -> Option<Assist>,
-        imports_locator_provider: fn(db: Arc<TestDB>, file_id: FileId) -> F,
+        assist: fn(AssistCtx<RootDatabase>, &mut F) -> Option<Assist>,
+        imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let db = Arc::new(db);
         let mut imports_locator = imports_locator_provider(Arc::clone(&db), file_id);
         let frange =
@@ -431,11 +426,11 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_not_applicable(
-        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
+        assist: fn(AssistCtx<RootDatabase>) -> Option<Assist>,
         before: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
@@ -448,13 +443,13 @@ mod tests {
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
 
-    use crate::test_db::TestDB;
+    use ra_ide_db::RootDatabase;
 
     #[test]
     fn assist_order_field_struct() {
         let before = "struct Foo { <|>bar: u32 }";
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assists = super::assists(&db, frange);
@@ -478,7 +473,7 @@ mod tests {
             }
         }";
         let (range, before) = extract_range(before);
-        let (db, file_id) = TestDB::with_single_file(&before);
+        let (db, file_id) = RootDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
