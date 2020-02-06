@@ -612,7 +612,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
                                 let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
-                                let krate = self.tcx.hir().forest.krate();
+                                let krate = self.tcx.hir().krate();
 
                                 if !(krate.items.contains_key(&parent_id)
                                     || krate.impl_items.contains_key(&parent_impl_id)
