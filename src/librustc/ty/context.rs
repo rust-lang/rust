@@ -1323,7 +1323,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.hir_map.forest.untracked_krate();
+        let krate = self.gcx.hir_map.untracked_krate();
 
         StableHashingContext::new(self.sess, krate, self.hir().definitions(), &*self.cstore)
     }
