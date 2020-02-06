@@ -3,24 +3,22 @@
 
 use hir::{db::HirDatabase, ModuleDef, SourceBinder};
 use ra_assists::ImportsLocator;
-use ra_ide_db::{
-    symbol_index::{self, FileSymbol},
-    RootDatabase,
-};
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
-    references::{classify_name, NameDefinition, NameKind},
-    Query,
+    defs::classify_name,
+    defs::NameKind,
+    symbol_index::{self, FileSymbol, Query},
+    RootDatabase,
 };
 
-pub(crate) struct ImportsLocatorIde<'a> {
+pub struct ImportsLocatorIde<'a> {
     source_binder: SourceBinder<'a, RootDatabase>,
 }
 
 impl<'a> ImportsLocatorIde<'a> {
-    pub(crate) fn new(db: &'a RootDatabase) -> Self {
+    pub fn new(db: &'a RootDatabase) -> Self {
         Self { source_binder: SourceBinder::new(db) }
     }
 
@@ -28,7 +26,7 @@ impl<'a> ImportsLocatorIde<'a> {
         &mut self,
         db: &impl HirDatabase,
         import_candidate: &FileSymbol,
-    ) -> Option<NameDefinition> {
+    ) -> Option<NameKind> {
         let _p = profile("get_name_definition");
         let file_id = import_candidate.file_id.into();
         let candidate_node = import_candidate.ptr.to_node(&db.parse_or_expand(file_id)?);
@@ -41,6 +39,7 @@ impl<'a> ImportsLocatorIde<'a> {
             &mut self.source_binder,
             hir::InFile { file_id, value: &ast::Name::cast(candidate_name_node)? },
         )
+        .map(|it| it.kind)
     }
 }
 
@@ -67,7 +66,7 @@ impl ImportsLocator for ImportsLocatorIde<'_> {
             .into_iter()
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(db, &import_candidate))
-            .filter_map(|name_definition_to_import| match name_definition_to_import.kind {
+            .filter_map(|name_definition_to_import| match name_definition_to_import {
                 NameKind::Def(module_def) => Some(module_def),
                 _ => None,
             })
