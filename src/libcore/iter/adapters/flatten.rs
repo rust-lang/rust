@@ -264,8 +264,9 @@ where
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                if let elt @ Some(_) = inner.next() {
-                    return elt;
+                match inner.next() {
+                    None => self.frontiter = None,
+                    elt @ Some(_) => return elt,
                 }
             }
             match self.iter.next() {
@@ -351,8 +352,9 @@ where
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                if let elt @ Some(_) = inner.next_back() {
-                    return elt;
+                match inner.next_back() {
+                    None => self.backiter = None,
+                    elt @ Some(_) => return elt,
                 }
             }
             match self.iter.next_back() {
