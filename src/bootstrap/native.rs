@@ -571,7 +571,7 @@ impl Step for Sanitizers {
         }
 
         let out_dir = builder.native_dir(self.target).join("sanitizers");
-        let runtimes = supported_sanitizers(&out_dir, self.target);
+        let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
         if runtimes.is_empty() {
             return runtimes;
         }
@@ -635,7 +635,11 @@ pub struct SanitizerRuntime {
 }
 
 /// Returns sanitizers available on a given target.
-fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<SanitizerRuntime> {
+fn supported_sanitizers(
+    out_dir: &Path,
+    target: Interned<String>,
+    channel: &str,
+) -> Vec<SanitizerRuntime> {
     let mut result = Vec::new();
     match &*target {
         "x86_64-apple-darwin" => {
@@ -644,7 +648,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                     cmake_target: format!("clang_rt.{}_osx_dynamic", s),
                     path: out_dir
                         .join(&format!("build/lib/darwin/libclang_rt.{}_osx_dynamic.dylib", s)),
-                    name: format!("librustc_rt.{}.dylib", s),
+                    name: format!("librustc-{}_rt.{}.dylib", channel, s),
                 });
             }
         }
@@ -653,7 +657,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-x86_64", s),
                     path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }
@@ -662,7 +666,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-x86_64", s),
                     path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }
@@ -671,7 +675,7 @@ fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<Sanitiz
                 result.push(SanitizerRuntime {
                     cmake_target: format!("clang_rt.{}-aarch64", s),
                     path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-aarch64.a", s)),
-                    name: format!("librustc_rt.{}.a", s),
+                    name: format!("librustc-{}_rt.{}.a", channel, s),
                 });
             }
         }
