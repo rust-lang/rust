@@ -1696,10 +1696,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
+                    .iter()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0 && dist <= max_dist
                     })
+                    .copied()
                     .collect()
             } else {
                 self.fcx
@@ -1707,7 +1709,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).collect()
+            self.tcx.associated_items(def_id).to_vec()
         }
     }
 }

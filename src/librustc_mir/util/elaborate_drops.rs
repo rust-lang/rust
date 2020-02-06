@@ -539,7 +539,7 @@ where
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
         let drop_trait = tcx.lang_items().drop_trait().unwrap();
-        let drop_fn = tcx.associated_items(drop_trait).next().unwrap();
+        let drop_fn = tcx.associated_items(drop_trait)[0];
         let ty = self.place_ty(self.place);
         let substs = tcx.mk_substs_trait(ty, &[]);
 

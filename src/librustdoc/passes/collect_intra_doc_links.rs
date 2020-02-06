@@ -206,6 +206,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 return cx
                     .tcx
                     .associated_items(did)
+                    .iter()
                     .find(|item| item.ident.name == item_name)
                     .and_then(|item| match item.kind {
                         ty::AssocKind::Method => Some("method"),

@@ -1066,6 +1066,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx
             .associated_items(trait_ref.def_id)
+            .iter()
             .find(|item| {
                 item.kind == ty::AssocKind::Type
                     && tcx.hygienic_eq(item_name, item.ident, trait_ref.def_id)

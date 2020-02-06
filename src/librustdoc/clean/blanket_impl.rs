@@ -115,6 +115,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .cx
                             .tcx
                             .associated_items(impl_def_id)
+                            .iter()
+                            .copied()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
                         polarity: None,

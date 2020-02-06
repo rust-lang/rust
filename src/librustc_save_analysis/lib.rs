@@ -423,6 +423,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             qualname.push_str(&self.tcx.def_path_str(def_id));
                             self.tcx
                                 .associated_items(def_id)
+                                .iter()
                                 .find(|item| item.ident.name == ident.name)
                                 .map(|item| decl_id = Some(item.def_id));
                         }
@@ -717,6 +718,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx
                         .associated_items(ti.container.id())
+                        .iter()
                         .find(|item| {
                             item.ident.name == ti.ident.name && item.defaultness.has_value()
                         })

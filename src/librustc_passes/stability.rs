@@ -468,6 +468,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                         let trait_item_def_id = self
                             .tcx
                             .associated_items(trait_did)
+                            .iter()
                             .find(|item| item.ident.name == impl_item.ident.name)
                             .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
