@@ -202,6 +202,7 @@ pub mod erasing_op;
 pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
+pub mod excessive_bools;
 pub mod excessive_precision;
 pub mod exit;
 pub mod explicit_write;
@@ -528,6 +529,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
         &eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
+        &excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS,
+        &excessive_bools::STRUCT_EXCESSIVE_BOOLS,
         &excessive_precision::EXCESSIVE_PRECISION,
         &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
@@ -997,6 +1000,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box let_underscore::LetUnderscore);
     store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
     store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
+    let max_fn_params_bools = conf.max_fn_params_bools;
+    let max_struct_bools = conf.max_struct_bools;
+    store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1051,6 +1057,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&enum_variants::MODULE_NAME_REPETITIONS),
         LintId::of(&enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(&eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
+        LintId::of(&excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS),
+        LintId::of(&excessive_bools::STRUCT_EXCESSIVE_BOOLS),
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
         LintId::of(&if_not_else::IF_NOT_ELSE),

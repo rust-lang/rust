@@ -1,0 +1,11 @@
+error: more than 1 bools in function parameters
+  --> $DIR/test.rs:4:1
+   |
+LL | fn g(_: bool, _: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
+   = help: consider refactoring bools into two-variant enums
+
+error: aborting due to previous error
+

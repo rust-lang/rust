@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 352] = [
+pub const ALL_LINTS: [Lint; 354] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -622,6 +622,13 @@ pub const ALL_LINTS: [Lint; 352] = [
         desc: "using `==` or `!=` on float constants instead of comparing difference with an epsilon",
         deprecation: None,
         module: "misc",
+    },
+    Lint {
+        name: "fn_params_excessive_bools",
+        group: "pedantic",
+        desc: "using too many bools in function parameters",
+        deprecation: None,
+        module: "excessive_bools",
     },
     Lint {
         name: "fn_to_numeric_cast",
@@ -1931,6 +1938,13 @@ pub const ALL_LINTS: [Lint; 352] = [
         desc: "calling `as_bytes` on a string literal instead of using a byte string literal",
         deprecation: None,
         module: "strings",
+    },
+    Lint {
+        name: "struct_excessive_bools",
+        group: "pedantic",
+        desc: "using too many bools in a struct",
+        deprecation: None,
+        module: "excessive_bools",
     },
     Lint {
         name: "suspicious_arithmetic_impl",
