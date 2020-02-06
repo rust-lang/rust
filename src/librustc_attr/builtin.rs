@@ -396,26 +396,31 @@ where
                                     issue_num = match &*issue.unwrap().as_str() {
                                         "none" => None,
                                         issue => {
+                                            let emit_diag = |msg: &str| {
+                                                struct_span_err!(
+                                                    diagnostic,
+                                                    mi.span,
+                                                    E0545,
+                                                    "`issue` must be a non-zero numeric string \
+                                                    or \"none\"",
+                                                )
+                                                .span_label(
+                                                    mi.name_value_literal().unwrap().span,
+                                                    msg,
+                                                )
+                                                .emit();
+                                            };
                                             match issue.parse() {
-                                                Ok(num) => {
-                                                    // FIXME(rossmacarthur): disallow 0
-                                                    // Disallowing this requires updates to
-                                                    // some submodules
-                                                    NonZeroU32::new(num)
+                                                Ok(num) if num == 0 => {
+                                                    emit_diag(
+                                                        "`issue` must not be \"0\", \
+                                                        use \"none\" instead",
+                                                    );
+                                                    continue 'outer;
                                                 }
+                                                Ok(num) => NonZeroU32::new(num),
                                                 Err(err) => {
-                                                    struct_span_err!(
-                                                        diagnostic,
-                                                        mi.span,
-                                                        E0545,
-                                                        "`issue` must be a numeric string \
-                                                        or \"none\"",
-                                                    )
-                                                    .span_label(
-                                                        mi.name_value_literal().unwrap().span,
-                                                        &err.to_string(),
-                                                    )
-                                                    .emit();
+                                                    emit_diag(&err.to_string());
                                                     continue 'outer;
                                                 }
                                             }
