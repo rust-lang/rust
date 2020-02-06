@@ -293,11 +293,13 @@ pub fn translate_offset_with_edit(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::line_index;
     use proptest::{prelude::*, proptest};
     use ra_text_edit::test_utils::{arb_offset, arb_text_with_edit};
     use ra_text_edit::TextEdit;
+
+    use crate::ide_db::line_index;
+
+    use super::*;
 
     #[derive(Debug)]
     struct ArbTextWithEditAndOffset {
