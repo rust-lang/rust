@@ -23,32 +23,30 @@ impl InherentOverlapChecker<'tcx> {
         impl2: DefId,
         overlap: traits::OverlapResult<'_>,
     ) {
-        let name_and_namespace = |def_id| {
-            let item = self.tcx.associated_item(def_id);
-            (item.ident.modern(), Namespace::from(item.kind))
-        };
+        let name_and_namespace =
+            |assoc: &AssocItem| (assoc.ident.modern(), Namespace::from(assoc.kind));
 
-        let impl_items1 = self.tcx.associated_item_def_ids(impl1);
-        let impl_items2 = self.tcx.associated_item_def_ids(impl2);
+        let impl_items1 = self.tcx.associated_items(impl1);
+        let impl_items2 = self.tcx.associated_items(impl2);
 
-        for &item1 in &impl_items1[..] {
+        for item1 in &impl_items1[..] {
             let (name, namespace) = name_and_namespace(item1);
 
-            for &item2 in &impl_items2[..] {
+            for item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
-                        self.tcx.span_of_impl(item1).unwrap(),
+                        self.tcx.span_of_impl(item1.def_id).unwrap(),
                         E0592,
                         "duplicate definitions with name `{}`",
                         name
                     );
                     err.span_label(
-                        self.tcx.span_of_impl(item1).unwrap(),
+                        self.tcx.span_of_impl(item1.def_id).unwrap(),
                         format!("duplicate definitions for `{}`", name),
                     );
                     err.span_label(
-                        self.tcx.span_of_impl(item2).unwrap(),
+                        self.tcx.span_of_impl(item2.def_id).unwrap(),
                         format!("other definition for `{}`", name),
                     );
 
