@@ -12,11 +12,11 @@ use crate::{
     RootDatabase,
 };
 
-pub struct ImportsLocatorIde<'a> {
+pub struct ImportsLocator<'a> {
     source_binder: SourceBinder<'a, RootDatabase>,
 }
 
-impl<'a> ImportsLocatorIde<'a> {
+impl<'a> ImportsLocator<'a> {
     pub fn new(db: &'a RootDatabase) -> Self {
         Self { source_binder: SourceBinder::new(db) }
     }

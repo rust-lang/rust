@@ -8,7 +8,7 @@ use crate::{
     assist_ctx::{ActionBuilder, Assist, AssistCtx},
     auto_import_text_edit, AssistId,
 };
-use ra_ide_db::imports_locator::ImportsLocatorIde;
+use ra_ide_db::imports_locator::ImportsLocator;
 
 // Assist: auto_import
 //
@@ -52,7 +52,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let mut imports_locator = ImportsLocatorIde::new(ctx.db);
+    let mut imports_locator = ImportsLocator::new(ctx.db);
 
     let proposed_imports = imports_locator
         .find_imports(&name_to_import)
