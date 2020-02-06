@@ -97,9 +97,9 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
         Mode::Use => return,
         Mode::Type => {
             // test path_fn_trait_args
-            // type F = Box<Fn(x: i32) -> ()>;
+            // type F = Box<Fn(i32) -> ()>;
             if p.at(T!['(']) {
-                params::param_list_opt_patterns(p);
+                params::param_list_impl_fn(p);
                 opt_fn_ret_type(p);
             } else {
                 type_args::opt_type_arg_list(p, false)

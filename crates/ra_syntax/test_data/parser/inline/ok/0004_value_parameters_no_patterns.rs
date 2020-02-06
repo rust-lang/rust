@@ -1,1 +1,1 @@
-type F = Box<Fn(a: i32, &b: &i32, &mut c: &i32, ())>;
+type F = Box<Fn(i32, &i32, &i32, ())>;

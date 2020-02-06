@@ -7,54 +7,59 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
-pub(super) fn param_list(p: &mut Parser) {
-    list_(p, Flavor::Normal)
+pub(super) fn param_list_fn(p: &mut Parser) {
+    list_(p, Flavor::Function)
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
-pub(super) fn param_list_opt_patterns(p: &mut Parser) {
-    list_(p, Flavor::OptionalPattern)
+pub(super) fn param_list_impl_fn(p: &mut Parser) {
+    list_(p, Flavor::ImplFn)
 }
 
-pub(super) fn param_list_opt_types(p: &mut Parser) {
-    list_(p, Flavor::OptionalType)
+pub(super) fn param_list_fn_ptr(p: &mut Parser) {
+    list_(p, Flavor::FnPointer)
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) fn param_list_closure(p: &mut Parser) {
+    list_(p, Flavor::Closure)
+}
+
+#[derive(Debug, Clone, Copy)]
 enum Flavor {
-    OptionalType,
-    OptionalPattern,
-    Normal,
-}
-
-impl Flavor {
-    fn type_required(self) -> bool {
-        match self {
-            Flavor::OptionalType => false,
-            _ => true,
-        }
-    }
+    Function, // Includes trait fn params; omitted param idents are not supported
+    ImplFn,
+    FnPointer,
+    Closure
 }
 
 fn list_(p: &mut Parser, flavor: Flavor) {
-    let (bra, ket) = if flavor.type_required() { (T!['('], T![')']) } else { (T![|], T![|]) };
-    assert!(p.at(bra));
+    use Flavor::*;
+
+    let (bra, ket) = match flavor {
+        Closure => (T![|], T![|]),
+        Function | ImplFn | FnPointer => (T!['('], T![')'])
+    };
+
     let m = p.start();
     p.bump(bra);
-    if flavor.type_required() {
+
+    if let Function = flavor {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}
         attributes::outer_attributes(p);
         opt_self_param(p);
     }
+
     while !p.at(EOF) && !p.at(ket) {
         // test param_outer_arg
         // fn f(#[attr1] pat: Type) {}
         attributes::outer_attributes(p);
 
-        if flavor.type_required() && p.at(T![...]) {
-            break;
+        if let Function | FnPointer = flavor {
+            if p.at(T![...]) {
+                break;
+            }
         }
 
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
@@ -68,7 +73,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     }
     // test param_list_vararg
     // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-    if flavor.type_required() {
+    if let Function | FnPointer = flavor {
         p.eat(T![...]);
     }
     p.expect(ket);
@@ -80,34 +85,50 @@ const VALUE_PARAMETER_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYP
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
     match flavor {
-        Flavor::OptionalType | Flavor::Normal => {
+        // test trait_fn_placeholder_parameter
+        // trait Foo {
+        //     fn bar(_: u64, mut x: i32);
+        // }
+
+        // test trait_fn_patterns
+        // trait T {
+        //     fn f1((a, b): (usize, usize)) {}
+        //     fn f2(S { a, b }: S) {}
+        //     fn f3(NewType(a): NewType) {}
+        //     fn f4(&&a: &&usize) {}
+        // }
+
+        // test fn_patterns
+        // impl U {
+        //     fn f1((a, b): (usize, usize)) {}
+        //     fn f2(S { a, b }: S) {}
+        //     fn f3(NewType(a): NewType) {}
+        //     fn f4(&&a: &&usize) {}
+        // }
+        Flavor::Function => {
             patterns::pattern(p);
-            if p.at(T![:]) && !p.at(T![::]) || flavor.type_required() {
-                types::ascription(p)
-            }
+            types::ascription(p);
         }
         // test value_parameters_no_patterns
-        // type F = Box<Fn(a: i32, &b: &i32, &mut c: &i32, ())>;
-        Flavor::OptionalPattern => {
-            let la0 = p.current();
-            let la1 = p.nth(1);
-            let la2 = p.nth(2);
-            let la3 = p.nth(3);
-
-            // test trait_fn_placeholder_parameter
-            // trait Foo {
-            //     fn bar(_: u64, mut x: i32);
-            // }
-            if (la0 == IDENT || la0 == T![_]) && la1 == T![:] && !p.nth_at(1, T![::])
-                || la0 == T![mut] && la1 == IDENT && la2 == T![:]
-                || la0 == T![&]
-                    && (la1 == IDENT && la2 == T![:] && !p.nth_at(2, T![::])
-                        || la1 == T![mut] && la2 == IDENT && la3 == T![:] && !p.nth_at(3, T![::]))
-            {
+        // type F = Box<Fn(i32, &i32, &i32, ())>;
+        Flavor::ImplFn => {
+            types::type_(p);
+        }
+        // test fn_pointer_param_ident_path
+        // type Foo = fn(Bar::Baz);
+        // type Qux = fn(baz: Bar::Baz);
+        Flavor::FnPointer => {
+            if p.at(IDENT) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
                 patterns::pattern(p);
                 types::ascription(p);
             } else {
                 types::type_(p);
+            }
+        }
+        Flavor::Closure => {
+            patterns::pattern(p);
+            if p.at(T![:]) && !p.at(T![::]) {
+                types::ascription(p);
             }
         }
     }

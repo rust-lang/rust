@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 32)
-  TYPE_ALIAS_DEF@[0; 31)
+SOURCE_FILE@[0; 29)
+  TYPE_ALIAS_DEF@[0; 28)
     TYPE_KW@[0; 4) "type"
     WHITESPACE@[4; 5) " "
     NAME@[5; 6)
@@ -7,40 +7,35 @@ SOURCE_FILE@[0; 32)
     WHITESPACE@[6; 7) " "
     EQ@[7; 8) "="
     WHITESPACE@[8; 9) " "
-    PATH_TYPE@[9; 30)
-      PATH@[9; 30)
-        PATH_SEGMENT@[9; 30)
+    PATH_TYPE@[9; 27)
+      PATH@[9; 27)
+        PATH_SEGMENT@[9; 27)
           NAME_REF@[9; 12)
             IDENT@[9; 12) "Box"
-          TYPE_ARG_LIST@[12; 30)
+          TYPE_ARG_LIST@[12; 27)
             L_ANGLE@[12; 13) "<"
-            TYPE_ARG@[13; 29)
-              PATH_TYPE@[13; 29)
-                PATH@[13; 29)
-                  PATH_SEGMENT@[13; 29)
+            TYPE_ARG@[13; 26)
+              PATH_TYPE@[13; 26)
+                PATH@[13; 26)
+                  PATH_SEGMENT@[13; 26)
                     NAME_REF@[13; 15)
                       IDENT@[13; 15) "Fn"
-                    PARAM_LIST@[15; 23)
+                    PARAM_LIST@[15; 20)
                       L_PAREN@[15; 16) "("
-                      PARAM@[16; 22)
-                        BIND_PAT@[16; 17)
-                          NAME@[16; 17)
-                            IDENT@[16; 17) "x"
-                        COLON@[17; 18) ":"
-                        WHITESPACE@[18; 19) " "
-                        PATH_TYPE@[19; 22)
-                          PATH@[19; 22)
-                            PATH_SEGMENT@[19; 22)
-                              NAME_REF@[19; 22)
-                                IDENT@[19; 22) "i32"
-                      R_PAREN@[22; 23) ")"
-                    WHITESPACE@[23; 24) " "
-                    RET_TYPE@[24; 29)
-                      THIN_ARROW@[24; 26) "->"
-                      WHITESPACE@[26; 27) " "
-                      TUPLE_TYPE@[27; 29)
-                        L_PAREN@[27; 28) "("
-                        R_PAREN@[28; 29) ")"
-            R_ANGLE@[29; 30) ">"
-    SEMI@[30; 31) ";"
-  WHITESPACE@[31; 32) "\n"
+                      PARAM@[16; 19)
+                        PATH_TYPE@[16; 19)
+                          PATH@[16; 19)
+                            PATH_SEGMENT@[16; 19)
+                              NAME_REF@[16; 19)
+                                IDENT@[16; 19) "i32"
+                      R_PAREN@[19; 20) ")"
+                    WHITESPACE@[20; 21) " "
+                    RET_TYPE@[21; 26)
+                      THIN_ARROW@[21; 23) "->"
+                      WHITESPACE@[23; 24) " "
+                      TUPLE_TYPE@[24; 26)
+                        L_PAREN@[24; 25) "("
+                        R_PAREN@[25; 26) ")"
+            R_ANGLE@[26; 27) ">"
+    SEMI@[27; 28) ";"
+  WHITESPACE@[28; 29) "\n"

@@ -164,7 +164,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // async unsafe fn foo() {}
         // unsafe const fn bar() {}
         T![fn] => {
-            fn_def(p, flavor);
+            fn_def(p);
             m.complete(p, FN_DEF);
         }
 
@@ -301,7 +301,7 @@ pub(crate) fn extern_item_list(p: &mut Parser) {
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
-fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
+fn fn_def(p: &mut Parser) {
     assert!(p.at(T![fn]));
     p.bump(T![fn]);
 
@@ -311,10 +311,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
     type_params::opt_type_param_list(p);
 
     if p.at(T!['(']) {
-        match flavor {
-            ItemFlavor::Mod => params::param_list(p),
-            ItemFlavor::Trait => params::param_list_opt_patterns(p),
-        }
+        params::param_list_fn(p);
     } else {
         p.error("expected function arguments");
     }
