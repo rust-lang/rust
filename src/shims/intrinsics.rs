@@ -518,46 +518,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_uint(align.bytes(), ptr_size), dest)?;
             }
 
-            "unchecked_div" => {
-                let l = this.read_immediate(args[0])?;
-                let r = this.read_immediate(args[1])?;
-                let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
-                if rval == 0 {
-                    throw_ub_format!("Division by 0 in unchecked_div");
-                }
-                this.binop_ignore_overflow(mir::BinOp::Div, l, r, dest)?;
-            }
-
-            "unchecked_rem" => {
-                let l = this.read_immediate(args[0])?;
-                let r = this.read_immediate(args[1])?;
-                let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
-                if rval == 0 {
-                    throw_ub_format!("Division by 0 in unchecked_rem");
-                }
-                this.binop_ignore_overflow(mir::BinOp::Rem, l, r, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "unchecked_add"
-            | "unchecked_sub"
-            | "unchecked_mul"
-            => {
-                let l = this.read_immediate(args[0])?;
-                let r = this.read_immediate(args[1])?;
-                let op = match intrinsic_name {
-                    "unchecked_add" => mir::BinOp::Add,
-                    "unchecked_sub" => mir::BinOp::Sub,
-                    "unchecked_mul" => mir::BinOp::Mul,
-                    _ => bug!(),
-                };
-                let (res, overflowed, _ty) = this.overflowing_binary_op(op, l, r)?;
-                if overflowed {
-                    throw_ub_format!("Overflowing arithmetic in {}", intrinsic_name);
-                }
-                this.write_scalar(res, dest)?;
-            }
-
             "uninit" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
