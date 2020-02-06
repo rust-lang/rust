@@ -1,5 +1,8 @@
 //! FIXME: write short doc here
 
+pub mod line_index;
+pub mod line_index_utils;
+
 use std::sync::Arc;
 
 use ra_db::{
@@ -10,8 +13,9 @@ use ra_db::{
 use rustc_hash::FxHashMap;
 
 use crate::{
+    ide_db::line_index::LineIndex,
     symbol_index::{self, SymbolsDatabase},
-    FeatureFlags, LineIndex,
+    FeatureFlags,
 };
 
 #[salsa::database(

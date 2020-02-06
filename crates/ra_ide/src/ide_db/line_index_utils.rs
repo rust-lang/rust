@@ -1,8 +1,9 @@
 //! FIXME: write short doc here
 
-use crate::{line_index::Utf16Char, LineCol, LineIndex};
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
+
+use crate::ide_db::line_index::{LineCol, LineIndex, Utf16Char};
 
 #[derive(Debug, Clone)]
 enum Step {

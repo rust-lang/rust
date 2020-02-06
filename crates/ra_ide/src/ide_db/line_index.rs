@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use crate::TextUnit;
+use ra_syntax::TextUnit;
 use rustc_hash::FxHashMap;
 use superslice::Ext;
 

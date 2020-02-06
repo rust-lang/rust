@@ -37,8 +37,6 @@ mod assists;
 mod diagnostics;
 mod syntax_tree;
 mod folding_ranges;
-mod line_index;
-mod line_index_utils;
 mod join_lines;
 mod typing;
 mod matching_brace;
@@ -75,9 +73,11 @@ pub use crate::{
     feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
+    ide_db::{
+        line_index::{LineCol, LineIndex},
+        line_index_utils::translate_offset_with_edit,
+    },
     inlay_hints::{InlayHint, InlayKind},
-    line_index::{LineCol, LineIndex},
-    line_index_utils::translate_offset_with_edit,
     references::{
         Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
     },
