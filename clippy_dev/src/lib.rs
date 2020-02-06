@@ -6,7 +6,6 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -172,9 +171,7 @@ pub fn gather_all() -> impl Iterator<Item = Lint> {
 }
 
 fn gather_from_file(dir_entry: &walkdir::DirEntry) -> impl Iterator<Item = Lint> {
-    let mut file = fs::File::open(dir_entry.path()).unwrap();
-    let mut content = String::new();
-    file.read_to_string(&mut content).unwrap();
+    let content = fs::read_to_string(dir_entry.path()).unwrap();
     let mut filename = dir_entry.path().file_stem().unwrap().to_str().unwrap();
     // If the lints are stored in mod.rs, we get the module name from
     // the containing directory:
@@ -209,7 +206,7 @@ fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     let path = clippy_project_root().join("clippy_lints/src");
     WalkDir::new(path)
         .into_iter()
-        .filter_map(std::result::Result::ok)
+        .filter_map(Result::ok)
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
 }
 
@@ -225,7 +222,6 @@ pub struct FileChange {
 /// `path` is the relative path to the file on which you want to perform the replacement.
 ///
 /// See `replace_region_in_text` for documentation of the other options.
-#[allow(clippy::expect_fun_call)]
 pub fn replace_region_in_file<F>(
     path: &Path,
     start: &str,
@@ -235,22 +231,15 @@ pub fn replace_region_in_file<F>(
     replacements: F,
 ) -> FileChange
 where
-    F: Fn() -> Vec<String>,
+    F: FnOnce() -> Vec<String>,
 {
-    let path = clippy_project_root().join(path);
-    let mut f = fs::File::open(&path).expect(&format!("File not found: {}", path.to_string_lossy()));
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("Something went wrong reading the file");
+    let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from {}: {}", path.display(), e));
     let file_change = replace_region_in_text(&contents, start, end, replace_start, replacements);
 
     if write_back {
-        let mut f = fs::File::create(&path).expect(&format!("File not found: {}", path.to_string_lossy()));
-        f.write_all(file_change.new_lines.as_bytes())
-            .expect("Unable to write file");
-        // Ensure we write the changes with a trailing newline so that
-        // the file has the proper line endings.
-        f.write_all(b"\n").expect("Unable to write file");
+        if let Err(e) = fs::write(path, file_change.new_lines.as_bytes()) {
+            panic!("Cannot write to {}: {}", path.display(), e);
+        }
     }
     file_change
 }
@@ -273,31 +262,32 @@ where
 ///
 /// ```
 /// let the_text = "replace_start\nsome text\nthat will be replaced\nreplace_end";
-/// let result = clippy_dev::replace_region_in_text(the_text, r#"replace_start"#, r#"replace_end"#, false, || {
-///     vec!["a different".to_string(), "text".to_string()]
-/// })
-/// .new_lines;
+/// let result =
+///     clippy_dev::replace_region_in_text(the_text, "replace_start", "replace_end", false, || {
+///         vec!["a different".to_string(), "text".to_string()]
+///     })
+///     .new_lines;
 /// assert_eq!("replace_start\na different\ntext\nreplace_end", result);
 /// ```
 pub fn replace_region_in_text<F>(text: &str, start: &str, end: &str, replace_start: bool, replacements: F) -> FileChange
 where
-    F: Fn() -> Vec<String>,
+    F: FnOnce() -> Vec<String>,
 {
-    let lines = text.lines();
+    let replace_it = replacements();
     let mut in_old_region = false;
     let mut found = false;
     let mut new_lines = vec![];
     let start = Regex::new(start).unwrap();
     let end = Regex::new(end).unwrap();
 
-    for line in lines.clone() {
+    for line in text.lines() {
         if in_old_region {
-            if end.is_match(&line) {
+            if end.is_match(line) {
                 in_old_region = false;
-                new_lines.extend(replacements());
+                new_lines.extend(replace_it.clone());
                 new_lines.push(line.to_string());
             }
-        } else if start.is_match(&line) {
+        } else if start.is_match(line) {
             if !replace_start {
                 new_lines.push(line.to_string());
             }
@@ -315,10 +305,12 @@ where
         eprintln!("error: regex `{:?}` not found. You may have to update it.", start);
     }
 
-    FileChange {
-        changed: lines.ne(new_lines.clone()),
-        new_lines: new_lines.join("\n"),
+    let mut new_lines = new_lines.join("\n");
+    if text.ends_with('\n') {
+        new_lines.push('\n');
     }
+    let changed = new_lines != text;
+    FileChange { changed, new_lines }
 }
 
 /// Returns the path to the Clippy project directory
