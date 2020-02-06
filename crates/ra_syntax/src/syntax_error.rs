@@ -24,7 +24,7 @@ impl SyntaxError {
         Self(message.into(), range)
     }
     pub fn new_at_offset(message: impl Into<String>, offset: TextUnit) -> Self {
-        Self(message.into(), TextRange::offset_len(offset, 1.into()))
+        Self(message.into(), TextRange::offset_len(offset, 0.into()))
     }
 
     pub fn message(&self) -> &str {
