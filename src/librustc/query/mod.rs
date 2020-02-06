@@ -43,6 +43,12 @@ rustc_queries! {
     }
 
     Other {
+        query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
+            eval_always
+            no_hash
+            desc { "get the crate HIR" }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }
