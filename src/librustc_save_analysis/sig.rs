@@ -723,7 +723,8 @@ impl Sig for ast::ForeignItem {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref sig, ref generics, _) => {
+                let decl = &sig.decl;
                 let mut text = String::new();
                 text.push_str("fn ");
 

@@ -22,5 +22,11 @@ error: expected one of `:` or `|`, found `)`
 LL | fn main((ؼ
    |           ^ expected one of `:` or `|`
 
-error: aborting due to 3 previous errors
+error: expected `;` or `{`, found `<eof>`
+  --> $DIR/missing_right_paren.rs:3:11
+   |
+LL | fn main((ؼ
+   |           ^ expected `;` or `{`
+
+error: aborting due to 4 previous errors
 

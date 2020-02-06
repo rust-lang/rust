@@ -1,4 +1,5 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
+use super::ty::{AllowPlus, RecoverQPath};
 use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
@@ -96,7 +97,6 @@ impl<'a> Parser<'a> {
         }
 
         if self.eat_keyword(kw::Extern) {
-            let extern_sp = self.prev_span;
             if self.eat_keyword(kw::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             } else if self.check(&token::OpenDelim(token::Brace)) {
-                return Ok(Some(self.parse_item_foreign_mod(lo, abi, vis, attrs, extern_sp)?));
+                return Ok(Some(self.parse_item_foreign_mod(lo, abi, vis, attrs)?));
             }
 
             self.unexpected()?;
@@ -1045,7 +1045,6 @@ impl<'a> Parser<'a> {
         abi: Option<StrLit>,
         visibility: Visibility,
         mut attrs: Vec<Attribute>,
-        extern_sp: Span,
     ) -> PResult<'a, P<Item>> {
         self.expect(&token::OpenDelim(token::Brace))?;
 
@@ -1053,7 +1052,7 @@ impl<'a> Parser<'a> {
 
         let mut foreign_items = vec![];
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            foreign_items.push(self.parse_foreign_item(extern_sp)?);
+            foreign_items.push(self.parse_foreign_item()?);
         }
 
         let prev_span = self.prev_span;
@@ -1063,51 +1062,42 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    pub fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, P<ForeignItem>> {
+    pub fn parse_foreign_item(&mut self) -> PResult<'a, P<ForeignItem>> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let visibility = self.parse_visibility(FollowedByType::No)?;
 
-        // FOREIGN STATIC ITEM
-        // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
-        if self.check_keyword(kw::Static) || self.token.is_keyword(kw::Const) {
-            if self.token.is_keyword(kw::Const) {
-                let mut err =
-                    self.struct_span_err(self.token.span, "extern items cannot be `const`");
+        // FOREIGN TYPE ITEM
+        if self.check_keyword(kw::Type) {
+            return self.parse_item_foreign_type(visibility, lo, attrs);
+        }
 
-                // The user wrote 'const fn'
-                if self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe]) {
-                    err.emit();
-                    // Consume `const`
-                    self.bump();
-                    // Consume `unsafe` if present, since `extern` blocks
-                    // don't allow it. This will leave behind a plain 'fn'
-                    self.eat_keyword(kw::Unsafe);
-                    // Treat 'const fn` as a plain `fn` for error recovery purposes.
-                    // We've already emitted an error, so compilation is guaranteed
-                    // to fail
-                    return Ok(self.parse_item_foreign_fn(visibility, lo, attrs, extern_sp)?);
-                }
-                err.span_suggestion(
-                    self.token.span,
+        // FOREIGN STATIC ITEM
+        if self.is_static_global() {
+            self.bump(); // `static`
+            return self.parse_item_foreign_static(visibility, lo, attrs);
+        }
+
+        // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
+        if self.is_kw_followed_by_ident(kw::Const) {
+            self.bump(); // `const`
+            self.struct_span_err(self.prev_span, "extern items cannot be `const`")
+                .span_suggestion(
+                    self.prev_span,
                     "try using a static value",
                     "static".to_owned(),
                     Applicability::MachineApplicable,
-                );
-                err.emit();
-            }
-            self.bump(); // `static` or `const`
-            return Ok(self.parse_item_foreign_static(visibility, lo, attrs)?);
+                )
+                .emit();
+            return self.parse_item_foreign_static(visibility, lo, attrs);
         }
+
         // FOREIGN FUNCTION ITEM
-        if self.check_keyword(kw::Fn) {
-            return Ok(self.parse_item_foreign_fn(visibility, lo, attrs, extern_sp)?);
-        }
-        // FOREIGN TYPE ITEM
-        if self.check_keyword(kw::Type) {
-            return Ok(self.parse_item_foreign_type(visibility, lo, attrs)?);
+        const MAY_INTRODUCE_FN: &[Symbol] = &[kw::Const, kw::Async, kw::Unsafe, kw::Extern, kw::Fn];
+        if MAY_INTRODUCE_FN.iter().any(|&kw| self.check_keyword(kw)) {
+            return self.parse_item_foreign_fn(visibility, lo, attrs);
         }
 
         match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
@@ -1726,14 +1716,14 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         vis: Visibility,
-        attrs: Vec<Attribute>,
+        mut attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
         let cfg = ParamCfg { is_name_required: |_| true };
         let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+        let body = self.parse_fn_body(&mut false, &mut attrs)?;
         let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
-        self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
+        self.mk_item_with_info(attrs, lo, vis, (ident, kind, None))
     }
 
     /// Parses a function declaration from a foreign module.
@@ -1741,15 +1731,14 @@ impl<'a> Parser<'a> {
         &mut self,
         vis: ast::Visibility,
         lo: Span,
-        attrs: Vec<Attribute>,
-        extern_sp: Span,
+        mut attrs: Vec<Attribute>,
     ) -> PResult<'a, P<ForeignItem>> {
         let cfg = ParamCfg { is_name_required: |_| true };
-        self.expect_keyword(kw::Fn)?;
+        let header = self.parse_fn_front_matter()?;
         let (ident, decl, generics) = self.parse_fn_sig(&cfg)?;
-        let span = lo.to(self.token.span);
-        self.parse_semi_or_incorrect_foreign_fn_body(&ident, extern_sp)?;
-        let kind = ForeignItemKind::Fn(decl, generics);
+        let body = self.parse_fn_body(&mut false, &mut attrs)?;
+        let kind = ForeignItemKind::Fn(FnSig { header, decl }, generics, body);
+        let span = lo.to(self.prev_span);
         Ok(P(ast::ForeignItem { ident, attrs, kind, id: DUMMY_NODE_ID, span, vis, tokens: None }))
     }
 
@@ -1760,45 +1749,40 @@ impl<'a> Parser<'a> {
         is_name_required: fn(&token::Token) -> bool,
     ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(&ParamCfg { is_name_required })?;
-        let sig = FnSig { header, decl };
-        let body = self.parse_assoc_fn_body(at_end, attrs)?;
-        Ok((ident, AssocItemKind::Fn(sig, body), generics))
+        let (ident, decl, generics) = self.parse_fn_sig(&&ParamCfg { is_name_required })?;
+        let body = self.parse_fn_body(at_end, attrs)?;
+        Ok((ident, AssocItemKind::Fn(FnSig { header, decl }, body), generics))
     }
 
-    /// Parse the "body" of a method in an associated item definition.
+    /// Parse the "body" of a function.
     /// This can either be `;` when there's no body,
-    /// or e.g. a block when the method is a provided one.
-    fn parse_assoc_fn_body(
+    /// or e.g. a block when the function is a provided one.
+    fn parse_fn_body(
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
     ) -> PResult<'a, Option<P<Block>>> {
-        Ok(match self.token.kind {
+        let (inner_attrs, body) = match self.token.kind {
             token::Semi => {
-                debug!("parse_assoc_fn_body(): parsing required method");
                 self.bump();
-                *at_end = true;
-                None
+                (Vec::new(), None)
             }
             token::OpenDelim(token::Brace) => {
-                debug!("parse_assoc_fn_body(): parsing provided method");
-                *at_end = true;
-                let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-                attrs.extend(inner_attrs.iter().cloned());
-                Some(body)
+                let (attrs, body) = self.parse_inner_attrs_and_block()?;
+                (attrs, Some(body))
             }
             token::Interpolated(ref nt) => match **nt {
                 token::NtBlock(..) => {
-                    *at_end = true;
-                    let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-                    attrs.extend(inner_attrs.iter().cloned());
-                    Some(body)
+                    let (attrs, body) = self.parse_inner_attrs_and_block()?;
+                    (attrs, Some(body))
                 }
                 _ => return self.expected_semi_or_open_brace(),
             },
             _ => return self.expected_semi_or_open_brace(),
-        })
+        };
+        attrs.extend(inner_attrs);
+        *at_end = true;
+        Ok(body)
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -1839,7 +1823,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_sig(&mut self, cfg: &ParamCfg) -> PResult<'a, (Ident, P<FnDecl>, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
-        let decl = self.parse_fn_decl(cfg, true)?;
+        let decl = self.parse_fn_decl(cfg, AllowPlus::Yes)?;
         generics.where_clause = self.parse_where_clause()?;
         Ok((ident, decl, generics))
     }
@@ -1848,11 +1832,11 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_decl(
         &mut self,
         cfg: &ParamCfg,
-        ret_allow_plus: bool,
+        ret_allow_plus: AllowPlus,
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(cfg)?,
-            output: self.parse_ret_ty(ret_allow_plus, true)?,
+            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
         }))
     }
 

@@ -310,6 +310,11 @@ rustc_queries! {
         /// Maps from a trait item to the trait item "descriptor".
         query associated_item(_: DefId) -> ty::AssocItem {}
 
+        /// Collects the associated items defined on a trait or impl.
+        query associated_items(key: DefId) -> ty::AssocItemsIterator<'tcx> {
+            desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
+        }
+
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
         query impl_polarity(_: DefId) -> ty::ImplPolarity {}
 

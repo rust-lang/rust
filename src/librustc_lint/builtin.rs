@@ -43,7 +43,7 @@ use rustc_span::{BytePos, Span};
 use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::FnKind;
+use syntax::visit::{FnCtxt, FnKind};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -259,34 +259,22 @@ impl EarlyLintPass for UnsafeCode {
         }
     }
 
-    fn check_fn(
-        &mut self,
-        cx: &EarlyContext<'_>,
-        fk: FnKind<'_>,
-        _: &ast::FnDecl,
-        span: Span,
-        _: ast::NodeId,
-    ) {
-        match fk {
-            FnKind::ItemFn(_, ast::FnHeader { unsafety: ast::Unsafety::Unsafe, .. }, ..) => {
-                self.report_unsafe(cx, span, "declaration of an `unsafe` function")
-            }
-
-            FnKind::Method(_, sig, ..) => {
-                if sig.header.unsafety == ast::Unsafety::Unsafe {
-                    self.report_unsafe(cx, span, "implementation of an `unsafe` method")
-                }
-            }
-
-            _ => (),
-        }
-    }
-
-    fn check_trait_item(&mut self, cx: &EarlyContext<'_>, item: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(ref sig, None) = item.kind {
-            if sig.header.unsafety == ast::Unsafety::Unsafe {
-                self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
-            }
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, span: Span, _: ast::NodeId) {
+        if let FnKind::Fn(
+            ctxt,
+            _,
+            ast::FnSig { header: ast::FnHeader { unsafety: ast::Unsafety::Unsafe, .. }, .. },
+            _,
+            body,
+        ) = fk
+        {
+            let msg = match ctxt {
+                FnCtxt::Foreign => return,
+                FnCtxt::Free => "declaration of an `unsafe` function",
+                FnCtxt::Assoc(_) if body.is_none() => "declaration of an `unsafe` method",
+                FnCtxt::Assoc(_) => "implementation of an `unsafe` method",
+            };
+            self.report_unsafe(cx, span, msg);
         }
     }
 }
@@ -567,7 +555,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
 declare_lint! {
     MISSING_DEBUG_IMPLEMENTATIONS,
     Allow,
-    "detects missing implementations of fmt::Debug"
+    "detects missing implementations of Debug"
 }
 
 #[derive(Default)]
@@ -611,9 +599,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             cx.span_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
-                "type does not implement `fmt::Debug`; consider adding `#[derive(Debug)]` \
-                          or a manual implementation",
-            )
+                &format!(
+                    "type does not implement `{}`; consider adding `#[derive(Debug)]` \
+                     or a manual implementation",
+                    cx.tcx.def_path_str(debug)
+                ),
+            );
         }
     }
 }

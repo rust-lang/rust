@@ -38,6 +38,9 @@ macro_rules! baz {
     }
 }
 
+const CONST_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
+static STATIC_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
+
 fn main() {
     foo();
     bar((true)); //~ ERROR unnecessary parentheses around function argument

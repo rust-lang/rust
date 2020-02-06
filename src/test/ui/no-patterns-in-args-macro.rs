@@ -6,10 +6,10 @@ macro_rules! m {
 
         type A = fn($pat: u8);
 
-        extern {
+        extern "C" {
             fn foreign_fn($pat: u8);
         }
-    }
+    };
 }
 
 mod good_pat {
@@ -20,7 +20,7 @@ mod bad_pat {
     m!((bad, pat));
     //~^ ERROR patterns aren't allowed in function pointer types
     //~| ERROR patterns aren't allowed in foreign function declarations
-    //~| ERROR patterns aren't allowed in methods without bodies
+    //~| ERROR patterns aren't allowed in functions without bodies
 }
 
 fn main() {}

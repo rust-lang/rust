@@ -1,0 +1,136 @@
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:17:9
+   |
+LL |         async fn ft1();
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:19:9
+   |
+LL |         const fn ft3();
+   |         ^^^^^ trait fns cannot be const
+
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:21:21
+   |
+LL |         /* const */ async unsafe extern "C" fn ft5();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:28:9
+   |
+LL |         async fn ft1() {}
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:31:9
+   |
+LL |         const fn ft3() {}
+   |         ^^^^^ trait fns cannot be const
+
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:33:21
+   |
+LL |         /* const */ async unsafe extern "C" fn ft5() {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:49:18
+   |
+LL |     extern {
+   |     ------ in this `extern` block
+LL |         async fn fe1();
+   |         ---------^^^
+   |         |
+   |         help: remove the qualifiers: `fn`
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:50:19
+   |
+LL |     extern {
+   |     ------ in this `extern` block
+LL |         async fn fe1();
+LL |         unsafe fn fe2();
+   |         ----------^^^
+   |         |
+   |         help: remove the qualifiers: `fn`
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:51:18
+   |
+LL |     extern {
+   |     ------ in this `extern` block
+...
+LL |         const fn fe3();
+   |         ---------^^^
+   |         |
+   |         help: remove the qualifiers: `fn`
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:52:23
+   |
+LL |     extern {
+   |     ------ in this `extern` block
+...
+LL |         extern "C" fn fe4();
+   |         --------------^^^
+   |         |
+   |         help: remove the qualifiers: `fn`
+
+error: functions in `extern` blocks cannot have qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:53:48
+   |
+LL |     extern {
+   |     ------ in this `extern` block
+...
+LL |         /* const */ async unsafe extern "C" fn fe5();
+   |                     ---------------------------^^^
+   |                     |
+   |                     help: remove the qualifiers: `fn`
+
+error[E0053]: method `ft1` has an incompatible type for trait
+  --> $DIR/fn-header-semantic-fail.rs:28:24
+   |
+LL |         async fn ft1();
+   |                       - type in trait
+...
+LL |         async fn ft1() {}
+   |                        ^
+   |                        |
+   |                        the `Output` of this `async fn`'s found opaque type
+   |                        expected `()`, found opaque type
+   |
+   = note: expected fn pointer `fn()`
+              found fn pointer `fn() -> impl std::future::Future`
+
+error[E0053]: method `ft5` has an incompatible type for trait
+  --> $DIR/fn-header-semantic-fail.rs:33:54
+   |
+LL |         /* const */ async unsafe extern "C" fn ft5();
+   |                                                     - type in trait
+...
+LL |         /* const */ async unsafe extern "C" fn ft5() {}
+   |                                                      ^
+   |                                                      |
+   |                                                      the `Output` of this `async fn`'s found opaque type
+   |                                                      expected `()`, found opaque type
+   |
+   = note: expected fn pointer `unsafe extern "C" fn()`
+              found fn pointer `unsafe extern "C" fn() -> impl std::future::Future`
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0053, E0379, E0706.
+For more information about an error, try `rustc --explain E0053`.

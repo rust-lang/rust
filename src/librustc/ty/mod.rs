@@ -2743,19 +2743,6 @@ impl<'tcx> TyCtxt<'tcx> {
         variant.fields.iter().position(|field| self.hygienic_eq(ident, field.ident, variant.def_id))
     }
 
-    pub fn associated_items(self, def_id: DefId) -> AssocItemsIterator<'tcx> {
-        // Ideally, we would use `-> impl Iterator` here, but it falls
-        // afoul of the conservative "capture [restrictions]" we put
-        // in place, so we use a hand-written iterator.
-        //
-        // [restrictions]: https://github.com/rust-lang/rust/issues/34511#issuecomment-373423999
-        AssocItemsIterator {
-            tcx: self,
-            def_ids: self.associated_item_def_ids(def_id),
-            next_index: 0,
-        }
-    }
-
     /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated #[marker] and prevents item overrides.
     pub fn impls_are_allowed_to_overlap(
@@ -2987,20 +2974,22 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, HashStable)]
 pub struct AssocItemsIterator<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    def_ids: &'tcx [DefId],
-    next_index: usize,
+    pub items: &'tcx [AssocItem],
 }
 
-impl Iterator for AssocItemsIterator<'_> {
+impl<'tcx> Iterator for AssocItemsIterator<'tcx> {
     type Item = AssocItem;
 
+    #[inline]
     fn next(&mut self) -> Option<AssocItem> {
-        let def_id = self.def_ids.get(self.next_index)?;
-        self.next_index += 1;
-        Some(self.tcx.associated_item(*def_id))
+        if let Some((first, rest)) = self.items.split_first() {
+            self.items = rest;
+            Some(*first)
+        } else {
+            None
+        }
     }
 }
 
