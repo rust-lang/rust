@@ -1865,17 +1865,13 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Ok = B>,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x)?;
-        }
-        Try::from_ok(accum)
+        try_fold(self, init, f)
     }
 
     /// An iterator method that applies a fallible function to each item in the
@@ -3224,16 +3220,59 @@ where
     Some(it.fold(first, f))
 }
 
+#[inline]
+fn try_fold<I, B, F, R>(iter: &mut I, init: B, mut f: F) -> R
+where
+    I: Iterator,
+    F: FnMut(B, I::Item) -> R,
+    R: Try<Ok = B>,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next() {
+        accum = f(accum, x)?;
+    }
+    Try::from_ok(accum)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
+
+    #[inline]
     fn next(&mut self) -> Option<I::Item> {
         (**self).next()
     }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
+
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+
+    #[inline]
+    default fn try_fold<Acc, F, R>(&mut self, init: Acc, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        try_fold(self, init, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator> Iterator for &mut I {
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_fold(init, f)
     }
 }

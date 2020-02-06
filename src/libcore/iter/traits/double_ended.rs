@@ -155,17 +155,13 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Ok = B>,
     {
-        let mut accum = init;
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x)?;
-        }
-        Try::from_ok(accum)
+        try_rfold(self, init, f)
     }
 
     /// An iterator method that reduces the iterator's elements to a single,
@@ -296,6 +292,20 @@ pub trait DoubleEndedIterator: Iterator {
     }
 }
 
+#[inline]
+fn try_rfold<I, B, F, R>(iter: &mut I, init: B, mut f: F) -> R
+where
+    I: DoubleEndedIterator,
+    F: FnMut(B, I::Item) -> R,
+    R: Try<Ok = B>,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next_back() {
+        accum = f(accum, x)?;
+    }
+    Try::from_ok(accum)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
@@ -303,5 +313,28 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
+    }
+
+    #[inline]
+    default fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        try_rfold(self, init, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, I: DoubleEndedIterator> DoubleEndedIterator for &'a mut I {
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_rfold(init, f)
     }
 }
