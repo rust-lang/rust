@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Defines a unit of change that can applied to a state of IDE to get the next
+//! state. Changes are transactional.
 
 use std::{fmt, sync::Arc, time};
 

@@ -19,6 +19,7 @@
 //! for each library (which is assumed to never change) and an FST for each Rust
 //! file in the current workspace, and run a query against the union of all
 //! those FSTs.
+
 use std::{
     fmt,
     hash::{Hash, Hasher},
