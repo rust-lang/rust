@@ -55,6 +55,6 @@ SOURCE_FILE@[0; 54)
         WHITESPACE@[51; 52) "\n"
         R_CURLY@[52; 53) "}"
   WHITESPACE@[53; 54) "\n"
-error 53: expected R_PAREN
-error 53: expected `]`
-error 53: expected an item
+error [53; 54): expected R_PAREN
+error [53; 54): expected `]`
+error [53; 54): expected an item

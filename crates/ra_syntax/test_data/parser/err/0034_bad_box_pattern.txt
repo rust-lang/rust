@@ -88,9 +88,9 @@ SOURCE_FILE@[0; 91)
         WHITESPACE@[87; 88) "\n"
         R_CURLY@[88; 89) "}"
   WHITESPACE@[89; 91) "\n\n"
-error 24: expected a name
-error 27: expected SEMI
-error 48: expected a name
-error 51: expected SEMI
-error 76: expected a name
-error 79: expected SEMI
+error [24; 25): expected a name
+error [27; 28): expected SEMI
+error [48; 49): expected a name
+error [51; 52): expected SEMI
+error [76; 77): expected a name
+error [79; 80): expected SEMI

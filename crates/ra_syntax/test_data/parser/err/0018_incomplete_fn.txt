@@ -125,8 +125,8 @@ SOURCE_FILE@[0; 183)
       WHITESPACE@[180; 181) "\n"
       R_CURLY@[181; 182) "}"
   WHITESPACE@[182; 183) "\n"
-error 34: expected pattern
-error 34: expected COLON
-error 34: expected type
-error 180: expected function arguments
-error 180: expected a block
+error [34; 35): expected pattern
+error [34; 35): expected COLON
+error [34; 35): expected type
+error [180; 181): expected function arguments
+error [180; 181): expected a block

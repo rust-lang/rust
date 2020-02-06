@@ -94,6 +94,6 @@ SOURCE_FILE@[0; 118)
       WHITESPACE@[115; 116) "\n"
       R_CURLY@[116; 117) "}"
   WHITESPACE@[117; 118) "\n"
-error [36; 39): unnecessary visibility qualifier
-error [56; 66): unnecessary visibility qualifier
-error [86; 96): unnecessary visibility qualifier
+error [36; 39): Unnecessary visibility qualifier
+error [56; 66): Unnecessary visibility qualifier
+error [86; 96): Unnecessary visibility qualifier

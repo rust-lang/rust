@@ -87,7 +87,7 @@ fn reparse_block<'node>(
     edit: &AtomTextEdit,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
-    let text = get_text_after_edit(node.clone().into(), &edit);
+    let text = get_text_after_edit(node.clone().into(), edit);
 
     let (tokens, new_lexer_errors) = tokenize(&text);
     if !is_balanced(&tokens) {
@@ -162,20 +162,27 @@ fn is_balanced(tokens: &[Token]) -> bool {
 fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
-    old_range: TextRange,
+    range_before_reparse: TextRange,
     edit: &AtomTextEdit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
-    for e in old_errors {
-        if e.offset() <= old_range.start() {
-            res.push(e)
-        } else if e.offset() >= old_range.end() {
-            res.push(e.add_offset(TextUnit::of_str(&edit.insert), edit.delete.len()));
+
+    for old_err in old_errors {
+        let old_err_range = *old_err.range();
+        // FIXME: make sure that .start() was here previously by a mistake
+        if old_err_range.end() <= range_before_reparse.start() {
+            res.push(old_err);
+        } else if old_err_range.start() >= range_before_reparse.end() {
+            let inserted_len = TextUnit::of_str(&edit.insert);
+            res.push(old_err.with_range((old_err_range + inserted_len) - edit.delete.len()));
+            // Note: extra parens are intentional to prevent uint underflow, HWAB (here was a bug)
         }
     }
-    for e in new_errors {
-        res.push(e.add_offset(old_range.start(), 0.into()));
-    }
+    res.extend(new_errors.into_iter().map(|new_err| {
+        // fighting borrow checker with a variable ;)
+        let offseted_range = *new_err.range() + range_before_reparse.start();
+        new_err.with_range(offseted_range)
+    }));
     res
 }
 

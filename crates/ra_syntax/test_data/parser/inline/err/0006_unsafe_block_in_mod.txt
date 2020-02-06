@@ -33,5 +33,5 @@ SOURCE_FILE@[0; 33)
         L_CURLY@[30; 31) "{"
         R_CURLY@[31; 32) "}"
   WHITESPACE@[32; 33) "\n"
-error 11: expected an item
-error 18: expected an item
+error [11; 12): expected an item
+error [18; 19): expected an item

@@ -28,6 +28,6 @@ SOURCE_FILE@[0; 31)
   ERROR@[29; 30)
     R_CURLY@[29; 30) "}"
   WHITESPACE@[30; 31) "\n"
-error 0: unmatched `}`
-error 14: unmatched `}`
-error 29: unmatched `}`
+error [0; 1): unmatched `}`
+error [14; 15): unmatched `}`
+error [29; 30): unmatched `}`

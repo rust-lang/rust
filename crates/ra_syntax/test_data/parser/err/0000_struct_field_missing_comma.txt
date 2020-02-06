@@ -31,4 +31,4 @@ SOURCE_FILE@[0; 34)
                 IDENT@[29; 32) "u32"
       WHITESPACE@[32; 33) "\n"
       R_CURLY@[33; 34) "}"
-error 21: expected COMMA
+error [21; 22): expected COMMA

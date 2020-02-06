@@ -13,4 +13,4 @@ SOURCE_FILE@[0; 12)
           ERROR@[9; 11)
             INT_NUMBER@[9; 11) "92"
     SEMI@[11; 12) ";"
-error 9: expected identifier
+error [9; 10): expected identifier

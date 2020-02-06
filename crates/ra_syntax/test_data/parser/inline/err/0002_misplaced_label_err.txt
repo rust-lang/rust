@@ -23,7 +23,7 @@ SOURCE_FILE@[0; 30)
         WHITESPACE@[27; 28) "\n"
         R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
-error 22: expected a loop
-error 22: expected SEMI
-error 27: expected type
-error 27: expected `{`
+error [22; 23): expected a loop
+error [22; 23): expected SEMI
+error [27; 28): expected type
+error [27; 28): expected `{`

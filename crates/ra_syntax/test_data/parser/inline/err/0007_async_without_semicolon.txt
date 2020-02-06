@@ -29,4 +29,4 @@ SOURCE_FILE@[0; 30)
         WHITESPACE@[27; 28) " "
         R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
-error 27: expected SEMI
+error [27; 28): expected SEMI

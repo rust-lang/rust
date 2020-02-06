@@ -6,15 +6,10 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! module just wraps its API.
 
-use ra_parser::ParseError;
+pub(crate) use rowan::{GreenNode, GreenToken};
 use rowan::{GreenNodeBuilder, Language};
 
-use crate::{
-    syntax_error::{SyntaxError, SyntaxErrorKind},
-    Parse, SmolStr, SyntaxKind, TextUnit,
-};
-
-pub(crate) use rowan::{GreenNode, GreenToken};
+use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextUnit};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RustLanguage {}
@@ -73,8 +68,7 @@ impl SyntaxTreeBuilder {
         self.inner.finish_node()
     }
 
-    pub fn error(&mut self, error: ParseError, text_pos: TextUnit) {
-        let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), text_pos);
-        self.errors.push(error)
+    pub fn error(&mut self, error: ra_parser::ParseError, text_pos: TextUnit) {
+        self.errors.push(SyntaxError::new_at_offset(error.0, text_pos))
     }
 }

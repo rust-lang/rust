@@ -10,7 +10,7 @@ use ra_prof::profile;
 use ra_syntax::{
     algo,
     ast::{self, make, AstNode},
-    Location, SyntaxNode, TextRange, T,
+    SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
@@ -29,7 +29,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let mut res = Vec::new();
 
     res.extend(parse.errors().iter().map(|err| Diagnostic {
-        range: location_to_range(err.location()),
+        range: *err.range(),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
         fix: None,
@@ -115,12 +115,6 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     };
     drop(sink);
     res.into_inner()
-}
-fn location_to_range(location: Location) -> TextRange {
-    match location {
-        Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
-        Location::Range(range) => range,
-    }
 }
 
 fn check_unnecessary_braces_in_use_statement(

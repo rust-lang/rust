@@ -23,4 +23,4 @@ SOURCE_FILE@[0; 21)
         WHITESPACE@[18; 19) " "
         R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"
-error 14: expected an item
+error [14; 15): expected an item

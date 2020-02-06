@@ -2,7 +2,7 @@
 //! It is just a bridge to `rustc_lexer`.
 
 use crate::{
-    SyntaxError, SyntaxErrorKind,
+    SyntaxError,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
 };
@@ -41,13 +41,13 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
         let token_len = TextUnit::from_usize(rustc_token.len);
         let token_range = TextRange::offset_len(TextUnit::from_usize(offset), token_len);
 
-        let (syntax_kind, error) =
+        let (syntax_kind, err_message) =
             rustc_token_kind_to_syntax_kind(&rustc_token.kind, &text[token_range]);
 
         tokens.push(Token { kind: syntax_kind, len: token_len });
 
-        if let Some(error) = error {
-            errors.push(SyntaxError::new(SyntaxErrorKind::TokenizeError(error), token_range));
+        if let Some(err_message) = err_message {
+            errors.push(SyntaxError::new(err_message, token_range));
         }
 
         offset += rustc_token.len;
@@ -94,61 +94,21 @@ fn lex_first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
     }
 
     let rustc_token = rustc_lexer::first_token(text);
-    let (syntax_kind, error) = rustc_token_kind_to_syntax_kind(&rustc_token.kind, text);
+    let (syntax_kind, err_message) = rustc_token_kind_to_syntax_kind(&rustc_token.kind, text);
 
     let token = Token { kind: syntax_kind, len: TextUnit::from_usize(rustc_token.len) };
-    let error = error.map(|error| {
-        SyntaxError::new(
-            SyntaxErrorKind::TokenizeError(error),
-            TextRange::from_to(TextUnit::from(0), TextUnit::of_str(text)),
-        )
+    let optional_error = err_message.map(|err_message| {
+        SyntaxError::new(err_message, TextRange::from_to(0.into(), TextUnit::of_str(text)))
     });
 
-    Some((token, error))
+    Some((token, optional_error))
 }
 
-// FIXME: simplify TokenizeError to `SyntaxError(String, TextRange)` as per @matklad advice:
-// https://github.com/rust-analyzer/rust-analyzer/pull/2911/files#r371175067
-
-/// Describes the values of `SyntaxErrorKind::TokenizeError` enum variant.
-/// It describes all the types of errors that may happen during the tokenization
-/// of Rust source.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TokenizeError {
-    /// Base prefix was provided, but there were no digits
-    /// after it, e.g. `0x`, `0b`.
-    EmptyInt,
-    /// Float exponent lacks digits e.g. `12.34e+`, `12.3E+`, `12e-`, `1_E-`,
-    EmptyExponent,
-
-    /// Block comment lacks trailing delimiter `*/`
-    UnterminatedBlockComment,
-    /// Character literal lacks trailing delimiter `'`
-    UnterminatedChar,
-    /// Characterish byte literal lacks trailing delimiter `'`
-    UnterminatedByte,
-    /// String literal lacks trailing delimiter `"`
-    UnterminatedString,
-    /// Byte string literal lacks trailing delimiter `"`
-    UnterminatedByteString,
-    /// Raw literal lacks trailing delimiter e.g. `"##`
-    UnterminatedRawString,
-    /// Raw byte string literal lacks trailing delimiter e.g. `"##`
-    UnterminatedRawByteString,
-
-    /// Raw string lacks a quote after the pound characters e.g. `r###`
-    UnstartedRawString,
-    /// Raw byte string lacks a quote after the pound characters e.g. `br###`
-    UnstartedRawByteString,
-
-    /// Lifetime starts with a number e.g. `'4ever`
-    LifetimeStartsWithNumber,
-}
-
+/// Returns `SyntaxKind` and an optional tokenize error message.
 fn rustc_token_kind_to_syntax_kind(
     rustc_token_kind: &rustc_lexer::TokenKind,
     token_text: &str,
-) -> (SyntaxKind, Option<TokenizeError>) {
+) -> (SyntaxKind, Option<&'static str>) {
     // A note on an intended tradeoff:
     // We drop some useful infromation here (see patterns with double dots `..`)
     // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
@@ -156,14 +116,15 @@ fn rustc_token_kind_to_syntax_kind(
 
     let syntax_kind = {
         use rustc_lexer::TokenKind as TK;
-        use TokenizeError as TE;
-
         match rustc_token_kind {
             TK::LineComment => COMMENT,
 
             TK::BlockComment { terminated: true } => COMMENT,
             TK::BlockComment { terminated: false } => {
-                return (COMMENT, Some(TE::UnterminatedBlockComment));
+                return (
+                    COMMENT,
+                    Some("Missing trailing `*/` symbols to terminate the block comment"),
+                );
             }
 
             TK::Whitespace => WHITESPACE,
@@ -181,7 +142,7 @@ fn rustc_token_kind_to_syntax_kind(
 
             TK::Lifetime { starts_with_number: false } => LIFETIME,
             TK::Lifetime { starts_with_number: true } => {
-                return (LIFETIME, Some(TE::LifetimeStartsWithNumber))
+                return (LIFETIME, Some("Lifetime name cannot start with a number"))
             }
 
             TK::Semi => SEMI,
@@ -217,57 +178,56 @@ fn rustc_token_kind_to_syntax_kind(
 
     return (syntax_kind, None);
 
-    fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<TokenizeError>) {
+    fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<&'static str>) {
         use rustc_lexer::LiteralKind as LK;
-        use TokenizeError as TE;
 
         #[rustfmt::skip]
         let syntax_kind = match *kind {
             LK::Int { empty_int: false, .. } => INT_NUMBER,
             LK::Int { empty_int: true, .. } => {
-                return (INT_NUMBER, Some(TE::EmptyInt))
+                return (INT_NUMBER, Some("Missing digits after the integer base prefix"))
             }
 
             LK::Float { empty_exponent: false, .. } => FLOAT_NUMBER,
             LK::Float { empty_exponent: true, .. } => {
-                return (FLOAT_NUMBER, Some(TE::EmptyExponent))
+                return (FLOAT_NUMBER, Some("Missing digits after the exponent symbol"))
             }
 
             LK::Char { terminated: true } => CHAR,
             LK::Char { terminated: false } => {
-                return (CHAR, Some(TE::UnterminatedChar))
+                return (CHAR, Some("Missing trailing `'` symbol to terminate the character literal"))
             }
 
             LK::Byte { terminated: true } => BYTE,
             LK::Byte { terminated: false } => {
-                return (BYTE, Some(TE::UnterminatedByte))
+                return (BYTE, Some("Missing trailing `'` symbol to terminate the byte literal"))
             }
 
             LK::Str { terminated: true } => STRING,
             LK::Str { terminated: false } => {
-                return (STRING, Some(TE::UnterminatedString))
+                return (STRING, Some("Missing trailing `\"` symbol to terminate the string literal"))
             }
 
 
             LK::ByteStr { terminated: true } => BYTE_STRING,
             LK::ByteStr { terminated: false } => {
-                return (BYTE_STRING, Some(TE::UnterminatedByteString))
+                return (BYTE_STRING, Some("Missing trailing `\"` symbol to terminate the byte string literal"))
             }
 
             LK::RawStr { started: true, terminated: true, .. } => RAW_STRING,
             LK::RawStr { started: true, terminated: false, .. } => {
-                return (RAW_STRING, Some(TE::UnterminatedRawString))
+                return (RAW_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw string literal"))
             }
             LK::RawStr { started: false, .. } => {
-                return (RAW_STRING, Some(TE::UnstartedRawString))
+                return (RAW_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw string literal"))
             }
 
             LK::RawByteStr { started: true, terminated: true, .. } => RAW_BYTE_STRING,
             LK::RawByteStr { started: true, terminated: false, .. } => {
-                return (RAW_BYTE_STRING, Some(TE::UnterminatedRawByteString))
+                return (RAW_BYTE_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"))
             }
             LK::RawByteStr { started: false, .. } => {
-                return (RAW_BYTE_STRING, Some(TE::UnstartedRawByteString))
+                return (RAW_BYTE_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw byte string literal"))
             }
         };
 

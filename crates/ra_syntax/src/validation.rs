@@ -5,92 +5,76 @@ mod block;
 use rustc_lexer::unescape;
 
 use crate::{
-    ast, match_ast, AstNode, SyntaxError, SyntaxErrorKind,
+    ast, match_ast, AstNode, SyntaxError,
     SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN_DEF, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
     SyntaxNode, SyntaxToken, TextUnit, T,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum EscapeError {
-    ZeroChars,
-    MoreThanOneChar,
-    LoneSlash,
-    InvalidEscape,
-    BareCarriageReturn,
-    EscapeOnlyChar,
-    TooShortHexEscape,
-    InvalidCharInHexEscape,
-    OutOfRangeHexEscape,
-    NoBraceInUnicodeEscape,
-    InvalidCharInUnicodeEscape,
-    EmptyUnicodeEscape,
-    UnclosedUnicodeEscape,
-    LeadingUnderscoreUnicodeEscape,
-    OverlongUnicodeEscape,
-    LoneSurrogateUnicodeEscape,
-    OutOfRangeUnicodeEscape,
-    UnicodeEscapeInByte,
-    NonAsciiCharInByte,
-}
+fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
+    use unescape::EscapeError as EE;
 
-impl From<rustc_lexer::unescape::EscapeError> for EscapeError {
-    fn from(err: rustc_lexer::unescape::EscapeError) -> Self {
-        match err {
-            rustc_lexer::unescape::EscapeError::ZeroChars => EscapeError::ZeroChars,
-            rustc_lexer::unescape::EscapeError::MoreThanOneChar => EscapeError::MoreThanOneChar,
-            rustc_lexer::unescape::EscapeError::LoneSlash => EscapeError::LoneSlash,
-            rustc_lexer::unescape::EscapeError::InvalidEscape => EscapeError::InvalidEscape,
-            rustc_lexer::unescape::EscapeError::BareCarriageReturn
-            | rustc_lexer::unescape::EscapeError::BareCarriageReturnInRawString => {
-                EscapeError::BareCarriageReturn
-            }
-            rustc_lexer::unescape::EscapeError::EscapeOnlyChar => EscapeError::EscapeOnlyChar,
-            rustc_lexer::unescape::EscapeError::TooShortHexEscape => EscapeError::TooShortHexEscape,
-            rustc_lexer::unescape::EscapeError::InvalidCharInHexEscape => {
-                EscapeError::InvalidCharInHexEscape
-            }
-            rustc_lexer::unescape::EscapeError::OutOfRangeHexEscape => {
-                EscapeError::OutOfRangeHexEscape
-            }
-            rustc_lexer::unescape::EscapeError::NoBraceInUnicodeEscape => {
-                EscapeError::NoBraceInUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::InvalidCharInUnicodeEscape => {
-                EscapeError::InvalidCharInUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::EmptyUnicodeEscape => {
-                EscapeError::EmptyUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::UnclosedUnicodeEscape => {
-                EscapeError::UnclosedUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::LeadingUnderscoreUnicodeEscape => {
-                EscapeError::LeadingUnderscoreUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::OverlongUnicodeEscape => {
-                EscapeError::OverlongUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::LoneSurrogateUnicodeEscape => {
-                EscapeError::LoneSurrogateUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::OutOfRangeUnicodeEscape => {
-                EscapeError::OutOfRangeUnicodeEscape
-            }
-            rustc_lexer::unescape::EscapeError::UnicodeEscapeInByte => {
-                EscapeError::UnicodeEscapeInByte
-            }
-            rustc_lexer::unescape::EscapeError::NonAsciiCharInByte
-            | rustc_lexer::unescape::EscapeError::NonAsciiCharInByteString => {
-                EscapeError::NonAsciiCharInByte
-            }
+    #[rustfmt::skip]
+    let err_message = match err {
+        EE::ZeroChars => {
+            "Literal must not be empty"
         }
-    }
-}
+        EE::MoreThanOneChar => {
+            "Literal must be one character long"
+        }
+        EE::LoneSlash => {
+            "Character must be escaped: `\\`"
+        }
+        EE::InvalidEscape => {
+            "Invalid escape"
+        }
+        EE::BareCarriageReturn | EE::BareCarriageReturnInRawString => {
+            "Character must be escaped: `\r`"
+        }
+        EE::EscapeOnlyChar => {
+            "Escape character `\\` must be escaped itself"
+        }
+        EE::TooShortHexEscape => {
+            "ASCII hex escape code must have exactly two digits"
+        }
+        EE::InvalidCharInHexEscape => {
+            "ASCII hex escape code must contain only hex characters"
+        }
+        EE::OutOfRangeHexEscape => {
+            "ASCII hex escape code must be at most 0x7F"
+        }
+        EE::NoBraceInUnicodeEscape => {
+            "Missing `{` to begin the unicode escape"
+        }
+        EE::InvalidCharInUnicodeEscape => {
+            "Unicode escape must contain only hex characters and underscores"
+        }
+        EE::EmptyUnicodeEscape => {
+            "Unicode escape must not be empty"
+        }
+        EE::UnclosedUnicodeEscape => {
+            "Missing '}' to terminate the unicode escape"
+        }
+        EE::LeadingUnderscoreUnicodeEscape => {
+            "Unicode escape code must not begin with an underscore"
+        }
+        EE::OverlongUnicodeEscape => {
+            "Unicode escape code must have at most 6 digits"
+        }
+        EE::LoneSurrogateUnicodeEscape => {
+            "Unicode escape code must not be a surrogate"
+        }
+        EE::OutOfRangeUnicodeEscape => {
+            "Unicode escape code must be at most 0x10FFFF"
+        }
+        EE::UnicodeEscapeInByte => {
+            "Byte literals must not contain unicode escapes"
+        }
+        EE::NonAsciiCharInByte | EE::NonAsciiCharInByteString => {
+            "Byte literals must not contain non-ASCII characters"
+        }
+    };
 
-impl From<rustc_lexer::unescape::EscapeError> for SyntaxErrorKind {
-    fn from(err: rustc_lexer::unescape::EscapeError) -> Self {
-        SyntaxErrorKind::EscapeError(err.into())
-    }
+    err_message
 }
 
 pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
@@ -118,6 +102,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
 }
 
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
+    // FIXME: move this function to outer scope (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366196658)
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
@@ -125,9 +110,10 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let token = literal.token();
     let text = token.text().as_str();
 
+    // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {
         let off = token.text_range().start() + TextUnit::from_usize(off + prefix_len);
-        acc.push(SyntaxError::new(err.into(), off));
+        acc.push(SyntaxError::new_at_offset(rustc_unescape_error_to_string(err), off));
     };
 
     match token.kind() {
@@ -195,7 +181,8 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
     if let Some(int_token) = int_token(name_ref) {
         if int_token.text().chars().any(|c| !c.is_digit(10)) {
             errors.push(SyntaxError::new(
-                SyntaxErrorKind::InvalidTupleIndexFormat,
+                "Tuple (struct) field access is only allowed through \
+                decimal integers with no underscores or suffix",
                 int_token.text_range(),
             ));
         }
@@ -215,21 +202,21 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         FN_DEF | CONST_DEF | TYPE_ALIAS_DEF => (),
         _ => return,
     }
+
     let impl_block = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplBlock::cast)
     {
         Some(it) => it,
         None => return,
     };
     if impl_block.target_trait().is_some() {
-        errors
-            .push(SyntaxError::new(SyntaxErrorKind::VisibilityNotAllowed, vis.syntax.text_range()))
+        errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
     }
 }
 
 fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
     if expr.op_kind() == Some(ast::RangeOp::Inclusive) && expr.end().is_none() {
         errors.push(SyntaxError::new(
-            SyntaxErrorKind::InclusiveRangeMissingEnd,
+            "An inclusive range must have an end expression",
             expr.syntax().text_range(),
         ));
     }

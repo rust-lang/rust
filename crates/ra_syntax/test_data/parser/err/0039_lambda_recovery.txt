@@ -80,4 +80,4 @@ SOURCE_FILE@[0; 83)
         WHITESPACE@[80; 81) "\n"
         R_CURLY@[81; 82) "}"
   WHITESPACE@[82; 83) "\n"
-error 56: expected expression
+error [56; 57): expected expression

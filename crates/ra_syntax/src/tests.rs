@@ -5,7 +5,7 @@ use std::{
 
 use test_utils::{collect_tests, dir_tests, project_dir, read_text};
 
-use crate::{fuzz, tokenize, Location, SourceFile, SyntaxError, TextRange, Token};
+use crate::{fuzz, tokenize, SourceFile, SyntaxError, Token};
 
 #[test]
 fn lexer_tests() {
@@ -128,25 +128,14 @@ fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) 
         writeln!(acc, "{:?} {} {:?}", token.kind, token_len, token_text).unwrap();
     }
     for err in errors {
-        let err_range = location_to_range(err.location());
         writeln!(
             acc,
             "> error{:?} token({:?}) msg({})",
-            err.location(),
-            &text[err_range],
-            err.kind()
+            err.range(),
+            &text[*err.range()],
+            err.message()
         )
         .unwrap();
     }
-    return acc;
-
-    // FIXME: copy-pasted this from `ra_ide/src/diagnostics.rs`
-    // `Location` will be refactored soon in new PR, see todos here:
-    // https://github.com/rust-analyzer/rust-analyzer/issues/223
-    fn location_to_range(location: Location) -> TextRange {
-        match location {
-            Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
-            Location::Range(range) => range,
-        }
-    }
+    acc
 }

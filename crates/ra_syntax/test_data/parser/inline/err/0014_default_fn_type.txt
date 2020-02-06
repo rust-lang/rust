@@ -51,9 +51,9 @@ SOURCE_FILE@[0; 62)
       WHITESPACE@[59; 60) "\n"
       R_CURLY@[60; 61) "}"
   WHITESPACE@[61; 62) "\n"
-error 21: expected EXCL
-error 21: expected `{`, `[`, `(`
-error 21: expected SEMI
-error 47: expected EXCL
-error 47: expected `{`, `[`, `(`
-error 47: expected SEMI
+error [21; 22): expected EXCL
+error [21; 22): expected `{`, `[`, `(`
+error [21; 22): expected SEMI
+error [47; 48): expected EXCL
+error [47; 48): expected `{`, `[`, `(`
+error [47; 48): expected SEMI
