@@ -69,19 +69,19 @@ where
     match *ppmode {
         PpmNormal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
 
         PpmIdentified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
         PpmTyped => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
             let empty_tables = ty::TypeckTables::empty(None);
             let annotation = TypedAnnotation { tcx, tables: Cell::new(&empty_tables) };
-            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().forest.krate()))
+            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
         _ => panic!("Should use call_with_pp_support"),
     }

@@ -1177,7 +1177,6 @@ pub fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
         DepKind::AllLocalTraitImpls |
-        DepKind::Krate |
         DepKind::CrateMetadata |
         DepKind::HirBody |
         DepKind::Hir |

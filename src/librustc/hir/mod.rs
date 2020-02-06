@@ -8,7 +8,9 @@ pub mod map;
 
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::print;
+use rustc_hir::Crate;
 use std::ops::Deref;
 
 /// A wrapper type which allows you to access HIR.
@@ -16,6 +18,12 @@ use std::ops::Deref;
 pub struct Hir<'tcx> {
     tcx: TyCtxt<'tcx>,
     map: &'tcx map::Map<'tcx>,
+}
+
+impl<'tcx> Hir<'tcx> {
+    pub fn krate(&self) -> &'tcx Crate<'tcx> {
+        self.tcx.hir_crate(LOCAL_CRATE)
+    }
 }
 
 impl<'tcx> Deref for Hir<'tcx> {

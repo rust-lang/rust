@@ -140,11 +140,6 @@ impl Forest<'hir> {
         Forest { krate, dep_graph: dep_graph.clone() }
     }
 
-    pub fn krate(&self) -> &Crate<'hir> {
-        self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
-        &self.krate
-    }
-
     /// This is used internally in the dependency tracking system.
     /// Use the `krate` method to ensure your dependency on the
     /// crate is tracked.
@@ -399,10 +394,6 @@ impl<'hir> Map<'hir> {
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
         self.lookup(id).cloned()
-    }
-
-    pub fn krate(&self) -> &'hir Crate<'hir> {
-        self.forest.krate()
     }
 
     pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
