@@ -5,6 +5,7 @@ pub mod line_index_utils;
 pub mod feature_flags;
 pub mod symbol_index;
 pub mod change;
+mod wasm_shims;
 
 use std::sync::Arc;
 
@@ -15,9 +16,7 @@ use ra_db::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::ide_db::{
-    feature_flags::FeatureFlags, line_index::LineIndex, symbol_index::SymbolsDatabase,
-};
+use crate::{feature_flags::FeatureFlags, line_index::LineIndex, symbol_index::SymbolsDatabase};
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,
@@ -30,12 +29,12 @@ use crate::ide_db::{
     hir::db::HirDatabaseStorage
 )]
 #[derive(Debug)]
-pub(crate) struct RootDatabase {
+pub struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
-    pub(crate) feature_flags: Arc<FeatureFlags>,
+    pub feature_flags: Arc<FeatureFlags>,
     pub(crate) debug_data: Arc<DebugData>,
-    pub(crate) last_gc: crate::wasm_shims::Instant,
-    pub(crate) last_gc_check: crate::wasm_shims::Instant,
+    pub last_gc: crate::wasm_shims::Instant,
+    pub last_gc_check: crate::wasm_shims::Instant,
 }
 
 impl FileLoader for RootDatabase {
@@ -114,7 +113,7 @@ impl salsa::ParallelDatabase for RootDatabase {
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
-pub(crate) trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
+pub trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

@@ -13,7 +13,7 @@ use ra_syntax::SourceFile;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::ide_db::{
+use crate::{
     symbol_index::{SymbolIndex, SymbolsDatabase},
     DebugData, RootDatabase,
 };
@@ -168,12 +168,12 @@ impl LibraryData {
 const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
-    pub(crate) fn request_cancellation(&mut self) {
+    pub fn request_cancellation(&mut self) {
         let _p = profile("RootDatabase::request_cancellation");
         self.salsa_runtime_mut().synthetic_write(Durability::LOW);
     }
 
-    pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
+    pub fn apply_change(&mut self, change: AnalysisChange) {
         let _p = profile("RootDatabase::apply_change");
         self.request_cancellation();
         log::info!("apply_change {:?}", change);
@@ -245,7 +245,7 @@ impl RootDatabase {
         self.set_source_root_with_durability(root_id, Arc::new(source_root), durability);
     }
 
-    pub(crate) fn maybe_collect_garbage(&mut self) {
+    pub fn maybe_collect_garbage(&mut self) {
         if cfg!(feature = "wasm") {
             return;
         }
@@ -255,7 +255,7 @@ impl RootDatabase {
         }
     }
 
-    pub(crate) fn collect_garbage(&mut self) {
+    pub fn collect_garbage(&mut self) {
         if cfg!(feature = "wasm") {
             return;
         }
@@ -282,7 +282,7 @@ impl RootDatabase {
         self.query(hir::db::BodyQuery).sweep(sweep);
     }
 
-    pub(crate) fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
         let mut acc: Vec<(String, Bytes)> = vec![];
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
         macro_rules! sweep_each_query {

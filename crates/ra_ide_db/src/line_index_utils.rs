@@ -3,7 +3,7 @@
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
-use crate::ide_db::line_index::{LineCol, LineIndex, Utf16Char};
+use crate::line_index::{LineCol, LineIndex, Utf16Char};
 
 #[derive(Debug, Clone)]
 enum Step {
@@ -297,7 +297,7 @@ mod test {
     use ra_text_edit::test_utils::{arb_offset, arb_text_with_edit};
     use ra_text_edit::TextEdit;
 
-    use crate::ide_db::line_index;
+    use crate::line_index;
 
     use super::*;
 

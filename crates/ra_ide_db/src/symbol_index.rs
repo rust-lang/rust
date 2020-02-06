@@ -40,7 +40,7 @@ use ra_syntax::{
 #[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
 
-use crate::ide_db::RootDatabase;
+use crate::RootDatabase;
 
 #[derive(Debug)]
 pub struct Query {
@@ -83,7 +83,7 @@ impl Query {
 }
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
-pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
+pub trait SymbolsDatabase: hir::db::HirDatabase {
     fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
     #[salsa::input]
     fn library_symbols(&self, id: SourceRootId) -> Arc<SymbolIndex>;
@@ -108,7 +108,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     Arc::new(SymbolIndex::new(symbols))
 }
 
-pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
+pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
     struct Snap(salsa::Snapshot<RootDatabase>);
     impl Clone for Snap {
@@ -150,7 +150,7 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> 
     query.search(&buf)
 }
 
-pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
+pub fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
     let name = name_ref.text();
     let mut query = Query::new(name.to_string());
     query.exact();
@@ -159,7 +159,7 @@ pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<F
 }
 
 #[derive(Default)]
-pub(crate) struct SymbolIndex {
+pub struct SymbolIndex {
     symbols: Vec<FileSymbol>,
     map: fst::Map,
 }
@@ -218,11 +218,11 @@ impl SymbolIndex {
         SymbolIndex { symbols, map }
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
-    pub(crate) fn memory_size(&self) -> usize {
+    pub fn memory_size(&self) -> usize {
         self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
@@ -302,12 +302,12 @@ fn is_type(kind: SyntaxKind) -> bool {
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct FileSymbol {
-    pub(crate) file_id: FileId,
-    pub(crate) name: SmolStr,
-    pub(crate) ptr: SyntaxNodePtr,
-    pub(crate) name_range: Option<TextRange>,
-    pub(crate) container_name: Option<SmolStr>,
+pub struct FileSymbol {
+    pub file_id: FileId,
+    pub name: SmolStr,
+    pub ptr: SyntaxNodePtr,
+    pub name_range: Option<TextRange>,
+    pub container_name: Option<SmolStr>,
 }
 
 fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec<FileSymbol> {

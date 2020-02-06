@@ -10,7 +10,9 @@
 // For proving that RootDatabase is RefUnwindSafe.
 #![recursion_limit = "128"]
 
-mod ide_db;
+mod ide_db {
+    pub use ra_ide_db::*;
+}
 
 mod db;
 pub mod mock_analysis;
@@ -39,7 +41,6 @@ mod typing;
 mod matching_brace;
 mod display;
 mod inlay_hints;
-mod wasm_shims;
 mod expand;
 mod expand_macro;
 
