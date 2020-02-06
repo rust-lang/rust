@@ -24,6 +24,7 @@ use crate::value::Value;
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty};
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -188,14 +189,68 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         unsafe {
             let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
             let instr = if is_by_val {
-                llvm::LLVMRustDIBuilderInsertDbgValueAtEnd(
+                let llval = variable_alloca;
+
+                let instr = llvm::LLVMRustDIBuilderInsertDbgValueAtEnd(
                     DIB(cx),
-                    variable_alloca,
+                    llval,
                     dbg_var,
                     addr_ops.as_ptr(),
                     addr_ops.len() as c_uint,
                     debug_loc,
-                    self.llbb())
+                    self.llbb(),
+                );
+
+                // HACK(eddyb) keep the value we passed to `llvm.dbg.value`
+                // alive if we're not optimizing, otherwise LLVM will eagerly
+                // destroy it (and debuggers will show `<optimized out>`),
+                // if there are no other uses forcing the value to be computed.
+                // FIXME(#68817) implement the correct behavior in LLVM.
+                if self.sess().opts.optimize == config::OptLevel::No {
+                    let llty = cx.val_ty(llval);
+
+                    // Avoid creating LLVM inline asm with unsupported types,
+                    // usually ZST structs.
+                    let asm_supported = match self.type_kind(llty) {
+                        // Floats.
+                        TypeKind::Half |
+                        TypeKind::Float |
+                        TypeKind::Double |
+                        TypeKind::X86_FP80 |
+                        TypeKind::FP128 |
+                        TypeKind::PPC_FP128 |
+                        // Integers.
+                        TypeKind::Integer |
+                        TypeKind::Pointer |
+                        // Vectors.
+                        TypeKind::Vector |
+                        TypeKind::X86_MMX => true,
+
+                        TypeKind::Void |
+                        TypeKind::Label |
+                        TypeKind::Function |
+                        TypeKind::Struct |
+                        TypeKind::Array |
+                        TypeKind::Metadata |
+                        TypeKind::Token => false,
+                    };
+
+                    if asm_supported {
+                        let asm = SmallCStr::new("");
+                        let constraints = SmallCStr::new("X");
+                        let asm = llvm::LLVMRustInlineAsm(
+                            cx.type_func(&[llty], cx.type_void()),
+                            asm.as_ptr(),
+                            constraints.as_ptr(),
+                            llvm::False,
+                            llvm::False,
+                            llvm::AsmDialect::Att,
+                        );
+                        self.call(asm, &[llval], None);
+                    }
+                }
+
+                instr
             } else {
                 // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
                 llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
@@ -583,7 +638,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 file_metadata,
                 loc.line as c_uint,
                 type_metadata,
-                self.sess().opts.optimize != config::OptLevel::No,
+                true,
                 DIFlags::FlagZero,
                 argument_index,
                 align.bytes() as u32,
