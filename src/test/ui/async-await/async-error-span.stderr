@@ -1,15 +1,27 @@
+error[E0277]: the trait bound `(): std::future::Future` is not satisfied
+  --> $DIR/async-error-span.rs:7:20
+   |
+LL | fn get_future() -> impl Future<Output = ()> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `()`
+LL |
+LL |     panic!()
+   |     -------- this returned value is of type `!`
+   |
+   = note: the return type of a function must have a statically known size
+
 error[E0698]: type inside `async fn` body must be known in this context
-  --> $DIR/async-error-span.rs:12:9
+  --> $DIR/async-error-span.rs:13:9
    |
 LL |     let a;
    |         ^ cannot infer type
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/async-error-span.rs:13:5
+  --> $DIR/async-error-span.rs:14:5
    |
 LL |     get_future().await;
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0698`.
+Some errors have detailed explanations: E0277, E0698.
+For more information about an error, try `rustc --explain E0277`.
