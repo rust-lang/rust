@@ -2,14 +2,14 @@
 
 use hir::ModuleSource;
 use ra_db::{RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset, ast, lex_single_valid_syntax_kind, AstNode, SyntaxKind, SyntaxNode,
 };
 use ra_text_edit::TextEdit;
 
 use crate::{
-    db::RootDatabase, FileId, FilePosition, FileSystemEdit, RangeInfo, SourceChange,
-    SourceFileEdit, TextRange,
+    FileId, FilePosition, FileSystemEdit, RangeInfo, SourceChange, SourceFileEdit, TextRange,
 };
 
 use super::find_all_refs;

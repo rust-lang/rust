@@ -2,13 +2,14 @@
 
 use hir::{HirDisplay, SourceAnalyzer, SourceBinder};
 use once_cell::unsync::Lazy;
+use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{db::RootDatabase, FileId, FunctionSignature};
+use crate::{FileId, FunctionSignature};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InlayKind {

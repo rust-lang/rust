@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
-use ra_db::{FilePosition, FileRange};
-
-use crate::{
-    db::RootDatabase, imports_locator::ImportsLocatorIde, FileId, SourceChange, SourceFileEdit,
-};
 use either::Either;
-pub use ra_assists::AssistId;
 use ra_assists::{AssistAction, AssistLabel};
+use ra_db::{FilePosition, FileRange};
+use ra_ide_db::RootDatabase;
+
+use crate::{imports_locator::ImportsLocatorIde, FileId, SourceChange, SourceFileEdit};
+
+pub use ra_assists::AssistId;
 
 #[derive(Debug)]
 pub struct Assist {

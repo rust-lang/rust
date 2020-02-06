@@ -2,6 +2,7 @@
 
 use hir::{db::AstDatabase, Adt, HasSource, HirDisplay, SourceBinder};
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, DocCommentsOwner},
@@ -11,7 +12,6 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::RootDatabase,
     display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel},
     expand::descend_into_macros,
     references::{classify_name, classify_name_ref, NameKind, NameKind::*},

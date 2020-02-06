@@ -3,6 +3,7 @@
 use indexmap::IndexMap;
 
 use hir::db::AstDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode, TextRange,
@@ -10,7 +11,6 @@ use ra_syntax::{
 
 use crate::{
     call_info::FnCallNode,
-    db::RootDatabase,
     display::{ShortLabel, ToNav},
     expand::descend_into_macros,
     goto_definition, references, FilePosition, NavigationTarget, RangeInfo,

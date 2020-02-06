@@ -9,7 +9,7 @@ use hir::{
 };
 use ra_syntax::{ast, ast::VisibilityOwner};
 
-use crate::db::RootDatabase;
+use ra_ide_db::RootDatabase;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum NameKind {

@@ -2,9 +2,10 @@
 
 use hir::{Crate, ImplBlock, SourceBinder};
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
-use crate::{db::RootDatabase, display::ToNav, FilePosition, NavigationTarget, RangeInfo};
+use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_implementation(
     db: &RootDatabase,

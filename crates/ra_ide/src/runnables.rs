@@ -3,12 +3,13 @@
 use hir::InFile;
 use itertools::Itertools;
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
     match_ast, SyntaxNode, TextRange,
 };
 
-use crate::{db::RootDatabase, FileId};
+use crate::FileId;
 
 #[derive(Debug)]
 pub struct Runnable {

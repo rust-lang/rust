@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, AstNode, Parse, SourceFile,
@@ -8,13 +9,13 @@ use ra_syntax::{
 };
 use ra_text_edit::AtomTextEdit;
 
-use crate::{db, FilePosition};
+use crate::FilePosition;
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
-    pub(super) db: &'a db::RootDatabase,
+    pub(super) db: &'a RootDatabase,
     pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken,
@@ -48,7 +49,7 @@ pub(crate) struct CompletionContext<'a> {
 
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
-        db: &'a db::RootDatabase,
+        db: &'a RootDatabase,
         original_parse: &'a Parse<ast::SourceFile>,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {

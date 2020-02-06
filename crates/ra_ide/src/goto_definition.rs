@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{db::AstDatabase, InFile, SourceBinder};
+use ra_ide_db::{symbol_index, RootDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
@@ -9,10 +10,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::RootDatabase,
     display::{ShortLabel, ToNav},
     expand::descend_into_macros,
-    ide_db::symbol_index,
     references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };

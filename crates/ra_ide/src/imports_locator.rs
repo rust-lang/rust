@@ -1,16 +1,19 @@
 //! This module contains an import search funcionality that is provided to the ra_assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the ra_assists module.
 
+use hir::{db::HirDatabase, ModuleDef, SourceBinder};
+use ra_assists::ImportsLocator;
+use ra_ide_db::{
+    symbol_index::{self, FileSymbol},
+    RootDatabase,
+};
+use ra_prof::profile;
+use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
+
 use crate::{
-    db::RootDatabase,
-    ide_db::symbol_index::{self, FileSymbol},
     references::{classify_name, NameDefinition, NameKind},
     Query,
 };
-use hir::{db::HirDatabase, ModuleDef, SourceBinder};
-use ra_assists::ImportsLocator;
-use ra_prof::profile;
-use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
 pub(crate) struct ImportsLocatorIde<'a> {
     source_binder: SourceBinder<'a, RootDatabase>,

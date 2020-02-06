@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use hir::{HirFileId, InFile, Name, SourceAnalyzer, SourceBinder};
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken, TextRange,
@@ -11,7 +12,6 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::RootDatabase,
     expand::descend_into_macros_with_analyzer,
     references::{
         classify_name, classify_name_ref,

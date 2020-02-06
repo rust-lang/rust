@@ -10,11 +10,6 @@
 // For proving that RootDatabase is RefUnwindSafe.
 #![recursion_limit = "128"]
 
-mod ide_db {
-    pub use ra_ide_db::*;
-}
-
-mod db;
 pub mod mock_analysis;
 mod source_change;
 
@@ -56,13 +51,13 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, SourceDatabase,
 };
+use ra_ide_db::{
+    symbol_index::{self, FileSymbol},
+    LineIndexDatabase,
+};
 use ra_syntax::{SourceFile, TextRange, TextUnit};
 
-use crate::{
-    db::LineIndexDatabase,
-    display::ToNav,
-    ide_db::symbol_index::{self, FileSymbol},
-};
+use crate::display::ToNav;
 
 pub use crate::{
     assists::{Assist, AssistId},
@@ -73,13 +68,6 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
-    ide_db::{
-        change::{AnalysisChange, LibraryData},
-        feature_flags::FeatureFlags,
-        line_index::{LineCol, LineIndex},
-        line_index_utils::translate_offset_with_edit,
-        symbol_index::Query,
-    },
     inlay_hints::{InlayHint, InlayKind},
     references::{
         Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
@@ -92,6 +80,14 @@ pub use crate::{
 pub use hir::Documentation;
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
+};
+pub use ra_ide_db::{
+    change::{AnalysisChange, LibraryData},
+    feature_flags::FeatureFlags,
+    line_index::{LineCol, LineIndex},
+    line_index_utils::translate_offset_with_edit,
+    symbol_index::Query,
+    RootDatabase,
 };
 
 pub type Cancelable<T> = Result<T, Canceled>;
@@ -128,7 +124,7 @@ pub struct CallInfo {
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug)]
 pub struct AnalysisHost {
-    db: db::RootDatabase,
+    db: RootDatabase,
 }
 
 impl Default for AnalysisHost {
@@ -139,7 +135,7 @@ impl Default for AnalysisHost {
 
 impl AnalysisHost {
     pub fn new(lru_capcity: Option<usize>, feature_flags: FeatureFlags) -> AnalysisHost {
-        AnalysisHost { db: db::RootDatabase::new(lru_capcity, feature_flags) }
+        AnalysisHost { db: RootDatabase::new(lru_capcity, feature_flags) }
     }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
@@ -189,7 +185,7 @@ impl AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<db::RootDatabase>,
+    db: salsa::Snapshot<RootDatabase>,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -470,7 +466,7 @@ impl Analysis {
     }
 
     /// Performs an operation on that may be Canceled.
-    fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
+    fn with_db<F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe, T>(
         &self,
         f: F,
     ) -> Cancelable<T> {
