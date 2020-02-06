@@ -59,6 +59,7 @@ team. For example:
 
 ```text
 @rustbot ping icebreakers-llvm
+@rustbot ping icebreakers-cleanup-crew
 ```
 
 **Note though that this should only be done by compiler team members
