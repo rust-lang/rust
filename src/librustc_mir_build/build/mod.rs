@@ -83,21 +83,15 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                     abi = Abi::Rust;
                     vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
                 }
-                ty::Generator(def_id, _, _) => {
+                ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_type(id);
 
                     // The resume argument may be missing, in that case we need to provide it here.
+                    // It will always be `()` in this case.
                     if body.params.is_empty() {
-                        let resume_ty = match gen_ty.kind {
-                            ty::Generator(_, substs, _) => {
-                                substs.as_generator().resume_ty(def_id, tcx)
-                            }
-                            _ => bug!(),
-                        };
-
                         vec![
                             ArgInfo(gen_ty, None, None, None),
-                            ArgInfo(resume_ty, None, None, None),
+                            ArgInfo(tcx.mk_unit(), None, None, None),
                         ]
                     } else {
                         vec![ArgInfo(gen_ty, None, None, None)]
