@@ -12,9 +12,8 @@ mod doc_tests;
 pub mod ast_transform;
 
 use either::Either;
-use hir::ModuleDef;
 use ra_db::FileRange;
-use ra_ide_db::{imports_locator::ImportsLocatorIde, RootDatabase};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
@@ -73,50 +72,6 @@ pub fn applicable_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
     })
 }
 
-/// A functionality for locating imports for the given name.
-///
-/// Currently has to be a trait with the real implementation provided by the ra_ide_api crate,
-/// due to the search functionality located there.
-/// Later, this trait should be removed completely and the search functionality moved to a separate crate,
-/// accessible from the ra_assists crate.
-pub trait ImportsLocator {
-    /// Finds all imports for the given name and the module that contains this name.
-    fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef>;
-}
-
-impl ImportsLocator for ImportsLocatorIde<'_> {
-    fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef> {
-        self.find_imports(name_to_import)
-    }
-}
-
-/// Return all the assists applicable at the given position
-/// and additional assists that need the imports locator functionality to work.
-///
-/// Assists are returned in the "resolved" state, that is with edit fully
-/// computed.
-pub fn assists_with_imports_locator(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
-    let mut imports_locator = ImportsLocatorIde::new(db);
-    AssistCtx::with_ctx(db, range, true, |ctx| {
-        let mut assists = assists::all()
-            .iter()
-            .map(|f| f(ctx.clone()))
-            .chain(
-                assists::all_with_imports_locator()
-                    .iter()
-                    .map(|f| f(ctx.clone(), &mut imports_locator)),
-            )
-            .filter_map(std::convert::identity)
-            .map(|a| match a {
-                Assist::Resolved { assist } => assist,
-                Assist::Unresolved { .. } => unreachable!(),
-            })
-            .collect();
-        sort_assists(&mut assists);
-        assists
-    })
-}
-
 /// Return all the assists applicable at the given position.
 ///
 /// Assists are returned in the "resolved" state, that is with edit fully
@@ -147,7 +102,7 @@ fn sort_assists(assists: &mut Vec<ResolvedAssist>) {
 }
 
 mod assists {
-    use crate::{Assist, AssistCtx, ImportsLocator};
+    use crate::{Assist, AssistCtx};
 
     mod add_derive;
     mod add_explicit_type;
@@ -206,72 +161,19 @@ mod assists {
             raw_string::make_usual_string,
             raw_string::remove_hash,
             early_return::convert_to_guarded_return,
+            auto_import::auto_import,
         ]
-    }
-
-    pub(crate) fn all_with_imports_locator<'a, F: ImportsLocator>(
-    ) -> &'a [fn(AssistCtx, &mut F) -> Option<Assist>] {
-        &[auto_import::auto_import]
     }
 }
 
 #[cfg(test)]
 mod helpers {
-    use hir::db::DefDatabase;
-    use ra_db::{fixture::WithFixture, FileId, FileRange};
+    use ra_db::{fixture::WithFixture, FileRange};
+    use ra_ide_db::RootDatabase;
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{Assist, AssistCtx, ImportsLocator};
-    use ra_ide_db::RootDatabase;
-    use std::sync::Arc;
-
-    // FIXME remove the `ModuleDefId` reexport from `ra_hir` when this gets removed.
-    pub(crate) struct TestImportsLocator {
-        db: Arc<RootDatabase>,
-        test_file_id: FileId,
-    }
-
-    impl TestImportsLocator {
-        pub(crate) fn new(db: Arc<RootDatabase>, test_file_id: FileId) -> Self {
-            TestImportsLocator { db, test_file_id }
-        }
-    }
-
-    impl ImportsLocator for TestImportsLocator {
-        fn find_imports(&mut self, name_to_import: &str) -> Vec<hir::ModuleDef> {
-            let crate_def_map = self.db.crate_def_map(self.db.test_crate());
-            let mut findings = Vec::new();
-
-            let mut module_ids_to_process =
-                crate_def_map.modules_for_file(self.test_file_id).collect::<Vec<_>>();
-
-            while !module_ids_to_process.is_empty() {
-                let mut more_ids_to_process = Vec::new();
-                for local_module_id in module_ids_to_process.drain(..) {
-                    for (name, namespace_data) in
-                        crate_def_map[local_module_id].scope.entries_without_primitives()
-                    {
-                        let found_a_match = &name.to_string() == name_to_import;
-                        vec![namespace_data.types, namespace_data.values]
-                            .into_iter()
-                            .filter_map(std::convert::identity)
-                            .for_each(|(module_def_id, _)| {
-                                if found_a_match {
-                                    findings.push(module_def_id.into());
-                                }
-                                if let hir::ModuleDefId::ModuleId(module_id) = module_def_id {
-                                    more_ids_to_process.push(module_id.local_id);
-                                }
-                            });
-                    }
-                }
-                module_ids_to_process = more_ids_to_process;
-            }
-
-            findings
-        }
-    }
+    use crate::{Assist, AssistCtx};
 
     pub(crate) fn check_assist(assist: fn(AssistCtx) -> Option<Assist>, before: &str, after: &str) {
         let (before_cursor_pos, before) = extract_offset(before);
@@ -280,38 +182,6 @@ mod helpers {
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
-        let action = match assist {
-            Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { assist } => assist.get_first_action(),
-        };
-
-        let actual = action.edit.apply(&before);
-        let actual_cursor_pos = match action.cursor_position {
-            None => action
-                .edit
-                .apply_to_offset(before_cursor_pos)
-                .expect("cursor position is affected by the edit"),
-            Some(off) => off,
-        };
-        let actual = add_cursor(&actual, actual_cursor_pos);
-        assert_eq_text!(after, &actual);
-    }
-
-    pub(crate) fn check_assist_with_imports_locator<F: ImportsLocator>(
-        assist: fn(AssistCtx, &mut F) -> Option<Assist>,
-        imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
-        before: &str,
-        after: &str,
-    ) {
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
-        let db = Arc::new(db);
-        let mut imports_locator = imports_locator_provider(Arc::clone(&db), file_id);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist =
-            AssistCtx::with_ctx(db.as_ref(), frange, true, |ctx| assist(ctx, &mut imports_locator))
-                .expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
             Assist::Resolved { assist } => assist.get_first_action(),
@@ -399,22 +269,6 @@ mod helpers {
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
-        assert!(assist.is_none());
-    }
-
-    pub(crate) fn check_assist_with_imports_locator_not_applicable<F: ImportsLocator>(
-        assist: fn(AssistCtx, &mut F) -> Option<Assist>,
-        imports_locator_provider: fn(db: Arc<RootDatabase>, file_id: FileId) -> F,
-        before: &str,
-    ) {
-        let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
-        let db = Arc::new(db);
-        let mut imports_locator = imports_locator_provider(Arc::clone(&db), file_id);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist =
-            AssistCtx::with_ctx(db.as_ref(), frange, true, |ctx| assist(ctx, &mut imports_locator));
         assert!(assist.is_none());
     }
 

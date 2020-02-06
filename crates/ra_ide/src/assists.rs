@@ -17,7 +17,7 @@ pub struct Assist {
 }
 
 pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<Assist> {
-    ra_assists::assists_with_imports_locator(db, frange)
+    ra_assists::assists(db, frange)
         .into_iter()
         .map(|assist| {
             let file_id = frange.file_id;

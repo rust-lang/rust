@@ -6,8 +6,9 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{ActionBuilder, Assist, AssistCtx},
-    auto_import_text_edit, AssistId, ImportsLocator,
+    auto_import_text_edit, AssistId,
 };
+use ra_ide_db::imports_locator::ImportsLocatorIde;
 
 // Assist: auto_import
 //
@@ -26,10 +27,7 @@ use crate::{
 //     let map = HashMap<|>::new();
 // }
 // ```
-pub(crate) fn auto_import<F: ImportsLocator>(
-    ctx: AssistCtx,
-    imports_locator: &mut F,
-) -> Option<Assist> {
+pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     let path_to_import: ast::Path = ctx.find_node_at_offset()?;
     let path_to_import_syntax = path_to_import.syntax();
     if path_to_import_syntax.ancestors().find_map(ast::UseItem::cast).is_some() {
@@ -51,6 +49,8 @@ pub(crate) fn auto_import<F: ImportsLocator>(
     if source_analyzer.resolve_path(ctx.db, &path_to_import).is_some() {
         return None;
     }
+
+    let mut imports_locator = ImportsLocatorIde::new(ctx.db);
 
     let proposed_imports = imports_locator
         .find_imports(&name_to_import)
@@ -81,16 +81,12 @@ fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{
-        check_assist_with_imports_locator, check_assist_with_imports_locator_not_applicable,
-        TestImportsLocator,
-    };
+    use crate::helpers::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn applicable_when_found_an_import() {
-        check_assist_with_imports_locator(
+        check_assist(
             auto_import,
-            TestImportsLocator::new,
             r"
             <|>PubStruct
 
@@ -112,9 +108,8 @@ mod tests {
 
     #[test]
     fn auto_imports_are_merged() {
-        check_assist_with_imports_locator(
+        check_assist(
             auto_import,
-            TestImportsLocator::new,
             r"
             use PubMod::PubStruct1;
 
@@ -148,9 +143,8 @@ mod tests {
 
     #[test]
     fn applicable_when_found_multiple_imports() {
-        check_assist_with_imports_locator(
+        check_assist(
             auto_import,
-            TestImportsLocator::new,
             r"
             PubSt<|>ruct
 
@@ -184,9 +178,8 @@ mod tests {
 
     #[test]
     fn not_applicable_for_already_imported_types() {
-        check_assist_with_imports_locator_not_applicable(
+        check_assist_not_applicable(
             auto_import,
-            TestImportsLocator::new,
             r"
             use PubMod::PubStruct;
 
@@ -201,9 +194,8 @@ mod tests {
 
     #[test]
     fn not_applicable_for_types_with_private_paths() {
-        check_assist_with_imports_locator_not_applicable(
+        check_assist_not_applicable(
             auto_import,
-            TestImportsLocator::new,
             r"
             PrivateStruct<|>
 
@@ -216,9 +208,8 @@ mod tests {
 
     #[test]
     fn not_applicable_when_no_imports_found() {
-        check_assist_with_imports_locator_not_applicable(
+        check_assist_not_applicable(
             auto_import,
-            TestImportsLocator::new,
             "
             PubStruct<|>",
         );
@@ -226,9 +217,8 @@ mod tests {
 
     #[test]
     fn not_applicable_in_import_statements() {
-        check_assist_with_imports_locator_not_applicable(
+        check_assist_not_applicable(
             auto_import,
-            TestImportsLocator::new,
             r"
             use PubStruct<|>;
 
@@ -240,9 +230,8 @@ mod tests {
 
     #[test]
     fn function_import() {
-        check_assist_with_imports_locator(
+        check_assist(
             auto_import,
-            TestImportsLocator::new,
             r"
             test_function<|>
 
