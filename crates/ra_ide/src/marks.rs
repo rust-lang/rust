@@ -11,4 +11,5 @@ test_utils::marks!(
     call_info_bad_offset
     dont_complete_current_use
     dont_complete_primitive_in_use
+    test_resolve_parent_module_on_module_decl
 );
