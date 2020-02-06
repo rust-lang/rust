@@ -3,9 +3,9 @@
 use either::Either;
 use ra_assists::{AssistAction, AssistLabel};
 use ra_db::{FilePosition, FileRange};
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{imports_locator::ImportsLocatorIde, RootDatabase};
 
-use crate::{imports_locator::ImportsLocatorIde, FileId, SourceChange, SourceFileEdit};
+use crate::{FileId, SourceChange, SourceFileEdit};
 
 pub use ra_assists::AssistId;
 

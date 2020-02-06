@@ -3,22 +3,22 @@
 
 use hir::{db::HirDatabase, ModuleDef, SourceBinder};
 use ra_assists::ImportsLocator;
-use ra_ide_db::{
-    defs::NameKind,
-    symbol_index::{self, FileSymbol},
-    RootDatabase,
-};
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
-use crate::{references::classify_name, Query};
+use crate::{
+    defs::classify_name,
+    defs::NameKind,
+    symbol_index::{self, FileSymbol, Query},
+    RootDatabase,
+};
 
-pub(crate) struct ImportsLocatorIde<'a> {
+pub struct ImportsLocatorIde<'a> {
     source_binder: SourceBinder<'a, RootDatabase>,
 }
 
 impl<'a> ImportsLocatorIde<'a> {
-    pub(crate) fn new(db: &'a RootDatabase) -> Self {
+    pub fn new(db: &'a RootDatabase) -> Self {
         Self { source_binder: SourceBinder::new(db) }
     }
 

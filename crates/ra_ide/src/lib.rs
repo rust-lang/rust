@@ -26,7 +26,6 @@ mod syntax_highlighting;
 mod parent_module;
 mod references;
 mod impls;
-mod imports_locator;
 mod assists;
 mod diagnostics;
 mod syntax_tree;
