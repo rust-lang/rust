@@ -14,7 +14,6 @@ mod ide_db;
 
 mod db;
 pub mod mock_analysis;
-mod change;
 mod source_change;
 
 mod status;
@@ -67,7 +66,6 @@ use crate::{
 pub use crate::{
     assists::{Assist, AssistId},
     call_hierarchy::CallItem,
-    change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
@@ -75,6 +73,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
     ide_db::{
+        change::{AnalysisChange, LibraryData},
         feature_flags::FeatureFlags,
         line_index::{LineCol, LineIndex},
         line_index_utils::translate_offset_with_edit,

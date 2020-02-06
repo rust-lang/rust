@@ -13,9 +13,9 @@ use ra_syntax::SourceFile;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::{
-    db::{DebugData, RootDatabase},
-    ide_db::symbol_index::{SymbolIndex, SymbolsDatabase},
+use crate::ide_db::{
+    symbol_index::{SymbolIndex, SymbolsDatabase},
+    DebugData, RootDatabase,
 };
 
 #[derive(Default)]

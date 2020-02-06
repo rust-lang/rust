@@ -4,6 +4,7 @@ pub mod line_index;
 pub mod line_index_utils;
 pub mod feature_flags;
 pub mod symbol_index;
+pub mod change;
 
 use std::sync::Arc;
 
