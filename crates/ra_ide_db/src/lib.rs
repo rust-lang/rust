@@ -7,6 +7,7 @@ pub mod line_index_utils;
 pub mod feature_flags;
 pub mod symbol_index;
 pub mod change;
+pub mod defs;
 mod wasm_shims;
 
 use std::sync::Arc;

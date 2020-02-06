@@ -10,7 +10,6 @@
 //! resolved to the search element definition, we get a reference.
 
 mod classify;
-mod name_definition;
 mod rename;
 mod search_scope;
 
@@ -29,9 +28,9 @@ use crate::{display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
-    name_definition::{NameDefinition, NameKind},
     rename::rename,
 };
+pub(crate) use ra_ide_db::defs::{NameDefinition, NameKind};
 
 pub use self::search_scope::SearchScope;
 
@@ -137,7 +136,7 @@ pub(crate) fn find_all_refs(
     };
 
     let search_scope = {
-        let base = def.search_scope(db);
+        let base = SearchScope::for_def(&def, db);
         match search_scope {
             None => base,
             Some(scope) => base.intersection(&scope),

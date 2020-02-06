@@ -4,16 +4,14 @@
 use hir::{db::HirDatabase, ModuleDef, SourceBinder};
 use ra_assists::ImportsLocator;
 use ra_ide_db::{
+    defs::NameKind,
     symbol_index::{self, FileSymbol},
     RootDatabase,
 };
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
-use crate::{
-    references::{classify_name, NameKind},
-    Query,
-};
+use crate::{references::classify_name, Query};
 
 pub(crate) struct ImportsLocatorIde<'a> {
     source_binder: SourceBinder<'a, RootDatabase>,
