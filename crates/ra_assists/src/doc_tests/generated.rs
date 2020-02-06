@@ -222,13 +222,15 @@ fn doctest_auto_import() {
 fn main() {
     let map = HashMap<|>::new();
 }
+pub mod std { pub mod collections { pub struct HashMap { } } }
 "#####,
         r#####"
 use std::collections::HashMap;
 
 fn main() {
-    let map = HashMap<|>::new();
+    let map = HashMap::new();
 }
+pub mod std { pub mod collections { pub struct HashMap { } } }
 "#####,
     )
 }

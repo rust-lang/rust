@@ -223,7 +223,7 @@ fn main() {
 use std::collections::HashMap;
 
 fn main() {
-    let map = HashMap┃::new();
+    let map = HashMap::new();
 }
 ```
 
