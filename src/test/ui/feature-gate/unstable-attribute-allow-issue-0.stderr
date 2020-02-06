@@ -1,4 +1,12 @@
-error[E0545]: `issue` must be a numeric string or "none"
+error[E0545]: `issue` must be a non-zero numeric string or "none"
+  --> $DIR/unstable-attribute-allow-issue-0.rs:6:47
+   |
+LL | #[unstable(feature = "unstable_test_feature", issue = "0")]
+   |                                               ^^^^^^^^---
+   |                                                       |
+   |                                                       `issue` must not be "0", use "none" instead
+
+error[E0545]: `issue` must be a non-zero numeric string or "none"
   --> $DIR/unstable-attribute-allow-issue-0.rs:12:47
    |
 LL | #[unstable(feature = "unstable_test_feature", issue = "something")]
@@ -6,5 +14,5 @@ LL | #[unstable(feature = "unstable_test_feature", issue = "something")]
    |                                                       |
    |                                                       invalid digit found in string
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
