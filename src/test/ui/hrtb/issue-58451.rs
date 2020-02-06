@@ -9,5 +9,5 @@ where
 {}
 
 fn main() {
-    f(&[f()]); //~ ERROR this function takes 1 parameter
+    f(&[f()]); //~ ERROR this function takes 1 argument
 }
