@@ -41,5 +41,6 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
+    providers.hir_crate = |tcx, _| tcx.hir_map.forest.untracked_krate();
     map::provide(providers);
 }

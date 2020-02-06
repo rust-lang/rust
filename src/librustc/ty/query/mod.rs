@@ -45,7 +45,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
-use rustc_hir::{HirIdSet, ItemLocalId, TraitCandidate};
+use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_target::spec::PanicStrategy;
 
