@@ -168,16 +168,27 @@ mod assists {
 
 #[cfg(test)]
 mod helpers {
-    use ra_db::{fixture::WithFixture, FileRange};
-    use ra_ide_db::RootDatabase;
+    use std::sync::Arc;
+
+    use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
+    use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
     use crate::{Assist, AssistCtx};
 
+    pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
+        let (mut db, file_id) = RootDatabase::with_single_file(text);
+        // FIXME: ideally, this should be done by the above `RootDatabase::with_single_file`,
+        // but it looks like this might need specialization? :(
+        let local_roots = vec![db.file_source_root(file_id)];
+        db.set_local_roots(Arc::new(local_roots));
+        (db, file_id)
+    }
+
     pub(crate) fn check_assist(assist: fn(AssistCtx) -> Option<Assist>, before: &str, after: &str) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -205,7 +216,7 @@ mod helpers {
         after: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -227,7 +238,7 @@ mod helpers {
         target: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -247,7 +258,7 @@ mod helpers {
         target: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -265,7 +276,7 @@ mod helpers {
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
@@ -277,7 +288,7 @@ mod helpers {
         before: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
@@ -286,17 +297,17 @@ mod helpers {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::{fixture::WithFixture, FileRange};
+    use ra_db::FileRange;
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
 
-    use ra_ide_db::RootDatabase;
+    use crate::helpers;
 
     #[test]
     fn assist_order_field_struct() {
         let before = "struct Foo { <|>bar: u32 }";
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = helpers::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assists = super::assists(&db, frange);
@@ -320,7 +331,7 @@ mod tests {
             }
         }";
         let (range, before) = extract_range(before);
-        let (db, file_id) = RootDatabase::with_single_file(&before);
+        let (db, file_id) = helpers::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
