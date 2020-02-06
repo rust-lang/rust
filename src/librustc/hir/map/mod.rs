@@ -138,7 +138,7 @@ pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Opt
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
 pub struct Map<'hir> {
-    pub krate: &'hir Crate<'hir>,
+    krate: &'hir Crate<'hir>,
 
     pub dep_graph: DepGraph,
 
