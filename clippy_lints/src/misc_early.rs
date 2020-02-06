@@ -372,10 +372,10 @@ impl EarlyLintPass for MiscEarlyLints {
         check_unneeded_wildcard_pattern(cx, pat);
     }
 
-    fn check_fn(&mut self, cx: &EarlyContext<'_>, _: FnKind<'_>, decl: &FnDecl, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
         let mut registered_names: FxHashMap<String, Span> = FxHashMap::default();
 
-        for arg in &decl.inputs {
+        for arg in &fn_kind.decl().inputs {
             if let PatKind::Ident(_, ident, None) = arg.pat.kind {
                 let arg_name = ident.to_string();
 

@@ -235,13 +235,14 @@ impl Return {
 }
 
 impl EarlyLintPass for Return {
-    fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, decl: &ast::FnDecl, span: Span, _: ast::NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, span: Span, _: ast::NodeId) {
         match kind {
-            FnKind::ItemFn(.., block) | FnKind::Method(.., block) => self.check_block_return(cx, block),
-            FnKind::Closure(body) => self.check_final_expr(cx, body, Some(body.span), RetReplacement::Empty),
+            FnKind::Fn(.., Some(block)) => self.check_block_return(cx, block),
+            FnKind::Closure(_, body) => self.check_final_expr(cx, body, Some(body.span), RetReplacement::Empty),
+            FnKind::Fn(.., None) => {},
         }
         if_chain! {
-            if let ast::FunctionRetTy::Ty(ref ty) = decl.output;
+            if let ast::FunctionRetTy::Ty(ref ty) = kind.decl().output;
             if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
