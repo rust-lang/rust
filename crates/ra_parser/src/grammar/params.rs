@@ -30,7 +30,7 @@ enum Flavor {
     Function, // Includes trait fn params; omitted param idents are not supported
     ImplFn,
     FnPointer,
-    Closure
+    Closure,
 }
 
 fn list_(p: &mut Parser, flavor: Flavor) {
@@ -38,7 +38,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
     let (bra, ket) = match flavor {
         Closure => (T![|], T![|]),
-        Function | ImplFn | FnPointer => (T!['('], T![')'])
+        Function | ImplFn | FnPointer => (T!['('], T![')']),
     };
 
     let m = p.start();
