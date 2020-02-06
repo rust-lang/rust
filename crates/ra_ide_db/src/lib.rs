@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! This crate defines the core datastructure representing IDE state -- `RootDatabase`.
+//!
+//! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
 pub mod line_index;
 pub mod line_index_utils;

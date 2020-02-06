@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! `LineIndex` maps flat `TextUnit` offsets into `(Line, Column)`
+//! representation.
 
 use ra_syntax::TextUnit;
 use rustc_hash::FxHashMap;

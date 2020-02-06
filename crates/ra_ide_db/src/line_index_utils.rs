@@ -18,7 +18,7 @@ struct LineIndexStepIter<'a> {
     utf16_chars: Option<(TextUnit, std::slice::Iter<'a, Utf16Char>)>,
 }
 
-impl<'a> LineIndexStepIter<'a> {
+impl LineIndexStepIter<'_> {
     fn from(line_index: &LineIndex) -> LineIndexStepIter {
         let mut x = LineIndexStepIter { line_index, next_newline_idx: 0, utf16_chars: None };
         // skip first newline since it's not real
@@ -27,7 +27,7 @@ impl<'a> LineIndexStepIter<'a> {
     }
 }
 
-impl<'a> Iterator for LineIndexStepIter<'a> {
+impl Iterator for LineIndexStepIter<'_> {
     type Item = Step;
     fn next(&mut self) -> Option<Step> {
         self.utf16_chars
