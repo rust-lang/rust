@@ -18,14 +18,16 @@ use ra_ide_db::imports_locator::ImportsLocatorIde;
 // fn main() {
 //     let map = HashMap<|>::new();
 // }
+// # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 // ->
 // ```
 // use std::collections::HashMap;
 //
 // fn main() {
-//     let map = HashMap<|>::new();
+//     let map = HashMap::new();
 // }
+// # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     let path_to_import: ast::Path = ctx.find_node_at_offset()?;

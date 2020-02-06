@@ -20,6 +20,28 @@ struct Assist {
     after: String,
 }
 
+fn hide_hash_comments(text: &str) -> String {
+    text.split('\n') // want final newline
+        .filter(|&it| !(it.starts_with("# ") || it == "#"))
+        .map(|it| format!("{}\n", it))
+        .collect()
+}
+
+fn reveal_hash_comments(text: &str) -> String {
+    text.split('\n') // want final newline
+        .map(|it| {
+            if it.starts_with("# ") {
+                &it[2..]
+            } else if it == "#" {
+                ""
+            } else {
+                it
+            }
+        })
+        .map(|it| format!("{}\n", it))
+        .collect()
+}
+
 fn collect_assists() -> Result<Vec<Assist>> {
     let mut res = Vec::new();
     for entry in fs::read_dir(project_root().join(codegen::ASSISTS_DIR))? {
@@ -91,13 +113,14 @@ fn doctest_{}() {{
     check(
         "{}",
 r#####"
-{}
-"#####, r#####"
-{}
-"#####)
+{}"#####, r#####"
+{}"#####)
 }}
 "######,
-            assist.id, assist.id, assist.before, assist.after
+            assist.id,
+            assist.id,
+            reveal_hash_comments(&assist.before),
+            reveal_hash_comments(&assist.after)
         );
 
         buf.push_str(&test)
@@ -123,12 +146,13 @@ fn generate_docs(assists: &[Assist], mode: Mode) -> Result<()> {
 ```rust
 // BEFORE
 {}
-
 // AFTER
-{}
-```
+{}```
 ",
-            assist.id, assist.doc, before, after
+            assist.id,
+            assist.doc,
+            hide_hash_comments(&before),
+            hide_hash_comments(&after)
         );
         buf.push_str(&docs);
     }
