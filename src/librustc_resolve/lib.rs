@@ -2195,28 +2195,7 @@ impl<'a> Resolver<'a> {
                             return PathResult::NonModule(PartialRes::new(Res::Err));
                         }
                     } else if i == 0 {
-                        let parent_scope = &ParentScope::module(self.graph_root);
-                        let typo_suggestion = self.early_lookup_typo_candidate(
-                            ScopeSet::AbsolutePath(TypeNS),
-                            parent_scope,
-                            ident,
-                            &|_| true,
-                        );
-                        if let Some(typo_suggestion) = typo_suggestion {
-                            (
-                                format!("use of undeclared type or module `{}`", ident),
-                                Some((
-                                    vec![(
-                                        ident.span,
-                                        format!("{}", typo_suggestion.candidate.as_str()),
-                                    )],
-                                    String::from("did you mean"),
-                                    Applicability::MaybeIncorrect,
-                                )),
-                            )
-                        } else {
-                            (format!("use of undeclared type or module `{}`", ident), None)
-                        }
+                        self.make_undeclared_type_suggestion(ident)
                     } else {
                         (format!("could not find `{}` in `{}`", ident, path[i - 1].ident), None)
                     };

@@ -491,7 +491,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Lookup typo candidate in scope for a macro or import.
-    crate fn early_lookup_typo_candidate(
+    fn early_lookup_typo_candidate(
         &mut self,
         scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,
@@ -998,6 +998,31 @@ impl<'a> Resolver<'a> {
         };
 
         err.emit();
+    }
+
+    crate fn make_undeclared_type_suggestion(
+        &mut self,
+        ident: Ident,
+    ) -> (String, Option<Suggestion>) {
+        let parent_scope = &ParentScope::module(self.graph_root);
+        let typo_suggestion = self.early_lookup_typo_candidate(
+            ScopeSet::AbsolutePath(TypeNS),
+            parent_scope,
+            ident,
+            &|_| true,
+        );
+        if let Some(typo_suggestion) = typo_suggestion {
+            (
+                format!("use of undeclared type or module `{}`", ident),
+                Some((
+                    vec![(ident.span, format!("{}", typo_suggestion.candidate.as_str()))],
+                    String::from("did you mean"),
+                    Applicability::MaybeIncorrect,
+                )),
+            )
+        } else {
+            (format!("use of undeclared type or module `{}`", ident), None)
+        }
     }
 }
 
