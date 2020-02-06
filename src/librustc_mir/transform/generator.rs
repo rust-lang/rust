@@ -1187,8 +1187,9 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let new_ret_local = replace_local(RETURN_PLACE, ret_ty, body, tcx);
 
         // We also replace the resume argument and insert an `Assign`.
-        // This is needed because the resume argument might be live across a `yield`, and the
-        // transform assumes that any local live across a `yield` is assigned to before that.
+        // This is needed because the resume argument `_2` might be live across a `yield`, in which
+        // case there is no `Assign` to it that the transform can turn into a store to the generator
+        // state. After the yield the slot in the generator state would then be uninitialized.
         let resume_local = Local::new(2);
         let new_resume_local =
             replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
