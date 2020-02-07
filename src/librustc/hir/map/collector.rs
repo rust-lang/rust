@@ -1,6 +1,8 @@
+use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
 use crate::hir::map::definitions::{self, DefPathHash};
 use crate::hir::map::{Entry, HirEntryMap, Map};
+use crate::hir::{HirItem, HirOwner, HirOwnerItems};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
 use rustc_ast::ast::NodeId;
@@ -22,11 +24,16 @@ use std::iter::repeat;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
+    arena: &'hir Arena<'hir>,
+
     /// The crate
     krate: &'hir Crate<'hir>,
 
     /// Source map
     source_map: &'a SourceMap,
+
+    owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
+    owner_items_map: FxHashMap<DefIndex, &'hir mut HirOwnerItems<'hir>>,
 
     /// The node map
     map: HirEntryMap<'hir>,
@@ -112,6 +119,7 @@ fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn root(
         sess: &'a Session,
+        arena: &'hir Arena<'hir>,
         krate: &'hir Crate<'hir>,
         dep_graph: &'a DepGraph,
         definitions: &'a definitions::Definitions,
@@ -161,6 +169,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         }
 
         let mut collector = NodeCollector {
+            arena,
             krate,
             source_map: sess.source_map(),
             map: IndexVec::from_elem_n(IndexVec::new(), definitions.def_index_count()),
@@ -174,6 +183,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hir_to_node_id,
             hcx,
             hir_body_nodes,
+            owner_map: FxHashMap::default(),
+            owner_items_map: FxHashMap::default(),
         };
         collector.insert_entry(
             hir::CRATE_HIR_ID,
@@ -192,7 +203,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         crate_disambiguator: CrateDisambiguator,
         cstore: &dyn CrateStore,
         commandline_args_hash: u64,
-    ) -> (HirEntryMap<'hir>, Svh) {
+    ) -> (
+        HirEntryMap<'hir>,
+        FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
+        FxHashMap<DefIndex, &'hir mut HirOwnerItems<'hir>>,
+        Svh,
+    ) {
         self.hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
         let node_hashes = self.hir_body_nodes.iter().fold(
@@ -229,13 +245,36 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let crate_hash: Fingerprint = stable_hasher.finish();
 
         let svh = Svh::new(crate_hash.to_smaller_hash());
-        (self.map, svh)
+        (self.map, self.owner_map, self.owner_items_map, svh)
     }
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
+        let i = id.local_id.as_u32() as usize;
+
+        let owner = HirOwner { parent: entry.parent, node: entry.node };
+
+        let arena = self.arena;
+
+        let items = self.owner_items_map.entry(id.owner).or_insert_with(|| {
+            arena.alloc(HirOwnerItems { items: IndexVec::new(), bodies: FxHashMap::default() })
+        });
+
+        if i == 0 {
+            self.owner_map.insert(id.owner, self.arena.alloc(owner));
+        // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
+        //assert!(self.owner_map.insert(id.owner, self.arena.alloc(owner)).is_none());
+        } else {
+            let len = items.items.len();
+            if i >= len {
+                items.items.extend(repeat(None).take(i - len + 1));
+            }
+            assert_eq!(entry.parent.owner, id.owner);
+            items.items[id.local_id] =
+                Some(HirItem { parent: entry.parent.local_id, node: entry.node });
+        }
+
         debug!("hir_map: {:?} => {:?}", id, entry);
         let local_map = &mut self.map[id.owner];
-        let i = id.local_id.as_u32() as usize;
         let len = local_map.len();
         if i >= len {
             local_map.extend(repeat(None).take(i - len + 1));

@@ -161,6 +161,10 @@ macro_rules! arena_types {
             [] type_binding: rustc_hir::TypeBinding<$tcx>,
             [] variant: rustc_hir::Variant<$tcx>,
             [] where_predicate: rustc_hir::WherePredicate<$tcx>,
+
+            // HIR query types
+            [] hir_owner: rustc::hir::HirOwner<$tcx>,
+            [] hir_owner_items: rustc::hir::HirOwnerItems<$tcx>,
         ], $tcx);
     )
 }
