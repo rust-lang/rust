@@ -9,7 +9,7 @@ fn finish<T>(mut amt: usize, mut t: T) -> T::Return
     // We are not moving the `t` around until it gets dropped, so this is okay.
     let mut t = unsafe { Pin::new_unchecked(&mut t) };
     loop {
-        match t.as_mut().resume() {
+        match t.as_mut().resume(()) {
             GeneratorState::Yielded(y) => amt -= y,
             GeneratorState::Complete(ret) => {
                 assert_eq!(amt, 0);
