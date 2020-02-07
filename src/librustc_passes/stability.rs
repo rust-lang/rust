@@ -9,7 +9,7 @@ use rustc::session::parse::feature_err;
 use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
-use rustc_attr::{self as attr, Stability};
+use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -41,6 +41,7 @@ struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index<'tcx>,
     parent_stab: Option<&'tcx Stability>,
+    parent_const_stab: Option<&'tcx ConstStability>,
     parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
@@ -64,6 +65,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         // This crate explicitly wants staged API.
+
         debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
         if let Some(..) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
             self.tcx.sess.span_err(
@@ -72,13 +74,25 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                                              use `#[rustc_deprecated]` instead",
             );
         }
-        let (stab, const_stab) =
-            attr::find_stability(&self.tcx.sess.parse_sess, attrs, item_sp);
-        if let Some(const_stab) = const_stab {
+
+        let (stab, const_stab) = attr::find_stability(&self.tcx.sess.parse_sess, attrs, item_sp);
+
+        let const_stab = const_stab.map(|const_stab| {
             let const_stab = self.tcx.intern_const_stability(const_stab);
             self.index.const_stab_map.insert(hir_id, const_stab);
+            const_stab
+        });
+
+        if const_stab.is_none() {
+            debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
+            if let Some(parent) = self.parent_const_stab {
+                if parent.level.is_unstable() {
+                    self.index.const_stab_map.insert(hir_id, parent);
+                }
+            }
         }
-        if let Some(mut stab) = stab {
+
+        let stab = stab.map(|mut stab| {
             // Error if prohibited, or can't inherit anything from a container.
             if kind == AnnotationKind::Prohibited
                 || (kind == AnnotationKind::Container
@@ -137,18 +151,46 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             self.index.stab_map.insert(hir_id, stab);
+            stab
+        });
 
-            let orig_parent_stab = replace(&mut self.parent_stab, Some(stab));
-            visit_children(self);
-            self.parent_stab = orig_parent_stab;
-        } else {
-            debug!("annotate: not found, parent = {:?}", self.parent_stab);
+        if stab.is_none() {
+            debug!("annotate: stab not found, parent = {:?}", self.parent_stab);
             if let Some(stab) = self.parent_stab {
                 if stab.level.is_unstable() {
                     self.index.stab_map.insert(hir_id, stab);
                 }
             }
-            visit_children(self);
+        }
+
+        self.recurse_with_stability_attrs(stab, const_stab, visit_children);
+    }
+
+    fn recurse_with_stability_attrs(
+        &mut self,
+        stab: Option<&'tcx Stability>,
+        const_stab: Option<&'tcx ConstStability>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        // These will be `Some` if this item changes the corresponding stability attribute.
+        let mut replaced_parent_stab = None;
+        let mut replaced_parent_const_stab = None;
+
+        if let Some(stab) = stab {
+            replaced_parent_stab = Some(replace(&mut self.parent_stab, Some(stab)));
+        }
+        if let Some(const_stab) = const_stab {
+            replaced_parent_const_stab =
+                Some(replace(&mut self.parent_const_stab, Some(const_stab)));
+        }
+
+        f(self);
+
+        if let Some(orig_parent_stab) = replaced_parent_stab {
+            self.parent_stab = orig_parent_stab;
+        }
+        if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
+            self.parent_const_stab = orig_parent_const_stab;
         }
     }
 
@@ -388,6 +430,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
             tcx,
             index: &mut index,
             parent_stab: None,
+            parent_const_stab: None,
             parent_depr: None,
             in_trait_impl: false,
         };
