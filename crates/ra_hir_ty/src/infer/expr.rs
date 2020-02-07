@@ -647,8 +647,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substs {
-        let (total_len, _parent_len, child_len) =
-            def_generics.as_ref().map_or((0, 0, 0), |g| g.len_split());
+        let (parent_params, self_params, type_params, impl_trait_params) =
+            def_generics.as_ref().map_or((0, 0, 0, 0), |g| g.provenance_split());
+        assert_eq!(self_params, 0); // method shouldn't have another Self param
+        let total_len = parent_params + type_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
@@ -663,7 +665,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args.args.iter().take(child_len) {
+            for arg in generic_args.args.iter().take(type_params) {
                 match arg {
                     GenericArg::Type(type_ref) => {
                         let ty = self.make_ty(type_ref);

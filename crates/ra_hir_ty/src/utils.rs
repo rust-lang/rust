@@ -145,8 +145,9 @@ impl Generics {
         (parent + child, parent, child)
     }
 
-    /// (self, type param list, impl trait)
-    pub(crate) fn provenance_split(&self) -> (usize, usize, usize) {
+    /// (parent total, self param, type param list, impl trait)
+    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize) {
+        let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
         let self_params = self
             .params
             .types
@@ -165,7 +166,7 @@ impl Generics {
             .iter()
             .filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait)
             .count();
-        (self_params, list_params, impl_trait_params)
+        (parent, self_params, list_params, impl_trait_params)
     }
 
     pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<u32> {

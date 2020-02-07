@@ -906,6 +906,114 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
 }
 
 #[test]
+fn argument_impl_trait_type_args_1() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+trait Foo {
+    // this function has an implicit Self param, an explicit type param,
+    // and an implicit impl Trait param!
+    fn bar<T>(x: impl Trait) -> T { loop {} }
+}
+fn foo<T>(x: impl Trait) -> T { loop {} }
+struct S;
+impl Trait for S {}
+struct F;
+impl Foo for F {}
+
+fn test() {
+    Foo::bar(S);
+    <F as Foo>::bar(S);
+    F::bar(S);
+    Foo::bar::<u32>(S);
+    <F as Foo>::bar::<u32>(S);
+
+    foo(S);
+    foo::<u32>(S);
+    foo::<u32, i32>(S); // we should ignore the extraneous i32
+}
+"#, true),
+        @r###"
+    [156; 157) 'x': impl Trait
+    [176; 187) '{ loop {} }': T
+    [178; 185) 'loop {}': !
+    [183; 185) '{}': ()
+    [200; 201) 'x': impl Trait
+    [220; 231) '{ loop {} }': T
+    [222; 229) 'loop {}': !
+    [227; 229) '{}': ()
+    [301; 510) '{     ... i32 }': ()
+    [307; 315) 'Foo::bar': fn bar<{unknown}, {unknown}, S>(S) -> {unknown}
+    [307; 318) 'Foo::bar(S)': {unknown}
+    [316; 317) 'S': S
+    [324; 339) '<F as Foo>::bar': fn bar<F, {unknown}, S>(S) -> {unknown}
+    [324; 342) '<F as ...bar(S)': {unknown}
+    [340; 341) 'S': S
+    [348; 354) 'F::bar': fn bar<F, {unknown}, S>(S) -> {unknown}
+    [348; 357) 'F::bar(S)': {unknown}
+    [355; 356) 'S': S
+    [363; 378) 'Foo::bar::<u32>': fn bar<{unknown}, u32, S>(S) -> u32
+    [363; 381) 'Foo::b...32>(S)': u32
+    [379; 380) 'S': S
+    [387; 409) '<F as ...:<u32>': fn bar<F, u32, S>(S) -> u32
+    [387; 412) '<F as ...32>(S)': u32
+    [410; 411) 'S': S
+    [419; 422) 'foo': fn foo<{unknown}, S>(S) -> {unknown}
+    [419; 425) 'foo(S)': {unknown}
+    [423; 424) 'S': S
+    [431; 441) 'foo::<u32>': fn foo<u32, S>(S) -> u32
+    [431; 444) 'foo::<u32>(S)': u32
+    [442; 443) 'S': S
+    [450; 465) 'foo::<u32, i32>': fn foo<u32, S>(S) -> u32
+    [450; 468) 'foo::<...32>(S)': u32
+    [466; 467) 'S': S
+    "###
+    );
+}
+
+#[test]
+fn argument_impl_trait_type_args_2() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+struct S;
+impl Trait for S {}
+struct F<T>;
+impl<T> F<T> {
+    fn foo<U>(self, x: impl Trait) -> (T, U) { loop {} }
+}
+
+fn test() {
+    F.foo(S);
+    F::<u32>.foo(S);
+    F::<u32>.foo::<i32>(S);
+    F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
+}
+"#, true),
+        @r###"
+    [88; 92) 'self': F<T>
+    [94; 95) 'x': impl Trait
+    [119; 130) '{ loop {} }': (T, U)
+    [121; 128) 'loop {}': !
+    [126; 128) '{}': ()
+    [144; 284) '{     ...ored }': ()
+    [150; 151) 'F': F<{unknown}>
+    [150; 158) 'F.foo(S)': ({unknown}, {unknown})
+    [156; 157) 'S': S
+    [164; 172) 'F::<u32>': F<u32>
+    [164; 179) 'F::<u32>.foo(S)': (u32, {unknown})
+    [177; 178) 'S': S
+    [185; 193) 'F::<u32>': F<u32>
+    [185; 207) 'F::<u3...32>(S)': (u32, i32)
+    [205; 206) 'S': S
+    [213; 221) 'F::<u32>': F<u32>
+    [213; 240) 'F::<u3...32>(S)': (u32, i32)
+    [238; 239) 'S': S
+    "###
+    );
+}
+
+#[test]
 #[ignore]
 fn impl_trait() {
     assert_snapshot!(

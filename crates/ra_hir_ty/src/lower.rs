@@ -161,15 +161,19 @@ impl Ty {
                     ImplTraitLoweringMode::Variable => {
                         let idx = ctx.impl_trait_counter.get();
                         ctx.impl_trait_counter.set(idx + 1);
-                        let (self_params, list_params, _impl_trait_params) =
+                        let (parent_params, self_params, list_params, _impl_trait_params) =
                             if let Some(def) = ctx.resolver.generic_def() {
                                 let generics = generics(ctx.db, def);
                                 generics.provenance_split()
                             } else {
-                                (0, 0, 0)
+                                (0, 0, 0, 0)
                             };
-                        // assert!((idx as usize) < impl_trait_params); // TODO return position impl trait
-                        Ty::Bound(idx as u32 + self_params as u32 + list_params as u32)
+                        Ty::Bound(
+                            idx as u32
+                                + parent_params as u32
+                                + self_params as u32
+                                + list_params as u32,
+                        )
                     }
                     ImplTraitLoweringMode::Disallowed => {
                         // FIXME: report error
@@ -420,26 +424,23 @@ pub(super) fn substs_from_path_segment(
     ctx: &TyLoweringContext<'_, impl HirDatabase>,
     segment: PathSegment<'_>,
     def_generic: Option<GenericDefId>,
-    add_self_param: bool,
+    _add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
     let def_generics = def_generic.map(|def| generics(ctx.db, def.into()));
 
-    let (total_len, parent_len, child_len) = def_generics.map_or((0, 0, 0), |g| g.len_split());
-    substs.extend(iter::repeat(Ty::Unknown).take(parent_len));
-    if add_self_param {
-        // FIXME this add_self_param argument is kind of a hack: Traits have the
-        // Self type as an implicit first type parameter, but it can't be
-        // actually provided in the type arguments
-        // (well, actually sometimes it can, in the form of type-relative paths: `<Foo as Default>::default()`)
-        // TODO handle this using type param provenance (if there's a self param, and not one provided, add unknown)
-        substs.push(Ty::Unknown);
-    }
+    let (parent_params, self_params, type_params, impl_trait_params) =
+        def_generics.map_or((0, 0, 0, 0), |g| g.provenance_split());
+    substs.extend(iter::repeat(Ty::Unknown).take(parent_params));
     if let Some(generic_args) = &segment.args_and_bindings {
+        if !generic_args.has_self_type {
+            substs.extend(iter::repeat(Ty::Unknown).take(self_params));
+        }
+        let expected_num =
+            if generic_args.has_self_type { self_params + type_params } else { type_params };
+        let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
         // if args are provided, it should be all of them, but we can't rely on that
-        let self_param_correction = if add_self_param { 1 } else { 0 };
-        let child_len = child_len - self_param_correction;
-        for arg in generic_args.args.iter().take(child_len) {
+        for arg in generic_args.args.iter().skip(skip).take(expected_num) {
             match arg {
                 GenericArg::Type(type_ref) => {
                     let ty = Ty::from_hir(ctx, type_ref);
@@ -448,9 +449,9 @@ pub(super) fn substs_from_path_segment(
             }
         }
     }
+    let total_len = parent_params + self_params + type_params + impl_trait_params;
     // add placeholders for args that were not provided
-    let supplied_params = substs.len();
-    for _ in supplied_params..total_len {
+    for _ in substs.len()..total_len {
         substs.push(Ty::Unknown);
     }
     assert_eq!(substs.len(), total_len);
