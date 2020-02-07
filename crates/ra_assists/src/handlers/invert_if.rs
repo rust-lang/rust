@@ -1,7 +1,7 @@
-use ra_syntax::ast::{self, make, AstNode};
+use ra_syntax::ast::{self, AstNode};
 use ra_syntax::T;
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 
 // Assist: invert_if
 //
@@ -49,27 +49,6 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
     }
 
     None
-}
-
-pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
-    if let Some(expr) = invert_special_case(&expr) {
-        return expr;
-    }
-    make::expr_prefix(T![!], expr)
-}
-
-pub(crate) fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
-    match expr {
-        ast::Expr::BinExpr(bin) => match bin.op_kind()? {
-            ast::BinOp::NegatedEqualityTest => bin.replace_op(T![==]).map(|it| it.into()),
-            ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
-            _ => None,
-        },
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::PrefixOp::Not => pe.expr(),
-        // FIXME:
-        // ast::Expr::Literal(true | false )
-        _ => None,
-    }
 }
 
 #[cfg(test)]

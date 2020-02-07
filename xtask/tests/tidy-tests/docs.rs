@@ -6,7 +6,7 @@ use xtask::project_root;
 fn is_exclude_dir(p: &Path) -> bool {
     // Test hopefully don't really need comments, and for assists we already
     // have special comments which are source of doc tests and user docs.
-    let exclude_dirs = ["tests", "test_data", "assists"];
+    let exclude_dirs = ["tests", "test_data", "handlers"];
     let mut cur_path = p;
     while let Some(path) = cur_path.parent() {
         if exclude_dirs.iter().any(|dir| path.ends_with(dir)) {

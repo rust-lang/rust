@@ -1,4 +1,5 @@
 use hir::ModPath;
+use ra_ide_db::imports_locator::ImportsLocator;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode,
@@ -8,7 +9,7 @@ use crate::{
     assist_ctx::{ActionBuilder, Assist, AssistCtx},
     auto_import_text_edit, AssistId,
 };
-use ra_ide_db::imports_locator::ImportsLocator;
+use std::collections::BTreeSet;
 
 // Assist: auto_import
 //
@@ -60,7 +61,8 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
         .filter(|use_path| !use_path.segments.is_empty())
         .take(20)
-        .collect::<std::collections::BTreeSet<_>>();
+        .collect::<BTreeSet<_>>();
+
     if proposed_imports.is_empty() {
         return None;
     }
@@ -82,8 +84,9 @@ fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode)
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn applicable_when_found_an_import() {

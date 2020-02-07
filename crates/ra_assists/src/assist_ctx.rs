@@ -19,6 +19,8 @@ pub(crate) enum Assist {
     Resolved { assist: ResolvedAssist },
 }
 
+pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
+
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///
 /// Assists use a somewhat over-engineered approach, given the current needs. The
@@ -57,7 +59,7 @@ pub(crate) struct AssistCtx<'a> {
     should_compute_edit: bool,
 }
 
-impl<'a> Clone for AssistCtx<'a> {
+impl Clone for AssistCtx<'_> {
     fn clone(&self) -> Self {
         AssistCtx {
             db: self.db,
@@ -69,31 +71,18 @@ impl<'a> Clone for AssistCtx<'a> {
 }
 
 impl<'a> AssistCtx<'a> {
-    pub(crate) fn with_ctx<F, T>(
-        db: &RootDatabase,
-        frange: FileRange,
-        should_compute_edit: bool,
-        f: F,
-    ) -> T
-    where
-        F: FnOnce(AssistCtx) -> T,
-    {
+    pub fn new(db: &RootDatabase, frange: FileRange, should_compute_edit: bool) -> AssistCtx {
         let parse = db.parse(frange.file_id);
-
-        let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
-        f(ctx)
+        AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit }
     }
-}
 
-impl<'a> AssistCtx<'a> {
     pub(crate) fn add_assist(
         self,
         id: AssistId,
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
-        assert!(label.label.chars().nth(0).unwrap().is_uppercase());
+        let label = AssistLabel::new(label.into(), id);
 
         let assist = if self.should_compute_edit {
             let action = {
@@ -115,7 +104,7 @@ impl<'a> AssistCtx<'a> {
         label: impl Into<String>,
         f: impl FnOnce() -> Vec<ActionBuilder>,
     ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
+        let label = AssistLabel::new(label.into(), id);
         let assist = if self.should_compute_edit {
             let actions = f();
             assert!(!actions.is_empty(), "Assist cannot have no");

@@ -1,7 +1,6 @@
-use super::invert_if::invert_boolean_expression;
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 
 // Assist: apply_demorgan
 //
