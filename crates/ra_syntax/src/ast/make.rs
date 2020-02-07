@@ -62,6 +62,10 @@ pub fn expr_return() -> ast::Expr {
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr.syntax(), match_arm_list.syntax()))
 }
+pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
+    let token = token(op);
+    expr_from_text(&format!("{}{}", token, expr.syntax()))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
@@ -203,7 +207,7 @@ pub mod tokens {
     use once_cell::sync::Lazy;
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
-        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2)\n;"));
+        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2, !true)\n;"));
 
     pub fn comma() -> SyntaxToken {
         SOURCE_FILE

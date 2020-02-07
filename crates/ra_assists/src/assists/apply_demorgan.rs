@@ -31,12 +31,14 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     if !cursor_in_range {
         return None;
     }
+
     let lhs = expr.lhs()?;
     let lhs_range = lhs.syntax().text_range();
+    let not_lhs = invert_boolean_expression(lhs);
+
     let rhs = expr.rhs()?;
     let rhs_range = rhs.syntax().text_range();
-    let not_lhs = invert_boolean_expression(&lhs)?;
-    let not_rhs = invert_boolean_expression(&rhs)?;
+    let not_rhs = invert_boolean_expression(rhs);
 
     ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", |edit| {
         edit.target(op_range);
@@ -77,12 +79,12 @@ mod tests {
     }
 
     #[test]
-    fn demorgan_doesnt_apply_with_cursor_not_on_op() {
-        check_assist_not_applicable(apply_demorgan, "fn f() { <|> !x || !x }")
+    fn demorgan_general_case() {
+        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x &&<|> !x) }")
     }
 
     #[test]
-    fn demorgan_doesnt_apply_when_operands_arent_negated_already() {
-        check_assist_not_applicable(apply_demorgan, "fn f() { x ||<|> x }")
+    fn demorgan_doesnt_apply_with_cursor_not_on_op() {
+        check_assist_not_applicable(apply_demorgan, "fn f() { <|> !x || !x }")
     }
 }

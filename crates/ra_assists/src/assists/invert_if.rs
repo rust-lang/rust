@@ -1,4 +1,4 @@
-use ra_syntax::ast::{self, AstNode};
+use ra_syntax::ast::{self, make, AstNode};
 use ra_syntax::T;
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -35,8 +35,8 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
     let then_node = expr.then_branch()?.syntax().clone();
 
     if let ast::ElseBranch::Block(else_block) = expr.else_branch()? {
-        let flip_cond = invert_boolean_expression(&cond)?;
         let cond_range = cond.syntax().text_range();
+        let flip_cond = invert_boolean_expression(cond);
         let else_node = else_block.syntax();
         let else_range = else_node.text_range();
         let then_range = then_node.text_range();
@@ -51,16 +51,23 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
     None
 }
 
-pub(crate) fn invert_boolean_expression(expr: &ast::Expr) -> Option<ast::Expr> {
+pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
+    if let Some(expr) = invert_special_case(&expr) {
+        return expr;
+    }
+    make::expr_prefix(T![!], expr)
+}
+
+pub(crate) fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => match bin.op_kind()? {
             ast::BinOp::NegatedEqualityTest => bin.replace_op(T![==]).map(|it| it.into()),
+            ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
             _ => None,
         },
-        ast::Expr::PrefixExpr(pe) => match pe.op_kind()? {
-            ast::PrefixOp::Not => pe.expr(),
-            _ => None,
-        },
+        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::PrefixOp::Not => pe.expr(),
+        // FIXME:
+        // ast::Expr::Literal(true | false )
         _ => None,
     }
 }
@@ -90,12 +97,16 @@ mod tests {
     }
 
     #[test]
-    fn invert_if_doesnt_apply_with_cursor_not_on_if() {
-        check_assist_not_applicable(invert_if, "fn f() { if !<|>cond { 3 * 2 } else { 1 } }")
+    fn invert_if_general_case() {
+        check_assist(
+            invert_if,
+            "fn f() { i<|>f cond { 3 * 2 } else { 1 } }",
+            "fn f() { i<|>f !cond { 1 } else { 3 * 2 } }",
+        )
     }
 
     #[test]
-    fn invert_if_doesnt_apply_without_negated() {
-        check_assist_not_applicable(invert_if, "fn f() { i<|>f cond { 3 * 2 } else { 1 } }")
+    fn invert_if_doesnt_apply_with_cursor_not_on_if() {
+        check_assist_not_applicable(invert_if, "fn f() { if !<|>cond { 3 * 2 } else { 1 } }")
     }
 }
