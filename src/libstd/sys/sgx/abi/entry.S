@@ -134,6 +134,17 @@ elf_entry:
     ud2                               /* should not be reached  */
 /*  end elf_entry */
 
+/* This code needs to be called *after* the enclave stack has been setup. */
+/* There are 3 places where this needs to happen, so this is put in a macro. */
+.macro sanitize_rflags
+/*  Sanitize rflags received from user */
+/*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
+/*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
+    pushfq
+    andq $~0x40400, (%rsp)
+    popfq
+.endm
+
 .text
 .global sgx_entry
 .type sgx_entry,function
@@ -149,13 +160,6 @@ sgx_entry:
     mov %rbx,%gs:tcsls_tcs_addr
     stmxcsr %gs:tcsls_user_mxcsr
     fnstcw %gs:tcsls_user_fcw
-
-/*  reset user state */
-/*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
-/*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
-    pushfq
-    andq $~0x40400, (%rsp)
-    popfq
 
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
@@ -179,6 +183,7 @@ sgx_entry:
     lea IMAGE_BASE(%rip),%rax
     add %rax,%rsp
     mov %rsp,%gs:tcsls_tos
+    sanitize_rflags
 /*  call tcs_init */
 /*  store caller-saved registers in callee-saved registers */
     mov %rdi,%rbx
@@ -194,7 +199,10 @@ sgx_entry:
     mov %r13,%rdx
     mov %r14,%r8
     mov %r15,%r9
+    jmp .Lafter_init
 .Lskip_init:
+    sanitize_rflags
+.Lafter_init:
 /*  call into main entry point */
     load_tcsls_flag_secondary_bool cx /* RCX = entry() argument: secondary: bool */
     call entry /* RDI, RSI, RDX, R8, R9 passed in from userspace */
@@ -292,6 +300,7 @@ usercall:
     movq $0,%gs:tcsls_last_rsp
 /*  restore callee-saved state, cf. "save" above */
     mov %r11,%rsp
+    sanitize_rflags
     ldmxcsr (%rsp)
     fldcw 4(%rsp)
     add $8, %rsp
