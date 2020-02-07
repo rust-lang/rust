@@ -30,8 +30,9 @@ lazy_static! {
     )
     .unwrap();
     static ref NL_ESCAPE_RE: Regex = Regex::new(r#"\\\n\s*"#).unwrap();
-    pub static ref DOCS_LINK: String = "https://rust-lang.github.io/rust-clippy/master/index.html".to_string();
 }
+
+pub static DOCS_LINK: &str = "https://rust-lang.github.io/rust-clippy/master/index.html";
 
 /// Lint data parsed from the Clippy source code.
 #[derive(Clone, PartialEq, Debug)]
@@ -120,7 +121,7 @@ pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
             if l.is_internal() {
                 None
             } else {
-                Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name))
+                Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK, l.name))
             }
         })
         .collect()

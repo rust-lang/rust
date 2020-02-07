@@ -150,7 +150,7 @@ fn print_lints() {
             println!(
                 "* [{}]({}#{}) ({})",
                 lint.name,
-                clippy_dev::DOCS_LINK.clone(),
+                clippy_dev::DOCS_LINK,
                 lint.name,
                 lint.desc
             );
@@ -191,16 +191,18 @@ fn update_lints(update_mode: UpdateMode) {
 
     file_change |= replace_region_in_file(
         Path::new("README.md"),
-        r#"\[There are \d+ lints included in this crate!\]\(https://rust-lang.github.io/rust-clippy/master/index.html\)"#,
+        &format!(r#"\[There are \d+ lints included in this crate!\]\({}\)"#, DOCS_LINK),
         "",
         true,
         update_mode == UpdateMode::Change,
         || {
-            vec![
-                format!("[There are {} lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)", lint_count)
-            ]
-        }
-    ).changed;
+            vec![format!(
+                "[There are {} lints included in this crate!]({})",
+                lint_count, DOCS_LINK
+            )]
+        },
+    )
+    .changed;
 
     file_change |= replace_region_in_file(
         Path::new("CHANGELOG.md"),
