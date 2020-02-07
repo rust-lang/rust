@@ -94,43 +94,41 @@ fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     }
 }
 
-impl<'hir> Entry<'hir> {
-    fn associated_body(self) -> Option<BodyId> {
-        match self.node {
-            Node::Item(item) => match item.kind {
-                ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body) => {
-                    Some(body)
-                }
-                _ => None,
-            },
-
-            Node::TraitItem(item) => match item.kind {
-                TraitItemKind::Const(_, Some(body))
-                | TraitItemKind::Fn(_, TraitMethod::Provided(body)) => Some(body),
-                _ => None,
-            },
-
-            Node::ImplItem(item) => match item.kind {
-                ImplItemKind::Const(_, body) | ImplItemKind::Method(_, body) => Some(body),
-                _ => None,
-            },
-
-            Node::AnonConst(constant) => Some(constant.body),
-
-            Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure(.., body, _, _) => Some(body),
-                _ => None,
-            },
-
+fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
+    match node {
+        Node::Item(item) => match item.kind {
+            ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body) => {
+                Some(body)
+            }
             _ => None,
-        }
-    }
+        },
 
-    fn is_body_owner(self, hir_id: HirId) -> bool {
-        match self.associated_body() {
-            Some(b) => b.hir_id == hir_id,
-            None => false,
-        }
+        Node::TraitItem(item) => match item.kind {
+            TraitItemKind::Const(_, Some(body))
+            | TraitItemKind::Fn(_, TraitMethod::Provided(body)) => Some(body),
+            _ => None,
+        },
+
+        Node::ImplItem(item) => match item.kind {
+            ImplItemKind::Const(_, body) | ImplItemKind::Method(_, body) => Some(body),
+            _ => None,
+        },
+
+        Node::AnonConst(constant) => Some(constant.body),
+
+        Node::Expr(expr) => match expr.kind {
+            ExprKind::Closure(.., body, _, _) => Some(body),
+            _ => None,
+        },
+
+        _ => None,
+    }
+}
+
+fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
+    match associated_body(node) {
+        Some(b) => b.hir_id == hir_id,
+        None => false,
     }
 }
 
@@ -455,7 +453,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node(hir_id);
-        assert!(self.lookup(parent).map_or(false, |e| e.is_body_owner(hir_id)));
+        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)));
         parent
     }
 
@@ -466,14 +464,8 @@ impl<'hir> Map<'hir> {
     /// Given a `HirId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, hir_id: HirId) -> Option<BodyId> {
-        if let Some(entry) = self.find_entry(hir_id) {
-            if self.dep_graph.is_fully_enabled() {
-                let hir_id_owner = hir_id.owner;
-                let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
-                self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
-            }
-
-            entry.associated_body()
+        if let Some(node) = self.find(hir_id) {
+            associated_body(node)
         } else {
             bug!("no entry for id `{}`", hir_id)
         }
