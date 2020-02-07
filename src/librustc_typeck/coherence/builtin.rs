@@ -18,14 +18,12 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
+    let lang_items = tcx.lang_items();
     Checker { tcx, trait_def_id }
-        .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
-        .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
-        .check(tcx.lang_items().coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
-        .check(
-            tcx.lang_items().dispatch_from_dyn_trait(),
-            visit_implementation_of_dispatch_from_dyn,
-        );
+        .check(lang_items.drop_trait(), visit_implementation_of_drop)
+        .check(lang_items.copy_trait(), visit_implementation_of_copy)
+        .check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
+        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn);
 }
 
 struct Checker<'tcx> {
