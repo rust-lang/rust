@@ -1,8 +1,11 @@
 use crate::HashStableContext;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
+use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decoder, Encoder};
+use std::borrow::Borrow;
 use std::fmt;
 use std::{u32, u64};
 
@@ -99,6 +102,28 @@ impl ::std::fmt::Debug for CrateNum {
             CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
             CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
         }
+    }
+}
+
+#[derive(
+    Copy,
+    Clone,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Debug,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable_Generic
+)]
+pub struct DefPathHash(pub Fingerprint);
+
+impl Borrow<Fingerprint> for DefPathHash {
+    #[inline]
+    fn borrow(&self) -> &Fingerprint {
+        &self.0
     }
 }
 

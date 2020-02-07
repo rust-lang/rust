@@ -120,7 +120,7 @@ impl IfThisChanged<'tcx> {
             if attr.check_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
-                    None => def_path_hash.to_dep_node(DepKind::Hir),
+                    None => DepNode::from_def_path_hash(def_path_hash, DepKind::Hir),
                     Some(n) => match DepNode::from_label_string(&n.as_str(), def_path_hash) {
                         Ok(n) => n,
                         Err(()) => {

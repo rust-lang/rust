@@ -562,15 +562,7 @@ impl<'hir> Map<'hir> {
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let hir_id = self.as_local_hir_id(module).unwrap();
-
-        // Read the module so we'll be re-executed if new items
-        // appear immediately under in the module. If some new item appears
-        // in some nested item in the module, we'll be re-executed due to reads
-        // in the expect_* calls the loops below
-        self.read(hir_id);
-
-        let module = &self.krate.modules[&hir_id];
+        let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));
@@ -639,7 +631,7 @@ impl<'hir> Map<'hir> {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = hir_id.owner;
             let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
-            self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+            self.dep_graph.read(DepNode::from_def_path_hash(def_path_hash, DepKind::HirBody));
         }
 
         self.find_entry(hir_id).and_then(|x| x.parent_node()).unwrap_or(hir_id)

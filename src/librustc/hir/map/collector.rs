@@ -86,7 +86,7 @@ fn alloc_hir_dep_nodes(
 ) -> (DepNodeIndex, DepNodeIndex) {
     let sig = dep_graph
         .input_task(
-            def_path_hash.to_dep_node(DepKind::Hir),
+            DepNode::from_def_path_hash(def_path_hash, DepKind::Hir),
             &mut *hcx,
             HirItemLike { item_like: &item_like, hash_bodies: false },
         )
@@ -94,7 +94,7 @@ fn alloc_hir_dep_nodes(
     let (full, hash) = input_dep_node_and_hash(
         dep_graph,
         hcx,
-        def_path_hash.to_dep_node(DepKind::HirBody),
+        DepNode::from_def_path_hash(def_path_hash, DepKind::HirBody),
         HirItemLike { item_like: &item_like, hash_bodies: true },
     );
     hir_body_nodes.push((def_path_hash, hash));

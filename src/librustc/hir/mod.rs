@@ -114,6 +114,12 @@ pub fn provide(providers: &mut Providers<'_>) {
             hir_to_node_id: early.hir_to_node_id,
         })
     };
+    providers.hir_module_items = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let hir = tcx.hir();
+        let module = hir.as_local_hir_id(id).unwrap();
+        &hir.untracked_krate().modules[&module]
+    };
     providers.hir_owner = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
         *tcx.hir().map.owner_map.get(&id.index).unwrap()

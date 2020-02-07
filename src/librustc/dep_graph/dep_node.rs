@@ -223,8 +223,8 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            pub fn from_def_path_hash(kind: DepKind,
-                                      def_path_hash: DefPathHash)
+            pub fn from_def_path_hash(def_path_hash: DefPathHash,
+                                      kind: DepKind)
                                       -> DepNode {
                 debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
@@ -280,7 +280,7 @@ macro_rules! define_dep_nodes {
                 }
 
                 if kind.has_params() {
-                    Ok(def_path_hash.to_dep_node(kind))
+                    Ok(DepNode::from_def_path_hash(def_path_hash, kind))
                 } else {
                     Ok(DepNode::new_no_params(kind))
                 }
@@ -334,12 +334,6 @@ impl fmt::Debug for DepNode {
         })?;
 
         write!(f, ")")
-    }
-}
-
-impl DefPathHash {
-    pub fn to_dep_node(self, kind: DepKind) -> DepNode {
-        DepNode::from_def_path_hash(kind, self)
     }
 }
 

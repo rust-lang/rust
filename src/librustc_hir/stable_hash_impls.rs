@@ -1,10 +1,11 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
     BodyId, Expr, ImplItem, ImplItemId, Item, ItemId, Mod, TraitItem, TraitItemId, Ty,
     VisibilityKind,
 };
-use crate::hir_id::HirId;
+use crate::hir_id::{HirId, ItemLocalId};
+use rustc_span::def_id::{DefIndex, DefPathHash};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -20,6 +21,35 @@ pub trait HashStableContext:
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
     fn hash_hir_visibility_kind(&mut self, _: &VisibilityKind<'_>, hasher: &mut StableHasher);
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F);
+    fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash;
+}
+
+impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
+    type KeyType = (DefPathHash, ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
+        let def_path_hash = hcx.local_def_path_hash(self.owner);
+        (def_path_hash, self.local_id)
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
+    type KeyType = (DefPathHash, ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
+        self.hir_id.to_stable_hash_key(hcx)
+    }
+}
+
+impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
+    type KeyType = (DefPathHash, ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
+        self.hir_id.to_stable_hash_key(hcx)
+    }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HirId {

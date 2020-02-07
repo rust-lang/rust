@@ -597,7 +597,7 @@ pub struct WhereEqPredicate<'hir> {
     pub rhs_ty: &'hir Ty<'hir>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate

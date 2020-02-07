@@ -61,6 +61,10 @@ rustc_queries! {
             desc { "index HIR" }
         }
 
+        query hir_module_items(key: DefId) -> &'tcx hir::ModuleItems {
+            eval_always
+        }
+
         query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
             eval_always
         }
