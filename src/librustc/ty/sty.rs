@@ -1292,11 +1292,67 @@ rustc_index::newtype_index! {
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
-/// Representation of regions.
+/// Representation of (lexical) regions. Note that the NLL checker
+/// uses a distinct representation of regions. For this reason, it
+/// internally replaces all the regions with inference variables --
+/// the index of the variable is then used to index into internal NLL
+/// data structures. See `rustc_mir::borrow_check` module for more
+/// information.
 ///
-/// Unlike types, most region variants are "fictitious", not concrete,
-/// regions. Among these, `ReStatic`, `ReEmpty` and `ReScope` are the only
-/// ones representing concrete regions.
+/// ## The Region lattice within a given function
+///
+/// In general, the (lexical, and hence deprecated) region lattice
+/// looks like
+///
+/// ```
+/// static ----------+-----...------+       (greatest)
+/// |                |              |
+/// early-bound and  |              |
+/// free regions     |              |
+/// |                |              |
+/// scope regions    |              |
+/// |                |              |
+/// empty(root)   placeholder(U1)   |
+/// |            /                  |
+/// |           /         placeholder(Un)
+/// empty(U1) --         /
+/// |                   /
+/// ...                /
+/// |                 /
+/// empty(Un) --------                      (smallest)
+/// ```
+///
+/// Early-bound/free regions are the named lifetimes in scope from the
+/// function declaration. They have relationships to one another
+/// determined based on the declared relationships from the
+/// function. They all collectively outlive the scope regions. (See
+/// `RegionRelations` type, and particularly
+/// `crate::infer::outlives::free_region_map::FreeRegionMap`.)
+///
+/// The scope regions are related to one another based on the AST
+/// structure. (See `RegionRelations` type, and particularly the
+/// `rustc::middle::region::ScopeTree`.)
+///
+/// Note that inference variables and bound regions are not included
+/// in this diagram. In the case of inference variables, they should
+/// be inferred to some other region from the diagram.  In the case of
+/// bound regions, they are excluded because they don't make sense to
+/// include -- the diagram indicates the relationship between free
+/// regions.
+///
+/// ## Inference variables
+///
+/// During region inference, we sometimes create inference variables,
+/// represented as `ReVar`. These will be inferred by the code in
+/// `infer::lexical_region_resolve` to some free region from the
+/// lattice above (the minimal region that meets the
+/// constraints).
+///
+/// During NLL checking, where regions are defined differently, we
+/// also use `ReVar` -- in that case, the index is used to index into
+/// the NLL region checker's data structures. The variable may in fact
+/// represent either a free region or an inference variable, in that
+/// case.
 ///
 /// ## Bound Regions
 ///
@@ -1379,14 +1435,13 @@ pub enum RegionKind {
     /// Should not exist after typeck.
     RePlaceholder(ty::PlaceholderRegion),
 
-    /// Empty lifetime is for data that is never accessed.
-    /// Bottom in the region lattice. We treat ReEmpty somewhat
-    /// specially; at least right now, we do not generate instances of
-    /// it during the GLB computations, but rather
-    /// generate an error instead. This is to improve error messages.
-    /// The only way to get an instance of ReEmpty is to have a region
-    /// variable with no constraints.
-    ReEmpty,
+    /// Empty lifetime is for data that is never accessed.  We tag the
+    /// empty lifetime with a universe -- the idea is that we don't
+    /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
+    /// Therefore, the `'empty` in a universe `U` is less than all
+    /// regions visible from `U`, but not less than regions not visible
+    /// from `U`.
+    ReEmpty(ty::UniverseIndex),
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
@@ -1635,7 +1690,7 @@ impl RegionKind {
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            RegionKind::ReEmpty => false,
+            RegionKind::ReEmpty(_) => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,
         }
@@ -1718,7 +1773,7 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_EARLY_BOUND;
             }
-            ty::ReEmpty | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
+            ty::ReEmpty(_) | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReErased => {}
@@ -1728,7 +1783,7 @@ impl RegionKind {
         }
 
         match *self {
-            ty::ReStatic | ty::ReEmpty | ty::ReErased | ty::ReLateBound(..) => (),
+            ty::ReStatic | ty::ReEmpty(_) | ty::ReErased | ty::ReLateBound(..) => (),
             _ => flags = flags | TypeFlags::HAS_FREE_LOCAL_NAMES,
         }
 

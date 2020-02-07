@@ -447,7 +447,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
+            | ty::ReEmpty(_)
             | ty::ReClosureBound(_)
             | ty::ReErased => {
                 debug!("cannot clean region {:?}", self);
@@ -521,7 +521,7 @@ impl<'tcx> Clean<Option<WherePredicate>>
         let ty::OutlivesPredicate(ref a, ref b) = *self;
 
         match (a, b) {
-            (ty::ReEmpty, ty::ReEmpty) => {
+            (ty::ReEmpty(_), ty::ReEmpty(_)) => {
                 return None;
             }
             _ => {}
@@ -539,7 +539,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
         match lt {
-            ty::ReEmpty => return None,
+            ty::ReEmpty(_) => return None,
             _ => {}
         }
 

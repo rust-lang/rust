@@ -173,8 +173,13 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct CommonLifetimes<'tcx> {
-    pub re_empty: Region<'tcx>,
+    /// `ReEmpty` in the root universe.
+    pub re_root_empty: Region<'tcx>,
+
+    /// `ReStatic`
     pub re_static: Region<'tcx>,
+
+    /// Erased region, used after type-checking
     pub re_erased: Region<'tcx>,
 }
 
@@ -876,7 +881,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let mk = |r| interners.region.intern(r, |r| Interned(interners.arena.alloc(r))).0;
 
         CommonLifetimes {
-            re_empty: mk(RegionKind::ReEmpty),
+            re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
             re_static: mk(RegionKind::ReStatic),
             re_erased: mk(RegionKind::ReErased),
         }

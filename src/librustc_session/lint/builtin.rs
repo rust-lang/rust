@@ -261,6 +261,16 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub COHERENCE_LEAK_CHECK,
+    Warn,
+    "distinct impls distinguished only by the leak-check code",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #56105 <https://github.com/rust-lang/rust/issues/56105>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
@@ -515,6 +525,7 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
+        COHERENCE_LEAK_CHECK,
         DEPRECATED,
         UNUSED_UNSAFE,
         UNUSED_MUT,
