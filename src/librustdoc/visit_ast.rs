@@ -64,11 +64,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit(mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(
-            krate.span,
-            krate.attrs,
+            krate.item.span,
+            krate.item.attrs,
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
-            &krate.module,
+            &krate.item.module,
             None,
         );
         // Attach the crate's exported macros to the top-level module:

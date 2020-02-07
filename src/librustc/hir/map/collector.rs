@@ -133,11 +133,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // Allocate `DepNode`s for the root module.
         let (root_mod_sig_dep_index, root_mod_full_dep_index) = {
             let Crate {
-                ref module,
-                // Crate attributes are not copied over to the root `Mod`, so hash
-                // them explicitly here.
-                ref attrs,
-                span,
+                ref item,
                 // These fields are handled separately:
                 exported_macros: _,
                 non_exported_macro_attrs: _,
@@ -155,7 +151,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 dep_graph,
                 &mut hcx,
                 root_mod_def_path_hash,
-                (module, attrs, span),
+                item,
                 &mut hir_body_nodes,
             )
         };
@@ -191,7 +187,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             Entry {
                 parent: hir::CRATE_HIR_ID,
                 dep_node: root_mod_sig_dep_index,
-                node: Node::Crate,
+                node: Node::Crate(&krate.item),
             },
         );
 

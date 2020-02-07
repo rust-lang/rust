@@ -535,9 +535,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
         hir::Crate {
-            module,
-            attrs,
-            span: c.span,
+            item: hir::CrateItem { module, attrs, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,

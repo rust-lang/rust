@@ -282,7 +282,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
-                hir::Node::Crate => return,
+                hir::Node::Crate(..) => return,
 
                 _ => {}
             }

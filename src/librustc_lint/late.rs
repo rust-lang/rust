@@ -419,7 +419,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
-    cx.with_lint_attrs(hir::CRATE_HIR_ID, &krate.attrs, |cx| {
+    cx.with_lint_attrs(hir::CRATE_HIR_ID, &krate.item.attrs, |cx| {
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate, krate);

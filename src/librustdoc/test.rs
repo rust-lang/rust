@@ -112,7 +112,7 @@ pub fn run(options: Options) -> i32 {
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),
                 };
-                hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+                hir_collector.visit_testable("".to_string(), &krate.item.attrs, |this| {
                     intravisit::walk_crate(this, krate);
                 });
             });
@@ -146,6 +146,7 @@ fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
     let test_attrs: Vec<_> = krate
+        .item
         .attrs
         .iter()
         .filter(|a| a.check_name(sym::doc))
