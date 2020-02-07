@@ -798,8 +798,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
-    /// Else, it returns `optb`.
+    /// Returns the contained [`Ok`] value or a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
@@ -814,27 +813,25 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// let optb = 2;
+    /// let default = 2;
     /// let x: Result<u32, &str> = Ok(9);
-    /// assert_eq!(x.unwrap_or(optb), 9);
+    /// assert_eq!(x.unwrap_or(default), 9);
     ///
     /// let x: Result<u32, &str> = Err("error");
-    /// assert_eq!(x.unwrap_or(optb), optb);
+    /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, optb: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => optb,
+            Err(_) => default,
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
-    /// If the value is an [`Err`] then it calls `op` with its value.
+    /// Returns the contained [`Ok`] value or computes it from a closure.
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
-    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -937,7 +934,7 @@ impl<T: Clone, E> Result<&mut T, E> {
 }
 
 impl<T, E: fmt::Debug> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
@@ -965,7 +962,16 @@ impl<T, E: fmt::Debug> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Ok`].
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: #method.unwrap_or
+    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`unwrap_or_default`]: #method.unwrap_or_default
     ///
     /// # Panics
     ///
@@ -1000,7 +1006,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
 }
 
 impl<T: fmt::Debug, E> Result<T, E> {
-    /// Unwraps a result, yielding the content of an [`Err`].
+    /// Returns the contained [`Err`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
@@ -1028,7 +1034,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, yielding the content of an [`Err`].
+    /// Returns the contained [`Err`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
@@ -1062,7 +1068,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
 }
 
 impl<T: Default, E> Result<T, E> {
-    /// Returns the contained value or a default
+    /// Returns the contained [`Ok`] value or a default
     ///
     /// Consumes the `self` argument then, if [`Ok`], returns the contained
     /// value, otherwise if [`Err`], returns the default value for that
@@ -1101,7 +1107,7 @@ impl<T: Default, E> Result<T, E> {
 
 #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
 impl<T, E: Into<!>> Result<T, E> {
-    /// Unwraps a result that can never be an [`Err`], yielding the content of the [`Ok`].
+    /// Returns the contained [`Ok`] value, but never panics.
     ///
     /// Unlike [`unwrap`], this method is known to never panic on the
     /// result types it is implemented for. Therefore, it can be used
