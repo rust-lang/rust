@@ -12,13 +12,6 @@ use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Lifetime {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.id.hash_stable(hcx, hasher);
-        self.ident.hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         if self.len() == 0 {
