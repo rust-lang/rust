@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -2743,6 +2745,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 
     let mut inline_span = None;
     let mut link_ordinal_span = None;
+    let mut no_sanitize_span = None;
     for attr in attrs.iter() {
         if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
@@ -2832,6 +2835,24 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
                 codegen_fn_attrs.link_ordinal = ordinal;
             }
+        } else if attr.check_name(sym::no_sanitize) {
+            no_sanitize_span = Some(attr.span);
+            if let Some(list) = attr.meta_item_list() {
+                for item in list.iter() {
+                    if item.check_name(sym::address) {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_SANITIZE_ADDRESS;
+                    } else if item.check_name(sym::memory) {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_SANITIZE_MEMORY;
+                    } else if item.check_name(sym::thread) {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_SANITIZE_THREAD;
+                    } else {
+                        tcx.sess
+                            .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
+                            .note("expected one of: `address`, `memory` or `thread`")
+                            .emit();
+                    }
+                }
+            }
         }
     }
 
@@ -2911,7 +2932,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-
     if codegen_fn_attrs.target_features.len() > 0 {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
@@ -2920,6 +2940,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     "cannot use `#[inline(always)]` with \
                      `#[target_feature]`",
                 );
+            }
+        }
+    }
+
+    if codegen_fn_attrs.flags.intersects(CodegenFnAttrFlags::NO_SANITIZE_ANY) {
+        if codegen_fn_attrs.inline == InlineAttr::Always {
+            if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
+                let hir_id = tcx.hir().as_local_hir_id(id).unwrap();
+                tcx.struct_span_lint_hir(
+                    lint::builtin::INLINE_NO_SANITIZE,
+                    hir_id,
+                    no_sanitize_span,
+                    "`no_sanitize` will have no effect after inlining",
+                )
+                .span_note(inline_span, "inlining requested here")
+                .emit();
             }
         }
     }
