@@ -8,7 +8,7 @@ use test_utils::tested_by;
 use super::{NameDefinition, NameKind};
 use ra_ide_db::RootDatabase;
 
-pub use ra_ide_db::defs::{classify_name, from_assoc_item, from_module_def, from_struct_field};
+pub use ra_ide_db::defs::{classify_name, from_module_def, from_struct_field};
 
 pub(crate) fn classify_name_ref(
     sb: &mut SourceBinder<RootDatabase>,
@@ -22,7 +22,7 @@ pub(crate) fn classify_name_ref(
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
         tested_by!(goto_def_for_methods);
         if let Some(func) = analyzer.resolve_method_call(&method_call) {
-            return Some(from_assoc_item(sb.db, func.into()));
+            return Some(from_module_def(sb.db, func.into(), None));
         }
     }
 
@@ -57,27 +57,35 @@ pub(crate) fn classify_name_ref(
 
     let path = name_ref.value.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(sb.db, &path)?;
-    match resolved {
-        PathResolution::Def(def) => Some(from_module_def(sb.db, def, Some(container))),
-        PathResolution::AssocItem(item) => Some(from_assoc_item(sb.db, item)),
+    let res = match resolved {
+        PathResolution::Def(def) => from_module_def(sb.db, def, Some(container)),
+        PathResolution::AssocItem(item) => {
+            let def = match item {
+                hir::AssocItem::Function(it) => it.into(),
+                hir::AssocItem::Const(it) => it.into(),
+                hir::AssocItem::TypeAlias(it) => it.into(),
+            };
+            from_module_def(sb.db, def, Some(container))
+        }
         PathResolution::Local(local) => {
             let kind = NameKind::Local(local);
             let container = local.module(sb.db);
-            Some(NameDefinition { kind, container, visibility: None })
+            NameDefinition { kind, container, visibility: None }
         }
         PathResolution::TypeParam(par) => {
             let kind = NameKind::TypeParam(par);
             let container = par.module(sb.db);
-            Some(NameDefinition { kind, container, visibility })
+            NameDefinition { kind, container, visibility }
         }
         PathResolution::Macro(def) => {
             let kind = NameKind::Macro(def);
-            Some(NameDefinition { kind, container, visibility })
+            NameDefinition { kind, container, visibility }
         }
         PathResolution::SelfType(impl_block) => {
             let kind = NameKind::SelfType(impl_block);
             let container = impl_block.module(sb.db);
-            Some(NameDefinition { kind, container, visibility })
+            NameDefinition { kind, container, visibility }
         }
-    }
+    };
+    Some(res)
 }

@@ -127,9 +127,8 @@ pub(crate) fn find_all_refs(
 
     let declaration = match def.kind {
         NameKind::Macro(mac) => mac.to_nav(db),
-        NameKind::Field(field) => field.to_nav(db),
-        NameKind::AssocItem(assoc) => assoc.to_nav(db),
-        NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
+        NameKind::StructField(field) => field.to_nav(db),
+        NameKind::ModuleDef(def) => NavigationTarget::from_def(db, def)?,
         NameKind::SelfType(imp) => imp.to_nav(db),
         NameKind::Local(local) => local.to_nav(db),
         NameKind::TypeParam(_) => return None,
@@ -240,7 +239,7 @@ fn decl_access(
     range: TextRange,
 ) -> Option<ReferenceAccess> {
     match kind {
-        NameKind::Local(_) | NameKind::Field(_) => {}
+        NameKind::Local(_) | NameKind::StructField(_) => {}
         _ => return None,
     };
 
@@ -260,7 +259,7 @@ fn decl_access(
 fn reference_access(kind: &NameKind, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
     match kind {
-        NameKind::Local(_) | NameKind::Field(_) => {}
+        NameKind::Local(_) | NameKind::StructField(_) => {}
         _ => return None,
     };
 

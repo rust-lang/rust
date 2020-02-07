@@ -98,19 +98,14 @@ fn hover_text_from_name_kind(db: &RootDatabase, name_kind: NameKind) -> Option<S
             let src = it.source(db);
             hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)))
         }
-        Field(it) => {
+        StructField(it) => {
             let src = it.source(db);
             match src.value {
                 hir::FieldSource::Named(it) => hover_text(it.doc_comment_text(), it.short_label()),
                 _ => None,
             }
         }
-        AssocItem(it) => match it {
-            hir::AssocItem::Function(it) => from_def_source(db, it),
-            hir::AssocItem::Const(it) => from_def_source(db, it),
-            hir::AssocItem::TypeAlias(it) => from_def_source(db, it),
-        },
-        Def(it) => match it {
+        ModuleDef(it) => match it {
             hir::ModuleDef::Module(it) => match it.definition_source(db).value {
                 hir::ModuleSource::Module(it) => {
                     hover_text(it.doc_comment_text(), it.short_label())
