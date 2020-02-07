@@ -579,12 +579,11 @@ impl<'hir> Map<'hir> {
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
     pub fn get(&self, id: HirId) -> Node<'hir> {
-        // read recorded by `find`
         self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_hir_id(id).map(|id| self.get(id)) // read recorded by `get`
+        self.as_local_hir_id(id).map(|id| self.get(id))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
@@ -628,13 +627,7 @@ impl<'hir> Map<'hir> {
     /// from a node to the root of the HIR (unless you get back the same ID here,
     /// which can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        if self.dep_graph.is_fully_enabled() {
-            let hir_id_owner = hir_id.owner;
-            let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
-            self.dep_graph.read(DepNode::from_def_path_hash(def_path_hash, DepKind::HirBody));
-        }
-
-        self.find_entry(hir_id).and_then(|x| x.parent_node()).unwrap_or(hir_id)
+        self.get_entry(hir_id).parent_node().unwrap_or(hir_id)
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
