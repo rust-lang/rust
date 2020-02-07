@@ -12,7 +12,10 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "usage: $0"
 fi
 
-BUILD_DIR=$PWD/target/debug/test_build_base
+CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$PWD/target}
+PROFILE=${PROFILE:-debug}
+BUILD_DIR=${CARGO_TARGET_DIR}/${PROFILE}/test_build_base
+
 MY_DIR=$(dirname "$0")
 cd "$MY_DIR" || exit
 find . -name '*.rs' -exec ./update-references.sh "$BUILD_DIR" {} +
