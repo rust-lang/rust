@@ -26,7 +26,7 @@ note: the lint level is defined here
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #65833 <https://github.com/rust-lang/rust/issues/65833>
+   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/inline-trait-and-foreign-items.rs:11:5
@@ -43,7 +43,7 @@ LL |     #[inline]
    |     ^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #65833 <https://github.com/rust-lang/rust/issues/65833>
+   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/inline-trait-and-foreign-items.rs:22:5

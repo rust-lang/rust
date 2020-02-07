@@ -4,7 +4,7 @@ error[E0723]: loops and conditional expressions are not stable in const fn
 LL |     if true { 4 } else { 5 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to previous error

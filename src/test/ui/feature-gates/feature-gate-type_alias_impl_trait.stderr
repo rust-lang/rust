@@ -4,7 +4,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -13,7 +13,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Baa = impl Debug;
    |                ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: associated type defaults are unstable
@@ -22,7 +22,7 @@ error[E0658]: associated type defaults are unstable
 LL |     type Assoc = impl Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29661
+   = note: see issue #29661 <https://github.com/rust-lang/rust/issues/29661> for more information
    = help: add `#![feature(associated_type_defaults)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -31,7 +31,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Assoc = impl Debug;
    |                  ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -40,7 +40,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                        ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -49,7 +49,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -58,7 +58,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -67,7 +67,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                                                      ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -76,7 +76,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -85,7 +85,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                  ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -94,7 +94,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -103,7 +103,7 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                                                   ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types

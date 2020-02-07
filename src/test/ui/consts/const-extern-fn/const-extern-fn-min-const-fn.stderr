@@ -4,7 +4,7 @@ error[E0723]: unsizing casts are not allowed in const fn
 LL | const extern fn unsize(x: &[u8; 3]) -> &[u8] { x }
    |                                                ^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
@@ -13,7 +13,7 @@ error[E0723]: function pointers in const fn are unstable
 LL | const unsafe extern "C" fn closure() -> fn() { || {} }
    |                                         ^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: only int, `bool` and `char` operations are stable in const fn
@@ -22,7 +22,7 @@ error[E0723]: only int, `bool` and `char` operations are stable in const fn
 LL | const unsafe extern fn use_float() { 1.0 + 1.0; }
    |                                      ^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: casting pointers to ints is unstable in const fn
@@ -31,7 +31,7 @@ error[E0723]: casting pointers to ints is unstable in const fn
 LL | const extern "C" fn ptr_cast(val: *const u8) { val as usize; }
    |                                                ^^^^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to 4 previous errors

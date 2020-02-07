@@ -6,7 +6,7 @@ LL |         Some((y, ref z)) => {}
    |               |
    |               by-move pattern here
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/68354
+   = note: see issue #68354 <https://github.com/rust-lang/rust/issues/68354> for more information
    = help: add `#![feature(move_ref_pattern)]` to the crate attributes to enable
 
 error[E0658]: binding by-move and by-ref in the same pattern is unstable
@@ -17,7 +17,7 @@ LL |     let (ref a, b) = tup.clone();
    |          |
    |          by-ref pattern here
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/68354
+   = note: see issue #68354 <https://github.com/rust-lang/rust/issues/68354> for more information
    = help: add `#![feature(move_ref_pattern)]` to the crate attributes to enable
 
 error[E0658]: binding by-move and by-ref in the same pattern is unstable
@@ -28,7 +28,7 @@ LL |     let (a, mut b) = &tup;
    |          |
    |          by-ref pattern here
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/68354
+   = note: see issue #68354 <https://github.com/rust-lang/rust/issues/68354> for more information
    = help: add `#![feature(move_ref_pattern)]` to the crate attributes to enable
 
 error[E0658]: binding by-move and by-ref in the same pattern is unstable
@@ -39,7 +39,7 @@ LL |     let (mut a, b) = &mut tup;
    |          |
    |          by-move pattern here
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/68354
+   = note: see issue #68354 <https://github.com/rust-lang/rust/issues/68354> for more information
    = help: add `#![feature(move_ref_pattern)]` to the crate attributes to enable
 
 error[E0507]: cannot move out of a shared reference
