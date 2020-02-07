@@ -69,19 +69,19 @@ where
     match *ppmode {
         PpmNormal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
 
         PpmIdentified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
         PpmTyped => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
             let empty_tables = ty::TypeckTables::empty(None);
             let annotation = TypedAnnotation { tcx, tables: Cell::new(&empty_tables) };
-            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().forest.krate()))
+            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
         _ => panic!("Should use call_with_pp_support"),
     }
@@ -143,7 +143,7 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
     }
 
     fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| tcx.hir())
+        self.tcx.map(|tcx| *tcx.hir())
     }
 
     fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
@@ -155,7 +155,7 @@ impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(*tcx.hir(), state, nested)
         }
     }
 }
@@ -217,7 +217,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
     }
 
     fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| tcx.hir())
+        self.tcx.map(|tcx| *tcx.hir())
     }
 
     fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
@@ -228,7 +228,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(ref tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(*tcx.hir(), state, nested)
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -334,7 +334,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(self.tcx.hir(), state, nested);
+        pprust_hir::PpAnn::nested(*self.tcx.hir(), state, nested);
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
