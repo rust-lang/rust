@@ -25,7 +25,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let me = unsafe { Pin::new_unchecked(&mut self.0) };
-        match me.resume() {
+        match me.resume(()) {
             GeneratorState::Yielded(x) => Some(x),
             GeneratorState::Complete(_) => None,
         }
