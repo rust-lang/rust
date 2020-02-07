@@ -1,6 +1,5 @@
 #![feature(generators, generator_trait, never_type)]
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ops::{GeneratorState::{self, *}, Generator};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -183,33 +182,7 @@ fn smoke_resume_arg() {
     });
 }
 
-fn panic_drop_resume() {
-    static DROP: AtomicUsize = AtomicUsize::new(0);
-
-    struct Dropper {}
-
-    impl Drop for Dropper {
-        fn drop(&mut self) {
-            DROP.fetch_add(1, Ordering::SeqCst);
-        }
-    }
-
-    let mut gen = |_arg| {
-        if true {
-            panic!();
-        }
-        yield ();
-    };
-    let mut gen = Pin::new(&mut gen);
-
-    assert_eq!(DROP.load(Ordering::Acquire), 0);
-    let res = catch_unwind(AssertUnwindSafe(|| gen.as_mut().resume(Dropper {})));
-    assert!(res.is_err());
-    assert_eq!(DROP.load(Ordering::Acquire), 1);
-}
-
 fn main() {
     basic();
     smoke_resume_arg();
-    panic_drop_resume();
 }
