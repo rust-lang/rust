@@ -45,54 +45,56 @@ impl<'hir> Entry<'hir> {
             _ => Some(self.parent),
         }
     }
+}
 
-    fn fn_decl(&self) -> Option<&'hir FnDecl<'hir>> {
-        match self.node {
-            Node::Item(ref item) => match item.kind {
-                ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
-                _ => None,
-            },
-
-            Node::TraitItem(ref item) => match item.kind {
-                TraitItemKind::Fn(ref sig, _) => Some(&sig.decl),
-                _ => None,
-            },
-
-            Node::ImplItem(ref item) => match item.kind {
-                ImplItemKind::Method(ref sig, _) => Some(&sig.decl),
-                _ => None,
-            },
-
-            Node::Expr(ref expr) => match expr.kind {
-                ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
-                _ => None,
-            },
-
+fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
+    match node {
+        Node::Item(ref item) => match item.kind {
+            ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
             _ => None,
-        }
-    }
+        },
 
-    fn fn_sig(&self) -> Option<&'hir FnSig<'hir>> {
-        match &self.node {
-            Node::Item(item) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => Some(sig),
-                _ => None,
-            },
-
-            Node::TraitItem(item) => match &item.kind {
-                TraitItemKind::Fn(sig, _) => Some(sig),
-                _ => None,
-            },
-
-            Node::ImplItem(item) => match &item.kind {
-                ImplItemKind::Method(sig, _) => Some(sig),
-                _ => None,
-            },
-
+        Node::TraitItem(ref item) => match item.kind {
+            TraitItemKind::Fn(ref sig, _) => Some(&sig.decl),
             _ => None,
-        }
-    }
+        },
 
+        Node::ImplItem(ref item) => match item.kind {
+            ImplItemKind::Method(ref sig, _) => Some(&sig.decl),
+            _ => None,
+        },
+
+        Node::Expr(ref expr) => match expr.kind {
+            ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
+            _ => None,
+        },
+
+        _ => None,
+    }
+}
+
+fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
+    match &node {
+        Node::Item(item) => match &item.kind {
+            ItemKind::Fn(sig, _, _) => Some(sig),
+            _ => None,
+        },
+
+        Node::TraitItem(item) => match &item.kind {
+            TraitItemKind::Fn(sig, _) => Some(sig),
+            _ => None,
+        },
+
+        Node::ImplItem(item) => match &item.kind {
+            ImplItemKind::Method(sig, _) => Some(sig),
+            _ => None,
+        },
+
+        _ => None,
+    }
+}
+
+impl<'hir> Entry<'hir> {
     fn associated_body(self) -> Option<BodyId> {
         match self.node {
             Node::Item(item) => match item.kind {
@@ -433,18 +435,18 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
-        if let Some(entry) = self.find_entry(hir_id) {
-            entry.fn_decl()
+        if let Some(node) = self.find(hir_id) {
+            fn_decl(node)
         } else {
-            bug!("no entry for hir_id `{}`", hir_id)
+            bug!("no node for hir_id `{}`", hir_id)
         }
     }
 
     pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
-        if let Some(entry) = self.find_entry(hir_id) {
-            entry.fn_sig()
+        if let Some(node) = self.find(hir_id) {
+            fn_sig(node)
         } else {
-            bug!("no entry for hir_id `{}`", hir_id)
+            bug!("no node for hir_id `{}`", hir_id)
         }
     }
 
