@@ -580,7 +580,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
             StatementKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            // Try to ensure that no `match` expressions have gotten throught the HIR const-checker.
+            // Try to ensure that no `match` expressions have gotten through the HIR const-checker.
             StatementKind::FakeRead(FakeReadCause::ForMatchGuard, _)
             | StatementKind::FakeRead(FakeReadCause::ForGuardBinding, _)
             | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {

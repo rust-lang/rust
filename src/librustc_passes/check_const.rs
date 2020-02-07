@@ -16,6 +16,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::{sym, Span, Symbol};
 use syntax::ast::Mutability;
 
@@ -27,6 +28,8 @@ enum NonConstExpr {
     Loop(hir::LoopSource),
     Match(hir::MatchSource),
     OrPattern,
+    LogicalOr,
+    LogicalAnd,
 }
 
 impl NonConstExpr {
@@ -35,6 +38,8 @@ impl NonConstExpr {
             Self::Loop(src) => format!("`{}`", src.name()),
             Self::Match(src) => format!("`{}`", src.name()),
             Self::OrPattern => format!("or-pattern"),
+            Self::LogicalOr => format!("`||`"),
+            Self::LogicalAnd => format!("`&&`"),
         }
     }
 
@@ -46,6 +51,8 @@ impl NonConstExpr {
             Self::Match(Normal)
             | Self::Match(IfDesugar { .. })
             | Self::Match(IfLetDesugar { .. })
+            | Self::LogicalOr
+            | Self::LogicalAnd
             | Self::OrPattern => &[sym::const_if_match],
 
             Self::Loop(Loop) => &[sym::const_loop],
@@ -64,26 +71,34 @@ impl NonConstExpr {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 enum ConstKind {
     Static,
     StaticMut,
     ConstFn,
+    MinConstFn,
     Const,
     AnonConst,
 }
 
 impl ConstKind {
-    fn for_body(body: &hir::Body<'_>, hir_map: Hir<'_>) -> Option<Self> {
-        let is_const_fn = |id| hir_map.fn_sig_by_hir_id(id).unwrap().header.is_const();
-
-        let owner = hir_map.body_owner(body.id());
-        let const_kind = match hir_map.body_owner_kind(owner) {
+    fn for_body(tcx: TyCtxt<'_>, body: &hir::Body<'_>) -> Option<Self> {
+        let owner = tcx.hir().body_owner(body.id());
+        let const_kind = match tcx.hir().body_owner_kind(owner) {
             hir::BodyOwnerKind::Const => Self::Const,
             hir::BodyOwnerKind::Static(Mutability::Mut) => Self::StaticMut,
             hir::BodyOwnerKind::Static(Mutability::Not) => Self::Static,
 
-            hir::BodyOwnerKind::Fn if is_const_fn(owner) => Self::ConstFn,
+            hir::BodyOwnerKind::Fn if is_min_const_fn(tcx, tcx.hir().local_def_id(owner)) => {
+                Self::MinConstFn
+            }
+
+            // Use `is_const_fn_raw` here since we need to check the bodies of unstable `const fn`
+            // as well as stable ones.
+            hir::BodyOwnerKind::Fn if tcx.is_const_fn_raw(tcx.hir().local_def_id(owner)) => {
+                Self::ConstFn
+            }
+
             hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure => return None,
         };
 
@@ -97,7 +112,7 @@ impl fmt::Display for ConstKind {
             Self::Static => "static",
             Self::StaticMut => "static mut",
             Self::Const | Self::AnonConst => "const",
-            Self::ConstFn => "const fn",
+            Self::MinConstFn | Self::ConstFn => "const fn",
         };
 
         write!(f, "{}", s)
@@ -211,7 +226,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        let kind = ConstKind::for_body(body, self.tcx.hir());
+        let kind = ConstKind::for_body(self.tcx, body);
         self.recurse_into(kind, |this| intravisit::walk_body(this, body));
     }
 
@@ -228,6 +243,26 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         match &e.kind {
             // Skip the following checks if we are not currently in a const context.
             _ if self.const_kind.is_none() => {}
+
+            // Short-circuiting operators were forbidden outright in the min_const_fn checks. In
+            // other contexts, they are converted to non-short-circuiting operators while lowering
+            // to MIR and marked as "control-flow destroyed". Bodies whose control-flow has been
+            // altered in this manner are rejected during MIR const-checking if they have any
+            // user-declared locals, since the user could observe the change like so:
+            //
+            //    let mut altered_control_flow = false;
+            //    true && { altered_control_flow = true; false }
+            hir::ExprKind::Binary(kind, _, _) if self.const_kind == Some(ConstKind::MinConstFn) => {
+                let expr = match kind.node {
+                    hir::BinOpKind::And => Some(NonConstExpr::LogicalAnd),
+                    hir::BinOpKind::Or => Some(NonConstExpr::LogicalOr),
+                    _ => None,
+                };
+
+                if let Some(expr) = expr {
+                    self.const_check_violated(expr, e.span);
+                }
+            }
 
             hir::ExprKind::Loop(_, _, source) => {
                 self.const_check_violated(NonConstExpr::Loop(*source), e.span);
