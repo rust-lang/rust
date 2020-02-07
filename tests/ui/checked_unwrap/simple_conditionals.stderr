@@ -54,6 +54,8 @@ LL |             $a.unwrap(); // unnecessary
 ...
 LL |     m!(x);
    |     ------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
   --> $DIR/simple_conditionals.rs:27:9

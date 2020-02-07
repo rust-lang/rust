@@ -14,6 +14,7 @@ LL | |         true
 LL | |     }
 LL | | }
    | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Hash` but have implemented `PartialEq` explicitly
   --> $DIR/derive_hash_xor_eq.rs:19:10
@@ -30,6 +31,7 @@ LL | |         true
 LL | |     }
 LL | | }
    | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Hash` explicitly but have derived `PartialEq`
   --> $DIR/derive_hash_xor_eq.rs:31:1
@@ -44,6 +46,7 @@ note: `PartialEq` implemented here
    |
 LL | #[derive(PartialEq)]
    |          ^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Hash` explicitly but have derived `PartialEq`
   --> $DIR/derive_hash_xor_eq.rs:49:5
@@ -58,6 +61,7 @@ note: `PartialEq` implemented here
    |
 LL |     #[derive(PartialEq)]
    |              ^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 
