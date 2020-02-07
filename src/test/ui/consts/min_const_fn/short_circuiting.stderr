@@ -1,0 +1,21 @@
+error[E0658]: `&&` is not allowed in a `const fn`
+  --> $DIR/short_circuiting.rs:1:42
+   |
+LL | const fn and(a: bool, b: bool) -> bool { a && b }
+   |                                          ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0658]: `||` is not allowed in a `const fn`
+  --> $DIR/short_circuiting.rs:3:41
+   |
+LL | const fn or(a: bool, b: bool) -> bool { a || b }
+   |                                         ^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
