@@ -26,8 +26,6 @@ pub fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
 pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
-    // FIXME: check for `rustc_const_unstable` on the containing impl. This should be done by
-    // propagating it down so it is return by the `lookup_const_stability` query.
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
         if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
