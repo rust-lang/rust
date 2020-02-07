@@ -1,4 +1,5 @@
 use hir::ModPath;
+use ra_ide_db::imports_locator::ImportsLocator;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode,
@@ -8,7 +9,6 @@ use crate::{
     assist_ctx::{ActionBuilder, Assist, AssistCtx},
     auto_import_text_edit, AssistId,
 };
-use ra_ide_db::imports_locator::ImportsLocator;
 
 // Assist: auto_import
 //
