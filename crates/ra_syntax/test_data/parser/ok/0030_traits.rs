@@ -1,7 +1,3 @@
-pub trait WriteMessage {
-    fn write_message(&FrontendMessage);
-}
-
 trait Runnable {
     fn handler();
 }

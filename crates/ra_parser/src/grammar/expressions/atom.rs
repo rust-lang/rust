@@ -229,7 +229,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     p.eat(T![async]);
     p.eat(T![move]);
-    params::param_list_opt_types(p);
+    params::param_list_closure(p);
     if opt_fn_ret_type(p) {
         if !p.at(T!['{']) {
             p.error("expected `{`");

@@ -183,7 +183,7 @@ fn fn_pointer_type(p: &mut Parser) {
         return;
     }
     if p.at(T!['(']) {
-        params::param_list_opt_patterns(p);
+        params::param_list_fn_ptr(p);
     } else {
         p.error("expected parameters")
     }
