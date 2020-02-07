@@ -10,6 +10,7 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
+    assists::invert_if::invert_boolean_expression,
     AssistId,
 };
 
@@ -99,9 +100,13 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
         let new_block = match if_let_pat {
             None => {
                 // If.
-                let early_expression = &(early_expression.syntax().to_string() + ";");
-                let new_expr = if_indent_level
-                    .increase_indent(make::if_expression(cond_expr, early_expression));
+                let new_expr = {
+                    let then_branch =
+                        make::block_expr(once(make::expr_stmt(early_expression).into()), None);
+                    let cond = invert_boolean_expression(cond_expr);
+                    let e = make::expr_if(cond, then_branch);
+                    if_indent_level.increase_indent(e)
+                };
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
             Some((path, bound_ident)) => {
