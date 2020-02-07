@@ -345,7 +345,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
-        clif_type_from_ty(self.tcx, self.monomorphize(&ty))
+        clif_type_from_ty(self.tcx, ty)
     }
 
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
