@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, VariantId, TypeParamId,
+    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, TypeParamId,
+    VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -12,8 +13,8 @@ use ra_prof::profile;
 use crate::{
     method_resolution::CrateImplBlocks,
     traits::{chalk, AssocTyValue, Impl},
-    CallableDef, PolyFnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
-    ValueTyDefId, Binders,
+    Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
+    TyDefId, TypeCtor, ValueTyDefId,
 };
 
 #[salsa::query_group(HirDatabaseStorage)]

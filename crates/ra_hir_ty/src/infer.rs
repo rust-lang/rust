@@ -278,7 +278,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impl_trait_mode: ImplTraitLoweringMode,
     ) -> Ty {
         // FIXME use right resolver for block
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver).with_impl_trait_mode(impl_trait_mode);
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
+            .with_impl_trait_mode(impl_trait_mode);
         let ty = Ty::from_hir(&ctx, type_ref);
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
@@ -455,8 +456,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver).with_impl_trait_mode(ImplTraitLoweringMode::Param);
-        let param_tys = data.params.iter().map(|type_ref| Ty::from_hir(&ctx, type_ref)).collect::<Vec<_>>();
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
+            .with_impl_trait_mode(ImplTraitLoweringMode::Param);
+        let param_tys =
+            data.params.iter().map(|type_ref| Ty::from_hir(&ctx, type_ref)).collect::<Vec<_>>();
         for (ty, pat) in param_tys.into_iter().zip(body.params.iter()) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);

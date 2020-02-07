@@ -61,7 +61,7 @@ pub struct WherePredicate {
 pub enum WherePredicateTarget {
     TypeRef(TypeRef),
     /// For desugared where predicates that can directly refer to a type param.
-    TypeParam(LocalTypeParamId)
+    TypeParam(LocalTypeParamId),
 }
 
 type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
@@ -197,7 +197,8 @@ impl GenericParams {
             return;
         }
         let bound = TypeBound::from_ast(bound);
-        self.where_predicates.push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
+        self.where_predicates
+            .push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
     }
 
     fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
@@ -212,7 +213,7 @@ impl GenericParams {
                 for bound in bounds {
                     self.where_predicates.push(WherePredicate {
                         target: WherePredicateTarget::TypeParam(param_id),
-                        bound: bound.clone()
+                        bound: bound.clone(),
                     });
                 }
             }
@@ -226,9 +227,13 @@ impl GenericParams {
     }
 
     pub fn find_trait_self_param(&self) -> Option<LocalTypeParamId> {
-        self.types
-            .iter()
-            .find_map(|(id, p)| if p.provenance == TypeParamProvenance::TraitSelf { Some(id) } else { None })
+        self.types.iter().find_map(|(id, p)| {
+            if p.provenance == TypeParamProvenance::TraitSelf {
+                Some(id)
+            } else {
+                None
+            }
+        })
     }
 }
 

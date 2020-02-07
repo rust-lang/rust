@@ -66,9 +66,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         // This works for smart-pointer-like coercion, which covers all impls from std.
                         st1.iter().zip(st2.iter()).enumerate().find_map(|(i, (ty1, ty2))| {
                             match (ty1, ty2) {
-                                (Ty::Bound(idx1), Ty::Bound(idx2))
-                                    if idx1 != idx2 =>
-                                {
+                                (Ty::Bound(idx1), Ty::Bound(idx2)) if idx1 != idx2 => {
                                     Some(((*ctor1, *ctor2), i))
                                 }
                                 _ => None,
@@ -277,9 +275,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let mut multiple_used = false;
                 fields.for_each(|(field_id, _data)| {
                     field_tys[field_id].value.walk(&mut |ty| match ty {
-                        &Ty::Bound(idx) if idx == unsize_generic_index => {
-                            multiple_used = true
-                        }
+                        &Ty::Bound(idx) if idx == unsize_generic_index => multiple_used = true,
                         _ => {}
                     })
                 });

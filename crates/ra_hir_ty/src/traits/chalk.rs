@@ -144,8 +144,11 @@ impl ToChalk for Ty {
             }
             Ty::Param(id) => {
                 let interned_id = db.intern_type_param_id(id);
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: interned_id.as_intern_id().as_usize() }
-                    .to_ty::<TypeFamily>()
+                PlaceholderIndex {
+                    ui: UniverseIndex::ROOT,
+                    idx: interned_id.as_intern_id().as_usize(),
+                }
+                .to_ty::<TypeFamily>()
             }
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
@@ -178,7 +181,9 @@ impl ToChalk for Ty {
             },
             chalk_ir::TyData::Placeholder(idx) => {
                 assert_eq!(idx.ui, UniverseIndex::ROOT);
-                let interned_id = crate::db::GlobalTypeParamId::from_intern_id(crate::salsa::InternId::from(idx.idx));
+                let interned_id = crate::db::GlobalTypeParamId::from_intern_id(
+                    crate::salsa::InternId::from(idx.idx),
+                );
                 Ty::Param(db.lookup_intern_type_param_id(interned_id))
             }
             chalk_ir::TyData::Alias(proj) => {

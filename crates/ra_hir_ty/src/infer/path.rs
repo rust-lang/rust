@@ -9,10 +9,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{
-    db::HirDatabase, method_resolution, Substs, Ty,
-    ValueTyDefId
-};
+use crate::{db::HirDatabase, method_resolution, Substs, Ty, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 

@@ -2,6 +2,7 @@
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 use std::sync::Arc;
 
+use hir_def::generics::WherePredicateTarget;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
@@ -12,7 +13,6 @@ use hir_def::{
     AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 use hir_expand::name::{name, Name};
-use hir_def::generics::WherePredicateTarget;
 
 fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -26,8 +26,12 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .where_predicates
         .iter()
         .filter_map(|pred| match &pred.target {
-            WherePredicateTarget::TypeRef(TypeRef::Path(p)) if p == &Path::from(name![Self]) => pred.bound.as_path(),
-            WherePredicateTarget::TypeParam(local_id) if Some(*local_id) == trait_self => pred.bound.as_path(),
+            WherePredicateTarget::TypeRef(TypeRef::Path(p)) if p == &Path::from(name![Self]) => {
+                pred.bound.as_path()
+            }
+            WherePredicateTarget::TypeParam(local_id) if Some(*local_id) == trait_self => {
+                pred.bound.as_path()
+            }
             _ => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
@@ -99,19 +103,35 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
+    pub(crate) fn iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p)))
-            .chain(self.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: self.def, local_id }, p)))
+            .flat_map(|it| {
+                it.params
+                    .types
+                    .iter()
+                    .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+            })
+            .chain(
+                self.params
+                    .types
+                    .iter()
+                    .map(move |(local_id, p)| (TypeParamId { parent: self.def, local_id }, p)),
+            )
     }
 
-    pub(crate) fn iter_parent<'a>(&'a self) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
-        self.parent_generics
-            .as_ref()
-            .into_iter()
-            .flat_map(|it| it.params.types.iter().map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p)))
+    pub(crate) fn iter_parent<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
+        self.parent_generics.as_ref().into_iter().flat_map(|it| {
+            it.params
+                .types
+                .iter()
+                .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+        })
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -127,9 +147,24 @@ impl Generics {
 
     /// (self, type param list, impl trait)
     pub(crate) fn provenance_split(&self) -> (usize, usize, usize) {
-        let self_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::TraitSelf).count();
-        let list_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::TypeParamList).count();
-        let impl_trait_params = self.params.types.iter().filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait).count();
+        let self_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::TraitSelf)
+            .count();
+        let list_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::TypeParamList)
+            .count();
+        let impl_trait_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait)
+            .count();
         (self_params, list_params, impl_trait_params)
     }
 

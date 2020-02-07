@@ -1033,7 +1033,10 @@ impl HirDisplay for Ty {
                         write!(f, "impl ")?;
                         let bounds = f.db.generic_predicates_for_param(*id);
                         let substs = Substs::type_params_for_generics(&generics);
-                        write_bounds_like_dyn_trait(&bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(), f)?;
+                        write_bounds_like_dyn_trait(
+                            &bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(),
+                            f,
+                        )?;
                     }
                 }
             }

@@ -10,10 +10,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
-    LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, UnionId,
-    GenericDefId
+    AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId,
+    LocalEnumVariantId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -22,8 +21,7 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor,
-    Substs
+    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;

@@ -19,8 +19,8 @@ use crate::{
     method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
-    ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
-    TypeCtor, Uncertain, Binders,
+    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef,
+    Ty, TypeCtor, Uncertain,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
