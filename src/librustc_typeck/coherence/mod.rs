@@ -10,7 +10,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::HirId;
 
 mod builtin;
 mod inherent_impls;
@@ -18,28 +17,21 @@ mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
 
-fn check_impl(tcx: TyCtxt<'_>, hir_id: HirId) {
-    let impl_def_id = tcx.hir().local_def_id(hir_id);
+fn check_impl(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_ref: ty::TraitRef<'_>) {
+    debug!(
+        "(checking implementation) adding impl for trait '{:?}', item '{}'",
+        trait_ref,
+        tcx.def_path_str(impl_def_id)
+    );
 
-    // If there are no traits, then this implementation must have a
-    // base type.
-
-    if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-        debug!(
-            "(checking implementation) adding impl for trait '{:?}', item '{}'",
-            trait_ref,
-            tcx.def_path_str(impl_def_id)
-        );
-
-        // Skip impls where one of the self type is an error type.
-        // This occurs with e.g., resolve failures (#30589).
-        if trait_ref.references_error() {
-            return;
-        }
-
-        enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
-        enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id);
+    // Skip impls where one of the self type is an error type.
+    // This occurs with e.g., resolve failures (#30589).
+    if trait_ref.references_error() {
+        return;
     }
+
+    enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
+    enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id);
 }
 
 fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_def_id: DefId) {
@@ -129,12 +121,17 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
+    // Trigger building the specialization graph for the trait. This will detect and report any
+    // overlap errors.
+    tcx.specialization_graph_of(def_id);
+
     let impls = tcx.hir().trait_impls(def_id);
-    for &impl_id in impls {
-        check_impl(tcx, impl_id);
-    }
-    for &impl_id in impls {
-        check_impl_overlap(tcx, impl_id);
+    for &hir_id in impls {
+        let impl_def_id = tcx.hir().local_def_id(hir_id);
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+
+        check_impl(tcx, impl_def_id, trait_ref);
+        check_object_overlap(tcx, impl_def_id, trait_ref);
     }
     builtin::check_trait(tcx, def_id);
 }
@@ -152,12 +149,12 @@ pub fn check_coherence(tcx: TyCtxt<'_>) {
     tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
 }
 
-/// Overlap: no two impls for the same trait are implemented for the
-/// same type. Likewise, no two inherent impls for a given type
-/// constructor provide a method with the same name.
-fn check_impl_overlap<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId) {
-    let impl_def_id = tcx.hir().local_def_id(hir_id);
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+/// Checks whether an impl overlaps with the automatic `impl Trait for dyn Trait`.
+fn check_object_overlap<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: DefId,
+    trait_ref: ty::TraitRef<'tcx>,
+) {
     let trait_def_id = trait_ref.def_id;
 
     if trait_ref.references_error() {
@@ -165,11 +162,7 @@ fn check_impl_overlap<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId) {
         return;
     }
 
-    // Trigger building the specialization graph for the trait of this impl.
-    // This will detect any overlap errors.
-    tcx.specialization_graph_of(trait_def_id);
-
-    // check for overlap with the automatic `impl Trait for Trait`
+    // check for overlap with the automatic `impl Trait for dyn Trait`
     if let ty::Dynamic(ref data, ..) = trait_ref.self_ty().kind {
         // This is something like impl Trait1 for Trait2. Illegal
         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
