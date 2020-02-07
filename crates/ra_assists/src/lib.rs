@@ -34,6 +34,14 @@ pub struct AssistLabel {
     pub id: AssistId,
 }
 
+impl AssistLabel {
+    pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
+        // FIXME: make fields private, so that this invariant can't be broken
+        assert!(label.chars().nth(0).unwrap().is_uppercase());
+        AssistLabel { label: label.into(), id }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AssistAction {
     pub label: Option<String>,

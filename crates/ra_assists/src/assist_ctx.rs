@@ -57,7 +57,7 @@ pub(crate) struct AssistCtx<'a> {
     should_compute_edit: bool,
 }
 
-impl<'a> Clone for AssistCtx<'a> {
+impl Clone for AssistCtx<'_> {
     fn clone(&self) -> Self {
         AssistCtx {
             db: self.db,
@@ -80,8 +80,7 @@ impl<'a> AssistCtx<'a> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
-        assert!(label.label.chars().nth(0).unwrap().is_uppercase());
+        let label = AssistLabel::new(label.into(), id);
 
         let assist = if self.should_compute_edit {
             let action = {
@@ -103,7 +102,7 @@ impl<'a> AssistCtx<'a> {
         label: impl Into<String>,
         f: impl FnOnce() -> Vec<ActionBuilder>,
     ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
+        let label = AssistLabel::new(label.into(), id);
         let assist = if self.should_compute_edit {
             let actions = f();
             assert!(!actions.is_empty(), "Assist cannot have no");
