@@ -1053,8 +1053,10 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results_for_{}", ::std::any::type_name::<Q>());
-    let _timer = tcx.sess.prof.extra_verbose_generic_activity(desc);
+    let _timer = tcx
+        .sess
+        .prof
+        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
     let shards = Q::query_cache(tcx).lock_shards();
     assert!(shards.iter().all(|shard| shard.active.is_empty()));

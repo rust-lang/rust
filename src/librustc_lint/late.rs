@@ -441,27 +441,20 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
         late_lint_pass_crate(tcx, builtin_lints);
     } else {
         for pass in &mut passes {
-            tcx.sess
-                .prof
-                .extra_verbose_generic_activity(&format!("running late lint: {}", pass.name()))
-                .run(|| {
-                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-                });
+            tcx.sess.prof.extra_verbose_generic_activity("run_late_lint", pass.name()).run(|| {
+                late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
+            });
         }
 
         let mut passes: Vec<_> =
             unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
-            tcx.sess
-                .prof
-                .extra_verbose_generic_activity(&format!(
-                    "running late module lint: {}",
-                    pass.name()
-                ))
-                .run(|| {
+            tcx.sess.prof.extra_verbose_generic_activity("run_late_module_lint", pass.name()).run(
+                || {
                     late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-                });
+                },
+            );
         }
     }
 }

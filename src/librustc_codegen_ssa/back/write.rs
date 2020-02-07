@@ -21,6 +21,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -691,11 +692,17 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    fn profiling_event_id(&self) -> &'static str {
+    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
         match *self {
-            WorkItem::Optimize(_) => "codegen_module_optimize",
-            WorkItem::CopyPostLtoArtifacts(_) => "codegen_copy_artifacts_from_incr_cache",
-            WorkItem::LTO(_) => "codegen_module_perform_lto",
+            WorkItem::Optimize(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &m.name[..])
+            }
+            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
+                .prof
+                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &m.name[..]),
+            WorkItem::LTO(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
+            }
         }
     }
 }
@@ -1520,7 +1527,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     ) {
         if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes"));
+            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes", "crate"));
         }
     }
 }
@@ -1575,7 +1582,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
+            let _prof_timer = work.start_profiling(&cgcx);
             Some(execute_work_item(&cgcx, work))
         };
     });
