@@ -2,8 +2,8 @@
 #![feature(generic_associated_types)]
 
 trait Shadow<'a> {
-    //FIXME(#44265): The lifetime parameter shadowing should cause an error.
     type Bar<'a>;
+    //~^ ERROR lifetime name `'a` shadows a lifetime name that is already in scope
 }
 
 trait NoShadow<'a> {
@@ -11,8 +11,8 @@ trait NoShadow<'a> {
 }
 
 impl<'a> NoShadow<'a> for &'a u32 {
-    //FIXME(#44265): The lifetime parameter shadowing should cause an error.
     type Bar<'a> = i32;
+    //~^ ERROR lifetime name `'a` shadows a lifetime name that is already in scope
 }
 
 trait ShadowT<T> {
