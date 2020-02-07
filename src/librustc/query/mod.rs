@@ -647,7 +647,8 @@ rustc_queries! {
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
-        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {
+        query specialization_graph_of(key: DefId) -> &'tcx specialization_graph::Graph {
+            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
         query is_object_safe(key: DefId) -> bool {
