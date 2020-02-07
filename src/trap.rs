@@ -65,7 +65,7 @@ pub fn trap_unreachable(
     msg: impl AsRef<str>,
 ) {
     codegen_print(fx, msg.as_ref());
-    fx.bcx.ins().trap(TrapCode::User(!0));
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
 /// Use this when something is unimplemented, but `libcore` or `libstd` requires it to codegen.
