@@ -9,6 +9,7 @@ mod assist_ctx;
 mod marks;
 #[cfg(test)]
 mod doc_tests;
+mod utils;
 pub mod ast_transform;
 
 use std::cmp::Ordering;
