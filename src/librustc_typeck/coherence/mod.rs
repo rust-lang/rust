@@ -10,12 +10,18 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::Span;
 
 mod builtin;
 mod inherent_impls;
 mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
+
+/// Obtains the span of just the impl header of `impl_def_id`.
+fn impl_header_span(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Span {
+    tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap())
+}
 
 fn check_impl(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_ref: ty::TraitRef<'_>) {
     debug!(
@@ -37,10 +43,10 @@ fn check_impl(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_ref: ty::TraitRef<'_>) 
 fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, trait_def_id: DefId) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
-    let span = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
 
     // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
     if did == li.sized_trait() {
+        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
             span,
@@ -53,6 +59,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
     }
 
     if did == li.unsize_trait() {
+        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
             span,
@@ -78,6 +85,8 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
     } else {
         return; // everything OK
     };
+
+    let span = impl_header_span(tcx, impl_def_id);
     struct_span_err!(
         tcx.sess,
         span,
@@ -101,7 +110,7 @@ fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt<'_>, impl_def_id: DefId, tr
         return;
     }
 
-    let span = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+    let span = impl_header_span(tcx, impl_def_id);
     struct_span_err!(tcx.sess, span, E0715, "impls for marker traits cannot contain items").emit();
 }
 
@@ -187,17 +196,17 @@ fn check_object_overlap<'tcx>(
             } else {
                 let mut supertrait_def_ids = traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
-                    let sp = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+                    let span = impl_header_span(tcx, impl_def_id);
                     struct_span_err!(
                         tcx.sess,
-                        sp,
+                        span,
                         E0371,
                         "the object type `{}` automatically implements the trait `{}`",
                         trait_ref.self_ty(),
                         tcx.def_path_str(trait_def_id)
                     )
                     .span_label(
-                        sp,
+                        span,
                         format!(
                             "`{}` automatically implements trait `{}`",
                             trait_ref.self_ty(),
