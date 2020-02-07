@@ -3111,8 +3111,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "chalk-engine",
- "fmt_macros",
- "graphviz",
  "jobserver",
  "log",
  "measureme",
