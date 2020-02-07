@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, AssocItem, HasSource, ImplBlock, InFile, Local, MacroDef, Module, ModuleDef, SourceBinder,
+    Adt, HasSource, ImplBlock, InFile, Local, MacroDef, Module, ModuleDef, SourceBinder,
     StructField, TypeParam, VariantDef,
 };
 use ra_prof::profile;
@@ -21,7 +21,6 @@ use crate::RootDatabase;
 pub enum NameKind {
     Macro(MacroDef),
     Field(StructField),
-    AssocItem(AssocItem),
     Def(ModuleDef),
     SelfType(ImplBlock),
     Local(Local),
@@ -92,29 +91,17 @@ pub fn classify_name(
             ast::FnDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Function = sb.to_def(src)?;
-                if parent.parent().and_then(ast::ItemList::cast).map_or(false, |it| it.syntax().parent().and_then(ast::Module::cast).is_none()) {
-                    Some(from_assoc_item(sb.db, def.into()))
-                } else {
-                    Some(from_module_def(sb.db, def.into(), None))
-                }
+                Some(from_module_def(sb.db, def.into(), None))
             },
             ast::ConstDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::Const = sb.to_def(src)?;
-                if parent.parent().and_then(ast::ItemList::cast).is_some() {
-                    Some(from_assoc_item(sb.db, def.into()))
-                } else {
-                    Some(from_module_def(sb.db, def.into(), None))
-                }
+                Some(from_module_def(sb.db, def.into(), None))
             },
             ast::TypeAliasDef(it) => {
                 let src = name.with_value(it);
                 let def: hir::TypeAlias = sb.to_def(src)?;
-                if parent.parent().and_then(ast::ItemList::cast).is_some() {
-                    Some(from_assoc_item(sb.db, def.into()))
-                } else {
-                    Some(from_module_def(sb.db, def.into(), None))
-                }
+                Some(from_module_def(sb.db, def.into(), None))
             },
             ast::MacroCall(it) => {
                 let src = name.with_value(it);
@@ -140,17 +127,6 @@ pub fn classify_name(
             _ => None,
         }
     }
-}
-
-pub fn from_assoc_item(db: &RootDatabase, item: AssocItem) -> NameDefinition {
-    let container = item.module(db);
-    let visibility = match item {
-        AssocItem::Function(f) => f.source(db).value.visibility(),
-        AssocItem::Const(c) => c.source(db).value.visibility(),
-        AssocItem::TypeAlias(a) => a.source(db).value.visibility(),
-    };
-    let kind = NameKind::AssocItem(item);
-    NameDefinition { kind, container, visibility }
 }
 
 pub fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDefinition {

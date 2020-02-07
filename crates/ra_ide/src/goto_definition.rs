@@ -78,7 +78,6 @@ pub(crate) fn reference_definition(
         Some(Macro(it)) => return Exact(it.to_nav(sb.db)),
         Some(Field(it)) => return Exact(it.to_nav(sb.db)),
         Some(TypeParam(it)) => return Exact(it.to_nav(sb.db)),
-        Some(AssocItem(it)) => return Exact(it.to_nav(sb.db)),
         Some(Local(it)) => return Exact(it.to_nav(sb.db)),
         Some(Def(def)) => match NavigationTarget::from_def(sb.db, def) {
             Some(nav) => return Exact(nav),

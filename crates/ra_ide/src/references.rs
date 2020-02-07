@@ -128,7 +128,6 @@ pub(crate) fn find_all_refs(
     let declaration = match def.kind {
         NameKind::Macro(mac) => mac.to_nav(db),
         NameKind::Field(field) => field.to_nav(db),
-        NameKind::AssocItem(assoc) => assoc.to_nav(db),
         NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
         NameKind::SelfType(imp) => imp.to_nav(db),
         NameKind::Local(local) => local.to_nav(db),

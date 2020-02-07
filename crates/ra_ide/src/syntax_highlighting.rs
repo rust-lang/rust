@@ -321,9 +321,6 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
     match name_kind {
         Macro(_) => tags::MACRO,
         Field(_) => tags::FIELD,
-        AssocItem(hir::AssocItem::Function(_)) => tags::FUNCTION,
-        AssocItem(hir::AssocItem::Const(_)) => tags::CONSTANT,
-        AssocItem(hir::AssocItem::TypeAlias(_)) => tags::TYPE,
         Def(hir::ModuleDef::Module(_)) => tags::MODULE,
         Def(hir::ModuleDef::Function(_)) => tags::FUNCTION,
         Def(hir::ModuleDef::Adt(_)) => tags::TYPE,
