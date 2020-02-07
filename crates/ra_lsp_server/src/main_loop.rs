@@ -635,12 +635,16 @@ fn on_check_task(
 
         CheckTask::AddDiagnostic { url, diagnostic, fixes } => {
             let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
-            let file_id = world_state
-                .vfs
-                .read()
-                .path2file(&path)
-                .map(|it| FileId(it.0))
-                .ok_or_else(|| format!("unknown file: {}", path.to_string_lossy()))?;
+            let file_id = match world_state.vfs.read().path2file(&path) {
+                Some(file) => FileId(file.0),
+                None => {
+                    log::error!(
+                        "File with cargo diagnostic not found in VFS: {}",
+                        path.to_string_lossy()
+                    );
+                    return Ok(());
+                }
+            };
 
             task_sender
                 .send(Task::Diagnostic(DiagnosticTask::AddCheck(file_id, diagnostic, fixes)))?;
