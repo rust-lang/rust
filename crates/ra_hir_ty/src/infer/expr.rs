@@ -635,7 +635,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     continue;
                 }
 
-                let param_ty = self.insert_vars_for_impl_trait(param_ty);
                 let param_ty = self.normalize_associated_types_in(param_ty);
                 self.infer_expr_coerce(arg, &Expectation::has_type(param_ty.clone()));
             }

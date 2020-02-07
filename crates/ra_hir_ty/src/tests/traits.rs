@@ -1,7 +1,6 @@
 use insta::assert_snapshot;
 
 use ra_db::fixture::WithFixture;
-use test_utils::covers;
 
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 use crate::test_db::TestDB;
@@ -1650,7 +1649,6 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 
 #[test]
 fn unify_impl_trait() {
-    covers!(insert_vars_for_impl_trait);
     assert_snapshot!(
         infer_with_mismatches(r#"
 trait Trait<T> {}
@@ -1682,26 +1680,26 @@ fn test() -> impl Trait<i32> {
     [172; 183) '{ loop {} }': T
     [174; 181) 'loop {}': !
     [179; 181) '{}': ()
-    [214; 310) '{     ...t()) }': S<i32>
+    [214; 310) '{     ...t()) }': S<{unknown}>
     [224; 226) 's1': S<u32>
-    [229; 230) 'S': S<u32>(T) -> S<T>
+    [229; 230) 'S': S<u32>(u32) -> S<u32>
     [229; 241) 'S(default())': S<u32>
-    [231; 238) 'default': fn default<u32>() -> T
+    [231; 238) 'default': fn default<u32>() -> u32
     [231; 240) 'default()': u32
-    [247; 250) 'foo': fn foo(impl Trait<u32>) -> ()
+    [247; 250) 'foo': fn foo<S<u32>>(S<u32>) -> ()
     [247; 254) 'foo(s1)': ()
     [251; 253) 's1': S<u32>
     [264; 265) 'x': i32
-    [273; 276) 'bar': fn bar<i32>(impl Trait<T>) -> T
+    [273; 276) 'bar': fn bar<i32, S<i32>>(S<i32>) -> i32
     [273; 290) 'bar(S(...lt()))': i32
-    [277; 278) 'S': S<i32>(T) -> S<T>
+    [277; 278) 'S': S<i32>(i32) -> S<i32>
     [277; 289) 'S(default())': S<i32>
-    [279; 286) 'default': fn default<i32>() -> T
+    [279; 286) 'default': fn default<i32>() -> i32
     [279; 288) 'default()': i32
-    [296; 297) 'S': S<i32>(T) -> S<T>
-    [296; 308) 'S(default())': S<i32>
-    [298; 305) 'default': fn default<i32>() -> T
-    [298; 307) 'default()': i32
+    [296; 297) 'S': S<{unknown}>({unknown}) -> S<{unknown}>
+    [296; 308) 'S(default())': S<{unknown}>
+    [298; 305) 'default': fn default<{unknown}>() -> {unknown}
+    [298; 307) 'default()': {unknown}
     "###
     );
 }

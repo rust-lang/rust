@@ -144,6 +144,7 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
         let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
         let blk = sb.to_def(src)?;
 
+        // TODO this check doesn't work
         let same_ty = blk.target_ty(db) == struct_ty;
         let not_trait_impl = blk.target_trait(db).is_none();
 
