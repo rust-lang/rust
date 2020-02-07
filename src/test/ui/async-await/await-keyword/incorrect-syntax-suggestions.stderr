@@ -71,49 +71,49 @@ LL |     let _ = await bar()?;
    |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `bar()?.await`
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:68:14
+  --> $DIR/incorrect-syntax-suggestions.rs:69:14
    |
 LL |     let _ = (await bar())?;
    |              ^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:73:24
+  --> $DIR/incorrect-syntax-suggestions.rs:74:24
    |
 LL |     let _ = bar().await();
    |                        ^^ help: `await` is not a method call, remove the parentheses
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:78:24
+  --> $DIR/incorrect-syntax-suggestions.rs:79:24
    |
 LL |     let _ = bar().await()?;
    |                        ^^ help: `await` is not a method call, remove the parentheses
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:106:13
+  --> $DIR/incorrect-syntax-suggestions.rs:107:13
    |
 LL |     let _ = await!(bar());
    |             ^^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:110:13
+  --> $DIR/incorrect-syntax-suggestions.rs:111:13
    |
 LL |     let _ = await!(bar())?;
    |             ^^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:115:17
+  --> $DIR/incorrect-syntax-suggestions.rs:116:17
    |
 LL |         let _ = await!(bar())?;
    |                 ^^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:123:17
+  --> $DIR/incorrect-syntax-suggestions.rs:124:17
    |
 LL |         let _ = await!(bar())?;
    |                 ^^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: expected expression, found `=>`
-  --> $DIR/incorrect-syntax-suggestions.rs:131:25
+  --> $DIR/incorrect-syntax-suggestions.rs:132:25
    |
 LL |     match await { await => () }
    |                   ----- ^^ expected expression
@@ -121,13 +121,13 @@ LL |     match await { await => () }
    |                   while parsing this incorrect await expression
 
 error: incorrect use of `await`
-  --> $DIR/incorrect-syntax-suggestions.rs:131:11
+  --> $DIR/incorrect-syntax-suggestions.rs:132:11
    |
 LL |     match await { await => () }
    |           ^^^^^^^^^^^^^^^^^^^^^ help: `await` is a postfix operation: `{ await => () }.await`
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`
-  --> $DIR/incorrect-syntax-suggestions.rs:134:1
+  --> $DIR/incorrect-syntax-suggestions.rs:135:1
    |
 LL |     match await { await => () }
    |     -----                      - expected one of `.`, `?`, `{`, or an operator
@@ -162,7 +162,7 @@ LL |     let _ = await bar()?;
    |             ^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:68:14
+  --> $DIR/incorrect-syntax-suggestions.rs:69:14
    |
 LL | fn foo12() -> Result<(), ()> {
    |    ----- this is not `async`
@@ -170,7 +170,7 @@ LL |     let _ = (await bar())?;
    |              ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:73:13
+  --> $DIR/incorrect-syntax-suggestions.rs:74:13
    |
 LL | fn foo13() -> Result<(), ()> {
    |    ----- this is not `async`
@@ -178,7 +178,7 @@ LL |     let _ = bar().await();
    |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:78:13
+  --> $DIR/incorrect-syntax-suggestions.rs:79:13
    |
 LL | fn foo14() -> Result<(), ()> {
    |    ----- this is not `async`
@@ -186,7 +186,7 @@ LL |     let _ = bar().await()?;
    |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:83:13
+  --> $DIR/incorrect-syntax-suggestions.rs:84:13
    |
 LL | fn foo15() -> Result<(), ()> {
    |    ----- this is not `async`
@@ -194,7 +194,7 @@ LL |     let _ = bar().await;
    |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:87:13
+  --> $DIR/incorrect-syntax-suggestions.rs:88:13
    |
 LL | fn foo16() -> Result<(), ()> {
    |    ----- this is not `async`
@@ -202,7 +202,7 @@ LL |     let _ = bar().await?;
    |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:92:17
+  --> $DIR/incorrect-syntax-suggestions.rs:93:17
    |
 LL |     fn foo() -> Result<(), ()> {
    |        --- this is not `async`
@@ -210,7 +210,7 @@ LL |         let _ = bar().await?;
    |                 ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:99:17
+  --> $DIR/incorrect-syntax-suggestions.rs:100:17
    |
 LL |     let foo = || {
    |               -- this is not `async`
@@ -218,7 +218,7 @@ LL |         let _ = bar().await?;
    |                 ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:115:17
+  --> $DIR/incorrect-syntax-suggestions.rs:116:17
    |
 LL |     fn foo() -> Result<(), ()> {
    |        --- this is not `async`
@@ -226,7 +226,7 @@ LL |         let _ = await!(bar())?;
    |                 ^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:123:17
+  --> $DIR/incorrect-syntax-suggestions.rs:124:17
    |
 LL |     let foo = || {
    |               -- this is not `async`
@@ -242,7 +242,16 @@ LL |     let _ = await bar()?;
    = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
    = note: required by `std::ops::Try::into_result`
 
-error: aborting due to 35 previous errors
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/incorrect-syntax-suggestions.rs:63:19
+   |
+LL |     let _ = await bar()?;
+   |                   ^^^^^^ the `?` operator cannot be applied to type `impl std::future::Future`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
+   = note: required by `std::ops::Try::into_result`
+
+error: aborting due to 36 previous errors
 
 Some errors have detailed explanations: E0277, E0728.
 For more information about an error, try `rustc --explain E0277`.
