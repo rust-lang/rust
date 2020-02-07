@@ -702,11 +702,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             if self.predicate_may_hold(&unit_obligation) {
                                 err.note(
                                     "the trait is implemented for `()`. \
-                                         Possibly this error has been caused by changes to \
-                                         Rust's type-inference algorithm \
-                                         (see: https://github.com/rust-lang/rust/issues/48950 \
-                                         for more info). Consider whether you meant to use the \
-                                         type `()` here instead.",
+                                     Possibly this error has been caused by changes to \
+                                     Rust's type-inference algorithm (see issue #48950 \
+                                     <https://github.com/rust-lang/rust/issues/48950> \
+                                     for more information). Consider whether you meant to use \
+                                     the type `()` here instead.",
                                 );
                             }
                         }
