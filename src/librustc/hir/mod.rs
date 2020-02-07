@@ -7,11 +7,35 @@ pub mod map;
 
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::print;
+use rustc_hir::Body;
 use rustc_hir::Crate;
 use rustc_hir::HirId;
+use rustc_hir::ItemLocalId;
+use rustc_hir::Node;
+use rustc_index::vec::IndexVec;
 use std::ops::Deref;
+
+#[derive(HashStable)]
+pub struct HirOwner<'tcx> {
+    parent: HirId,
+    node: Node<'tcx>,
+}
+
+#[derive(HashStable)]
+pub struct HirItem<'tcx> {
+    parent: ItemLocalId,
+    node: Node<'tcx>,
+}
+
+#[derive(HashStable)]
+pub struct HirOwnerItems<'tcx> {
+    owner: &'tcx HirOwner<'tcx>,
+    items: IndexVec<ItemLocalId, Option<HirItem<'tcx>>>,
+    bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
+}
 
 /// A wrapper type which allows you to access HIR.
 #[derive(Clone)]

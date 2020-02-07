@@ -105,6 +105,15 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
             }
         }
     }
+
+    fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
+        let prev_hash_node_ids = self.node_id_hashing_mode;
+        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
+
+        f(self);
+
+        self.node_id_hashing_mode = prev_hash_node_ids;
+    }
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for DefId {
@@ -155,59 +164,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::ItemLocalId {
     #[inline]
     fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> hir::ItemLocalId {
         *self
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem<'_> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let hir::TraitItem { hir_id: _, ident, ref attrs, ref generics, ref kind, span } = *self;
-
-        hcx.hash_hir_item_like(|hcx| {
-            ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
-            generics.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        });
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem<'_> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let hir::ImplItem {
-            hir_id: _,
-            ident,
-            ref vis,
-            defaultness,
-            ref attrs,
-            ref generics,
-            ref kind,
-            span,
-        } = *self;
-
-        hcx.hash_hir_item_like(|hcx| {
-            ident.name.hash_stable(hcx, hasher);
-            vis.hash_stable(hcx, hasher);
-            defaultness.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
-            generics.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        });
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Item<'_> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let hir::Item { ident, ref attrs, hir_id: _, ref kind, ref vis, span } = *self;
-
-        hcx.hash_hir_item_like(|hcx| {
-            ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-            vis.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        });
     }
 }
 

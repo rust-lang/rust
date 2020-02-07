@@ -55,6 +55,14 @@ rustc_queries! {
             desc { "get the crate HIR" }
         }
 
+        query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
+            eval_always
+        }
+
+        query hir_owner_items(key: DefId) -> &'tcx HirOwnerItems<'tcx> {
+            eval_always
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }

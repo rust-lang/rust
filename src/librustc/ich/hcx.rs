@@ -164,15 +164,6 @@ impl<'a> StableHashingContext<'a> {
         }
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
-
-    pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
-        let prev_hash_node_ids = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
-
-        f(self);
-
-        self.node_id_hashing_mode = prev_hash_node_ids;
-    }
 }
 
 /// Something that can provide a stable hashing context.
