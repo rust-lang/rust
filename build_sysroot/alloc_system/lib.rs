@@ -41,7 +41,7 @@ const MIN_ALIGN: usize = 8;
               target_arch = "sparc64")))]
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
-use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout};
+use core::alloc::{AllocRef, GlobalAlloc, AllocErr, Layout};
 use core::ptr::NonNull;
 /// The default memory allocator provided by the operating system.
 ///
@@ -70,7 +70,7 @@ use core::ptr::NonNull;
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Alloc for System {
+unsafe impl AllocRef for System {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)

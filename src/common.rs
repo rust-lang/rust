@@ -329,6 +329,7 @@ impl<'tcx, B: Backend> BackendTypes for FunctionCx<'_, 'tcx, B> {
     type Type = Type;
     type Funclet = !;
     type DIScope = !;
+    type DIVariable = !;
 }
 
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {

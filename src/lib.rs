@@ -213,11 +213,19 @@ impl CodegenBackend for CraneliftCodegenBackend {
         res
     }
 
-    fn join_codegen_and_link(
+    fn join_codegen(
         &self,
-        res: Box<dyn Any>,
-        sess: &Session,
+        ongoing_codegen: Box<dyn Any>,
+        _sess: &Session,
         _dep_graph: &DepGraph,
+    ) -> Result<Box<dyn Any>, ErrorReported> {
+        Ok(ongoing_codegen)
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        res: Box<dyn Any>,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
