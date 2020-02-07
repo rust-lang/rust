@@ -400,7 +400,7 @@ impl<'hir> Map<'hir> {
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
-        self.lookup(id).cloned()
+        Some(self.get_entry(id))
     }
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
