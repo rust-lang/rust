@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
-use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIndex, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
@@ -175,7 +175,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             .source_map
             .files()
             .iter()
-            .filter(|source_file| CrateNum::from_u32(source_file.crate_of_origin) == LOCAL_CRATE)
+            .filter(|source_file| source_file.cnum == LOCAL_CRATE)
             .map(|source_file| source_file.name_hash)
             .collect();
 

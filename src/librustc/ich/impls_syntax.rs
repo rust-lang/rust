@@ -5,7 +5,6 @@ use crate::ich::StableHashingContext;
 
 use rustc_ast::ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::SourceFile;
 
 use smallvec::SmallVec;
@@ -59,7 +58,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             name_hash,
             name_was_remapped,
             unmapped_path: _,
-            crate_of_origin,
+            cnum,
             // Do not hash the source as it is not encoded
             src: _,
             src_hash,
@@ -74,9 +73,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 
         (name_hash as u64).hash_stable(hcx, hasher);
         name_was_remapped.hash_stable(hcx, hasher);
-
-        DefId { krate: CrateNum::from_u32(crate_of_origin), index: CRATE_DEF_INDEX }
-            .hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 
@@ -101,6 +97,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         for &char_pos in normalized_pos.iter() {
             stable_normalized_pos(char_pos, start_pos).hash_stable(hcx, hasher);
         }
+
+        cnum.hash_stable(hcx, hasher);
     }
 }
 
