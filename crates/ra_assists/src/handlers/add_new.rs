@@ -1,5 +1,5 @@
 use format_buf::format;
-use hir::InFile;
+use hir::{Adt, InFile};
 use join_to_string::join;
 use ra_syntax::{
     ast::{
@@ -135,17 +135,22 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
     })?;
     let mut sb = ctx.source_binder();
 
-    let struct_ty = {
+    let struct_def = {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
-        sb.to_def(src)?.ty(db)
+        sb.to_def(src)?
     };
 
     let block = module.descendants().filter_map(ast::ImplBlock::cast).find_map(|impl_blk| {
         let src = InFile { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
         let blk = sb.to_def(src)?;
 
-        // TODO this check doesn't work
-        let same_ty = blk.target_ty(db) == struct_ty;
+        // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
+        // (we currently use the wrong type parameter)
+        // also we wouldn't want to use e.g. `impl S<u32>`
+        let same_ty = match blk.target_ty(db).as_adt() {
+            Some(def) => def == Adt::Struct(struct_def),
+            None => false,
+        };
         let not_trait_impl = blk.target_trait(db).is_none();
 
         if !(same_ty && not_trait_impl) {
