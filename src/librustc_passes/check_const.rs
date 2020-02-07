@@ -8,6 +8,7 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc::hir::map::Map;
+use rustc::hir::Hir;
 use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
@@ -74,7 +75,7 @@ enum ConstKind {
 }
 
 impl ConstKind {
-    fn for_body(body: &hir::Body<'_>, hir_map: &Map<'_>) -> Option<Self> {
+    fn for_body(body: &hir::Body<'_>, hir_map: Hir<'_>) -> Option<Self> {
         let is_const_fn = |id| hir_map.fn_sig_by_hir_id(id).unwrap().header.is_const();
 
         let owner = hir_map.body_owner(body.id());

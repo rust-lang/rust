@@ -966,7 +966,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    hir_map: hir_map::Map<'tcx>,
+    /// This should usually be accessed with the `tcx.hir()` method.
+    pub(crate) hir_map: hir_map::Map<'tcx>,
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1019,11 +1020,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        &self.hir_map
-    }
-
     pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
@@ -1328,7 +1324,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.hir_map.forest.untracked_krate();
+        let krate = self.gcx.hir_map.untracked_krate();
 
         StableHashingContext::new(self.sess, krate, self.hir().definitions(), &*self.cstore)
     }

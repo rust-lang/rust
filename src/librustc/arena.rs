@@ -127,7 +127,7 @@ macro_rules! arena_types {
             [] tys: rustc::ty::TyS<$tcx>,
 
             // HIR types
-            [few] hir_forest: rustc::hir::map::Forest<$tcx>,
+            [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
             [] attribute: syntax::ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,

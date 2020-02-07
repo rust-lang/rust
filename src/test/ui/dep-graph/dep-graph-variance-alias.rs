@@ -6,17 +6,16 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
-
-fn main() { }
+#![rustc_if_this_changed(hir_crate)]
+fn main() {}
 
 struct Foo<T> {
-    f: T
+    f: T,
 }
 
-#[rustc_if_this_changed(Krate)]
 type TypeAlias<T> = Foo<T>;
 
 #[rustc_then_this_would_need(variances_of)] //~ ERROR OK
 struct Use<T> {
-    x: TypeAlias<T>
+    x: TypeAlias<T>,
 }

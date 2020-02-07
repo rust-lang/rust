@@ -2598,7 +2598,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &
         E0533,
         "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
-        hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false))
+        hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false))
     )
     .emit();
 }

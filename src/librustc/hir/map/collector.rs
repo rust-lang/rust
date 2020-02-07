@@ -223,12 +223,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             (commandline_args_hash, crate_disambiguator.to_fingerprint()),
         );
 
-        let (_, crate_hash) = input_dep_node_and_hash(
-            self.dep_graph,
-            &mut self.hcx,
-            DepNode::new_no_params(DepKind::Krate),
-            crate_hash_input,
-        );
+        let mut stable_hasher = StableHasher::new();
+        crate_hash_input.hash_stable(&mut self.hcx, &mut stable_hasher);
+        let crate_hash: Fingerprint = stable_hasher.finish();
 
         let svh = Svh::new(crate_hash.to_smaller_hash());
         (self.map, svh)
