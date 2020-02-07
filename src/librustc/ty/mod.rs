@@ -2717,11 +2717,10 @@ impl<'tcx> TyCtxt<'tcx> {
             .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> Vec<&'tcx AssocItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> impl Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .iter()
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
-            .collect()
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {

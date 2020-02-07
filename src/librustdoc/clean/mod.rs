@@ -2108,11 +2108,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
         let provided: FxHashSet<String> = trait_
             .def_id()
             .map(|did| {
-                cx.tcx
-                    .provided_trait_methods(did)
-                    .into_iter()
-                    .map(|meth| meth.ident.to_string())
-                    .collect()
+                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
             })
             .unwrap_or_default();
 
