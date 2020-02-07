@@ -20,8 +20,8 @@ use crate::RootDatabase;
 #[derive(Debug, PartialEq, Eq)]
 pub enum NameKind {
     Macro(MacroDef),
-    Field(StructField),
-    Def(ModuleDef),
+    StructField(StructField),
+    ModuleDef(ModuleDef),
     SelfType(ImplBlock),
     Local(Local),
     TypeParam(TypeParam),
@@ -130,7 +130,7 @@ pub fn classify_name(
 }
 
 pub fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDefinition {
-    let kind = NameKind::Field(field);
+    let kind = NameKind::StructField(field);
     let parent = field.parent_def(db);
     let container = parent.module(db);
     let visibility = match parent {
@@ -146,7 +146,7 @@ pub fn from_module_def(
     def: ModuleDef,
     module: Option<Module>,
 ) -> NameDefinition {
-    let kind = NameKind::Def(def);
+    let kind = NameKind::ModuleDef(def);
     let (container, visibility) = match def {
         ModuleDef::Module(it) => {
             let container = it.parent(db).or_else(|| Some(it)).unwrap();

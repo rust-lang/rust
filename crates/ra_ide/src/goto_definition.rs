@@ -76,10 +76,10 @@ pub(crate) fn reference_definition(
     let name_kind = classify_name_ref(sb, name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(it)) => return Exact(it.to_nav(sb.db)),
-        Some(Field(it)) => return Exact(it.to_nav(sb.db)),
+        Some(StructField(it)) => return Exact(it.to_nav(sb.db)),
         Some(TypeParam(it)) => return Exact(it.to_nav(sb.db)),
         Some(Local(it)) => return Exact(it.to_nav(sb.db)),
-        Some(Def(def)) => match NavigationTarget::from_def(sb.db, def) {
+        Some(ModuleDef(def)) => match NavigationTarget::from_def(sb.db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },

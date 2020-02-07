@@ -44,7 +44,7 @@ impl<'a> ImportsLocator<'a> {
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(db, &import_candidate))
             .filter_map(|name_definition_to_import| match name_definition_to_import {
-                NameKind::Def(module_def) => Some(module_def),
+                NameKind::ModuleDef(module_def) => Some(module_def),
                 _ => None,
             })
             .collect()
