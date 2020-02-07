@@ -1648,7 +1648,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        sess.prof.extra_verbose_generic_activity(&format!("altering {}.rlib", name)).run(|| {
+        sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 

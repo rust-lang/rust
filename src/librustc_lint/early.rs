@@ -342,10 +342,8 @@ pub fn check_ast_crate<T: EarlyLintPass>(
         }
     } else {
         for pass in &mut passes {
-            buffered = sess
-                .prof
-                .extra_verbose_generic_activity(&format!("running lint: {}", pass.name()))
-                .run(|| {
+            buffered =
+                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
                     early_lint_crate(
                         sess,
                         lint_store,
