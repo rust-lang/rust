@@ -91,17 +91,17 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
     // modifiers
     has_mods |= p.eat(T![const]);
 
-    // test_err unsafe_block_in_mod
-    // fn foo(){} unsafe { } fn bar(){}
-    if p.at(T![unsafe]) && p.nth(1) != T!['{'] {
-        p.eat(T![unsafe]);
-        has_mods = true;
-    }
-
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
     if p.at(T![async]) && p.nth(1) != T!['{'] && p.nth(1) != T![move] && p.nth(1) != T![|] {
         p.eat(T![async]);
+        has_mods = true;
+    }
+
+    // test_err unsafe_block_in_mod
+    // fn foo(){} unsafe { } fn bar(){}
+    if p.at(T![unsafe]) && p.nth(1) != T!['{'] {
+        p.eat(T![unsafe]);
         has_mods = true;
     }
 
@@ -157,11 +157,11 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe fn foo() {}
 
         // test combined_fns
-        // unsafe async fn foo() {}
+        // async unsafe fn foo() {}
         // const unsafe fn bar() {}
 
         // test_err wrong_order_fns
-        // async unsafe fn foo() {}
+        // unsafe async fn foo() {}
         // unsafe const fn bar() {}
         T![fn] => {
             fn_def(p);
