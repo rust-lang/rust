@@ -37,6 +37,7 @@ pub struct AssistAction {
     pub label: Option<String>,
     pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
+    // FIXME: This belongs to `AssistLabel`
     pub target: Option<TextRange>,
 }
 
@@ -60,16 +61,15 @@ impl ResolvedAssist {
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.
 pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
-    AssistCtx::with_ctx(db, range, false, |ctx| {
-        assists::all()
-            .iter()
-            .filter_map(|f| f(ctx.clone()))
-            .map(|a| match a {
-                Assist::Unresolved { label } => label,
-                Assist::Resolved { .. } => unreachable!(),
-            })
-            .collect()
-    })
+    let ctx = AssistCtx::new(db, range, false);
+    assists::all()
+        .iter()
+        .filter_map(|f| f(ctx.clone()))
+        .map(|a| match a {
+            Assist::Unresolved { label } => label,
+            Assist::Resolved { .. } => unreachable!(),
+        })
+        .collect()
 }
 
 /// Return all the assists applicable at the given position.
@@ -77,18 +77,17 @@ pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
 /// Assists are returned in the "resolved" state, that is with edit fully
 /// computed.
 pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
-    AssistCtx::with_ctx(db, range, true, |ctx| {
-        let mut a = assists::all()
-            .iter()
-            .filter_map(|f| f(ctx.clone()))
-            .map(|a| match a {
-                Assist::Resolved { assist } => assist,
-                Assist::Unresolved { .. } => unreachable!(),
-            })
-            .collect();
-        sort_assists(&mut a);
-        a
-    })
+    let ctx = AssistCtx::new(db, range, true);
+    let mut a = assists::all()
+        .iter()
+        .filter_map(|f| f(ctx.clone()))
+        .map(|a| match a {
+            Assist::Resolved { assist } => assist,
+            Assist::Unresolved { .. } => unreachable!(),
+        })
+        .collect();
+    sort_assists(&mut a);
+    a
 }
 
 fn sort_assists(assists: &mut Vec<ResolvedAssist>) {
@@ -192,7 +191,7 @@ mod helpers {
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
-            AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
+            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
             Assist::Resolved { assist } => assist.get_first_action(),
@@ -219,7 +218,7 @@ mod helpers {
         let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
-            AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
+            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
             Assist::Resolved { assist } => assist.get_first_action(),
@@ -242,7 +241,7 @@ mod helpers {
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
-            AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
+            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
             Assist::Resolved { assist } => assist.get_first_action(),
@@ -261,7 +260,7 @@ mod helpers {
         let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
-            AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
+            assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
         let action = match assist {
             Assist::Unresolved { .. } => unreachable!(),
             Assist::Resolved { assist } => assist.get_first_action(),
@@ -279,7 +278,7 @@ mod helpers {
         let (db, file_id) = with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
-        let assist = AssistCtx::with_ctx(&db, frange, true, assist);
+        let assist = assist(AssistCtx::new(&db, frange, true));
         assert!(assist.is_none());
     }
 
@@ -290,7 +289,7 @@ mod helpers {
         let (range, before) = extract_range(before);
         let (db, file_id) = with_single_file(&before);
         let frange = FileRange { file_id, range };
-        let assist = AssistCtx::with_ctx(&db, frange, true, assist);
+        let assist = assist(AssistCtx::new(&db, frange, true));
         assert!(assist.is_none());
     }
 }

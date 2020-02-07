@@ -69,23 +69,11 @@ impl<'a> Clone for AssistCtx<'a> {
 }
 
 impl<'a> AssistCtx<'a> {
-    pub(crate) fn with_ctx<F, T>(
-        db: &RootDatabase,
-        frange: FileRange,
-        should_compute_edit: bool,
-        f: F,
-    ) -> T
-    where
-        F: FnOnce(AssistCtx) -> T,
-    {
+    pub fn new(db: &RootDatabase, frange: FileRange, should_compute_edit: bool) -> AssistCtx {
         let parse = db.parse(frange.file_id);
-
-        let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
-        f(ctx)
+        AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit }
     }
-}
 
-impl<'a> AssistCtx<'a> {
     pub(crate) fn add_assist(
         self,
         id: AssistId,
