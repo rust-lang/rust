@@ -12,13 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Setup
     - name: Checkout
       uses: actions/checkout@v2.0.0
+
     - name: Setup Node.js
       uses: actions/setup-node@v1.1.0
+
     - name: Install remark
       run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended
 
+    # Run
     - name: Check *.md files
       run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
 

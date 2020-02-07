@@ -7,7 +7,7 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
-  GHA_CI: 1
+  NO_FMT_TEST: 1
 
 jobs:
   changelog:
@@ -21,6 +21,8 @@ jobs:
       uses: actions/checkout@v2.0.0
       with:
         ref: ${{ github.ref }}
+
+    # Run
     - name: Check Changelog
       run: |
         MESSAGE=$(git log --format=%B -n 1)
@@ -64,25 +66,31 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    # Setup
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
+
     - name: Install dependencies (Linux-i686)
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
         sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
       if: matrix.host == 'i686-unknown-linux-gnu'
+
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.3
       with:
         toolchain: nightly
         target: ${{ matrix.host }}
         profile: minimal
+
     - name: Checkout
       uses: actions/checkout@v2.0.0
+
     - name: Run cargo update
       run: cargo update
+
     - name: Cache cargo dir
       uses: actions/cache@v1
       with:
@@ -90,12 +98,14 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.host }}-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.host }}
+
     - name: Master Toolchain Setup
       run: bash setup-toolchain.sh
       env:
         HOST_TOOLCHAIN: ${{ matrix.host }}
       shell: bash
 
+    # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -113,34 +123,42 @@ jobs:
         $sysroot = rustc --print sysroot
         $env:PATH += ';' + $sysroot + '\bin'
         echo "::set-env name=PATH::$env:PATH"
+
     - name: Build
       run: cargo build --features deny-warnings
       shell: bash
+
     - name: Test
       run: cargo test --features deny-warnings
       shell: bash
+
     - name: Test clippy_lints
       run: cargo test --features deny-warnings
       shell: bash
       working-directory: clippy_lints
+
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
       shell: bash
       working-directory: rustc_tools_util
+
     - name: Test clippy_dev
       run: cargo test --features deny-warnings
       shell: bash
       working-directory: clippy_dev
+
     - name: Test cargo-clippy
       run: ../target/debug/cargo-clippy
       shell: bash
       working-directory: clippy_workspace_tests
+
     - name: Test clippy-driver
       run: bash .github/driver.sh
       shell: bash
       env:
         OS: ${{ runner.os }}
 
+    # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
         cargo install cargo-cache --debug
@@ -152,19 +170,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Setup
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
+
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.3
       with:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
+
     - name: Checkout
       uses: actions/checkout@v2.0.0
+
     - name: Run cargo update
       run: cargo update
+
     - name: Cache cargo dir
       uses: actions/cache@v1
       with:
@@ -172,22 +195,28 @@ jobs:
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
+
     - name: Master Toolchain Setup
       run: bash setup-toolchain.sh
 
+    # Run
     - name: Build Integration Test
       run: cargo test --test integration --features integration --no-run
+
+    # Upload
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
         mv $DIR/integration-* $DIR/integration
+
     - name: Upload Binaries
       uses: actions/upload-artifact@v1
       with:
         name: target
         path: target
 
+    # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
         cargo install cargo-cache --debug
@@ -219,19 +248,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Setup
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
+
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.3
       with:
         toolchain: nightly
         target: x86_64-unknown-linux-gnu
         profile: minimal
+
     - name: Checkout
       uses: actions/checkout@v2.0.0
+
     - name: Run cargo update
       run: cargo update
+
     - name: Cache cargo dir
       uses: actions/cache@v1
       with:
@@ -239,22 +273,28 @@ jobs:
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
+
     - name: Master Toolchain Setup
       run: bash setup-toolchain.sh
 
+    # Download
     - name: Download target dir
       uses: actions/download-artifact@v1
       with:
         name: target
         path: target
+
     - name: Make Binaries Executable
       run: chmod +x $CARGO_TARGET_DIR/debug/*
+
+    # Run
     - name: Test ${{ matrix.integration }}
       run: $CARGO_TARGET_DIR/debug/integration
       env:
         INTEGRATION: ${{ matrix.integration }}
         RUSTUP_TOOLCHAIN: master
 
+    # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
         cargo install cargo-cache --debug
