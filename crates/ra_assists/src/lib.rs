@@ -11,6 +11,8 @@ mod marks;
 mod doc_tests;
 pub mod ast_transform;
 
+use std::cmp::Ordering;
+
 use either::Either;
 use ra_db::FileRange;
 use ra_ide_db::RootDatabase;
@@ -85,13 +87,12 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
             Assist::Resolved { assist } => assist,
             Assist::Unresolved { .. } => unreachable!(),
         })
-        .collect();
+        .collect::<Vec<_>>();
     sort_assists(&mut a);
     a
 }
 
-fn sort_assists(assists: &mut Vec<ResolvedAssist>) {
-    use std::cmp::Ordering;
+fn sort_assists(assists: &mut [ResolvedAssist]) {
     assists.sort_by(|a, b| match (a.get_first_action().target, b.get_first_action().target) {
         (Some(a), Some(b)) => a.len().cmp(&b.len()),
         (Some(_), None) => Ordering::Less,
