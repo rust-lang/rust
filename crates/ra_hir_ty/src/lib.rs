@@ -909,9 +909,16 @@ impl HirDisplay for ApplicationTy {
                     }
                 }
                 if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+                    let generics = generics(f.db, def.into());
+                    let (parent_params, self_param, type_params, _impl_trait_params) =
+                        generics.provenance_split();
+                    let total_len = parent_params + self_param + type_params;
+                    // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
+                    if total_len > 0 {
+                        write!(f, "<")?;
+                        f.write_joined(&self.parameters.0[..total_len], ", ")?;
+                        write!(f, ">")?;
+                    }
                 }
                 write!(f, "(")?;
                 f.write_joined(sig.params(), ", ")?;

@@ -886,7 +886,7 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
     [224; 225) 'S': S<u16>(u16) -> S<u16>
     [224; 228) 'S(1)': S<u16>
     [226; 227) '1': u16
-    [234; 237) 'bar': fn bar<S<u16>>(S<u16>) -> ()
+    [234; 237) 'bar': fn bar(S<u16>) -> ()
     [234; 240) 'bar(z)': ()
     [238; 239) 'z': S<u16>
     [246; 247) 'x': impl Trait<u64>
@@ -943,28 +943,28 @@ fn test() {
     [222; 229) 'loop {}': !
     [227; 229) '{}': ()
     [301; 510) '{     ... i32 }': ()
-    [307; 315) 'Foo::bar': fn bar<{unknown}, {unknown}, S>(S) -> {unknown}
+    [307; 315) 'Foo::bar': fn bar<{unknown}, {unknown}>(S) -> {unknown}
     [307; 318) 'Foo::bar(S)': {unknown}
     [316; 317) 'S': S
-    [324; 339) '<F as Foo>::bar': fn bar<F, {unknown}, S>(S) -> {unknown}
+    [324; 339) '<F as Foo>::bar': fn bar<F, {unknown}>(S) -> {unknown}
     [324; 342) '<F as ...bar(S)': {unknown}
     [340; 341) 'S': S
-    [348; 354) 'F::bar': fn bar<F, {unknown}, S>(S) -> {unknown}
+    [348; 354) 'F::bar': fn bar<F, {unknown}>(S) -> {unknown}
     [348; 357) 'F::bar(S)': {unknown}
     [355; 356) 'S': S
-    [363; 378) 'Foo::bar::<u32>': fn bar<{unknown}, u32, S>(S) -> u32
+    [363; 378) 'Foo::bar::<u32>': fn bar<{unknown}, u32>(S) -> u32
     [363; 381) 'Foo::b...32>(S)': u32
     [379; 380) 'S': S
-    [387; 409) '<F as ...:<u32>': fn bar<F, u32, S>(S) -> u32
+    [387; 409) '<F as ...:<u32>': fn bar<F, u32>(S) -> u32
     [387; 412) '<F as ...32>(S)': u32
     [410; 411) 'S': S
-    [419; 422) 'foo': fn foo<{unknown}, S>(S) -> {unknown}
+    [419; 422) 'foo': fn foo<{unknown}>(S) -> {unknown}
     [419; 425) 'foo(S)': {unknown}
     [423; 424) 'S': S
-    [431; 441) 'foo::<u32>': fn foo<u32, S>(S) -> u32
+    [431; 441) 'foo::<u32>': fn foo<u32>(S) -> u32
     [431; 444) 'foo::<u32>(S)': u32
     [442; 443) 'S': S
-    [450; 465) 'foo::<u32, i32>': fn foo<u32, S>(S) -> u32
+    [450; 465) 'foo::<u32, i32>': fn foo<u32>(S) -> u32
     [450; 468) 'foo::<...32>(S)': u32
     [466; 467) 'S': S
     "###
@@ -1794,11 +1794,11 @@ fn test() -> impl Trait<i32> {
     [229; 241) 'S(default())': S<u32>
     [231; 238) 'default': fn default<u32>() -> u32
     [231; 240) 'default()': u32
-    [247; 250) 'foo': fn foo<S<u32>>(S<u32>) -> ()
+    [247; 250) 'foo': fn foo(S<u32>) -> ()
     [247; 254) 'foo(s1)': ()
     [251; 253) 's1': S<u32>
     [264; 265) 'x': i32
-    [273; 276) 'bar': fn bar<i32, S<i32>>(S<i32>) -> i32
+    [273; 276) 'bar': fn bar<i32>(S<i32>) -> i32
     [273; 290) 'bar(S(...lt()))': i32
     [277; 278) 'S': S<i32>(i32) -> S<i32>
     [277; 289) 'S(default())': S<i32>
