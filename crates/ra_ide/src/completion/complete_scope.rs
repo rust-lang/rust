@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_assists::auto_import_text_edit;
+use ra_assists::insert_use_statement;
 use ra_syntax::{ast, AstNode, SmolStr};
 use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashMap;
@@ -26,12 +26,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
             let edit = {
                 let mut builder = TextEditBuilder::default();
                 builder.replace(ctx.source_range(), name.to_string());
-                auto_import_text_edit(
-                    &ctx.token.parent(),
-                    &ctx.token.parent(),
-                    &path,
-                    &mut builder,
-                );
+                insert_use_statement(&ctx.token.parent(), &ctx.token.parent(), &path, &mut builder);
                 builder.finish()
             };
 

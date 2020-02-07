@@ -154,20 +154,6 @@ impl Trait<u32> for () {
 }
 ```
 
-## `add_import`
-
-Adds a use statement for a given fully-qualified path.
-
-```rust
-// BEFORE
-fn process(map: std::collections::┃HashMap<String, String>) {}
-
-// AFTER
-use std::collections::HashMap;
-
-fn process(map: HashMap<String, String>) {}
-```
-
 ## `add_new`
 
 Adds a new inherent impl for a type.
@@ -566,6 +552,20 @@ fn handle(action: Action) {
         _ => bar(),
     }
 }
+```
+
+## `replace_qualified_name_with_use`
+
+Adds a use statement for a given fully-qualified name.
+
+```rust
+// BEFORE
+fn process(map: std::collections::┃HashMap<String, String>) {}
+
+// AFTER
+use std::collections::HashMap;
+
+fn process(map: HashMap<String, String>) {}
 ```
 
 ## `split_import`

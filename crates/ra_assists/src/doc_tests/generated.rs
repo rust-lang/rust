@@ -1,4 +1,4 @@
-//! Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
+//! Generated file, do not edit by hand, see `xtask/src/codegen`
 
 use super::check;
 
@@ -156,21 +156,6 @@ impl Trait<u32> for () {
     fn foo(&self) -> u32 { unimplemented!() }
 
 }
-"#####,
-    )
-}
-
-#[test]
-fn doctest_add_import() {
-    check(
-        "add_import",
-        r#####"
-fn process(map: std::collections::<|>HashMap<String, String>) {}
-"#####,
-        r#####"
-use std::collections::HashMap;
-
-fn process(map: HashMap<String, String>) {}
 "#####,
     )
 }
@@ -587,6 +572,21 @@ fn handle(action: Action) {
         _ => bar(),
     }
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_qualified_name_with_use() {
+    check(
+        "replace_qualified_name_with_use",
+        r#####"
+fn process(map: std::collections::<|>HashMap<String, String>) {}
+"#####,
+        r#####"
+use std::collections::HashMap;
+
+fn process(map: HashMap<String, String>) {}
 "#####,
     )
 }

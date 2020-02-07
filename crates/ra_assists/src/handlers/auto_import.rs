@@ -7,7 +7,7 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{ActionBuilder, Assist, AssistCtx},
-    auto_import_text_edit, AssistId,
+    insert_use_statement, AssistId,
 };
 use std::collections::BTreeSet;
 
@@ -78,7 +78,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
 fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
     let mut action_builder = ActionBuilder::default();
     action_builder.label(format!("Import `{}`", &import));
-    auto_import_text_edit(position, anchor, &import, action_builder.text_edit_builder());
+    insert_use_statement(position, anchor, &import, action_builder.text_edit_builder());
     action_builder
 }
 
