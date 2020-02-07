@@ -7,14 +7,14 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
-pub(super) fn param_list_fn(p: &mut Parser) {
-    list_(p, Flavor::Function)
+pub(super) fn param_list_fn_def(p: &mut Parser) {
+    list_(p, Flavor::FnDef)
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
-pub(super) fn param_list_impl_fn(p: &mut Parser) {
-    list_(p, Flavor::ImplFn)
+pub(super) fn param_list_fn_trait(p: &mut Parser) {
+    list_(p, Flavor::FnTrait)
 }
 
 pub(super) fn param_list_fn_ptr(p: &mut Parser) {
@@ -27,8 +27,8 @@ pub(super) fn param_list_closure(p: &mut Parser) {
 
 #[derive(Debug, Clone, Copy)]
 enum Flavor {
-    Function, // Includes trait fn params; omitted param idents are not supported
-    ImplFn,
+    FnDef,   // Includes trait fn params; omitted param idents are not supported
+    FnTrait, // Params for `Fn(...)`/`FnMut(...)`/`FnOnce(...)` annotations
     FnPointer,
     Closure,
 }
@@ -38,13 +38,13 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
     let (bra, ket) = match flavor {
         Closure => (T![|], T![|]),
-        Function | ImplFn | FnPointer => (T!['('], T![')']),
+        FnDef | FnTrait | FnPointer => (T!['('], T![')']),
     };
 
     let m = p.start();
     p.bump(bra);
 
-    if let Function = flavor {
+    if let FnDef = flavor {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}
         attributes::outer_attributes(p);
@@ -56,10 +56,11 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         // fn f(#[attr1] pat: Type) {}
         attributes::outer_attributes(p);
 
-        if let Function | FnPointer = flavor {
-            if p.at(T![...]) {
-                break;
-            }
+        // test param_list_vararg
+        // extern "C" { fn printf(format: *const i8, ...) -> i32; }
+        match flavor {
+            FnDef | FnPointer if p.eat(T![...]) => break,
+            _ => (),
         }
 
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
@@ -71,11 +72,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
             p.expect(T![,]);
         }
     }
-    // test param_list_vararg
-    // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-    if let Function | FnPointer = flavor {
-        p.eat(T![...]);
-    }
+
     p.expect(ket);
     m.complete(p, PARAM_LIST);
 }
@@ -105,13 +102,13 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         //     fn f3(NewType(a): NewType) {}
         //     fn f4(&&a: &&usize) {}
         // }
-        Flavor::Function => {
+        Flavor::FnDef => {
             patterns::pattern(p);
             types::ascription(p);
         }
         // test value_parameters_no_patterns
         // type F = Box<Fn(i32, &i32, &i32, ())>;
-        Flavor::ImplFn => {
+        Flavor::FnTrait => {
             types::type_(p);
         }
         // test fn_pointer_param_ident_path

@@ -311,7 +311,7 @@ fn fn_def(p: &mut Parser) {
     type_params::opt_type_param_list(p);
 
     if p.at(T!['(']) {
-        params::param_list_fn(p);
+        params::param_list_fn_def(p);
     } else {
         p.error("expected function arguments");
     }
