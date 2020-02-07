@@ -11,6 +11,7 @@ LL |       test_hash!(&a, A => 0, B => 1, C => 2);
    |       --------------------------------------- in this macro invocation
    |
    = note: `-D clippy::match-ref-pats` implied by `-D warnings`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

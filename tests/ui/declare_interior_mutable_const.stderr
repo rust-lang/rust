@@ -32,6 +32,8 @@ LL |         const $name: $ty = $e;
 ...
 LL | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
    | ------------------------------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
   --> $DIR/declare_interior_mutable_const.rs:40:5
@@ -71,6 +73,8 @@ LL |         const $name: $ty = $e;
 ...
 LL |     declare_const!(ANOTHER_INPUT: T = Self::INPUT); //~ ERROR interior mutable
    |     ----------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should never be interior mutable
   --> $DIR/declare_interior_mutable_const.rs:60:5
