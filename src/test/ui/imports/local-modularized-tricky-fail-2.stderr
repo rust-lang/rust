@@ -7,7 +7,7 @@ LL | exported!();
 LL |                 () => ( struct Б; )
    |                                ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -20,7 +20,7 @@ LL |     panic!();
 LL |         () => ( struct Г; )
    |                        ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -33,7 +33,7 @@ LL | include!();
 LL |         () => ( struct Д; )
    |                        ^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
