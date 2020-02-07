@@ -638,10 +638,7 @@ fn on_check_task(
             let file_id = match world_state.vfs.read().path2file(&path) {
                 Some(file) => FileId(file.0),
                 None => {
-                    log::error!(
-                        "File with cargo diagnostic not found in VFS: {}",
-                        path.to_string_lossy()
-                    );
+                    log::error!("File with cargo diagnostic not found in VFS: {}", path.display());
                     return Ok(());
                 }
             };
