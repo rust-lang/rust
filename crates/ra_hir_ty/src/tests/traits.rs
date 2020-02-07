@@ -1014,6 +1014,31 @@ fn test() {
 }
 
 #[test]
+fn argument_impl_trait_to_fn_pointer() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+fn foo(x: impl Trait) { loop {} }
+struct S;
+impl Trait for S {}
+
+fn test() {
+    let f: fn(S) -> () = foo;
+}
+"#, true),
+        @r###"
+    [23; 24) 'x': impl Trait
+    [38; 49) '{ loop {} }': ()
+    [40; 47) 'loop {}': !
+    [45; 47) '{}': ()
+    [91; 124) '{     ...foo; }': ()
+    [101; 102) 'f': fn(S) -> ()
+    [118; 121) 'foo': fn foo(S) -> ()
+    "###
+    );
+}
+
+#[test]
 #[ignore]
 fn impl_trait() {
     assert_snapshot!(
@@ -1372,6 +1397,32 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
     [200; 207) 'x.foo()': u32
     [213; 214) 'y': U
     [213; 220) 'y.foo()': u32
+    "###
+    );
+}
+
+#[test]
+fn super_trait_impl_trait_method_resolution() {
+    assert_snapshot!(
+        infer(r#"
+mod foo {
+    trait SuperTrait {
+        fn foo(&self) -> u32 {}
+    }
+}
+trait Trait1: foo::SuperTrait {}
+
+fn test(x: &impl Trait1) {
+    x.foo();
+}
+"#),
+        @r###"
+    [50; 54) 'self': &Self
+    [63; 65) '{}': ()
+    [116; 117) 'x': &impl Trait1
+    [133; 149) '{     ...o(); }': ()
+    [139; 140) 'x': &impl Trait1
+    [139; 146) 'x.foo()': u32
     "###
     );
 }
