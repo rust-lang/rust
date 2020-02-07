@@ -565,7 +565,10 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
 fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
     struct_span_err!(tcx.sess, span, E0723, "{}", msg)
-        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .note(
+            "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
+             for more information",
+        )
         .help("add `#![feature(const_fn)]` to the crate attributes to enable")
         .emit();
 }
@@ -593,9 +596,9 @@ fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
                 *span,
                 &format!(
                     "use of {} here does not actually short circuit due to \
-                the const evaluator presently not being able to do control flow. \
-                See https://github.com/rust-lang/rust/issues/49146 for more \
-                information.",
+                     the const evaluator presently not being able to do control flow. \
+                     See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
+                     for more information.",
                     kind
                 ),
             );

@@ -366,8 +366,8 @@ impl<'a> Parser<'a> {
                           type: `<expr>: <type>`",
                 );
                 err.note(
-                    "for more information, see \
-                          https://github.com/rust-lang/rust/issues/23416",
+                    "see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
+                     for more information",
                 );
             }
         }

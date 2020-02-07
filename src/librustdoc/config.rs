@@ -570,7 +570,10 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
         if matches.opt_present(flag) {
             let mut err =
                 diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn("please see https://github.com/rust-lang/rust/issues/44136");
+            err.warn(
+                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                 for more information",
+            );
 
             if *flag == "no-defaults" {
                 err.help("you may want to use --document-private-items");

@@ -120,8 +120,8 @@ impl CheckAttrVisitor<'tcx> {
                        a future release!",
                     )
                     .note(
-                        "for more information, see issue #65833 \
-                       <https://github.com/rust-lang/rust/issues/65833>",
+                        "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
+                         for more information",
                     )
                     .emit();
                 true
