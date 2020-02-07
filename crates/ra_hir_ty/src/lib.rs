@@ -287,17 +287,20 @@ pub enum Ty {
     /// trait and all its parameters are fully known.
     Projection(ProjectionTy),
 
-    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
-    // TODO fix documentation
+    /// A placeholder for a type parameter; for example, `T` in `fn f<T>(x: T)
+    /// {}` when we're type-checking the body of that function. In this
+    /// situation, we know this stands for *some* type, but don't know the exact
+    /// type.
     Param(TypeParamId),
 
-    /// A bound type variable. Used during trait resolution to represent Chalk
-    /// variables, and in `Dyn` and `Opaque` bounds to represent the `Self` type.
-    // TODO fix documentation
+    /// A bound type variable. This is used in various places: when representing
+    /// some polymorphic type like the type of function `fn f<T>`, the type
+    /// parameters get turned into variables; during trait resolution, inference
+    /// variables get turned into bound variables and back; and in `Dyn` the
+    /// `Self` type is represented with a bound variable as well.
     Bound(u32),
 
-    /// A type variable used during type checking. Not to be confused with a
-    /// type parameter.
+    /// A type variable used during type checking.
     Infer(InferTy),
 
     /// A trait object (`dyn Trait` or bare `Trait` in pre-2018 Rust).

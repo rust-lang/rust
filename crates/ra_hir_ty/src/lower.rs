@@ -890,9 +890,13 @@ pub(crate) fn ty_query(db: &impl HirDatabase, def: TyDefId) -> Binders<Ty> {
     }
 }
 
-pub(crate) fn ty_recover(_db: &impl HirDatabase, _cycle: &[String], _def: &TyDefId) -> Binders<Ty> {
-    // TODO still need correct number of binders here
-    Binders::new(0, Ty::Unknown)
+pub(crate) fn ty_recover(db: &impl HirDatabase, _cycle: &[String], def: &TyDefId) -> Binders<Ty> {
+    let num_binders = match *def {
+        TyDefId::BuiltinType(_) => 0,
+        TyDefId::AdtId(it) => generics(db, it.into()).len(),
+        TyDefId::TypeAliasId(it) => generics(db, it.into()).len(),
+    };
+    Binders::new(num_binders, Ty::Unknown)
 }
 
 pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
