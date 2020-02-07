@@ -1295,7 +1295,10 @@ impl<'a> Parser<'a> {
                         `proc_macro::Literal::*_unsuffixed` for code that will desugar \
                         to tuple field access",
                 );
-                err.note("for more context, see https://github.com/rust-lang/rust/issues/60210");
+                err.note(
+                    "see issue #60210 <https://github.com/rust-lang/rust/issues/60210> \
+                     for more information",
+                );
                 err
             } else {
                 self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))

@@ -86,8 +86,8 @@ pub fn feature_err_issue<'a>(
 
     if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
-            "for more information, see https://github.com/rust-lang/rust/issues/{}",
-            n,
+            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
+            n, n,
         ));
     }
 
