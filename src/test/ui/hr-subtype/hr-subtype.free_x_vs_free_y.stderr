@@ -28,6 +28,7 @@ LL |           fn supertype<'x,'y:'x,'z:'y>() {
 LL | / check! { free_x_vs_free_y: (fn(&'x u32),
 LL | |                             fn(&'y u32)) }
    | |__________________________________________- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

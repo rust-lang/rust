@@ -230,18 +230,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block = unpack!(this.stmt_expr(block, expr, None));
                 block.and(this.unit_rvalue())
             }
-            ExprKind::Yield { value } => {
-                let value = unpack!(block = this.as_operand(block, scope, value));
-                let resume = this.cfg.start_new_block();
-                let cleanup = this.generator_drop_cleanup();
-                this.cfg.terminate(
-                    block,
-                    source_info,
-                    TerminatorKind::Yield { value: value, resume: resume, drop: cleanup },
-                );
-                resume.and(this.unit_rvalue())
-            }
-            ExprKind::Literal { .. }
+            ExprKind::Yield { .. }
+            | ExprKind::Literal { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }

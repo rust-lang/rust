@@ -8,7 +8,7 @@ LL |         let a = &mut *x;
 ...
 LL |     println!("{}", x);
    |                    ^ second borrow occurs here
-LL |     Pin::new(&mut b).resume();
+LL |     Pin::new(&mut b).resume(());
    |              ------ first borrow later used here
 
 error: aborting due to previous error

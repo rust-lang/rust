@@ -573,7 +573,7 @@ pub struct FnCtxt<'a, 'tcx> {
     /// First span of a return site that we find. Used in error messages.
     ret_coercion_span: RefCell<Option<Span>>,
 
-    yield_ty: Option<Ty<'tcx>>,
+    resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -1251,6 +1251,9 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 /// includes yield), it returns back some information about the yield
 /// points.
 struct GeneratorTypes<'tcx> {
+    /// Type of generator argument / values returned by `yield`.
+    resume_ty: Ty<'tcx>,
+
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
 
@@ -1311,7 +1314,11 @@ fn check_fn<'a, 'tcx>(
         let yield_ty = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-        fcx.yield_ty = Some(yield_ty);
+
+        // Resume type defaults to `()` if the generator has no argument.
+        let resume_ty = fn_sig.inputs().get(0).map(|ty| *ty).unwrap_or_else(|| tcx.mk_unit());
+
+        fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id));
@@ -1364,8 +1371,11 @@ fn check_fn<'a, 'tcx>(
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
+
+        let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
         Some(GeneratorTypes {
-            yield_ty: fcx.yield_ty.unwrap(),
+            resume_ty,
+            yield_ty,
             interior,
             movability: can_be_generator.unwrap(),
         })
@@ -2767,7 +2777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             ret_coercion_span: RefCell::new(None),
-            yield_ty: None,
+            resume_yield_tys: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),

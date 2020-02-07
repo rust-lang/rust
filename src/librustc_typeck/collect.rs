@@ -1189,7 +1189,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., gen), .. }) = node {
         let dummy_args = if gen.is_some() {
-            &["<yield_ty>", "<return_ty>", "<witness>"][..]
+            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>"][..]
         } else {
             &["<closure_kind>", "<closure_signature>"][..]
         };

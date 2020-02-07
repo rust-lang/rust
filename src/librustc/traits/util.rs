@@ -643,8 +643,10 @@ pub fn generator_trait_ref_and_outputs(
     self_ty: Ty<'tcx>,
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
-    let trait_ref =
-        ty::TraitRef { def_id: fn_trait_def_id, substs: tcx.mk_substs_trait(self_ty, &[]) };
+    let trait_ref = ty::TraitRef {
+        def_id: fn_trait_def_id,
+        substs: tcx.mk_substs_trait(self_ty, &[sig.skip_binder().resume_ty.into()]),
+    };
     ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
 }
 

@@ -12,7 +12,6 @@ note: the lint level is defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 warning: unreachable call
   --> $DIR/never-assign-dead-code.rs:10:5

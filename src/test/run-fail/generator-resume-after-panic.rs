@@ -16,7 +16,7 @@ fn main() {
         yield;
     };
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        let x = Pin::new(&mut g).resume();
+        let x = Pin::new(&mut g).resume(());
     }));
-    Pin::new(&mut g).resume();
+    Pin::new(&mut g).resume(());
 }

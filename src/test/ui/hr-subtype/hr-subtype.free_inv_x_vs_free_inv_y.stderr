@@ -28,6 +28,7 @@ LL |           fn subtype<'x,'y:'x,'z:'y>() {
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/hr-subtype.rs:39:26
@@ -59,6 +60,7 @@ LL |           fn supertype<'x,'y:'x,'z:'y>() {
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

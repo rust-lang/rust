@@ -23,7 +23,7 @@ pub struct AnnotateSnippetEmitterWriter {
     /// If true, will normalize line numbers with `LL` to prevent noise in UI test diffs.
     ui_testing: bool,
 
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 impl Emitter for AnnotateSnippetEmitterWriter {
@@ -32,12 +32,12 @@ impl Emitter for AnnotateSnippetEmitterWriter {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
-        self.fix_multispans_in_std_macros(
+        self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &self.source_map,
             &mut primary_span,
             &mut children,
             &diag.level,
-            self.external_macro_backtrace,
+            self.macro_backtrace,
         );
 
         self.emit_messages_default(
@@ -172,9 +172,9 @@ impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
         short_message: bool,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> Self {
-        Self { source_map, short_message, ui_testing: false, external_macro_backtrace }
+        Self { source_map, short_message, ui_testing: false, macro_backtrace }
     }
 
     /// Allows to modify `Self` to enable or disable the `ui_testing` flag.

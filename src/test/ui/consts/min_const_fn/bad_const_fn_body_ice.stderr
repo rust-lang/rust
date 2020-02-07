@@ -6,7 +6,7 @@ LL |     vec![1, 2, 3]
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

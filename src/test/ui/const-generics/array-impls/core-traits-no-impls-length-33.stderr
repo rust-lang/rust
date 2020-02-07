@@ -6,6 +6,7 @@ LL |     println!("{:?}", [0_usize; 33]);
    |
    = note: required because of the requirements on the impl of `std::fmt::Debug` for `[usize; 33]`
    = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: arrays only have std trait implementations for lengths 0..=32
   --> $DIR/core-traits-no-impls-length-33.rs:10:16
