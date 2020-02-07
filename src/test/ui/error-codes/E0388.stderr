@@ -4,7 +4,7 @@ error[E0658]: references in constants may only refer to immutable values
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^ constants require immutable values
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0019]: static contains unimplemented expression type
@@ -19,7 +19,7 @@ error[E0658]: references in statics may only refer to immutable values
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ statics require immutable values
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
@@ -34,7 +34,7 @@ error[E0658]: references in statics may only refer to immutable values
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^ statics require immutable values
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors

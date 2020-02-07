@@ -8,7 +8,7 @@ LL | |         x
 LL | |     };
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/31436
+   = note: see issue #31436 <https://github.com/rust-lang/rust/issues/31436> for more information
    = help: add `#![feature(try_blocks)]` to the crate attributes to enable
 
 error: aborting due to previous error

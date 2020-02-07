@@ -1,9 +1,9 @@
 warning: the `#![doc(no_default_passes)]` attribute is considered deprecated
    |
-   = warning: please see https://github.com/rust-lang/rust/issues/44136
+   = warning: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
    = help: you may want to use `#![doc(document_private_items)]`
 
 warning: the `#![doc(passes = "...")]` attribute is considered deprecated
    |
-   = warning: please see https://github.com/rust-lang/rust/issues/44136
+   = warning: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
 

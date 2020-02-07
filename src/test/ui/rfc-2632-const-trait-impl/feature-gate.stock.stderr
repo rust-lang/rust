@@ -4,7 +4,7 @@ error[E0658]: const trait impls are experimental
 LL | impl const T for S {}
    |      ^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/67792
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
 error: const trait impls are not yet implemented

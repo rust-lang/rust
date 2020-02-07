@@ -4,7 +4,7 @@ error[E0658]: attributes on expressions are experimental
 LL | const X: i32 = #[allow(dead_code)] 8;
    |                ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error: aborting due to previous error

@@ -8,7 +8,7 @@ LL | |     _ => false
 LL | | };
    | |_^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `match` is not allowed in a `const`
@@ -20,7 +20,7 @@ LL | |         _ => false
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

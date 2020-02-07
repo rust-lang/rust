@@ -4,7 +4,7 @@ error[E0723]: heap allocations are not allowed in const fn
 LL |     vec![1, 2, 3]
    |     ^^^^^^^^^^^^^
    |
-   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

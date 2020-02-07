@@ -4,7 +4,7 @@ error[E0658]: `loop` is not allowed in a `const`
 LL | const _: () = loop {};
    |               ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `static`
@@ -13,7 +13,7 @@ error[E0658]: `loop` is not allowed in a `static`
 LL | static FOO: i32 = loop { break 4; };
    |                   ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `const fn`
@@ -22,7 +22,7 @@ error[E0658]: `loop` is not allowed in a `const fn`
 LL |     loop {}
    |     ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `const fn`
@@ -31,7 +31,7 @@ error[E0658]: `loop` is not allowed in a `const fn`
 LL |         loop {}
    |         ^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `while` is not allowed in a `const`
@@ -40,7 +40,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |         while false {}
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
@@ -52,7 +52,7 @@ LL | |         x += 1;
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
@@ -64,7 +64,7 @@ LL | |         x += 1;
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
@@ -95,7 +95,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -106,7 +106,7 @@ LL | |             break;
 LL | |         }
    | |_________^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `const`
@@ -120,7 +120,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
@@ -131,7 +131,7 @@ LL | |             break;
 LL | |         }
    | |_________^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `while` is not allowed in a `const`
@@ -140,7 +140,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
@@ -150,7 +150,7 @@ error[E0658]: `while` is not allowed in a `const`
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
@@ -160,7 +160,7 @@ error[E0658]: `loop` is not allowed in a `const`
 LL |     const BAR: i32 = loop { break 4; };
    |                      ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `const`
@@ -169,7 +169,7 @@ error[E0658]: `loop` is not allowed in a `const`
 LL |     const BAR: i32 = loop { break 4; };
    |                      ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error: aborting due to 17 previous errors

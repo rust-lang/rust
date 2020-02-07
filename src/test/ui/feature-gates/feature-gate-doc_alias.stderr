@@ -4,7 +4,7 @@ error[E0658]: `#[doc(alias)]` is experimental
 LL | #[doc(alias = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/50146
+   = note: see issue #50146 <https://github.com/rust-lang/rust/issues/50146> for more information
    = help: add `#![feature(doc_alias)]` to the crate attributes to enable
 
 error: aborting due to previous error

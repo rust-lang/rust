@@ -4,7 +4,7 @@ error[E0658]: or-pattern is not allowed in a `const fn`
 LL | const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
    |               ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const fn`
@@ -13,7 +13,7 @@ error[E0658]: or-pattern is not allowed in a `const fn`
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const`
@@ -22,7 +22,7 @@ error[E0658]: or-pattern is not allowed in a `const`
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `static`
@@ -31,7 +31,7 @@ error[E0658]: or-pattern is not allowed in a `static`
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `static mut`
@@ -40,7 +40,7 @@ error[E0658]: or-pattern is not allowed in a `static mut`
 LL |     let Ok(y) | Err(y) = x;
    |         ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: or-pattern is not allowed in a `const`
@@ -49,7 +49,7 @@ error[E0658]: or-pattern is not allowed in a `const`
 LL |         let Ok(y) | Err(y) = x;
    |             ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0019]: constant contains unimplemented expression type
