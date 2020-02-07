@@ -121,7 +121,9 @@ macro_rules! load_int_le {
     }};
 }
 
-/// Loads an u64 using up to 7 bytes of a byte slice.
+/// Loads a u64 using up to 7 bytes of a byte slice. It looks clumsy but the
+/// `copy_nonoverlapping` calls that occur (via `load_int_le!`) all have fixed
+/// sizes and avoid calling `memcpy`, which is good for speed.
 ///
 /// Unsafe because: unchecked indexing at start..start+len
 #[inline]
