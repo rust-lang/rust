@@ -10,7 +10,7 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
-    assists::invert_if::invert_boolean_expression,
+    handlers::invert_if::invert_boolean_expression,
     AssistId,
 };
 
