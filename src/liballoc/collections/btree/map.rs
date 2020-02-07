@@ -1861,65 +1861,51 @@ where
     let mut max_node = root2;
     let mut min_found = false;
     let mut max_found = false;
-    let mut diverged = false;
 
     loop {
-        let min_edge = match (min_found, range.start_bound()) {
-            (false, Included(key)) => match search::search_linear(&min_node, key) {
-                (i, true) => {
+        let front = match (min_found, range.start_bound()) {
+            (false, Included(key)) => match search::search_node(min_node, key) {
+                Found(kv) => {
                     min_found = true;
-                    i
+                    kv.left_edge()
                 }
-                (i, false) => i,
+                GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match search::search_linear(&min_node, key) {
-                (i, true) => {
+            (false, Excluded(key)) => match search::search_node(min_node, key) {
+                Found(kv) => {
                     min_found = true;
-                    i + 1
+                    kv.right_edge()
                 }
-                (i, false) => i,
+                GoDown(edge) => edge,
             },
-            (_, Unbounded) => 0,
-            (true, Included(_)) => min_node.len(),
-            (true, Excluded(_)) => 0,
+            (true, Included(_)) => min_node.last_edge(),
+            (true, Excluded(_)) => min_node.first_edge(),
+            (_, Unbounded) => min_node.first_edge(),
         };
 
-        let max_edge = match (max_found, range.end_bound()) {
-            (false, Included(key)) => match search::search_linear(&max_node, key) {
-                (i, true) => {
+        let back = match (max_found, range.end_bound()) {
+            (false, Included(key)) => match search::search_node(max_node, key) {
+                Found(kv) => {
                     max_found = true;
-                    i + 1
+                    kv.right_edge()
                 }
-                (i, false) => i,
+                GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match search::search_linear(&max_node, key) {
-                (i, true) => {
+            (false, Excluded(key)) => match search::search_node(max_node, key) {
+                Found(kv) => {
                     max_found = true;
-                    i
+                    kv.left_edge()
                 }
-                (i, false) => i,
+                GoDown(edge) => edge,
             },
-            (_, Unbounded) => max_node.len(),
-            (true, Included(_)) => 0,
-            (true, Excluded(_)) => max_node.len(),
+            (true, Included(_)) => max_node.first_edge(),
+            (true, Excluded(_)) => max_node.last_edge(),
+            (_, Unbounded) => max_node.last_edge(),
         };
 
-        if !diverged {
-            if max_edge < min_edge {
-                panic!("Ord is ill-defined in BTreeMap range")
-            }
-            if min_edge != max_edge {
-                diverged = true;
-            }
+        if front.partial_cmp(&back) == Some(Ordering::Greater) {
+            panic!("Ord is ill-defined in BTreeMap range");
         }
-
-        // Safety guarantee: `min_edge` is always in range for `min_node`, because
-        // `min_edge` is unconditionally calculated for each iteration's value of `min_node`,
-        // either (if not found) as the edge index returned by `search_linear`,
-        // or (if found) as the KV index returned by `search_linear`, possibly + 1.
-        // Likewise for `max_node` versus `max_edge`.
-        let front = unsafe { Handle::new_edge(min_node, min_edge) };
-        let back = unsafe { Handle::new_edge(max_node, max_edge) };
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
                 return (f, b);
