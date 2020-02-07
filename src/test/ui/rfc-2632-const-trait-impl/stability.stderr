@@ -1,0 +1,12 @@
+error[E0723]: can only call other `const fn` within a `const fn`, but `const <Int as std::ops::Add>::add` is not stable as `const fn`
+  --> $DIR/stability.rs:21:5
+   |
+LL |     Int(1i32) + Int(2i32)
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0723`.
