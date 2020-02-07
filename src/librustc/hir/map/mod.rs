@@ -404,27 +404,24 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
-        self.read(id);
-
-        // N.B., intentionally bypass `self.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.krate.item(id)
+        match self.find(id).unwrap() {
+            Node::Item(item) => item,
+            _ => bug!(),
+        }
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        self.read(id.hir_id);
-
-        // N.B., intentionally bypass `self.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.krate.trait_item(id)
+        match self.find(id.hir_id).unwrap() {
+            Node::TraitItem(item) => item,
+            _ => bug!(),
+        }
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.read(id.hir_id);
-
-        // N.B., intentionally bypass `self.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.krate.impl_item(id)
+        match self.find(id.hir_id).unwrap() {
+            Node::ImplItem(item) => item,
+            _ => bug!(),
+        }
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
