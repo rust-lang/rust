@@ -7,6 +7,7 @@ pub mod map;
 
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::print;
@@ -68,7 +69,17 @@ impl<'hir> print::PpAnn for Hir<'hir> {
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> Hir<'tcx> {
-        Hir { tcx: self, map: &self.hir_map }
+        let map = self.late_hir_map.load();
+        let map = if unlikely!(map.is_none()) {
+            cold_path(|| {
+                let map = self.hir_map(LOCAL_CRATE);
+                self.late_hir_map.store(Some(map));
+                map
+            })
+        } else {
+            map.unwrap()
+        };
+        Hir { tcx: self, map }
     }
 
     pub fn parent_module(self, id: HirId) -> DefId {
@@ -81,6 +92,35 @@ pub fn provide(providers: &mut Providers<'_>) {
         let hir = tcx.hir();
         hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id).unwrap()))
     };
-    providers.hir_crate = |tcx, _| tcx.hir_map.untracked_krate();
+    providers.hir_crate = |tcx, _| tcx.hir_map(LOCAL_CRATE).untracked_krate();
+    providers.hir_map = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        let early = tcx.hir_map.steal();
+        tcx.arena.alloc(map::Map {
+            tcx,
+            krate: early.krate,
+
+            dep_graph: early.dep_graph,
+
+            crate_hash: early.crate_hash,
+
+            owner_map: early.owner_map,
+            owner_items_map: early.owner_items_map,
+
+            map: early.map,
+
+            definitions: early.definitions,
+
+            hir_to_node_id: early.hir_to_node_id,
+        })
+    };
+    providers.hir_owner = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        *tcx.hir().map.owner_map.get(&id.index).unwrap()
+    };
+    providers.hir_owner_items = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        *tcx.hir().map.owner_items_map.get(&id.index).unwrap()
+    };
     map::provide(providers);
 }

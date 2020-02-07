@@ -163,6 +163,8 @@ macro_rules! arena_types {
             [] where_predicate: rustc_hir::WherePredicate<$tcx>,
 
             // HIR query types
+            [few] hir_map: rustc::hir::map::Map<$tcx>,
+            [few] hir_definitions: rustc::hir::map::definitions::Definitions,
             [] hir_owner: rustc::hir::HirOwner<$tcx>,
             [] hir_owner_items: rustc::hir::HirOwnerItems<$tcx>,
         ], $tcx);

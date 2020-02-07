@@ -209,6 +209,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         FxHashMap<DefIndex, &'hir mut HirOwnerItems<'hir>>,
         Svh,
     ) {
+        // Insert bodies into the map
+        for (id, body) in self.krate.bodies.iter() {
+            let bodies = &mut self.owner_items_map.get_mut(&id.hir_id.owner).unwrap().bodies;
+            assert!(bodies.insert(id.hir_id.local_id, body).is_none());
+        }
+
         self.hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
         let node_hashes = self.hir_body_nodes.iter().fold(

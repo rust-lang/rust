@@ -8,6 +8,7 @@ use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
 use crate::hir::{HirOwner, HirOwnerItems};
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
 use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -138,9 +139,8 @@ impl<'hir> Entry<'hir> {
 pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Option<Entry<'hir>>>>;
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
-#[derive(Clone)]
-pub struct Map<'hir> {
-    krate: &'hir Crate<'hir>,
+pub struct EarlyMap<'hir> {
+    pub krate: &'hir Crate<'hir>,
 
     pub dep_graph: DepGraph,
 
@@ -150,12 +150,34 @@ pub struct Map<'hir> {
     pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
     pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
 
-    map: HirEntryMap<'hir>,
+    pub(super) map: HirEntryMap<'hir>,
 
-    definitions: Definitions,
+    pub(crate) definitions: &'hir Definitions,
 
     /// The reverse mapping of `node_to_hir_id`.
-    hir_to_node_id: FxHashMap<HirId, NodeId>,
+    pub(super) hir_to_node_id: FxHashMap<HirId, NodeId>,
+}
+
+/// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
+pub struct Map<'hir> {
+    pub(super) tcx: TyCtxt<'hir>,
+
+    pub(super) krate: &'hir Crate<'hir>,
+
+    pub dep_graph: DepGraph,
+
+    /// The SVH of the local crate.
+    pub crate_hash: Svh,
+
+    pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
+    pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
+
+    pub(super) map: HirEntryMap<'hir>,
+
+    pub(super) definitions: &'hir Definitions,
+
+    /// The reverse mapping of `node_to_hir_id`.
+    pub(super) hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
@@ -406,11 +428,11 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.read(id.hir_id);
-
-        // N.B., intentionally bypass `self.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.krate.body(id)
+        self.tcx
+            .hir_owner_items(DefId::local(id.hir_id.owner))
+            .bodies
+            .get(&id.hir_id.local_id)
+            .unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -966,45 +988,6 @@ impl<'hir> Map<'hir> {
         attrs.unwrap_or(&[])
     }
 
-    /// Returns an iterator that yields all the hir ids in the map.
-    fn all_ids<'a>(&'a self) -> impl Iterator<Item = HirId> + 'a {
-        // This code is a bit awkward because the map is implemented as 2 levels of arrays,
-        // see the comment on `HirEntryMap`.
-        // Iterate over all the indices and return a reference to
-        // local maps and their index given that they exist.
-        self.map.iter_enumerated().flat_map(move |(owner, local_map)| {
-            // Iterate over each valid entry in the local map.
-            local_map.iter_enumerated().filter_map(move |(i, entry)| {
-                entry.map(move |_| {
-                    // Reconstruct the `HirId` based on the 3 indices we used to find it.
-                    HirId { owner, local_id: i }
-                })
-            })
-        })
-    }
-
-    /// Returns an iterator that yields the node id's with paths that
-    /// match `parts`.  (Requires `parts` is non-empty.)
-    ///
-    /// For example, if given `parts` equal to `["bar", "quux"]`, then
-    /// the iterator will produce node id's for items with paths
-    /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
-    /// any other such items it can find in the map.
-    pub fn nodes_matching_suffix<'a>(
-        &'a self,
-        parts: &'a [String],
-    ) -> impl Iterator<Item = NodeId> + 'a {
-        let nodes = NodesMatchingSuffix {
-            map: self,
-            item_name: parts.last().unwrap(),
-            in_which: &parts[..parts.len() - 1],
-        };
-
-        self.all_ids()
-            .filter(move |hir| nodes.matches_suffix(*hir))
-            .map(move |hir| self.hir_to_node_id(hir))
-    }
-
     pub fn span(&self, hir_id: HirId) -> Span {
         self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
@@ -1087,82 +1070,6 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub struct NodesMatchingSuffix<'a> {
-    map: &'a Map<'a>,
-    item_name: &'a String,
-    in_which: &'a [String],
-}
-
-impl<'a> NodesMatchingSuffix<'a> {
-    /// Returns `true` only if some suffix of the module path for parent
-    /// matches `self.in_which`.
-    ///
-    /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;
-    /// returns true if parent's path ends with the suffix
-    /// `x_0::x_1::...::x_k`.
-    fn suffix_matches(&self, parent: HirId) -> bool {
-        let mut cursor = parent;
-        for part in self.in_which.iter().rev() {
-            let (mod_id, mod_name) = match find_first_mod_parent(self.map, cursor) {
-                None => return false,
-                Some((node_id, name)) => (node_id, name),
-            };
-            if mod_name.as_str() != *part {
-                return false;
-            }
-            cursor = self.map.get_parent_item(mod_id);
-        }
-        return true;
-
-        // Finds the first mod in parent chain for `id`, along with
-        // that mod's name.
-        //
-        // If `id` itself is a mod named `m` with parent `p`, then
-        // returns `Some(id, m, p)`.  If `id` has no mod in its parent
-        // chain, then returns `None`.
-        fn find_first_mod_parent(map: &Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
-            loop {
-                if let Node::Item(item) = map.find(id)? {
-                    if item_is_mod(&item) {
-                        return Some((id, item.ident.name));
-                    }
-                }
-                let parent = map.get_parent_item(id);
-                if parent == id {
-                    return None;
-                }
-                id = parent;
-            }
-
-            fn item_is_mod(item: &Item<'_>) -> bool {
-                match item.kind {
-                    ItemKind::Mod(_) => true,
-                    _ => false,
-                }
-            }
-        }
-    }
-
-    // We are looking at some node `n` with a given name and parent
-    // id; do their names match what I am seeking?
-    fn matches_names(&self, parent_of_n: HirId, name: Name) -> bool {
-        name.as_str() == *self.item_name && self.suffix_matches(parent_of_n)
-    }
-
-    fn matches_suffix(&self, hir: HirId) -> bool {
-        let name = match self.map.find_entry(hir).map(|entry| entry.node) {
-            Some(Node::Item(n)) => n.name(),
-            Some(Node::ForeignItem(n)) => n.name(),
-            Some(Node::TraitItem(n)) => n.name(),
-            Some(Node::ImplItem(n)) => n.name(),
-            Some(Node::Variant(n)) => n.name(),
-            Some(Node::Field(n)) => n.name(),
-            _ => return false,
-        };
-        self.matches_names(self.map.get_parent_item(hir), name)
-    }
-}
-
 trait Named {
     fn name(&self) -> Name;
 }
@@ -1211,7 +1118,7 @@ pub fn map_crate<'hir>(
     krate: &'hir Crate<'hir>,
     dep_graph: DepGraph,
     definitions: Definitions,
-) -> Map<'hir> {
+) -> EarlyMap<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");
 
     // Build the reverse mapping of `node_to_hir_id`.
@@ -1233,7 +1140,7 @@ pub fn map_crate<'hir>(
         collector.finalize_and_compute_crate_hash(crate_disambiguator, cstore, cmdline_args)
     };
 
-    let map = Map {
+    let map = EarlyMap {
         krate,
         dep_graph,
         crate_hash,
@@ -1241,7 +1148,7 @@ pub fn map_crate<'hir>(
         owner_map,
         owner_items_map: owner_items_map.into_iter().map(|(k, v)| (k, &*v)).collect(),
         hir_to_node_id,
-        definitions,
+        definitions: arena.alloc(definitions),
     };
 
     sess.time("validate_HIR_map", || {
