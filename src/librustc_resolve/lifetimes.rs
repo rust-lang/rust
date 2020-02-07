@@ -747,7 +747,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: true,
                 };
-                self.with(scope, |_old_scope, this| {
+                self.with(scope, |old_scope, this| {
+                    this.check_lifetime_params(old_scope, &generics.params);
                     this.visit_generics(generics);
                     for bound in bounds {
                         this.visit_param_bound(bound);
@@ -804,7 +805,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: true,
                 };
-                self.with(scope, |_old_scope, this| {
+                self.with(scope, |old_scope, this| {
+                    this.check_lifetime_params(old_scope, &generics.params);
                     this.visit_generics(generics);
                     this.visit_ty(ty);
                 });
