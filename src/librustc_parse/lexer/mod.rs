@@ -248,8 +248,9 @@ impl<'a> StringReader<'a> {
                                    a future release!",
                             )
                             .note(
-                                "for more information, see issue #42326 \
-                                   <https://github.com/rust-lang/rust/issues/42326>",
+                                "see issue #42326 \
+                                 <https://github.com/rust-lang/rust/issues/42326> \
+                                 for more information",
                             )
                             .emit();
                         None

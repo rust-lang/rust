@@ -20,7 +20,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Bar<T>;
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/shadowing.rs:25:5
@@ -28,7 +28,7 @@ error: type-generic associated types are not yet implemented
 LL |     type Bar<U>; // OK
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: aborting due to 4 previous errors
 

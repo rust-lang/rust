@@ -7,7 +7,7 @@ LL |     let x = Enum::Foo(a: 3, b: 4);
    |                        tried to parse a type due to this type ascription
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
   --> $DIR/recover-from-bad-variant.rs:10:9
