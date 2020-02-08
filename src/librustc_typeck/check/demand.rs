@@ -536,6 +536,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let item_def_id = self
                     .tcx
                     .associated_items(deref_trait)
+                    .iter()
                     .find(|item| item.kind == ty::AssocKind::Type)
                     .unwrap()
                     .def_id;
