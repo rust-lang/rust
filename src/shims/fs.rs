@@ -347,6 +347,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("stat")?;
+        this.check_platform("macos", "stat")?;
         // `stat` always follows symlinks.
         this.stat_or_lstat(true, path_op, buf_op)
     }
@@ -359,6 +360,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.check_no_isolation("lstat")?;
+        this.check_platform("macos", "lstat")?;
         this.stat_or_lstat(false, path_op, buf_op)
     }
 
@@ -370,10 +372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("fstat")?;
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `fstat` shim is only available for `macos` targets.")
-        }
+        this.check_platform("macos", "fstat")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -391,10 +390,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "macos" {
-            throw_unsup_format!("The `stat` and `lstat` shims are only available for `macos` targets.")
-        }
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
         let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
@@ -417,10 +412,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("statx")?;
-
-        if this.tcx.sess.target.target.target_os.to_lowercase() != "linux" {
-            throw_unsup_format!("The `statx` shim is only available for `linux` targets.")
-        }
+        this.check_platform("linux", "statx")?;
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
         let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;

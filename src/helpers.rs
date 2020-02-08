@@ -368,6 +368,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+    /// Helper function used inside the shims of foreign functions to check that the target
+    /// platform is `platform`. It returns an error using the `name` of the foreign function if
+    /// this is not the case.
+    fn check_platform(&mut self, platform: &str, name: &str) -> InterpResult<'tcx> {
+        if self.eval_context_mut().tcx.sess.target.target.target_os.to_lowercase() != platform {
+            throw_unsup_format!(
+                "`{}` is only available in the `{}` platform",
+                name,
+                platform,
+            )
+        }
+        Ok(())
+    }
 
     /// Sets the last error variable.
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
