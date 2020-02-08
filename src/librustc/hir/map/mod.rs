@@ -172,8 +172,6 @@ pub struct Map<'hir> {
     pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
     pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
 
-    pub(super) map: HirEntryMap<'hir>,
-
     pub(super) definitions: &'hir Definitions,
 
     /// The reverse mapping of `node_to_hir_id`.
@@ -218,27 +216,6 @@ impl<'hir> Map<'hir> {
     /// crate is tracked.
     pub fn untracked_krate(&self) -> &Crate<'hir> {
         &self.krate
-    }
-
-    #[inline]
-    fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner)?;
-        local_map.get(id.local_id)?.as_ref()
-    }
-
-    /// Registers a read in the dependency graph of the AST node with
-    /// the given `id`. This needs to be called each time a public
-    /// function returns the HIR for a node -- in other words, when it
-    /// "reveals" the content of a node to the caller (who might not
-    /// otherwise have had access to those contents, and hence needs a
-    /// read recorded). If the function just returns a DefId or
-    /// HirId, no actual content was returned, so no read is needed.
-    pub fn read(&self, hir_id: HirId) {
-        if let Some(entry) = self.lookup(hir_id) {
-            self.dep_graph.read_index(entry.dep_node);
-        } else {
-            bug!("called `HirMap::read()` with invalid `HirId`: {:?}", hir_id)
-        }
     }
 
     #[inline]
@@ -943,7 +920,6 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
             Some(Node::Param(a)) => Some(&a.attrs[..]),
             Some(Node::Local(l)) => Some(&l.attrs[..]),
@@ -967,7 +943,6 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span(&self, hir_id: HirId) -> Span {
-        self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
             Some(Node::Param(param)) => param.span,
             Some(Node::Item(item)) => item.span,

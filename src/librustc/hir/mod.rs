@@ -107,8 +107,6 @@ pub fn provide(providers: &mut Providers<'_>) {
             owner_map: early.owner_map,
             owner_items_map: early.owner_items_map,
 
-            map: early.map,
-
             definitions: early.definitions,
 
             hir_to_node_id: early.hir_to_node_id,
