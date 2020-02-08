@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   uint64_t rr = tt_add(xx, yy);
   assert(33 == rr);
 
-  /* This one returns an incorrect result. */
+  /* This one used to return an incorrect result (see issue #68190). */
   T x = { .tag = A, .a = { ._0 = 1 } };
   T y = { .tag = A, .a = { ._0 = 10 } };
   uint64_t r = t_add(x, y);

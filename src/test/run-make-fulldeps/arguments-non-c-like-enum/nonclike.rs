@@ -1,6 +1,3 @@
-#![crate_type = "lib"]
-#![crate_name = "nonclike"]
-
 #[repr(C, u8)]
 pub enum TT {
     AA(u64, u64),
