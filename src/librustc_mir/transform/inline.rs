@@ -3,10 +3,9 @@
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
-use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_attr as attr;
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::config::Sanitizer;
@@ -29,8 +28,7 @@ pub struct Inline;
 
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
-    callee: DefId,
-    substs: SubstsRef<'tcx>,
+    callee: Instance<'tcx>,
     bb: BasicBlock,
     source_info: SourceInfo,
 }
@@ -94,13 +92,19 @@ impl Inliner<'tcx> {
             local_change = false;
             while let Some(callsite) = callsites.pop_front() {
                 debug!("checking whether to inline callsite {:?}", callsite);
-                if !self.tcx.is_mir_available(callsite.callee) {
-                    debug!("checking whether to inline callsite {:?} - MIR unavailable", callsite);
-                    continue;
+
+                if let InstanceDef::Item(callee_def_id) = callsite.callee.def {
+                    if !self.tcx.is_mir_available(callee_def_id) {
+                        debug!(
+                            "checking whether to inline callsite {:?} - MIR unavailable",
+                            callsite,
+                        );
+                        continue;
+                    }
                 }
 
                 let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
-                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
+                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee.def_id());
 
                 let callee_body = if let Some(callee_node_id) = callee_node_id {
                     // Avoid a cycle here by only using `optimized_mir` only if we have
@@ -110,19 +114,21 @@ impl Inliner<'tcx> {
                     if !self.tcx.dep_graph.is_fully_enabled()
                         && self_node_id.as_u32() < callee_node_id.as_u32()
                     {
-                        self.tcx.optimized_mir(callsite.callee)
+                        self.tcx.instance_mir(callsite.callee.def)
                     } else {
                         continue;
                     }
                 } else {
                     // This cannot result in a cycle since the callee MIR is from another crate
                     // and is already optimized.
-                    self.tcx.optimized_mir(callsite.callee)
+                    self.tcx.instance_mir(callsite.callee.def)
                 };
+
+                let callee_body: &Body<'tcx> = &*callee_body;
 
                 let callee_body = if self.consider_optimizing(callsite, callee_body) {
                     self.tcx.subst_and_normalize_erasing_regions(
-                        &callsite.substs,
+                        &callsite.callee.substs,
                         param_env,
                         callee_body,
                     )
@@ -183,18 +189,13 @@ impl Inliner<'tcx> {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).kind {
-                let instance = Instance::resolve(self.tcx, param_env, callee_def_id, substs)?;
+                let callee = Instance::resolve(self.tcx, param_env, callee_def_id, substs)?;
 
-                if let InstanceDef::Virtual(..) = instance.def {
+                if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
                     return None;
                 }
 
-                return Some(CallSite {
-                    callee: instance.def_id(),
-                    substs: instance.substs,
-                    bb,
-                    source_info: terminator.source_info,
-                });
+                return Some(CallSite { callee, bb, source_info: terminator.source_info });
             }
         }
 
@@ -219,7 +220,7 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
             debug!("`#[track_caller]` present - not inlining");
@@ -264,8 +265,8 @@ impl Inliner<'tcx> {
         // Only inline local functions if they would be eligible for cross-crate
         // inlining. This is to ensure that the final crate doesn't have MIR that
         // reference unexported symbols
-        if callsite.callee.is_local() {
-            if callsite.substs.non_erasable_generics().count() == 0 && !hinted {
+        if callsite.callee.def_id().is_local() {
+            if callsite.callee.substs.non_erasable_generics().count() == 0 && !hinted {
                 debug!("    callee is an exported function - not inlining");
                 return false;
             }
@@ -321,7 +322,7 @@ impl Inliner<'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(callee_body, tcx).subst(tcx, callsite.substs).ty;
+                    let ty = location.ty(callee_body, tcx).subst(tcx, callsite.callee.substs).ty;
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
@@ -371,7 +372,7 @@ impl Inliner<'tcx> {
 
         for v in callee_body.vars_and_temps_iter() {
             let v = &callee_body.local_decls[v];
-            let ty = v.ty.subst(tcx, callsite.substs);
+            let ty = v.ty.subst(tcx, callsite.callee.substs);
             // Cost of the var is the size in machine-words, if we know
             // it.
             if let Some(size) = type_size_of(tcx, param_env, ty) {
@@ -399,7 +400,7 @@ impl Inliner<'tcx> {
         &self,
         callsite: CallSite<'tcx>,
         caller_body: &mut BodyAndCache<'tcx>,
-        mut callee_body: BodyAndCache<'tcx>,
+        mut callee_body: Body<'tcx>,
     ) -> bool {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
@@ -501,6 +502,13 @@ impl Inliner<'tcx> {
                     caller_body.var_debug_info.push(var_debug_info);
                 }
 
+                // HACK(eddyb) work around the `basic_blocks` field of `mir::Body`
+                // being private, due to `BodyAndCache` implementing `DerefMut`
+                // to `mir::Body` (which would allow bypassing `basic_blocks_mut`).
+                // The only way to make `basic_blocks` public again would be to
+                // remove that `DerefMut` impl and add more `*_mut` accessors.
+                let mut callee_body = BodyAndCache::new(callee_body);
+
                 for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);
                     caller_body.basic_blocks_mut().push(block);
@@ -554,7 +562,9 @@ impl Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        if tcx.is_closure(callsite.callee) {
+        // FIXME(eddyb) make this check for `"rust-call"` ABI combined with
+        // `callee_body.spread_arg == None`, instead of special-casing closures.
+        if tcx.is_closure(callsite.callee.def_id()) {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
