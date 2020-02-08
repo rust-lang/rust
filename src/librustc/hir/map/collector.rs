@@ -44,7 +44,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     hcx: StableHashingContext<'a>,
 
-    // We are collecting `DepNode::HirBody` hashes here so we can compute the
+    // We are collecting HIR hashes here so we can compute the
     // crate hash from them later on.
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }

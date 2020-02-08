@@ -341,13 +341,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
-    // Represents the body of a function or method. The def-id is that of the
-    // function/method.
-    [eval_always] HirBody(DefId),
-
-    // Represents the HIR node with the given node-id
-    [eval_always] Hir(DefId),
-
     // Represents metadata from an extern crate.
     [eval_always] CrateMetadata(CrateNum),
 

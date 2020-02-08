@@ -180,8 +180,6 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
         DepKind::CrateMetadata |
-        DepKind::HirBody |
-        DepKind::Hir |
 
         // These are anonymous nodes.
         DepKind::TraitSelect |

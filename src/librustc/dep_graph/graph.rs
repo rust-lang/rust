@@ -677,7 +677,7 @@ impl DepGraph {
                         }
                     } else {
                         match dep_dep_node.kind {
-                            DepKind::Hir | DepKind::HirBody | DepKind::CrateMetadata => {
+                            DepKind::CrateMetadata => {
                                 if let Some(def_id) = dep_dep_node.extract_def_id(tcx) {
                                     if def_id_corresponds_to_hir_dep_node(tcx, def_id) {
                                         // The `DefPath` has corresponding node,
