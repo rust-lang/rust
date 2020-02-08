@@ -12,42 +12,44 @@ export interface ArtifactMetadata {
 }
 
 /**
- * Type tag for `BinarySource` discriminated union.
- */
-export enum BinarySourceType { ExplicitPath, GithubBinary }
-
-/**
  * Represents the source of a binary artifact which is either specified by the user
  * explicitly, or bundled by this extension from GitHub releases.
  */
-export type BinarySource = ExplicitPathSource | GithubBinarySource;
+export type BinarySource = BinarySource.ExplicitPath | BinarySource.GithubRelease;
 
-
-export interface ExplicitPathSource {
-    type: BinarySourceType.ExplicitPath;
-
+export namespace BinarySource {
     /**
-     * Filesystem path to the binary specified by the user explicitly.
+     * Type tag for `BinarySource` discriminated union.
      */
-    path: string;
-}
+    export const enum Type { ExplicitPath, GithubRelease }
 
-export interface GithubBinarySource {
-    type: BinarySourceType.GithubBinary;
+    export interface ExplicitPath {
+        type: Type.ExplicitPath;
 
-    /**
-     * Repository where the binary is stored.
-     */
-    repo: GithubRepo;
+        /**
+         * Filesystem path to the binary specified by the user explicitly.
+         */
+        path: string;
+    }
 
-    /**
-     * Directory on the filesystem where the bundled binary is stored.
-     */
-    dir: string;
+    export interface GithubRelease {
+        type: Type.GithubRelease;
 
-    /**
-     * Name of the binary file. It is stored under the same name on GitHub releases
-     * and in local `.dir`.
-     */
-    file: string;
+        /**
+         * Repository where the binary is stored.
+         */
+        repo: GithubRepo;
+
+        /**
+         * Directory on the filesystem where the bundled binary is stored.
+         */
+        dir: string;
+
+        /**
+         * Name of the binary file. It is stored under the same name on GitHub releases
+         * and in local `.dir`.
+         */
+        file: string;
+    }
+
 }

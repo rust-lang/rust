@@ -10,7 +10,7 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const raLspServerPath = await ensureLanguageServerBinary(config.raLspServerSource);
+    const raLspServerPath = await ensureLanguageServerBinary(config.langServerSource);
     if (!raLspServerPath) return null;
 
     const run: lc.Executable = {

@@ -5,12 +5,12 @@ import * as path from "path";
 import { strict as assert } from "assert";
 import { promises as fs } from "fs";
 
-import { BinarySource, BinarySourceType, GithubBinarySource } from "./interfaces";
+import { BinarySource } from "./interfaces";
 import { fetchLatestArtifactMetadata } from "./fetch_latest_artifact_metadata";
 import { downloadFile } from "./download_file";
 
 export async function downloadLatestLanguageServer(
-    {file: artifactFileName, dir: installationDir, repo}: GithubBinarySource
+    {file: artifactFileName, dir: installationDir, repo}: BinarySource.GithubRelease
 ) {
     const binaryMetadata = await fetchLatestArtifactMetadata(repo, artifactFileName);
 
@@ -67,7 +67,7 @@ export async function ensureLanguageServerBinary(
     }
 
     switch (langServerSource.type) {
-        case BinarySourceType.ExplicitPath: {
+        case BinarySource.Type.ExplicitPath: {
             if (isBinaryAvailable(langServerSource.path)) {
                 return langServerSource.path;
             }
@@ -78,7 +78,7 @@ export async function ensureLanguageServerBinary(
             );
             return null;
         }
-        case BinarySourceType.GithubBinary: {
+        case BinarySource.Type.GithubRelease: {
             const bundledBinaryPath = path.join(langServerSource.dir, langServerSource.file);
 
             if (!isBinaryAvailable(bundledBinaryPath)) {
@@ -106,7 +106,7 @@ export async function ensureLanguageServerBinary(
                 );
 
                 vscode.window.showInformationMessage(
-                    "Rust analyzer language server was successfully installed"
+                    "Rust analyzer language server was successfully installed 🦀"
                 );
             }
             return bundledBinaryPath;

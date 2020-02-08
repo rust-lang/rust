@@ -1,6 +1,6 @@
 import * as os from "os";
 import * as vscode from 'vscode';
-import { BinarySource, BinarySourceType } from "./installation/interfaces";
+import { BinarySource } from "./installation/interfaces";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -18,20 +18,7 @@ export interface CargoFeatures {
 }
 
 export class Config {
-    readonly raLspServerGithubArtifactName = {
-        linux: "ra_lsp_server-linux",
-        darwin: "ra_lsp_server-mac",
-        win32: "ra_lsp_server-windows.exe",
-        aix: null,
-        android: null,
-        freebsd: null,
-        openbsd: null,
-        sunos: null,
-        cygwin: null,
-        netbsd: null,
-    }[process.platform];
-
-    raLspServerSource!: null | BinarySource;
+    langServerSource!: null | BinarySource;
 
     highlightingOn = true;
     rainbowHighlightingOn = false;
@@ -72,6 +59,56 @@ export class Config {
         return path;
     }
 
+    /**
+     * Name of the binary artifact for `ra_lsp_server` that is published for
+     * `platform` on GitHub releases. (It is also stored under the same name when
+     * downloaded by the extension).
+     */
+    private static prebuiltLangServerFileName(platform: NodeJS.Platform): null | string {
+        switch (platform) {
+            case "linux":  return "ra_lsp_server-linux";
+            case "darwin": return "ra_lsp_server-mac";
+            case "win32":  return "ra_lsp_server-windows.exe";
+
+            // Users on these platforms yet need to manually build from sources
+            case "aix":
+            case "android":
+            case "freebsd":
+            case "openbsd":
+            case "sunos":
+            case "cygwin":
+            case "netbsd": return null;
+            // The list of platforms is exhaustive see (`NodeJS.Platform` type definition)
+        }
+    }
+
+    private static langServerBinarySource(
+        ctx: vscode.ExtensionContext,
+        config: vscode.WorkspaceConfiguration
+    ): null | BinarySource {
+        const raLspServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
+
+        if (raLspServerPath) {
+            return {
+                type: BinarySource.Type.ExplicitPath,
+                path: Config.expandPathResolving(raLspServerPath)
+            };
+        }
+
+        const prebuiltBinaryName = Config.prebuiltLangServerFileName(process.platform);
+
+        return !prebuiltBinaryName ? null : {
+            type: BinarySource.Type.GithubRelease,
+            dir: ctx.globalStoragePath,
+            file: prebuiltBinaryName,
+            repo: {
+                name: "rust-analyzer",
+                owner: "rust-analyzer",
+            }
+        };
+    }
+
+
     // FIXME: revisit the logic for `if (.has(...)) config.get(...)` set default
     // values only in one place (i.e. remove default values from non-readonly members declarations)
     private refresh(ctx: vscode.ExtensionContext) {
@@ -107,27 +144,7 @@ export class Config {
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
 
-        {
-            const raLspServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
-            if (raLspServerPath) {
-                this.raLspServerSource = {
-                    type: BinarySourceType.ExplicitPath,
-                    path: Config.expandPathResolving(raLspServerPath)
-                };
-            } else if (this.raLspServerGithubArtifactName) {
-                this.raLspServerSource = {
-                    type: BinarySourceType.GithubBinary,
-                    dir: ctx.globalStoragePath,
-                    file: this.raLspServerGithubArtifactName,
-                    repo: {
-                        name: "rust-analyzer",
-                        owner: "rust-analyzer",
-                    }
-                };
-            } else {
-                this.raLspServerSource = null;
-            }
-        }
+        this.langServerSource = Config.langServerBinarySource(ctx, config);
 
         if (config.has('cargo-watch.enable')) {
             this.cargoWatchOptions.enable = config.get<boolean>(
