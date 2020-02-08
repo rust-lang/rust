@@ -69,7 +69,7 @@ pub struct LexError {
 #[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("lex error")
+        f.write_str("cannot parse string into token stream")
     }
 }
 
