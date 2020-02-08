@@ -86,12 +86,12 @@ export class Config {
         ctx: vscode.ExtensionContext,
         config: vscode.WorkspaceConfiguration
     ): null | BinarySource {
-        const raLspServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
+        const langServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
 
-        if (raLspServerPath) {
+        if (langServerPath) {
             return {
                 type: BinarySource.Type.ExplicitPath,
-                path: Config.expandPathResolving(raLspServerPath)
+                path: Config.expandPathResolving(langServerPath)
             };
         }
 
