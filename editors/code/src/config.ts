@@ -78,7 +78,7 @@ export class Config {
             case "sunos":
             case "cygwin":
             case "netbsd": return null;
-            // The list of platforms is exhaustive see (`NodeJS.Platform` type definition)
+            // The list of platforms is exhaustive (see `NodeJS.Platform` type definition)
         }
     }
 
