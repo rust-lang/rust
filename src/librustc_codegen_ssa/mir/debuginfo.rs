@@ -210,11 +210,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let debug_context = match &self.debug_context {
-            Some(debug_context) => debug_context,
-            None => return,
-        };
-
         // FIXME(eddyb) add debuginfo for unsized places too.
         let base = match local_ref {
             LocalRef::Place(place) => place,
@@ -264,7 +259,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if let Some(scope) = scope {
                 if let Some(dbg_var) = var.dbg_var {
                     bx.dbg_var_addr(
-                        debug_context,
                         dbg_var,
                         scope,
                         base.llval,

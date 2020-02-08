@@ -49,7 +49,6 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
         &mut self,
-        dbg_context: &FunctionDebugContext<Self::DIScope>,
         dbg_var: Self::DIVariable,
         scope_metadata: Self::DIScope,
         variable_alloca: Self::Value,
