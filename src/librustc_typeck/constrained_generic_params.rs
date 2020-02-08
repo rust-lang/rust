@@ -79,10 +79,18 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ty::ConstKind::Param(data) = c.val {
-            self.parameters.push(Parameter::from(data));
+        match c.val {
+            ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
+                // Constant expressions are not injective
+                return c.ty.visit_with(self);
+            }
+            ty::ConstKind::Param(data) => {
+                self.parameters.push(Parameter::from(data));
+            }
+            _ => {}
         }
-        false
+
+        c.super_visit_with(self)
     }
 }
 

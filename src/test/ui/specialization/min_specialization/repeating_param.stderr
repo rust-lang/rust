@@ -1,0 +1,11 @@
+error: specializing impl repeats parameter `T`
+  --> $DIR/repeating_param.rs:12:1
+   |
+LL | / impl<T> X for (T, T) {
+LL | |
+LL | |     fn f() {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
