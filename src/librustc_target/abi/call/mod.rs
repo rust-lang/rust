@@ -120,6 +120,7 @@ impl Reg {
     reg_ctor!(i16, Integer, 16);
     reg_ctor!(i32, Integer, 32);
     reg_ctor!(i64, Integer, 64);
+    reg_ctor!(i128, Integer, 128);
 
     reg_ctor!(f32, Float, 32);
     reg_ctor!(f64, Float, 64);
@@ -538,6 +539,12 @@ pub struct FnAbi<'a, Ty> {
 
     pub c_variadic: bool,
 
+    /// The count of non-variadic arguments.
+    ///
+    /// Should only be different from args.len() when c_variadic is true.
+    /// This can be used to know wether an argument is variadic or not.
+    pub fixed_count: usize,
+
     pub conv: Conv,
 }
 
@@ -579,8 +586,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx" => nvptx::compute_abi_info(self),
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
-            "riscv32" => riscv::compute_abi_info(self, 32),
-            "riscv64" => riscv::compute_abi_info(self, 64),
+            "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" if cx.target_spec().target_os != "emscripten" => {
                 wasm32_bindgen_compat::compute_abi_info(self)
             }
