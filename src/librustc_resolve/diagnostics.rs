@@ -33,12 +33,12 @@ type Res = def::Res<ast::NodeId>;
 crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
 
 crate struct TypoSuggestion {
-    pub candidate: Symbol,
+    pub candidate: Ident,
     pub res: Res,
 }
 
 impl TypoSuggestion {
-    crate fn from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
+    crate fn from_res(candidate: Ident, res: Res) -> TypoSuggestion {
         TypoSuggestion { candidate, res }
     }
 }
@@ -107,7 +107,7 @@ impl<'a> Resolver<'a> {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) {
-                    names.push(TypoSuggestion::from_res(key.ident.name, res));
+                    names.push(TypoSuggestion::from_res(key.ident, res));
                 }
             }
         }
@@ -509,7 +509,7 @@ impl<'a> Resolver<'a> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                                .map(|ident| TypoSuggestion::from_res(*ident, res)),
                         );
                     }
                 }
@@ -525,11 +525,9 @@ impl<'a> Resolver<'a> {
                                 false,
                                 false,
                             ) {
-                                suggestions.extend(
-                                    ext.helper_attrs
-                                        .iter()
-                                        .map(|name| TypoSuggestion::from_res(*name, res)),
-                                );
+                                suggestions.extend(ext.helper_attrs.iter().map(|name| {
+                                    TypoSuggestion::from_res(Ident::new(*name, derive.span), res)
+                                }));
                             }
                         }
                     }
@@ -538,8 +536,7 @@ impl<'a> Resolver<'a> {
                     if let LegacyScope::Binding(legacy_binding) = legacy_scope {
                         let res = legacy_binding.binding.res();
                         if filter_fn(res) {
-                            suggestions
-                                .push(TypoSuggestion::from_res(legacy_binding.ident.name, res))
+                            suggestions.push(TypoSuggestion::from_res(legacy_binding.ident, res))
                         }
                     }
                 }
@@ -557,7 +554,7 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             this.registered_attrs
                                 .iter()
-                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                                .map(|ident| TypoSuggestion::from_res(*ident, res)),
                         );
                     }
                 }
@@ -565,24 +562,24 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
                             let res = binding.res();
-                            filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
+                            let span = binding.span;
+                            filter_fn(res)
+                                .then_some(TypoSuggestion::from_res(Ident::new(*name, span), res))
                         },
                     ));
                 }
                 Scope::BuiltinAttrs => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
                     if filter_fn(res) {
-                        suggestions.extend(
-                            BUILTIN_ATTRIBUTES
-                                .iter()
-                                .map(|(name, ..)| TypoSuggestion::from_res(*name, res)),
-                        );
+                        suggestions.extend(BUILTIN_ATTRIBUTES.iter().map(|(name, ..)| {
+                            TypoSuggestion::from_res(Ident::with_dummy_span(*name), res)
+                        }));
                     }
                 }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                        filter_fn(res).then_some(TypoSuggestion::from_res(ident.name, res))
+                        filter_fn(res).then_some(TypoSuggestion::from_res(*ident, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -590,7 +587,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         this.registered_tools
                             .iter()
-                            .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                            .map(|ident| TypoSuggestion::from_res(*ident, res)),
                     );
                 }
                 Scope::StdLibPrelude => {
@@ -608,7 +605,8 @@ impl<'a> Resolver<'a> {
                     let primitive_types = &this.primitive_type_table.primitive_types;
                     suggestions.extend(primitive_types.iter().flat_map(|(name, prim_ty)| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
+                        filter_fn(res)
+                            .then_some(TypoSuggestion::from_res(Ident::with_dummy_span(*name), res))
                     }))
                 }
             }
@@ -620,12 +618,12 @@ impl<'a> Resolver<'a> {
         suggestions.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
 
         match find_best_match_for_name(
-            suggestions.iter().map(|suggestion| &suggestion.candidate),
+            suggestions.iter().map(|suggestion| &suggestion.candidate.name),
             &ident.as_str(),
             None,
         ) {
             Some(found) if found != ident.name => {
-                suggestions.into_iter().find(|suggestion| suggestion.candidate == found)
+                suggestions.into_iter().find(|suggestion| suggestion.candidate.name == found)
             }
             _ => None,
         }
@@ -805,7 +803,7 @@ impl<'a> Resolver<'a> {
     ) -> bool {
         if let Some(suggestion) = suggestion {
             // We shouldn't suggest underscore.
-            if suggestion.candidate == kw::Underscore {
+            if suggestion.candidate.name == kw::Underscore {
                 return false;
             }
 
@@ -813,12 +811,6 @@ impl<'a> Resolver<'a> {
                 "{} {} with a similar name exists",
                 suggestion.res.article(),
                 suggestion.res.descr()
-            );
-            err.span_suggestion(
-                span,
-                &msg,
-                suggestion.candidate.to_string(),
-                Applicability::MaybeIncorrect,
             );
             let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
                 LOCAL_CRATE => self.definitions.opt_span(def_id),
@@ -828,16 +820,24 @@ impl<'a> Resolver<'a> {
                         .def_span(self.cstore().get_span_untracked(def_id, self.session)),
                 ),
             });
+            let candidate = def_span
+                .as_ref()
+                .map(|span| Ident::new(suggestion.candidate.name, *span))
+                .unwrap_or(suggestion.candidate);
+
+            err.span_suggestion(span, &msg, candidate.to_string(), Applicability::MaybeIncorrect);
+
             if let Some(span) = def_span {
                 err.span_label(
                     span,
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),
-                        suggestion.candidate.as_str(),
+                        candidate.to_string(),
                     ),
                 );
             }
+
             return true;
         }
         false
