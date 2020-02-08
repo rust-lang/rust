@@ -6,13 +6,12 @@ use hir::{ self, db::HirDatabase };
 use ra_syntax::{ SyntaxKind, ast, ast::AstNode, TextRange };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    let item_list = ast::ItemList::cast(ctx.token.parent());
-    let impl_block = item_list
-        .clone()
-        .and_then(|i| i.syntax().parent())
-        .and_then(|p| ast::ImplBlock::cast(p));
+    let impl_block = ctx.impl_block.as_ref();
+    let item_list = impl_block.and_then(|i| i.item_list());
 
-    if item_list.is_none() || impl_block.is_none() {
+    if item_list.is_none() 
+    || impl_block.is_none() 
+    || ctx.function_syntax.is_some() {
         return;
     }
 
@@ -166,7 +165,8 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
         format!("fn {}()", func_name.to_string())
     };
 
-    let builder = CompletionItem::new(CompletionKind::Magic, start, label);
+    let builder = CompletionItem::new(CompletionKind::Magic, start, label.clone())
+        .lookup_by(label);
 
     let completion_kind = if func.has_self_param(ctx.db) {
         CompletionItemKind::Method
@@ -183,7 +183,6 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
     builder
         .insert_text(snippet)
         .kind(completion_kind)
-        .lookup_by(func_name.to_string())
         .add_to(acc);
 }
 
@@ -219,7 +218,6 @@ mod tests {
                 delete: [138; 138),
                 insert: "fn foo() {}",
                 kind: Function,
-                lookup: "foo",
             },
         ]
         "###);
@@ -251,7 +249,6 @@ mod tests {
                 delete: [193; 193),
                 insert: "fn bar() {}",
                 kind: Function,
-                lookup: "bar",
             },
         ]
         "###);
@@ -280,7 +277,6 @@ mod tests {
                 delete: [141; 141),
                 insert: "fn foo<T>() {}",
                 kind: Function,
-                lookup: "foo",
             },
         ]
         "###);
@@ -309,36 +305,6 @@ mod tests {
                 delete: [163; 163),
                 insert: "fn foo<T>()\nwhere T: Into<String> {}",
                 kind: Function,
-                lookup: "foo",
-            },
-        ]
-        "###);
-    }
-
-    #[test]
-    fn start_from_fn_kw() {
-        let completions = complete(
-            r"
-            trait Test {
-                fn foo();
-            }
-
-            struct T1;
-
-            impl Test for T1 {
-                fn <|>
-            }
-            ",
-        );
-        assert_debug_snapshot!(completions, @r###"
-        [
-            CompletionItem {
-                label: "fn foo()",
-                source_range: [138; 140),
-                delete: [138; 140),
-                insert: "fn foo() {}",
-                kind: Function,
-                lookup: "foo",
             },
         ]
         "###);
