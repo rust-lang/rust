@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-## This script publishes the new "current" toolstate in the toolstate repo (not to be
-## confused with publishing the test results, which happens in
-## `src/ci/docker/x86_64-gnu-tools/checktools.sh`).
-## It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
-## when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
+# This script publishes the new "current" toolstate in the toolstate repo (not to be
+# confused with publishing the test results, which happens in
+# `src/ci/docker/x86_64-gnu-tools/checktools.sh`).
+# It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
+# when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
 
 from __future__ import print_function
 
@@ -103,6 +103,7 @@ def validate_maintainers(repo, github_token):
         print("The build will fail due to this.")
         exit(1)
 
+
 def read_current_status(current_commit, path):
     '''Reads build status of `current_commit` from content of `history/*.tsv`
     '''
@@ -113,13 +114,16 @@ def read_current_status(current_commit, path):
                 return json.loads(status)
     return {}
 
+
 def gh_url():
     return os.environ['TOOLSTATE_ISSUES_API_URL']
+
 
 def maybe_delink(message):
     if os.environ.get('TOOLSTATE_SKIP_MENTIONS') is not None:
         return message.replace("@", "")
     return message
+
 
 def issue(
     tool,
@@ -164,6 +168,7 @@ def issue(
     ))
     response.read()
 
+
 def update_latest(
     current_commit,
     relevant_pr_number,
@@ -194,7 +199,7 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            create_issue_for_status = None # set to the status that caused the issue
+            create_issue_for_status = None  # set to the status that caused the issue
 
             for os, s in current_status.items():
                 old = status[os]
