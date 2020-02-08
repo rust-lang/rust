@@ -3,14 +3,14 @@
 use rustc::mir;
 use rustc::session::config::nightly_options;
 use rustc::session::parse::feature_err;
-use rustc::ty::Ty;
+use rustc::ty::{Ty, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Constness;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
-use super::{is_const_unstable, ConstKind, Item};
+use super::{ConstKind, Item};
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
@@ -512,6 +512,13 @@ impl NonConstOp for UnionAccess {
     }
 }
 
+/// Returns `true` if the constness of this item is not stabilized, either because it is declared
+/// with `#[rustc_const_unstable]` or because the item itself is unstable.
+fn is_declared_const_unstable(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    tcx.lookup_const_stability(def_id).map_or(false, |stab| stab.level.is_unstable())
+        || tcx.lookup_stability(def_id).map_or(false, |stab| stab.level.is_unstable())
+}
+
 /// Returns `true` if the feature with the given gate is allowed within this const context.
 fn feature_allowed(item: &Item<'_, '_>, feature_gate: Symbol) -> bool {
     let Item { tcx, def_id, .. } = *item;
@@ -528,7 +535,7 @@ fn feature_allowed(item: &Item<'_, '_>, feature_gate: Symbol) -> bool {
         return true;
     }
 
-    if is_const_unstable(item.tcx, item.def_id) {
+    if is_declared_const_unstable(item.tcx, item.def_id) {
         return true;
     }
 
@@ -544,7 +551,7 @@ fn min_const_fn_checks_enabled(item: &Item<'_, '_>) -> bool {
     if item.tcx.features().staged_api {
         // All functions except for unstable ones need to pass the min const fn checks. This
         // includes private functions that are not marked unstable.
-        !is_const_unstable(item.tcx, item.def_id)
+        !is_declared_const_unstable(item.tcx, item.def_id)
     } else {
         // Crates that are not using stability attributes can use `#![feature(const_fn)]` to opt out of
         // the min_const_fn checks.

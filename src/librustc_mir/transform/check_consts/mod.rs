@@ -111,10 +111,3 @@ impl fmt::Display for ConstKind {
 pub fn is_lang_panic_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     Some(def_id) == tcx.lang_items().panic_fn() || Some(def_id) == tcx.lang_items().begin_panic_fn()
 }
-
-/// Returns `true` if the constness of this item is not stabilized, either because it is declared
-/// with `#![rustc_const_unstable]` or because the item itself is unstable.
-fn is_const_unstable(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    tcx.lookup_const_stability(def_id).map_or(false, |stab| stab.level.is_unstable())
-        || tcx.lookup_stability(def_id).map_or(false, |stab| stab.level.is_unstable())
-}
