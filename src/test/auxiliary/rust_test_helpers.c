@@ -300,3 +300,87 @@ __int128 sub(__int128 a, __int128 b) {
 }
 
 #endif
+
+#define OPTION_TAG_NONE (0)
+#define OPTION_TAG_SOME (1)
+
+struct U8TaggedEnumOptionU64 {
+    uint8_t tag;
+    union {
+        uint64_t some;
+    };
+};
+
+struct U8TaggedEnumOptionU64
+rust_dbg_new_some_u64(uint64_t some) {
+    struct U8TaggedEnumOptionU64 r = {
+        .tag = OPTION_TAG_SOME,
+        .some = some,
+    };
+    return r;
+}
+
+struct U8TaggedEnumOptionU64
+rust_dbg_new_none_u64(void) {
+    struct U8TaggedEnumOptionU64 r = {
+        .tag = OPTION_TAG_NONE,
+    };
+    return r;
+}
+
+int32_t
+rust_dbg_unpack_option_u64(struct U8TaggedEnumOptionU64 o, uint64_t *into) {
+    assert(into);
+    switch (o.tag) {
+    case OPTION_TAG_SOME:
+        *into = o.some;
+        return 1;
+    case OPTION_TAG_NONE:
+        return 0;
+    default:
+        assert(0 && "unexpected tag");
+    }
+}
+
+struct U8TaggedEnumOptionU64U64 {
+    uint8_t tag;
+    union {
+        struct {
+            uint64_t a;
+            uint64_t b;
+        } some;
+    };
+};
+
+struct U8TaggedEnumOptionU64U64
+rust_dbg_new_some_u64u64(uint64_t a, uint64_t b) {
+    struct U8TaggedEnumOptionU64U64 r = {
+        .tag = OPTION_TAG_SOME,
+        .some = { .a = a, .b = b },
+    };
+    return r;
+}
+
+struct U8TaggedEnumOptionU64U64
+rust_dbg_new_none_u64u64(void) {
+    struct U8TaggedEnumOptionU64U64 r = {
+        .tag = OPTION_TAG_NONE,
+    };
+    return r;
+}
+
+int32_t
+rust_dbg_unpack_option_u64u64(struct U8TaggedEnumOptionU64U64 o, uint64_t *a, uint64_t *b) {
+    assert(a);
+    assert(b);
+    switch (o.tag) {
+    case OPTION_TAG_SOME:
+        *a = o.some.a;
+        *b = o.some.b;
+        return 1;
+    case OPTION_TAG_NONE:
+        return 0;
+    default:
+        assert(0 && "unexpected tag");
+    }
+}

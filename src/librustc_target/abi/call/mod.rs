@@ -219,26 +219,47 @@ impl CastTarget {
     }
 }
 
-/// Returns value from the `homogeneous_aggregate` test function.
+/// Return value from the `homogeneous_aggregate` test function.
 #[derive(Copy, Clone, Debug)]
 pub enum HomogeneousAggregate {
     /// Yes, all the "leaf fields" of this struct are passed in the
     /// same way (specified in the `Reg` value).
     Homogeneous(Reg),
 
-    /// There are distinct leaf fields passed in different ways,
-    /// or this is uninhabited.
-    Heterogeneous,
-
     /// There are no leaf fields at all.
     NoData,
 }
+
+/// Error from the `homogeneous_aggregate` test function, indicating
+/// there are distinct leaf fields passed in different ways,
+/// or this is uninhabited.
+#[derive(Copy, Clone, Debug)]
+pub struct Heterogeneous;
 
 impl HomogeneousAggregate {
     /// If this is a homogeneous aggregate, returns the homogeneous
     /// unit, else `None`.
     pub fn unit(self) -> Option<Reg> {
-        if let HomogeneousAggregate::Homogeneous(r) = self { Some(r) } else { None }
+        match self {
+            HomogeneousAggregate::Homogeneous(reg) => Some(reg),
+            HomogeneousAggregate::NoData => None,
+        }
+    }
+
+    /// Try to combine two `HomogeneousAggregate`s, e.g. from two fields in
+    /// the same `struct`. Only succeeds if only one of them has any data,
+    /// or both units are identical.
+    fn merge(self, other: HomogeneousAggregate) -> Result<HomogeneousAggregate, Heterogeneous> {
+        match (self, other) {
+            (x, HomogeneousAggregate::NoData) | (HomogeneousAggregate::NoData, x) => Ok(x),
+
+            (HomogeneousAggregate::Homogeneous(a), HomogeneousAggregate::Homogeneous(b)) => {
+                if a != b {
+                    return Err(Heterogeneous);
+                }
+                Ok(self)
+            }
+        }
     }
 }
 
@@ -250,8 +271,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         }
     }
 
-    /// Returns `true` if this layout is an aggregate containing fields of only
-    /// a single type (e.g., `(u32, u32)`). Such aggregates are often
+    /// Returns `Homogeneous` if this layout is an aggregate containing fields of
+    /// only a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
     ///
     /// Note: We generally ignore fields of zero-sized type when computing
@@ -260,13 +281,13 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
     /// specific targets.
-    pub fn homogeneous_aggregate<C>(&self, cx: &C) -> HomogeneousAggregate
+    pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
         Ty: TyLayoutMethods<'a, C> + Copy,
         C: LayoutOf<Ty = Ty, TyLayout = Self>,
     {
         match self.abi {
-            Abi::Uninhabited => HomogeneousAggregate::Heterogeneous,
+            Abi::Uninhabited => Err(Heterogeneous),
 
             // The primitive for this algorithm.
             Abi::Scalar(ref scalar) => {
@@ -274,80 +295,104 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                     abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
                 };
-                HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size })
+                Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
             Abi::Vector { .. } => {
                 assert!(!self.is_zst());
-                HomogeneousAggregate::Homogeneous(Reg { kind: RegKind::Vector, size: self.size })
+                Ok(HomogeneousAggregate::Homogeneous(Reg {
+                    kind: RegKind::Vector,
+                    size: self.size,
+                }))
             }
 
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
-                let mut total = Size::ZERO;
-                let mut result = None;
+                // Helper for computing `homogenous_aggregate`, allowing a custom
+                // starting offset (used below for handling variants).
+                let from_fields_at =
+                    |layout: Self,
+                     start: Size|
+                     -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
+                        let is_union = match layout.fields {
+                            FieldPlacement::Array { count, .. } => {
+                                assert_eq!(start, Size::ZERO);
 
-                let is_union = match self.fields {
-                    FieldPlacement::Array { count, .. } => {
-                        if count > 0 {
-                            return self.field(cx, 0).homogeneous_aggregate(cx);
-                        } else {
-                            return HomogeneousAggregate::NoData;
-                        }
-                    }
-                    FieldPlacement::Union(_) => true,
-                    FieldPlacement::Arbitrary { .. } => false,
-                };
+                                let result = if count > 0 {
+                                    layout.field(cx, 0).homogeneous_aggregate(cx)?
+                                } else {
+                                    HomogeneousAggregate::NoData
+                                };
+                                return Ok((result, layout.size));
+                            }
+                            FieldPlacement::Union(_) => true,
+                            FieldPlacement::Arbitrary { .. } => false,
+                        };
 
-                for i in 0..self.fields.count() {
-                    if !is_union && total != self.fields.offset(i) {
-                        return HomogeneousAggregate::Heterogeneous;
-                    }
+                        let mut result = HomogeneousAggregate::NoData;
+                        let mut total = start;
 
-                    let field = self.field(cx, i);
+                        for i in 0..layout.fields.count() {
+                            if !is_union && total != layout.fields.offset(i) {
+                                return Err(Heterogeneous);
+                            }
 
-                    match (result, field.homogeneous_aggregate(cx)) {
-                        (_, HomogeneousAggregate::NoData) => {
-                            // Ignore fields that have no data
-                        }
-                        (_, HomogeneousAggregate::Heterogeneous) => {
-                            // The field itself must be a homogeneous aggregate.
-                            return HomogeneousAggregate::Heterogeneous;
-                        }
-                        // If this is the first field, record the unit.
-                        (None, HomogeneousAggregate::Homogeneous(unit)) => {
-                            result = Some(unit);
-                        }
-                        // For all following fields, the unit must be the same.
-                        (Some(prev_unit), HomogeneousAggregate::Homogeneous(unit)) => {
-                            if prev_unit != unit {
-                                return HomogeneousAggregate::Heterogeneous;
+                            let field = layout.field(cx, i);
+
+                            result = result.merge(field.homogeneous_aggregate(cx)?)?;
+
+                            // Keep track of the offset (without padding).
+                            let size = field.size;
+                            if is_union {
+                                total = total.max(size);
+                            } else {
+                                total += size;
                             }
                         }
-                    }
 
-                    // Keep track of the offset (without padding).
-                    let size = field.size;
-                    if is_union {
-                        total = total.max(size);
-                    } else {
-                        total += size;
+                        Ok((result, total))
+                    };
+
+                let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
+
+                match &self.variants {
+                    abi::Variants::Single { .. } => {}
+                    abi::Variants::Multiple { variants, .. } => {
+                        // Treat enum variants like union members.
+                        // HACK(eddyb) pretend the `enum` field (discriminant)
+                        // is at the start of every variant (otherwise the gap
+                        // at the start of all variants would disqualify them).
+                        //
+                        // NB: for all tagged `enum`s (which include all non-C-like
+                        // `enum`s with defined FFI representation), this will
+                        // match the homogenous computation on the equivalent
+                        // `struct { tag; union { variant1; ... } }` and/or
+                        // `union { struct { tag; variant1; } ... }`
+                        // (the offsets of variant fields should be identical
+                        // between the two for either to be a homogenous aggregate).
+                        let variant_start = total;
+                        for variant_idx in variants.indices() {
+                            let (variant_result, variant_total) =
+                                from_fields_at(self.for_variant(cx, variant_idx), variant_start)?;
+
+                            result = result.merge(variant_result)?;
+                            total = total.max(variant_total);
+                        }
                     }
                 }
 
                 // There needs to be no padding.
                 if total != self.size {
-                    HomogeneousAggregate::Heterogeneous
+                    Err(Heterogeneous)
                 } else {
                     match result {
-                        Some(reg) => {
+                        HomogeneousAggregate::Homogeneous(_) => {
                             assert_ne!(total, Size::ZERO);
-                            HomogeneousAggregate::Homogeneous(reg)
                         }
-                        None => {
+                        HomogeneousAggregate::NoData => {
                             assert_eq!(total, Size::ZERO);
-                            HomogeneousAggregate::NoData
                         }
                     }
+                    Ok(result)
                 }
             }
         }
