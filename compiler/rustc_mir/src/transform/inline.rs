@@ -33,7 +33,7 @@ struct CallSite<'tcx> {
     callee: DefId,
     substs: SubstsRef<'tcx>,
     bb: BasicBlock,
-    location: SourceInfo,
+    source_info: SourceInfo,
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
@@ -217,7 +217,7 @@ impl Inliner<'tcx> {
                     callee: instance.def_id(),
                     substs: instance.substs,
                     bb,
-                    location: terminator.source_info,
+                    source_info: terminator.source_info,
                 });
             }
         }
@@ -440,7 +440,7 @@ impl Inliner<'tcx> {
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
-                        scope.parent_scope = Some(callsite.location.scope);
+                        scope.parent_scope = Some(callsite.source_info.scope);
                         // FIXME(eddyb) is this really needed?
                         // (also note that it's always overwritten below)
                         scope.span = callee_body.span;
@@ -449,7 +449,7 @@ impl Inliner<'tcx> {
                     // FIXME(eddyb) this doesn't seem right at all.
                     // The inlined source scopes should probably be annotated as
                     // such, but also contain all of the original information.
-                    scope.span = callsite.location.span;
+                    scope.span = callsite.source_info.span;
 
                     let idx = caller_body.source_scopes.push(scope);
                     scope_map.push(idx);
@@ -459,7 +459,7 @@ impl Inliner<'tcx> {
                     let mut local = callee_body.local_decls[loc].clone();
 
                     local.source_info.scope = scope_map[local.source_info.scope];
-                    local.source_info.span = callsite.location.span;
+                    local.source_info.span = callsite.source_info.span;
 
                     let idx = caller_body.local_decls.push(local);
                     local_map.push(idx);
@@ -491,13 +491,13 @@ impl Inliner<'tcx> {
 
                     let ty = dest.ty(caller_body, self.tcx);
 
-                    let temp = LocalDecl::new(ty, callsite.location.span);
+                    let temp = LocalDecl::new(ty, callsite.source_info.span);
 
                     let tmp = caller_body.local_decls.push(temp);
                     let tmp = Place::from(tmp);
 
                     let stmt = Statement {
-                        source_info: callsite.location,
+                        source_info: callsite.source_info,
                         kind: StatementKind::Assign(box (tmp, dest)),
                     };
                     caller_body[callsite.bb].statements.push(stmt);
@@ -535,7 +535,7 @@ impl Inliner<'tcx> {
                 }
 
                 let terminator = Terminator {
-                    source_info: callsite.location,
+                    source_info: callsite.source_info,
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) },
                 };
 
@@ -654,20 +654,23 @@ impl Inliner<'tcx> {
 
         let ty = arg.ty(caller_body, self.tcx);
 
-        let arg_tmp = LocalDecl::new(ty, callsite.location.span);
+        let arg_tmp = LocalDecl::new(ty, callsite.source_info.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);
 
         caller_body[callsite.bb].statements.push(Statement {
-            source_info: callsite.location,
+            source_info: callsite.source_info,
             kind: StatementKind::StorageLive(arg_tmp),
         });
         caller_body[callsite.bb].statements.push(Statement {
-            source_info: callsite.location,
+            source_info: callsite.source_info,
             kind: StatementKind::Assign(box (Place::from(arg_tmp), arg)),
         });
         caller_body[return_block].statements.insert(
             0,
-            Statement { source_info: callsite.location, kind: StatementKind::StorageDead(arg_tmp) },
+            Statement {
+                source_info: callsite.source_info,
+                kind: StatementKind::StorageDead(arg_tmp),
+            },
         );
 
         arg_tmp
