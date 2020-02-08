@@ -3,29 +3,28 @@ import { GithubRepo, ArtifactMetadata } from "./interfaces";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
-export interface FetchLatestArtifactMetadataOpts {
-    repo: GithubRepo;
-    artifactFileName: string;
-}
-
+/**
+ * Fetches the latest release from GitHub `repo` and returns metadata about
+ * `artifactFileName` shipped with this release or `null` if no such artifact was published.
+ */
 export async function fetchLatestArtifactMetadata(
-    opts: FetchLatestArtifactMetadataOpts
+    repo: GithubRepo, artifactFileName: string
 ): Promise<null | ArtifactMetadata> {
 
-    const repoOwner = encodeURIComponent(opts.repo.owner);
-    const repoName  = encodeURIComponent(opts.repo.name);
+    const repoOwner = encodeURIComponent(repo.owner);
+    const repoName  = encodeURIComponent(repo.name);
 
     const apiEndpointPath = `/repos/${repoOwner}/${repoName}/releases/latest`;
     const requestUrl = GITHUB_API_ENDPOINT_URL + apiEndpointPath;
 
-    // We skip runtime type checks for simplicity (here we cast from `any` to `Release`)
+    // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
 
     const response: GithubRelease = await fetch(requestUrl, {
             headers: { Accept: "application/vnd.github.v3+json" }
         })
         .then(res => res.json());
 
-    const artifact = response.assets.find(artifact => artifact.name === opts.artifactFileName);
+    const artifact = response.assets.find(artifact => artifact.name === artifactFileName);
 
     return !artifact ? null : {
         releaseName: response.name,
@@ -36,6 +35,7 @@ export async function fetchLatestArtifactMetadata(
     interface GithubRelease {
         name: string;
         assets: Array<{
+            name: string;
             browser_download_url: string;
 
             [noise: string]: unknown;
