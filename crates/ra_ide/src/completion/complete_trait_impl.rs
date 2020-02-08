@@ -166,7 +166,7 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
         format!("fn {}()", func_name.to_string())
     };
 
-    let builder = CompletionItem::new(CompletionKind::Reference, start, label);
+    let builder = CompletionItem::new(CompletionKind::Magic, start, label);
 
     let completion_kind = if func.has_self_param(ctx.db) {
         CompletionItemKind::Method
@@ -193,7 +193,7 @@ mod tests {
     use insta::assert_debug_snapshot;
 
     fn complete(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Reference)
+        do_completion(code, CompletionKind::Magic)
     }
 
     #[test]
