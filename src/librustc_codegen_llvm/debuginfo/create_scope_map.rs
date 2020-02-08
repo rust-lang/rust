@@ -66,14 +66,8 @@ fn make_mir_scope(
     if !has_variables.contains(scope) {
         // Do not create a DIScope if there are no variables
         // defined in this MIR Scope, to avoid debuginfo bloat.
-
-        // However, we don't skip creating a nested scope if
-        // our parent is the root, because we might want to
-        // put arguments in the root and not have shadowing.
-        if parent_scope.scope_metadata.unwrap() != fn_metadata {
-            debug_context.scopes[scope] = parent_scope;
-            return;
-        }
+        debug_context.scopes[scope] = parent_scope;
+        return;
     }
 
     let loc = span_start(cx, scope_data.span);
