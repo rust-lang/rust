@@ -25,7 +25,8 @@ use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
-
+pub mod def_id;
+use def_id::DefId;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
@@ -1561,6 +1562,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// instead of implementing everything in librustc.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
+    fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn byte_pos_to_line_and_col(
         &mut self,
         byte: BytePos,
