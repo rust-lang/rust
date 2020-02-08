@@ -27,31 +27,34 @@ use std::collections::BTreeSet;
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
-    let path_to_import: ast::Path = ctx.find_node_at_offset()?;
-    let path_to_import_syntax = path_to_import.syntax();
-    if path_to_import_syntax.ancestors().find_map(ast::UseItem::cast).is_some() {
+    let path_under_caret: ast::Path = ctx.find_node_at_offset()?;
+    if path_under_caret.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;
     }
-    let name_to_import =
-        path_to_import_syntax.descendants().find_map(ast::NameRef::cast)?.syntax().to_string();
 
-    let module = path_to_import_syntax.ancestors().find_map(ast::Module::cast);
+    let module = path_under_caret.syntax().ancestors().find_map(ast::Module::cast);
     let position = match module.and_then(|it| it.item_list()) {
         Some(item_list) => item_list.syntax().clone(),
         None => {
-            let current_file = path_to_import_syntax.ancestors().find_map(ast::SourceFile::cast)?;
+            let current_file =
+                path_under_caret.syntax().ancestors().find_map(ast::SourceFile::cast)?;
             current_file.syntax().clone()
         }
     };
     let source_analyzer = ctx.source_analyzer(&position, None);
     let module_with_name_to_import = source_analyzer.module()?;
-    if source_analyzer.resolve_path(ctx.db, &path_to_import).is_some() {
+
+    let name_ref_to_import =
+        path_under_caret.syntax().descendants().find_map(ast::NameRef::cast)?;
+    if source_analyzer
+        .resolve_path(ctx.db, &name_ref_to_import.syntax().ancestors().find_map(ast::Path::cast)?)
+        .is_some()
+    {
         return None;
     }
 
-    let mut imports_locator = ImportsLocator::new(ctx.db);
-
-    let proposed_imports = imports_locator
+    let name_to_import = name_ref_to_import.syntax().to_string();
+    let proposed_imports = ImportsLocator::new(ctx.db)
         .find_imports(&name_to_import)
         .into_iter()
         .filter_map(|module_def| module_with_name_to_import.find_use_path(ctx.db, module_def))
@@ -69,7 +72,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
             edit.target(path_to_import_syntax.text_range());
             insert_use_statement(
                 &position,
-                path_to_import_syntax,
+                &path_under_caret.syntax(),
                 &import,
                 edit.text_edit_builder(),
             );
@@ -265,5 +268,26 @@ mod tests {
             ",
             "GroupLabel",
         )
+    }
+
+    #[test]
+    fn not_applicable_when_path_start_is_imported() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            pub mod mod1 {
+                pub mod mod2 {
+                    pub mod mod3 {
+                        pub struct TestStruct;
+                    }
+                }
+            }
+
+            use mod1::mod2;
+            fn main() {
+                mod2::mod3::TestStruct<|>
+            }
+            ",
+        );
     }
 }
