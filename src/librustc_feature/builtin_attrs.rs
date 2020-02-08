@@ -530,6 +530,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_test_marker, Normal, template!(Word),
         "the `#[rustc_test_marker]` attribute is used internally to track tests",
     ),
+    rustc_attr!(
+        rustc_unsafe_specialization_marker, Normal, template!(Word),
+        "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
+    ),
+    rustc_attr!(
+        rustc_specialization_trait, Normal, template!(Word),
+        "the `#[rustc_specialization_trait]` attribute is used to check specializations"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

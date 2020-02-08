@@ -90,6 +90,7 @@ impl<T: ?Sized> !Send for *mut T {}
           ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
+#[cfg_attr(not(bootstrap), rustc_specialization_trait)]
 pub trait Sized {
     // Empty.
 }

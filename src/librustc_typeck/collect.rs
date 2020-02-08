@@ -1032,8 +1032,23 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
+    let spec_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
+        ty::trait_def::TraitSpecializationKind::Marker
+    } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
+        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+    } else {
+        ty::trait_def::TraitSpecializationKind::None
+    };
     let def_path_hash = tcx.def_path_hash(def_id);
-    let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, def_path_hash);
+    let def = ty::TraitDef::new(
+        def_id,
+        unsafety,
+        paren_sugar,
+        is_auto,
+        is_marker,
+        spec_kind,
+        def_path_hash,
+    );
     tcx.arena.alloc(def)
 }
 

@@ -1114,6 +1114,7 @@ impl EncodeContext<'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
+                    specialization_kind: trait_def.specialization_kind,
                 };
 
                 EntryKind::Trait(self.lazy(data))
