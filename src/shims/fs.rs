@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fs::{remove_file, File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -258,6 +258,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
             let result = handle.file.write(&bytes).map(|c| i64::try_from(c).unwrap());
+            this.try_unwrap_io_result(result)
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn lseek64(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        offset_op: OpTy<'tcx, Tag>,
+        whence_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i64> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("lseek64")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let offset = this.read_scalar(offset_op)?.to_i64()?;
+        let whence = this.read_scalar(whence_op)?.to_i32()?;
+
+        let seek_from = if whence == this.eval_libc_i32("SEEK_SET")? {
+            SeekFrom::Start(offset as u64)
+        } else if whence == this.eval_libc_i32("SEEK_CUR")? {
+            SeekFrom::Current(offset)
+        } else if whence == this.eval_libc_i32("SEEK_END")? {
+            SeekFrom::End(offset)
+        } else {
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
+            return Ok(-1);
+        };
+
+        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+            let result = handle.file.seek(seek_from).map(|offset| offset as i64);
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
