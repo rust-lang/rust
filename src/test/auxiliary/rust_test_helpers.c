@@ -375,9 +375,9 @@ struct U8TaggedEnumOptionU64U64 {
     uint8_t tag;
     union {
         struct {
-	    uint64_t a;
-	    uint64_t b;
-	} some;
+            uint64_t a;
+            uint64_t b;
+        } some;
     };
 };
 

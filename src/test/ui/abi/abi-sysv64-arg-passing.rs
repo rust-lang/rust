@@ -139,7 +139,11 @@ mod tests {
         pub fn rust_dbg_abi_2(f: Floats) -> Floats;
         pub fn rust_dbg_new_some_u64u64(a: u64, b: u64) -> U8TaggedEnumOptionU64U64;
         pub fn rust_dbg_new_none_u64u64() -> U8TaggedEnumOptionU64U64;
-        pub fn rust_dbg_unpack_option_u64u64(o: U8TaggedEnumOptionU64U64, a: *mut u64, b: *mut u64) -> i32;
+        pub fn rust_dbg_unpack_option_u64u64(
+            o: U8TaggedEnumOptionU64U64,
+            a: *mut u64,
+            b: *mut u64,
+        ) -> i32;
         pub fn rust_dbg_new_some_u64(some: u64) -> U8TaggedEnumOptionU64;
         pub fn rust_dbg_new_none_u64() -> U8TaggedEnumOptionU64;
         pub fn rust_dbg_unpack_option_u64(o: U8TaggedEnumOptionU64, v: *mut u64) -> i32;
@@ -371,14 +375,18 @@ mod tests {
 
         let mut a: u64 = 0;
         let mut b: u64 = 0;
-        let r = unsafe { rust_dbg_unpack_option_u64u64(some_u64u64, &mut a as *mut _, &mut b as *mut _) };
+        let r = unsafe {
+            rust_dbg_unpack_option_u64u64(some_u64u64, &mut a as *mut _, &mut b as *mut _)
+        };
         assert_eq!(1, r);
         assert_eq!(10, a);
         assert_eq!(20, b);
 
         let mut a: u64 = 0;
         let mut b: u64 = 0;
-        let r = unsafe { rust_dbg_unpack_option_u64u64(none_u64u64, &mut a as *mut _, &mut b as *mut _) };
+        let r = unsafe {
+            rust_dbg_unpack_option_u64u64(none_u64u64, &mut a as *mut _, &mut b as *mut _)
+        };
         assert_eq!(0, r);
         assert_eq!(0, a);
         assert_eq!(0, b);

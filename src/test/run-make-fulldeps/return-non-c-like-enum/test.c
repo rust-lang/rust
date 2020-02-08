@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   assert(10 == tt.aa._0);
   assert(20 == tt.aa._1);
 
-  /* This one segfaults. */
+  /* This one used to segfault (see issue #68190). */
   T t = t_new(10);
   assert(A == t.tag);
   assert(10 == t.a._0);
