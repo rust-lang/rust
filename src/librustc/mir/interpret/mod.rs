@@ -38,15 +38,6 @@ macro_rules! err_ub_format {
 }
 
 #[macro_export]
-macro_rules! err_panic {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
 macro_rules! err_exhaust {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::ResourceExhaustion(
@@ -78,11 +69,6 @@ macro_rules! throw_ub {
 #[macro_export]
 macro_rules! throw_ub_format {
     ($($tt:tt)*) => { throw_ub!(Ub(format!($($tt)*))) };
-}
-
-#[macro_export]
-macro_rules! throw_panic {
-    ($($tt:tt)*) => { return Err(err_panic!($($tt)*).into()) };
 }
 
 #[macro_export]

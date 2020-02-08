@@ -139,7 +139,6 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<(), ErrorHandled> {
         let must_error = match self.error {
-            InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
                 return Err(ErrorHandled::TooGeneric);
             }
@@ -149,9 +148,18 @@ impl<'tcx> ConstEvalErr<'tcx> {
         };
         trace!("reporting const eval failure at {:?}", self.span);
 
+        let err_msg = match &self.error {
+            InterpError::MachineStop(msg) => {
+                // A custom error (`ConstEvalErrKind` in `librustc_mir/interp/const_eval/error.rs`).
+                // Should be turned into a string by now.
+                msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone()
+            }
+            err => err.to_string(),
+        };
+
         let add_span_labels = |err: &mut DiagnosticBuilder<'_>| {
             if !must_error {
-                err.span_label(self.span, self.error.to_string());
+                err.span_label(self.span, err_msg.clone());
             }
             // Skip the last, which is just the environment of the constant.  The stacktrace
             // is sometimes empty because we create "fake" eval contexts in CTFE to do work
@@ -183,7 +191,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             );
         } else {
             let mut err = if must_error {
-                struct_error(tcx, &self.error.to_string())
+                struct_error(tcx, &err_msg)
             } else {
                 struct_error(tcx, message)
             };
@@ -259,6 +267,9 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     }
 }
 
+/// Information about a panic.
+///
+/// FIXME: this is not actually an InterpError, and should probably be moved to another module.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum PanicInfo<O> {
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
@@ -616,8 +627,6 @@ impl fmt::Debug for ResourceExhaustionInfo {
 }
 
 pub enum InterpError<'tcx> {
-    /// The program panicked.
-    Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
@@ -650,8 +659,7 @@ impl fmt::Debug for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{:?}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            Panic(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(_) => write!(f, "machine caused execution to stop"),
+            MachineStop(_) => bug!("unhandled MachineStop"),
         }
     }
 }

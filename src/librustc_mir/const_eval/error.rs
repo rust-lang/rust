@@ -2,32 +2,39 @@ use std::error::Error;
 use std::fmt;
 
 use super::InterpCx;
-use crate::interpret::{ConstEvalErr, InterpErrorInfo, Machine};
+use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine, PanicInfo};
+
+/// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
-pub enum ConstEvalError {
+pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
+    Panic(PanicInfo<u64>),
 }
 
-impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
+// The errors become `MachineStop` with plain strings when being raised.
+// `ConstEvalErr` (in `librustc/mir/interpret/error.rs`) knows to
+// handle these.
+impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        err_unsup!(Unsupported(self.to_string())).into()
+        InterpError::MachineStop(Box::new(self.to_string())).into()
     }
 }
 
-impl fmt::Display for ConstEvalError {
+impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::ConstEvalError::*;
+        use self::ConstEvalErrKind::*;
         match *self {
             NeedsRfc(ref msg) => {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
             }
             ConstAccessesStatic => write!(f, "constant accesses static"),
+            Panic(ref msg) => write!(f, "{:?}", msg),
         }
     }
 }
 
-impl Error for ConstEvalError {}
+impl Error for ConstEvalErrKind {}
 
 /// Turn an interpreter error into something to report to the user.
 /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
