@@ -1,9 +1,9 @@
 use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionKind, CompletionItemKind};
 
-use ast::{ NameOwner };
-use hir::{ self, db::HirDatabase };
+use ra_syntax::ast::{self, NameOwner, AstNode};
 
-use ra_syntax::{ SyntaxKind, ast, ast::AstNode, TextRange };
+use hir::{self, db::HirDatabase};
+
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let impl_block = ctx.impl_block.as_ref();
@@ -23,40 +23,9 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
         return;
     }
 
-    // for cases where the user has already started writing the function def, navigate
-    // the previous tokens in order to find the location of that token so that we may 
-    // replace it with our completion.
-    let start_position = {        
-        let mut prev_token = ctx.token
-            .prev_token()
-            .clone();
+    let target_trait = target_trait.unwrap();
 
-        while let Some(token) = &prev_token {
-            match token.kind() {
-                SyntaxKind::FN_KW => break,
-
-                // todo:    attempt to find a better way of determining when to stop as
-                //          the following feels sketchy.
-                SyntaxKind::IMPL_KW |
-                SyntaxKind::L_CURLY |
-                SyntaxKind::R_CURLY => {
-                    prev_token = None;
-                    break;
-                }
-                _ => {}
-            }
-
-            prev_token = token.prev_token().clone();
-        }
-
-        prev_token
-            .map(|t| t.text_range())
-            .unwrap_or(ctx.source_range())
-    };
-
-    let trait_ = target_trait.unwrap();
-
-    let trait_items = trait_.items(ctx.db);
+    let trait_items = target_trait.items(ctx.db);
     let missing_items = trait_items
         .iter()
         .filter(|i| {
@@ -127,7 +96,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
     for item in missing_items {
         match item {
-            hir::AssocItem::Function(f) => add_function_impl(acc, ctx, f, start_position),
+            hir::AssocItem::Function(f) => add_function_impl(acc, ctx, f),
             _ => {}
         }
     }
@@ -152,7 +121,7 @@ fn resolve_target_trait(
     }
 }
 
-pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function, start: TextRange) {
+pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function) {
     use crate::display::FunctionSignature;
 
     let display = FunctionSignature::from_hir(ctx.db, func.clone());
@@ -165,7 +134,7 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
         format!("fn {}()", func_name.to_string())
     };
 
-    let builder = CompletionItem::new(CompletionKind::Magic, start, label.clone())
+    let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label.clone())
         .lookup_by(label);
 
     let completion_kind = if func.has_self_param(ctx.db) {
