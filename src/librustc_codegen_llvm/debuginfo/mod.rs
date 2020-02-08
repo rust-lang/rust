@@ -34,10 +34,10 @@ use log::debug;
 use std::cell::RefCell;
 use std::ffi::CString;
 
-use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
+use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size, Align, TyLayout, LayoutError};
 use rustc_codegen_ssa::traits::*;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Pos, Span};
+use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -100,6 +100,50 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             namespace_map: RefCell::new(Default::default()),
             composite_types_completed: Default::default(),
         }
+    }
+}
+
+impl layout::HasDataLayout for CrateDebugContext<'_, 'tcx> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl layout::HasTyCtxt<'tcx> for CrateDebugContext<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl layout::HasParamEnv<'tcx> for CrateDebugContext<'_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::reveal_all()
+    }
+}
+
+impl LayoutOf for CrateDebugContext<'_, 'tcx> {
+    type Ty = Ty<'tcx>;
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.spanned_layout_of(ty, DUMMY_SP)
+    }
+
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
+        self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
+            if let LayoutError::SizeOverflow(_) = e {
+                self.tcx.sess.span_fatal(span, &e.to_string())
+            } else {
+                rustc::bug!("failed to get layout for `{}`: {}", ty, e)
+            }
+        })
+    }
+}
+
+impl CrateDebugContext<'_, 'tcx> {
+    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
+        let layout = self.layout_of(ty);
+        (layout.size, layout.align.abi)
     }
 }
 
@@ -366,7 +410,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             signature.push(if fn_abi.ret.is_ignore() {
                 None
             } else {
-                Some(type_metadata(cx, fn_abi.ret.layout.ty, rustc_span::DUMMY_SP))
+                Some(type_metadata(debug_context(cx), fn_abi.ret.layout.ty, rustc_span::DUMMY_SP))
             });
 
             // Arguments types
@@ -391,14 +435,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                         _ => t,
                     };
-                    Some(type_metadata(cx, t, rustc_span::DUMMY_SP))
+                    Some(type_metadata(debug_context(cx), t, rustc_span::DUMMY_SP))
                 }));
             } else {
                 signature.extend(
                     fn_abi
                         .args
                         .iter()
-                        .map(|arg| Some(type_metadata(cx, arg.layout.ty, rustc_span::DUMMY_SP))),
+                        .map(|arg| Some(type_metadata(debug_context(cx), arg.layout.ty, rustc_span::DUMMY_SP))),
                 );
             }
 
@@ -441,7 +485,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             let actual_type =
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                             let actual_type_metadata =
-                                type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
+                                type_metadata(debug_context(cx), actual_type, rustc_span::DUMMY_SP);
                             let name = SmallCStr::new(&name.as_str());
                             Some(unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -494,7 +538,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
                     match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
-                            Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                            Some(type_metadata(debug_context(cx), impl_self_ty, rustc_span::DUMMY_SP))
                         }
                         _ => None,
                     }
@@ -522,7 +566,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value) {
-        metadata::create_vtable_metadata(self, ty, vtable)
+        if let Some(dbg_cx) = self.dbg_cx.as_ref() {
+            metadata::create_vtable_metadata(dbg_cx, ty, vtable)
+        }
     }
 
     fn extend_scope_to_file(
@@ -552,13 +598,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = span_start(self.tcx, span);
         let file_metadata = file_metadata(debug_context(self), &loc.file.name, dbg_context.defining_crate);
 
-        let type_metadata = type_metadata(self, variable_type, span);
+        let type_metadata = type_metadata(debug_context(self), variable_type, span);
 
         let (argument_index, dwarf_tag) = match variable_kind {
             ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
             LocalVariable => (0, DW_TAG_auto_variable),
         };
-        let align = self.align_of(variable_type);
+
+        let align = self.layout_of(variable_type).align.abi;
 
         let name = SmallCStr::new(&variable_name.as_str());
         unsafe {

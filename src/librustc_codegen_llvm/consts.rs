@@ -402,7 +402,9 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            debuginfo::create_global_var_metadata(&self, def_id, g);
+            if let Some(dbg_cx) = self.dbg_cx.as_ref() {
+                debuginfo::create_global_var_metadata(dbg_cx, def_id, g);
+            }
 
             if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
                 llvm::set_thread_local_mode(g, self.tls_model);
