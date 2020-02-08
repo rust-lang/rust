@@ -26,7 +26,8 @@
 #![feature(in_band_lifetimes)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
-#![feature(specialization)]
+#![cfg_attr(bootstrap, feature(specialization))]
+#![cfg_attr(not(bootstrap), feature(min_specialization))]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
