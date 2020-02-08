@@ -5,6 +5,7 @@ LL | #[derive(Clone)]
    |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
    |
    = note: required by `std::clone::AssertParamIsCopy`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the current scope
   --> $DIR/union-derive-clone.rs:37:15

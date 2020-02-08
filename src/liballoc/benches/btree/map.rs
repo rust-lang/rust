@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::iter::Iterator;
+use std::ops::Bound::{Excluded, Unbounded};
 use std::vec::Vec;
 
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -199,4 +200,59 @@ pub fn first_and_last_100(b: &mut Bencher) {
 #[bench]
 pub fn first_and_last_10k(b: &mut Bencher) {
     bench_first_and_last(b, 10_000);
+}
+
+#[bench]
+pub fn range_excluded_excluded(b: &mut Bencher) {
+    let size = 144;
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for first in 0..size {
+            for last in first + 1..size {
+                black_box(map.range((Excluded(first), Excluded(last))));
+            }
+        }
+    });
+}
+
+#[bench]
+pub fn range_excluded_unbounded(b: &mut Bencher) {
+    let size = 144;
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for first in 0..size {
+            black_box(map.range((Excluded(first), Unbounded)));
+        }
+    });
+}
+
+#[bench]
+pub fn range_included_included(b: &mut Bencher) {
+    let size = 144;
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for first in 0..size {
+            for last in first..size {
+                black_box(map.range(first..=last));
+            }
+        }
+    });
+}
+
+#[bench]
+pub fn range_included_unbounded(b: &mut Bencher) {
+    let size = 144;
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for first in 0..size {
+            black_box(map.range(first..));
+        }
+    });
+}
+
+#[bench]
+pub fn range_unbounded_unbounded(b: &mut Bencher) {
+    let size = 144;
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| map.range(..));
 }

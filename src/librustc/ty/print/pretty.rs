@@ -1382,7 +1382,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
             ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
 
-            ty::ReStatic | ty::ReEmpty | ty::ReClosureBound(_) => true,
+            ty::ReStatic | ty::ReEmpty(_) | ty::ReClosureBound(_) => true,
         }
     }
 }
@@ -1464,8 +1464,12 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                 p!(write("'static"));
                 return Ok(self);
             }
-            ty::ReEmpty => {
+            ty::ReEmpty(ty::UniverseIndex::ROOT) => {
                 p!(write("'<empty>"));
+                return Ok(self);
+            }
+            ty::ReEmpty(ui) => {
+                p!(write("'<empty:{:?}>", ui));
                 return Ok(self);
             }
 

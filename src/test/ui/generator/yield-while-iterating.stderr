@@ -16,7 +16,7 @@ LL |         for p in &mut x {
 ...
 LL |     println!("{}", x[0]);
    |                    ^ immutable borrow occurs here
-LL |     Pin::new(&mut b).resume();
+LL |     Pin::new(&mut b).resume(());
    |              ------ mutable borrow later used here
 
 error: aborting due to 2 previous errors

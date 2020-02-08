@@ -87,7 +87,7 @@ pub fn run(options: Options) -> i32 {
         compiler.enter(|queries| {
             let lower_to_hir = queries.lower_to_hir()?;
 
-            let mut opts = scrape_test_config(lower_to_hir.peek().0.krate());
+            let mut opts = scrape_test_config(lower_to_hir.peek().0);
             opts.display_warnings |= options.display_warnings;
             let enable_per_target_ignores = options.enable_per_target_ignores;
             let mut collector = Collector::new(
@@ -107,7 +107,7 @@ pub fn run(options: Options) -> i32 {
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
                     collector: &mut collector,
-                    map: tcx.hir(),
+                    map: *tcx.hir(),
                     codes: ErrorCodes::from(
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),

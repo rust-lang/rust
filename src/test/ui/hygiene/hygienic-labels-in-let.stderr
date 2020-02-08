@@ -9,6 +9,8 @@ LL |         'x: loop {
 LL |             // this 'x should refer to the outer loop, lexically
 LL |             loop_x!(break 'x);
    |             ------------------ in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:64:9
@@ -39,6 +41,8 @@ LL |         'x: loop {
 ...
 LL |             loop_x!(break 'x);
    |             ------------------ in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:16:9
@@ -51,6 +55,8 @@ LL |         'x: loop { $e }
 ...
 LL |             loop_x!(break 'x);
    |             ------------------ in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:16:9
@@ -63,6 +69,8 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             loop_x!(break 'x);
    |             ------------------ in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:76:9
@@ -111,6 +119,8 @@ LL |         'x: loop {
 ...
 LL |             while_true!(break 'x);
    |             ---------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:27:9
@@ -123,6 +133,8 @@ LL |         'x: while 1 + 1 == 2 { $e }
 ...
 LL |             while_true!(break 'x);
    |             ---------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:27:9
@@ -135,6 +147,8 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             while_true!(break 'x);
    |             ---------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:27:9
@@ -147,6 +161,8 @@ LL |         'x: while 1 + 1 == 2 { $e }
 ...
 LL |             while_true!(break 'x);
    |             ---------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:27:9
@@ -159,6 +175,8 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             while_true!(break 'x);
    |             ---------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:90:9
@@ -225,6 +243,8 @@ LL |         'x: loop {
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -237,6 +257,8 @@ LL |         'x: for _ in 0..1 { $e }
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -249,6 +271,8 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -261,6 +285,8 @@ LL |         'x: for _ in 0..1 { $e }
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -273,6 +299,8 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -285,6 +313,8 @@ LL |         'x: for _ in 0..1 { $e }
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: label name `'x` shadows a label name that is already in scope
   --> $DIR/hygienic-labels-in-let.rs:39:9
@@ -297,4 +327,6 @@ LL |         'x: for _ in 0..1 {
 ...
 LL |             run_once!(continue 'x);
    |             ----------------------- in this macro invocation
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

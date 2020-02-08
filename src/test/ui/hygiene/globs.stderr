@@ -22,6 +22,7 @@ LL | |         f();
 LL | |     }
    | |_____- in this macro invocation
    |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: possible candidates are found in other modules, you can import them into scope
    |
 LL | use bar::g;
@@ -42,6 +43,7 @@ LL |         n!(f);
    |
    = note: possible candidate is found in another module, you can import it into scope:
            foo::f
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:65:17
@@ -54,6 +56,7 @@ LL |                 f
    |
    = note: possible candidate is found in another module, you can import it into scope:
            foo::f
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

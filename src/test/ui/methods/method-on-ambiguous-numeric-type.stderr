@@ -46,8 +46,6 @@ LL |     mac!(bar);
    |     ---------- you must specify a type for this binding, like `i32`
 LL |     bar.pow(2);
    |         ^^^
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

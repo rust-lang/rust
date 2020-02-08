@@ -233,6 +233,9 @@ pub enum VerifyBound<'tcx> {
     /// if `R: min`, then by transitivity `G: min`.
     OutlivedBy(Region<'tcx>),
 
+    /// Given a region `R`, true if it is `'empty`.
+    IsEmpty,
+
     /// Given a set of bounds `B`, expands to the function:
     ///
     /// ```rust
@@ -792,10 +795,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         match *region {
             ty::ReScope(..)
             | ty::ReStatic
-            | ty::ReEmpty
             | ty::ReErased
             | ty::ReFree(..)
             | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReClosureBound(vid) | ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),
@@ -867,6 +870,7 @@ impl<'tcx> VerifyBound<'tcx> {
             VerifyBound::IfEq(..) => false,
             VerifyBound::OutlivedBy(ty::ReStatic) => true,
             VerifyBound::OutlivedBy(_) => false,
+            VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
         }
@@ -875,7 +879,7 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn cannot_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(_, b) => b.cannot_hold(),
-            VerifyBound::OutlivedBy(ty::ReEmpty) => true,
+            VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),

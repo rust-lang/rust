@@ -6,6 +6,8 @@ LL | static A: System = System;
 LL | #[global_allocator]
 LL | static B: System = System;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot define a new global allocator
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

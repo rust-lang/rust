@@ -37,11 +37,11 @@ fn main() {
         return "foo"
     };
 
-    match Pin::new(&mut generator).resume() {
+    match Pin::new(&mut generator).resume(()) {
         GeneratorState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
-    match Pin::new(&mut generator).resume() {
+    match Pin::new(&mut generator).resume(()) {
         GeneratorState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
@@ -71,9 +71,9 @@ fn main() {
     };
 
     println!("1");
-    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume(());
     println!("3");
-    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume(());
     println!("5");
 }
 ```
@@ -92,10 +92,10 @@ The `Generator` trait in `std::ops` currently looks like:
 # use std::ops::GeneratorState;
 # use std::pin::Pin;
 
-pub trait Generator {
+pub trait Generator<R = ()> {
     type Yield;
     type Return;
-    fn resume(self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return>;
+    fn resume(self: Pin<&mut Self>, resume: R) -> GeneratorState<Self::Yield, Self::Return>;
 }
 ```
 
@@ -152,10 +152,6 @@ closure-like semantics. Namely:
 * Whenever a generator is dropped it will drop all captured environment
   variables.
 
-Note that unlike closures, generators at this time cannot take any arguments.
-That is, generators must always look like `|| { ... }`. This restriction may be
-lifted at a future date, the design is ongoing!
-
 ### Generators as state machines
 
 In the compiler, generators are currently compiled as state machines. Each
@@ -179,8 +175,8 @@ fn main() {
         return ret
     };
 
-    Pin::new(&mut generator).resume();
-    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume(());
+    Pin::new(&mut generator).resume(());
 }
 ```
 
@@ -205,7 +201,7 @@ fn main() {
             type Yield = i32;
             type Return = &'static str;
 
-            fn resume(mut self: Pin<&mut Self>) -> GeneratorState<i32, &'static str> {
+            fn resume(mut self: Pin<&mut Self>, resume: ()) -> GeneratorState<i32, &'static str> {
                 use std::mem;
                 match mem::replace(&mut *self, __Generator::Done) {
                     __Generator::Start(s) => {
@@ -228,8 +224,8 @@ fn main() {
         __Generator::Start(ret)
     };
 
-    Pin::new(&mut generator).resume();
-    Pin::new(&mut generator).resume();
+    Pin::new(&mut generator).resume(());
+    Pin::new(&mut generator).resume(());
 }
 ```
 

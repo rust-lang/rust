@@ -3,6 +3,8 @@ error[E0308]: mismatched types
    |
 LL | fn bar(x: isize) { }
    | ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `&mut test::Bencher`
+   |
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:9:20
+  --> $DIR/main.rs:10:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
@@ -11,7 +11,7 @@ LL |       pong!();
    |       -------- in this macro invocation
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:9:20
+  --> $DIR/main.rs:10:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
@@ -31,7 +31,7 @@ LL |   () => { pong ! () ; }
    |   in this expansion of `ping!`
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:9:20
+  --> $DIR/main.rs:10:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };

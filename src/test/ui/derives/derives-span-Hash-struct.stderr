@@ -8,6 +8,8 @@ LL |     x: Error
    |
 LL |     fn hash<H: Hasher>(&self, state: &mut H);
    |             - required by this bound in `std::hash::Hash::hash`
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

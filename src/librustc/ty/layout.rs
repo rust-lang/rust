@@ -2350,8 +2350,9 @@ impl<'tcx> ty::Instance<'tcx> {
                     ]);
                     let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-                    tcx.mk_fn_sig(iter::once(env_ty),
-                        ret_ty,
+                    tcx.mk_fn_sig(
+                        [env_ty, sig.resume_ty].iter(),
+                        &ret_ty,
                         false,
                         hir::Unsafety::Normal,
                         rustc_target::spec::abi::Abi::Rust

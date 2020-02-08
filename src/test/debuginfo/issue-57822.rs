@@ -45,7 +45,7 @@ fn main() {
         yield;
     };
     let mut b = move || {
-        Pin::new(&mut a).resume();
+        Pin::new(&mut a).resume(());
         yield;
     };
 

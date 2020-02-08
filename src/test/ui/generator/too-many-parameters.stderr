@@ -1,0 +1,8 @@
+error[E0628]: too many parameters for a generator (expected 0 or 1 parameters)
+  --> $DIR/too-many-parameters.rs:4:5
+   |
+LL |     |(), ()| {
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+

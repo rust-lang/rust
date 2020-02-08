@@ -11,7 +11,7 @@ fn main() {
             yield 2;
         };
 
-        match Pin::new(&mut sub_generator).resume() {
+        match Pin::new(&mut sub_generator).resume(()) {
             GeneratorState::Yielded(x) => {
                 yield x;
             }

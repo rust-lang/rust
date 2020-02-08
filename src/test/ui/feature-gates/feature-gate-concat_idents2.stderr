@@ -12,6 +12,8 @@ error[E0425]: cannot find value `ab` in this scope
    |
 LL |     concat_idents!(a, b);
    |     ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

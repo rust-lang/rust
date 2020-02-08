@@ -92,8 +92,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into(),
             GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
         });
-        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
+        if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
+        {
             let generator_substs = substs.as_generator();
+            self.demand_eqtype(
+                expr.span,
+                resume_ty,
+                generator_substs.resume_ty(expr_def_id, self.tcx),
+            );
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
@@ -259,8 +265,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return None,
             }
         } else {
-            // Generators cannot have explicit arguments.
-            vec![]
+            // Generators with a `()` resume type may be defined with 0 or 1 explicit arguments,
+            // else they must have exactly 1 argument. For now though, just give up in this case.
+            return None;
         };
 
         let ret_param_ty = projection.skip_binder().ty;

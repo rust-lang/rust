@@ -384,9 +384,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match least_region {
                 None => least_region = Some(subst_arg),
                 Some(lr) => {
-                    if free_region_relations.sub_free_regions(lr, subst_arg) {
+                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_arg) {
                         // keep the current least region
-                    } else if free_region_relations.sub_free_regions(subst_arg, lr) {
+                    } else if free_region_relations.sub_free_regions(self.tcx, subst_arg, lr) {
                         // switch to `subst_arg`
                         least_region = Some(subst_arg);
                     } else {
@@ -611,7 +611,7 @@ pub fn unexpected_hidden_region_diagnostic(
     );
 
     // Explain the region we are capturing.
-    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty = hidden_region {
+    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) = hidden_region {
         // Assuming regionck succeeded (*), we ought to always be
         // capturing *some* region from the fn header, and hence it
         // ought to be free. So under normal circumstances, we will go
@@ -744,6 +744,7 @@ where
 
                 substs.as_generator().return_ty(def_id, self.tcx).visit_with(self);
                 substs.as_generator().yield_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().resume_ty(def_id, self.tcx).visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
@@ -843,7 +844,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         .emit();
                     }
                 }
-                self.tcx.lifetimes.re_empty
+                self.tcx.lifetimes.re_root_empty
             }
             None => {
                 self.tcx

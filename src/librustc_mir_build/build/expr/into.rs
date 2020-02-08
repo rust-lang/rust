@@ -365,6 +365,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
 
+            ExprKind::Yield { value } => {
+                let scope = this.local_scope();
+                let value = unpack!(block = this.as_operand(block, scope, value));
+                let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup();
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Yield {
+                        value,
+                        resume,
+                        resume_arg: destination.clone(),
+                        drop: cleanup,
+                    },
+                );
+                resume.unit()
+            }
+
             // these are the cases that are more naturally handled by some other mode
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
@@ -376,8 +394,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
-            | ExprKind::StaticRef { .. }
-            | ExprKind::Yield { .. } => {
+            | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,

@@ -6,6 +6,8 @@ LL | #[derive(Copy, Clone)]
 LL |
 LL | struct Bar(Foo);
    |            --- this field does not implement `Copy`
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

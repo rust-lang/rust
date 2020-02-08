@@ -17,11 +17,6 @@ mod util;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
-        match *error {
-            ConcreteFailure(..) | SubSupConflict(..) => {}
-            _ => return false, // inapplicable
-        }
-
         if let Some(tables) = self.in_progress_tables {
             let tables = tables.borrow();
             NiceRegionError::new(self, error.clone(), Some(&tables)).try_report().is_some()
@@ -79,13 +74,14 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
     }
 
-    pub fn regions(&self) -> (Span, ty::Region<'tcx>, ty::Region<'tcx>) {
+    pub fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {
         match (&self.error, self.regions) {
-            (Some(ConcreteFailure(origin, sub, sup)), None) => (origin.span(), sub, sup),
-            (Some(SubSupConflict(_, _, origin, sub, _, sup)), None) => (origin.span(), sub, sup),
-            (None, Some((span, sub, sup))) => (span, sub, sup),
-            (Some(_), Some(_)) => panic!("incorrectly built NiceRegionError"),
-            _ => panic!("trying to report on an incorrect lifetime failure"),
+            (Some(ConcreteFailure(origin, sub, sup)), None) => Some((origin.span(), sub, sup)),
+            (Some(SubSupConflict(_, _, origin, sub, _, sup)), None) => {
+                Some((origin.span(), sub, sup))
+            }
+            (None, Some((span, sub, sup))) => Some((span, sub, sup)),
+            _ => None,
         }
     }
 }

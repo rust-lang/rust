@@ -57,11 +57,11 @@ fn main() {
         println!("{} {} {}", a, c, d);
     };
     _zzz(); // #break
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
     _zzz(); // #break
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
     _zzz(); // #break
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
     _zzz(); // #break
 }
 

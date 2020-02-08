@@ -108,7 +108,7 @@ impl fmt::Debug for ty::RegionKind {
 
             ty::RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
 
-            ty::ReEmpty => write!(f, "ReEmpty"),
+            ty::ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
 
             ty::ReErased => write!(f, "ReErased"),
         }
@@ -598,8 +598,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.yield_ty, self.return_ty))
-            .map(|(yield_ty, return_ty)| ty::GenSig { yield_ty, return_ty })
+        tcx.lift(&(self.resume_ty, self.yield_ty, self.return_ty))
+            .map(|(resume_ty, yield_ty, return_ty)| ty::GenSig { resume_ty, yield_ty, return_ty })
     }
 }
 

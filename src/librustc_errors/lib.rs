@@ -336,9 +336,9 @@ pub struct HandlerFlags {
     /// If true, immediately print bugs registered with `delay_span_bug`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
-    /// show macro backtraces even for non-local macros.
-    /// (rustc: see `-Z external-macro-backtrace`)
-    pub external_macro_backtrace: bool,
+    /// Show macro backtraces.
+    /// (rustc: see `-Z macro-backtrace`)
+    pub macro_backtrace: bool,
     /// If true, identical diagnostics are reported only once.
     pub deduplicate_diagnostics: bool,
 }
@@ -385,7 +385,7 @@ impl Handler {
             false,
             false,
             None,
-            flags.external_macro_backtrace,
+            flags.macro_backtrace,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }

@@ -50,6 +50,7 @@ impl Category {
             | ExprKind::Adt { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::AddressOf { .. }
+            | ExprKind::Yield { .. }
             | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
@@ -63,7 +64,6 @@ impl Category {
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
-            | ExprKind::Yield { .. }
             | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
             ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => Some(Category::Constant),

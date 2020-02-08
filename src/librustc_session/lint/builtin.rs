@@ -261,6 +261,16 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub COHERENCE_LEAK_CHECK,
+    Warn,
+    "distinct impls distinguished only by the leak-check code",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #56105 <https://github.com/rust-lang/rust/issues/56105>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
@@ -474,6 +484,12 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    pub INLINE_NO_SANITIZE,
+    Warn,
+    "detects incompatible use of `#[inline(always)]` and `#[no_sanitize(...)]`",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -509,6 +525,7 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
+        COHERENCE_LEAK_CHECK,
         DEPRECATED,
         UNUSED_UNSAFE,
         UNUSED_MUT,
@@ -537,5 +554,6 @@ declare_lint_pass! {
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
+        INLINE_NO_SANITIZE,
     ]
 }

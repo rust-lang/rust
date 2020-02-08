@@ -5,6 +5,7 @@ LL | fn wrong_kind(){}
    | ^^^^^^^^^^^^^^^^^ the trait `example_runner::Testable` is not implemented for `test::TestDescAndFn`
    |
    = note: required for the cast to the object type `dyn example_runner::Testable`
+   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

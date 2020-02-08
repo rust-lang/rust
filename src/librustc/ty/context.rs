@@ -173,8 +173,13 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct CommonLifetimes<'tcx> {
-    pub re_empty: Region<'tcx>,
+    /// `ReEmpty` in the root universe.
+    pub re_root_empty: Region<'tcx>,
+
+    /// `ReStatic`
     pub re_static: Region<'tcx>,
+
+    /// Erased region, used after type-checking
     pub re_erased: Region<'tcx>,
 }
 
@@ -876,7 +881,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let mk = |r| interners.region.intern(r, |r| Interned(interners.arena.alloc(r))).0;
 
         CommonLifetimes {
-            re_empty: mk(RegionKind::ReEmpty),
+            re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
             re_static: mk(RegionKind::ReStatic),
             re_erased: mk(RegionKind::ReErased),
         }
@@ -966,7 +971,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    hir_map: hir_map::Map<'tcx>,
+    /// This should usually be accessed with the `tcx.hir()` method.
+    pub(crate) hir_map: hir_map::Map<'tcx>,
 
     /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1019,11 +1025,6 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        &self.hir_map
-    }
-
     pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
@@ -1328,7 +1329,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.hir_map.forest.untracked_krate();
+        let krate = self.gcx.hir_map.untracked_krate();
 
         StableHashingContext::new(self.sess, krate, self.hir().definitions(), &*self.cstore)
     }

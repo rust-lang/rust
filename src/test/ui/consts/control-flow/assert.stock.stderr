@@ -6,6 +6,7 @@ LL | const _: () = assert!(true);
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49146
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: `if` is not allowed in a `const`
   --> $DIR/assert.rs:12:15
@@ -15,6 +16,7 @@ LL | const _: () = assert!(false);
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49146
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -82,6 +82,16 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,
     ),
 
+    /// Indicates a `'b: 'a` constraint where `'a` is in a universe that
+    /// cannot name the placeholder `'b`.
+    UpperBoundUniverseConflict(
+        RegionVid,
+        RegionVariableOrigin,
+        ty::UniverseIndex,     // the universe index of the region variable
+        SubregionOrigin<'tcx>, // cause of the constraint
+        Region<'tcx>,          // the placeholder `'b`
+    ),
+
     /// Indicates a failure of a `MemberConstraint`. These arise during
     /// impl trait processing explicitly -- basically, the impl trait's hidden type
     /// included some region that it was not supposed to.
@@ -149,7 +159,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn construct_var_data(&self, tcx: TyCtxt<'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
             error_region: tcx.lifetimes.re_static,
-            values: IndexVec::from_elem_n(VarValue::Value(tcx.lifetimes.re_empty), self.num_vars()),
+            values: IndexVec::from_fn_n(
+                |vid| {
+                    let vid_universe = self.var_infos[vid].universe;
+                    let re_empty = tcx.mk_region(ty::ReEmpty(vid_universe));
+                    VarValue::Value(re_empty)
+                },
+                self.num_vars(),
+            ),
         }
     }
 
@@ -381,8 +398,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // This is a specialized version of the `lub_concrete_regions`
                 // check below for a common case, here purely as an
                 // optimization.
-                if let ReEmpty = a_region {
-                    return false;
+                let b_universe = self.var_infos[b_vid].universe;
+                if let ReEmpty(a_universe) = a_region {
+                    if *a_universe == b_universe {
+                        return false;
+                    }
                 }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
@@ -399,7 +419,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // tighter bound than `'static`.
                 //
                 // (This might e.g. arise from being asked to prove `for<'a> { 'b: 'a }`.)
-                let b_universe = self.var_infos[b_vid].universe;
                 if let ty::RePlaceholder(p) = lub {
                     if b_universe.cannot_name(p.universe) {
                         lub = self.tcx().lifetimes.re_static;
@@ -420,12 +439,38 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     /// True if `a <= b`, but not defined over inference variables.
     fn sub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> bool {
+        let tcx = self.tcx();
+        let sub_free_regions = |r1, r2| self.region_rels.free_regions.sub_free_regions(tcx, r1, r2);
+
+        // Check for the case where we know that `'b: 'static` -- in that case,
+        // `a <= b` for all `a`.
+        let b_free_or_static = self.region_rels.free_regions.is_free_or_static(b);
+        if b_free_or_static && sub_free_regions(tcx.lifetimes.re_static, b) {
+            return true;
+        }
+
+        // If both `a` and `b` are free, consult the declared
+        // relationships.  Note that this can be more precise than the
+        // `lub` relationship defined below, since sometimes the "lub"
+        // is actually the `postdom_upper_bound` (see
+        // `TransitiveRelation` for more details).
+        let a_free_or_static = self.region_rels.free_regions.is_free_or_static(a);
+        if a_free_or_static && b_free_or_static {
+            return sub_free_regions(a, b);
+        }
+
+        // For other cases, leverage the LUB code to find the LUB and
+        // check if it is equal to `b`.
         self.lub_concrete_regions(a, b) == b
     }
 
-    /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
+    /// Returns the least-upper-bound of `a` and `b`; i.e., the
+    /// smallest region `c` such that `a <= c` and `b <= c`.
+    ///
+    /// Neither `a` nor `b` may be an inference variable (hence the
+    /// term "concrete regions").
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        match (a, b) {
+        let r = match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
             | (&ReLateBound(..), _)
@@ -433,14 +478,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             | (&ReErased, _)
             | (_, &ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
-            }
-
-            (r @ &ReStatic, _) | (_, r @ &ReStatic) => {
-                r // nothing lives longer than static
-            }
-
-            (&ReEmpty, r) | (r, &ReEmpty) => {
-                r // everything lives longer than empty
             }
 
             (&ReVar(v_id), _) | (_, &ReVar(v_id)) => {
@@ -451,6 +488,41 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     a,
                     b
                 );
+            }
+
+            (&ReStatic, _) | (_, &ReStatic) => {
+                // nothing lives longer than `'static`
+                self.tcx().lifetimes.re_static
+            }
+
+            (&ReEmpty(_), r @ ReEarlyBound(_))
+            | (r @ ReEarlyBound(_), &ReEmpty(_))
+            | (&ReEmpty(_), r @ ReFree(_))
+            | (r @ ReFree(_), &ReEmpty(_))
+            | (&ReEmpty(_), r @ ReScope(_))
+            | (r @ ReScope(_), &ReEmpty(_)) => {
+                // All empty regions are less than early-bound, free,
+                // and scope regions.
+                r
+            }
+
+            (&ReEmpty(a_ui), &ReEmpty(b_ui)) => {
+                // Empty regions are ordered according to the universe
+                // they are associated with.
+                let ui = a_ui.min(b_ui);
+                self.tcx().mk_region(ReEmpty(ui))
+            }
+
+            (&ReEmpty(empty_ui), &RePlaceholder(placeholder))
+            | (&RePlaceholder(placeholder), &ReEmpty(empty_ui)) => {
+                // If this empty region is from a universe that can
+                // name the placeholder, then the placeholder is
+                // larger; otherwise, the only ancestor is `'static`.
+                if empty_ui.can_name(placeholder.universe) {
+                    self.tcx().mk_region(RePlaceholder(placeholder))
+                } else {
+                    self.tcx().lifetimes.re_static
+                }
             }
 
             (&ReEarlyBound(_), &ReScope(s_id))
@@ -509,7 +581,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     self.tcx().lifetimes.re_static
                 }
             }
-        }
+        };
+
+        debug!("lub_concrete_regions({:?}, {:?}) = {:?}", a, b, r);
+
+        r
     }
 
     /// After expansion is complete, go and check upper bounds (i.e.,
@@ -528,7 +604,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
 
                 Constraint::RegSubReg(sub, sup) => {
-                    if self.region_rels.is_subregion_of(sub, sup) {
+                    if self.sub_concrete_regions(sub, sup) {
                         continue;
                     }
 
@@ -557,7 +633,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // Do not report these errors immediately:
                     // instead, set the variable value to error and
                     // collect them later.
-                    if !self.region_rels.is_subregion_of(a_region, b_region) {
+                    if !self.sub_concrete_regions(a_region, b_region) {
                         debug!(
                             "collect_errors: region error at {:?}: \
                              cannot verify that {:?}={:?} <= {:?}",
@@ -591,12 +667,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         for verify in &self.data.verifys {
             debug!("collect_errors: verify={:?}", verify);
             let sub = var_data.normalize(self.tcx(), verify.region);
-
-            // This was an inference variable which didn't get
-            // constrained, therefore it can be assume to hold.
-            if let ty::ReEmpty = *sub {
-                continue;
-            }
 
             let verify_kind_ty = verify.kind.to_ty(self.tcx());
             if self.bound_is_met(&verify.bound, var_data, verify_kind_ty, sub) {
@@ -760,7 +830,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             };
 
             for upper_bound in &upper_bounds {
-                if !self.region_rels.is_subregion_of(effective_lower_bound, upper_bound.region) {
+                if !self.sub_concrete_regions(effective_lower_bound, upper_bound.region) {
                     let origin = self.var_infos[node_idx].origin;
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
@@ -772,6 +842,26 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         origin,
                         lower_bound.origin.clone(),
                         lower_bound.region,
+                        upper_bound.origin.clone(),
+                        upper_bound.region,
+                    ));
+                    return;
+                }
+            }
+        }
+
+        // If we have a scenario like `exists<'a> { forall<'b> { 'b:
+        // 'a } }`, we wind up without any lower-bound -- all we have
+        // are placeholders as upper bounds, but the universe of the
+        // variable `'a` doesn't permit those placeholders.
+        for upper_bound in &upper_bounds {
+            if let ty::RePlaceholder(p) = upper_bound.region {
+                if node_universe.cannot_name(p.universe) {
+                    let origin = self.var_infos[node_idx].origin.clone();
+                    errors.push(RegionResolutionError::UpperBoundUniverseConflict(
+                        node_idx,
+                        origin,
+                        node_universe,
                         upper_bound.origin.clone(),
                         upper_bound.region,
                     ));
@@ -890,7 +980,15 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                self.region_rels.is_subregion_of(min, var_values.normalize(self.tcx(), r))
+                self.sub_concrete_regions(min, var_values.normalize(self.tcx(), r))
+            }
+
+            VerifyBound::IsEmpty => {
+                if let ty::ReEmpty(_) = min {
+                    true
+                } else {
+                    false
+                }
             }
 
             VerifyBound::AnyBound(bs) => {

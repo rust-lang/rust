@@ -3067,6 +3067,7 @@ name = "rustbook"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "codespan",
  "codespan-reporting",
  "failure",
  "mdbook",
