@@ -168,6 +168,18 @@ struct floats {
     double c;
 };
 
+struct char_char_double {
+    uint8_t a;
+    uint8_t b;
+    double c;
+};
+
+struct char_char_float {
+    uint8_t a;
+    uint8_t b;
+    float c;
+};
+
 struct quad
 rust_dbg_abi_1(struct quad q) {
     struct quad qq = { q.c + 1,
@@ -184,6 +196,23 @@ rust_dbg_abi_2(struct floats f) {
                          f.a - 1.0 };
     return ff;
 }
+
+struct char_char_double
+rust_dbg_abi_3(struct char_char_double a) {
+    struct char_char_double ccd = { a.a + 1,
+                                    a.b - 1,
+                                    a.c + 1.0 };
+    return ccd;
+}
+
+struct char_char_float
+rust_dbg_abi_4(struct char_char_float a) {
+    struct char_char_float ccd = { a.a + 1,
+                                   a.b - 1,
+                                   a.c + 1.0 };
+    return ccd;
+}
+
 
 int
 rust_dbg_static_mut = 3;
