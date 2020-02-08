@@ -5,8 +5,12 @@ use crate::ty::TyCtxt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
+use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE};
+use rustc_index::vec::IndexVec;
+use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 pub(crate) trait CacheSelector<K, V> {
     type Cache: QueryCache<K, V>;
@@ -54,13 +58,18 @@ pub(crate) trait QueryCache<K, V>: Default {
 pub struct DefaultCacheSelector;
 
 impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
-    type Cache = DefaultCache;
+    type Cache = DefaultCache<()>;
 }
 
-#[derive(Default)]
-pub struct DefaultCache;
+pub struct DefaultCache<D>(PhantomData<D>);
 
-impl<K: Eq + Hash, V: Clone> QueryCache<K, V> for DefaultCache {
+impl<D> Default for DefaultCache<D> {
+    fn default() -> Self {
+        DefaultCache(PhantomData)
+    }
+}
+
+impl<D, K: Eq + Hash, V: Clone> QueryCache<K, V> for DefaultCache<D> {
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
@@ -108,5 +117,90 @@ impl<K: Eq + Hash, V: Clone> QueryCache<K, V> for DefaultCache {
         let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
         let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
         f(Box::new(results))
+    }
+}
+
+#[cfg(parallel_compiler)]
+pub type LocalDenseDefIdCacheSelector<V> = DefaultCache<V>;
+#[cfg(not(parallel_compiler))]
+pub type LocalDenseDefIdCacheSelector<V> = LocalDenseDefIdCache<V>;
+
+pub struct LocalDenseDefIdCache<V> {
+    local: RefCell<IndexVec<DefIndex, Option<(V, DepNodeIndex)>>>,
+    other: DefaultCache<()>,
+}
+
+impl<V> Default for LocalDenseDefIdCache<V> {
+    fn default() -> Self {
+        LocalDenseDefIdCache { local: RefCell::new(IndexVec::new()), other: Default::default() }
+    }
+}
+
+impl<V: Clone> QueryCache<DefId, V> for LocalDenseDefIdCache<V> {
+    type Sharded = <DefaultCache<()> as QueryCache<DefId, V>>::Sharded;
+
+    #[inline(always)]
+    fn lookup<'tcx, R, GetCache, OnHit, OnMiss, Q>(
+        &self,
+        state: &'tcx QueryState<'tcx, Q>,
+        get_cache: GetCache,
+        key: DefId,
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        Q: QueryAccessors<'tcx>,
+        GetCache: for<'a> Fn(&'a mut QueryStateShard<'tcx, Q>) -> &'a mut Self::Sharded,
+        OnHit: FnOnce(&V, DepNodeIndex) -> R,
+        OnMiss: FnOnce(DefId, QueryLookup<'tcx, Q>) -> R,
+    {
+        if key.krate == LOCAL_CRATE {
+            let local = self.local.borrow();
+            if let Some(result) = local.get(key.index).and_then(|v| v.as_ref()) {
+                on_hit(&result.0, result.1)
+            } else {
+                drop(local);
+                let lookup = state.get_lookup(&key);
+                on_miss(key, lookup)
+            }
+        } else {
+            self.other.lookup(state, get_cache, key, on_hit, on_miss)
+        }
+    }
+
+    #[inline]
+    fn complete(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        lock_sharded_storage: &mut Self::Sharded,
+        key: DefId,
+        value: V,
+        index: DepNodeIndex,
+    ) {
+        if key.krate == LOCAL_CRATE {
+            let mut local = self.local.borrow_mut();
+            if local.raw.capacity() == 0 {
+                *local = IndexVec::from_elem_n(None, tcx.hir().definitions().def_index_count());
+            }
+            local[key.index] = Some((value, index));
+        } else {
+            self.other.complete(tcx, lock_sharded_storage, key, value, index);
+        }
+    }
+
+    fn iter<R, L>(
+        &self,
+        shards: &Sharded<L>,
+        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
+        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a DefId, &'a V, DepNodeIndex)> + 'a>) -> R,
+    ) -> R {
+        let local = self.local.borrow();
+        let local: Vec<(DefId, &V, DepNodeIndex)> = local
+            .iter_enumerated()
+            .filter_map(|(i, e)| e.as_ref().map(|e| (DefId::local(i), &e.0, e.1)))
+            .collect();
+        self.other.iter(shards, get_shard, |results| {
+            f(Box::new(results.chain(local.iter().map(|(id, v, i)| (id, *v, *i)))))
+        })
     }
 }
