@@ -66,14 +66,14 @@ pub struct LexError {
     _inner: (),
 }
 
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
+#[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("lex error")
     }
 }
 
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
+#[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
 impl error::Error for LexError {}
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
