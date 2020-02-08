@@ -1,25 +1,19 @@
 import fetch from "node-fetch";
+import { GithubRepo, ArtifactMetadata } from "./interfaces";
 
 const GITHUB_API_ENDPOINT_URL = "https://api.github.com";
 
 export interface FetchLatestArtifactMetadataOpts {
-    repoName: string;
-    repoOwner: string;
+    repo: GithubRepo;
     artifactFileName: string;
-}
-
-export interface ArtifactMetadata {
-    releaseName: string;
-    releaseDate: Date;
-    downloadUrl: string;
 }
 
 export async function fetchLatestArtifactMetadata(
     opts: FetchLatestArtifactMetadataOpts
-): Promise<ArtifactMetadata | null> {
+): Promise<null | ArtifactMetadata> {
 
-    const repoOwner = encodeURIComponent(opts.repoOwner);
-    const repoName  = encodeURIComponent(opts.repoName);
+    const repoOwner = encodeURIComponent(opts.repo.owner);
+    const repoName  = encodeURIComponent(opts.repo.name);
 
     const apiEndpointPath = `/repos/${repoOwner}/${repoName}/releases/latest`;
     const requestUrl = GITHUB_API_ENDPOINT_URL + apiEndpointPath;
@@ -35,14 +29,12 @@ export async function fetchLatestArtifactMetadata(
 
     return !artifact ? null : {
         releaseName: response.name,
-        releaseDate: new Date(response.published_at),
         downloadUrl: artifact.browser_download_url
     };
 
     // Noise denotes tremendous amount of data that we are not using here
     interface GithubRelease {
         name: string;
-        published_at: Date;
         assets: Array<{
             browser_download_url: string;
 

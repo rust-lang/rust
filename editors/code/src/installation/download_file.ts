@@ -7,7 +7,7 @@ export async function downloadFile(
     destFilePath: fs.PathLike,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
-    onProgress = throttle(100, /* noTrailing: */ true, onProgress);
+    onProgress = throttle(1000, /* noTrailing: */ true, onProgress);
 
     const response = await fetch(url);
 

@@ -1,4 +1,6 @@
+import * as os from "os";
 import * as vscode from 'vscode';
+import { BinarySource, BinarySourceType } from "./installation/interfaces";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -16,10 +18,24 @@ export interface CargoFeatures {
 }
 
 export class Config {
+    readonly raLspServerGithubArtifactName = {
+        linux: "ra_lsp_server-linux",
+        darwin: "ra_lsp_server-mac",
+        win32: "ra_lsp_server-windows.exe",
+        aix: null,
+        android: null,
+        freebsd: null,
+        openbsd: null,
+        sunos: null,
+        cygwin: null,
+        netbsd: null,
+    }[process.platform];
+
+    raLspServerSource!: null | BinarySource;
+
     highlightingOn = true;
     rainbowHighlightingOn = false;
     enableEnhancedTyping = true;
-    raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     lruCapacity: null | number = null;
     displayInlayHints = true;
     maxInlayHintLength: null | number = null;
@@ -45,11 +61,20 @@ export class Config {
     private prevCargoWatchOptions: null | CargoWatchOptions = null;
 
     constructor(ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), null, ctx.subscriptions);
-        this.refresh();
+        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(ctx), null, ctx.subscriptions);
+        this.refresh(ctx);
     }
 
-    private refresh() {
+    private static expandPathResolving(path: string) {
+        if (path.startsWith('~/')) {
+            return path.replace('~', os.homedir());
+        }
+        return path;
+    }
+
+    // FIXME: revisit the logic for `if (.has(...)) config.get(...)` set default
+    // values only in one place (i.e. remove default values from non-readonly members declarations)
+    private refresh(ctx: vscode.ExtensionContext) {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
 
         let requireReloadMessage = null;
@@ -82,9 +107,26 @@ export class Config {
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
 
-        if (config.has('raLspServerPath')) {
-            this.raLspServerPath =
-                RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
+        {
+            const raLspServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
+            if (raLspServerPath) {
+                this.raLspServerSource = {
+                    type: BinarySourceType.ExplicitPath,
+                    path: Config.expandPathResolving(raLspServerPath)
+                };
+            } else if (this.raLspServerGithubArtifactName) {
+                this.raLspServerSource = {
+                    type: BinarySourceType.GithubBinary,
+                    dir: ctx.globalStoragePath,
+                    file: this.raLspServerGithubArtifactName,
+                    repo: {
+                        name: "rust-analyzer",
+                        owner: "rust-analyzer",
+                    }
+                };
+            } else {
+                this.raLspServerSource = null;
+            }
         }
 
         if (config.has('cargo-watch.enable')) {

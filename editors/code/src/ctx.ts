@@ -29,7 +29,11 @@ export class Ctx {
             await old.stop();
         }
         this.client = null;
-        const client = createClient(this.config);
+        const client = await createClient(this.config);
+        if (!client) {
+            throw new Error("Rust Analyzer Language Server is not available");
+        }
+
         this.pushCleanup(client.start());
         await client.onReady();
 

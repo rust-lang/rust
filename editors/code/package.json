@@ -27,6 +27,7 @@
         "jsonc-parser": "^2.1.0",
         "node-fetch": "^2.6.0",
         "throttle-debounce": "^2.1.0",
+        "ts-not-nil": "^1.0.1",
         "vscode-languageclient": "^6.1.0"
     },
     "devDependencies": {
@@ -173,10 +174,11 @@
                 },
                 "rust-analyzer.raLspServerPath": {
                     "type": [
+                        "null",
                         "string"
                     ],
-                    "default": "ra_lsp_server",
-                    "description": "Path to ra_lsp_server executable"
+                    "default": null,
+                    "description": "Path to ra_lsp_server executable (points to bundled binary by default)"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",
