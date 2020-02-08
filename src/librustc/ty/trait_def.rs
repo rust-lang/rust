@@ -9,6 +9,7 @@ use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
@@ -92,7 +93,7 @@ impl<'tcx> TraitDef {
         &self,
         tcx: TyCtxt<'tcx>,
         of_impl: DefId,
-    ) -> specialization_graph::Ancestors<'tcx> {
+    ) -> Result<specialization_graph::Ancestors<'tcx>, ErrorReported> {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }

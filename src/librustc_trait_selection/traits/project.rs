@@ -21,6 +21,7 @@ use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_ast::ast::Ident;
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
@@ -1010,7 +1011,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // NOTE: This should be kept in sync with the similar code in
                 // `rustc::ty::instance::resolve_associated_item()`.
                 let node_item =
-                    assoc_ty_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id);
+                    assoc_ty_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
+                        .map_err(|ErrorReported| ())?;
 
                 let is_default = if node_item.node.is_from_trait() {
                     // If true, the impl inherited a `type Foo = Bar`
@@ -1405,7 +1407,10 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
     let param_env = obligation.param_env;
-    let assoc_ty = assoc_ty_def(selcx, impl_def_id, assoc_item_id);
+    let assoc_ty = match assoc_ty_def(selcx, impl_def_id, assoc_item_id) {
+        Ok(assoc_ty) => assoc_ty,
+        Err(ErrorReported) => return Progress { ty: tcx.types.err, obligations: nested },
+    };
 
     if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
@@ -1444,14 +1449,14 @@ fn assoc_ty_def(
     selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId,
-) -> specialization_graph::NodeItem<ty::AssocItem> {
+) -> Result<specialization_graph::NodeItem<ty::AssocItem>, ErrorReported> {
     let tcx = selcx.tcx();
     let assoc_ty_name = tcx.associated_item(assoc_ty_def_id).ident;
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
     let trait_def = tcx.trait_def(trait_def_id);
 
     // This function may be called while we are still building the
-    // specialization graph that is queried below (via TraidDef::ancestors()),
+    // specialization graph that is queried below (via TraitDef::ancestors()),
     // so, in order to avoid unnecessary infinite recursion, we manually look
     // for the associated item at the given impl.
     // If there is no such item in that impl, this function will fail with a
@@ -1461,17 +1466,16 @@ fn assoc_ty_def(
         if matches!(item.kind, ty::AssocKind::Type | ty::AssocKind::OpaqueTy)
             && tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id)
         {
-            return specialization_graph::NodeItem {
+            return Ok(specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
                 item: *item,
-            };
+            });
         }
     }
 
-    if let Some(assoc_item) =
-        trait_def.ancestors(tcx, impl_def_id).leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type)
-    {
-        assoc_item
+    let ancestors = trait_def.ancestors(tcx, impl_def_id)?;
+    if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type) {
+        Ok(assoc_item)
     } else {
         // This is saying that neither the trait nor
         // the impl contain a definition for this
