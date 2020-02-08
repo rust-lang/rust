@@ -12,7 +12,7 @@ import { downloadFile } from "./download_file";
 export async function downloadLatestLanguageServer(
     {file: artifactFileName, dir: installationDir, repo}: GithubBinarySource
 ) {
-    const binaryMetadata = await fetchLatestArtifactMetadata({ artifactFileName, repo });
+    const binaryMetadata = await fetchLatestArtifactMetadata(repo, artifactFileName);
 
     const {
         releaseName,
@@ -20,7 +20,7 @@ export async function downloadLatestLanguageServer(
     } = unwrapNotNil(binaryMetadata, `Latest GitHub release lacks "${artifactFileName}" file`);
 
     await fs.mkdir(installationDir).catch(err => assert.strictEqual(
-        err && err.code,
+        err?.code,
         "EEXIST",
         `Couldn't create directory "${installationDir}" to download `+
         `language server binary: ${err.message}`
@@ -48,7 +48,7 @@ export async function downloadLatestLanguageServer(
         }
     );
 
-    await fs.chmod(installationPath, 111); // Set xxx permissions
+    await fs.chmod(installationPath, 755); // Set (rwx, r_x, r_x) permissions
 }
 export async function ensureLanguageServerBinary(
     langServerSource: null | BinarySource
