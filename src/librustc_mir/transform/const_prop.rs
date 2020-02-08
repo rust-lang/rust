@@ -541,7 +541,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         source_info: SourceInfo,
         place_layout: TyLayout<'tcx>,
-        overflow_check: bool,
     ) -> Option<()> {
         let r =
             self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
@@ -564,18 +563,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        // If overflow checking is enabled (like in debug mode by default),
-        // then we'll already catch overflow when we evaluate the `Assert` statement
-        // in MIR. However, if overflow checking is disabled, then there won't be any
-        // `Assert` statement and so we have to do additional checking here.
-        if !overflow_check {
-            if self.use_ecx(|this| {
-                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-                Ok(overflow)
-            })? {
-                self.report_panic_as_lint(source_info, PanicInfo::Overflow(op))?;
-            }
+        // The remaining operators are handled through `overflowing_binary_op`.
+        // FIXME: Why do we not also do this for `Shr` and `Shl`?
+        if self.use_ecx(|this| {
+            let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+            let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+            Ok(overflow)
+        })? {
+            self.report_panic_as_lint(source_info, PanicInfo::Overflow(op))?;
         }
 
         Some(())
@@ -618,9 +613,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             // Additional checking: check for overflows on integer binary operations and report
             // them to the user as lints.
-            Rvalue::BinaryOp(op, left, right) => {
+            Rvalue::BinaryOp(op, left, right) if !overflow_check => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right, source_info, place_layout, overflow_check)?;
+                self.check_binary_op(*op, left, right, source_info, place_layout)?;
             }
 
             // Do not try creating references (#67862)
