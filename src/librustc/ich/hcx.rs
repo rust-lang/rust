@@ -249,6 +249,12 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         self.hash_spans
     }
 
+    #[inline]
+    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
+    }
+
     fn byte_pos_to_line_and_col(
         &mut self,
         byte: BytePos,

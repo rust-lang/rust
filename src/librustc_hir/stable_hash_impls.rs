@@ -1,6 +1,5 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-use crate::def_id::DefId;
 use crate::hir::{BodyId, Expr, ImplItemId, ItemId, Mod, TraitItemId, Ty, VisibilityKind};
 use crate::hir_id::HirId;
 
@@ -8,7 +7,6 @@ use crate::hir_id::HirId;
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
 pub trait HashStableContext: syntax::HashStableContext + rustc_target::HashStableContext {
-    fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
     fn hash_reference_to_item(&mut self, _: HirId, hasher: &mut StableHasher);
@@ -21,12 +19,6 @@ pub trait HashStableContext: syntax::HashStableContext + rustc_target::HashStabl
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HirId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         hcx.hash_hir_id(*self, hasher)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for DefId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_def_id(*self, hasher)
     }
 }
 

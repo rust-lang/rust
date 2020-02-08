@@ -12,12 +12,6 @@ use std::mem;
 
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     #[inline]
-    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
-        let hcx = self;
-        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
-    }
-
-    #[inline]
     fn hash_hir_id(&mut self, hir_id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
         match hcx.node_id_hashing_mode {
