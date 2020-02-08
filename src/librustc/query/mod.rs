@@ -671,6 +671,9 @@ rustc_queries! {
     }
 
     TypeChecking {
+        query all_local_trait_impls(key: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+            desc { "local trait impls" }
+        }
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }

@@ -4,7 +4,7 @@ pub use self::definitions::{
 };
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKind, DepNode, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepNodeIndex};
 use crate::hir::{HirOwner, HirOwnerItems};
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
@@ -13,7 +13,7 @@ use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIndex, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
@@ -532,11 +532,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [HirId] {
-        self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
-
-        // N.B., intentionally bypass `self.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.krate.trait_impls.get(&trait_did).map_or(&[], |xs| &xs[..])
+        self.tcx.all_local_trait_impls(LOCAL_CRATE).get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
     /// Gets the attributes on the crate. This is preferable to
