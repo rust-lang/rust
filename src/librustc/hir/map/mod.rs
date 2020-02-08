@@ -4,7 +4,6 @@ pub use self::definitions::{
 };
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepNodeIndex};
 use crate::hir::{HirOwner, HirOwnerItems};
 use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
@@ -18,7 +17,6 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
 use rustc_hir::*;
-use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
@@ -34,7 +32,6 @@ mod hir_id_validator;
 #[derive(Copy, Clone, Debug)]
 pub struct Entry<'hir> {
     parent: HirId,
-    dep_node: DepNodeIndex,
     node: Node<'hir>,
 }
 
@@ -132,25 +129,15 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
     }
 }
 
-/// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
-/// but it is implemented as 2 layers of arrays.
-/// - first we have `A = IndexVec<DefIndex, B>` mapping `DefIndex`s to an inner value
-/// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which gives you the `Entry`.
-pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Option<Entry<'hir>>>>;
-
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 pub struct EarlyMap<'hir> {
     pub krate: &'hir Crate<'hir>,
-
-    pub dep_graph: DepGraph,
 
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
     pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
     pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
-
-    pub(super) map: HirEntryMap<'hir>,
 
     pub(crate) definitions: &'hir Definitions,
 
@@ -163,8 +150,6 @@ pub struct Map<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
 
     pub(super) krate: &'hir Crate<'hir>,
-
-    pub dep_graph: DepGraph,
 
     /// The SVH of the local crate.
     pub crate_hash: Svh,
@@ -383,15 +368,11 @@ impl<'hir> Map<'hir> {
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
         if id.local_id == ItemLocalId::from_u32_const(0) {
             let owner = self.tcx.hir_owner(id.owner_def_id());
-            Entry { parent: owner.parent, node: owner.node, dep_node: DepNodeIndex::INVALID }
+            Entry { parent: owner.parent, node: owner.node }
         } else {
             let owner = self.tcx.hir_owner_items(id.owner_def_id());
             let item = owner.items[id.local_id].as_ref().unwrap();
-            Entry {
-                parent: HirId { owner: id.owner, local_id: item.parent },
-                node: item.node,
-                dep_node: DepNodeIndex::INVALID,
-            }
+            Entry { parent: HirId { owner: id.owner, local_id: item.parent }, node: item.node }
         }
     }
 
@@ -1069,7 +1050,6 @@ pub fn map_crate<'hir>(
     arena: &'hir Arena<'hir>,
     cstore: &CrateStoreDyn,
     krate: &'hir Crate<'hir>,
-    dep_graph: DepGraph,
     definitions: Definitions,
 ) -> EarlyMap<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");
@@ -1081,11 +1061,11 @@ pub fn map_crate<'hir>(
         .map(|(node_id, &hir_id)| (hir_id, node_id))
         .collect();
 
-    let (map, owner_map, owner_items_map, crate_hash) = {
+    let (owner_map, owner_items_map, crate_hash) = {
         let hcx = crate::ich::StableHashingContext::new(sess, krate, &definitions, cstore);
 
         let mut collector =
-            NodeCollector::root(sess, arena, krate, &dep_graph, &definitions, &hir_to_node_id, hcx);
+            NodeCollector::root(sess, arena, krate, &definitions, &hir_to_node_id, hcx);
         intravisit::walk_crate(&mut collector, krate);
 
         let crate_disambiguator = sess.local_crate_disambiguator();
@@ -1095,9 +1075,7 @@ pub fn map_crate<'hir>(
 
     let map = EarlyMap {
         krate,
-        dep_graph,
         crate_hash,
-        map,
         owner_map,
         owner_items_map: owner_items_map.into_iter().map(|(k, v)| (k, &*v)).collect(),
         hir_to_node_id,

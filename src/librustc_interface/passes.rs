@@ -716,7 +716,7 @@ pub fn create_global_ctxt<'tcx>(
     let defs = mem::take(&mut resolver_outputs.definitions);
 
     // Construct the HIR map.
-    let hir_map = map::map_crate(sess, &**arena, &*resolver_outputs.cstore, krate, dep_graph, defs);
+    let hir_map = map::map_crate(sess, &**arena, &*resolver_outputs.cstore, krate, defs);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -743,6 +743,7 @@ pub fn create_global_ctxt<'tcx>(
                 arena,
                 resolver_outputs,
                 hir_map,
+                dep_graph,
                 query_result_on_disk_cache,
                 &crate_name,
                 &outputs,

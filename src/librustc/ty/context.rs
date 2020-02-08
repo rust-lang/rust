@@ -1121,6 +1121,7 @@ impl<'tcx> TyCtxt<'tcx> {
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::EarlyMap<'tcx>,
+        dep_graph: DepGraph,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
@@ -1132,7 +1133,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
-        let dep_graph = hir.dep_graph.clone();
         let definitions = hir.definitions;
         let cstore = resolutions.cstore;
         let crates = cstore.crates_untracked();

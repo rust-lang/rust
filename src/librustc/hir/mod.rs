@@ -100,8 +100,6 @@ pub fn provide(providers: &mut Providers<'_>) {
             tcx,
             krate: early.krate,
 
-            dep_graph: early.dep_graph,
-
             crate_hash: early.crate_hash,
 
             owner_map: early.owner_map,

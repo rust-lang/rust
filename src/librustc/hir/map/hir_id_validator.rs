@@ -8,8 +8,8 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};*/
 
 pub fn check_crate(hir_map: &EarlyMap<'_>, sess: &rustc_session::Session) {
-    hir_map.dep_graph.assert_ignored();
-    /*
+    /*hir_map.dep_graph.assert_ignored();
+
     let errors = Lock::new(Vec::new());
 
     par_iter(&hir_map.krate.modules).for_each(|(module_id, _)| {
