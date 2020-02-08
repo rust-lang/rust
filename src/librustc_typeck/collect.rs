@@ -2148,9 +2148,10 @@ fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> 
 
 fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_if_local(def_id) {
-        Some(Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
-            tcx.hir().body(body_id).generator_kind()
-        }
+        Some(Node::Expr(&rustc_hir::Expr {
+            kind: rustc_hir::ExprKind::Closure(_, _, body_id, _, _),
+            ..
+        })) => tcx.hir().body(body_id).generator_kind(),
         Some(_) => None,
         _ => bug!("generator_kind applied to non-local def-id {:?}", def_id),
     }

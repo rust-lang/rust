@@ -1525,6 +1525,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
                 Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
             },
+            DefPathData::LifetimeNs(..) => ("a", "lifetime"),
+            DefPathData::Impl => ("an", "implementation"),
             _ => bug!("article_and_description called on def_id {:?}", def_id),
         }
     }
