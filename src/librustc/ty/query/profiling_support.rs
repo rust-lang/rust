@@ -1,11 +1,10 @@
 use crate::hir::map::definitions::DefPathData;
 use crate::ty::context::TyCtxt;
-use crate::ty::query::config::QueryConfig;
-use crate::ty::query::plumbing::QueryCache;
+use crate::ty::query::config::QueryAccessors;
+use crate::ty::query::plumbing::QueryState;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
-use rustc_data_structures::sharded::Sharded;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use std::fmt::Debug;
 use std::io::Write;
@@ -161,10 +160,10 @@ where
 pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, Q>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
-    query_cache: &Sharded<QueryCache<'tcx, Q>>,
+    query_state: &QueryState<'tcx, Q>,
     string_cache: &mut QueryKeyStringCache,
 ) where
-    Q: QueryConfig<'tcx>,
+    Q: QueryAccessors<'tcx>,
 {
     tcx.prof.with_profiler(|profiler| {
         let event_id_builder = profiler.event_id_builder();
@@ -181,20 +180,8 @@ pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, Q>(
             // need to invoke queries itself, we cannot keep the query caches
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
-            let query_keys_and_indices = {
-                let shards = query_cache.lock_shards();
-                let len = shards.iter().map(|shard| shard.results.len()).sum();
-
-                let mut query_keys_and_indices = Vec::with_capacity(len);
-
-                for shard in &shards {
-                    query_keys_and_indices.extend(
-                        shard.results.iter().map(|(q_key, q_val)| (q_key.clone(), q_val.index)),
-                    );
-                }
-
-                query_keys_and_indices
-            };
+            let query_keys_and_indices: Vec<_> = query_state
+                .iter_results(|results| results.map(|(k, _, i)| (k.clone(), i)).collect());
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but
@@ -218,18 +205,14 @@ pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, Q>(
             let query_name = profiler.get_or_alloc_cached_string(query_name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
-            let shards = query_cache.lock_shards();
+            query_state.iter_results(|results| {
+                let query_invocation_ids: Vec<_> = results.map(|v| v.2.into()).collect();
 
-            for shard in shards.iter() {
-                let query_invocation_ids = shard
-                    .results
-                    .values()
-                    .map(|v| v.index)
-                    .map(|dep_node_index| dep_node_index.into());
-
-                profiler
-                    .bulk_map_query_invocation_id_to_single_string(query_invocation_ids, event_id);
-            }
+                profiler.bulk_map_query_invocation_id_to_single_string(
+                    query_invocation_ids.into_iter(),
+                    event_id,
+                );
+            });
         }
     });
 }

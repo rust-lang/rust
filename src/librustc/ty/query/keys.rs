@@ -4,6 +4,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::query::caches::DefaultCacheSelector;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
@@ -12,7 +13,9 @@ use rustc_span::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
-pub(super) trait Key {
+pub trait Key {
+    type CacheSelector;
+
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
     fn query_crate(&self) -> CrateNum;
@@ -23,6 +26,8 @@ pub(super) trait Key {
 }
 
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -33,6 +38,8 @@ impl<'tcx> Key for ty::InstanceDef<'tcx> {
 }
 
 impl<'tcx> Key for ty::Instance<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -43,6 +50,8 @@ impl<'tcx> Key for ty::Instance<'tcx> {
 }
 
 impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.instance.query_crate()
     }
@@ -53,6 +62,8 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
 }
 
 impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -63,6 +74,8 @@ impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
 }
 
 impl Key for CrateNum {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         *self
     }
@@ -72,6 +85,8 @@ impl Key for CrateNum {
 }
 
 impl Key for DefIndex {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -81,6 +96,8 @@ impl Key for DefIndex {
 }
 
 impl Key for DefId {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.krate
     }
@@ -90,6 +107,8 @@ impl Key for DefId {
 }
 
 impl Key for (DefId, DefId) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.0.krate
     }
@@ -99,6 +118,8 @@ impl Key for (DefId, DefId) {
 }
 
 impl Key for (CrateNum, DefId) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.0
     }
@@ -108,6 +129,8 @@ impl Key for (CrateNum, DefId) {
 }
 
 impl Key for (DefId, SimplifiedType) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.0.krate
     }
@@ -117,6 +140,8 @@ impl Key for (DefId, SimplifiedType) {
 }
 
 impl<'tcx> Key for SubstsRef<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -126,6 +151,8 @@ impl<'tcx> Key for SubstsRef<'tcx> {
 }
 
 impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.0.krate
     }
@@ -135,6 +162,8 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
 }
 
 impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.1.def_id().krate
     }
@@ -144,6 +173,8 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
 }
 
 impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -153,6 +184,8 @@ impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field) {
 }
 
 impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.def_id().krate
     }
@@ -162,6 +195,8 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
 }
 
 impl<'tcx> Key for &'tcx ty::Const<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -171,6 +206,8 @@ impl<'tcx> Key for &'tcx ty::Const<'tcx> {
 }
 
 impl<'tcx> Key for Ty<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -180,6 +217,8 @@ impl<'tcx> Key for Ty<'tcx> {
 }
 
 impl<'tcx> Key for ty::ParamEnv<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -189,6 +228,8 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
 }
 
 impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         self.value.query_crate()
     }
@@ -198,6 +239,8 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
 }
 
 impl<'tcx> Key for traits::Environment<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -207,6 +250,8 @@ impl<'tcx> Key for traits::Environment<'tcx> {
 }
 
 impl Key for Symbol {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -218,6 +263,8 @@ impl Key for Symbol {
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T> Key for Canonical<'tcx, T> {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -228,6 +275,8 @@ impl<'tcx, T> Key for Canonical<'tcx, T> {
 }
 
 impl Key for (Symbol, u32, u32) {
+    type CacheSelector = DefaultCacheSelector;
+
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

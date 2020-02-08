@@ -76,6 +76,9 @@ use self::keys::Key;
 mod values;
 use self::values::Value;
 
+mod caches;
+use self::caches::CacheSelector;
+
 mod config;
 use self::config::QueryAccessors;
 pub use self::config::QueryConfig;
