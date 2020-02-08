@@ -31,7 +31,10 @@ export class Ctx {
         this.client = null;
         const client = await createClient(this.config);
         if (!client) {
-            throw new Error("Rust Analyzer Language Server is not available");
+            throw new Error(
+                "Rust Analyzer Language Server is not available. " +
+                "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
+            );
         }
 
         this.pushCleanup(client.start());

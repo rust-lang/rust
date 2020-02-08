@@ -72,19 +72,19 @@ export async function ensureLanguageServerBinary(
                 return langServerSource.path;
             }
             vscode.window.showErrorMessage(
-                `Unable to execute ${'`'}${langServerSource.path} --version${'`'}. ` +
-                "To use the bundled language server, set `rust-analyzer.raLspServerPath` " +
+                `Unable to run ${langServerSource.path} binary. ` +
+                "To use the pre-built language server, set `rust-analyzer.raLspServerPath` " +
                 "value to `null` or remove it from the settings to use it by default."
             );
             return null;
         }
         case BinarySource.Type.GithubRelease: {
-            const bundledBinaryPath = path.join(langServerSource.dir, langServerSource.file);
+            const prebuiltBinaryPath = path.join(langServerSource.dir, langServerSource.file);
 
-            if (!isBinaryAvailable(bundledBinaryPath)) {
+            if (!isBinaryAvailable(prebuiltBinaryPath)) {
                 const userResponse = await vscode.window.showInformationMessage(
-                    `Language server binary for rust-analyzer was not found. ` +
-                    `Do you want to download it now?`,
+                    "Language server binary for rust-analyzer was not found. " +
+                    "Do you want to download it now?",
                     "Download now", "Cancel"
                 );
                 if (userResponse !== "Download now") return null;
@@ -101,7 +101,7 @@ export async function ensureLanguageServerBinary(
 
 
                 assert(
-                    isBinaryAvailable(bundledBinaryPath),
+                    isBinaryAvailable(prebuiltBinaryPath),
                     "Downloaded language server binary is not functional"
                 );
 
@@ -109,7 +109,7 @@ export async function ensureLanguageServerBinary(
                     "Rust analyzer language server was successfully installed 🦀"
                 );
             }
-            return bundledBinaryPath;
+            return prebuiltBinaryPath;
         }
     }
 
