@@ -9,7 +9,6 @@ use super::utils::{
 };
 use super::CrateDebugContext;
 
-use crate::abi;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{
@@ -495,8 +494,8 @@ fn trait_pointer_metadata(
 
     let layout = cx.layout_of(cx.tcx.mk_mut_ptr(trait_type));
 
-    assert_eq!(abi::FAT_PTR_ADDR, 0);
-    assert_eq!(abi::FAT_PTR_EXTRA, 1);
+    assert_eq!(layout::FAT_PTR_ADDR, 0);
+    assert_eq!(layout::FAT_PTR_EXTRA, 1);
 
     let data_ptr_field = layout.field(cx, 0);
     let vtable_field = layout.field(cx, 1);
