@@ -1074,12 +1074,15 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
+        generics: &ast::Generics,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
     ) {
         self.word_space("type");
         self.print_ident(ident);
+        self.print_generic_params(&generics.params);
         self.print_type_bounds(":", bounds);
+        self.print_where_clause(&generics.where_clause);
         if let Some(ty) = ty {
             self.s.space();
             self.word_space("=");
@@ -1474,7 +1477,7 @@ impl<'a> State<'a> {
                 self.print_fn_full(sig, item.ident, &item.generics, &item.vis, body, &item.attrs);
             }
             ast::AssocItemKind::TyAlias(bounds, ty) => {
-                self.print_associated_type(item.ident, bounds, ty.as_deref());
+                self.print_associated_type(item.ident, &item.generics, bounds, ty.as_deref());
             }
             ast::AssocItemKind::Macro(mac) => {
                 self.print_mac(mac);
