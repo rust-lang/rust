@@ -385,12 +385,14 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
                 }
                 Some(Equal) => {
                     self.is_empty = Some(true);
+                    self.start = plus_n.clone();
                     return Some(plus_n);
                 }
                 _ => {}
             }
         }
 
+        self.start = self.end.clone();
         self.is_empty = Some(true);
         None
     }
@@ -477,12 +479,14 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
                 }
                 Some(Equal) => {
                     self.is_empty = Some(true);
+                    self.end = minus_n.clone();
                     return Some(minus_n);
                 }
                 _ => {}
             }
         }
 
+        self.end = self.start.clone();
         self.is_empty = Some(true);
         None
     }

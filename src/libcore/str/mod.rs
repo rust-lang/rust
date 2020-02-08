@@ -12,7 +12,7 @@ use self::pattern::{DoubleEndedSearcher, ReverseSearcher, SearchStep, Searcher};
 use crate::char;
 use crate::fmt::{self, Write};
 use crate::iter::{Chain, FlatMap, Flatten};
-use crate::iter::{Cloned, Filter, FusedIterator, Map, TrustedLen, TrustedRandomAccess};
+use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen, TrustedRandomAccess};
 use crate::mem;
 use crate::ops::Try;
 use crate::option;
@@ -750,7 +750,7 @@ impl<'a> CharIndices<'a> {
 /// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
-pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
+pub struct Bytes<'a>(Copied<slice::Iter<'a, u8>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for Bytes<'_> {
@@ -2778,7 +2778,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn bytes(&self) -> Bytes<'_> {
-        Bytes(self.as_bytes().iter().cloned())
+        Bytes(self.as_bytes().iter().copied())
     }
 
     /// Splits a string slice by whitespace.
@@ -3895,7 +3895,7 @@ impl str {
             debug_assert_eq!(
                 start, 0,
                 "The first search step from Searcher \
-                must include the first character"
+                 must include the first character"
             );
             // SAFETY: `Searcher` is known to return valid indices.
             unsafe { Some(self.get_unchecked(len..)) }
@@ -3934,7 +3934,7 @@ impl str {
                 end,
                 self.len(),
                 "The first search step from ReverseSearcher \
-                must include the last character"
+                 must include the last character"
             );
             // SAFETY: `Searcher` is known to return valid indices.
             unsafe { Some(self.get_unchecked(..start)) }
