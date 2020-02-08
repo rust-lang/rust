@@ -10,7 +10,6 @@ CloneTypeFoldableAndLiftImpls! {
     FakeReadCause,
     RetagKind,
     SourceScope,
-    SourceScopeData,
     SourceScopeLocalData,
     UserTypeAnnotationIndex,
 }

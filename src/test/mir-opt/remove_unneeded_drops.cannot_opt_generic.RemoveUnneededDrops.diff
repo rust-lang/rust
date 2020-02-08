@@ -6,7 +6,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/remove_unneeded_drops.rs:20:32: 20:32
       let _2: ();                          // in scope 0 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
       let mut _3: T;                       // in scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
-      scope 1 {
+      scope 1 (inlined std::mem::drop::<T>) { // at $DIR/remove_unneeded_drops.rs:21:5: 21:12
           debug _x => _3;                  // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
       }
   
