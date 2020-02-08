@@ -301,6 +301,11 @@ declare_features! (
     /// Allows specialization of implementations (RFC 1210).
     (active, specialization, "1.7.0", Some(31844), None),
 
+    /// A minimal, sound subset of specialization intended to be used by the
+    /// standard library until the soundness issues with specialization
+    /// are fixed.
+    (active, min_specialization, "1.7.0", Some(31844), None),
+
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
 
