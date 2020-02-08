@@ -859,7 +859,6 @@ impl<'hir> Map<'hir> {
                 node: Node::Item(Item { kind: ItemKind::ForeignMod(ref nm), .. }), ..
             } = entry
             {
-                self.read(hir_id); // reveals some of the content of a node
                 return nm.abi;
             }
         }
@@ -868,7 +867,6 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
         match self.find(id) {
-            // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id)),
         }
@@ -918,7 +916,6 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
-            // read recorded by find
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id)),
         }
