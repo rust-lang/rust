@@ -12,7 +12,7 @@
 extern crate rustc_data_structures;
 
 pub mod def;
-pub mod def_id;
+pub use rustc_span::def_id;
 mod hir;
 pub mod hir_id;
 pub mod intravisit;
