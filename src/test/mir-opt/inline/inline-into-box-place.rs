@@ -48,7 +48,7 @@ fn main() {
 // scope 1 {
 //   debug _x => _1;
 // }
-// scope 2 {
+// scope 2 (inlined std::vec::Vec::<u32>::new) {
 // }
 // bb0: {
 //   StorageLive(_1);

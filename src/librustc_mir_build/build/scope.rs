@@ -684,6 +684,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.source_scopes.push(SourceScopeData {
             span,
             parent_scope: Some(parent),
+            inlined: None,
             local_data: ClearCrossCrate::Set(scope_local_data),
         })
     }

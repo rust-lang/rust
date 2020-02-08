@@ -253,7 +253,12 @@ fn new_body<'tcx>(
     Body::new(
         basic_blocks,
         IndexVec::from_elem_n(
-            SourceScopeData { span, parent_scope: None, local_data: ClearCrossCrate::Clear },
+            SourceScopeData {
+                span,
+                parent_scope: None,
+                inlined: None,
+                local_data: ClearCrossCrate::Clear,
+            },
             1,
         ),
         local_decls,

@@ -107,7 +107,7 @@ impl Inliner<'tcx> {
                 let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee.def_id());
 
                 let callee_body = if let Some(callee_node_id) = callee_node_id {
-                    // Avoid a cycle here by only using `optimized_mir` only if we have
+                    // Avoid a cycle here by only using `instance_mir` only if we have
                     // a lower node id than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
                     // So don't do it if that is enabled.
@@ -414,15 +414,11 @@ impl Inliner<'tcx> {
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.source_info.scope);
-                        // FIXME(eddyb) is this really needed?
-                        // (also note that it's always overwritten below)
-                        scope.span = callee_body.span;
-                    }
 
-                    // FIXME(eddyb) this doesn't seem right at all.
-                    // The inlined source scopes should probably be annotated as
-                    // such, but also contain all of the original information.
-                    scope.span = callsite.source_info.span;
+                        // Mark the outermost callee scope as an inlined one.
+                        assert_eq!(scope.inlined, None);
+                        scope.inlined = Some((callsite.callee, callsite.source_info.span));
+                    }
 
                     let idx = caller_body.source_scopes.push(scope);
                     scope_map.push(idx);

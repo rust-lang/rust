@@ -26,7 +26,7 @@ fn foo<T: Copy>(t: T, q: i32) -> (i32, T) {
 //     let mut _11: i32;
 //     scope 1 {
 //         debug x => _3;
-//         scope 2 {
+//         scope 2 (inlined foo::<T>::{{closure}}#0) {
 //             debug _q => _11;
 //             debug q => (*((*_6).0: &i32));
 //             debug t => (*((*_6).1: &T));

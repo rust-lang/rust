@@ -495,8 +495,23 @@ fn write_scope_tree(
     };
 
     for &child in children {
-        assert_eq!(body.source_scopes[child].parent_scope, Some(parent));
-        writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
+        let child_data = &body.source_scopes[child];
+        assert_eq!(child_data.parent_scope, Some(parent));
+
+        if let Some((callee, callsite_span)) = child_data.inlined {
+            let indented_header =
+                format!("{0:1$}scope {2} (inlined {3}) {{", "", indent, child.index(), callee);
+            writeln!(
+                w,
+                "{0:1$} // at {2}",
+                indented_header,
+                ALIGN,
+                tcx.sess.source_map().span_to_string(callsite_span),
+            )?;
+        } else {
+            writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
+        }
+
         write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }

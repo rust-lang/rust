@@ -111,7 +111,7 @@ pub struct Body<'tcx> {
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
-    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
@@ -178,7 +178,7 @@ pub struct Body<'tcx> {
 impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-        source_scopes: IndexVec<SourceScope, SourceScopeData>,
+        source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
@@ -1969,10 +1969,15 @@ rustc_index::newtype_index! {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct SourceScopeData {
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct SourceScopeData<'tcx> {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
+
+    /// Whether this scope is the root of a scope tree of another body,
+    /// inlined into this body by the MIR inliner.
+    /// `ty::Instance` is the callee, and the `Span` is the call site.
+    pub inlined: Option<(ty::Instance<'tcx>, Span)>,
 
     /// Crate-local information for this source scope, that can't (and
     /// needn't) be tracked across crates.
@@ -2683,7 +2688,6 @@ CloneTypeFoldableAndLiftImpls! {
     FakeReadCause,
     RetagKind,
     SourceScope,
-    SourceScopeData,
     SourceScopeLocalData,
     UserTypeAnnotationIndex,
 }

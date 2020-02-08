@@ -28,10 +28,10 @@ fn main() {
 //     scope 2 {
 //         debug err => _6;
 //         scope 3 {
-//             scope 7 {
+//             scope 7 (inlined <i32 as std::convert::From<i32>>::from) {
 //                 debug t => _6;
 //             }
-//             scope 8 {
+//             scope 8 (inlined <std::result::Result<u32, i32> as std::ops::Try>::from_error) {
 //                 debug v => _6;
 //                 let mut _12: i32;
 //             }
@@ -42,7 +42,7 @@ fn main() {
 //         scope 5 {
 //         }
 //     }
-//     scope 6 {
+//     scope 6 (inlined <std::result::Result<u32, i32> as std::ops::Try>::into_result) {
 //         debug self => _1;
 //     }
 //     bb0: {
@@ -87,10 +87,10 @@ fn main() {
 //     scope 2 {
 //         debug err => _6;
 //         scope 3 {
-//             scope 7 {
+//             scope 7 (inlined <i32 as std::convert::From<i32>>::from) {
 //                 debug t => _6;
 //             }
-//             scope 8 {
+//             scope 8 (inlined <std::result::Result<u32, i32> as std::ops::Try>::from_error) {
 //                 debug v => _6;
 //                 let mut _12: i32;
 //             }
@@ -101,7 +101,7 @@ fn main() {
 //         scope 5 {
 //         }
 //     }
-//     scope 6 {
+//     scope 6 (inlined <std::result::Result<u32, i32> as std::ops::Try>::into_result) {
 //         debug self => _1;
 //     }
 //     bb0: {
@@ -146,10 +146,10 @@ fn main() {
 //     scope 2 {
 //         debug err => _6;
 //         scope 3 {
-//             scope 7 {
+//             scope 7 (inlined <i32 as std::convert::From<i32>>::from) {
 //                 debug t => _6;
 //             }
-//             scope 8 {
+//             scope 8 (inlined <std::result::Result<u32, i32> as std::ops::Try>::from_error) {
 //                 debug v => _6;
 //                 let mut _12: i32;
 //             }
@@ -160,7 +160,7 @@ fn main() {
 //         scope 5 {
 //         }
 //     }
-//     scope 6 {
+//     scope 6 (inlined <std::result::Result<u32, i32> as std::ops::Try>::into_result) {
 //         debug self => _1;
 //     }
 //     bb0: {
@@ -192,10 +192,10 @@ fn main() {
 //     scope 2 {
 //         debug err => _3;
 //         scope 3 {
-//             scope 7 {
+//             scope 7 (inlined <i32 as std::convert::From<i32>>::from) {
 //                 debug t => _3;
 //             }
-//             scope 8 {
+//             scope 8 (inlined <std::result::Result<u32, i32> as std::ops::Try>::from_error) {
 //                 debug v => _3;
 //             }
 //         }
@@ -205,7 +205,7 @@ fn main() {
 //         scope 5 {
 //         }
 //     }
-//     scope 6 {
+//     scope 6 (inlined <std::result::Result<u32, i32> as std::ops::Try>::into_result) {
 //         debug self => _1;
 //     }
 //     bb0: {
