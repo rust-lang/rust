@@ -1,10 +1,8 @@
 // Namespace Handling.
 
 use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
-use super::utils::{debug_context, DIB};
-use rustc::ty::{self, Instance};
 
-use crate::common::CodegenCx;
+use crate::debuginfo::CrateDebugContext;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use rustc::hir::map::DefPathData;
@@ -12,26 +10,21 @@ use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 
-pub fn mangled_name_of_instance<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
-    instance: Instance<'tcx>,
-) -> ty::SymbolName {
-    let tcx = cx.tcx;
-    tcx.symbol_name(instance)
-}
-
-pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    if let Some(&scope) = debug_context(cx).namespace_map.borrow().get(&def_id) {
+pub fn item_namespace(
+    dbg_cx: &CrateDebugContext<'ll, '_>,
+    def_id: DefId,
+) -> &'ll DIScope {
+    if let Some(&scope) = dbg_cx.namespace_map.borrow().get(&def_id) {
         return scope;
     }
 
-    let def_key = cx.tcx.def_key(def_id);
-    let parent_scope = def_key
-        .parent
-        .map(|parent| item_namespace(cx, DefId { krate: def_id.krate, index: parent }));
+    let def_key = dbg_cx.tcx.def_key(def_id);
+    let parent_scope = def_key.parent.map(|parent| {
+        item_namespace(dbg_cx, DefId { krate: def_id.krate, index: parent })
+    });
 
     let namespace_name = match def_key.disambiguated_data.data {
-        DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate),
+        DefPathData::CrateRoot => dbg_cx.tcx.crate_name(def_id.krate),
         data => data.as_symbol(),
     };
 
@@ -39,14 +32,14 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(
-            DIB(cx),
+            dbg_cx.builder,
             parent_scope,
             namespace_name.as_ptr(),
-            unknown_file_metadata(cx),
+            unknown_file_metadata(dbg_cx),
             UNKNOWN_LINE_NUMBER,
         )
     };
 
-    debug_context(cx).namespace_map.borrow_mut().insert(def_id, scope);
+    dbg_cx.namespace_map.borrow_mut().insert(def_id, scope);
     scope
 }

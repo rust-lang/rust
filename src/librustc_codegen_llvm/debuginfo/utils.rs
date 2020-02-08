@@ -3,17 +3,16 @@
 use super::namespace::item_namespace;
 use super::CrateDebugContext;
 
-use rustc::ty::DefIdTree;
+use rustc::ty::{DefIdTree, TyCtxt};
 use rustc_hir::def_id::DefId;
 
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};
-use rustc_codegen_ssa::traits::*;
 
 use rustc_span::Span;
 
-pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
+pub fn is_node_local_to_unit(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e., if it is *static* in the C-sense). The
     // *reachable* set should provide a good approximation of this, as it
@@ -22,7 +21,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the codegen pass.
-    !cx.tcx.is_reachable_non_generic(def_id)
+    !tcx.is_reachable_non_generic(def_id)
 }
 
 #[allow(non_snake_case)]
@@ -33,8 +32,8 @@ pub fn create_DIArray(builder: &DIBuilder<'ll>, arr: &[Option<&'ll DIDescriptor>
 }
 
 /// Returns rustc_span::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CodegenCx<'_, '_>, span: Span) -> rustc_span::Loc {
-    cx.sess().source_map().lookup_char_pos(span.lo())
+pub fn span_start(tcx: TyCtxt<'_>, span: Span) -> rustc_span::Loc {
+    tcx.sess.source_map().lookup_char_pos(span.lo())
 }
 
 #[inline]
@@ -48,6 +47,6 @@ pub fn DIB(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
+pub fn get_namespace_for_item(dbg_cx: &CrateDebugContext<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+    item_namespace(dbg_cx, dbg_cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
 }

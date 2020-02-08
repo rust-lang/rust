@@ -2,7 +2,6 @@ use self::EnumDiscriminantInfo::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 
-use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::utils::{
     create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, span_start, DIB,
@@ -251,7 +250,7 @@ enum RecursiveTypeDescription<'ll, 'tcx> {
 }
 
 fn create_and_register_recursive_type_forward_declaration(
-    cx: &CodegenCx<'ll, 'tcx>,
+    dbg_cx: &CrateDebugContext<'ll, 'tcx>,
     unfinished_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId,
     metadata_stub: &'ll DICompositeType,
@@ -259,7 +258,7 @@ fn create_and_register_recursive_type_forward_declaration(
     member_description_factory: MemberDescriptionFactory<'ll, 'tcx>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     // Insert the stub into the `TypeMap` in order to allow for recursive references.
-    let mut type_map = debug_context(cx).type_map.borrow_mut();
+    let mut type_map = dbg_cx.type_map.borrow_mut();
     type_map.register_unique_id_with_metadata(unique_type_id, metadata_stub);
     type_map.register_type_with_metadata(unfinished_type, metadata_stub);
 
@@ -407,7 +406,7 @@ fn vec_slice_metadata(
         },
     ];
 
-    let file_metadata = unknown_file_metadata(cx);
+    let file_metadata = unknown_file_metadata(debug_context(cx));
 
     let metadata = composite_type_metadata(
         cx,
@@ -450,7 +449,7 @@ fn subroutine_type_metadata(
         unsafe {
             llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
-                unknown_file_metadata(cx),
+                unknown_file_metadata(debug_context(cx)),
                 create_DIArray(DIB(cx), &signature_metadata[..]),
             )
         },
@@ -476,7 +475,7 @@ fn trait_pointer_metadata(
 
     let containing_scope = match trait_type.kind {
         ty::Dynamic(ref data, ..) => {
-            data.principal_def_id().map(|did| get_namespace_for_item(cx, did))
+            data.principal_def_id().map(|did| get_namespace_for_item(debug_context(cx), did))
         }
         _ => {
             bug!(
@@ -490,7 +489,7 @@ fn trait_pointer_metadata(
     let trait_object_type = trait_object_type.unwrap_or(trait_type);
     let trait_type_name = compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
 
-    let file_metadata = unknown_file_metadata(cx);
+    let file_metadata = unknown_file_metadata(debug_context(cx));
 
     let layout = cx.layout_of(cx.tcx.mk_mut_ptr(trait_type));
 
@@ -663,7 +662,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         }
         ty::Closure(def_id, substs) => {
             let upvar_tys: Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
-            let containing_scope = get_namespace_for_item(cx, def_id);
+            let containing_scope = get_namespace_for_item(debug_context(cx), def_id);
             prepare_tuple_metadata(
                 cx,
                 t,
@@ -751,7 +750,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
 }
 
 pub fn file_metadata(
-    cx: &CodegenCx<'ll, '_>,
+    dbg_cx: &CrateDebugContext<'ll, '_>,
     file_name: &FileName,
     defining_crate: CrateNum,
 ) -> &'ll DIFile {
@@ -759,27 +758,27 @@ pub fn file_metadata(
 
     let file_name = Some(file_name.to_string());
     let directory = if defining_crate == LOCAL_CRATE {
-        Some(cx.sess().working_dir.0.to_string_lossy().to_string())
+        Some(dbg_cx.tcx.sess.working_dir.0.to_string_lossy().to_string())
     } else {
         // If the path comes from an upstream crate we assume it has been made
         // independent of the compiler's working directory one way or another.
         None
     };
-    file_metadata_raw(cx, file_name, directory)
+    file_metadata_raw(dbg_cx, file_name, directory)
 }
 
-pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, None, None)
+pub fn unknown_file_metadata(dbg_cx: &CrateDebugContext<'ll, '_>) -> &'ll DIFile {
+    file_metadata_raw(dbg_cx, None, None)
 }
 
 fn file_metadata_raw(
-    cx: &CodegenCx<'ll, '_>,
+    dbg_cx: &CrateDebugContext<'ll, '_>,
     file_name: Option<String>,
     directory: Option<String>,
 ) -> &'ll DIFile {
     let key = (file_name, directory);
 
-    match debug_context(cx).created_files.borrow_mut().entry(key) {
+    match dbg_cx.created_files.borrow_mut().entry(key) {
         Entry::Occupied(o) => return o.get(),
         Entry::Vacant(v) => {
             let (file_name, directory) = v.key();
@@ -794,7 +793,7 @@ fn file_metadata_raw(
                 SmallCStr::new(if let Some(directory) = directory { &directory } else { "" });
 
             let file_metadata = unsafe {
-                llvm::LLVMRustDIBuilderCreateFile(DIB(cx), file_name.as_ptr(), directory.as_ptr())
+                llvm::LLVMRustDIBuilderCreateFile(dbg_cx.builder, file_name.as_ptr(), directory.as_ptr())
             };
 
             v.insert(file_metadata);
@@ -1026,7 +1025,7 @@ impl<'ll> MemberDescription<'ll> {
                 DIB(cx),
                 composite_type_metadata,
                 member_name.as_ptr(),
-                unknown_file_metadata(cx),
+                unknown_file_metadata(debug_context(cx)),
                 UNKNOWN_LINE_NUMBER,
                 self.size.bits(),
                 self.align.bits() as u32,
@@ -1118,13 +1117,13 @@ fn prepare_struct_metadata(
         _ => bug!("prepare_struct_metadata on a non-ADT"),
     };
 
-    let containing_scope = get_namespace_for_item(cx, struct_def_id);
+    let containing_scope = get_namespace_for_item(debug_context(cx), struct_def_id);
 
     let struct_metadata_stub =
         create_struct_stub(cx, struct_type, &struct_name, unique_type_id, Some(containing_scope));
 
     create_and_register_recursive_type_forward_declaration(
-        cx,
+        debug_context(cx),
         struct_type,
         unique_type_id,
         struct_metadata_stub,
@@ -1180,7 +1179,7 @@ fn prepare_tuple_metadata(
         create_struct_stub(cx, tuple_type, &tuple_name[..], unique_type_id, containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
-        cx,
+        debug_context(cx),
         tuple_type,
         unique_type_id,
         struct_stub,
@@ -1238,13 +1237,13 @@ fn prepare_union_metadata(
         _ => bug!("prepare_union_metadata on a non-ADT"),
     };
 
-    let containing_scope = get_namespace_for_item(cx, union_def_id);
+    let containing_scope = get_namespace_for_item(debug_context(cx), union_def_id);
 
     let union_metadata_stub =
         create_union_stub(cx, union_type, &union_name, unique_type_id, containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
-        cx,
+        debug_context(cx),
         union_type,
         unique_type_id,
         union_metadata_stub,
@@ -1763,14 +1762,14 @@ fn prepare_enum_metadata(
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let enum_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
-    let containing_scope = get_namespace_for_item(cx, enum_def_id);
+    let containing_scope = get_namespace_for_item(debug_context(cx), enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
     // currently can't get the necessary information when it comes to types
     // imported from other crates. Formerly we violated the ODR when performing
     // LTO because we emitted debuginfo for the same type with varying file
     // metadata, so as a workaround we pretend that the type comes from
     // <unknown>
-    let file_metadata = unknown_file_metadata(cx);
+    let file_metadata = unknown_file_metadata(debug_context(cx));
 
     let discriminant_type_metadata = |discr: layout::Primitive| {
         let enumerators_metadata: Vec<_> = match enum_type.kind {
@@ -1898,7 +1897,7 @@ fn prepare_enum_metadata(
         };
 
         return create_and_register_recursive_type_forward_declaration(
-            cx,
+            debug_context(cx),
             enum_type,
             unique_type_id,
             enum_metadata,
@@ -2045,7 +2044,7 @@ fn prepare_enum_metadata(
     };
 
     return create_and_register_recursive_type_forward_declaration(
-        cx,
+        debug_context(cx),
         enum_type,
         unique_type_id,
         struct_wrapper,
@@ -2153,7 +2152,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                                 None,
                                 name.as_ptr(),
                                 actual_type_metadata,
-                                unknown_file_metadata(cx),
+                                unknown_file_metadata(debug_context(cx)),
                                 0,
                                 0,
                             ))
@@ -2204,7 +2203,7 @@ fn create_struct_stub(
             DIB(cx),
             containing_scope,
             name.as_ptr(),
-            unknown_file_metadata(cx),
+            unknown_file_metadata(debug_context(cx)),
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
             struct_align.bits() as u32,
@@ -2243,7 +2242,7 @@ fn create_union_stub(
             DIB(cx),
             containing_scope,
             name.as_ptr(),
-            unknown_file_metadata(cx),
+            unknown_file_metadata(debug_context(cx)),
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
             union_align.bits() as u32,
@@ -2275,24 +2274,24 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let no_mangle = attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
-    let var_scope = get_namespace_for_item(cx, def_id);
+    let var_scope = get_namespace_for_item(debug_context(cx), def_id);
     let span = tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if !span.is_dummy() {
-        let loc = span_start(cx, span);
-        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
+        let loc = span_start(tcx, span);
+        (file_metadata(debug_context(cx), &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
     } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+        (unknown_file_metadata(debug_context(cx)), UNKNOWN_LINE_NUMBER)
     };
 
-    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    let is_local_to_unit = is_node_local_to_unit(tcx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).monomorphic_ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = SmallCStr::new(&tcx.item_name(def_id).as_str());
     let linkage_name = if no_mangle {
         None
     } else {
-        let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
+        let linkage_name = cx.tcx.symbol_name(Instance::mono(tcx, def_id));
         Some(SmallCStr::new(&linkage_name.name.as_str()))
     };
 
@@ -2343,7 +2342,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             DIB(cx),
             NO_SCOPE_METADATA,
             name.as_ptr(),
-            unknown_file_metadata(cx),
+            unknown_file_metadata(debug_context(cx)),
             UNKNOWN_LINE_NUMBER,
             Size::ZERO.bits(),
             cx.tcx.data_layout.pointer_align.abi.bits() as u32,
@@ -2360,7 +2359,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             NO_SCOPE_METADATA,
             name.as_ptr(),
             ptr::null(),
-            unknown_file_metadata(cx),
+            unknown_file_metadata(debug_context(cx)),
             UNKNOWN_LINE_NUMBER,
             vtable_type,
             true,
@@ -2373,11 +2372,11 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
 
 /// Creates an "extension" of an existing `DIScope` into another file.
 pub fn extend_scope_to_file(
-    cx: &CodegenCx<'ll, '_>,
+    dbg_cx: &CrateDebugContext<'ll, '_>,
     scope_metadata: &'ll DIScope,
     file: &rustc_span::SourceFile,
     defining_crate: CrateNum,
 ) -> &'ll DILexicalBlock {
-    let file_metadata = file_metadata(cx, &file.name, defining_crate);
-    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
+    let file_metadata = file_metadata(dbg_cx, &file.name, defining_crate);
+    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(dbg_cx.builder, scope_metadata, file_metadata) }
 }

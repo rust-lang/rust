@@ -1,8 +1,8 @@
+use super::CrateDebugContext;
 use super::metadata::file_metadata;
-use super::utils::{span_start, DIB};
+use super::utils::span_start;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 
-use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
 use rustc::mir::{Body, SourceScope};
@@ -16,7 +16,7 @@ use rustc_index::vec::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 pub fn compute_mir_scopes(
-    cx: &CodegenCx<'ll, '_>,
+    dbg_cx: &CrateDebugContext<'ll, '_>,
     mir: &Body<'_>,
     fn_metadata: &'ll DISubprogram,
     debug_context: &mut FunctionDebugContext<&'ll DIScope>,
@@ -32,12 +32,12 @@ pub fn compute_mir_scopes(
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, &mir, fn_metadata, &has_variables, debug_context, scope);
+        make_mir_scope(dbg_cx, &mir, fn_metadata, &has_variables, debug_context, scope);
     }
 }
 
 fn make_mir_scope(
-    cx: &CodegenCx<'ll, '_>,
+    dbg_cx: &CrateDebugContext<'ll, '_>,
     mir: &Body<'_>,
     fn_metadata: &'ll DISubprogram,
     has_variables: &BitSet<SourceScope>,
@@ -50,11 +50,11 @@ fn make_mir_scope(
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, mir, fn_metadata, has_variables, debug_context, parent);
+        make_mir_scope(dbg_cx, mir, fn_metadata, has_variables, debug_context, parent);
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
-        let loc = span_start(cx, mir.span);
+        let loc = span_start(dbg_cx.tcx, mir.span);
         debug_context.scopes[scope] = DebugScope {
             scope_metadata: Some(fn_metadata),
             file_start_pos: loc.file.start_pos,
@@ -71,12 +71,12 @@ fn make_mir_scope(
         return;
     }
 
-    let loc = span_start(cx, scope_data.span);
-    let file_metadata = file_metadata(cx, &loc.file.name, debug_context.defining_crate);
+    let loc = span_start(dbg_cx.tcx, scope_data.span);
+    let file_metadata = file_metadata(dbg_cx, &loc.file.name, debug_context.defining_crate);
 
     let scope_metadata = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(
-            DIB(cx),
+            dbg_cx.builder,
             parent_scope.scope_metadata.unwrap(),
             file_metadata,
             loc.line as c_uint,

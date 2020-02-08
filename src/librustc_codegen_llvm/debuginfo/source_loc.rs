@@ -24,7 +24,7 @@ pub fn set_source_location<D>(
 ) {
     let dbg_loc = if debug_context.source_locations_enabled {
         debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
-        let loc = span_start(bx.cx(), span);
+        let loc = span_start(bx.cx().tcx, span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation

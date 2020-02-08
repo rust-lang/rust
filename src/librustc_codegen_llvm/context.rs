@@ -298,7 +298,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CrateDebugContext::new(llmod);
+            let dctx = debuginfo::CrateDebugContext::new(tcx, llmod);
             debuginfo::metadata::compile_unit_metadata(tcx, &codegen_unit.name().as_str(), &dctx);
             Some(dctx)
         } else {

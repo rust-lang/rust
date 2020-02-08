@@ -4,10 +4,9 @@ mod doc;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::metadata::{file_metadata, type_metadata, TypeMap};
-use self::namespace::mangled_name_of_instance;
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 use self::type_names::compute_debuginfo_type_name;
-use self::utils::{create_DIArray, is_node_local_to_unit, span_start, DIB};
+use self::utils::{create_DIArray, is_node_local_to_unit, span_start, DIB, debug_context};
 
 use crate::llvm;
 use crate::llvm::debuginfo::{
@@ -23,7 +22,7 @@ use crate::common::CodegenCx;
 use crate::value::Value;
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty};
+use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -61,6 +60,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CrateDebugContext<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     llcontext: &'a llvm::Context,
     llmod: &'a llvm::Module,
     builder: &'a mut DIBuilder<'a>,
@@ -84,12 +84,13 @@ impl Drop for CrateDebugContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
-    pub fn new(llmod: &'a llvm::Module) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, llmod: &'a llvm::Module) -> Self {
         debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         CrateDebugContext {
+            tcx,
             llcontext,
             llmod,
             builder,
@@ -159,7 +160,7 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         assert!(!dbg_context.source_locations_enabled);
         let cx = self.cx();
 
-        let loc = span_start(cx, span);
+        let loc = span_start(cx.tcx, span);
 
         // Convert the direct and indirect offsets to address ops.
         let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
@@ -266,8 +267,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
-        let loc = span_start(self, span);
-        let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
+        let loc = span_start(self.tcx, span);
+        let file_metadata = file_metadata(debug_context(self), &loc.file.name, def_id.krate);
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
@@ -288,7 +289,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             get_template_parameters(self, &generics, substs, file_metadata, &mut name);
 
         // Get the linkage_name, which is just the symbol name
-        let linkage_name = mangled_name_of_instance(self, instance);
+        let linkage_name = self.tcx().symbol_name(instance);
 
         // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
         let scope_line = loc.line;
@@ -303,7 +304,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         let mut spflags = DISPFlags::SPFlagDefinition;
-        if is_node_local_to_unit(self, def_id) {
+        if is_node_local_to_unit(self.tcx, def_id) {
             spflags |= DISPFlags::SPFlagLocalToUnit;
         }
         if self.sess().opts.optimize != config::OptLevel::No {
@@ -347,7 +348,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
 
         // Fill in all the scopes, with the information from the MIR body.
-        compute_mir_scopes(self, mir, fn_metadata, &mut fn_debug_context);
+        compute_mir_scopes(debug_context(self), mir, fn_metadata, &mut fn_debug_context);
 
         return Some(fn_debug_context);
 
@@ -506,7 +507,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
             self_type.unwrap_or_else(|| {
                 namespace::item_namespace(
-                    cx,
+                    debug_context(cx),
                     DefId {
                         krate: instance.def_id().krate,
                         index: cx
@@ -530,7 +531,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         file: &rustc_span::SourceFile,
         defining_crate: CrateNum,
     ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)
+        metadata::extend_scope_to_file(debug_context(self), scope_metadata, file, defining_crate)
     }
 
     fn debuginfo_finalize(&self) {
@@ -548,8 +549,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
-        let loc = span_start(self, span);
-        let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
+        let loc = span_start(self.tcx, span);
+        let file_metadata = file_metadata(debug_context(self), &loc.file.name, dbg_context.defining_crate);
 
         let type_metadata = type_metadata(self, variable_type, span);
 
