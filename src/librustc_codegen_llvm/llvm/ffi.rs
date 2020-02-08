@@ -910,8 +910,6 @@ extern "C" {
 
     // Metadata
     pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: Option<&'a Value>);
-    pub fn LLVMGetCurrentDebugLocation(Builder: &Builder<'a>) -> &'a Value;
-    pub fn LLVMSetInstDebugLocation(Builder: &Builder<'a>, Inst: &'a Value);
 
     // Terminators
     pub fn LLVMBuildRetVoid(B: &Builder<'a>) -> &'a Value;

@@ -5,7 +5,6 @@ use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::metadata::{file_metadata, type_metadata, TypeMap};
 use self::namespace::mangled_name_of_instance;
-use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 use self::type_names::compute_debuginfo_type_name;
 use self::utils::{create_DIArray, is_node_local_to_unit, span_start, DIB};
 
@@ -38,7 +37,7 @@ use std::ffi::CString;
 use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_codegen_ssa::traits::*;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Pos, Span};
+use rustc_span::{self, BytePos, Span};
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -148,7 +147,6 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
         &mut self,
-        dbg_context: &FunctionDebugContext<&'ll DIScope>,
         dbg_var: &'ll DIVariable,
         scope_metadata: &'ll DIScope,
         variable_alloca: Self::Value,
@@ -156,12 +154,11 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         indirect_offsets: &[Size],
         span: Span,
     ) {
-        assert!(!dbg_context.source_locations_enabled);
         let cx = self.cx();
 
-        let loc = span_start(cx, span);
-
         // Convert the direct and indirect offsets to address ops.
+        // FIXME(eddyb) use `const`s instead of getting the values via FFI,
+        // the values should match the ones in the DWARF standard anyway.
         let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
         let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
         let mut addr_ops = SmallVec::<[_; 8]>::new();
@@ -178,28 +175,22 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
             }
         }
 
-        // FIXME(eddyb) maybe this information could be extracted from `var`,
+        // FIXME(eddyb) maybe this information could be extracted from `dbg_var`,
         // to avoid having to pass it down in both places?
-        source_loc::set_debug_location(
-            self,
-            InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()),
-        );
+        // NB: `var` doesn't seem to know about the column, so that's a limitation.
+        let dbg_loc = cx.create_debug_loc(scope_metadata, span);
         unsafe {
-            let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
             // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
-            let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+            llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
                 DIB(cx),
                 variable_alloca,
                 dbg_var,
                 addr_ops.as_ptr(),
                 addr_ops.len() as c_uint,
-                debug_loc,
+                dbg_loc,
                 self.llbb(),
             );
-
-            llvm::LLVMSetInstDebugLocation(self.llbuilder, instr);
         }
-        source_loc::set_debug_location(self, UnknownLocation);
     }
 
     fn set_source_location(
