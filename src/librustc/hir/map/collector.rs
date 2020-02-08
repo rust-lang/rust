@@ -156,14 +156,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             )
         };
 
-        {
-            dep_graph.input_task(
-                DepNode::new_no_params(DepKind::AllLocalTraitImpls),
-                &mut hcx,
-                &krate.trait_impls,
-            );
-        }
-
         let mut collector = NodeCollector {
             arena,
             krate,

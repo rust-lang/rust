@@ -35,7 +35,7 @@
 //! "infer" some properties for each kind of `DepNode`:
 //!
 //! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s, like `AllLocalTraitImpls`, represent global concepts with only one value.
+//!   `DepNode`s could represent global concepts with only one value.
 //! * Whether it is possible, in principle, to reconstruct a query key from a
 //!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
 //!   in which case it is possible to map the node's fingerprint back to the
@@ -350,8 +350,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     // Represents metadata from an extern crate.
     [eval_always] CrateMetadata(CrateNum),
-
-    [eval_always] AllLocalTraitImpls,
 
     [anon] TraitSelect,
 

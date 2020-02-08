@@ -179,7 +179,6 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
-        DepKind::AllLocalTraitImpls |
         DepKind::CrateMetadata |
         DepKind::HirBody |
         DepKind::Hir |
