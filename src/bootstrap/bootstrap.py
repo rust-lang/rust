@@ -351,7 +351,7 @@ class RustBuild(object):
             try:
                 with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                     temp_path = temp_file.name
-                with tarfile.open(temp_path, "w:xz") as tar:
+                with tarfile.open(temp_path, "w:xz"):
                     pass
                 return True
             except tarfile.CompressionError:
