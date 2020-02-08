@@ -5,8 +5,7 @@ install lsp server, clone the repository and then run `cargo xtask install
 ./crates/ra_lsp_server`). This will produce a binary named `ra_lsp_server` which
 you should be able to use it with any LSP-compatible editor. We use custom
 extensions to LSP, so special client-side support is required to take full
-advantage of rust-analyzer. This repository contains support code for VS Code
-and Emacs.
+advantage of rust-analyzer. This repository contains support code for VS Code.
 
 ```
 $ git clone git@github.com:rust-analyzer/rust-analyzer && cd rust-analyzer
@@ -130,17 +129,12 @@ host.
 
 ## Emacs
 
-Prerequisites:
+* install recent version of `emacs-lsp` package by following the instructions [here][emacs-lsp]
+* set `lsp-rust-server` to `'rust-analyzer`
+* run `lsp` in a Rust buffer
+* (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys
 
-`emacs-lsp`, `dash` and `ht` packages.
-
-Installation:
-
-* add
-[rust-analyzer.el](../../editors/emacs/rust-analyzer.el)
-to load path and require it in `init.el`
-* run `lsp` in a rust buffer
-* (Optionally) bind commands like `rust-analyzer-join-lines`, `rust-analyzer-extend-selection` and `rust-analyzer-expand-macro` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints
+[emacs-lsp]: https://github.com/emacs-lsp/lsp-mode
 
 
 ## Vim and NeoVim (coc-rust-analyzer)

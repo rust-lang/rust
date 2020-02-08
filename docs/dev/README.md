@@ -43,7 +43,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
 
 We use GitHub Actions for CI. Most of the things, including formatting, are checked by
 `cargo test` so, if `cargo test` passes locally, that's a good sign that CI will
-be green as well. The only exception is that long-running by default a skipped locally.
+be green as well. The only exception is that some long-running tests are skipped locally by default.
 Use `env RUN_SLOW_TESTS=1 cargo test` to run the full suite.
 
 We use bors-ng to enforce the [not rocket science](https://graydon2.dreamwidth.org/1597.html) rule.
@@ -54,9 +54,9 @@ You can run `cargo xtask install-pre-commit-hook` to install git-hook to run rus
 
 All Rust code lives in the `crates` top-level directory, and is organized as a
 single Cargo workspace. The `editors` top-level directory contains code for
-integrating with editors. Currently, it contains plugins for VS Code (in
-typescript) and Emacs (in elisp). The `docs` top-level directory contains both
-developer and user documentation.
+integrating with editors. Currently, it contains the plugin for VS Code (in
+typescript). The `docs` top-level directory contains both developer and user
+documentation.
 
 We have some automation infra in Rust in the `xtask` package. It contains
 stuff like formatting checking, code generation and powers `cargo xtask install`.
@@ -107,8 +107,8 @@ If I need to fix something simultaneously in the server and in the client, I
 feel even more sad. I don't have a specific workflow for this case.
 
 Additionally, I use `cargo run --release -p ra_cli -- analysis-stats
-path/to/some/rust/crate` to run a batch analysis. This is primaraly useful for
-performance optimiations, or for bug minimization.
+path/to/some/rust/crate` to run a batch analysis. This is primarily useful for
+performance optimizations, or for bug minimization.
 
 # Logging
 
