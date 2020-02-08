@@ -230,13 +230,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.br(fx.blocks[mir::START_BLOCK]);
     }
 
-    // Up until here, IR instructions for this function have explicitly not been annotated with
-    // source code location, so we don't step into call setup code. From here on, source location
-    // emitting should be enabled.
-    if let Some(debug_context) = &mut fx.debug_context {
-        debug_context.source_locations_enabled = true;
-    }
-
     let rpo = traversal::reverse_postorder(&mir_body);
     let mut visited = BitSet::new_empty(mir_body.basic_blocks().len());
 
