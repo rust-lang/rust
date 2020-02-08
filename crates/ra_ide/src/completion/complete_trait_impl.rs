@@ -97,7 +97,8 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     for item in missing_items {
         match item {
             hir::AssocItem::Function(f) => add_function_impl(acc, ctx, f),
-            _ => {}
+            hir::AssocItem::TypeAlias(t) => add_type_alias_impl(acc, ctx, t),
+            _ => {},
         }
     }
 }
@@ -121,7 +122,7 @@ fn resolve_target_trait(
     }
 }
 
-pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function) {
+fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function) {
     use crate::display::FunctionSignature;
 
     let display = FunctionSignature::from_hir(ctx.db, func.clone());
@@ -135,7 +136,8 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
     };
 
     let builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label.clone())
-        .lookup_by(label);
+        .lookup_by(label)
+        .set_documentation(func.docs(ctx.db));
 
     let completion_kind = if func.has_self_param(ctx.db) {
         CompletionItemKind::Method
@@ -152,6 +154,16 @@ pub(crate) fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, 
     builder
         .insert_text(snippet)
         .kind(completion_kind)
+        .add_to(acc);
+}
+
+fn add_type_alias_impl(acc: &mut Completions, ctx: &CompletionContext, type_alias: &hir::TypeAlias) {
+    let snippet = format!("type {} = ", type_alias.name(ctx.db).to_string());
+
+    CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
+        .insert_text(snippet)
+        .kind(CompletionItemKind::TypeAlias)
+        .set_documentation(type_alias.docs(ctx.db))
         .add_to(acc);
 }
 
