@@ -208,33 +208,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
-            "posix_memalign" => {
-                let ret = this.deref_operand(args[0])?;
-                let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let size = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                if align < this.pointer_size().bytes() {
-                    throw_ub_format!(
-                        "posix_memalign: alignment must be at least the size of a pointer, but is {}",
-                        align,
-                    );
-                }
-
-                if size == 0 {
-                    this.write_null(ret.into())?;
-                } else {
-                    let ptr = this.memory.allocate(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::C.into(),
-                    );
-                    this.write_scalar(ptr, ret.into())?;
-                }
-                this.write_null(dest)?;
-            }
             "free" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 this.free(ptr, MiriMemoryKind::C)?;
@@ -319,53 +292,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(new_ptr, dest)?;
             }
 
-            "syscall" => {
-                let sys_getrandom = this
-                    .eval_path_scalar(&["libc", "SYS_getrandom"])?
-                    .expect("Failed to get libc::SYS_getrandom")
-                    .to_machine_usize(this)?;
-
-                let sys_statx = this
-                    .eval_path_scalar(&["libc", "SYS_statx"])?
-                    .expect("Failed to get libc::SYS_statx")
-                    .to_machine_usize(this)?;
-
-                match this.read_scalar(args[0])?.to_machine_usize(this)? {
-                    // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                    // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
-                    id if id == sys_getrandom => {
-                        // The first argument is the syscall id,
-                        // so skip over it.
-                        linux_getrandom(this, &args[1..], dest)?;
-                    }
-                    id if id == sys_statx => {
-                        // The first argument is the syscall id,
-                        // so skip over it.
-                        let result = this.statx(args[1], args[2], args[3], args[4], args[5])?;
-                        this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
-                    }
-                    id => throw_unsup_format!("miri does not support syscall ID {}", id),
-                }
-            }
-
-            "getrandom" => {
-                linux_getrandom(this, args, dest)?;
-            }
-
-            "dlsym" => {
-                let _handle = this.read_scalar(args[0])?;
-                let symbol = this.read_scalar(args[1])?.not_undef()?;
-                let symbol_name = this.memory.read_c_str(symbol)?;
-                let err = format!("bad c unicode symbol: {:?}", symbol_name);
-                let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
-                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
-                    this.write_scalar(Scalar::from(ptr), dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
-            }
-
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
                 let right = this.read_scalar(args[1])?.not_undef()?;
@@ -384,24 +310,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
 
                 this.write_scalar(Scalar::from_int(result, Size::from_bits(32)), dest)?;
-            }
-
-            "memrchr" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_i32()? as u8;
-                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                if let Some(idx) = this
-                    .memory
-                    .read_bytes(ptr, Size::from_bytes(num))?
-                    .iter()
-                    .rev()
-                    .position(|&c| c == val)
-                {
-                    let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), this)?;
-                    this.write_scalar(new_ptr, dest)?;
-                } else {
-                    this.write_null(dest)?;
-                }
             }
 
             "memchr" => {
@@ -727,22 +635,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
-}
-
-// Shims the linux 'getrandom()' syscall.
-fn linux_getrandom<'tcx>(
-    this: &mut MiriEvalContext<'_, 'tcx>,
-    args: &[OpTy<'tcx, Tag>],
-    dest: PlaceTy<'tcx, Tag>,
-) -> InterpResult<'tcx> {
-    let ptr = this.read_scalar(args[0])?.not_undef()?;
-    let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
-
-    // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-    // neither of which have any effect on our current PRNG.
-    let _flags = this.read_scalar(args[2])?.to_i32()?;
-
-    this.gen_random(ptr, len as usize)?;
-    this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
-    Ok(())
 }

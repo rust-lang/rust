@@ -57,23 +57,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_attr_get_np" => {
                 this.write_null(dest)?;
             }
+
             "pthread_get_stackaddr_np" => {
                 let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
                 this.write_scalar(stack_addr, dest)?;
             }
+
             "pthread_get_stacksize_np" => {
                 let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
                 this.write_scalar(stack_size, dest)?;
             }
+
             "_tlv_atexit" => {
                 // FIXME: register the destructor.
             }
+
             "_NSGetArgc" => {
                 this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
             }
+
             "_NSGetArgv" => {
                 this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
+
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
@@ -81,6 +87,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            "syscall" => {
+                let sys_getrandom = this
+                    .eval_path_scalar(&["libc", "SYS_getrandom"])?
+                    .expect("Failed to get libc::SYS_getrandom")
+                    .to_machine_usize(this)?;
+
+                match this.read_scalar(args[0])?.to_machine_usize(this)? {
+                    // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
+                    // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
+                    id if id == sys_getrandom => {
+                        // The first argument is the syscall id,
+                        // so skip over it.
+                        super::getrandom(this, &args[1..], dest)?;
+                    }
+                    id => throw_unsup_format!("miri does not support syscall ID {}", id),
+                }
+            }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         };
