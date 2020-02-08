@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -606,6 +606,263 @@ fn test_range_mut() {
             assert_eq!(kvs.next(), None);
             assert_eq!(pairs.next(), None);
         }
+    }
+}
+
+mod test_drain_filter {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let mut map: BTreeMap<i32, i32> = BTreeMap::new();
+        map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn consuming_nothing() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(map.drain_filter(|_, _| false).eq(std::iter::empty()));
+    }
+
+    #[test]
+    fn consuming_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.clone().collect();
+        assert!(map.drain_filter(|_, _| true).eq(pairs));
+    }
+
+    #[test]
+    fn mutating_and_keeping() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(
+            map.drain_filter(|_, v| {
+                *v += 6;
+                false
+            })
+            .eq(std::iter::empty())
+        );
+        assert!(map.keys().copied().eq(0..3));
+        assert!(map.values().copied().eq(6..9));
+    }
+
+    #[test]
+    fn mutating_and_removing() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(
+            map.drain_filter(|_, v| {
+                *v += 6;
+                true
+            })
+            .eq((0..3).map(|i| (i, i + 6)))
+        );
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn underfull_keeping_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| false);
+        assert!(map.keys().copied().eq(0..3));
+    }
+
+    #[test]
+    fn underfull_removing_one() {
+        let pairs = (0..3).map(|i| (i, i));
+        for doomed in 0..3 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), 2);
+        }
+    }
+
+    #[test]
+    fn underfull_keeping_one() {
+        let pairs = (0..3).map(|i| (i, i));
+        for sacred in 0..3 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn underfull_removing_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_0_keeping_all() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| false);
+        assert!(map.keys().copied().eq(0..NODE_CAPACITY));
+    }
+
+    #[test]
+    fn height_0_removing_one() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        for doomed in 0..NODE_CAPACITY {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), NODE_CAPACITY - 1);
+        }
+    }
+
+    #[test]
+    fn height_0_keeping_one() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        for sacred in 0..NODE_CAPACITY {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn height_0_removing_all() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_0_keeping_half() {
+        let mut map: BTreeMap<_, _> = (0..16).map(|i| (i, i)).collect();
+        assert_eq!(map.drain_filter(|i, _| *i % 2 == 0).count(), 8);
+        assert_eq!(map.len(), 8);
+    }
+
+    #[test]
+    fn height_1_removing_all() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_1_removing_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        for doomed in 0..MIN_INSERTS_HEIGHT_1 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1 - 1);
+        }
+    }
+
+    #[test]
+    fn height_1_keeping_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        for sacred in 0..MIN_INSERTS_HEIGHT_1 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[cfg(not(miri))] // Miri is too slow
+    #[test]
+    fn height_2_removing_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        for doomed in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
+        }
+    }
+
+    #[cfg(not(miri))] // Miri is too slow
+    #[test]
+    fn height_2_keeping_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        for sacred in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn height_2_removing_all() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn drop_panic_leak() {
+        static PREDS: AtomicUsize = AtomicUsize::new(0);
+        static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct D;
+        impl Drop for D {
+            fn drop(&mut self) {
+                if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+                    panic!("panic in `drop`");
+                }
+            }
+        }
+
+        let mut map = BTreeMap::new();
+        map.insert(0, D);
+        map.insert(4, D);
+        map.insert(8, D);
+
+        catch_unwind(move || {
+            drop(map.drain_filter(|i, _| {
+                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                true
+            }))
+        })
+        .ok();
+
+        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn pred_panic_leak() {
+        static PREDS: AtomicUsize = AtomicUsize::new(0);
+        static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct D;
+        impl Drop for D {
+            fn drop(&mut self) {
+                DROPS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let mut map = BTreeMap::new();
+        map.insert(0, D);
+        map.insert(4, D);
+        map.insert(8, D);
+
+        catch_unwind(AssertUnwindSafe(|| {
+            drop(map.drain_filter(|i, _| {
+                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                match i {
+                    0 => true,
+                    _ => panic!(),
+                }
+            }))
+        }))
+        .ok();
+
+        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.first_entry().unwrap().key(), &4);
+        assert_eq!(map.last_entry().unwrap().key(), &8);
     }
 }
 

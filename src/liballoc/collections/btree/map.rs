@@ -1256,6 +1256,48 @@ impl<K: Ord, V> BTreeMap<K, V> {
         right
     }
 
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    ///
+    /// If the closure returns true, the element is removed from the map and yielded.
+    /// If the closure returns false, or panics, the element remains in the map and will not be
+    /// yielded.
+    ///
+    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
+    /// whether you choose to keep or remove it.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
+    /// elements will still be subjected to the closure and removed and dropped if it returns true.
+    ///
+    /// It is unspecified how many more elements will be subjected to the closure
+    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
+    /// or if the `DrainFilter` value is leaked.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a map into even and odd keys, reusing the original map:
+    ///
+    /// ```
+    /// #![feature(btree_drain_filter)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let evens: BTreeMap<_, _> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    /// let odds = map;
+    /// assert_eq!(evens.keys().copied().collect::<Vec<_>>(), vec![0, 2, 4, 6]);
+    /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), vec![1, 3, 5, 7]);
+    /// ```
+    #[unstable(feature = "btree_drain_filter", issue = "70530")]
+    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        DrainFilter { pred, inner: self.drain_filter_inner() }
+    }
+    pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
+        let front = self.root.as_mut().map(|r| r.as_mut().first_leaf_edge());
+        DrainFilterInner { length: &mut self.length, cur_leaf_edge: front }
+    }
+
     /// Calculates the number of elements if it is incorrect.
     fn recalc_length(&mut self) {
         fn dfs<'a, K, V>(node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>) -> usize
@@ -1651,6 +1693,124 @@ impl<K, V> Clone for Values<'_, K, V> {
     fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
     }
+}
+
+/// An iterator produced by calling `drain_filter` on BTreeMap.
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+pub struct DrainFilter<'a, K, V, F>
+where
+    K: 'a + Ord, // This Ord bound should be removed before stabilization.
+    V: 'a,
+    F: 'a + FnMut(&K, &mut V) -> bool,
+{
+    pred: F,
+    inner: DrainFilterInner<'a, K, V>,
+}
+pub(super) struct DrainFilterInner<'a, K, V>
+where
+    K: 'a + Ord,
+    V: 'a,
+{
+    length: &'a mut usize,
+    cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<'a, K, V, F> Drop for DrainFilter<'a, K, V, F>
+where
+    K: 'a + Ord,
+    V: 'a,
+    F: 'a + FnMut(&K, &mut V) -> bool,
+{
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<'a, K, V, F> fmt::Debug for DrainFilter<'a, K, V, F>
+where
+    K: 'a + fmt::Debug + Ord,
+    V: 'a + fmt::Debug,
+    F: 'a + FnMut(&K, &mut V) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DrainFilter").field(&self.inner.peek()).finish()
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<'a, K, V, F> Iterator for DrainFilter<'a, K, V, F>
+where
+    K: 'a + Ord,
+    V: 'a,
+    F: 'a + FnMut(&K, &mut V) -> bool,
+{
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<(K, V)> {
+        self.inner.next(&mut self.pred)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<'a, K, V> DrainFilterInner<'a, K, V>
+where
+    K: 'a + Ord,
+    V: 'a,
+{
+    /// Allow Debug implementations to predict the next element.
+    pub(super) fn peek(&self) -> Option<(&K, &V)> {
+        let edge = self.cur_leaf_edge.as_ref()?;
+        edge.reborrow().next_kv().ok().map(|kv| kv.into_kv())
+    }
+
+    unsafe fn next_kv(
+        &mut self,
+    ) -> Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>> {
+        let edge = self.cur_leaf_edge.as_ref()?;
+        ptr::read(edge).next_kv().ok()
+    }
+
+    /// Implementation of a typical `DrainFilter::next` method, given the predicate.
+    pub(super) fn next<F>(&mut self, pred: &mut F) -> Option<(K, V)>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        while let Some(kv) = unsafe { self.next_kv() } {
+            let (k, v) = unsafe { ptr::read(&kv) }.into_kv_mut();
+            if pred(k, v) {
+                *self.length -= 1;
+                let (k, v, leaf_edge_location) = kv.remove_kv_tracking();
+                // `remove_kv_tracking` has either preserved or invalidated `self.cur_leaf_edge`
+                if let Some(node) = leaf_edge_location {
+                    match search::search_tree(node, &k) {
+                        search::SearchResult::Found(_) => unreachable!(),
+                        search::SearchResult::GoDown(leaf) => self.cur_leaf_edge = Some(leaf),
+                    }
+                };
+                return Some((k, v));
+            }
+            self.cur_leaf_edge = Some(kv.next_leaf_edge());
+        }
+        None
+    }
+
+    /// Implementation of a typical `DrainFilter::size_hint` method.
+    pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(*self.length))
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F>
+where
+    K: Ord,
+    F: FnMut(&K, &mut V) -> bool,
+{
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
@@ -2531,12 +2691,31 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let (small_leaf, old_key, old_val) = match self.handle.force() {
+        let (old_key, old_val, _) = self.handle.remove_kv_tracking();
+        (old_key, old_val)
+    }
+}
+
+impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
+    /// Removes a key/value-pair from the map, and returns that pair, as well as
+    /// the whereabouts of the leaf edge corresponding to that former pair:
+    /// if None is returned, the leaf edge is still the left leaf edge of the KV handle;
+    /// if a node is returned, it heads the subtree where the leaf edge may be found.
+    fn remove_kv_tracking(
+        self,
+    ) -> (K, V, Option<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>>) {
+        let mut levels_down_handled: isize;
+        let (small_leaf, old_key, old_val) = match self.force() {
             Leaf(leaf) => {
+                levels_down_handled = 1; // handled at same level, but affects only the right side
                 let (hole, old_key, old_val) = leaf.remove();
                 (hole.into_node(), old_key, old_val)
             }
             Internal(mut internal) => {
+                // Replace the location freed in the internal node with the next KV,
+                // and remove that next KV from its leaf.
+                levels_down_handled = unsafe { ptr::read(&internal).into_node().height() } as isize;
+
                 let key_loc = internal.kv_mut().0 as *mut K;
                 let val_loc = internal.kv_mut().1 as *mut V;
 
@@ -2556,27 +2735,39 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         let mut cur_node = small_leaf.forget_type();
         while cur_node.len() < node::MIN_LEN {
             match handle_underfull_node(cur_node) {
-                AtRoot => break,
+                AtRoot(root) => {
+                    cur_node = root;
+                    break;
+                }
                 EmptyParent(_) => unreachable!(),
                 Merged(parent) => {
+                    levels_down_handled -= 1;
                     if parent.len() == 0 {
                         // We must be at the root
-                        parent.into_root_mut().pop_level();
+                        let root = parent.into_root_mut();
+                        root.pop_level();
+                        cur_node = root.as_mut();
                         break;
                     } else {
                         cur_node = parent.forget_type();
                     }
                 }
-                Stole(_) => break,
+                Stole(internal_node) => {
+                    levels_down_handled -= 1;
+                    cur_node = internal_node.forget_type();
+                    // This internal node might be underfull, but only if it's the root.
+                    break;
+                }
             }
         }
 
-        (old_key, old_val)
+        let leaf_edge_location = if levels_down_handled > 0 { None } else { Some(cur_node) };
+        (old_key, old_val, leaf_edge_location)
     }
 }
 
 enum UnderflowResult<'a, K, V> {
-    AtRoot,
+    AtRoot(NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>),
     EmptyParent(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
     Merged(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
     Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
@@ -2585,10 +2776,9 @@ enum UnderflowResult<'a, K, V> {
 fn handle_underfull_node<K, V>(
     node: NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal>,
 ) -> UnderflowResult<'_, K, V> {
-    let parent = if let Ok(parent) = node.ascend() {
-        parent
-    } else {
-        return AtRoot;
+    let parent = match node.ascend() {
+        Ok(parent) => parent,
+        Err(root) => return AtRoot(root),
     };
 
     let (is_left, mut handle) = match parent.left_kv() {
