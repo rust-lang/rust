@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpResult, PanicInfo, Scalar};
+use rustc::mir::interpret::{InterpError, InterpResult, PanicInfo, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
@@ -25,7 +25,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use syntax::ast::Mutability;
 
 use crate::const_eval::error_to_const_error;
@@ -410,15 +410,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn use_ecx<F, T>(&mut self, source_info: SourceInfo, f: F) -> Option<T>
+    fn use_ecx<F, T>(&mut self, f: F) -> Option<T>
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
-        self.ecx.tcx.span = source_info.span;
-        // FIXME(eddyb) move this to the `Panic(_)` error case, so that
-        // `f(self)` is always called, and that the only difference when the
-        // scope's `local_data` is missing, is that the lint isn't emitted.
-        let lint_root = self.lint_root(source_info)?;
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
@@ -447,20 +442,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     | ResourceExhaustion(_) => {
                         // Ignore these errors.
                     }
-                    Panic(_) => {
-                        let diagnostic = error_to_const_error(&self.ecx, error);
-                        diagnostic.report_as_lint(
-                            self.ecx.tcx,
-                            "this expression will panic at runtime",
-                            lint_root,
-                            None,
-                        );
-                    }
                 }
                 None
             }
         };
-        self.ecx.tcx.span = DUMMY_SP;
         r
     }
 
@@ -504,18 +489,31 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_place(&mut self, place: &Place<'tcx>) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        self.use_ecx(source_info, |this| this.ecx.eval_place_to_op(place, None))
+        self.use_ecx(|this| this.ecx.eval_place_to_op(place, None))
     }
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, source_info),
-            Operand::Move(ref place) | Operand::Copy(ref place) => {
-                self.eval_place(place, source_info)
-            }
+            Operand::Move(ref place) | Operand::Copy(ref place) => self.eval_place(place),
         }
+    }
+
+    fn report_panic_as_lint(&self, source_info: SourceInfo, panic: PanicInfo<u64>) -> Option<()> {
+        // Somewhat convoluted way to re-use the CTFE error reporting code.
+        let lint_root = self.lint_root(source_info)?;
+        let error = InterpError::MachineStop(Box::new(format!("{:?}", panic)));
+        let mut diagnostic = error_to_const_error(&self.ecx, error.into());
+        diagnostic.span = source_info.span; // fix the span
+        diagnostic.report_as_lint(
+            self.tcx.at(source_info.span),
+            "this expression will panic at runtime",
+            lint_root,
+            None,
+        );
+        None
     }
 
     fn check_unary_op(
@@ -524,17 +522,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         arg: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        self.use_ecx(source_info, |this| {
+        if self.use_ecx(|this| {
             let val = this.ecx.read_immediate(this.ecx.eval_operand(arg, None)?)?;
             let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
-
-            if overflow {
-                assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-                throw_panic!(OverflowNeg);
-            }
-
-            Ok(())
-        })?;
+            Ok(overflow)
+        })? {
+            assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
+            self.report_panic_as_lint(source_info, PanicInfo::OverflowNeg)?;
+        }
 
         Some(())
     }
@@ -548,9 +543,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place_layout: TyLayout<'tcx>,
         overflow_check: bool,
     ) -> Option<()> {
-        let r = self.use_ecx(source_info, |this| {
-            this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
-        })?;
+        let r =
+            self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
         if op == BinOp::Shr || op == BinOp::Shl {
             let left_bits = place_layout.size.bits();
             let right_size = r.layout.size;
@@ -575,16 +569,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // in MIR. However, if overflow checking is disabled, then there won't be any
         // `Assert` statement and so we have to do additional checking here.
         if !overflow_check {
-            self.use_ecx(source_info, |this| {
+            if self.use_ecx(|this| {
                 let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
                 let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-
-                if overflow {
-                    throw_panic!(Overflow(op));
-                }
-
-                Ok(())
-            })?;
+                Ok(overflow)
+            })? {
+                self.report_panic_as_lint(source_info, PanicInfo::Overflow(op))?;
+            }
         }
 
         Some(())
@@ -642,7 +633,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             _ => {}
         }
 
-        self.use_ecx(source_info, |this| {
+        self.use_ecx(|this| {
             trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
             this.ecx.eval_rvalue_into_place(rvalue, place)?;
             Ok(())
@@ -675,7 +666,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME> figure out what tho do when try_read_immediate fails
-        let imm = self.use_ecx(source_info, |this| this.ecx.try_read_immediate(value));
+        let imm = self.use_ecx(|this| this.ecx.try_read_immediate(value));
 
         if let Some(Ok(imm)) = imm {
             match *imm {
@@ -698,7 +689,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if let ty::Tuple(substs) = ty {
                         // Only do it if tuple is also a pair with two scalars
                         if substs.len() == 2 {
-                            let opt_ty1_ty2 = self.use_ecx(source_info, |this| {
+                            let opt_ty1_ty2 = self.use_ecx(|this| {
                                 let ty1 = substs[0].expect_ty();
                                 let ty2 = substs[1].expect_ty();
                                 let ty_is_scalar = |ty| {
