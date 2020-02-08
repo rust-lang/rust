@@ -6,7 +6,6 @@
 
 use crate::infer::{CombinedSnapshot, InferOk};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::IntercrateMode;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
 use crate::ty::fold::TypeFoldable;
@@ -27,7 +26,7 @@ enum InCrate {
 #[derive(Debug, Copy, Clone)]
 pub enum Conflict {
     Upstream,
-    Downstream { used_to_be_broken: bool },
+    Downstream,
 }
 
 pub struct OverlapResult<'tcx> {
@@ -53,7 +52,6 @@ pub fn overlapping_impls<F1, F2, R>(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
-    intercrate_mode: IntercrateMode,
     skip_leak_check: SkipLeakCheck,
     on_overlap: F1,
     no_overlap: F2,
@@ -65,13 +63,12 @@ where
     debug!(
         "overlapping_impls(\
            impl1_def_id={:?}, \
-           impl2_def_id={:?},
-           intercrate_mode={:?})",
-        impl1_def_id, impl2_def_id, intercrate_mode
+           impl2_def_id={:?})",
+        impl1_def_id, impl2_def_id,
     );
 
     let overlaps = tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        let selcx = &mut SelectionContext::intercrate(&infcx);
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).is_some()
     });
 
@@ -83,7 +80,7 @@ where
     // this time tracking intercrate ambuiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
     tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
+        let selcx = &mut SelectionContext::intercrate(&infcx);
         selcx.enable_tracking_intercrate_ambiguity_causes();
         on_overlap(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).unwrap())
     })
@@ -202,15 +199,7 @@ pub fn trait_ref_is_knowable<'tcx>(
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
-
-        // A trait can be implementable for a trait ref by both the current
-        // crate and crates downstream of it. Older versions of rustc
-        // were not aware of this, causing incoherence (issue #43355).
-        let used_to_be_broken = orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok();
-        if used_to_be_broken {
-            debug!("trait_ref_is_knowable({:?}) - USED TO BE BROKEN", trait_ref);
-        }
-        return Some(Conflict::Downstream { used_to_be_broken });
+        return Some(Conflict::Downstream);
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {

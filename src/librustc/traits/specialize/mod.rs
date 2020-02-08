@@ -332,14 +332,9 @@ pub(super) fn specialization_graph_provider(
                 let impl_span =
                     tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
                 let mut err = match used_to_be_allowed {
-                    Some(FutureCompatOverlapErrorKind::Issue43355) | None => {
-                        struct_span_err!(tcx.sess, impl_span, E0119, "{}", msg)
-                    }
+                    None => struct_span_err!(tcx.sess, impl_span, E0119, "{}", msg),
                     Some(kind) => {
                         let lint = match kind {
-                            FutureCompatOverlapErrorKind::Issue43355 => {
-                                unreachable!("converted to hard error above")
-                            }
                             FutureCompatOverlapErrorKind::Issue33140 => {
                                 ORDER_DEPENDENT_TRAIT_OBJECTS
                             }
