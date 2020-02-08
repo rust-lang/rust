@@ -2705,14 +2705,14 @@ impl<'tcx> TyCtxt<'tcx> {
             .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> Vec<AssocItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> impl Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
+            .iter()
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
-            .collect()
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {
-        self.associated_items(did).any(|item| item.relevant_for_never())
+        self.associated_items(did).iter().any(|item| item.relevant_for_never())
     }
 
     pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {
@@ -2971,25 +2971,6 @@ impl<'tcx> TyCtxt<'tcx> {
             None => self.hir().get_module_parent(block),
         };
         (ident, scope)
-    }
-}
-
-#[derive(Copy, Clone, HashStable)]
-pub struct AssocItemsIterator<'tcx> {
-    pub items: &'tcx [AssocItem],
-}
-
-impl<'tcx> Iterator for AssocItemsIterator<'tcx> {
-    type Item = AssocItem;
-
-    #[inline]
-    fn next(&mut self) -> Option<AssocItem> {
-        if let Some((first, rest)) = self.items.split_first() {
-            self.items = rest;
-            Some(*first)
-        } else {
-            None
-        }
     }
 }
 

@@ -122,6 +122,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
         };
         let method_def_id = tcx
             .associated_items(trait_def_id.unwrap())
+            .iter()
             .find(|m| m.kind == ty::AssocKind::Method)
             .unwrap()
             .def_id;
