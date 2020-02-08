@@ -78,13 +78,6 @@ pub use self::chalk_fulfill::{
 
 pub use self::types::*;
 
-/// Whether to enable bug compatibility with issue #43355.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum IntercrateMode {
-    Issue43355,
-    Fixed,
-}
-
 /// Whether to skip the leak check, as part of a future compatibility warning step.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum SkipLeakCheck {
