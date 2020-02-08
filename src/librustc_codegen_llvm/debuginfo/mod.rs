@@ -51,7 +51,6 @@ mod utils;
 pub use self::create_scope_map::compute_mir_scopes;
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::extend_scope_to_file;
-pub use self::source_loc::set_source_location;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -193,13 +192,14 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn set_source_location(
-        &mut self,
-        debug_context: &mut FunctionDebugContext<&'ll DIScope>,
-        scope: &'ll DIScope,
-        span: Span,
-    ) {
-        set_source_location(debug_context, &self, scope, span)
+    fn set_source_location(&mut self, scope: &'ll DIScope, span: Span) {
+        debug!("set_source_location: {}", self.sess().source_map().span_to_string(span));
+
+        let dbg_loc = self.cx().create_debug_loc(scope, span);
+
+        unsafe {
+            llvm::LLVMSetCurrentDebugLocation(self.llbuilder, dbg_loc);
+        }
     }
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
@@ -333,7 +333,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
         let mut fn_debug_context = FunctionDebugContext {
             scopes: IndexVec::from_elem(null_scope, &mir.source_scopes),
-            source_locations_enabled: false,
             defining_crate: def_id.krate,
         };
 

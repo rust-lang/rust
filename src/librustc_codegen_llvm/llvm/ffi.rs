@@ -909,7 +909,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder(Builder: &'a mut Builder<'a>);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: Option<&'a Value>);
+    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: &'a Value);
 
     // Terminators
     pub fn LLVMBuildRetVoid(B: &Builder<'a>) -> &'a Value;
