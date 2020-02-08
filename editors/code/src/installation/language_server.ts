@@ -34,7 +34,7 @@ export async function downloadLatestLanguageServer(
             cancellable: false, // FIXME: add support for canceling download?
             title: `Downloading language server ${releaseName}`
         },
-        async (progress, _) => {
+        async (progress, _cancellationToken) => {
             let lastPrecentage = 0;
             await downloadFile(downloadUrl, installationPath, (readBytes, totalBytes) => {
                 const newPercentage = (readBytes / totalBytes) * 100;
