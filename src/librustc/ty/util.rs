@@ -1056,5 +1056,5 @@ pub fn needs_drop_components(
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
 pub struct AlwaysRequiresDrop;

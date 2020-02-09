@@ -687,7 +687,9 @@ rustc_queries! {
         /// A list of types where the ADT requires drop if and only if any of
         /// those types require drop. If the ADT is known to always need drop
         /// then `Err(AlwaysRequiresDrop)` is returned.
-        query adt_drop_tys(_: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {}
+        query adt_drop_tys(_: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+            cache_on_disk_if { true }
+        }
 
         query layout_raw(
             env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
