@@ -1,4 +1,3 @@
-import { unwrapNotNil } from "ts-not-nil";
 import { spawnSync } from "child_process";
 import * as vscode from "vscode";
 import * as path from "path";
@@ -12,12 +11,9 @@ import { downloadFile } from "./download_file";
 export async function downloadLatestLanguageServer(
     {file: artifactFileName, dir: installationDir, repo}: BinarySource.GithubRelease
 ) {
-    const binaryMetadata = await fetchLatestArtifactMetadata(repo, artifactFileName);
-
-    const {
-        releaseName,
-        downloadUrl
-    } = unwrapNotNil(binaryMetadata, `Latest GitHub release lacks "${artifactFileName}" file`);
+    const { releaseName, downloadUrl } = (await fetchLatestArtifactMetadata(
+        repo, artifactFileName
+    ))!;
 
     await fs.mkdir(installationDir).catch(err => assert.strictEqual(
         err?.code,

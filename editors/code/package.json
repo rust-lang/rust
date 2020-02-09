@@ -27,7 +27,6 @@
         "jsonc-parser": "^2.1.0",
         "node-fetch": "^2.6.0",
         "throttle-debounce": "^2.1.0",
-        "ts-not-nil": "^1.0.1",
         "vscode-languageclient": "^6.1.0"
     },
     "devDependencies": {
