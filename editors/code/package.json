@@ -25,18 +25,22 @@
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
+        "node-fetch": "^2.6.0",
+        "throttle-debounce": "^2.1.0",
         "vscode-languageclient": "^6.1.0"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.2",
         "@rollup/plugin-node-resolve": "^7.1.1",
         "@types/node": "^12.12.25",
+        "@types/node-fetch": "^2.5.4",
+        "@types/throttle-debounce": "^2.1.0",
         "@types/vscode": "^1.41.0",
         "rollup": "^1.31.0",
         "tslib": "^1.10.0",
         "tslint": "^5.20.1",
-        "typescript-formatter": "^7.2.2",
         "typescript": "^3.7.5",
+        "typescript-formatter": "^7.2.2",
         "vsce": "^1.71.0"
     },
     "activationEvents": [
@@ -169,10 +173,11 @@
                 },
                 "rust-analyzer.raLspServerPath": {
                     "type": [
+                        "null",
                         "string"
                     ],
-                    "default": "ra_lsp_server",
-                    "description": "Path to ra_lsp_server executable"
+                    "default": null,
+                    "description": "Path to ra_lsp_server executable (points to bundled binary by default)"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",

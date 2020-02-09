@@ -11,6 +11,9 @@ export class Ctx {
     // deal with it.
     //
     // Ideally, this should be replaced with async getter though.
+    // FIXME: this actually needs syncronization of some kind (check how
+    // vscode deals with `deactivate()` call when extension has some work scheduled
+    // on the event loop to get a better picture of what we can do here)
     client: lc.LanguageClient | null = null;
     private extCtx: vscode.ExtensionContext;
     private onDidRestartHooks: Array<(client: lc.LanguageClient) => void> = [];
@@ -26,7 +29,14 @@ export class Ctx {
             await old.stop();
         }
         this.client = null;
-        const client = createClient(this.config);
+        const client = await createClient(this.config);
+        if (!client) {
+            throw new Error(
+                "Rust Analyzer Language Server is not available. " +
+                "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
+            );
+        }
+
         this.pushCleanup(client.start());
         await client.onReady();
 

@@ -1,24 +1,18 @@
-import { homedir } from 'os';
 import * as lc from 'vscode-languageclient';
-import { spawnSync } from 'child_process';
 
 import { window, workspace } from 'vscode';
 import { Config } from './config';
+import { ensureLanguageServerBinary } from './installation/language_server';
 
-export function createClient(config: Config): lc.LanguageClient {
+export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
     const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const raLspServerPath = expandPathResolving(config.raLspServerPath);
-    if (spawnSync(raLspServerPath, ["--version"]).status !== 0) {
-        window.showErrorMessage(
-            `Unable to execute '${raLspServerPath} --version'\n\n` +
-            `Perhaps it is not in $PATH?\n\n` +
-            `PATH=${process.env.PATH}\n`
-        );
-    }
+    const raLspServerPath = await ensureLanguageServerBinary(config.langServerSource);
+    if (!raLspServerPath) return null;
+
     const run: lc.Executable = {
         command: raLspServerPath,
         options: { cwd: workspaceFolderPath },
@@ -86,10 +80,4 @@ export function createClient(config: Config): lc.LanguageClient {
     };
     res.registerProposedFeatures();
     return res;
-}
-function expandPathResolving(path: string) {
-    if (path.startsWith('~/')) {
-        return path.replace('~', homedir());
-    }
-    return path;
 }

@@ -31,7 +31,38 @@ a minimum version of 10 installed. Please refer to
 You will also need the most recent version of VS Code: we don't try to
 maintain compatibility with older versions yet.
 
-The experimental VS Code plugin can then be built and installed by executing the
+### Installation from prebuilt binaries
+
+We ship prebuilt binaries for Linux, Mac and Windows via
+[GitHub releases](https://github.com/rust-analyzer/rust-analyzer/releases).
+In order to use them you need to install the client VSCode extension.
+
+Publishing to VSCode marketplace is currently WIP. Thus, you need to clone the repository and install **only** the client extension via
+```
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
+$ cd rust-analyzer
+$ cargo xtask install --client-code
+```
+Then open VSCode (or reload the window if it was already running), open some Rust project and you should
+see an info message pop-up.
+
+
+<img height="140px" src="https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png" alt="Download now message"/>
+
+
+Click `Download now`, wait until the progress is 100% and you are ready to go.
+
+For updates you need to remove installed binary
+```
+rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
+```
+
+`"Donwload latest language server"` command for VSCode and automatic updates detection is currently WIP.
+
+
+### Installation from sources
+
+The experimental VS Code plugin can be built and installed by executing the
 following commands:
 
 ```
@@ -46,6 +77,7 @@ doesn't, report bugs!
 **Note** [#1831](https://github.com/rust-analyzer/rust-analyzer/issues/1831): If you are using the popular
 [Vim emulation plugin](https://github.com/VSCodeVim/Vim), you will likely
 need to turn off the `rust-analyzer.enableEnhancedTyping` setting.
+(// TODO: This configuration is no longer available, enhanced typing shoud be disabled via removing Enter key binding, [see this issue](https://github.com/rust-analyzer/rust-analyzer/issues/3051))
 
 If you have an unusual setup (for example, `code` is not in the `PATH`), you
 should adapt these manual installation instructions:

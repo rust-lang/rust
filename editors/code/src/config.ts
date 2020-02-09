@@ -1,4 +1,6 @@
+import * as os from "os";
 import * as vscode from 'vscode';
+import { BinarySource } from "./installation/interfaces";
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -16,10 +18,11 @@ export interface CargoFeatures {
 }
 
 export class Config {
+    langServerSource!: null | BinarySource;
+
     highlightingOn = true;
     rainbowHighlightingOn = false;
     enableEnhancedTyping = true;
-    raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     lruCapacity: null | number = null;
     displayInlayHints = true;
     maxInlayHintLength: null | number = null;
@@ -45,11 +48,72 @@ export class Config {
     private prevCargoWatchOptions: null | CargoWatchOptions = null;
 
     constructor(ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(), null, ctx.subscriptions);
-        this.refresh();
+        vscode.workspace.onDidChangeConfiguration(_ => this.refresh(ctx), null, ctx.subscriptions);
+        this.refresh(ctx);
     }
 
-    private refresh() {
+    private static expandPathResolving(path: string) {
+        if (path.startsWith('~/')) {
+            return path.replace('~', os.homedir());
+        }
+        return path;
+    }
+
+    /**
+     * Name of the binary artifact for `ra_lsp_server` that is published for
+     * `platform` on GitHub releases. (It is also stored under the same name when
+     * downloaded by the extension).
+     */
+    private static prebuiltLangServerFileName(platform: NodeJS.Platform): null | string {
+        switch (platform) {
+            case "linux":  return "ra_lsp_server-linux";
+            case "darwin": return "ra_lsp_server-mac";
+            case "win32":  return "ra_lsp_server-windows.exe";
+
+            // Users on these platforms yet need to manually build from sources
+            case "aix":
+            case "android":
+            case "freebsd":
+            case "openbsd":
+            case "sunos":
+            case "cygwin":
+            case "netbsd": return null;
+            // The list of platforms is exhaustive (see `NodeJS.Platform` type definition)
+        }
+    }
+
+    private static langServerBinarySource(
+        ctx: vscode.ExtensionContext,
+        config: vscode.WorkspaceConfiguration
+    ): null | BinarySource {
+        const langServerPath = RA_LSP_DEBUG ?? config.get<null | string>("raLspServerPath");
+
+        if (langServerPath) {
+            return {
+                type: BinarySource.Type.ExplicitPath,
+                path: Config.expandPathResolving(langServerPath)
+            };
+        }
+
+        const prebuiltBinaryName = Config.prebuiltLangServerFileName(process.platform);
+
+        if (!prebuiltBinaryName) return null;
+
+        return {
+            type: BinarySource.Type.GithubRelease,
+            dir: ctx.globalStoragePath,
+            file: prebuiltBinaryName,
+            repo: {
+                name: "rust-analyzer",
+                owner: "rust-analyzer",
+            }
+        };
+    }
+
+
+    // FIXME: revisit the logic for `if (.has(...)) config.get(...)` set default
+    // values only in one place (i.e. remove default values from non-readonly members declarations)
+    private refresh(ctx: vscode.ExtensionContext) {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
 
         let requireReloadMessage = null;
@@ -82,10 +146,7 @@ export class Config {
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
 
-        if (config.has('raLspServerPath')) {
-            this.raLspServerPath =
-                RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
-        }
+        this.langServerSource = Config.langServerBinarySource(ctx, config);
 
         if (config.has('cargo-watch.enable')) {
             this.cargoWatchOptions.enable = config.get<boolean>(
