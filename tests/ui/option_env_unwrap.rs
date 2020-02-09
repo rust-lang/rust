@@ -14,10 +14,10 @@ macro_rules! option_env_unwrap {
 }
 
 fn main() {
-    let _ = option_env!("HOME").unwrap();
-    let _ = option_env!("HOME").expect("environment variable HOME isn't set");
-    let _ = option_env_unwrap!("HOME");
-    let _ = option_env_unwrap!("HOME", "environment variable HOME isn't set");
-    let _ = option_env_unwrap_external!("HOME");
-    let _ = option_env_unwrap_external!("HOME", "environment variable HOME isn't set");
+    let _ = option_env!("PATH").unwrap();
+    let _ = option_env!("PATH").expect("environment variable PATH isn't set");
+    let _ = option_env_unwrap!("PATH");
+    let _ = option_env_unwrap!("PATH", "environment variable PATH isn't set");
+    let _ = option_env_unwrap_external!("PATH");
+    let _ = option_env_unwrap_external!("PATH", "environment variable PATH isn't set");
 }
