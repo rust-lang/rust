@@ -398,6 +398,8 @@
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
 # supported platforms. The LLD from the bootstrap distribution will be used
 # and not the LLD compiled during the bootstrap.
+#
+# LLD will not be used if we're cross linking or running tests.
 #use-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the

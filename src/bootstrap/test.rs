@@ -1035,6 +1035,7 @@ impl Step for Compiletest {
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
+        // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
         if let Some(linker) = builder.linker(target, false) {
             cmd.arg("--linker").arg(linker);
         }
