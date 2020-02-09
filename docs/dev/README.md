@@ -74,7 +74,7 @@ relevant test and execute it (VS Code includes an action for running a single
 test).
 
 However, launching a VS Code instance with locally build language server is
-possible. There's "Run Extension (Dev Server)" launch configuration for this.
+possible. There's **"Run Extension (Dev Server)"** launch configuration for this.
 
 In general, I use one of the following workflows for fixing bugs and
 implementing features.
@@ -88,7 +88,14 @@ Code to sanity check that the thing works as I expect.
 
 If the problem concerns only the VS Code extension, I use **Run Extension**
 launch configuration from `launch.json`. Notably, this uses the usual
-`ra_lsp_server` binary from `PATH`. After I am done with the fix, I use `cargo
+`ra_lsp_server` binary from `PATH`. For this it is important to have the following
+in `setting.json` file:
+```json
+{
+    "rust-analyzer.raLspServerPath": "ra_lsp_server"
+}
+```
+After I am done with the fix, I use `cargo
 xtask install --client-code` to try the new extension for real.
 
 If I need to fix something in the `ra_lsp_server` crate, I feel sad because it's

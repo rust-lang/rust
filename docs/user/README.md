@@ -57,7 +57,7 @@ For updates you need to remove installed binary
 rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
 ```
 
-`"Donwload latest language server"` command for VSCode and automatic updates detection is currently WIP.
+`"Download latest language server"` command for VSCode and automatic updates detection is currently WIP.
 
 
 ### Installation from sources
@@ -70,6 +70,16 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
 $ cargo xtask install
 ```
+
+After that you need to amend your `settings.json` file to explicitly specify the
+path to `ra_lsp_server` that you've just built.
+```json
+{
+    "rust-analyzer.raLspServerPath": "ra_lsp_server"
+}
+```
+This should work on all platforms, otherwise if installed `ra_lsp_server` is not available through your `$PATH` then see how to configure it [here](#setting-up-the-PATH-variable).
+
 
 The automatic installation is expected to *just work* for common cases, if it
 doesn't, report bugs!
@@ -127,7 +137,7 @@ host.
   As an example, [Pale Fire](https://github.com/matklad/pale-fire/) color scheme tweaks rust colors.
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts the
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
-* `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
+* `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable, when absent or `null` defaults to prebuilt binary path
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
 * `rust-analyzer.excludeGlobs`: a list of glob-patterns for exclusion (see globset [docs](https://docs.rs/globset) for syntax).
@@ -232,7 +242,8 @@ Installation:
 
 * You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
 
-### Setting up the `PATH` variable
+
+### Setting up the `PATH` variable <!-- Update links to this header when changing it! -->
 
 On Unix systems, `rustup` adds `~/.cargo/bin` to `PATH` by modifying the shell's
 startup file. Depending on your configuration, your Desktop Environment might not
