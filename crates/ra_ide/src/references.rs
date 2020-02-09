@@ -211,10 +211,9 @@ fn process_definition(
                     TokenAtOffset::Between(_, t) => t,
                 };
                 let range = t.text_range();
-                let analyzer = analyzer.get_or_insert(
-                    sb.analyze(InFile::new(file_id.into(), parse.tree().syntax()), None),
-                );
-
+                let analyzer = analyzer.get_or_insert_with(|| {
+                    sb.analyze(InFile::new(file_id.into(), parse.tree().syntax()), None)
+                });
                 let expanded = descend_into_macros_with_analyzer(
                     db,
                     &analyzer,
