@@ -1,7 +1,6 @@
 use insta::assert_snapshot;
 
 use ra_db::fixture::WithFixture;
-use test_utils::covers;
 
 use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 use crate::test_db::TestDB;
@@ -261,10 +260,10 @@ fn test() {
     [92; 94) '{}': ()
     [105; 144) '{     ...(s); }': ()
     [115; 116) 's': S<u32>
-    [119; 120) 'S': S<u32>(T) -> S<T>
+    [119; 120) 'S': S<u32>(u32) -> S<u32>
     [119; 129) 'S(unknown)': S<u32>
     [121; 128) 'unknown': u32
-    [135; 138) 'foo': fn foo<S<u32>>(T) -> ()
+    [135; 138) 'foo': fn foo<S<u32>>(S<u32>) -> ()
     [135; 141) 'foo(s)': ()
     [139; 140) 's': S<u32>
     "###
@@ -289,11 +288,11 @@ fn test() {
     [98; 100) '{}': ()
     [111; 163) '{     ...(s); }': ()
     [121; 122) 's': S<u32>
-    [125; 126) 'S': S<u32>(T) -> S<T>
+    [125; 126) 'S': S<u32>(u32) -> S<u32>
     [125; 135) 'S(unknown)': S<u32>
     [127; 134) 'unknown': u32
     [145; 146) 'x': u32
-    [154; 157) 'foo': fn foo<u32, S<u32>>(T) -> U
+    [154; 157) 'foo': fn foo<u32, S<u32>>(S<u32>) -> u32
     [154; 160) 'foo(s)': u32
     [158; 159) 's': S<u32>
     "###
@@ -358,15 +357,15 @@ fn test() {
     [221; 223) '{}': ()
     [234; 300) '{     ...(S); }': ()
     [244; 245) 'x': u32
-    [248; 252) 'foo1': fn foo1<S>(T) -> <T as Iterable>::Item
+    [248; 252) 'foo1': fn foo1<S>(S) -> <S as Iterable>::Item
     [248; 255) 'foo1(S)': u32
     [253; 254) 'S': S
     [265; 266) 'y': u32
-    [269; 273) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
+    [269; 273) 'foo2': fn foo2<S>(S) -> <S as Iterable>::Item
     [269; 276) 'foo2(S)': u32
     [274; 275) 'S': S
     [286; 287) 'z': u32
-    [290; 294) 'foo3': fn foo3<S>(T) -> <T as Iterable>::Item
+    [290; 294) 'foo3': fn foo3<S>(S) -> <S as Iterable>::Item
     [290; 297) 'foo3(S)': u32
     [295; 296) 'S': S
     "###
@@ -822,8 +821,7 @@ fn test<T: ApplyL>() {
 "#,
     );
     // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
-    // FIXME: fix type parameter names going missing when going through Chalk
-    assert_eq!(t, "ApplyL::Out<[missing name]>");
+    assert_eq!(t, "ApplyL::Out<T>");
 }
 
 #[test]
@@ -847,6 +845,197 @@ fn test<T: ApplyL>(t: T) {
     // to the trait env ourselves here; probably Chalk can't do this by itself.
     // assert_eq!(t, "ApplyL::Out<[missing name]>");
     assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn argument_impl_trait() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar(x: impl Trait<u16>) {}
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {}
+
+fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
+    x;
+    y;
+    let z = S(1);
+    bar(z);
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}
+"#, true),
+        @r###"
+    [30; 34) 'self': &Self
+    [55; 59) 'self': &Self
+    [78; 79) 'x': impl Trait<u16>
+    [98; 100) '{}': ()
+    [155; 156) 'x': impl Trait<u64>
+    [175; 176) 'y': &impl Trait<u32>
+    [196; 324) '{     ...2(); }': ()
+    [202; 203) 'x': impl Trait<u64>
+    [209; 210) 'y': &impl Trait<u32>
+    [220; 221) 'z': S<u16>
+    [224; 225) 'S': S<u16>(u16) -> S<u16>
+    [224; 228) 'S(1)': S<u16>
+    [226; 227) '1': u16
+    [234; 237) 'bar': fn bar(S<u16>) -> ()
+    [234; 240) 'bar(z)': ()
+    [238; 239) 'z': S<u16>
+    [246; 247) 'x': impl Trait<u64>
+    [246; 253) 'x.foo()': u64
+    [259; 260) 'y': &impl Trait<u32>
+    [259; 266) 'y.foo()': u32
+    [272; 273) 'z': S<u16>
+    [272; 279) 'z.foo()': u16
+    [285; 286) 'x': impl Trait<u64>
+    [285; 293) 'x.foo2()': i64
+    [299; 300) 'y': &impl Trait<u32>
+    [299; 307) 'y.foo2()': i64
+    [313; 314) 'z': S<u16>
+    [313; 321) 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn argument_impl_trait_type_args_1() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+trait Foo {
+    // this function has an implicit Self param, an explicit type param,
+    // and an implicit impl Trait param!
+    fn bar<T>(x: impl Trait) -> T { loop {} }
+}
+fn foo<T>(x: impl Trait) -> T { loop {} }
+struct S;
+impl Trait for S {}
+struct F;
+impl Foo for F {}
+
+fn test() {
+    Foo::bar(S);
+    <F as Foo>::bar(S);
+    F::bar(S);
+    Foo::bar::<u32>(S);
+    <F as Foo>::bar::<u32>(S);
+
+    foo(S);
+    foo::<u32>(S);
+    foo::<u32, i32>(S); // we should ignore the extraneous i32
+}
+"#, true),
+        @r###"
+    [156; 157) 'x': impl Trait
+    [176; 187) '{ loop {} }': T
+    [178; 185) 'loop {}': !
+    [183; 185) '{}': ()
+    [200; 201) 'x': impl Trait
+    [220; 231) '{ loop {} }': T
+    [222; 229) 'loop {}': !
+    [227; 229) '{}': ()
+    [301; 510) '{     ... i32 }': ()
+    [307; 315) 'Foo::bar': fn bar<{unknown}, {unknown}>(S) -> {unknown}
+    [307; 318) 'Foo::bar(S)': {unknown}
+    [316; 317) 'S': S
+    [324; 339) '<F as Foo>::bar': fn bar<F, {unknown}>(S) -> {unknown}
+    [324; 342) '<F as ...bar(S)': {unknown}
+    [340; 341) 'S': S
+    [348; 354) 'F::bar': fn bar<F, {unknown}>(S) -> {unknown}
+    [348; 357) 'F::bar(S)': {unknown}
+    [355; 356) 'S': S
+    [363; 378) 'Foo::bar::<u32>': fn bar<{unknown}, u32>(S) -> u32
+    [363; 381) 'Foo::b...32>(S)': u32
+    [379; 380) 'S': S
+    [387; 409) '<F as ...:<u32>': fn bar<F, u32>(S) -> u32
+    [387; 412) '<F as ...32>(S)': u32
+    [410; 411) 'S': S
+    [419; 422) 'foo': fn foo<{unknown}>(S) -> {unknown}
+    [419; 425) 'foo(S)': {unknown}
+    [423; 424) 'S': S
+    [431; 441) 'foo::<u32>': fn foo<u32>(S) -> u32
+    [431; 444) 'foo::<u32>(S)': u32
+    [442; 443) 'S': S
+    [450; 465) 'foo::<u32, i32>': fn foo<u32>(S) -> u32
+    [450; 468) 'foo::<...32>(S)': u32
+    [466; 467) 'S': S
+    "###
+    );
+}
+
+#[test]
+fn argument_impl_trait_type_args_2() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+struct S;
+impl Trait for S {}
+struct F<T>;
+impl<T> F<T> {
+    fn foo<U>(self, x: impl Trait) -> (T, U) { loop {} }
+}
+
+fn test() {
+    F.foo(S);
+    F::<u32>.foo(S);
+    F::<u32>.foo::<i32>(S);
+    F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
+}
+"#, true),
+        @r###"
+    [88; 92) 'self': F<T>
+    [94; 95) 'x': impl Trait
+    [119; 130) '{ loop {} }': (T, U)
+    [121; 128) 'loop {}': !
+    [126; 128) '{}': ()
+    [144; 284) '{     ...ored }': ()
+    [150; 151) 'F': F<{unknown}>
+    [150; 158) 'F.foo(S)': ({unknown}, {unknown})
+    [156; 157) 'S': S
+    [164; 172) 'F::<u32>': F<u32>
+    [164; 179) 'F::<u32>.foo(S)': (u32, {unknown})
+    [177; 178) 'S': S
+    [185; 193) 'F::<u32>': F<u32>
+    [185; 207) 'F::<u3...32>(S)': (u32, i32)
+    [205; 206) 'S': S
+    [213; 221) 'F::<u32>': F<u32>
+    [213; 240) 'F::<u3...32>(S)': (u32, i32)
+    [238; 239) 'S': S
+    "###
+    );
+}
+
+#[test]
+fn argument_impl_trait_to_fn_pointer() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait {}
+fn foo(x: impl Trait) { loop {} }
+struct S;
+impl Trait for S {}
+
+fn test() {
+    let f: fn(S) -> () = foo;
+}
+"#, true),
+        @r###"
+    [23; 24) 'x': impl Trait
+    [38; 49) '{ loop {} }': ()
+    [40; 47) 'loop {}': !
+    [45; 47) '{}': ()
+    [91; 124) '{     ...foo; }': ()
+    [101; 102) 'f': fn(S) -> ()
+    [118; 121) 'foo': fn foo(S) -> ()
+    "###
+    );
 }
 
 #[test]
@@ -994,29 +1183,17 @@ fn weird_bounds() {
     assert_snapshot!(
         infer(r#"
 trait Trait {}
-fn test() {
-    let a: impl Trait + 'lifetime = foo;
-    let b: impl 'lifetime = foo;
-    let b: impl (Trait) = foo;
-    let b: impl ('lifetime) = foo;
-    let d: impl ?Sized = foo;
-    let e: impl Trait + ?Sized = foo;
+fn test(a: impl Trait + 'lifetime, b: impl 'lifetime, c: impl (Trait), d: impl ('lifetime), e: impl ?Sized, f: impl Trait + ?Sized) {
 }
 "#),
         @r###"
-    [26; 237) '{     ...foo; }': ()
-    [36; 37) 'a': impl Trait + {error}
-    [64; 67) 'foo': impl Trait + {error}
-    [77; 78) 'b': impl {error}
-    [97; 100) 'foo': impl {error}
-    [110; 111) 'b': impl Trait
-    [128; 131) 'foo': impl Trait
-    [141; 142) 'b': impl {error}
-    [163; 166) 'foo': impl {error}
-    [176; 177) 'd': impl {error}
-    [193; 196) 'foo': impl {error}
-    [206; 207) 'e': impl Trait + {error}
-    [231; 234) 'foo': impl Trait + {error}
+    [24; 25) 'a': impl Trait + {error}
+    [51; 52) 'b': impl {error}
+    [70; 71) 'c': impl Trait
+    [87; 88) 'd': impl {error}
+    [108; 109) 'e': impl {error}
+    [124; 125) 'f': impl Trait + {error}
+    [148; 151) '{ }': ()
     "###
     );
 }
@@ -1078,26 +1255,26 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
+    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> {unknown}
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
-    [321; 324) 'get': fn get<impl Trait<Type = i64>>(T) -> <T as Trait>::Type
+    [321; 324) 'get': fn get<impl Trait<Type = i64>>(impl Trait<Type = i64>) -> <impl Trait<Type = i64> as Trait>::Type
     [321; 327) 'get(y)': {unknown}
     [325; 326) 'y': impl Trait<Type = i64>
-    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(T) -> U
+    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> {unknown}
     [333; 340) 'get2(y)': {unknown}
     [338; 339) 'y': impl Trait<Type = i64>
-    [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
+    [346; 349) 'get': fn get<S<u64>>(S<u64>) -> <S<u64> as Trait>::Type
     [346; 357) 'get(set(S))': u64
-    [350; 353) 'set': fn set<S<u64>>(T) -> T
+    [350; 353) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [350; 356) 'set(S)': S<u64>
     [354; 355) 'S': S<u64>
-    [363; 367) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [363; 367) 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
     [363; 375) 'get2(set(S))': u64
-    [368; 371) 'set': fn set<S<u64>>(T) -> T
+    [368; 371) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [368; 374) 'set(S)': S<u64>
     [372; 373) 'S': S<u64>
-    [381; 385) 'get2': fn get2<str, S<str>>(T) -> U
+    [381; 385) 'get2': fn get2<str, S<str>>(S<str>) -> str
     [381; 395) 'get2(S::<str>)': str
     [386; 394) 'S::<str>': S<str>
     "###
@@ -1225,6 +1402,32 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
 }
 
 #[test]
+fn super_trait_impl_trait_method_resolution() {
+    assert_snapshot!(
+        infer(r#"
+mod foo {
+    trait SuperTrait {
+        fn foo(&self) -> u32 {}
+    }
+}
+trait Trait1: foo::SuperTrait {}
+
+fn test(x: &impl Trait1) {
+    x.foo();
+}
+"#),
+        @r###"
+    [50; 54) 'self': &Self
+    [63; 65) '{}': ()
+    [116; 117) 'x': &impl Trait1
+    [133; 149) '{     ...o(); }': ()
+    [139; 140) 'x': &impl Trait1
+    [139; 146) 'x.foo()': u32
+    "###
+    );
+}
+
+#[test]
 fn super_trait_cycle() {
     // This just needs to not crash
     assert_snapshot!(
@@ -1270,9 +1473,9 @@ fn test() {
     [157; 160) '{t}': T
     [158; 159) 't': T
     [259; 280) '{     ...S)); }': ()
-    [265; 269) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [265; 269) 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
     [265; 277) 'get2(set(S))': u64
-    [270; 273) 'set': fn set<S<u64>>(T) -> T
+    [270; 273) 'set': fn set<S<u64>>(S<u64>) -> S<u64>
     [270; 276) 'set(S)': S<u64>
     [274; 275) 'S': S<u64>
     "###
@@ -1334,7 +1537,7 @@ fn test() {
     [173; 175) '{}': ()
     [189; 308) '{     ... 1); }': ()
     [199; 200) 'x': Option<u32>
-    [203; 215) 'Option::Some': Some<u32>(T) -> Option<T>
+    [203; 215) 'Option::Some': Some<u32>(u32) -> Option<u32>
     [203; 221) 'Option...(1u32)': Option<u32>
     [216; 220) '1u32': u32
     [227; 228) 'x': Option<u32>
@@ -1444,7 +1647,7 @@ fn test() {
     [340; 342) '{}': ()
     [356; 515) '{     ... S); }': ()
     [366; 368) 'x1': u64
-    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(T, F) -> U
+    [371; 375) 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
     [371; 394) 'foo1(S...hod())': u64
     [376; 377) 'S': S
     [379; 393) '|s| s.method()': |S| -> u64
@@ -1452,7 +1655,7 @@ fn test() {
     [383; 384) 's': S
     [383; 393) 's.method()': u64
     [404; 406) 'x2': u64
-    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(F, T) -> U
+    [409; 413) 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
     [409; 432) 'foo2(|...(), S)': u64
     [414; 428) '|s| s.method()': |S| -> u64
     [415; 416) 's': S
@@ -1605,7 +1808,6 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 
 #[test]
 fn unify_impl_trait() {
-    covers!(insert_vars_for_impl_trait);
     assert_snapshot!(
         infer_with_mismatches(r#"
 trait Trait<T> {}
@@ -1637,26 +1839,26 @@ fn test() -> impl Trait<i32> {
     [172; 183) '{ loop {} }': T
     [174; 181) 'loop {}': !
     [179; 181) '{}': ()
-    [214; 310) '{     ...t()) }': S<i32>
+    [214; 310) '{     ...t()) }': S<{unknown}>
     [224; 226) 's1': S<u32>
-    [229; 230) 'S': S<u32>(T) -> S<T>
+    [229; 230) 'S': S<u32>(u32) -> S<u32>
     [229; 241) 'S(default())': S<u32>
-    [231; 238) 'default': fn default<u32>() -> T
+    [231; 238) 'default': fn default<u32>() -> u32
     [231; 240) 'default()': u32
-    [247; 250) 'foo': fn foo(impl Trait<u32>) -> ()
+    [247; 250) 'foo': fn foo(S<u32>) -> ()
     [247; 254) 'foo(s1)': ()
     [251; 253) 's1': S<u32>
     [264; 265) 'x': i32
-    [273; 276) 'bar': fn bar<i32>(impl Trait<T>) -> T
+    [273; 276) 'bar': fn bar<i32>(S<i32>) -> i32
     [273; 290) 'bar(S(...lt()))': i32
-    [277; 278) 'S': S<i32>(T) -> S<T>
+    [277; 278) 'S': S<i32>(i32) -> S<i32>
     [277; 289) 'S(default())': S<i32>
-    [279; 286) 'default': fn default<i32>() -> T
+    [279; 286) 'default': fn default<i32>() -> i32
     [279; 288) 'default()': i32
-    [296; 297) 'S': S<i32>(T) -> S<T>
-    [296; 308) 'S(default())': S<i32>
-    [298; 305) 'default': fn default<i32>() -> T
-    [298; 307) 'default()': i32
+    [296; 297) 'S': S<{unknown}>({unknown}) -> S<{unknown}>
+    [296; 308) 'S(default())': S<{unknown}>
+    [298; 305) 'default': fn default<{unknown}>() -> {unknown}
+    [298; 307) 'default()': {unknown}
     "###
     );
 }

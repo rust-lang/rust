@@ -490,10 +490,12 @@ impl Scope {
             }
             Scope::GenericParams { params, def } => {
                 for (local_id, param) in params.types.iter() {
-                    f(
-                        param.name.clone(),
-                        ScopeDef::GenericParam(TypeParamId { local_id, parent: *def }),
-                    )
+                    if let Some(name) = &param.name {
+                        f(
+                            name.clone(),
+                            ScopeDef::GenericParam(TypeParamId { local_id, parent: *def }),
+                        )
+                    }
                 }
             }
             Scope::ImplBlockScope(i) => {

@@ -9,9 +9,9 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{db::HirDatabase, method_resolution, Substs, Ty, TypeWalk, ValueTyDefId};
+use crate::{db::HirDatabase, method_resolution, Substs, Ty, ValueTyDefId};
 
-use super::{ExprOrPatId, InferenceContext, TraitEnvironment, TraitRef};
+use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(
@@ -39,7 +39,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
+            let ctx = crate::lower::TyLoweringContext::new(self.db, &resolver);
+            let ty = Ty::from_type_relative_path(&ctx, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
                 &path.segments().last().expect("path had at least one segment").name,
@@ -69,12 +70,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ValueNs::EnumVariantId(it) => it.into(),
         };
 
-        let mut ty = self.db.value_ty(typable);
-        if let Some(self_subst) = self_subst {
-            ty = ty.subst(&self_subst);
-        }
-        let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-        let ty = ty.subst(&substs);
+        let ty = self.db.value_ty(typable);
+        // self_subst is just for the parent
+        let parent_substs = self_subst.unwrap_or_else(Substs::empty);
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
+        let substs = Ty::substs_from_path(&ctx, path, typable);
+        let full_substs = Substs::builder(substs.len())
+            .use_parent_substs(&parent_substs)
+            .fill(substs.0[parent_substs.len()..].iter().cloned())
+            .build();
+        let ty = ty.subst(&full_substs);
         Some(ty)
     }
 
@@ -98,13 +103,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
-                let trait_ref = TraitRef::from_resolved_path(
-                    self.db,
-                    &self.resolver,
-                    trait_.into(),
-                    resolved_segment,
-                    None,
-                );
+                let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
+                let trait_ref =
+                    TraitRef::from_resolved_path(&ctx, trait_.into(), resolved_segment, None);
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
@@ -114,9 +115,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // as Iterator>::Item::default`)
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
+                let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
                 let ty = Ty::from_partly_resolved_hir_path(
-                    self.db,
-                    &self.resolver,
+                    &ctx,
                     def,
                     resolved_segment,
                     remaining_segments_for_ty,
@@ -173,13 +174,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             AssocItemId::ConstId(c) => ValueNs::ConstId(c),
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
-        let substs = Substs::build_for_def(self.db, item)
-            .use_parent_substs(&trait_ref.substs)
-            .fill_with_params()
-            .build();
 
         self.write_assoc_resolution(id, item);
-        Some((def, Some(substs)))
+        Some((def, Some(trait_ref.substs)))
     }
 
     fn resolve_ty_assoc_item(
@@ -193,14 +190,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
 
         let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
-        let env = TraitEnvironment::lower(self.db, &self.resolver);
         let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db);
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
-            env,
+            self.trait_env.clone(),
             krate,
             &traits_in_scope,
             Some(name),
@@ -219,12 +215,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .fill(iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
-                        let substs = Substs::build_for_def(self.db, item)
-                            .use_parent_substs(&impl_substs)
-                            .fill_with_params()
-                            .build();
                         self.unify(&impl_self_ty, &ty);
-                        Some(substs)
+                        Some(impl_substs)
                     }
                     AssocContainerId::TraitId(trait_) => {
                         // we're picking this method
@@ -232,15 +224,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        let substs = Substs::build_for_def(self.db, item)
-                            .use_parent_substs(&trait_substs)
-                            .fill_with_params()
-                            .build();
                         self.obligations.push(super::Obligation::Trait(TraitRef {
                             trait_,
-                            substs: trait_substs,
+                            substs: trait_substs.clone(),
                         }));
-                        Some(substs)
+                        Some(trait_substs)
                     }
                     AssocContainerId::ContainerId(_) => None,
                 };

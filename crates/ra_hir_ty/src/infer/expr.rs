@@ -10,7 +10,7 @@ use hir_def::{
     resolver::resolver_for_expr,
     AdtId, AssocContainerId, Lookup, StructFieldId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
 use ra_syntax::ast::RangeOp;
 
 use crate::{
@@ -19,8 +19,8 @@ use crate::{
     method_resolution, op,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
-    ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
-    TypeCtor, TypeWalk, Uncertain,
+    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef,
+    Ty, TypeCtor, Uncertain,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -236,8 +236,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         self.result.record_field_resolutions.insert(field.expr, field_def);
                     }
                     let field_ty = field_def
-                        .map_or(Ty::Unknown, |it| field_types[it.local_id].clone())
-                        .subst(&substs);
+                        .map_or(Ty::Unknown, |it| field_types[it.local_id].clone().subst(&substs));
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
@@ -588,10 +587,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.write_method_resolution(tgt_expr, func);
                 (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
             }
-            None => (receiver_ty, Ty::Unknown, None),
+            None => (receiver_ty, Binders::new(0, Ty::Unknown), None),
         };
         let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
-        let method_ty = method_ty.apply_substs(substs);
+        let method_ty = method_ty.subst(&substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
         let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
@@ -635,7 +634,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     continue;
                 }
 
-                let param_ty = self.insert_vars_for_impl_trait(param_ty);
                 let param_ty = self.normalize_associated_types_in(param_ty);
                 self.infer_expr_coerce(arg, &Expectation::has_type(param_ty.clone()));
             }
@@ -648,13 +646,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substs {
-        let (total_len, _parent_len, child_len) =
-            def_generics.as_ref().map_or((0, 0, 0), |g| g.len_split());
+        let (parent_params, self_params, type_params, impl_trait_params) =
+            def_generics.as_ref().map_or((0, 0, 0, 0), |g| g.provenance_split());
+        assert_eq!(self_params, 0); // method shouldn't have another Self param
+        let total_len = parent_params + type_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
             for (_id, param) in parent_generics {
-                if param.name == name![Self] {
+                if param.provenance == hir_def::generics::TypeParamProvenance::TraitSelf {
                     substs.push(receiver_ty.clone());
                 } else {
                     substs.push(Ty::Unknown);
@@ -664,7 +664,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args.args.iter().take(child_len) {
+            for arg in generic_args.args.iter().take(type_params) {
                 match arg {
                     GenericArg::Type(type_ref) => {
                         let ty = self.make_ty(type_ref);

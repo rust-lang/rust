@@ -57,8 +57,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let trait_ref = db.impl_trait(impl_id)?;
 
                 // `CoerseUnsized` has one generic parameter for the target type.
-                let cur_from_ty = trait_ref.substs.0.get(0)?;
-                let cur_to_ty = trait_ref.substs.0.get(1)?;
+                let cur_from_ty = trait_ref.value.substs.0.get(0)?;
+                let cur_to_ty = trait_ref.value.substs.0.get(1)?;
 
                 match (&cur_from_ty, cur_to_ty) {
                     (ty_app!(ctor1, st1), ty_app!(ctor2, st2)) => {
@@ -66,9 +66,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         // This works for smart-pointer-like coercion, which covers all impls from std.
                         st1.iter().zip(st2.iter()).enumerate().find_map(|(i, (ty1, ty2))| {
                             match (ty1, ty2) {
-                                (Ty::Param { idx: p1, .. }, Ty::Param { idx: p2, .. })
-                                    if p1 != p2 =>
-                                {
+                                (Ty::Bound(idx1), Ty::Bound(idx2)) if idx1 != idx2 => {
                                     Some(((*ctor1, *ctor2), i))
                                 }
                                 _ => None,
@@ -256,8 +254,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let unsize_generic_index = {
                     let mut index = None;
                     let mut multiple_param = false;
-                    field_tys[last_field_id].walk(&mut |ty| match ty {
-                        &Ty::Param { idx, .. } => {
+                    field_tys[last_field_id].value.walk(&mut |ty| match ty {
+                        &Ty::Bound(idx) => {
                             if index.is_none() {
                                 index = Some(idx);
                             } else if Some(idx) != index {
@@ -276,10 +274,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // Check other fields do not involve it.
                 let mut multiple_used = false;
                 fields.for_each(|(field_id, _data)| {
-                    field_tys[field_id].walk(&mut |ty| match ty {
-                        &Ty::Param { idx, .. } if idx == unsize_generic_index => {
-                            multiple_used = true
-                        }
+                    field_tys[field_id].value.walk(&mut |ty| match ty {
+                        &Ty::Bound(idx) if idx == unsize_generic_index => multiple_used = true,
                         _ => {}
                     })
                 });
