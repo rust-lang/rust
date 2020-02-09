@@ -2290,7 +2290,7 @@ impl<'tcx> AdtDef {
         self.flags.contains(AdtFlags::IS_BOX)
     }
 
-    /// Returns `true` if this is ManuallyDrop<T>.
+    /// Returns `true` if this is `ManuallyDrop<T>`.
     #[inline]
     pub fn is_manually_drop(&self) -> bool {
         self.flags.contains(AdtFlags::IS_MANUALLY_DROP)

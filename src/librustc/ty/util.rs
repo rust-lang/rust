@@ -1013,12 +1013,12 @@ pub fn needs_drop_components(
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),
 
-        // Foreign types can never have destructors
+        // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
         // Pessimistically assume that all generators will require destructors
         // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass
+        // state transformation pass.
         ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(ty, target_layout),
