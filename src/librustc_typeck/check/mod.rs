@@ -1976,6 +1976,7 @@ fn check_impl_items_against_trait<'tcx>(
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx
             .associated_items(impl_trait_ref.def_id)
+            .iter()
             .find(|ac| {
                 Namespace::from(&impl_item.kind) == Namespace::from(ac.kind)
                     && tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id)
@@ -1983,6 +1984,7 @@ fn check_impl_items_against_trait<'tcx>(
             .or_else(|| {
                 // Not compatible, but needed for the error message
                 tcx.associated_items(impl_trait_ref.def_id)
+                    .iter()
                     .find(|ac| tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
             });
 
@@ -2096,7 +2098,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
             if !trait_item.defaultness.has_value() {
-                missing_items.push(trait_item);
+                missing_items.push(*trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.ident);
             }
@@ -5175,7 +5177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
                 let future_trait = self.tcx.lang_items().future_trait().unwrap();
-                let item_def_id = self.tcx.associated_items(future_trait).next().unwrap().def_id;
+                let item_def_id = self.tcx.associated_items(future_trait)[0].def_id;
                 let predicate =
                     ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         // `<T as Future>::Output`
