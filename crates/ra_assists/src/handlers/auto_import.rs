@@ -1,12 +1,8 @@
-use hir::ModPath;
 use ra_ide_db::imports_locator::ImportsLocator;
-use ra_syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
+use ra_syntax::ast::{self, AstNode};
 
 use crate::{
-    assist_ctx::{ActionBuilder, Assist, AssistCtx},
+    assist_ctx::{Assist, AssistCtx},
     insert_use_statement, AssistId,
 };
 use std::collections::BTreeSet;
@@ -67,19 +63,18 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist_group(AssistId("auto_import"), format!("Import {}", name_to_import), || {
-        proposed_imports
-            .into_iter()
-            .map(|import| import_to_action(import, &position, &path_to_import_syntax))
-            .collect()
-    })
-}
-
-fn import_to_action(import: ModPath, position: &SyntaxNode, anchor: &SyntaxNode) -> ActionBuilder {
-    let mut action_builder = ActionBuilder::default();
-    action_builder.label(format!("Import `{}`", &import));
-    insert_use_statement(position, anchor, &import, action_builder.text_edit_builder());
-    action_builder
+    let mut group = ctx.add_assist_group(format!("Import {}", name_to_import));
+    for import in proposed_imports {
+        group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
+            insert_use_statement(
+                &position,
+                path_to_import_syntax,
+                &import,
+                edit.text_edit_builder(),
+            );
+        });
+    }
+    group.finish()
 }
 
 #[cfg(test)]
