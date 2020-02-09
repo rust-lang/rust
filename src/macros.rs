@@ -12,16 +12,12 @@
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use syntax::parse::new_parser_from_tts;
-use syntax::parse::parser::Parser;
-use syntax::parse::token::{BinOpToken, DelimToken, Token, TokenKind};
-use syntax::print::pprust;
-use syntax::source_map::{BytePos, Span};
-use syntax::symbol::kw;
+use rustc_ast_pretty::pprust;
+use rustc_parse::{new_parser_from_tts, parser::Parser};
+use rustc_span::{symbol::kw, BytePos, Span, Symbol, DUMMY_SP};
+use syntax::token::{BinOpToken, DelimToken, Token, TokenKind};
 use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
-use syntax::ThinVec;
-use syntax::{ast, parse, ptr};
-use syntax_pos::{Symbol, DUMMY_SP};
+use syntax::{ast, ptr};
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
@@ -85,7 +81,7 @@ impl Rewrite for MacroArg {
             MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
             MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
             MacroArg::Item(ref item) => item.rewrite(context, shape),
-            MacroArg::Keyword(ident, _) => Some(ident.to_string()),
+            MacroArg::Keyword(ident, _) => Some(ident.name.to_string()),
         }
     }
 }
@@ -114,23 +110,23 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
     parse_macro_arg!(
         Expr,
-        |parser: &mut parse::parser::Parser<'b>| parser.parse_expr(),
+        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_expr(),
         |x: ptr::P<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
         Ty,
-        |parser: &mut parse::parser::Parser<'b>| parser.parse_ty(),
+        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_ty(),
         |x: ptr::P<ast::Ty>| Some(x)
     );
     parse_macro_arg!(
         Pat,
-        |parser: &mut parse::parser::Parser<'b>| parser.parse_pat(None),
+        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_pat(None),
         |x: ptr::P<ast::Pat>| Some(x)
     );
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
     parse_macro_arg!(
         Item,
-        |parser: &mut parse::parser::Parser<'b>| parser.parse_item(),
+        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(),
         |x: Option<ptr::P<ast::Item>>| x
     );
 
@@ -147,7 +143,7 @@ fn rewrite_macro_name(
         // Avoid using pretty-printer in the common case.
         format!("{}!", rewrite_ident(context, path.segments[0].ident))
     } else {
-        format!("{}!", path)
+        format!("{}!", pprust::path_to_string(path))
     };
     match extra_ident {
         Some(ident) if ident.name != kw::Invalid => format!("{} {}", name, ident),
@@ -267,8 +263,8 @@ fn rewrite_macro_inner(
         original_style
     };
 
-    let ts: TokenStream = mac.stream();
-    let has_comment = contains_comment(context.snippet(mac.span));
+    let ts = mac.args.inner_tokens();
+    let has_comment = contains_comment(context.snippet(mac.span()));
     if ts.is_empty() && !has_comment {
         return match style {
             DelimToken::Paren if position == MacroPosition::Item => {
@@ -302,7 +298,7 @@ fn rewrite_macro_inner(
             } else if let Some(arg) = parse_macro_arg(&mut parser) {
                 arg_vec.push(arg);
             } else {
-                return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
+                return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
             }
 
             match parser.token.kind {
@@ -326,16 +322,16 @@ fn rewrite_macro_inner(
                                     return return_macro_parse_failure_fallback(
                                         context,
                                         shape.indent,
-                                        mac.span,
+                                        mac.span(),
                                     );
                                 }
                             }
                         }
                     }
-                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
+                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
                 }
                 _ if arg_vec.last().map_or(false, MacroArg::is_item) => continue,
-                _ => return return_macro_parse_failure_fallback(context, shape.indent, mac.span),
+                _ => return return_macro_parse_failure_fallback(context, shape.indent, mac.span()),
             }
 
             parser.bump();
@@ -355,7 +351,7 @@ fn rewrite_macro_inner(
             shape,
             style,
             position,
-            mac.span,
+            mac.span(),
         );
     }
 
@@ -372,7 +368,7 @@ fn rewrite_macro_inner(
                     &macro_name,
                     arg_vec.iter(),
                     shape,
-                    mac.span,
+                    mac.span(),
                     context.config.width_heuristics().fn_call_width,
                     if trailing_comma {
                         Some(SeparatorTactic::Always)
@@ -409,7 +405,7 @@ fn rewrite_macro_inner(
                 let rewrite = rewrite_array(
                     macro_name,
                     arg_vec.iter(),
-                    mac.span,
+                    mac.span(),
                     context,
                     shape,
                     force_trailing_comma,
@@ -427,7 +423,7 @@ fn rewrite_macro_inner(
             // For macro invocations with braces, always put a space between
             // the `macro_name!` and `{ /* macro_body */ }` but skip modifying
             // anything in between the braces (for now).
-            let snippet = context.snippet(mac.span).trim_start_matches(|c| c != '{');
+            let snippet = context.snippet(mac.span()).trim_start_matches(|c| c != '{');
             match trim_left_preserve_layout(snippet, shape.indent, &context.config) {
                 Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
                 None => Some(format!("{} {}", macro_name, snippet)),
@@ -492,7 +488,8 @@ pub(crate) fn rewrite_macro_def(
         return snippet;
     }
 
-    let mut parser = MacroParser::new(def.stream().into_trees());
+    let ts = def.body.inner_tokens();
+    let mut parser = MacroParser::new(ts.into_trees());
     let parsed_def = match parser.parse() {
         Some(def) => def,
         None => return snippet,
@@ -1190,23 +1187,24 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
 pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
-    if &mac.path.to_string() == "try" {
-        let ts: TokenStream = mac.tts.clone();
+    let path = &pprust::path_to_string(&mac.path);
+    if path == "try" || path == "r#try" {
+        let ts = mac.args.inner_tokens();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
             kind: ast::ExprKind::Try(parser.parse_expr().ok()?),
-            span: mac.span, // incorrect span, but shouldn't matter too much
-            attrs: ThinVec::new(),
+            span: mac.span(), // incorrect span, but shouldn't matter too much
+            attrs: ast::AttrVec::new(),
         })
     } else {
         None
     }
 }
 
-fn macro_style(mac: &ast::Mac, context: &RewriteContext<'_>) -> DelimToken {
-    let snippet = context.snippet(mac.span);
+pub(crate) fn macro_style(mac: &ast::Mac, context: &RewriteContext<'_>) -> DelimToken {
+    let snippet = context.snippet(mac.span());
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
     let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
@@ -1454,7 +1452,10 @@ fn format_lazy_static(
 
     while parser.token.kind != TokenKind::Eof {
         // Parse a `lazy_static!` item.
-        let vis = crate::utils::format_visibility(context, &parse_or!(parse_visibility, false));
+        let vis = crate::utils::format_visibility(
+            context,
+            &parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No),
+        );
         parser.eat_keyword(kw::Static);
         parser.eat_keyword(kw::Ref);
         let id = parse_or!(parse_ident);

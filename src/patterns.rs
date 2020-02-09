@@ -1,6 +1,6 @@
+use rustc_span::{BytePos, Span};
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::ptr;
-use syntax::source_map::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
@@ -179,26 +179,29 @@ impl Rewrite for Pat {
                     None
                 }
             }
-            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                let infix = match end_kind.node {
-                    RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
-                    RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
-                    RangeEnd::Excluded => "..",
-                };
-                let infix = if context.config.spaces_around_ranges() {
-                    format!(" {} ", infix)
-                } else {
-                    infix.to_owned()
-                };
-                rewrite_pair(
-                    &**lhs,
-                    &**rhs,
-                    PairParts::infix(&infix),
-                    context,
-                    shape,
-                    SeparatorPlace::Front,
-                )
-            }
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => match (lhs, rhs) {
+                (Some(lhs), Some(rhs)) => {
+                    let infix = match end_kind.node {
+                        RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
+                        RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
+                        RangeEnd::Excluded => "..",
+                    };
+                    let infix = if context.config.spaces_around_ranges() {
+                        format!(" {} ", infix)
+                    } else {
+                        infix.to_owned()
+                    };
+                    rewrite_pair(
+                        &**lhs,
+                        &**rhs,
+                        PairParts::infix(&infix),
+                        context,
+                        shape,
+                        SeparatorPlace::Front,
+                    )
+                }
+                (_, _) => unimplemented!(),
+            },
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)

@@ -1,7 +1,7 @@
 //! This module contains utilities that work with the `SourceMap` from `libsyntax`/`syntex_syntax`.
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
-use syntax::source_map::{BytePos, SourceMap, Span};
+use rustc_span::{source_map::SourceMap, BytePos, Span};
 
 use crate::comment::FindUncommented;
 use crate::config::file_lines::LineRange;

@@ -1,5 +1,5 @@
+use rustc_span::Span;
 use syntax::ast;
-use syntax_pos::Span;
 
 use crate::comment::recover_comment_removed;
 use crate::config::Version;

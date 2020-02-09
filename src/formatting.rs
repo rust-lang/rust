@@ -7,11 +7,15 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use rustc_data_structures::sync::{Lrc, Send};
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::{ColorConfig, Diagnostic, DiagnosticBuilder, Handler, Level as DiagnosticLevel};
+use rustc_session::parse::ParseSess;
+use rustc_span::{
+    source_map::{FilePathMapping, SourceMap},
+    Span, DUMMY_SP,
+};
 use syntax::ast;
-use syntax::errors::emitter::{ColorConfig, Emitter, EmitterWriter};
-use syntax::errors::{Diagnostic, DiagnosticBuilder, Handler};
-use syntax::parse::{self, ParseSess};
-use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 
 use self::newline_style::apply_newline_style;
 use crate::comment::{CharClasses, FullCodeCharKind};
@@ -108,7 +112,7 @@ fn format_project<T: FormatHandler>(
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
     let files = modules::ModResolver::new(
         &context.parse_session,
-        directory_ownership.unwrap_or(parse::DirectoryOwnership::UnownedViaMod(true)),
+        directory_ownership.unwrap_or(rustc_parse::DirectoryOwnership::UnownedViaMod),
         !(input_is_stdin || config.skip_children()),
     )
     .visit_crate(&krate)
@@ -159,7 +163,8 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             .lookup_char_pos(module.inner.lo())
             .file;
         let big_snippet = source_file.src.as_ref().unwrap();
-        let snippet_provider = SnippetProvider::new(source_file.start_pos, big_snippet);
+        let snippet_provider =
+            SnippetProvider::new(source_file.start_pos, source_file.end_pos, big_snippet);
         let mut visitor = FmtVisitor::from_source_map(
             &self.parse_session,
             &self.config,
@@ -633,7 +638,7 @@ fn parse_crate(
     parse_session: &ParseSess,
     config: &Config,
     report: &mut FormatReport,
-    directory_ownership: Option<parse::DirectoryOwnership>,
+    directory_ownership: Option<rustc_parse::DirectoryOwnership>,
     can_reset_parser_errors: Rc<RefCell<bool>>,
 ) -> Result<ast::Crate, ErrorKind> {
     let input_is_stdin = input.is_text();
@@ -642,14 +647,14 @@ fn parse_crate(
         Input::File(ref file) => {
             // Use `new_sub_parser_from_file` when we the input is a submodule.
             Ok(if let Some(dir_own) = directory_ownership {
-                parse::new_sub_parser_from_file(parse_session, file, dir_own, None, DUMMY_SP)
+                rustc_parse::new_sub_parser_from_file(parse_session, file, dir_own, None, DUMMY_SP)
             } else {
-                parse::new_parser_from_file(parse_session, file)
+                rustc_parse::new_parser_from_file(parse_session, file)
             })
         }
-        Input::Text(text) => parse::maybe_new_parser_from_source_str(
+        Input::Text(text) => rustc_parse::maybe_new_parser_from_source_str(
             parse_session,
-            syntax::source_map::FileName::Custom("stdin".to_owned()),
+            rustc_span::FileName::Custom("stdin".to_owned()),
             text,
         )
         .map(|mut parser| {
@@ -716,11 +721,14 @@ struct SilentOnIgnoredFilesEmitter {
 }
 
 impl Emitter for SilentOnIgnoredFilesEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+        None
+    }
     fn emit_diagnostic(&mut self, db: &Diagnostic) {
         if let Some(primary_span) = &db.span.primary_span() {
             let file_name = self.source_map.span_to_filename(*primary_span);
             match file_name {
-                syntax_pos::FileName::Real(ref path) => {
+                rustc_span::FileName::Real(ref path) => {
                     if self
                         .ignore_path_set
                         .is_match(&FileName::Real(path.to_path_buf()))
@@ -745,6 +753,9 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
 struct SilentEmitter;
 
 impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+        None
+    }
     fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
 }
 

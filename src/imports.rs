@@ -2,9 +2,8 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
 
+use rustc_span::{source_map, symbol::sym, BytePos, Span, DUMMY_SP};
 use syntax::ast::{self, UseTreeKind};
-use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
-use syntax::symbol::sym;
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
@@ -249,7 +248,7 @@ impl UseTree {
 
                 let allow_extend = if attrs.len() == 1 {
                     let line_len = attr_str.len() + 1 + use_str.len();
-                    !attrs.first().unwrap().is_sugared_doc
+                    !attrs.first().unwrap().is_doc_comment()
                         && context.config.inline_attribute_width() >= line_len
                 } else {
                     false
@@ -849,7 +848,7 @@ impl Rewrite for UseTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use syntax::source_map::DUMMY_SP;
+    use rustc_span::DUMMY_SP;
 
     // Parse the path part of an import. This parser is not robust and is only
     // suitable for use in a test harness.

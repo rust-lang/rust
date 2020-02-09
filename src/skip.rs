@@ -1,5 +1,6 @@
 //! Module that contains skip related stuffs.
 
+use rustc_ast_pretty::pprust;
 use syntax::ast;
 
 /// Take care of skip name stack. You can update it by attributes slice or
@@ -45,7 +46,7 @@ pub(crate) fn is_skip_attr(segments: &[ast::PathSegment]) -> bool {
             segments[1].ident.to_string() == SKIP
                 && ["macros", "attributes"]
                     .iter()
-                    .any(|&n| n == &segments[2].ident.name.as_str())
+                    .any(|&n| n == &pprust::path_segment_to_string(&segments[2]))
         }
         _ => false,
     }
@@ -57,8 +58,10 @@ fn get_skip_names(kind: &str, attrs: &[ast::Attribute]) -> Vec<String> {
     for attr in attrs {
         // syntax::ast::Path is implemented partialEq
         // but it is designed for segments.len() == 1
-        if format!("{}", attr.path) != path {
-            continue;
+        if let ast::AttrKind::Normal(attr_item) = &attr.kind {
+            if pprust::path_to_string(&attr_item.path) != path {
+                continue;
+            }
         }
 
         if let Some(list) = attr.meta_item_list() {

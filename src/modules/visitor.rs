@@ -1,9 +1,9 @@
+use rustc_parse::{stream_to_parser_with_base_dir, Directory};
+use rustc_session::parse::ParseSess;
+use rustc_span::{symbol::kw, Symbol};
 use syntax::ast;
-use syntax::parse::token::{DelimToken, TokenKind};
-use syntax::parse::{stream_to_parser_with_base_dir, Directory, ParseSess};
-use syntax::symbol::kw;
+use syntax::token::{DelimToken, TokenKind};
 use syntax::visit::Visitor;
-use syntax_pos::Symbol;
 
 use crate::attr::MetaVisitor;
 
@@ -65,8 +65,9 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
             }
         };
 
+        let ts = mac.args.inner_tokens();
         let mut parser =
-            stream_to_parser_with_base_dir(self.parse_sess, mac.tts.clone(), self.base_dir.clone());
+            stream_to_parser_with_base_dir(self.parse_sess, ts.clone(), self.base_dir.clone());
         parser.cfg_mods = false;
         let mut process_if_cfg = true;
 

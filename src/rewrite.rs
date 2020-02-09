@@ -3,9 +3,9 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use syntax::parse::ParseSess;
+use rustc_session::parse::ParseSess;
+use rustc_span::{source_map::SourceMap, Span};
 use syntax::ptr;
-use syntax::source_map::{SourceMap, Span};
 
 use crate::config::{Config, IndentStyle};
 use crate::shape::Shape;

@@ -385,10 +385,10 @@ impl Default for Edition {
 }
 
 impl Edition {
-    pub(crate) fn to_libsyntax_pos_edition(self) -> syntax_pos::edition::Edition {
+    pub(crate) fn to_libsyntax_pos_edition(self) -> rustc_span::edition::Edition {
         match self {
-            Edition::Edition2015 => syntax_pos::edition::Edition::Edition2015,
-            Edition::Edition2018 => syntax_pos::edition::Edition::Edition2018,
+            Edition::Edition2015 => rustc_span::edition::Edition::Edition2015,
+            Edition::Edition2018 => rustc_span::edition::Edition::Edition2018,
         }
     }
 }
