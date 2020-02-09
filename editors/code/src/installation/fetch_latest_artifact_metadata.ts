@@ -31,17 +31,12 @@ export async function fetchLatestArtifactMetadata(
         downloadUrl: artifact.browser_download_url
     };
 
-    // Noise denotes tremendous amount of data that we are not using here
+    // We omit declaration of tremendous amount of fields that we are not using here
     interface GithubRelease {
         name: string;
         assets: Array<{
             name: string;
             browser_download_url: string;
-
-            [noise: string]: unknown;
         }>;
-
-        [noise: string]: unknown;
     }
-
 }
