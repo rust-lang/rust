@@ -10,6 +10,16 @@ use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
 
+// Used because the `?` operator is not allowed in a const context.
+macro_rules! try_opt {
+    ($e:expr) => {
+        match $e {
+            Some(x) => x,
+            None => return None,
+        }
+    };
+}
+
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
@@ -1001,17 +1011,17 @@ $EndFeature, "
 
                 while exp > 1 {
                     if (exp & 1) == 1 {
-                        acc = acc.checked_mul(base)?;
+                        acc = try_opt!(acc.checked_mul(base));
                     }
                     exp /= 2;
-                    base = base.checked_mul(base)?;
+                    base = try_opt!(base.checked_mul(base));
                 }
 
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
                 if exp == 1 {
-                    acc = acc.checked_mul(base)?;
+                    acc = try_opt!(acc.checked_mul(base));
                 }
 
                 Some(acc)
@@ -3127,17 +3137,17 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFe
 
                 while exp > 1 {
                     if (exp & 1) == 1 {
-                        acc = acc.checked_mul(base)?;
+                        acc = try_opt!(acc.checked_mul(base));
                     }
                     exp /= 2;
-                    base = base.checked_mul(base)?;
+                    base = try_opt!(base.checked_mul(base));
                 }
 
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
                 if exp == 1 {
-                    acc = acc.checked_mul(base)?;
+                    acc = try_opt!(acc.checked_mul(base));
                 }
 
                 Some(acc)
