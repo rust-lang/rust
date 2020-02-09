@@ -170,8 +170,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
-                    !preds.is_empty()
-                        && preds.iter().all(|t| {
+                    !preds.is_empty() && {
+                        let ty_empty_region = cx.tcx.mk_imm_ref(&RegionKind::ReEmpty(ty::UniverseIndex::ROOT), ty);
+                        preds.iter().all(|t| {
                             let ty_params = &t
                                 .skip_binder()
                                 .trait_ref
@@ -180,8 +181,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 .skip(1)
                                 .cloned()
                                 .collect::<Vec<_>>();
-                            implements_trait(cx, cx.tcx.mk_imm_ref(&RegionKind::ReEmpty, ty), t.def_id(), ty_params)
-                        }),
+                            implements_trait(cx, ty_empty_region, t.def_id(), ty_params)
+                        })
+                    },
                 )
             };
 
