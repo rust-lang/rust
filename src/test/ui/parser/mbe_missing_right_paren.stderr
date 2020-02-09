@@ -22,10 +22,10 @@ LL | macro_rules! abc(ؼ;
    |                   ^
 
 error: unexpected end of macro invocation
-  --> $DIR/mbe_missing_right_paren.rs:3:1
+  --> $DIR/mbe_missing_right_paren.rs:3:19
    |
 LL | macro_rules! abc(ؼ
-   | ^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |                   ^ missing tokens in macro arguments
 
 error: aborting due to 3 previous errors
 
