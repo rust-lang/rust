@@ -125,6 +125,7 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
     let trait_method = cx
         .tcx
         .associated_items(impl_trait_ref.def_id)
+        .iter()
         .find(|assoc_item| {
             assoc_item.kind == ty::AssocKind::Method
                 && cx
