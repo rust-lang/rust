@@ -71,9 +71,10 @@ export async function ensureLanguageServerBinary(
             if (isBinaryAvailable(langServerSource.path)) {
                 return langServerSource.path;
             }
+
             vscode.window.showErrorMessage(
                 `Unable to run ${langServerSource.path} binary. ` +
-                "To use the pre-built language server, set `rust-analyzer.raLspServerPath` " +
+                `To use the pre-built language server, set "rust-analyzer.raLspServerPath" ` +
                 "value to `null` or remove it from the settings to use it by default."
             );
             return null;
@@ -81,34 +82,37 @@ export async function ensureLanguageServerBinary(
         case BinarySource.Type.GithubRelease: {
             const prebuiltBinaryPath = path.join(langServerSource.dir, langServerSource.file);
 
-            if (!isBinaryAvailable(prebuiltBinaryPath)) {
-                const userResponse = await vscode.window.showInformationMessage(
-                    "Language server binary for rust-analyzer was not found. " +
-                    "Do you want to download it now?",
-                    "Download now", "Cancel"
-                );
-                if (userResponse !== "Download now") return null;
-
-                try {
-                    await downloadLatestLanguageServer(langServerSource);
-                } catch (err) {
-                    await vscode.window.showErrorMessage(
-                        `Failed to download language server from ${langServerSource.repo.name} ` +
-                        `GitHub repository: ${err.message}`
-                    );
-                    return null;
-                }
-
-
-                assert(
-                    isBinaryAvailable(prebuiltBinaryPath),
-                    "Downloaded language server binary is not functional"
-                );
-
-                vscode.window.showInformationMessage(
-                    "Rust analyzer language server was successfully installed 🦀"
-                );
+            if (isBinaryAvailable(prebuiltBinaryPath)) {
+                return prebuiltBinaryPath;
             }
+
+            const userResponse = await vscode.window.showInformationMessage(
+                "Language server binary for rust-analyzer was not found. " +
+                "Do you want to download it now?",
+                "Download now", "Cancel"
+            );
+            if (userResponse !== "Download now") return null;
+
+            try {
+                await downloadLatestLanguageServer(langServerSource);
+            } catch (err) {
+                await vscode.window.showErrorMessage(
+                    `Failed to download language server from ${langServerSource.repo.name} ` +
+                    `GitHub repository: ${err.message}`
+                );
+                return null;
+            }
+
+
+            assert(
+                isBinaryAvailable(prebuiltBinaryPath),
+                "Downloaded language server binary is not functional"
+            );
+
+            vscode.window.showInformationMessage(
+                "Rust analyzer language server was successfully installed 🦀"
+            );
+
             return prebuiltBinaryPath;
         }
     }
