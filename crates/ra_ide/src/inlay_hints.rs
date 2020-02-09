@@ -80,8 +80,7 @@ fn get_inlay_hints(
             },
             ast::MatchArmList(it) => {
                 it.arms()
-                    .map(|match_arm| match_arm.pats())
-                    .flatten()
+                    .filter_map(|match_arm| match_arm.pat())
                     .for_each(|root_pat| get_pat_type_hints(acc, db, &analyzer, root_pat, true, max_inlay_hint_length));
             },
             ast::CallExpr(it) => {
@@ -202,6 +201,7 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
                 Some(pat) => pats_to_process.push_back(pat),
                 _ => leaf_pats.push(maybe_leaf_pat),
             },
+            ast::Pat::OrPat(ref_pat) => pats_to_process.extend(ref_pat.pats()),
             ast::Pat::TuplePat(tuple_pat) => pats_to_process.extend(tuple_pat.args()),
             ast::Pat::RecordPat(record_pat) => {
                 if let Some(pat_list) = record_pat.record_field_pat_list() {
@@ -222,6 +222,7 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
             ast::Pat::TupleStructPat(tuple_struct_pat) => {
                 pats_to_process.extend(tuple_struct_pat.args())
             }
+            ast::Pat::ParenPat(inner_pat) => pats_to_process.extend(inner_pat.pat()),
             ast::Pat::RefPat(ref_pat) => pats_to_process.extend(ref_pat.pat()),
             _ => (),
         }

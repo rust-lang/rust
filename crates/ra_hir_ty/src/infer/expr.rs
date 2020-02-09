@@ -168,9 +168,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let mut result_ty = self.table.new_maybe_never_type_var();
 
                 for arm in arms {
-                    for &pat in &arm.pats {
-                        let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
-                    }
+                    let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
                             guard_expr,

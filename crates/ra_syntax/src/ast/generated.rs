@@ -1759,8 +1759,8 @@ impl AstNode for MatchArm {
 }
 impl ast::AttrsOwner for MatchArm {}
 impl MatchArm {
-    pub fn pats(&self) -> AstChildren<Pat> {
-        AstChildren::new(&self.syntax)
+    pub fn pat(&self) -> Option<Pat> {
+        AstChildren::new(&self.syntax).next()
     }
     pub fn guard(&self) -> Option<MatchGuard> {
         AstChildren::new(&self.syntax).next()
@@ -1883,6 +1883,60 @@ impl RecordField {
         AstChildren::new(&self.syntax).next()
     }
     pub fn expr(&self) -> Option<Expr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OrPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for OrPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            OR_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl OrPat {
+    pub fn pats(&self) -> AstChildren<Pat> {
+        AstChildren::new(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParenPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for ParenPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            PAREN_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ParenPat {
+    pub fn pat(&self) -> Option<Pat> {
         AstChildren::new(&self.syntax).next()
     }
 }
@@ -3900,6 +3954,8 @@ impl AstNode for Expr {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
+    OrPat(OrPat),
+    ParenPat(ParenPat),
     RefPat(RefPat),
     BoxPat(BoxPat),
     BindPat(BindPat),
@@ -3912,6 +3968,16 @@ pub enum Pat {
     SlicePat(SlicePat),
     RangePat(RangePat),
     LiteralPat(LiteralPat),
+}
+impl From<OrPat> for Pat {
+    fn from(node: OrPat) -> Pat {
+        Pat::OrPat(node)
+    }
+}
+impl From<ParenPat> for Pat {
+    fn from(node: ParenPat) -> Pat {
+        Pat::ParenPat(node)
+    }
 }
 impl From<RefPat> for Pat {
     fn from(node: RefPat) -> Pat {
@@ -3976,15 +4042,16 @@ impl From<LiteralPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT | PATH_PAT
-            | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => {
-                true
-            }
+            OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
+            | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
+            | LITERAL_PAT => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
+            OR_PAT => Pat::OrPat(OrPat { syntax }),
+            PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
             REF_PAT => Pat::RefPat(RefPat { syntax }),
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
             BIND_PAT => Pat::BindPat(BindPat { syntax }),
@@ -4003,6 +4070,8 @@ impl AstNode for Pat {
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
+            Pat::OrPat(it) => &it.syntax,
+            Pat::ParenPat(it) => &it.syntax,
             Pat::RefPat(it) => &it.syntax,
             Pat::BoxPat(it) => &it.syntax,
             Pat::BindPat(it) => &it.syntax,

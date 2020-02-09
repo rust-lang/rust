@@ -202,7 +202,7 @@ pub enum Array {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
-    pub pats: Vec<PatId>,
+    pub pat: PatId,
     pub guard: Option<ExprId>,
     pub expr: ExprId,
 }
@@ -382,6 +382,7 @@ pub enum Pat {
     Missing,
     Wild,
     Tuple(Vec<PatId>),
+    Or(Vec<PatId>),
     Record {
         path: Option<Path>,
         args: Vec<RecordFieldPat>,
@@ -420,7 +421,7 @@ impl Pat {
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }
-            Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
+            Pat::Or(args) | Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
                 args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
