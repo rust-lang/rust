@@ -12,10 +12,10 @@ use crate::{
     AssistId,
 };
 
-/// This function produces sequence of text edits into edit
-/// to import the target path in the most appropriate scope given
-/// the cursor position
-pub fn auto_import_text_edit(
+/// Creates and inserts a use statement for the given path to import.
+/// The use statement is inserted in the scope most appropriate to the
+/// the cursor position given, additionally merged with the existing use imports.
+pub fn insert_use_statement(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,
     // The statement to use as anchor (last resort)
@@ -37,9 +37,9 @@ pub fn auto_import_text_edit(
     }
 }
 
-// Assist: add_import
+// Assist: replace_qualified_name_with_use
 //
-// Adds a use statement for a given fully-qualified path.
+// Adds a use statement for a given fully-qualified name.
 //
 // ```
 // fn process(map: std::collections::<|>HashMap<String, String>) {}
@@ -50,7 +50,7 @@ pub fn auto_import_text_edit(
 //
 // fn process(map: HashMap<String, String>) {}
 // ```
-pub(crate) fn add_import(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
@@ -72,9 +72,13 @@ pub(crate) fn add_import(ctx: AssistCtx) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("add_import"), format!("Import {}", fmt_segments(&segments)), |edit| {
-        apply_auto_import(&position, &path, &segments, edit.text_edit_builder());
-    })
+    ctx.add_assist(
+        AssistId("replace_qualified_name_with_use"),
+        "Replace qualified path with use",
+        |edit| {
+            replace_with_use(&position, &path, &segments, edit.text_edit_builder());
+        },
+    )
 }
 
 fn collect_path_segments_raw(
@@ -105,12 +109,6 @@ fn collect_path_segments_raw(
     let only_new_segments = segments.split_at_mut(oldlen).1;
     only_new_segments.reverse();
     Some(segments.len() - oldlen)
-}
-
-fn fmt_segments(segments: &[SmolStr]) -> String {
-    let mut buf = String::new();
-    fmt_segments_raw(segments, &mut buf);
-    buf
 }
 
 fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
@@ -558,7 +556,7 @@ fn make_assist_add_nested_import(
     }
 }
 
-fn apply_auto_import(
+fn replace_with_use(
     container: &SyntaxNode,
     path: &ast::Path,
     target: &[SmolStr],
@@ -567,7 +565,7 @@ fn apply_auto_import(
     let action = best_action_for_target(container.clone(), path.syntax().clone(), target);
     make_assist(&action, target, edit);
     if let Some(last) = path.segment() {
-        // Here we are assuming the assist will provide a  correct use statement
+        // Here we are assuming the assist will provide a correct use statement
         // so we can delete the path qualifier
         edit.delete(TextRange::from_to(
             path.syntax().text_range().start(),
@@ -603,9 +601,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_auto_import_add_use_no_anchor() {
+    fn test_replace_add_use_no_anchor() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 std::fmt::Debug<|>
     ",
@@ -617,9 +615,9 @@ Debug<|>
         );
     }
     #[test]
-    fn test_auto_import_add_use_no_anchor_with_item_below() {
+    fn test_replace_add_use_no_anchor_with_item_below() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 std::fmt::Debug<|>
 
@@ -638,9 +636,9 @@ fn main() {
     }
 
     #[test]
-    fn test_auto_import_add_use_no_anchor_with_item_above() {
+    fn test_replace_add_use_no_anchor_with_item_above() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 fn main() {
 }
@@ -659,9 +657,9 @@ Debug<|>
     }
 
     #[test]
-    fn test_auto_import_add_use_no_anchor_2seg() {
+    fn test_replace_add_use_no_anchor_2seg() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 std::fmt<|>::Debug
     ",
@@ -674,9 +672,9 @@ fmt<|>::Debug
     }
 
     #[test]
-    fn test_auto_import_add_use() {
+    fn test_replace_add_use() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use stdx;
 
@@ -694,9 +692,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_use_other_anchor() {
+    fn test_replace_file_use_other_anchor() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 impl std::fmt::Debug<|> for Foo {
 }
@@ -711,9 +709,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_add_use_other_anchor_indent() {
+    fn test_replace_add_use_other_anchor_indent() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
     impl std::fmt::Debug<|> for Foo {
     }
@@ -728,9 +726,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_split_different() {
+    fn test_replace_split_different() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt;
 
@@ -747,9 +745,9 @@ impl io<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_split_self_for_use() {
+    fn test_replace_split_self_for_use() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt;
 
@@ -766,9 +764,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_split_self_for_target() {
+    fn test_replace_split_self_for_target() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::Debug;
 
@@ -785,9 +783,9 @@ impl fmt<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_add_to_nested_self_nested() {
+    fn test_replace_add_to_nested_self_nested() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::{Debug, nested::{Display}};
 
@@ -804,9 +802,9 @@ impl nested<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_add_to_nested_self_already_included() {
+    fn test_replace_add_to_nested_self_already_included() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::{Debug, nested::{self, Display}};
 
@@ -823,9 +821,9 @@ impl nested<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_add_to_nested_nested() {
+    fn test_replace_add_to_nested_nested() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::{Debug, nested::{Display}};
 
@@ -842,9 +840,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_split_common_target_longer() {
+    fn test_replace_split_common_target_longer() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::Debug;
 
@@ -861,9 +859,9 @@ impl Display<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_split_common_use_longer() {
+    fn test_replace_split_common_use_longer() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt::nested::Debug;
 
@@ -880,9 +878,9 @@ impl Display<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_use_nested_import() {
+    fn test_replace_use_nested_import() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use crate::{
     ty::{Substs, Ty},
@@ -903,9 +901,9 @@ fn foo() { lower<|>::trait_env() }
     }
 
     #[test]
-    fn test_auto_import_alias() {
+    fn test_replace_alias() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt as foo;
 
@@ -922,9 +920,9 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_not_applicable_one_segment() {
+    fn test_replace_not_applicable_one_segment() {
         check_assist_not_applicable(
-            add_import,
+            replace_qualified_name_with_use,
             "
 impl foo<|> for Foo {
 }
@@ -933,9 +931,9 @@ impl foo<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_not_applicable_in_use() {
+    fn test_replace_not_applicable_in_use() {
         check_assist_not_applicable(
-            add_import,
+            replace_qualified_name_with_use,
             "
 use std::fmt<|>;
 ",
@@ -943,9 +941,9 @@ use std::fmt<|>;
     }
 
     #[test]
-    fn test_auto_import_add_use_no_anchor_in_mod_mod() {
+    fn test_replace_add_use_no_anchor_in_mod_mod() {
         check_assist(
-            add_import,
+            replace_qualified_name_with_use,
             "
 mod foo {
     mod bar {

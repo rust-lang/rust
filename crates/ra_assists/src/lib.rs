@@ -21,7 +21,7 @@ use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
-pub use crate::handlers::add_import::auto_import_text_edit;
+pub use crate::handlers::replace_qualified_name_with_use::insert_use_statement;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -133,7 +133,7 @@ mod handlers {
     mod replace_if_let_with_match;
     mod split_import;
     mod remove_dbg;
-    pub(crate) mod add_import;
+    pub(crate) mod replace_qualified_name_with_use;
     mod add_missing_impl_members;
     mod move_guard;
     mod move_bounds;
@@ -158,7 +158,7 @@ mod handlers {
             replace_if_let_with_match::replace_if_let_with_match,
             split_import::split_import,
             remove_dbg::remove_dbg,
-            add_import::add_import,
+            replace_qualified_name_with_use::replace_qualified_name_with_use,
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
             inline_local_variable::inline_local_variable,
