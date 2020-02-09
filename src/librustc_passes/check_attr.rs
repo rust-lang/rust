@@ -418,8 +418,8 @@ impl CheckAttrVisitor<'tcx> {
 impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {

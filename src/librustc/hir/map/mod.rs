@@ -3,16 +3,14 @@ pub use self::definitions::{
     DefKey, DefPath, DefPathData, DefPathHash, Definitions, DisambiguatedDefPathData,
 };
 
-use crate::arena::Arena;
 use crate::hir::{HirOwner, HirOwnerItems};
-use crate::middle::cstore::CrateStoreDyn;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, DefIndex, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
@@ -129,38 +127,20 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
     }
 }
 
-/// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
-pub struct EarlyMap<'hir> {
-    pub krate: &'hir Crate<'hir>,
-
+pub struct IndexedHir<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
     pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
     pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
-
-    pub(crate) definitions: &'hir Definitions,
 
     /// The reverse mapping of `node_to_hir_id`.
     pub(super) hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
-/// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
+#[derive(Copy, Clone)]
 pub struct Map<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-
-    pub(super) krate: &'hir Crate<'hir>,
-
-    /// The SVH of the local crate.
-    pub crate_hash: Svh,
-
-    pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
-    pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
-
-    pub(super) definitions: &'hir Definitions,
-
-    /// The reverse mapping of `node_to_hir_id`.
-    pub(super) hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
@@ -196,21 +176,18 @@ impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
 }
 
 impl<'hir> Map<'hir> {
-    /// This is used internally in the dependency tracking system.
-    /// Use the `krate` method to ensure your dependency on the
-    /// crate is tracked.
-    pub fn untracked_krate(&self) -> &Crate<'hir> {
-        &self.krate
+    pub fn krate(&self) -> &'hir Crate<'hir> {
+        self.tcx.hir_crate(LOCAL_CRATE)
     }
 
     #[inline]
-    pub fn definitions(&self) -> &Definitions {
-        &self.definitions
+    pub fn definitions(&self) -> &'hir Definitions {
+        &self.tcx.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
         assert!(def_id.is_local());
-        self.definitions.def_key(def_id.index)
+        self.tcx.definitions.def_key(def_id.index)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
@@ -219,7 +196,7 @@ impl<'hir> Map<'hir> {
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
-        self.definitions.def_path(def_id.index)
+        self.tcx.definitions.def_path(def_id.index)
     }
 
     #[inline]
@@ -248,42 +225,42 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
-        self.definitions.opt_local_def_id(node_id)
+        self.tcx.definitions.opt_local_def_id(node_id)
     }
 
     #[inline]
     pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<DefId> {
-        self.definitions.opt_local_def_id(node)
+        self.tcx.definitions.opt_local_def_id(node)
     }
 
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        self.definitions.as_local_node_id(def_id)
+        self.tcx.definitions.as_local_node_id(def_id)
     }
 
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
-        self.definitions.as_local_hir_id(def_id)
+        self.tcx.definitions.as_local_hir_id(def_id)
     }
 
     #[inline]
     pub fn hir_to_node_id(&self, hir_id: HirId) -> NodeId {
-        self.hir_to_node_id[&hir_id]
+        self.tcx.index_hir(LOCAL_CRATE).hir_to_node_id[&hir_id]
     }
 
     #[inline]
     pub fn node_to_hir_id(&self, node_id: NodeId) -> HirId {
-        self.definitions.node_to_hir_id(node_id)
+        self.tcx.definitions.node_to_hir_id(node_id)
     }
 
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> HirId {
-        self.definitions.def_index_to_hir_id(def_index)
+        self.tcx.definitions.def_index_to_hir_id(def_index)
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
+        self.tcx.definitions.def_index_to_hir_id(def_id.to_def_id().index)
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
@@ -1045,45 +1022,42 @@ impl Named for ImplItem<'_> {
     }
 }
 
-pub fn map_crate<'hir>(
-    sess: &rustc_session::Session,
-    arena: &'hir Arena<'hir>,
-    cstore: &CrateStoreDyn,
-    krate: &'hir Crate<'hir>,
-    definitions: Definitions,
-) -> EarlyMap<'hir> {
-    let _prof_timer = sess.prof.generic_activity("build_hir_map");
+pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx IndexedHir<'tcx> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
+    let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
     // Build the reverse mapping of `node_to_hir_id`.
-    let hir_to_node_id = definitions
+    let hir_to_node_id = tcx
+        .definitions
         .node_to_hir_id
         .iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id))
         .collect();
 
     let (owner_map, owner_items_map, crate_hash) = {
-        let hcx = crate::ich::StableHashingContext::new(sess, krate, &definitions, cstore);
+        let hcx = tcx.create_stable_hashing_context();
 
-        let mut collector =
-            NodeCollector::root(sess, arena, krate, &definitions, &hir_to_node_id, hcx);
-        intravisit::walk_crate(&mut collector, krate);
+        let mut collector = NodeCollector::root(
+            tcx.sess,
+            &**tcx.arena,
+            tcx.untracked_crate,
+            &tcx.definitions,
+            &hir_to_node_id,
+            hcx,
+        );
+        intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
-        let crate_disambiguator = sess.local_crate_disambiguator();
-        let cmdline_args = sess.opts.dep_tracking_hash();
-        collector.finalize_and_compute_crate_hash(crate_disambiguator, cstore, cmdline_args)
+        let crate_disambiguator = tcx.sess.local_crate_disambiguator();
+        let cmdline_args = tcx.sess.opts.dep_tracking_hash();
+        collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
     };
 
-    let map = EarlyMap {
-        krate,
+    let map = tcx.arena.alloc(IndexedHir {
         crate_hash,
         owner_map,
         owner_items_map: owner_items_map.into_iter().map(|(k, v)| (k, &*v)).collect(),
         hir_to_node_id,
-        definitions: arena.alloc(definitions),
-    };
-
-    sess.time("validate_HIR_map", || {
-        hir_id_validator::check_crate(&map, sess);
     });
 
     map

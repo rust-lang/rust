@@ -107,7 +107,7 @@ crate struct PlaceholderHirTyCollector(crate Vec<Span>);
 impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     type Map = Map<'v>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
@@ -201,8 +201,8 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -1047,7 +1047,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     impl Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
         type Map = Map<'tcx>;
 
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
 

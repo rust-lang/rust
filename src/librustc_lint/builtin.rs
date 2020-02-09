@@ -1073,7 +1073,7 @@ impl TypeAliasBounds {
         impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
             type Map = Map<'v>;
 
-            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 

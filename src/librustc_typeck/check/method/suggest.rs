@@ -1349,7 +1349,7 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
 
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

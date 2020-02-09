@@ -53,7 +53,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
-use rustc_data_structures::sync::{self, AtomicCell, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
@@ -939,7 +939,7 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    cstore: Box<CrateStoreDyn>,
+    pub(crate) cstore: Box<CrateStoreDyn>,
 
     pub sess: &'tcx Session,
 
@@ -972,9 +972,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    /// These should usually be accessed with the `tcx.hir()` method.
-    pub(crate) hir_map: Steal<hir_map::EarlyMap<'tcx>>,
-    pub(crate) late_hir_map: AtomicCell<Option<&'tcx hir_map::Map<'tcx>>>,
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
     pub(crate) definitions: &'tcx Definitions,
 
@@ -1120,7 +1117,8 @@ impl<'tcx> TyCtxt<'tcx> {
         extern_providers: ty::query::Providers<'tcx>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
-        hir: hir_map::EarlyMap<'tcx>,
+        krate: &'tcx hir::Crate<'tcx>,
+        definitions: &'tcx Definitions,
         dep_graph: DepGraph,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
@@ -1133,7 +1131,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
-        let definitions = hir.definitions;
         let cstore = resolutions.cstore;
         let crates = cstore.crates_untracked();
         let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
@@ -1213,9 +1210,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .map(|(id, names)| (definitions.local_def_id(id), names))
                 .collect(),
             extern_prelude: resolutions.extern_prelude,
-            untracked_crate: hir.krate,
-            hir_map: Steal::new(hir),
-            late_hir_map: AtomicCell::new(None),
+            untracked_crate: krate,
             definitions,
             def_path_hash_to_def_id,
             queries: query::Queries::new(providers, extern_providers, on_disk_query_result_cache),

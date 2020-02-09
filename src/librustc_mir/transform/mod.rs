@@ -87,7 +87,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             intravisit::walk_struct_def(self, v)
         }
         type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
     }

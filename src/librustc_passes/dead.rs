@@ -212,7 +212,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -568,8 +568,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

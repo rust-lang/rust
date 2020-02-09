@@ -99,8 +99,8 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
-        hir_visit::NestedVisitorMap::All(&self.context.tcx.hir())
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
+        hir_visit::NestedVisitorMap::All(self.context.tcx.hir())
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {

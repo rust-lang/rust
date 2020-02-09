@@ -1462,7 +1462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         impl<'r, 'a, 'v, 'hir> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
             type Map = Map<'v>;
 
-            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 

@@ -273,8 +273,7 @@ fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.hir().crate_hash
+    tcx.index_hir(crate_num).crate_hash
 }
 
 fn instance_def_size_estimate<'tcx>(

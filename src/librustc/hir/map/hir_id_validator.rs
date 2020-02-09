@@ -1,4 +1,4 @@
-use crate::hir::map::EarlyMap;
+use crate::ty::TyCtxt;
 /*use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
@@ -7,8 +7,8 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};*/
 
-pub fn check_crate(_: &EarlyMap<'_>, sess: &rustc_session::Session) {
-    /*hir_map.dep_graph.assert_ignored();
+pub fn check_crate(_tcx: TyCtxt<'_>) {
+    /*tcx.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());
 
@@ -24,7 +24,7 @@ pub fn check_crate(_: &EarlyMap<'_>, sess: &rustc_session::Session) {
 
     if !errors.is_empty() {
         let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
     }*/
 }
 /*
@@ -135,7 +135,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     type Map = EarlyMap<'hir>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 

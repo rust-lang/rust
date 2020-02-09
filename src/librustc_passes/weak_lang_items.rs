@@ -87,7 +87,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     type Map = Map<'v>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Map<'v>> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Map<'v>> {
         NestedVisitorMap::None
     }
 

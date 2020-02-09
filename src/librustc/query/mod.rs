@@ -55,7 +55,7 @@ rustc_queries! {
             desc { "get the crate HIR" }
         }
 
-        query hir_map(_: CrateNum) -> &'tcx map::Map<'tcx> {
+        query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
             eval_always
             no_hash
             desc { "index HIR" }
