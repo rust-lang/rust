@@ -376,6 +376,7 @@ impl<'tcx> Instance<'tcx> {
         let fn_once = tcx.lang_items().fn_once_trait().unwrap();
         let call_once = tcx
             .associated_items(fn_once)
+            .iter()
             .find(|it| it.kind == ty::AssocKind::Method)
             .unwrap()
             .def_id;

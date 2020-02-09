@@ -1473,7 +1473,7 @@ fn assoc_ty_def(
         {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
-                item,
+                item: *item,
             };
         }
     }

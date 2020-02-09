@@ -87,7 +87,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .cx
                     .tcx
                     .provided_trait_methods(trait_def_id)
-                    .into_iter()
                     .map(|meth| meth.ident.to_string())
                     .collect();
 
@@ -115,6 +114,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .cx
                             .tcx
                             .associated_items(impl_def_id)
+                            .iter()
+                            .copied()
                             .collect::<Vec<_>>()
                             .clean(self.cx),
                         polarity: None,
