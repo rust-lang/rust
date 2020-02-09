@@ -22,7 +22,7 @@ use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
-use syntax::ast::{Ident, NodeId};
+use syntax::ast::Ident;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -680,16 +680,6 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
     }
 }
 
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
-        let hir_id = hir::HirId::decode(self)?;
-        Ok(self.tcx().hir().hir_to_node_id(hir_id))
-    }
-}
-
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
@@ -925,19 +915,6 @@ where
 {
     fn specialized_encode(&mut self, _: &DefIndex) -> Result<(), Self::Error> {
         bug!("encoding `DefIndex` without context");
-    }
-}
-
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-{
-    #[inline]
-    fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
-        let hir_id = self.tcx.hir().node_to_hir_id(*node_id);
-        hir_id.encode(self)
     }
 }
 

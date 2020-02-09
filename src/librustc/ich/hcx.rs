@@ -219,28 +219,12 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match hcx.node_id_hashing_mode {
-            NodeIdHashingMode::Ignore => {
-                // Don't do anything.
-            }
-            NodeIdHashingMode::HashDefPath => {
-                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
+    type KeyType = Self;
 
     #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self {
+        *self
     }
 }
 
