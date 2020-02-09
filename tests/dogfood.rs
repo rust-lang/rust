@@ -1,21 +1,20 @@
+// Dogfood cannot run on Windows
+#![cfg(not(windows))]
+
 use lazy_static::lazy_static;
 use std::path::PathBuf;
 use std::process::Command;
 
-#[allow(dead_code)]
 mod cargo;
 
 lazy_static! {
-    static ref CLIPPY_PATH: PathBuf = {
-        let build_info = cargo::BuildInfo::new();
-        build_info.target_lib().join("cargo-clippy")
-    };
+    static ref CLIPPY_PATH: PathBuf = cargo::TARGET_LIB.join("cargo-clippy");
 }
 
 #[test]
 fn dogfood_clippy() {
     // run clippy on itself and fail the test if lint warnings are reported
-    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
+    if cargo::is_rustc_test_suite() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -44,7 +43,7 @@ fn dogfood_clippy() {
 #[test]
 fn dogfood_subprojects() {
     // run clippy on remaining subprojects and fail the test if lint warnings are reported
-    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
+    if cargo::is_rustc_test_suite() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
