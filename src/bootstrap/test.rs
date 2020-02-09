@@ -596,7 +596,7 @@ impl Step for RustdocTheme {
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTDOC_CRATE_VERSION", builder.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
+        if let Some(linker) = builder.linker(self.compiler.host, true) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         try_run(builder, &mut cmd);
@@ -1035,7 +1035,8 @@ impl Step for Compiletest {
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
-        if let Some(linker) = builder.linker(target) {
+        // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
+        if let Some(linker) = builder.linker(target, false) {
             cmd.arg("--linker").arg(linker);
         }
 
