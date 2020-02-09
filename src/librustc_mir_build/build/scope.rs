@@ -685,6 +685,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             span,
             parent_scope: Some(parent),
             inlined: None,
+            inlined_parent_scope: None,
             local_data: ClearCrossCrate::Set(scope_local_data),
         })
     }

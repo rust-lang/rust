@@ -222,11 +222,6 @@ impl Inliner<'tcx> {
 
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
-            debug!("`#[track_caller]` present - not inlining");
-            return false;
-        }
-
         // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
         // since instrumentation might be enabled and performed on the caller.
         match self.tcx.sess.opts.debugging_opts.sanitizer {
@@ -418,6 +413,9 @@ impl Inliner<'tcx> {
                         // Mark the outermost callee scope as an inlined one.
                         assert_eq!(scope.inlined, None);
                         scope.inlined = Some((callsite.callee, callsite.source_info.span));
+                    } else if scope.inlined_parent_scope.is_none() {
+                        // Make it easy to find the scope with `inlined` set above.
+                        scope.inlined_parent_scope = Some(scope_map[OUTERMOST_SOURCE_SCOPE]);
                     }
 
                     let idx = caller_body.source_scopes.push(scope);

@@ -337,6 +337,7 @@ macro_rules! make_mir_visitor {
                     span,
                     parent_scope,
                     inlined,
+                    inlined_parent_scope,
                     local_data: _,
                 } = scope_data;
 
@@ -367,6 +368,9 @@ macro_rules! make_mir_visitor {
                         }
                     }
                     self.visit_substs(callee_substs, location);
+                }
+                if let Some(inlined_parent_scope) = inlined_parent_scope {
+                    self.visit_source_scope(inlined_parent_scope);
                 }
             }
 

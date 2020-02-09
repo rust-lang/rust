@@ -257,6 +257,7 @@ fn new_body<'tcx>(
                 span,
                 parent_scope: None,
                 inlined: None,
+                inlined_parent_scope: None,
                 local_data: ClearCrossCrate::Clear,
             },
             1,
