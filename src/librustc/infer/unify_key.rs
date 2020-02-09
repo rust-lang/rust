@@ -4,7 +4,6 @@ use rustc_data_structures::unify::{EqUnifyValue, NoError, UnificationTable, Unif
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
-use std::cell::RefMut;
 use std::cmp;
 use std::marker::PhantomData;
 
@@ -214,7 +213,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
 pub fn replace_if_possible(
-    mut table: RefMut<'_, UnificationTable<InPlace<ty::ConstVid<'tcx>>>>,
+    table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>>>,
     c: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
