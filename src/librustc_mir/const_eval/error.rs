@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fmt;
 
+use rustc_span::Symbol;
+
 use super::InterpCx;
 use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine, PanicInfo};
 
@@ -9,7 +11,8 @@ use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine, Pani
 pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
-    Panic(PanicInfo<u64>),
+    AssertFailure(PanicInfo<u64>),
+    Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
 
 // The errors become `MachineStop` with plain strings when being raised.
@@ -29,7 +32,10 @@ impl fmt::Display for ConstEvalErrKind {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
             }
             ConstAccessesStatic => write!(f, "constant accesses static"),
-            Panic(ref msg) => write!(f, "{:?}", msg),
+            AssertFailure(ref msg) => write!(f, "{:?}", msg),
+            Panic { msg, line, col, file } => {
+                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
+            }
         }
     }
 }

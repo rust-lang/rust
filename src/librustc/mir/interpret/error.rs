@@ -11,7 +11,6 @@ use hir::GeneratorKind;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
-use rustc_span::symbol::Symbol;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
 use std::{any::Any, env, fmt};
@@ -272,7 +271,6 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 /// FIXME: this is not actually an InterpError, and should probably be moved to another module.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum PanicInfo<O> {
-    Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
     BoundsCheck { len: O, index: O },
     Overflow(mir::BinOp),
     OverflowNeg,
@@ -288,7 +286,7 @@ pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
 impl<O> PanicInfo<O> {
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
-    /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
+    /// The caller is expected to handle `BoundsCheck` separately.
     pub fn description(&self) -> &'static str {
         use PanicInfo::*;
         match self {
@@ -307,7 +305,7 @@ impl<O> PanicInfo<O> {
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            Panic { .. } | BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
+            BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
         }
     }
 }
@@ -316,9 +314,6 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use PanicInfo::*;
         match self {
-            Panic { ref msg, line, col, ref file } => {
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
-            }
             BoundsCheck { ref len, ref index } => {
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
             }
