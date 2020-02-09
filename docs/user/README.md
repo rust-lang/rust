@@ -51,7 +51,7 @@ see an info message pop-up.
 <img height="140px" src="https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png" alt="Download now message"/>
 
 
-Click `Download now`, wait untill the progress is 100% and you are ready to go.
+Click `Download now`, wait until the progress is 100% and you are ready to go.
 
 For updates you need to remove installed binary
 ```
