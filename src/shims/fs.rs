@@ -202,6 +202,16 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
 
 #[derive(Debug, Default)]
 pub struct DirHandler {
+    /// Directory iterators used to emulate libc "directory streams", as used in opendir, readdir,
+    /// and closedir.
+    ///
+    /// When opendir is called, a new allocation is made, a directory iterator is created on the
+    /// host for the target directory, and an entry is stored in this hash map, indexed by a
+    /// pointer to the allocation which represents the directory stream. When readdir is called,
+    /// the directory stream pointer is used to look up the corresponding ReadDir iterator from
+    /// this HashMap, and information from the next directory entry is returned. When closedir is
+    /// called, the ReadDir iterator is removed from this HashMap, and the allocation that
+    /// represented the directory stream is deallocated.
     streams: HashMap<Pointer<Tag>, ReadDir>,
 }
 
