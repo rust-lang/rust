@@ -1,16 +1,26 @@
+[github-releases]: https://github.com/rust-analyzer/rust-analyzer/releases
+
 The main interface to rust-analyzer is the
 [LSP](https://microsoft.github.io/language-server-protocol/) implementation. To
-install lsp server, clone the repository and then run `cargo xtask install
---server` (which is shorthand for `cargo install --path
-./crates/ra_lsp_server`). This will produce a binary named `ra_lsp_server` which
-you should be able to use it with any LSP-compatible editor. We use custom
-extensions to LSP, so special client-side support is required to take full
+install lsp server, you have three options:
+
+* **Preferred and default:** install the plugin/extension for your IDE and it will ask your permission to automatically download the latest lsp server for you from [GitHub releases][github-releases]. (See docs to find out whether this is implemented for your editor below).
+* Manually download prebuilt binaries from [GitHub releases][github-releases]
+    * `ra_lsp_server-linux` for Linux
+    * `ra_lsp_server-mac` for Mac
+    * `ra_lsp_server-windows.exe` for Windows
+* Clone the repository and build from sources
+```bash
+$ git clone git@github.com:rust-analyzer/rust-analyzer && cd rust-analyzer
+$ cargo xtask install --server # or cargo install --path ./crates/ra_lsp_server
+```
+
+This way you will get a binary named `ra_lsp_server` (with os suffix for prebuilt binaries)
+which you should be able to use with any LSP-compatible editor.
+
+We make use of custom extensions to LSP, so special client-side support is required to take full
 advantage of rust-analyzer. This repository contains support code for VS Code.
 
-```
-$ git clone git@github.com:rust-analyzer/rust-analyzer && cd rust-analyzer
-$ cargo xtask install --server
-```
 Rust Analyzer needs sources of rust standard library to work, so
 you might also need to execute
 
@@ -22,30 +32,38 @@ See [./features.md](./features.md) document for a list of features that are avai
 
 ## VS Code
 
-Prerequisites:
+### Prerequisites
 
-In order to build the VS Code plugin, you need to have node.js and npm with
-a minimum version of 10 installed. Please refer to
-[node.js and npm documentation](https://nodejs.org) for installation instructions.
-
-You will also need the most recent version of VS Code: we don't try to
+You will need the most recent version of VS Code: we don't try to
 maintain compatibility with older versions yet.
+
+In order to build the VS Code plugin from sources, you need to have node.js and npm with
+a minimum version of 12 installed. Please refer to
+[node.js and npm documentation](https://nodejs.org) for installation instructions.
 
 ### Installation from prebuilt binaries
 
 We ship prebuilt binaries for Linux, Mac and Windows via
-[GitHub releases](https://github.com/rust-analyzer/rust-analyzer/releases).
+[GitHub releases][github-releases].
 In order to use them you need to install the client VSCode extension.
 
-Publishing to VSCode marketplace is currently WIP. Thus, you need to clone the repository and install **only** the client extension via
-```
-$ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
-$ cd rust-analyzer
-$ cargo xtask install --client-code
-```
-Then open VSCode (or reload the window if it was already running), open some Rust project and you should
-see an info message pop-up.
+Publishing to VS Code marketplace is currently WIP. Thus, you need to manually download
+`rust-analyzer-0.1.0.vsix` file from latest [GitHub release][github-releases].
 
+After you downloaded the `.vsix` file you can install it from the terminal
+
+```
+$ code --install-extension rust-analyzer-0.1.0.vsix
+```
+
+Or open VS Code, press <kbd>Ctrl+Shift+P</kbd>, and search for the following command:
+
+<img width="500px" alt="Install from VSIX command" src="https://user-images.githubusercontent.com/36276403/74108225-c0c11d80-4b80-11ea-9b2a-0a43f09e29af.png">
+
+Press <kbd>Enter</kbd> and go to `rust-analyzer-0.1.0.vsix` file through the file explorer.
+
+Then open some Rust project and you should
+see an info message pop-up.
 
 <img height="140px" src="https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png" alt="Download now message"/>
 
@@ -57,7 +75,7 @@ For updates you need to remove installed binary
 rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
 ```
 
-`"Donwload latest language server"` command for VSCode and automatic updates detection is currently WIP.
+`"Download latest language server"` command for VSCode and automatic updates detection is currently WIP.
 
 
 ### Installation from sources
@@ -70,6 +88,16 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
 $ cargo xtask install
 ```
+
+After that you need to amend your `settings.json` file to explicitly specify the
+path to `ra_lsp_server` that you've just built.
+```json
+{
+    "rust-analyzer.raLspServerPath": "ra_lsp_server"
+}
+```
+This should work on all platforms, otherwise if installed `ra_lsp_server` is not available through your `$PATH` then see how to configure it [here](#setting-up-the-PATH-variable).
+
 
 The automatic installation is expected to *just work* for common cases, if it
 doesn't, report bugs!
@@ -127,7 +155,7 @@ host.
   As an example, [Pale Fire](https://github.com/matklad/pale-fire/) color scheme tweaks rust colors.
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts the
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
-* `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
+* `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable, when absent or `null` defaults to prebuilt binary path
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
 * `rust-analyzer.excludeGlobs`: a list of glob-patterns for exclusion (see globset [docs](https://docs.rs/globset) for syntax).
@@ -232,6 +260,8 @@ Installation:
 
 * You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
 
+
+<!-- Update links to this header when changing it! -->
 ### Setting up the `PATH` variable
 
 On Unix systems, `rustup` adds `~/.cargo/bin` to `PATH` by modifying the shell's
