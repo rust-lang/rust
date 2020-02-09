@@ -76,6 +76,8 @@ impl LateLintPass<'_, '_> for WildcardImports {
         if_chain! {
             if !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
+            // don't lint prelude glob imports
+            if !use_path.segments.iter().last().map_or(false, |ps| ps.ident.as_str() == "prelude");
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner_def_id());
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
