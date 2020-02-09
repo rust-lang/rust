@@ -206,23 +206,10 @@ fn test_directory() {
     let path_2 = dir_path.join("test_file_2");
     drop(File::create(&path_2).unwrap());
     // Test that the files are present inside the directory
-    let mut dir_iter = read_dir(&dir_path).unwrap();
-    let first_dir_entry = dir_iter.next().unwrap().unwrap();
-    let second_dir_entry = dir_iter.next().unwrap().unwrap();
-    assert!(
-        first_dir_entry.file_name() == "test_file_1" ||
-        first_dir_entry.file_name() == "test_file_2",
-        "File name was {:?} instead of test_file_1 or test_file_2",
-        first_dir_entry.file_name(),
-    );
-    assert!(
-        second_dir_entry.file_name() == "test_file_1" ||
-        second_dir_entry.file_name() == "test_file_2",
-        "File name was {:?} instead of test_file_1 or test_file_2",
-        second_dir_entry.file_name(),
-    );
-    assert!(dir_iter.next().is_none());
-    drop(dir_iter);
+    let dir_iter = read_dir(&dir_path).unwrap();
+    let mut file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
+    file_names.sort_unstable();
+    assert_eq!(file_names, vec!["test_file_1", "test_file_2"]);
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();
