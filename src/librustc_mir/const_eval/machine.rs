@@ -60,13 +60,13 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
 
     /// "Intercept" a function call to a panic-related function
     /// because we have something special to do for it.
-    /// Returns `true` if an intercept happened.
-    pub fn hook_panic_fn(
+    /// If this returns successfully (`Ok`), the function should just be evaluated normally.
+    fn hook_panic_fn(
         &mut self,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn()
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
@@ -80,7 +80,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             let (file, line, col) = self.location_triple_for_span(span);
             Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
         } else {
-            Ok(false)
+            Ok(())
         }
     }
 }
@@ -225,13 +225,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             } else {
                 // Some functions we support even if they are non-const -- but avoid testing
-                // that for const fn!  We certainly do *not* want to actually call the fn
+                // that for const fn!
+                ecx.hook_panic_fn(span, instance, args)?;
+                // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_panic_fn(span, instance, args)? {
-                    Ok(None)
-                } else {
-                    throw_unsup_format!("calling non-const function `{}`", instance)
-                };
+                throw_unsup_format!("calling non-const function `{}`", instance)
             }
         }
         // This is a const fn. Call it.
