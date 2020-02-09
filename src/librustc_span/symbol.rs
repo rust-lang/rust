@@ -457,6 +457,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_ref_pattern,
         move_val_init,
         movbe_target_feature,
         mul_with_overflow,

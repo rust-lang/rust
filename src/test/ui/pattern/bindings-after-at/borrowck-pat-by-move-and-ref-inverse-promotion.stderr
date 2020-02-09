@@ -1,0 +1,12 @@
+error: borrow of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse-promotion.rs:9:9
+   |
+LL |     let a @ ref b = U;
+   |         -^^^-----
+   |         |   |
+   |         |   value borrowed here after move
+   |         value moved into `a` here
+   |         move occurs because `a` has type `main::U` which does implement the `Copy` trait
+
+error: aborting due to previous error
+
