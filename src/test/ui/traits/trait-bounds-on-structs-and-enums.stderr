@@ -5,9 +5,13 @@ LL | struct Foo<T:Trait> {
    | ------------------- required by `Foo`
 ...
 LL | impl<T> Foo<T> {
-   |      -  ^^^^^^ the trait `Trait` is not implemented for `T`
-   |      |
-   |      help: consider restricting this bound: `T: Trait`
+   |         ^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: Trait`
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:13:6
+   |
+LL | impl<T> Foo<T> {
+   |      ^
 
 error[E0277]: the trait bound `isize: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums.rs:19:5
@@ -33,10 +37,14 @@ error[E0277]: the trait bound `U: Trait` is not satisfied
 LL | struct Foo<T:Trait> {
    | ------------------- required by `Foo`
 ...
-LL | struct Badness<U> {
-   |                - help: consider restricting this bound: `U: Trait`
 LL |     b: Foo<U>,
    |     ^^^^^^^^^ the trait `Trait` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `U: Trait`
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:26:16
+   |
+LL | struct Badness<U> {
+   |                ^
 
 error[E0277]: the trait bound `V: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums.rs:31:21
@@ -44,10 +52,14 @@ error[E0277]: the trait bound `V: Trait` is not satisfied
 LL | enum Bar<T:Trait> {
    | ----------------- required by `Bar`
 ...
-LL | enum MoreBadness<V> {
-   |                  - help: consider restricting this bound: `V: Trait`
 LL |     EvenMoreBadness(Bar<V>),
    |                     ^^^^^^ the trait `Trait` is not implemented for `V`
+   |
+help: consider restricting this type parameter with `V: Trait`
+  --> $DIR/trait-bounds-on-structs-and-enums.rs:30:18
+   |
+LL | enum MoreBadness<V> {
+   |                  ^
 
 error[E0277]: the trait bound `i32: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums.rs:35:5

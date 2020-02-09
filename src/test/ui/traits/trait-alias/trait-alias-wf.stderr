@@ -4,9 +4,13 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
 LL | trait A<T: Foo> {}
    | --------------- required by `A`
 LL | trait B<T> = A<T>;
-   |         -    ^^^^ the trait `Foo` is not implemented for `T`
-   |         |
-   |         help: consider restricting this bound: `T: Foo`
+   |              ^^^^ the trait `Foo` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: Foo`
+  --> $DIR/trait-alias-wf.rs:5:9
+   |
+LL | trait B<T> = A<T>;
+   |         ^
 
 error: aborting due to previous error
 

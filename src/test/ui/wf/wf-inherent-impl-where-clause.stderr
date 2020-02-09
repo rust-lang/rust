@@ -5,9 +5,13 @@ LL | trait ExtraCopy<T:Copy> { }
    | ----------------------- required by `ExtraCopy`
 ...
 LL | impl<T,U> Foo<T,U> where T: ExtraCopy<U>
-   |                             ^^^^^^^^^^^^- help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
-   |                             |
-   |                             the trait `std::marker::Copy` is not implemented for `U`
+   |                             ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
+   |
+help: consider restricting this type parameter with `where U: std::marker::Copy`
+  --> $DIR/wf-inherent-impl-where-clause.rs:11:8
+   |
+LL | impl<T,U> Foo<T,U> where T: ExtraCopy<U>
+   |        ^
 
 error: aborting due to previous error
 
