@@ -1,5 +1,4 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
-use either::Either;
 use hir::{InFile, SourceAnalyzer, SourceBinder};
 use ra_db::{FileRange, SourceDatabase};
 use ra_fmt::{leading_indent, reindent};
@@ -11,12 +10,36 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistId, AssistLabel, ResolvedAssist};
+use crate::{AssistAction, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
-pub(crate) enum Assist {
-    Unresolved { label: AssistLabel },
-    Resolved { assist: ResolvedAssist },
+pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssistInfo {
+    pub(crate) label: AssistLabel,
+    pub(crate) group_label: Option<GroupLabel>,
+    pub(crate) action: Option<AssistAction>,
+}
+
+impl AssistInfo {
+    fn new(label: AssistLabel) -> AssistInfo {
+        AssistInfo { label, group_label: None, action: None }
+    }
+
+    fn resolved(self, action: AssistAction) -> AssistInfo {
+        AssistInfo { action: Some(action), ..self }
+    }
+
+    fn with_group(self, group_label: GroupLabel) -> AssistInfo {
+        AssistInfo { group_label: Some(group_label), ..self }
+    }
+
+    pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
+        let label = self.label;
+        let group_label = self.group_label;
+        self.action.map(|action| ResolvedAssist { label, group_label, action })
+    }
 }
 
 pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
@@ -84,44 +107,21 @@ impl<'a> AssistCtx<'a> {
     ) -> Option<Assist> {
         let label = AssistLabel::new(label.into(), id);
 
-        let assist = if self.should_compute_edit {
+        let mut info = AssistInfo::new(label);
+        if self.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::default();
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { assist: ResolvedAssist { label, action_data: Either::Left(action) } }
-        } else {
-            Assist::Unresolved { label }
+            info = info.resolved(action)
         };
 
-        Some(assist)
+        Some(Assist(vec![info]))
     }
 
-    pub(crate) fn add_assist_group(
-        self,
-        id: AssistId,
-        label: impl Into<String>,
-        f: impl FnOnce() -> Vec<ActionBuilder>,
-    ) -> Option<Assist> {
-        let label = AssistLabel::new(label.into(), id);
-        let assist = if self.should_compute_edit {
-            let actions = f();
-            assert!(!actions.is_empty(), "Assist cannot have no");
-
-            Assist::Resolved {
-                assist: ResolvedAssist {
-                    label,
-                    action_data: Either::Right(
-                        actions.into_iter().map(ActionBuilder::build).collect(),
-                    ),
-                },
-            }
-        } else {
-            Assist::Unresolved { label }
-        };
-
-        Some(assist)
+    pub(crate) fn add_assist_group(self, group_name: impl Into<String>) -> AssistGroup<'a> {
+        AssistGroup { ctx: self, group_name: group_name.into(), assists: Vec::new() }
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
@@ -155,20 +155,48 @@ impl<'a> AssistCtx<'a> {
     }
 }
 
+pub(crate) struct AssistGroup<'a> {
+    ctx: AssistCtx<'a>,
+    group_name: String,
+    assists: Vec<AssistInfo>,
+}
+
+impl<'a> AssistGroup<'a> {
+    pub(crate) fn add_assist(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        f: impl FnOnce(&mut ActionBuilder),
+    ) {
+        let label = AssistLabel::new(label.into(), id);
+
+        let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group_name.clone()));
+        if self.ctx.should_compute_edit {
+            let action = {
+                let mut edit = ActionBuilder::default();
+                f(&mut edit);
+                edit.build()
+            };
+            info = info.resolved(action)
+        };
+
+        self.assists.push(info)
+    }
+
+    pub(crate) fn finish(self) -> Option<Assist> {
+        assert!(!self.assists.is_empty());
+        Some(Assist(self.assists))
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
     target: Option<TextRange>,
-    label: Option<String>,
 }
 
 impl ActionBuilder {
-    /// Adds a custom label to the action, if it needs to be different from the assist label
-    pub(crate) fn label(&mut self, label: impl Into<String>) {
-        self.label = Some(label.into())
-    }
-
     /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
@@ -227,7 +255,6 @@ impl ActionBuilder {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
             target: self.target,
-            label: self.label,
         }
     }
 }
