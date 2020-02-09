@@ -279,7 +279,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
         cx.tcx
             .inherent_impls(id)
             .iter()
-            .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
+            .any(|imp| cx.tcx.associated_items(*imp).iter().any(|item| is_is_empty(cx, &item)))
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
@@ -288,6 +288,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
             if let Some(principal) = tt.principal() {
                 cx.tcx
                     .associated_items(principal.def_id())
+                    .iter()
                     .any(|item| is_is_empty(cx, &item))
             } else {
                 false
