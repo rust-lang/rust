@@ -14,7 +14,6 @@ use super::{FunctionCx, LocalRef};
 
 pub struct FunctionDebugContext<D> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
-    pub source_locations_enabled: bool,
     pub defining_crate: CrateNum,
 }
 
@@ -53,11 +52,10 @@ impl<D> DebugScope<D> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn set_debug_loc(&mut self, bx: &mut Bx, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
-        if let Some(debug_context) = &mut self.debug_context {
-            // FIXME(eddyb) get rid of this unwrap somehow.
-            bx.set_source_location(debug_context, scope.unwrap(), span);
+        if let Some(scope) = scope {
+            bx.set_source_location(scope, span);
         }
     }
 
@@ -210,11 +208,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let debug_context = match &self.debug_context {
-            Some(debug_context) => debug_context,
-            None => return,
-        };
-
         // FIXME(eddyb) add debuginfo for unsized places too.
         let base = match local_ref {
             LocalRef::Place(place) => place,
@@ -264,7 +257,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if let Some(scope) = scope {
                 if let Some(dbg_var) = var.dbg_var {
                     bx.dbg_var_addr(
-                        debug_context,
                         dbg_var,
                         scope,
                         base.llval,

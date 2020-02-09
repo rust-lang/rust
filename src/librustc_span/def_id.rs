@@ -1,3 +1,5 @@
+use crate::HashStableContext;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_serialize::{Decoder, Encoder};
@@ -16,15 +18,6 @@ pub enum CrateNum {
     /// the incr. comp. cache.
     ReservedForIncrCompCache,
     Index(CrateId),
-}
-
-impl ::std::fmt::Debug for CrateNum {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        match self {
-            CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
-            CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
-        }
-    }
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -97,6 +90,15 @@ impl rustc_serialize::UseSpecializedEncodable for CrateNum {
 impl rustc_serialize::UseSpecializedDecodable for CrateNum {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
         Ok(CrateNum::from_u32(d.read_u32()?))
+    }
+}
+
+impl ::std::fmt::Debug for CrateNum {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match self {
+            CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
+            CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
+        }
     }
 }
 
@@ -207,3 +209,9 @@ impl fmt::Debug for LocalDefId {
 
 impl rustc_serialize::UseSpecializedEncodable for LocalDefId {}
 impl rustc_serialize::UseSpecializedDecodable for LocalDefId {}
+
+impl<CTX: HashStableContext> HashStable<CTX> for DefId {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        hcx.hash_def_id(*self, hasher)
+    }
+}
