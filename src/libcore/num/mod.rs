@@ -8,7 +8,6 @@ use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
-use crate::ops;
 use crate::str::FromStr;
 
 macro_rules! impl_nonzero_fmt {
@@ -4043,9 +4042,9 @@ assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[rustc_inherit_overflow_checks]
             pub fn next_power_of_two(self) -> Self {
-                // Call the trait to get overflow checks
-                ops::Add::add(self.one_less_than_next_power_of_two(), 1)
+                self.one_less_than_next_power_of_two() + 1
             }
         }
 
