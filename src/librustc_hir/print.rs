@@ -454,14 +454,17 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
+        generics: &hir::Generics<'_>,
         bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
     ) {
         self.word_space("type");
         self.print_ident(ident);
+        self.print_generic_params(&generics.params);
         if let Some(bounds) = bounds {
             self.print_bounds(":", bounds);
         }
+        self.print_where_clause(&generics.where_clause);
         if let Some(ty) = ty {
             self.s.space();
             self.word_space("=");
@@ -902,6 +905,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(
                     ti.ident,
+                    &ti.generics,
                     Some(bounds),
                     default.as_ref().map(|ty| &**ty),
                 );
@@ -930,7 +934,7 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
-                self.print_associated_type(ii.ident, None, Some(ty));
+                self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
             hir::ImplItemKind::OpaqueTy(bounds) => {
                 self.word_space("type");
