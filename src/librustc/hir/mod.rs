@@ -5,10 +5,12 @@
 pub mod exports;
 pub mod map;
 
+use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::print;
 use rustc_hir::Body;
@@ -25,17 +27,37 @@ pub struct HirOwner<'tcx> {
     node: Node<'tcx>,
 }
 
-#[derive(HashStable, Clone)]
+#[derive(Clone)]
 pub struct HirItem<'tcx> {
     parent: ItemLocalId,
     node: Node<'tcx>,
 }
 
-#[derive(HashStable)]
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirItem<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        let HirItem { parent, node } = self;
+        hcx.while_hashing_hir_bodies(false, |hcx| {
+            parent.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher);
+        });
+    }
+}
+
 pub struct HirOwnerItems<'tcx> {
-    //owner: &'tcx HirOwner<'tcx>,
+    owner: Node<'tcx>,
     items: IndexVec<ItemLocalId, Option<HirItem<'tcx>>>,
     bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwnerItems<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        // We ignore the `items` and `bodies` fields since these refer to information reachable
+        // when hashing `owner` with its bodies.
+        let HirOwnerItems { owner, items: _, bodies: _ } = *self;
+        hcx.while_hashing_hir_bodies(true, |hcx| {
+            owner.hash_stable(hcx, hasher);
+        });
+    }
 }
 
 /// A wrapper type which allows you to access HIR.

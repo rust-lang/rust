@@ -203,12 +203,22 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let owner = HirOwner { parent: entry.parent, node: entry.node };
 
         let arena = self.arena;
+        let krate = self.krate;
 
         let items = self.owner_items_map.entry(id.owner).or_insert_with(|| {
-            arena.alloc(HirOwnerItems { items: IndexVec::new(), bodies: FxHashMap::default() })
+            arena.alloc(HirOwnerItems {
+                // Insert a dummy node which will be overwritten
+                // when we call `insert_entry` on the HIR owner.
+                owner: Node::Crate(&krate.item),
+                items: IndexVec::new(),
+                bodies: FxHashMap::default(),
+            })
         });
 
         if i == 0 {
+            // Overwrite the dummy node with the real HIR owner.
+            items.owner = entry.node;
+
             self.owner_map.insert(id.owner, self.arena.alloc(owner));
         // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
         //assert!(self.owner_map.insert(id.owner, self.arena.alloc(owner)).is_none());
