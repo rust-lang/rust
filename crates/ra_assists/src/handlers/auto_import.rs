@@ -46,9 +46,9 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
 
     let name_ref_to_import =
         path_under_caret.syntax().descendants().find_map(ast::NameRef::cast)?;
-    if source_analyzer
-        .resolve_path(ctx.db, &name_ref_to_import.syntax().ancestors().find_map(ast::Path::cast)?)
-        .is_some()
+    if dbg!(source_analyzer
+        .resolve_path(ctx.db, &name_ref_to_import.syntax().ancestors().find_map(ast::Path::cast)?))
+    .is_some()
     {
         return None;
     }
@@ -286,6 +286,23 @@ mod tests {
             use mod1::mod2;
             fn main() {
                 mod2::mod3::TestStruct<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_imported_function() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            pub mod test_mod {
+                pub fn test_function() {}
+            }
+
+            use test_mod::test_function;
+            fn main() {
+                test_function<|>
             }
             ",
         );
