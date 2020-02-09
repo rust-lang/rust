@@ -1,0 +1,36 @@
+error[E0658]: associated type bounds are unstable
+  --> $DIR/missing-assoc-fn.rs:9:22
+   |
+LL |     fn bat<T: TraitB<Item: Copy>>(_: T) -> Self;
+   |                      ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+
+error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `baz`, `bat`
+  --> $DIR/missing-assoc-fn.rs:14:1
+   |
+LL |     fn foo<T: TraitB<Item = A>>(_: T) -> Self;
+   |     ------------------------------------------ `foo` from trait
+LL |     fn bar<T>(_: T) -> Self;
+   |     ------------------------ `bar` from trait
+LL |     fn baz<T>(_: T) -> Self where T: TraitB, <T as TraitB>::Item: Copy;
+   |     ------------------------------------------------------------------- `baz` from trait
+LL |     fn bat<T: TraitB<Item: Copy>>(_: T) -> Self;
+   |     -------------------------------------------- `bat` from trait
+...
+LL | impl TraitA<()> for S {
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `baz`, `bat` in implementation
+
+error[E0046]: not all trait items implemented, missing: `from_iter`
+  --> $DIR/missing-assoc-fn.rs:19:1
+   |
+LL | impl FromIterator<()> for X {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_iter` in implementation
+   |
+   = help: implement the missing item: `fn from_iter<T>(_: T) -> Self where T: std::iter::IntoIterator, std::iter::IntoIterator::Item = A { todo!() }`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0658.
+For more information about an error, try `rustc --explain E0046`.

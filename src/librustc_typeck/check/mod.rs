@@ -2167,8 +2167,77 @@ fn missing_items_err(
     err.emit();
 }
 
+/// Resugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
+fn bounds_from_generic_predicates(
+    tcx: TyCtxt<'_>,
+    predicates: ty::GenericPredicates<'_>,
+) -> (String, String) {
+    let mut types: FxHashMap<Ty<'_>, Vec<DefId>> = FxHashMap::default();
+    let mut projections = vec![];
+    for (predicate, _) in predicates.predicates {
+        debug!("predicate {:?}", predicate);
+        match predicate {
+            ty::Predicate::Trait(trait_predicate, _) => {
+                let entry = types.entry(trait_predicate.skip_binder().self_ty()).or_default();
+                let def_id = trait_predicate.skip_binder().def_id();
+                if Some(def_id) != tcx.lang_items().sized_trait() {
+                    // Type params are `Sized` by default, do not add that restriction to the list
+                    // if it is a positive requirement.
+                    entry.push(trait_predicate.skip_binder().def_id());
+                }
+            }
+            ty::Predicate::Projection(projection_pred) => {
+                projections.push(projection_pred);
+            }
+            _ => {}
+        }
+    }
+    let generics = if types.is_empty() {
+        "".to_string()
+    } else {
+        format!(
+            "<{}>",
+            types
+                .keys()
+                .filter_map(|t| match t.kind {
+                    ty::Param(_) => Some(t.to_string()),
+                    // Avoid suggesting the following:
+                    // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+    let mut where_clauses = vec![];
+    for (ty, bounds) in types {
+        for bound in &bounds {
+            where_clauses.push(format!("{}: {}", ty, tcx.def_path_str(*bound)));
+        }
+    }
+    for projection in &projections {
+        let p = projection.skip_binder();
+        // FIXME: this is not currently supported syntax, we should be looking at the `types` and
+        // insert the associated types where they correspond, but for now let's be "lazy" and
+        // propose this instead of the following valid resugaring:
+        // `T: Trait, Trait::Assoc = K` → `T: Trait<Assoc = K>`
+        where_clauses.push(format!("{} = {}", tcx.def_path_str(p.projection_ty.item_def_id), p.ty));
+    }
+    let where_clauses = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!(" where {}", where_clauses.join(", "))
+    };
+    (generics, where_clauses)
+}
+
 /// Return placeholder code for the given function.
-fn fn_sig_suggestion(sig: &ty::FnSig<'_>, ident: Ident) -> String {
+fn fn_sig_suggestion(
+    tcx: TyCtxt<'_>,
+    sig: &ty::FnSig<'_>,
+    ident: Ident,
+    predicates: ty::GenericPredicates<'_>,
+) -> String {
     let args = sig
         .inputs()
         .iter()
@@ -2198,12 +2267,17 @@ fn fn_sig_suggestion(sig: &ty::FnSig<'_>, ident: Ident) -> String {
     let output = if !output.is_unit() { format!(" -> {:?}", output) } else { String::new() };
 
     let unsafety = sig.unsafety.prefix_str();
+    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
+
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
     // not be present in the `fn` definition, not will we account for renamed
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
-    format!("{}fn {}({}){} {{ unimplemented!() }}", unsafety, ident, args, output)
+    format!(
+        "{}fn {}{}({}){}{} {{ todo!() }}",
+        unsafety, ident, generics, args, output, where_clauses
+    )
 }
 
 /// Return placeholder code for the given associated item.
@@ -2216,7 +2290,12 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // late-bound regions, and we don't want method signatures to show up
             // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
             // regions just fine, showing `fn(&MyType)`.
-            fn_sig_suggestion(tcx.fn_sig(assoc.def_id).skip_binder(), assoc.ident)
+            fn_sig_suggestion(
+                tcx,
+                tcx.fn_sig(assoc.def_id).skip_binder(),
+                assoc.ident,
+                tcx.predicates_of(assoc.def_id),
+            )
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
         // FIXME(type_alias_impl_trait): we should print bounds here too.
