@@ -1072,8 +1072,9 @@ impl char {
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
+    pub const fn is_ascii_alphabetic(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_alphabetic()
     }
 
@@ -1104,8 +1105,9 @@ impl char {
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
+    pub const fn is_ascii_uppercase(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_uppercase()
     }
 
@@ -1136,8 +1138,9 @@ impl char {
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
+    pub const fn is_ascii_lowercase(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_lowercase()
     }
 
@@ -1171,8 +1174,9 @@ impl char {
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
+    pub const fn is_ascii_alphanumeric(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_alphanumeric()
     }
 
@@ -1203,8 +1207,9 @@ impl char {
     /// assert!(!esc.is_ascii_digit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
+    pub const fn is_ascii_digit(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_digit()
     }
 
@@ -1238,8 +1243,9 @@ impl char {
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
+    pub const fn is_ascii_hexdigit(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_hexdigit()
     }
 
@@ -1274,8 +1280,9 @@ impl char {
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
+    pub const fn is_ascii_punctuation(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_punctuation()
     }
 
@@ -1306,8 +1313,9 @@ impl char {
     /// assert!(!esc.is_ascii_graphic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
+    pub const fn is_ascii_graphic(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_graphic()
     }
 
@@ -1355,8 +1363,9 @@ impl char {
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
+    pub const fn is_ascii_whitespace(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_whitespace()
     }
 
@@ -1389,8 +1398,9 @@ impl char {
     /// assert!(esc.is_ascii_control());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_control(&self) -> bool {
+    pub const fn is_ascii_control(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_control()
     }
 }

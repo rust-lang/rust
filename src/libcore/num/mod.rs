@@ -4472,8 +4472,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
+    pub const fn is_ascii_alphabetic(&self) -> bool {
         matches!(*self, b'A'..=b'Z' | b'a'..=b'z')
     }
 
@@ -4504,8 +4505,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
+    pub const fn is_ascii_uppercase(&self) -> bool {
         matches!(*self, b'A'..=b'Z')
     }
 
@@ -4536,8 +4538,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
+    pub const fn is_ascii_lowercase(&self) -> bool {
         matches!(*self, b'a'..=b'z')
     }
 
@@ -4571,8 +4574,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
+    pub const fn is_ascii_alphanumeric(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
     }
 
@@ -4603,8 +4607,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_digit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
+    pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, b'0'..=b'9')
     }
 
@@ -4638,8 +4643,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
+    pub const fn is_ascii_hexdigit(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
     }
 
@@ -4674,8 +4680,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
+    pub const fn is_ascii_punctuation(&self) -> bool {
         matches!(*self, b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~')
     }
 
@@ -4706,8 +4713,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_graphic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
+    pub const fn is_ascii_graphic(&self) -> bool {
         matches!(*self, b'!'..=b'~')
     }
 
@@ -4755,8 +4763,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
+    pub const fn is_ascii_whitespace(&self) -> bool {
         matches!(*self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ')
     }
 
@@ -4789,8 +4798,9 @@ impl u8 {
     /// assert!(esc.is_ascii_control());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_control(&self) -> bool {
+    pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
     }
 }
