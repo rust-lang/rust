@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { strict as assert } from "assert";
 import { promises as fs } from "fs";
+import { promises as dns } from "dns";
 import { spawnSync } from "child_process";
 import { throttle } from "throttle-debounce";
 
@@ -25,6 +26,7 @@ export async function downloadLatestLanguageServer(
 
     const installationPath = path.join(installationDir, artifactFileName);
 
+    console.time("Downloading ra_lsp_server");
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -48,6 +50,7 @@ export async function downloadLatestLanguageServer(
             );
         }
     );
+    console.timeEnd("Downloading ra_lsp_server");
 
     await fs.chmod(installationPath, 0o755); // Set (rwx, r_x, r_x) permissions
 }
@@ -101,14 +104,20 @@ export async function ensureLanguageServerBinary(
                     `Failed to download language server from ${langServerSource.repo.name} ` +
                     `GitHub repository: ${err.message}`
                 );
+
+                await dns.resolve('www.google.com').catch(err => {
+                    console.error("DNS resolution failed, there might be an issue with Internet availability");
+                    console.error(err);
+                });
+
                 return null;
             }
 
-
-            assert(
-                isBinaryAvailable(prebuiltBinaryPath),
-                "Downloaded language server binary is not functional"
+            if (!isBinaryAvailable(prebuiltBinaryPath)) assert(false,
+                `Downloaded language server binary is not functional.` +
+                `Downloaded from: ${JSON.stringify(langServerSource)}`
             );
+
 
             vscode.window.showInformationMessage(
                 "Rust analyzer language server was successfully installed 🦀"
@@ -119,6 +128,14 @@ export async function ensureLanguageServerBinary(
     }
 
     function isBinaryAvailable(binaryPath: string) {
-        return spawnSync(binaryPath, ["--version"]).status === 0;
+        const res = spawnSync(binaryPath, ["--version"]);
+
+        // ACHTUNG! `res` type declaration is inherently wrong, see
+        // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/42221
+
+        console.log("Checked binary availablity via --version", res);
+        console.log(binaryPath, "--version output:", res.output?.map(String));
+
+        return res.status === 0;
     }
 }

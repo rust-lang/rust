@@ -19,6 +19,8 @@ export async function fetchLatestArtifactMetadata(
 
     // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
 
+    console.log("Issuing request for released artifacts metadata to", requestUrl);
+
     const response: GithubRelease = await fetch(requestUrl, {
             headers: { Accept: "application/vnd.github.v3+json" }
         })

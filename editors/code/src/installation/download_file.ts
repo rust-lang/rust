@@ -20,6 +20,8 @@ export async function downloadFile(
 
     let readBytes = 0;
 
+    console.log("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
+
     return new Promise<void>((resolve, reject) => response.body
         .on("data", (chunk: Buffer) => {
             readBytes += chunk.length;
