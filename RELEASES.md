@@ -1,3 +1,80 @@
+Version 1.42.0 (2020-03-12)
+==========================
+
+Language
+--------
+- [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
+  that you can create an enum that has the exact layout and ABI of the type
+  it contains.
+- [You can now use the slice pattern syntax with subslices.][67712] e.g.
+  ```rust
+  fn foo(words: &[&str]) {
+      match words {
+          ["Hello", "World", "!", ..] => println!("Hello World!"),
+          ["Foo", "Bar", ..] => println!("Baz"),
+          rest => println!("{}", rest),
+      }
+  }
+  ```
+  <!-- TODO -->
+- [Merge `TraitItem` & `ImplItem into `AssocItem`][67131]
+
+Compiler
+--------
+- [Added tier 3\* support for `armv7a-none-eabi`.][68253]
+- [Added tier 3 support for `riscv64gc-unknown-linux-gnu`.][68037]
+- [`Option::{expect,unwrap}` and
+   `Result::{expect, expect_err, unwrap, unwrap_err}` now produce panic messages
+   pointing to the location where they were called, rather than
+   `core`'s internals. ][67887]
+
+Libraries
+---------
+- [`iter::Empty<T>` now implements Send and Sync for any `T`.][68348]
+- [`Pin::{map_unchecked, map_unchecked_mut}` no longer require the return type
+   to implement `Sized`.][67935]
+- [`io::Cursor` now derives `PartialEq` and `Eq`.][67233]
+- [`Layout::new` is now `const`.][66254]
+- [Added Standard Library support for `riscv64gc-unknown-linux-gnu`.][66899]
+
+
+Stabilized APIs
+---------------
+- [`DebugMap::key`]
+- [`DebugMap::value`]
+- [`ManuallyDrop::take`]
+- [`matches!`]
+- [`ptr::slice_from_raw_parts_mut`]
+- [`ptr::slice_from_raw_parts`]
+- [`wait_timeout_while`]
+- [`wait_while`]
+
+Compatibility Notes
+-------------------
+- [`Error::description` has been deprecated, and its use will now produce a
+  warning.][66919] It's recommended to use `Display`/`to_string` instead.
+
+[68253]: https://github.com/rust-lang/rust/pull/68253/
+[68348]: https://github.com/rust-lang/rust/pull/68348/
+[67935]: https://github.com/rust-lang/rust/pull/67935/
+[68037]: https://github.com/rust-lang/rust/pull/68037/
+[68122]: https://github.com/rust-lang/rust/pull/68122/
+[67712]: https://github.com/rust-lang/rust/pull/67712/
+[67887]: https://github.com/rust-lang/rust/pull/67887/
+[67131]: https://github.com/rust-lang/rust/pull/67131/
+[67233]: https://github.com/rust-lang/rust/pull/67233/
+[66899]: https://github.com/rust-lang/rust/pull/66899/
+[66919]: https://github.com/rust-lang/rust/pull/66919/
+[66254]: https://github.com/rust-lang/rust/pull/66254/
+[`DebugMap::key`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.key
+[`DebugMap::value`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.value
+[`ManuallyDrop::take`]: https://doc.rust-lang.org/stable/std/mem/struct.ManuallyDrop.html#method.take
+[`matches!`]: https://doc.rust-lang.org/stable/std/macro.matches.html
+[`ptr::slice_from_raw_parts_mut`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts_mut.html
+[`ptr::slice_from_raw_parts`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts.html
+[`wait_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_while
+
+
 Version 1.41.0 (2020-01-30)
 ===========================
 
