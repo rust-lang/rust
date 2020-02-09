@@ -1,12 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_assists::insert_use_statement;
-use ra_syntax::{ast, AstNode, SmolStr};
-use ra_text_edit::TextEditBuilder;
-use rustc_hash::FxHashMap;
-
-use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
-use hir::{ModPath, PathKind};
+use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
@@ -16,132 +10,13 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     ctx.analyzer.process_all_names(ctx.db, &mut |name, res| {
         acc.add_resolution(ctx, name.to_string(), &res)
     });
-
-    // auto-import
-    // We fetch ident from the original file, because we need to pre-filter auto-imports
-    if ast::NameRef::cast(ctx.token.parent()).is_some() {
-        let import_resolver = ImportResolver::new();
-        let import_names = import_resolver.all_names(ctx.token.text());
-        import_names.into_iter().for_each(|(name, path)| {
-            let edit = {
-                let mut builder = TextEditBuilder::default();
-                builder.replace(ctx.source_range(), name.to_string());
-                insert_use_statement(&ctx.token.parent(), &ctx.token.parent(), &path, &mut builder);
-                builder.finish()
-            };
-
-            // Hack: copied this check form conv.rs beacause auto import can produce edits
-            // that invalidate assert in conv_with.
-            if edit
-                .as_atoms()
-                .iter()
-                .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
-                .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
-            {
-                CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    build_import_label(&name, &path),
-                )
-                .text_edit(edit)
-                .add_to(acc);
-            }
-        });
-    }
-}
-
-fn build_import_label(name: &str, path: &ModPath) -> String {
-    let mut buf = String::with_capacity(64);
-    buf.push_str(name);
-    buf.push_str(" (");
-    buf.push_str(&path.to_string());
-    buf.push_str(")");
-    buf
-}
-
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ImportResolver {
-    // todo: use fst crate or something like that
-    dummy_names: Vec<(SmolStr, ModPath)>,
-}
-
-impl ImportResolver {
-    pub(crate) fn new() -> Self {
-        use hir::name;
-
-        let dummy_names = vec![
-            (
-                SmolStr::new("fmt"),
-                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![fmt]] },
-            ),
-            (
-                SmolStr::new("io"),
-                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![io]] },
-            ),
-            (
-                SmolStr::new("iter"),
-                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![iter]] },
-            ),
-            (
-                SmolStr::new("hash"),
-                ModPath { kind: PathKind::Plain, segments: vec![name![std], name![hash]] },
-            ),
-            (
-                SmolStr::new("Debug"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![name![std], name![fmt], name![Debug]],
-                },
-            ),
-            (
-                SmolStr::new("Display"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![name![std], name![fmt], name![Display]],
-                },
-            ),
-            (
-                SmolStr::new("Hash"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![name![std], name![hash], name![Hash]],
-                },
-            ),
-            (
-                SmolStr::new("Hasher"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![name![std], name![hash], name![Hasher]],
-                },
-            ),
-            (
-                SmolStr::new("Iterator"),
-                ModPath {
-                    kind: PathKind::Plain,
-                    segments: vec![name![std], name![iter], name![Iterator]],
-                },
-            ),
-        ];
-
-        ImportResolver { dummy_names }
-    }
-
-    // Returns a map of importable items filtered by name.
-    // The map associates item name with its full path.
-    // todo: should return Resolutions
-    pub(crate) fn all_names(&self, name: &str) -> FxHashMap<SmolStr, ModPath> {
-        if name.len() > 1 {
-            self.dummy_names.iter().filter(|(n, _)| n.contains(name)).cloned().collect()
-        } else {
-            FxHashMap::default()
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
+
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
