@@ -696,6 +696,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// with the same lifetime as the original `Pin`.
     ///
     /// ["pinning projections"]: ../../std/pin/index.html#projections-and-structural-pinning
+    #[rustc_const_unstable(feature = "const_pin_get_ref", issue = "69001")]
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn get_ref(self) -> &'a T {
