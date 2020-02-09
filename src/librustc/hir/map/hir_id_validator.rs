@@ -1,18 +1,20 @@
+use crate::hir::map::Map;
 use crate::ty::TyCtxt;
-/*use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirId, ItemLocalId};*/
+use rustc_hir::{HirId, ItemLocalId};
 
-pub fn check_crate(_tcx: TyCtxt<'_>) {
-    /*tcx.dep_graph.assert_ignored();
+pub fn check_crate(tcx: TyCtxt<'_>) {
+    tcx.dep_graph.assert_ignored();
 
     let errors = Lock::new(Vec::new());
+    let hir_map = tcx.hir();
 
-    par_iter(&hir_map.krate.modules).for_each(|(module_id, _)| {
+    par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
         let local_def_id = hir_map.local_def_id(*module_id);
         hir_map.visit_item_likes_in_module(
             local_def_id,
@@ -25,23 +27,23 @@ pub fn check_crate(_tcx: TyCtxt<'_>) {
     if !errors.is_empty() {
         let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
         tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
-    }*/
+    }
 }
-/*
+
 struct HirIdValidator<'a, 'hir> {
-    hir_map: &'a EarlyMap<'hir>,
+    hir_map: Map<'hir>,
     owner_def_index: Option<DefIndex>,
     hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
 struct OuterVisitor<'a, 'hir> {
-    hir_map: &'a EarlyMap<'hir>,
+    hir_map: Map<'hir>,
     errors: &'a Lock<Vec<String>>,
 }
 
 impl<'a, 'hir> OuterVisitor<'a, 'hir> {
-    fn new_inner_visitor(&self, hir_map: &'a EarlyMap<'hir>) -> HirIdValidator<'a, 'hir> {
+    fn new_inner_visitor(&self, hir_map: Map<'hir>) -> HirIdValidator<'a, 'hir> {
         HirIdValidator {
             hir_map,
             owner_def_index: None,
@@ -133,7 +135,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
-    type Map = EarlyMap<'hir>;
+    type Map = Map<'hir>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::OnlyBodies(self.hir_map)
@@ -173,4 +175,3 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         // different owner.
     }
 }
-*/

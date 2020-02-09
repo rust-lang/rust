@@ -25,6 +25,7 @@ pub mod blocks;
 mod collector;
 pub mod definitions;
 mod hir_id_validator;
+pub use hir_id_validator::check_crate;
 
 /// Represents an entry and its parent `HirId`.
 #[derive(Copy, Clone, Debug)]
