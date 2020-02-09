@@ -22,8 +22,11 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attrs, db::DefDatabase, path::ModPath, visibility::RawVisibility, FileAstId, HirFileId,
-    InFile,
+    attr::Attrs,
+    db::DefDatabase,
+    path::{ImportAlias, ModPath},
+    visibility::RawVisibility,
+    FileAstId, HirFileId, InFile,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -145,7 +148,7 @@ impl_arena_id!(Import);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
     pub(super) path: ModPath,
-    pub(super) alias: Option<Name>,
+    pub(super) alias: Option<ImportAlias>,
     pub(super) is_glob: bool,
     pub(super) is_prelude: bool,
     pub(super) is_extern_crate: bool,
@@ -353,7 +356,11 @@ impl RawItemsCollector {
             let path = ModPath::from_name_ref(&name_ref);
             let visibility =
                 RawVisibility::from_ast_with_hygiene(extern_crate.visibility(), &self.hygiene);
-            let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
+            let alias = extern_crate.alias().map(|a| {
+                a.name()
+                    .map(|it| it.as_name())
+                    .map_or(ImportAlias::Underscore, |a| ImportAlias::Alias(a))
+            });
             let attrs = self.parse_attrs(&extern_crate);
             // FIXME: cfg_attr
             let is_macro_use = extern_crate.has_atom_attr("macro_use");

@@ -3,9 +3,10 @@ use std::iter::successors;
 
 use hir::{InFile, Origin};
 use ra_db::FileId;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxToken, TextRange};
 
-use crate::{db::RootDatabase, FileRange};
+use crate::FileRange;
 
 pub(crate) fn original_range(db: &RootDatabase, node: InFile<&SyntaxNode>) -> FileRange {
     if let Some((range, Origin::Call)) = original_range_and_origin(db, node) {
@@ -79,6 +80,14 @@ pub(crate) fn descend_into_macros(
     let source_analyzer =
         hir::SourceAnalyzer::new(db, src.with_value(src.value.parent()).as_ref(), None);
 
+    descend_into_macros_with_analyzer(db, &source_analyzer, src)
+}
+
+pub(crate) fn descend_into_macros_with_analyzer(
+    db: &RootDatabase,
+    source_analyzer: &hir::SourceAnalyzer,
+    src: InFile<SyntaxToken>,
+) -> InFile<SyntaxToken> {
     successors(Some(src), |token| {
         let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
         let tt = macro_call.token_tree()?;

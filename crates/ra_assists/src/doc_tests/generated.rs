@@ -1,4 +1,4 @@
-//! Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`
+//! Generated file, do not edit by hand, see `xtask/src/codegen`
 
 use super::check;
 
@@ -161,21 +161,6 @@ impl Trait<u32> for () {
 }
 
 #[test]
-fn doctest_add_import() {
-    check(
-        "add_import",
-        r#####"
-fn process(map: std::collections::<|>HashMap<String, String>) {}
-"#####,
-        r#####"
-use std::collections::HashMap;
-
-fn process(map: HashMap<String, String>) {}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_add_new() {
     check(
         "add_new",
@@ -210,6 +195,27 @@ fn main() {
 fn main() {
     if !(x == 4 && y) {}
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_auto_import() {
+    check(
+        "auto_import",
+        r#####"
+fn main() {
+    let map = HashMap<|>::new();
+}
+pub mod std { pub mod collections { pub struct HashMap { } } }
+"#####,
+        r#####"
+use std::collections::HashMap;
+
+fn main() {
+    let map = HashMap::new();
+}
+pub mod std { pub mod collections { pub struct HashMap { } } }
 "#####,
     )
 }
@@ -566,6 +572,21 @@ fn handle(action: Action) {
         _ => bar(),
     }
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_qualified_name_with_use() {
+    check(
+        "replace_qualified_name_with_use",
+        r#####"
+fn process(map: std::collections::<|>HashMap<String, String>) {}
+"#####,
+        r#####"
+use std::collections::HashMap;
+
+fn process(map: HashMap<String, String>) {}
 "#####,
     )
 }

@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
 use ra_db::{RelativePath, SourceDatabase, SourceDatabaseExt};
+use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     algo,
@@ -13,7 +14,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{db::RootDatabase, Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
+use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {

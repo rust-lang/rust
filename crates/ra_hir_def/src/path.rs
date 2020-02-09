@@ -16,13 +16,13 @@ use ra_syntax::ast;
 
 use crate::{type_ref::TypeRef, InFile};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
     pub kind: PathKind,
     pub segments: Vec<Name>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,
     /// `self::` is `Super(0)`
@@ -32,6 +32,14 @@ pub enum PathKind {
     Abs,
     /// `$crate` from macro expansion
     DollarCrate(CrateId),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportAlias {
+    /// Unnamed alias, as in `use Foo as _;`
+    Underscore,
+    /// Named alias
+    Alias(Name),
 }
 
 impl ModPath {
@@ -57,7 +65,7 @@ impl ModPath {
     pub(crate) fn expand_use_item(
         item_src: InFile<ast::UseItem>,
         hygiene: &Hygiene,
-        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<Name>),
+        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
     ) {
         if let Some(tree) = item_src.value.use_tree() {
             lower::lower_use_tree(None, tree, hygiene, &mut cb);

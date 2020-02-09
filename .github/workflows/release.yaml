@@ -1,4 +1,4 @@
-name: CI-Release
+name: release
 on:
   push:
     branches:
@@ -132,7 +132,9 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        # uses: actions/create-release@v1
+        # https://github.com/actions/create-release/pull/32
+        uses: fleskesvor/create-release@1a72e235c178bf2ae6c51a8ae36febc24568c5fe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

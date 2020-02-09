@@ -1,17 +1,22 @@
 //! This module is responsible for implementing handlers for Lanuage Server Protocol.
 //! The majority of requests are fulfilled by calling into the `ra_ide` crate.
 
-use std::{fmt::Write as _, io::Write as _};
+use std::{
+    collections::hash_map::Entry,
+    fmt::Write as _,
+    io::Write as _,
+    process::{self, Stdio},
+};
 
-use either::Either;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
-    Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
-    Range, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionOrCommand, CodeActionResponse, CodeLens, Command, CompletionItem,
+    Diagnostic, DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
+    FoldingRangeParams, Hover, HoverContents, Location, MarkupContent, MarkupKind, Position,
+    PrepareRenameResponse, Range, RenameParams, SymbolInformation, TextDocumentIdentifier,
+    TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
@@ -29,6 +34,7 @@ use crate::{
         to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
         TryConvWithToVec,
     },
+    diagnostics::DiagnosticTask,
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
@@ -582,21 +588,19 @@ pub fn handle_formatting(
     let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
-    use std::process;
     let mut rustfmt = process::Command::new("rustfmt");
     if let Some(&crate_id) = crate_ids.first() {
         // Assume all crates are in the same edition
         let edition = world.analysis().crate_edition(crate_id)?;
         rustfmt.args(&["--edition", &edition.to_string()]);
     }
-    rustfmt.stdin(process::Stdio::piped()).stdout(process::Stdio::piped());
 
     if let Ok(path) = params.text_document.uri.to_file_path() {
         if let Some(parent) = path.parent() {
             rustfmt.current_dir(parent);
         }
     }
-    let mut rustfmt = rustfmt.spawn()?;
+    let mut rustfmt = rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
@@ -674,59 +678,61 @@ pub fn handle_code_action(
         res.push(action.into());
     }
 
-    for fix in world.check_watcher.read().fixes_for(&params.text_document.uri).into_iter().flatten()
-    {
-        let fix_range = fix.location.range.conv_with(&line_index);
+    for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
+        let fix_range = fix.range.conv_with(&line_index);
         if fix_range.intersection(&range).is_none() {
             continue;
         }
-
-        let edit = {
-            let edits = vec![TextEdit::new(fix.location.range, fix.replacement.clone())];
-            let mut edit_map = std::collections::HashMap::new();
-            edit_map.insert(fix.location.uri.clone(), edits);
-            WorkspaceEdit::new(edit_map)
-        };
-
-        let action = CodeAction {
-            title: fix.title.clone(),
-            kind: Some("quickfix".to_string()),
-            diagnostics: Some(fix.diagnostics.clone()),
-            edit: Some(edit),
-            command: None,
-            is_preferred: None,
-        };
-        res.push(action.into());
+        res.push(fix.action.clone());
     }
 
+    let mut groups = FxHashMap::default();
     for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
-        let title = assist.label.clone();
+        let arg = to_value(assist.source_change.try_conv_with(&world)?)?;
 
-        let command = match assist.change_data {
-            Either::Left(change) => Command {
-                title,
-                command: "rust-analyzer.applySourceChange".to_string(),
-                arguments: Some(vec![to_value(change.try_conv_with(&world)?)?]),
-            },
-            Either::Right(changes) => Command {
-                title,
-                command: "rust-analyzer.selectAndApplySourceChange".to_string(),
-                arguments: Some(vec![to_value(
-                    changes
-                        .into_iter()
-                        .map(|change| change.try_conv_with(&world))
-                        .collect::<Result<Vec<_>>>()?,
-                )?]),
-            },
+        let (command, title, arg) = match assist.group_label {
+            None => ("rust-analyzer.applySourceChange", assist.label.clone(), arg),
+
+            // Group all assists with the same `group_label` into a single CodeAction.
+            Some(group_label) => {
+                match groups.entry(group_label.clone()) {
+                    Entry::Occupied(entry) => {
+                        let idx: usize = *entry.get();
+                        match &mut res[idx] {
+                            CodeActionOrCommand::CodeAction(CodeAction {
+                                command: Some(Command { arguments: Some(arguments), .. }),
+                                ..
+                            }) => match arguments.as_mut_slice() {
+                                [serde_json::Value::Array(arguments)] => arguments.push(arg),
+                                _ => panic!("invalid group"),
+                            },
+                            _ => panic!("invalid group"),
+                        }
+                        continue;
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(res.len());
+                    }
+                }
+                ("rust-analyzer.selectAndApplySourceChange", group_label, to_value(vec![arg])?)
+            }
+        };
+
+        let command = Command {
+            title: assist.label.clone(),
+            command: command.to_string(),
+            arguments: Some(vec![arg]),
+        };
+
+        let kind = match assist.id {
+            AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
+            AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
+            _ => None,
         };
 
         let action = CodeAction {
-            title: command.title.clone(),
-            kind: match assist.id {
-                AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
-                AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
-                _ => None,
-            },
+            title,
+            kind,
             diagnostics: None,
             edit: None,
             command: Some(command),
@@ -874,14 +880,10 @@ pub fn handle_document_highlight(
     ))
 }
 
-pub fn publish_diagnostics(
-    world: &WorldSnapshot,
-    file_id: FileId,
-) -> Result<req::PublishDiagnosticsParams> {
+pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<DiagnosticTask> {
     let _p = profile("publish_diagnostics");
-    let uri = world.file_id_to_uri(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let mut diagnostics: Vec<Diagnostic> = world
+    let diagnostics: Vec<Diagnostic> = world
         .analysis()
         .diagnostics(file_id)?
         .into_iter()
@@ -895,10 +897,7 @@ pub fn publish_diagnostics(
             tags: None,
         })
         .collect();
-    if let Some(check_diags) = world.check_watcher.read().diagnostics_for(&uri) {
-        diagnostics.extend(check_diags.iter().cloned());
-    }
-    Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
+    Ok(DiagnosticTask::SetNative(file_id, diagnostics))
 }
 
 pub fn publish_decorations(

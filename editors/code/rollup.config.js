@@ -1,12 +1,10 @@
-import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import nodeBuiltins from 'builtin-modules';
 
 export default {
-    input: 'src/main.ts',
+    input: 'out/main.js',
     plugins: [
-        typescript(),
         resolve({
             preferBuiltins: true
         }),

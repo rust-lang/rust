@@ -102,7 +102,7 @@ fn test() {
     [11; 48) '{     ...&y]; }': ()
     [21; 22) 'y': &{unknown}
     [25; 32) 'unknown': &{unknown}
-    [38; 45) '[y, &y]': [&&{unknown};_]
+    [38; 45) '[y, &y]': [&&{unknown}; _]
     [39; 40) 'y': &{unknown}
     [42; 44) '&y': &&{unknown}
     [43; 44) 'y': &{unknown}
@@ -128,7 +128,7 @@ fn test() {
     [25; 32) 'unknown': &&{unknown}
     [42; 43) 'y': &&{unknown}
     [46; 53) 'unknown': &&{unknown}
-    [59; 77) '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown});_]
+    [59; 77) '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown}); _]
     [60; 66) '(x, y)': (&&&{unknown}, &&&{unknown})
     [61; 62) 'x': &&{unknown}
     [64; 65) 'y': &&{unknown}
@@ -180,8 +180,8 @@ fn test_line_buffer() {
 "#),
         @r###"
     [23; 53) '{     ...n']; }': ()
-    [29; 50) '&[0, b...b'\n']': &[u8;_]
-    [30; 50) '[0, b'...b'\n']': [u8;_]
+    [29; 50) '&[0, b...b'\n']': &[u8; _]
+    [30; 50) '[0, b'...b'\n']': [u8; _]
     [31; 32) '0': u8
     [34; 39) 'b'\n'': u8
     [41; 42) '1': u8
@@ -346,7 +346,7 @@ pub fn main_loop() {
     @r###"
     [144; 146) '{}': ()
     [169; 198) '{     ...t(); }': ()
-    [175; 193) 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<T, H>
+    [175; 193) 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<{unknown}, FxHasher>
     [175; 195) 'FxHash...ault()': HashSet<{unknown}, FxHasher>
     "###
     );

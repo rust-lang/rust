@@ -28,9 +28,12 @@ export class ColorTheme {
     static fromRules(rules: TextMateRule[]): ColorTheme {
         const res = new ColorTheme();
         for (const rule of rules) {
-            const scopes = typeof rule.scope === 'string'
-                ? [rule.scope]
-                : rule.scope;
+            const scopes = typeof rule.scope === 'undefined'
+                ? []
+                : typeof rule.scope === 'string'
+                    ? [rule.scope]
+                    : rule.scope;
+
             for (const scope of scopes) {
                 res.rules.set(scope, rule.settings);
             }
@@ -59,7 +62,7 @@ export class ColorTheme {
 }
 
 function loadThemeNamed(themeName: string): ColorTheme {
-    function isTheme(extension: vscode.Extension<any>): boolean {
+    function isTheme(extension: vscode.Extension<unknown>): boolean {
         return (
             extension.extensionKind === vscode.ExtensionKind.UI &&
             extension.packageJSON.contributes &&
@@ -67,13 +70,13 @@ function loadThemeNamed(themeName: string): ColorTheme {
         );
     }
 
-    let themePaths = vscode.extensions.all
+    const themePaths: string[] = vscode.extensions.all
         .filter(isTheme)
-        .flatMap(ext => {
-            return ext.packageJSON.contributes.themes
+        .flatMap(
+            ext => ext.packageJSON.contributes.themes
                 .filter((it: any) => (it.id || it.label) === themeName)
-                .map((it: any) => path.join(ext.extensionPath, it.path));
-        });
+                .map((it: any) => path.join(ext.extensionPath, it.path))
+        );
 
     const res = new ColorTheme();
     for (const themePath of themePaths) {
@@ -94,13 +97,12 @@ function loadThemeFile(themePath: string): ColorTheme {
         return new ColorTheme();
     }
     const obj = jsonc.parse(text);
-    const tokenColors = obj?.tokenColors ?? [];
+    const tokenColors: TextMateRule[] = obj?.tokenColors ?? [];
     const res = ColorTheme.fromRules(tokenColors);
 
-    for (const include in obj?.include ?? []) {
+    for (const include of obj?.include ?? []) {
         const includePath = path.join(path.dirname(themePath), include);
-        const tmp = loadThemeFile(includePath);
-        res.mergeFrom(tmp);
+        res.mergeFrom(loadThemeFile(includePath));
     }
 
     return res;

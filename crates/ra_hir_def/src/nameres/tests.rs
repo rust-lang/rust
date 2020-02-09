@@ -10,55 +10,16 @@ use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, SourceDatabase};
 use test_utils::covers;
 
-use crate::{db::DefDatabase, nameres::*, test_db::TestDB, LocalModuleId};
+use crate::{db::DefDatabase, nameres::*, test_db::TestDB};
 
 fn def_map(fixture: &str) -> String {
-    let dm = compute_crate_def_map(fixture);
-    render_crate_def_map(&dm)
+    compute_crate_def_map(fixture).dump()
 }
 
 fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
     let db = TestDB::with_files(fixture);
     let krate = db.crate_graph().iter().next().unwrap();
     db.crate_def_map(krate)
-}
-
-fn render_crate_def_map(map: &CrateDefMap) -> String {
-    let mut buf = String::new();
-    go(&mut buf, map, "\ncrate", map.root);
-    return buf.trim().to_string();
-
-    fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {
-        *buf += path;
-        *buf += "\n";
-
-        let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();
-        entries.sort_by_key(|(name, _)| name.clone());
-
-        for (name, def) in entries {
-            *buf += &format!("{}:", name);
-
-            if def.types.is_some() {
-                *buf += " t";
-            }
-            if def.values.is_some() {
-                *buf += " v";
-            }
-            if def.macros.is_some() {
-                *buf += " m";
-            }
-            if def.is_none() {
-                *buf += " _";
-            }
-
-            *buf += "\n";
-        }
-
-        for (name, child) in map.modules[module].children.iter() {
-            let path = path.to_string() + &format!("::{}", name);
-            go(buf, map, &path, *child);
-        }
-    }
 }
 
 #[test]

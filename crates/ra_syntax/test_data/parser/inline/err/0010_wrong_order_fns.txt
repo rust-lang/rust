@@ -1,9 +1,9 @@
 SOURCE_FILE@[0; 50)
-  ERROR@[0; 5)
-    ASYNC_KW@[0; 5) "async"
-  WHITESPACE@[5; 6) " "
-  FN_DEF@[6; 24)
-    UNSAFE_KW@[6; 12) "unsafe"
+  ERROR@[0; 6)
+    UNSAFE_KW@[0; 6) "unsafe"
+  WHITESPACE@[6; 7) " "
+  FN_DEF@[7; 24)
+    ASYNC_KW@[7; 12) "async"
     WHITESPACE@[12; 13) " "
     FN_KW@[13; 15) "fn"
     WHITESPACE@[15; 16) " "
@@ -37,5 +37,5 @@ SOURCE_FILE@[0; 50)
         L_CURLY@[47; 48) "{"
         R_CURLY@[48; 49) "}"
   WHITESPACE@[49; 50) "\n"
-error 5: expected existential, fn, trait or impl
+error 6: expected existential, fn, trait or impl
 error 31: expected existential, fn, trait or impl

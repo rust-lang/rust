@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{db::AstDatabase, InFile, SourceBinder};
+use ra_ide_db::{symbol_index, RootDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode,
@@ -9,7 +10,6 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::RootDatabase,
     display::{ShortLabel, ToNav},
     expand::descend_into_macros,
     references::{classify_name_ref, NameKind::*},
@@ -76,11 +76,10 @@ pub(crate) fn reference_definition(
     let name_kind = classify_name_ref(sb, name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(it)) => return Exact(it.to_nav(sb.db)),
-        Some(Field(it)) => return Exact(it.to_nav(sb.db)),
+        Some(StructField(it)) => return Exact(it.to_nav(sb.db)),
         Some(TypeParam(it)) => return Exact(it.to_nav(sb.db)),
-        Some(AssocItem(it)) => return Exact(it.to_nav(sb.db)),
         Some(Local(it)) => return Exact(it.to_nav(sb.db)),
-        Some(Def(def)) => match NavigationTarget::from_def(sb.db, def) {
+        Some(ModuleDef(def)) => match NavigationTarget::from_def(sb.db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },
@@ -94,7 +93,7 @@ pub(crate) fn reference_definition(
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(sb.db, name_ref.value)
+    let navs = symbol_index::index_resolve(sb.db, name_ref.value)
         .into_iter()
         .map(|s| s.to_nav(sb.db))
         .collect();

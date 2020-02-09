@@ -5,19 +5,27 @@ import { Ctx, sendRequestWithRetry } from './ctx';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
-    vscode.window.onDidChangeVisibleTextEditors(async _ => {
-        await hintsUpdater.refresh();
-    }, ctx.subscriptions);
+    vscode.window.onDidChangeVisibleTextEditors(
+        async _ => hintsUpdater.refresh(),
+        null,
+        ctx.subscriptions
+    );
 
-    vscode.workspace.onDidChangeTextDocument(async e => {
-        if (e.contentChanges.length === 0) return;
-        if (e.document.languageId !== 'rust') return;
-        await hintsUpdater.refresh();
-    }, ctx.subscriptions);
+    vscode.workspace.onDidChangeTextDocument(
+        async event => {
+            if (event.contentChanges.length !== 0) return;
+            if (event.document.languageId !== 'rust') return;
+            await hintsUpdater.refresh();
+        },
+        null,
+        ctx.subscriptions
+    );
 
-    vscode.workspace.onDidChangeConfiguration(_ => {
-        hintsUpdater.setEnabled(ctx.config.displayInlayHints);
-    }, ctx.subscriptions);
+    vscode.workspace.onDidChangeConfiguration(
+        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints),
+        null,
+        ctx.subscriptions
+    );
 
     ctx.onDidRestart(_ => hintsUpdater.setEnabled(ctx.config.displayInlayHints));
 }
@@ -127,13 +135,13 @@ class HintsUpdater {
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
-        let client = this.ctx.client;
+        const client = this.ctx.client;
         if (!client) return null;
         const request: InlayHintsParams = {
             textDocument: { uri: documentUri },
         };
-        let tokenSource = new vscode.CancellationTokenSource();
-        let prev = this.pending.get(documentUri);
+        const tokenSource = new vscode.CancellationTokenSource();
+        const prev = this.pending.get(documentUri);
         if (prev) prev.cancel();
         this.pending.set(documentUri, tokenSource);
         try {

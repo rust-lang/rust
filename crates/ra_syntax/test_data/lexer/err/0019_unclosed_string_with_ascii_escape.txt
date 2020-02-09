@@ -1,0 +1,2 @@
+STRING 5 "\"\\x7f"
+> error[0; 5) token("\"\\x7f") msg(Missing trailing `"` symbol to terminate the string literal)

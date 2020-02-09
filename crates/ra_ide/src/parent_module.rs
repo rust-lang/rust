@@ -1,19 +1,35 @@
 //! FIXME: write short doc here
 
 use ra_db::{CrateId, FileId, FilePosition, SourceDatabase};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode},
 };
+use test_utils::tested_by;
 
-use crate::{db::RootDatabase, NavigationTarget};
+use crate::NavigationTarget;
 
 /// This returns `Vec` because a module may be included from several places. We
 /// don't handle this case yet though, so the Vec has length at most one.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
     let mut sb = hir::SourceBinder::new(db);
     let parse = db.parse(position.file_id);
-    let module = match find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
+
+    let mut module = find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset);
+
+    // If cursor is literally on `mod foo`, go to the grandpa.
+    if let Some(m) = &module {
+        if !m
+            .item_list()
+            .map_or(false, |it| it.syntax().text_range().contains_inclusive(position.offset))
+        {
+            tested_by!(test_resolve_parent_module_on_module_decl);
+            module = m.syntax().ancestors().skip(1).find_map(ast::Module::cast);
+        }
+    }
+
+    let module = match module {
         Some(module) => sb.to_def(hir::InFile::new(position.file_id.into(), module)),
         None => sb.to_module_def(position.file_id),
     };
@@ -40,6 +56,7 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 mod tests {
     use ra_cfg::CfgOptions;
     use ra_db::Env;
+    use test_utils::covers;
 
     use crate::{
         mock_analysis::{analysis_and_position, MockAnalysis},
@@ -55,6 +72,25 @@ mod tests {
             mod foo;
             //- /foo.rs
             <|>// empty
+            ",
+        );
+        let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
+        nav.assert_match("foo MODULE FileId(1) [0; 8)");
+    }
+
+    #[test]
+    fn test_resolve_parent_module_on_module_decl() {
+        covers!(test_resolve_parent_module_on_module_decl);
+        let (analysis, pos) = analysis_and_position(
+            "
+            //- /lib.rs
+            mod foo;
+
+            //- /foo.rs
+            mod <|>bar;
+
+            //- /foo/bar.rs
+            // empty
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();

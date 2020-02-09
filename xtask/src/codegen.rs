@@ -25,7 +25,7 @@ const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err
 pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
 pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs";
 
-const ASSISTS_DIR: &str = "crates/ra_assists/src/assists";
+const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/ra_assists/src/doc_tests/generated.rs";
 const ASSISTS_DOCS: &str = "docs/user/assists.md";
 

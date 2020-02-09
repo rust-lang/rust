@@ -34,7 +34,6 @@ use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use ra_syntax::SmolStr;
-use test_utils::tested_by;
 
 use super::{
     primitive::{FloatTy, IntTy},
@@ -42,7 +41,9 @@ use super::{
     ApplicationTy, GenericPredicate, InEnvironment, ProjectionTy, Substs, TraitEnvironment,
     TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
 };
-use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
+use crate::{
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
+};
 
 pub(crate) use unify::unify;
 
@@ -271,38 +272,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.diagnostics.push(diagnostic);
     }
 
-    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        let ty = Ty::from_hir(
-            self.db,
-            // FIXME use right resolver for block
-            &self.resolver,
-            type_ref,
-        );
+    fn make_ty_with_mode(
+        &mut self,
+        type_ref: &TypeRef,
+        impl_trait_mode: ImplTraitLoweringMode,
+    ) -> Ty {
+        // FIXME use right resolver for block
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
+            .with_impl_trait_mode(impl_trait_mode);
+        let ty = Ty::from_hir(&ctx, type_ref);
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
     }
 
-    /// Replaces `impl Trait` in `ty` by type variables and obligations for
-    /// those variables. This is done for function arguments when calling a
-    /// function, and for return types when inside the function body, i.e. in
-    /// the cases where the `impl Trait` is 'transparent'. In other cases, `impl
-    /// Trait` is represented by `Ty::Opaque`.
-    fn insert_vars_for_impl_trait(&mut self, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::Opaque(preds) => {
-                tested_by!(insert_vars_for_impl_trait);
-                let var = self.table.new_type_var();
-                let var_subst = Substs::builder(1).push(var.clone()).build();
-                self.obligations.extend(
-                    preds
-                        .iter()
-                        .map(|pred| pred.clone().subst_bound_vars(&var_subst))
-                        .filter_map(Obligation::from_predicate),
-                );
-                var
-            }
-            _ => ty,
-        })
+    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
+        self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Disallowed)
     }
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
@@ -446,19 +430,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
         match resolver.resolve_path_in_type_ns_fully(self.db, path.mod_path()) {
             Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
-                let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
+                let substs = Ty::substs_from_path(&ctx, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
+                let ty = self.insert_type_vars(ty.subst(&substs));
                 (ty, Some(strukt.into()))
             }
             Some(TypeNs::EnumVariantId(var)) => {
-                let substs = Ty::substs_from_path(self.db, resolver, path, var.into());
+                let substs = Ty::substs_from_path(&ctx, path, var.into());
                 let ty = self.db.ty(var.parent.into());
-                let ty = self.insert_type_vars(ty.apply_substs(substs));
+                let ty = self.insert_type_vars(ty.subst(&substs));
                 (ty, Some(var.into()))
             }
             Some(_) | None => (Ty::Unknown, None),
@@ -471,13 +456,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
-            let ty = self.make_ty(type_ref);
+        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
+            .with_impl_trait_mode(ImplTraitLoweringMode::Param);
+        let param_tys =
+            data.params.iter().map(|type_ref| Ty::from_hir(&ctx, type_ref)).collect::<Vec<_>>();
+        for (ty, pat) in param_tys.into_iter().zip(body.params.iter()) {
+            let ty = self.insert_type_vars(ty);
+            let ty = self.normalize_associated_types_in(ty);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        let return_ty = self.make_ty(&data.ret_type);
-        self.return_ty = self.insert_vars_for_impl_trait(return_ty);
+        let return_ty = self.make_ty_with_mode(&data.ret_type, ImplTraitLoweringMode::Disallowed); // FIXME implement RPIT
+        self.return_ty = return_ty;
     }
 
     fn infer_body(&mut self) {

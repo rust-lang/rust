@@ -2,7 +2,7 @@
 //! of smaller pieces.
 use itertools::Itertools;
 
-use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {};", text))
@@ -33,6 +33,21 @@ pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordF
     }
 }
 
+pub fn block_expr(
+    stmts: impl IntoIterator<Item = ast::Stmt>,
+    tail_expr: Option<ast::Expr>,
+) -> ast::BlockExpr {
+    let mut text = "{\n".to_string();
+    for stmt in stmts.into_iter() {
+        text += &format!("    {}\n", stmt.syntax());
+    }
+    if let Some(tail_expr) = tail_expr {
+        text += &format!("    {}\n", tail_expr.syntax())
+    }
+    text += "}";
+    ast_from_text(&format!("fn f() {}", text))
+}
+
 pub fn block_from_expr(e: ast::Expr) -> ast::Block {
     return from_text(&format!("{{ {} }}", e.syntax()));
 
@@ -61,6 +76,13 @@ pub fn expr_return() -> ast::Expr {
 }
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr.syntax(), match_arm_list.syntax()))
+}
+pub fn expr_if(condition: ast::Expr, then_branch: ast::BlockExpr) -> ast::Expr {
+    expr_from_text(&format!("if {} {}", condition.syntax(), then_branch.syntax()))
+}
+pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
+    let token = token(op);
+    expr_from_text(&format!("{}{}", token, expr.syntax()))
 }
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
@@ -122,11 +144,18 @@ pub fn match_arm(pats: impl IntoIterator<Item = ast::Pat>, expr: ast::Expr) -> a
 }
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-    let arms_str = arms.into_iter().map(|arm| format!("\n    {}", arm.syntax())).join(",");
-    return from_text(&format!("{},\n", arms_str));
+    let arms_str = arms
+        .into_iter()
+        .map(|arm| {
+            let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
+            let comma = if needs_comma { "," } else { "" };
+            format!("    {}{}\n", arm.syntax(), comma)
+        })
+        .collect::<String>();
+    return from_text(&format!("{}", arms_str));
 
     fn from_text(text: &str) -> ast::MatchArmList {
-        ast_from_text(&format!("fn f() {{ match () {{{}}} }}", text))
+        ast_from_text(&format!("fn f() {{ match () {{\n{}}} }}", text))
     }
 }
 
@@ -151,20 +180,15 @@ pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::Whe
     }
 }
 
-pub fn if_expression(condition: &ast::Expr, statement: &str) -> ast::IfExpr {
-    ast_from_text(&format!(
-        "fn f() {{ if !{} {{\n    {}\n}}\n}}",
-        condition.syntax().text(),
-        statement
-    ))
-}
-
 pub fn let_stmt(pattern: ast::Pat, initializer: Option<ast::Expr>) -> ast::LetStmt {
     let text = match initializer {
         Some(it) => format!("let {} = {};", pattern.syntax(), it.syntax()),
         None => format!("let {};", pattern.syntax()),
     };
     ast_from_text(&format!("fn f() {{ {} }}", text))
+}
+pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
+    ast_from_text(&format!("fn f() {{ {}; }}", expr.syntax()))
 }
 
 pub fn token(kind: SyntaxKind) -> SyntaxToken {
@@ -179,7 +203,16 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
-    parse.tree().syntax().descendants().find_map(N::cast).unwrap()
+    let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
+    let node = node.syntax().clone();
+    let node = unroot(node);
+    let node = N::cast(node).unwrap();
+    assert_eq!(node.syntax().text_range().start(), 0.into());
+    node
+}
+
+fn unroot(n: SyntaxNode) -> SyntaxNode {
+    SyntaxNode::new_root(n.green().clone())
 }
 
 pub mod tokens {
@@ -187,7 +220,7 @@ pub mod tokens {
     use once_cell::sync::Lazy;
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
-        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2)\n;"));
+        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2, !true)\n;"));
 
     pub fn comma() -> SyntaxToken {
         SOURCE_FILE

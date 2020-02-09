@@ -3,17 +3,18 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, VariantId,
+    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, TypeParamId,
+    VariantId,
 };
 use ra_arena::map::ArenaMap;
-use ra_db::{salsa, CrateId};
+use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 
 use crate::{
     method_resolution::CrateImplBlocks,
     traits::{chalk, AssocTyValue, Impl},
-    CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
-    ValueTyDefId,
+    Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
+    TyDefId, TypeCtor, ValueTyDefId,
 };
 
 #[salsa::query_group(HirDatabaseStorage)]
@@ -27,34 +28,33 @@ pub trait HirDatabase: DefDatabase {
 
     #[salsa::invoke(crate::lower::ty_query)]
     #[salsa::cycle(crate::lower::ty_recover)]
-    fn ty(&self, def: TyDefId) -> Ty;
+    fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::value_ty_query)]
-    fn value_ty(&self, def: ValueTyDefId) -> Ty;
+    fn value_ty(&self, def: ValueTyDefId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::cycle(crate::lower::impl_self_ty_recover)]
-    fn impl_self_ty(&self, def: ImplId) -> Ty;
+    fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
-    fn impl_trait(&self, def: ImplId) -> Option<TraitRef>;
+    fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
-    fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Ty>>;
+    fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Binders<Ty>>>;
 
     #[salsa::invoke(crate::callable_item_sig)]
-    fn callable_item_signature(&self, def: CallableDef) -> FnSig;
+    fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
     fn generic_predicates_for_param(
         &self,
-        def: GenericDefId,
-        param_idx: u32,
-    ) -> Arc<[GenericPredicate]>;
+        param_id: TypeParamId,
+    ) -> Arc<[Binders<GenericPredicate>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDefId) -> Arc<[GenericPredicate]>;
+    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<GenericPredicate>]>;
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> Substs;
@@ -76,6 +76,8 @@ pub trait HirDatabase: DefDatabase {
     // Interned IDs for Chalk integration
     #[salsa::interned]
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::TypeCtorId;
+    #[salsa::interned]
+    fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
     #[salsa::interned]
     fn intern_chalk_impl(&self, impl_: Impl) -> crate::traits::GlobalImplId;
     #[salsa::interned]
@@ -117,3 +119,7 @@ fn infer(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
 fn hir_database_is_object_safe() {
     fn _assert_object_safe(_: &dyn HirDatabase) {}
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GlobalTypeParamId(salsa::InternId);
+impl_intern_key!(GlobalTypeParamId);

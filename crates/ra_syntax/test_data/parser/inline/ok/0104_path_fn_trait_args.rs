@@ -1,1 +1,1 @@
-type F = Box<Fn(x: i32) -> ()>;
+type F = Box<Fn(i32) -> ()>;

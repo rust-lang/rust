@@ -21,6 +21,12 @@ pub use difference::Changeset as __Changeset;
 
 pub const CURSOR_MARKER: &str = "<|>";
 
+/// Asserts that two strings are equal, otherwise displays a rich diff between them.
+///
+/// The diff shows changes from the "original" left string to the "actual" right string.
+///
+/// All arguments starting from and including the 3rd one are passed to
+/// `eprintln!()` macro in case of text inequality.
 #[macro_export]
 macro_rules! assert_eq_text {
     ($left:expr, $right:expr) => {
@@ -42,6 +48,7 @@ macro_rules! assert_eq_text {
     }};
 }
 
+/// Infallible version of `try_extract_offset()`.
 pub fn extract_offset(text: &str) -> (TextUnit, String) {
     match try_extract_offset(text) {
         None => panic!("text should contain cursor marker"),
@@ -49,6 +56,8 @@ pub fn extract_offset(text: &str) -> (TextUnit, String) {
     }
 }
 
+/// Returns the offset of the first occurence of `<|>` marker and the copy of `text`
+/// without the marker.
 fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
     let cursor_pos = text.find(CURSOR_MARKER)?;
     let mut new_text = String::with_capacity(text.len() - CURSOR_MARKER.len());
@@ -58,6 +67,7 @@ fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
     Some((cursor_pos, new_text))
 }
 
+/// Infallible version of `try_extract_range()`.
 pub fn extract_range(text: &str) -> (TextRange, String) {
     match try_extract_range(text) {
         None => panic!("text should contain cursor marker"),
@@ -65,6 +75,8 @@ pub fn extract_range(text: &str) -> (TextRange, String) {
     }
 }
 
+/// Returns `TextRange` between the first two markers `<|>...<|>` and the copy
+/// of `text` without both of these markers.
 fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     let (start, text) = try_extract_offset(text)?;
     let (end, text) = try_extract_offset(&text)?;
@@ -85,6 +97,11 @@ impl From<RangeOrOffset> for TextRange {
     }
 }
 
+/// Extracts `TextRange` or `TextUnit` depending on the amount of `<|>` markers
+/// found in `text`.
+///
+/// # Panics
+/// Panics if no `<|>` marker is present in the `text`.
 pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
     if let Some((range, text)) = try_extract_range(text) {
         return (RangeOrOffset::Range(range), text);
@@ -93,7 +110,7 @@ pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
     (RangeOrOffset::Offset(offset), text)
 }
 
-/// Extracts ranges, marked with `<tag> </tag>` paris from the `text`
+/// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
 pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
     let open = format!("<{}>", tag);
     let close = format!("</{}>", tag);
@@ -127,9 +144,9 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
     (ranges, res)
 }
 
+/// Inserts `<|>` marker into the `text` at `offset`.
 pub fn add_cursor(text: &str, offset: TextUnit) -> String {
-    let offset: u32 = offset.into();
-    let offset: usize = offset as usize;
+    let offset: usize = offset.to_usize();
     let mut res = String::new();
     res.push_str(&text[..offset]);
     res.push_str("<|>");
@@ -152,19 +169,6 @@ pub struct FixtureEntry {
 ///  // - other meta
 ///  ```
 pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
-    let mut res = Vec::new();
-    let mut buf = String::new();
-    let mut meta: Option<&str> = None;
-
-    macro_rules! flush {
-        () => {
-            if let Some(meta) = meta {
-                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
-                buf.clear();
-            }
-        };
-    };
-
     let margin = fixture
         .lines()
         .filter(|it| it.trim_start().starts_with("//-"))
@@ -172,7 +176,7 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
         .next()
         .expect("empty fixture");
 
-    let lines = fixture
+    let mut lines = fixture
         .split('\n') // don't use `.lines` to not drop `\r\n`
         .filter_map(|line| {
             if line.len() >= margin {
@@ -184,17 +188,16 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
             }
         });
 
-    for line in lines {
+    let mut res: Vec<FixtureEntry> = Vec::new();
+    for line in lines.by_ref() {
         if line.starts_with("//-") {
-            flush!();
-            buf.clear();
-            meta = Some(line["//-".len()..].trim());
-            continue;
+            let meta = line["//-".len()..].trim().to_string();
+            res.push(FixtureEntry { meta, text: String::new() })
+        } else if let Some(entry) = res.last_mut() {
+            entry.text.push_str(line);
+            entry.text.push('\n');
         }
-        buf.push_str(line);
-        buf.push('\n');
     }
-    flush!();
     res
 }
 
@@ -236,11 +239,10 @@ fn lines_match_works() {
     assert!(!lines_match("b", "cb"));
 }
 
-// Compares JSON object for approximate equality.
-// You can use `[..]` wildcard in strings (useful for OS dependent things such
-// as paths).  You can use a `"{...}"` string literal as a wildcard for
-// arbitrary nested JSON (useful for parts of object emitted by other programs
-// (e.g. rustc) rather than Cargo itself).  Arrays are sorted before comparison.
+/// Compares JSON object for approximate equality.
+/// You can use `[..]` wildcard in strings (useful for OS dependent things such
+/// as paths). You can use a `"{...}"` string literal as a wildcard for
+/// arbitrary nested JSON. Arrays are sorted before comparison.
 pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a Value, &'a Value)> {
     use serde_json::Value::*;
     match (expected, actual) {
@@ -286,6 +288,14 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
     }
 }
 
+/// Calls callback `f` with input code and file paths of all `.rs` files from `test_data_dir`
+/// subdirectories defined by `paths`.
+///
+/// If the content of the matching `.txt` file differs from the output of `f()`
+/// the test will fail.
+///
+/// If there is no matching `.txt` file it will be created and filled with the
+/// output of `f()`, but the test will fail.
 pub fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], f: F)
 where
     F: Fn(&str, &Path) -> String,
@@ -307,6 +317,7 @@ where
     }
 }
 
+/// Collects all `.rs` files from `test_data_dir` subdirectories defined by `paths`.
 pub fn collect_tests(test_data_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
     paths
         .iter()
@@ -321,6 +332,7 @@ pub fn collect_tests(test_data_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, Stri
         .collect()
 }
 
+/// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
 fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
     let mut acc = Vec::new();
     for file in fs::read_dir(&dir).unwrap() {
@@ -334,6 +346,7 @@ fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
     acc
 }
 
+/// Returns the path to the root directory of `rust-analyzer` project.
 pub fn project_dir() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
@@ -356,6 +369,9 @@ pub fn read_text(path: &Path) -> String {
         .replace("\r\n", "\n")
 }
 
+/// Returns `false` if slow tests should not run, otherwise returns `true` and
+/// also creates a file at `./target/.slow_tests_cookie` which serves as a flag
+/// that slow tests did run.
 pub fn skip_slow_tests() -> bool {
     let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
     if should_skip {
@@ -367,8 +383,9 @@ pub fn skip_slow_tests() -> bool {
     should_skip
 }
 
-const REWRITE: bool = false;
-
+/// Asserts that `expected` and `actual` strings are equal. If they differ only
+/// in trailing or leading whitespace the test won't fail and
+/// the contents of `actual` will be written to the file located at `path`.
 fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
     if expected == actual {
         return;
@@ -381,6 +398,7 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
         fs::write(path, actual).unwrap();
         return;
     }
+    const REWRITE: bool = false;
     if REWRITE {
         println!("rewriting {}", pretty_path.display());
         fs::write(path, actual).unwrap();

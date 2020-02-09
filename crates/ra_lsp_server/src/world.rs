@@ -12,9 +12,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_cargo_watch::{
-    url_from_path_with_drive_lowercasing, CheckOptions, CheckState, CheckWatcher,
-};
+use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
@@ -25,6 +23,7 @@ use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
 use crate::{
+    diagnostics::{CheckFixes, DiagnosticCollection},
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     LspError, Result,
 };
@@ -55,6 +54,7 @@ pub struct WorldState {
     pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
     pub check_watcher: CheckWatcher,
+    pub diagnostics: DiagnosticCollection,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -63,7 +63,7 @@ pub struct WorldSnapshot {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
-    pub check_watcher: Arc<RwLock<CheckState>>,
+    pub check_fixes: CheckFixes,
     vfs: Arc<RwLock<Vfs>>,
 }
 
@@ -159,6 +159,7 @@ impl WorldState {
             task_receiver,
             latest_requests: Default::default(),
             check_watcher,
+            diagnostics: Default::default(),
         }
     }
 
@@ -220,7 +221,7 @@ impl WorldState {
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
-            check_watcher: self.check_watcher.state.clone(),
+            check_fixes: Arc::clone(&self.diagnostics.check_fixes),
         }
     }
 

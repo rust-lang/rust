@@ -10,7 +10,7 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, TextRange};
 use rustc_hash::FxHashMap;
 
-use crate::db::RootDatabase;
+use ra_ide_db::RootDatabase;
 
 use super::{NameDefinition, NameKind};
 
@@ -19,6 +19,79 @@ pub struct SearchScope {
 }
 
 impl SearchScope {
+    pub(crate) fn for_def(def: &NameDefinition, db: &RootDatabase) -> SearchScope {
+        let _p = profile("search_scope");
+
+        let module_src = def.container.definition_source(db);
+        let file_id = module_src.file_id.original_file(db);
+
+        if let NameKind::Local(var) = def.kind {
+            let range = match var.parent(db) {
+                DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
+                DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
+                DefWithBody::Static(s) => s.source(db).value.syntax().text_range(),
+            };
+            let mut res = FxHashMap::default();
+            res.insert(file_id, Some(range));
+            return SearchScope::new(res);
+        }
+
+        let vis = def.visibility.as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
+
+        if vis.as_str() == "pub(super)" {
+            if let Some(parent_module) = def.container.parent(db) {
+                let mut res = FxHashMap::default();
+                let parent_src = parent_module.definition_source(db);
+                let file_id = parent_src.file_id.original_file(db);
+
+                match parent_src.value {
+                    ModuleSource::Module(m) => {
+                        let range = Some(m.syntax().text_range());
+                        res.insert(file_id, range);
+                    }
+                    ModuleSource::SourceFile(_) => {
+                        res.insert(file_id, None);
+                        res.extend(parent_module.children(db).map(|m| {
+                            let src = m.definition_source(db);
+                            (src.file_id.original_file(db), None)
+                        }));
+                    }
+                }
+                return SearchScope::new(res);
+            }
+        }
+
+        if vis.as_str() != "" {
+            let source_root_id = db.file_source_root(file_id);
+            let source_root = db.source_root(source_root_id);
+            let mut res = source_root.walk().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
+
+            // FIXME: add "pub(in path)"
+
+            if vis.as_str() == "pub(crate)" {
+                return SearchScope::new(res);
+            }
+            if vis.as_str() == "pub" {
+                let krate = def.container.krate();
+                for rev_dep in krate.reverse_dependencies(db) {
+                    let root_file = rev_dep.root_file(db);
+                    let source_root_id = db.file_source_root(root_file);
+                    let source_root = db.source_root(source_root_id);
+                    res.extend(source_root.walk().map(|id| (id, None)));
+                }
+                return SearchScope::new(res);
+            }
+        }
+
+        let mut res = FxHashMap::default();
+        let range = match module_src.value {
+            ModuleSource::Module(m) => Some(m.syntax().text_range()),
+            ModuleSource::SourceFile(_) => None,
+        };
+        res.insert(file_id, range);
+        SearchScope::new(res)
+    }
+
     fn new(entries: FxHashMap<FileId, Option<TextRange>>) -> SearchScope {
         SearchScope { entries }
     }
@@ -61,80 +134,5 @@ impl IntoIterator for SearchScope {
     type IntoIter = std::collections::hash_map::IntoIter<FileId, Option<TextRange>>;
     fn into_iter(self) -> Self::IntoIter {
         self.entries.into_iter()
-    }
-}
-
-impl NameDefinition {
-    pub(crate) fn search_scope(&self, db: &RootDatabase) -> SearchScope {
-        let _p = profile("search_scope");
-
-        let module_src = self.container.definition_source(db);
-        let file_id = module_src.file_id.original_file(db);
-
-        if let NameKind::Local(var) = self.kind {
-            let range = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
-                DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
-                DefWithBody::Static(s) => s.source(db).value.syntax().text_range(),
-            };
-            let mut res = FxHashMap::default();
-            res.insert(file_id, Some(range));
-            return SearchScope::new(res);
-        }
-
-        let vis = self.visibility.as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
-
-        if vis.as_str() == "pub(super)" {
-            if let Some(parent_module) = self.container.parent(db) {
-                let mut res = FxHashMap::default();
-                let parent_src = parent_module.definition_source(db);
-                let file_id = parent_src.file_id.original_file(db);
-
-                match parent_src.value {
-                    ModuleSource::Module(m) => {
-                        let range = Some(m.syntax().text_range());
-                        res.insert(file_id, range);
-                    }
-                    ModuleSource::SourceFile(_) => {
-                        res.insert(file_id, None);
-                        res.extend(parent_module.children(db).map(|m| {
-                            let src = m.definition_source(db);
-                            (src.file_id.original_file(db), None)
-                        }));
-                    }
-                }
-                return SearchScope::new(res);
-            }
-        }
-
-        if vis.as_str() != "" {
-            let source_root_id = db.file_source_root(file_id);
-            let source_root = db.source_root(source_root_id);
-            let mut res = source_root.walk().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
-
-            // FIXME: add "pub(in path)"
-
-            if vis.as_str() == "pub(crate)" {
-                return SearchScope::new(res);
-            }
-            if vis.as_str() == "pub" {
-                let krate = self.container.krate();
-                for rev_dep in krate.reverse_dependencies(db) {
-                    let root_file = rev_dep.root_file(db);
-                    let source_root_id = db.file_source_root(root_file);
-                    let source_root = db.source_root(source_root_id);
-                    res.extend(source_root.walk().map(|id| (id, None)));
-                }
-                return SearchScope::new(res);
-            }
-        }
-
-        let mut res = FxHashMap::default();
-        let range = match module_src.value {
-            ModuleSource::Module(m) => Some(m.syntax().text_range()),
-            ModuleSource::SourceFile(_) => None,
-        };
-        res.insert(file_id, range);
-        SearchScope::new(res)
     }
 }

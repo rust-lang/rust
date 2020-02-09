@@ -1,0 +1,2 @@
+BYTE_STRING 4 "b\"\\n"
+> error[0; 4) token("b\"\\n") msg(Missing trailing `"` symbol to terminate the byte string literal)

@@ -28,6 +28,7 @@ once_cell = "1.2.0"
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
+ra_ide_db = { path = "../ra_ide_db" }
 ra_cfg = { path = "../ra_cfg" }
 ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
@@ -39,7 +40,7 @@ ra_assists = { path = "../ra_assists" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 
 [dev-dependencies]
-insta = "0.12.0"
+insta = "0.13.0"
 
 [dev-dependencies.proptest]
 version = "0.9.0"

@@ -5,8 +5,7 @@ install lsp server, clone the repository and then run `cargo xtask install
 ./crates/ra_lsp_server`). This will produce a binary named `ra_lsp_server` which
 you should be able to use it with any LSP-compatible editor. We use custom
 extensions to LSP, so special client-side support is required to take full
-advantage of rust-analyzer. This repository contains support code for VS Code
-and Emacs.
+advantage of rust-analyzer. This repository contains support code for VS Code.
 
 ```
 $ git clone git@github.com:rust-analyzer/rust-analyzer && cd rust-analyzer
@@ -32,7 +31,38 @@ a minimum version of 10 installed. Please refer to
 You will also need the most recent version of VS Code: we don't try to
 maintain compatibility with older versions yet.
 
-The experimental VS Code plugin can then be built and installed by executing the
+### Installation from prebuilt binaries
+
+We ship prebuilt binaries for Linux, Mac and Windows via
+[GitHub releases](https://github.com/rust-analyzer/rust-analyzer/releases).
+In order to use them you need to install the client VSCode extension.
+
+Publishing to VSCode marketplace is currently WIP. Thus, you need to clone the repository and install **only** the client extension via
+```
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
+$ cd rust-analyzer
+$ cargo xtask install --client-code
+```
+Then open VSCode (or reload the window if it was already running), open some Rust project and you should
+see an info message pop-up.
+
+
+<img height="140px" src="https://user-images.githubusercontent.com/36276403/74103174-a40df100-4b52-11ea-81f4-372c70797924.png" alt="Download now message"/>
+
+
+Click `Download now`, wait until the progress is 100% and you are ready to go.
+
+For updates you need to remove installed binary
+```
+rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
+```
+
+`"Donwload latest language server"` command for VSCode and automatic updates detection is currently WIP.
+
+
+### Installation from sources
+
+The experimental VS Code plugin can be built and installed by executing the
 following commands:
 
 ```
@@ -47,6 +77,7 @@ doesn't, report bugs!
 **Note** [#1831](https://github.com/rust-analyzer/rust-analyzer/issues/1831): If you are using the popular
 [Vim emulation plugin](https://github.com/VSCodeVim/Vim), you will likely
 need to turn off the `rust-analyzer.enableEnhancedTyping` setting.
+(// TODO: This configuration is no longer available, enhanced typing shoud be disabled via removing Enter key binding, [see this issue](https://github.com/rust-analyzer/rust-analyzer/issues/3051))
 
 If you have an unusual setup (for example, `code` is not in the `PATH`), you
 should adapt these manual installation instructions:
@@ -57,7 +88,7 @@ $ cd rust-analyzer
 $ cargo install --path ./crates/ra_lsp_server/ --force --locked
 $ cd ./editors/code
 $ npm install
-$ ./node_modules/vsce/out/vsce package
+$ npm run package
 $ code --install-extension ./rust-analyzer-0.1.0.vsix
 ```
 
@@ -94,7 +125,7 @@ host.
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting.
   Colors can be configured via `editor.tokenColorCustomizations`.
   As an example, [Pale Fire](https://github.com/matklad/pale-fire/) color scheme tweaks rust colors.
-* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts.
+* `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts the
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
@@ -130,17 +161,12 @@ host.
 
 ## Emacs
 
-Prerequisites:
+* install recent version of `emacs-lsp` package by following the instructions [here][emacs-lsp]
+* set `lsp-rust-server` to `'rust-analyzer`
+* run `lsp` in a Rust buffer
+* (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys
 
-`emacs-lsp`, `dash` and `ht` packages.
-
-Installation:
-
-* add
-[rust-analyzer.el](../../editors/emacs/rust-analyzer.el)
-to load path and require it in `init.el`
-* run `lsp` in a rust buffer
-* (Optionally) bind commands like `rust-analyzer-join-lines`, `rust-analyzer-extend-selection` and `rust-analyzer-expand-macro` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints
+[emacs-lsp]: https://github.com/emacs-lsp/lsp-mode
 
 
 ## Vim and NeoVim (coc-rust-analyzer)
@@ -173,8 +199,7 @@ let g:LanguageClient_serverCommands = {
 
 NeoVim 0.5 (not yet released) has built in language server support. For a quick start configuration
 of rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp#rust_analyzer).
-Once `neovim/nvim-lsp` is installed, you can use `call nvim_lsp#setup("rust_analyzer", {})`
-or `lua require'nvim_lsp'.rust_analyzer.setup({})` to quickly get set up.
+Once `neovim/nvim-lsp` is installed, use `lua require'nvim_lsp'.rust_analyzer.setup({})` in your `init.vim`.
 
 
 ## Sublime Text 3

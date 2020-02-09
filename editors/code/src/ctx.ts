@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+
 import { Config } from './config';
 import { createClient } from './client';
 
@@ -10,6 +11,9 @@ export class Ctx {
     // deal with it.
     //
     // Ideally, this should be replaced with async getter though.
+    // FIXME: this actually needs syncronization of some kind (check how
+    // vscode deals with `deactivate()` call when extension has some work scheduled
+    // on the event loop to get a better picture of what we can do here)
     client: lc.LanguageClient | null = null;
     private extCtx: vscode.ExtensionContext;
     private onDidRestartHooks: Array<(client: lc.LanguageClient) => void> = [];
@@ -20,12 +24,19 @@ export class Ctx {
     }
 
     async restartServer() {
-        let old = this.client;
+        const old = this.client;
         if (old) {
             await old.stop();
         }
         this.client = null;
-        const client = createClient(this.config);
+        const client = await createClient(this.config);
+        if (!client) {
+            throw new Error(
+                "Rust Analyzer Language Server is not available. " +
+                "Please, ensure its [proper installation](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user#vs-code)."
+            );
+        }
+
         this.pushCleanup(client.start());
         await client.onReady();
 
@@ -49,33 +60,11 @@ export class Ctx {
         this.pushCleanup(d);
     }
 
-    overrideCommand(name: string, factory: (ctx: Ctx) => Cmd) {
-        const defaultCmd = `default:${name}`;
-        const override = factory(this);
-        const original = (...args: any[]) =>
-            vscode.commands.executeCommand(defaultCmd, ...args);
-        try {
-            const d = vscode.commands.registerCommand(
-                name,
-                async (...args: any[]) => {
-                    if (!(await override(...args))) {
-                        return await original(...args);
-                    }
-                },
-            );
-            this.pushCleanup(d);
-        } catch (_) {
-            vscode.window.showWarningMessage(
-                'Enhanced typing feature is disabled because of incompatibility with VIM extension, consider turning off rust-analyzer.enableEnhancedTyping: https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/README.md#settings',
-            );
-        }
-    }
-
-    get subscriptions(): { dispose(): any }[] {
+    get subscriptions(): Disposable[] {
         return this.extCtx.subscriptions;
     }
 
-    pushCleanup(d: { dispose(): any }) {
+    pushCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
     }
 
@@ -84,12 +73,15 @@ export class Ctx {
     }
 }
 
-export type Cmd = (...args: any[]) => any;
+export interface Disposable {
+    dispose(): void;
+}
+export type Cmd = (...args: any[]) => unknown;
 
 export async function sendRequestWithRetry<R>(
     client: lc.LanguageClient,
     method: string,
-    param: any,
+    param: unknown,
     token?: vscode.CancellationToken,
 ): Promise<R> {
     for (const delay of [2, 4, 6, 8, 10, null]) {

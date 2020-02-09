@@ -7,9 +7,38 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::Name;
+use hir_expand::name::{known, Name};
+use test_utils::tested_by;
 
 const MAX_PATH_LEN: usize = 15;
+
+impl ModPath {
+    fn starts_with_std(&self) -> bool {
+        self.segments.first().filter(|&first_segment| first_segment == &known::std).is_some()
+    }
+
+    // When std library is present, paths starting with `std::`
+    // should be preferred over paths starting with `core::` and `alloc::`
+    fn should_start_with_std(&self) -> bool {
+        self.segments
+            .first()
+            .filter(|&first_segment| {
+                first_segment == &known::alloc || first_segment == &known::core
+            })
+            .is_some()
+    }
+
+    fn len(&self) -> usize {
+        self.segments.len()
+            + match self.kind {
+                PathKind::Plain => 0,
+                PathKind::Super(i) => i as usize,
+                PathKind::Crate => 1,
+                PathKind::Abs => 0,
+                PathKind::DollarCrate(_) => 1,
+            }
+    }
+}
 
 // FIXME: handle local items
 
@@ -112,23 +141,27 @@ fn find_path_inner(
             Some(path) => path,
         };
         path.segments.push(name);
-        if path_len(&path) < best_path_len {
-            best_path_len = path_len(&path);
-            best_path = Some(path);
-        }
+
+        let new_path =
+            if let Some(best_path) = best_path { select_best_path(best_path, path) } else { path };
+        best_path_len = new_path.len();
+        best_path = Some(new_path);
     }
     best_path
 }
 
-fn path_len(path: &ModPath) -> usize {
-    path.segments.len()
-        + match path.kind {
-            PathKind::Plain => 0,
-            PathKind::Super(i) => i as usize,
-            PathKind::Crate => 1,
-            PathKind::Abs => 0,
-            PathKind::DollarCrate(_) => 1,
-        }
+fn select_best_path(old_path: ModPath, new_path: ModPath) -> ModPath {
+    if old_path.starts_with_std() && new_path.should_start_with_std() {
+        tested_by!(prefer_std_paths);
+        old_path
+    } else if new_path.starts_with_std() && old_path.should_start_with_std() {
+        tested_by!(prefer_std_paths);
+        new_path
+    } else if new_path.len() < old_path.len() {
+        new_path
+    } else {
+        old_path
+    }
 }
 
 fn find_importable_locations(
@@ -201,6 +234,7 @@ mod tests {
     use hir_expand::hygiene::Hygiene;
     use ra_db::fixture::WithFixture;
     use ra_syntax::ast::AstNode;
+    use test_utils::covers;
 
     /// `code` needs to contain a cursor marker; checks that `find_path` for the
     /// item the `path` refers to returns that same path when called from the
@@ -451,5 +485,42 @@ mod tests {
             pub use super::foo;
         "#;
         check_found_path(code, "crate::foo::S");
+    }
+
+    #[test]
+    fn prefer_std_paths_over_alloc() {
+        covers!(prefer_std_paths);
+        let code = r#"
+        //- /main.rs crate:main deps:alloc,std
+        <|>
+
+        //- /std.rs crate:std deps:alloc
+        pub mod sync {
+            pub use alloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:alloc
+        pub mod sync {
+            pub struct Arc;
+        }
+        "#;
+        check_found_path(code, "std::sync::Arc");
+    }
+
+    #[test]
+    fn prefer_shorter_paths_if_not_alloc() {
+        let code = r#"
+        //- /main.rs crate:main deps:megaalloc,std
+        <|>
+
+        //- /std.rs crate:std deps:megaalloc
+        pub mod sync {
+            pub use megaalloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:megaalloc
+        pub struct Arc;
+        "#;
+        check_found_path(code, "megaalloc::Arc");
     }
 }

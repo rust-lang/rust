@@ -2,10 +2,11 @@
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 use std::sync::Arc;
 
+use hir_def::generics::WherePredicateTarget;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
-    generics::{GenericParams, TypeParamData},
+    generics::{GenericParams, TypeParamData, TypeParamProvenance},
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -19,11 +20,18 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     // lifetime problems, but since there usually shouldn't be more than a
     // few direct traits this should be fine (we could even use some kind of
     // SmallVec if performance is a concern)
-    db.generic_params(trait_.into())
+    let generic_params = db.generic_params(trait_.into());
+    let trait_self = generic_params.find_trait_self_param();
+    generic_params
         .where_predicates
         .iter()
-        .filter_map(|pred| match &pred.type_ref {
-            TypeRef::Path(p) if p == &Path::from(name![Self]) => pred.bound.as_path(),
+        .filter_map(|pred| match &pred.target {
+            WherePredicateTarget::TypeRef(TypeRef::Path(p)) if p == &Path::from(name![Self]) => {
+                pred.bound.as_path()
+            }
+            WherePredicateTarget::TypeParam(local_id) if Some(*local_id) == trait_self => {
+                pred.bound.as_path()
+            }
             _ => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
@@ -95,41 +103,77 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
+    pub(crate) fn iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.types.iter())
-            .chain(self.params.types.iter())
-            .enumerate()
-            .map(|(i, (_local_id, p))| (i as u32, p))
+            .flat_map(|it| {
+                it.params
+                    .types
+                    .iter()
+                    .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+            })
+            .chain(
+                self.params
+                    .types
+                    .iter()
+                    .map(move |(local_id, p)| (TypeParamId { parent: self.def, local_id }, p)),
+            )
     }
 
-    pub(crate) fn iter_parent<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
-        self.parent_generics
-            .as_ref()
-            .into_iter()
-            .flat_map(|it| it.params.types.iter())
-            .enumerate()
-            .map(|(i, (_local_id, p))| (i as u32, p))
+    pub(crate) fn iter_parent<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
+        self.parent_generics.as_ref().into_iter().flat_map(|it| {
+            it.params
+                .types
+                .iter()
+                .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+        })
     }
 
     pub(crate) fn len(&self) -> usize {
         self.len_split().0
     }
+
     /// (total, parents, child)
     pub(crate) fn len_split(&self) -> (usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
         let child = self.params.types.len();
         (parent + child, parent, child)
     }
-    pub(crate) fn param_idx(&self, param: TypeParamId) -> u32 {
-        self.find_param(param).0
+
+    /// (parent total, self param, type param list, impl trait)
+    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize) {
+        let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
+        let self_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::TraitSelf)
+            .count();
+        let list_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::TypeParamList)
+            .count();
+        let impl_trait_params = self
+            .params
+            .types
+            .iter()
+            .filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait)
+            .count();
+        (parent, self_params, list_params, impl_trait_params)
     }
-    pub(crate) fn param_name(&self, param: TypeParamId) -> Name {
-        self.find_param(param).1.name.clone()
+
+    pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<u32> {
+        Some(self.find_param(param)?.0)
     }
-    fn find_param(&self, param: TypeParamId) -> (u32, &TypeParamData) {
+
+    fn find_param(&self, param: TypeParamId) -> Option<(u32, &TypeParamData)> {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
@@ -139,9 +183,10 @@ impl Generics {
                 .find(|(_, (idx, _))| *idx == param.local_id)
                 .unwrap();
             let (_total, parent_len, _child) = self.len_split();
-            return ((parent_len + idx) as u32, data);
+            Some(((parent_len + idx) as u32, data))
+        } else {
+            self.parent_generics.as_ref().and_then(|g| g.find_param(param))
         }
-        self.parent_generics.as_ref().unwrap().find_param(param)
     }
 }
 

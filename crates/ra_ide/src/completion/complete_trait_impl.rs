@@ -2,7 +2,7 @@ use crate::completion::{CompletionContext, Completions, CompletionItem, Completi
 
 use ra_syntax::ast::{self, NameOwner, AstNode};
 
-use hir::{self, db::HirDatabase};
+use hir::{self, db::HirDatabase, Docs};
 
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {

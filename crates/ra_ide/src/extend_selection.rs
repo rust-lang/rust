@@ -1,6 +1,10 @@
 //! FIXME: write short doc here
 
+use std::iter::successors;
+
+use hir::db::AstDatabase;
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_covering_element,
     ast::{self, AstNode, AstToken},
@@ -9,9 +13,7 @@ use ra_syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
-use crate::{db::RootDatabase, expand::descend_into_macros, FileId, FileRange};
-use hir::db::AstDatabase;
-use std::iter::successors;
+use crate::{expand::descend_into_macros, FileId, FileRange};
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let src = db.parse(frange.file_id).tree();
@@ -512,8 +514,8 @@ fn bar(){}
     fn test_extend_trait_bounds_list_in_where_clause() {
         do_check(
             r#"
-fn foo<R>() 
-    where 
+fn foo<R>()
+    where
         R: req::Request + 'static,
         R::Params: DeserializeOwned<|> + panic::UnwindSafe + 'static,
         R::Result: Serialize + 'static,

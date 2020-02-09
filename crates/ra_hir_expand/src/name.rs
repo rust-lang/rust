@@ -141,6 +141,8 @@ pub mod known {
         macro_rules,
         // Components of known path (value or mod name)
         std,
+        core,
+        alloc,
         iter,
         ops,
         future,

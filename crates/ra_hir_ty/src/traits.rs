@@ -50,10 +50,19 @@ impl TraitSolver {
             Err(_) => ra_db::Canceled::throw(),
         };
 
+        let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
+
         let solution = panic::catch_unwind({
             let solver = panic::AssertUnwindSafe(&mut solver);
             let context = panic::AssertUnwindSafe(&context);
-            move || solver.0.solve(context.0, goal)
+            move || {
+                solver.0.solve_limited(context.0, goal, || {
+                    context.0.db.check_canceled();
+                    let remaining = fuel.get();
+                    fuel.set(remaining - 1);
+                    remaining > 0
+                })
+            }
         });
 
         let solution = match solution {
@@ -78,7 +87,9 @@ impl TraitSolver {
 /// This controls the maximum size of types Chalk considers. If we set this too
 /// high, we can run into slow edge cases; if we set it too low, Chalk won't
 /// find some solutions.
-const CHALK_SOLVER_MAX_SIZE: usize = 4;
+const CHALK_SOLVER_MAX_SIZE: usize = 10;
+/// This controls how much 'time' we give the Chalk solver before giving up.
+const CHALK_SOLVER_FUEL: i32 = 100;
 
 #[derive(Debug, Copy, Clone)]
 struct ChalkContext<'a, DB> {
@@ -97,7 +108,8 @@ pub(crate) fn trait_solver_query(
 }
 
 fn create_chalk_solver() -> chalk_solve::Solver<TypeFamily> {
-    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
+    let solver_choice =
+        chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE, expected_answers: None };
     solver_choice.into_solver()
 }
 
@@ -232,7 +244,6 @@ fn solution_from_chalk(
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<TypeFamily>>| {
         let value = subst
             .value
-            .parameters
             .into_iter()
             .map(|p| {
                 let ty = match p.ty() {

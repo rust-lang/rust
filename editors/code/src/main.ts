@@ -6,12 +6,12 @@ import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { activateHighlighting } from './highlighting';
 
-let ctx!: Ctx;
+let ctx: Ctx | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
     ctx = new Ctx(context);
 
-    // Commands which invokes manually via command pallet, shortcut, etc.
+    // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('collectGarbage', commands.collectGarbage);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
@@ -21,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('reload', commands.reload);
+    ctx.registerCommand('onEnter', commands.onEnter);
 
     // Internal commands which are invoked by the server.
     ctx.registerCommand('runSingle', commands.runSingle);
@@ -28,9 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
 
-    if (ctx.config.enableEnhancedTyping) {
-        ctx.overrideCommand('type', commands.onEnter);
-    }
     activateStatusDisplay(ctx);
 
     activateHighlighting(ctx);

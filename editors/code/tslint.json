@@ -3,6 +3,8 @@
         "semicolon": [
             true,
             "always"
-        ]
+        ],
+        "prefer-const": true,
+        "no-floating-promises": true
     }
 }

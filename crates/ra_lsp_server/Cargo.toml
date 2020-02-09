@@ -26,9 +26,12 @@ lsp-server = "0.3.0"
 ra_project_model = { path = "../ra_project_model" }
 ra_prof = { path = "../ra_prof" }
 ra_vfs_glob = { path = "../ra_vfs_glob" }
-env_logger = { version = "0.7.1", default-features = false, features = ["humantime"] }
+env_logger = { version = "0.7.1", default-features = false }
 ra_cargo_watch = { path = "../ra_cargo_watch" }
 either = "1.5"
+
+[target.'cfg(windows)'.dependencies]
+winapi = "0.3"
 
 [dev-dependencies]
 tempfile = "3"

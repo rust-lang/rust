@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressReport, WorkDoneProgressEnd } from 'vscode-languageclient';
+import { WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressReport, WorkDoneProgressEnd, Disposable } from 'vscode-languageclient';
 
 import { Ctx } from './ctx';
 
@@ -9,15 +9,17 @@ const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 export function activateStatusDisplay(ctx: Ctx) {
     const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
     ctx.pushCleanup(statusDisplay);
-    ctx.onDidRestart(client => {
-        client.onProgress(WorkDoneProgress.type, 'rustAnalyzer/cargoWatcher', params => statusDisplay.handleProgressNotification(params));
-    });
+    ctx.onDidRestart(client => ctx.pushCleanup(client.onProgress(
+        WorkDoneProgress.type,
+        'rustAnalyzer/cargoWatcher',
+        params => statusDisplay.handleProgressNotification(params)
+    )));
 }
 
-class StatusDisplay implements vscode.Disposable {
+class StatusDisplay implements Disposable {
     packageName?: string;
 
-    private i = 0;
+    private i: number = 0;
     private statusBarItem: vscode.StatusBarItem;
     private command: string;
     private timer?: NodeJS.Timeout;
@@ -37,11 +39,8 @@ class StatusDisplay implements vscode.Disposable {
         this.timer =
             this.timer ||
             setInterval(() => {
-                if (this.packageName) {
-                    this.statusBarItem!.text = `${this.frame()} cargo ${this.command} [${this.packageName}]`;
-                } else {
-                    this.statusBarItem!.text = `${this.frame()} cargo ${this.command}`;
-                }
+                this.tick();
+                this.refreshLabel();
             }, 300);
 
         this.statusBarItem.show();
@@ -65,6 +64,14 @@ class StatusDisplay implements vscode.Disposable {
         this.statusBarItem.dispose();
     }
 
+    refreshLabel() {
+        if (this.packageName) {
+            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command} [${this.packageName}]`;
+        } else {
+            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command}`;
+        }
+    }
+
     handleProgressNotification(params: WorkDoneProgressBegin | WorkDoneProgressReport | WorkDoneProgressEnd) {
         switch (params.kind) {
             case 'begin':
@@ -74,6 +81,7 @@ class StatusDisplay implements vscode.Disposable {
             case 'report':
                 if (params.message) {
                     this.packageName = params.message;
+                    this.refreshLabel();
                 }
                 break;
 
@@ -83,7 +91,7 @@ class StatusDisplay implements vscode.Disposable {
         }
     }
 
-    private frame() {
-        return spinnerFrames[(this.i = ++this.i % spinnerFrames.length)];
+    private tick() {
+        this.i = (this.i + 1) % spinnerFrames.length;
     }
 }

@@ -3,6 +3,7 @@
 use either::Either;
 use hir::{AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
@@ -10,7 +11,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{db::RootDatabase, expand::original_range, FileSymbol};
+use crate::{expand::original_range, FileSymbol};
 
 use super::short_label::ShortLabel;
 

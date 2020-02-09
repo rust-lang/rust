@@ -1,25 +1,21 @@
-import { homedir } from 'os';
 import * as lc from 'vscode-languageclient';
-import { spawnSync } from 'child_process';
 
 import { window, workspace } from 'vscode';
 import { Config } from './config';
+import { ensureLanguageServerBinary } from './installation/language_server';
 
-export function createClient(config: Config): lc.LanguageClient {
+export async function createClient(config: Config): Promise<null | lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
-    // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
-    let folder: string = '.';
-    if (workspace.workspaceFolders !== undefined) {
-        folder = workspace.workspaceFolders[0].uri.fsPath.toString();
-    }
+    // TODO?: Workspace folders support Uri's (eg: file://test.txt).
+    // It might be a good idea to test if the uri points to a file.
+    const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const command = expandPathResolving(config.raLspServerPath);
-    if (spawnSync(command, ["--version"]).status !== 0) {
-        window.showErrorMessage(`Unable to execute '${command} --version'`);
-    }
+    const raLspServerPath = await ensureLanguageServerBinary(config.langServerSource);
+    if (!raLspServerPath) return null;
+
     const run: lc.Executable = {
-        command,
-        options: { cwd: folder },
+        command: raLspServerPath,
+        options: { cwd: workspaceFolderPath },
     };
     const serverOptions: lc.ServerOptions = {
         run,
@@ -37,8 +33,7 @@ export function createClient(config: Config): lc.LanguageClient {
             cargoWatchEnable: config.cargoWatchOptions.enable,
             cargoWatchArgs: config.cargoWatchOptions.arguments,
             cargoWatchCommand: config.cargoWatchOptions.command,
-            cargoWatchAllTargets:
-                config.cargoWatchOptions.allTargets,
+            cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
             excludeGlobs: config.excludeGlobs,
             useClientWatching: config.useClientWatching,
             featureFlags: config.featureFlags,
@@ -62,7 +57,7 @@ export function createClient(config: Config): lc.LanguageClient {
     // This also requires considering our settings strategy, which is work which needs doing
     // @ts-ignore The tracer is private to vscode-languageclient, but we need access to it to not log publishDecorations requests
     res._tracer = {
-        log: (messageOrDataObject: string | any, data?: string) => {
+        log: (messageOrDataObject: string | unknown, data?: string) => {
             if (typeof messageOrDataObject === 'string') {
                 if (
                     messageOrDataObject.includes(
@@ -85,10 +80,4 @@ export function createClient(config: Config): lc.LanguageClient {
     };
     res.registerProposedFeatures();
     return res;
-}
-function expandPathResolving(path: string) {
-    if (path.startsWith('~/')) {
-        return path.replace('~', homedir());
-    }
-    return path;
 }

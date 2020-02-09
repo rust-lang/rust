@@ -10,14 +10,14 @@ use ra_db::{
     },
     FileTextQuery, SourceRootId,
 };
+use ra_ide_db::{
+    symbol_index::{LibrarySymbolsQuery, SymbolIndex},
+    RootDatabase,
+};
 use ra_prof::{memory_usage, Bytes};
 use ra_syntax::{ast, Parse, SyntaxNode};
 
-use crate::{
-    db::RootDatabase,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex},
-    FileId,
-};
+use crate::FileId;
 
 fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     db.query(ra_db::ParseQuery).entries::<SyntaxTreeStats>()

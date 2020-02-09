@@ -1,14 +1,18 @@
 //! FIXME: write short doc here
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
-use hir::{InFile, Name, SourceBinder};
+use hir::{HirFileId, InFile, Name, SourceAnalyzer, SourceBinder};
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
+use ra_syntax::{
+    ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, SyntaxToken, TextRange,
+    WalkEvent, T,
+};
 
 use crate::{
-    db::RootDatabase,
+    expand::descend_into_macros_with_analyzer,
     references::{
         classify_name, classify_name_ref,
         NameKind::{self, *},
@@ -72,7 +76,176 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     let parse = db.parse(file_id);
     let root = parse.tree().syntax().clone();
 
-    fn calc_binding_hash(file_id: FileId, name: &Name, shadow_count: u32) -> u64 {
+    let mut sb = SourceBinder::new(db);
+    let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
+    let mut res = Vec::new();
+    let analyzer = sb.analyze(InFile::new(file_id.into(), &root), None);
+
+    let mut in_macro_call = None;
+
+    for event in root.preorder_with_tokens() {
+        match event {
+            WalkEvent::Enter(node) => match node.kind() {
+                MACRO_CALL => {
+                    in_macro_call = Some(node.clone());
+                    if let Some(range) = highlight_macro(InFile::new(file_id.into(), node)) {
+                        res.push(HighlightedRange { range, tag: tags::MACRO, binding_hash: None });
+                    }
+                }
+                _ if in_macro_call.is_some() => {
+                    if let Some(token) = node.as_token() {
+                        if let Some((tag, binding_hash)) = highlight_token_tree(
+                            db,
+                            &mut sb,
+                            &analyzer,
+                            &mut bindings_shadow_count,
+                            InFile::new(file_id.into(), token.clone()),
+                        ) {
+                            res.push(HighlightedRange {
+                                range: node.text_range(),
+                                tag,
+                                binding_hash,
+                            });
+                        }
+                    }
+                }
+                _ => {
+                    if let Some((tag, binding_hash)) = highlight_node(
+                        db,
+                        &mut sb,
+                        &mut bindings_shadow_count,
+                        InFile::new(file_id.into(), node.clone()),
+                    ) {
+                        res.push(HighlightedRange { range: node.text_range(), tag, binding_hash });
+                    }
+                }
+            },
+            WalkEvent::Leave(node) => {
+                if let Some(m) = in_macro_call.as_ref() {
+                    if *m == node {
+                        in_macro_call = None;
+                    }
+                }
+            }
+        }
+    }
+
+    res
+}
+
+fn highlight_macro(node: InFile<SyntaxElement>) -> Option<TextRange> {
+    let macro_call = ast::MacroCall::cast(node.value.as_node()?.clone())?;
+    let path = macro_call.path()?;
+    let name_ref = path.segment()?.name_ref()?;
+
+    let range_start = name_ref.syntax().text_range().start();
+    let mut range_end = name_ref.syntax().text_range().end();
+    for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
+        match sibling.kind() {
+            T![!] | IDENT => range_end = sibling.text_range().end(),
+            _ => (),
+        }
+    }
+
+    Some(TextRange::from_to(range_start, range_end))
+}
+
+fn highlight_token_tree(
+    db: &RootDatabase,
+    sb: &mut SourceBinder<RootDatabase>,
+    analyzer: &SourceAnalyzer,
+    bindings_shadow_count: &mut FxHashMap<Name, u32>,
+    token: InFile<SyntaxToken>,
+) -> Option<(&'static str, Option<u64>)> {
+    if token.value.parent().kind() != TOKEN_TREE {
+        return None;
+    }
+    let token = descend_into_macros_with_analyzer(db, analyzer, token);
+    let expanded = {
+        let parent = token.value.parent();
+        // We only care Name and Name_ref
+        match (token.value.kind(), parent.kind()) {
+            (IDENT, NAME) | (IDENT, NAME_REF) => token.with_value(parent.into()),
+            _ => token.map(|it| it.into()),
+        }
+    };
+
+    highlight_node(db, sb, bindings_shadow_count, expanded)
+}
+
+fn highlight_node(
+    db: &RootDatabase,
+    sb: &mut SourceBinder<RootDatabase>,
+    bindings_shadow_count: &mut FxHashMap<Name, u32>,
+    node: InFile<SyntaxElement>,
+) -> Option<(&'static str, Option<u64>)> {
+    let mut binding_hash = None;
+    let tag = match node.value.kind() {
+        FN_DEF => {
+            bindings_shadow_count.clear();
+            return None;
+        }
+        COMMENT => tags::LITERAL_COMMENT,
+        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
+        ATTR => tags::LITERAL_ATTRIBUTE,
+        // Special-case field init shorthand
+        NAME_REF if node.value.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
+        NAME_REF if node.value.ancestors().any(|it| it.kind() == ATTR) => return None,
+        NAME_REF => {
+            let name_ref = node.value.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
+            let name_kind = classify_name_ref(sb, node.with_value(&name_ref)).map(|d| d.kind);
+            match name_kind {
+                Some(name_kind) => {
+                    if let Local(local) = &name_kind {
+                        if let Some(name) = local.name(db) {
+                            let shadow_count =
+                                bindings_shadow_count.entry(name.clone()).or_default();
+                            binding_hash =
+                                Some(calc_binding_hash(node.file_id, &name, *shadow_count))
+                        }
+                    };
+
+                    highlight_name(db, name_kind)
+                }
+                _ => return None,
+            }
+        }
+        NAME => {
+            let name = node.value.as_node().cloned().and_then(ast::Name::cast).unwrap();
+            let name_kind = classify_name(sb, node.with_value(&name)).map(|d| d.kind);
+
+            if let Some(Local(local)) = &name_kind {
+                if let Some(name) = local.name(db) {
+                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                    *shadow_count += 1;
+                    binding_hash = Some(calc_binding_hash(node.file_id, &name, *shadow_count))
+                }
+            };
+
+            match name_kind {
+                Some(name_kind) => highlight_name(db, name_kind),
+                None => name.syntax().parent().map_or(tags::FUNCTION, |x| match x.kind() {
+                    STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => tags::TYPE,
+                    TYPE_PARAM => tags::TYPE_PARAM,
+                    RECORD_FIELD_DEF => tags::FIELD,
+                    _ => tags::FUNCTION,
+                }),
+            }
+        }
+        INT_NUMBER | FLOAT_NUMBER => tags::LITERAL_NUMERIC,
+        BYTE => tags::LITERAL_BYTE,
+        CHAR => tags::LITERAL_CHAR,
+        LIFETIME => tags::TYPE_LIFETIME,
+        T![unsafe] => tags::KEYWORD_UNSAFE,
+        k if is_control_keyword(k) => tags::KEYWORD_CONTROL,
+        k if k.is_keyword() => tags::KEYWORD,
+
+        _ => return None,
+    };
+
+    return Some((tag, binding_hash));
+
+    fn calc_binding_hash(file_id: HirFileId, name: &Name, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
             use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
@@ -83,110 +256,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
         hash((file_id, name, shadow_count))
     }
-
-    let mut sb = SourceBinder::new(db);
-
-    // Visited nodes to handle highlighting priorities
-    // FIXME: retain only ranges here
-    let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
-    let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
-
-    let mut res = Vec::new();
-    for node in root.descendants_with_tokens() {
-        if highlighted.contains(&node) {
-            continue;
-        }
-        let mut binding_hash = None;
-        let tag = match node.kind() {
-            FN_DEF => {
-                bindings_shadow_count.clear();
-                continue;
-            }
-            COMMENT => tags::LITERAL_COMMENT,
-            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => tags::LITERAL_STRING,
-            ATTR => tags::LITERAL_ATTRIBUTE,
-            // Special-case field init shorthand
-            NAME_REF if node.parent().and_then(ast::RecordField::cast).is_some() => tags::FIELD,
-            NAME_REF if node.ancestors().any(|it| it.kind() == ATTR) => continue,
-            NAME_REF => {
-                let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
-                let name_kind = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
-                    .map(|d| d.kind);
-                match name_kind {
-                    Some(name_kind) => {
-                        if let Local(local) = &name_kind {
-                            if let Some(name) = local.name(db) {
-                                let shadow_count =
-                                    bindings_shadow_count.entry(name.clone()).or_default();
-                                binding_hash =
-                                    Some(calc_binding_hash(file_id, &name, *shadow_count))
-                            }
-                        };
-
-                        highlight_name(db, name_kind)
-                    }
-                    _ => continue,
-                }
-            }
-            NAME => {
-                let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
-                let name_kind =
-                    classify_name(&mut sb, InFile::new(file_id.into(), &name)).map(|d| d.kind);
-
-                if let Some(Local(local)) = &name_kind {
-                    if let Some(name) = local.name(db) {
-                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                        *shadow_count += 1;
-                        binding_hash = Some(calc_binding_hash(file_id, &name, *shadow_count))
-                    }
-                };
-
-                match name_kind {
-                    Some(name_kind) => highlight_name(db, name_kind),
-                    None => name.syntax().parent().map_or(tags::FUNCTION, |x| match x.kind() {
-                        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => tags::TYPE,
-                        TYPE_PARAM => tags::TYPE_PARAM,
-                        RECORD_FIELD_DEF => tags::FIELD,
-                        _ => tags::FUNCTION,
-                    }),
-                }
-            }
-            INT_NUMBER | FLOAT_NUMBER => tags::LITERAL_NUMERIC,
-            BYTE => tags::LITERAL_BYTE,
-            CHAR => tags::LITERAL_CHAR,
-            LIFETIME => tags::TYPE_LIFETIME,
-            T![unsafe] => tags::KEYWORD_UNSAFE,
-            k if is_control_keyword(k) => tags::KEYWORD_CONTROL,
-            k if k.is_keyword() => tags::KEYWORD,
-            _ => {
-                if let Some(macro_call) = node.as_node().cloned().and_then(ast::MacroCall::cast) {
-                    if let Some(path) = macro_call.path() {
-                        if let Some(segment) = path.segment() {
-                            if let Some(name_ref) = segment.name_ref() {
-                                highlighted.insert(name_ref.syntax().clone().into());
-                                let range_start = name_ref.syntax().text_range().start();
-                                let mut range_end = name_ref.syntax().text_range().end();
-                                for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
-                                    match sibling.kind() {
-                                        T![!] | IDENT => range_end = sibling.text_range().end(),
-                                        _ => (),
-                                    }
-                                }
-                                res.push(HighlightedRange {
-                                    range: TextRange::from_to(range_start, range_end),
-                                    tag: tags::MACRO,
-                                    binding_hash: None,
-                                })
-                            }
-                        }
-                    }
-                }
-                continue;
-            }
-        };
-        res.push(HighlightedRange { range: node.text_range(), tag, binding_hash })
-    }
-    res
 }
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
@@ -251,19 +320,16 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
     match name_kind {
         Macro(_) => tags::MACRO,
-        Field(_) => tags::FIELD,
-        AssocItem(hir::AssocItem::Function(_)) => tags::FUNCTION,
-        AssocItem(hir::AssocItem::Const(_)) => tags::CONSTANT,
-        AssocItem(hir::AssocItem::TypeAlias(_)) => tags::TYPE,
-        Def(hir::ModuleDef::Module(_)) => tags::MODULE,
-        Def(hir::ModuleDef::Function(_)) => tags::FUNCTION,
-        Def(hir::ModuleDef::Adt(_)) => tags::TYPE,
-        Def(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
-        Def(hir::ModuleDef::Const(_)) => tags::CONSTANT,
-        Def(hir::ModuleDef::Static(_)) => tags::CONSTANT,
-        Def(hir::ModuleDef::Trait(_)) => tags::TYPE,
-        Def(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
-        Def(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
+        StructField(_) => tags::FIELD,
+        ModuleDef(hir::ModuleDef::Module(_)) => tags::MODULE,
+        ModuleDef(hir::ModuleDef::Function(_)) => tags::FUNCTION,
+        ModuleDef(hir::ModuleDef::Adt(_)) => tags::TYPE,
+        ModuleDef(hir::ModuleDef::EnumVariant(_)) => tags::CONSTANT,
+        ModuleDef(hir::ModuleDef::Const(_)) => tags::CONSTANT,
+        ModuleDef(hir::ModuleDef::Static(_)) => tags::CONSTANT,
+        ModuleDef(hir::ModuleDef::Trait(_)) => tags::TYPE,
+        ModuleDef(hir::ModuleDef::TypeAlias(_)) => tags::TYPE,
+        ModuleDef(hir::ModuleDef::BuiltinType(_)) => tags::TYPE_BUILTIN,
         SelfType(_) => tags::TYPE_SELF,
         TypeParam(_) => tags::TYPE_PARAM,
         Local(local) => {
@@ -329,6 +395,16 @@ struct Foo {
 fn foo<T>() -> T {
     unimplemented!();
     foo::<i32>();
+}
+
+macro_rules! def_fn {
+    ($($tt:tt)*) => {$($tt)*}
+}
+
+def_fn!{
+    fn bar() -> u32 {
+        100
+    }
 }
 
 // comment

@@ -1,0 +1,2 @@
+CHAR 2 "\'\\"
+> error[0; 2) token("\'\\") msg(Missing trailing `'` symbol to terminate the character literal)

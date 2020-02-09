@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 pico-args = "0.3.0"
-env_logger = { version = "0.7.1", default-features = false, features = ["humantime"] }
+env_logger = { version = "0.7.1", default-features = false }
 
 ra_syntax = { path = "../ra_syntax" }
 ra_ide = { path = "../ra_ide" }

@@ -5,21 +5,29 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    env,
+    error::Error,
+    fmt, panic,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
-use lsp_types::{ClientCapabilities, NumberOrString, Url};
-use ra_cargo_watch::{CheckOptions, CheckTask};
+use lsp_types::{ClientCapabilities, NumberOrString};
+use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
 use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
-use ra_vfs::{VfsTask, Watch};
+use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
+    diagnostics::DiagnosticTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -28,9 +36,6 @@ use crate::{
     world::{Options, WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
-
-const THREADPOOL_SIZE: usize = 8;
-const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -59,6 +64,25 @@ pub fn main_loop(
     connection: Connection,
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
+
+    // Windows scheduler implements priority boosts: if thread waits for an
+    // event (like a condvar), and event fires, priority of the thread is
+    // temporary bumped. This optimization backfires in our case: each time the
+    // `main_loop` schedules a task to run on a threadpool, the worker threads
+    // gets a higher priority, and (on a machine with fewer cores) displaces the
+    // main loop! We work-around this by marking the main loop as a
+    // higher-priority thread.
+    //
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities
+    // https://docs.microsoft.com/en-us/windows/win32/procthread/priority-boosts
+    // https://github.com/rust-analyzer/rust-analyzer/issues/2835
+    #[cfg(windows)]
+    unsafe {
+        use winapi::um::processthreadsapi::*;
+        let thread = GetCurrentThread();
+        let thread_priority_above_normal = 1;
+        SetThreadPriority(thread, thread_priority_above_normal);
+    }
 
     let mut loop_state = LoopState::default();
     let mut world_state = {
@@ -168,7 +192,7 @@ pub fn main_loop(
         )
     };
 
-    let pool = ThreadPool::new(THREADPOOL_SIZE);
+    let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
 
@@ -210,7 +234,7 @@ pub fn main_loop(
             )?;
         }
     }
-
+    world_state.analysis_host.request_cancellation();
     log::info!("waiting for tasks to finish...");
     task_receiver.into_iter().for_each(|task| {
         on_task(task, &connection.sender, &mut loop_state.pending_requests, &mut world_state)
@@ -231,6 +255,7 @@ pub fn main_loop(
 enum Task {
     Respond(Response),
     Notify(Notification),
+    Diagnostic(DiagnosticTask),
 }
 
 enum Event {
@@ -371,7 +396,8 @@ fn loop_turn(
         loop_state.pending_libraries.extend(changes);
     }
 
-    while loop_state.in_flight_libraries < MAX_IN_FLIGHT_LIBS
+    let max_in_flight_libs = pool.max_count().saturating_sub(2).max(1);
+    while loop_state.in_flight_libraries < max_in_flight_libs
         && !loop_state.pending_libraries.is_empty()
     {
         let (root, files) = loop_state.pending_libraries.pop().unwrap();
@@ -379,7 +405,6 @@ fn loop_turn(
         let sender = libdata_sender.clone();
         pool.execute(move || {
             log::info!("indexing {:?} ... ", root);
-            let _p = profile(&format!("indexed {:?}", root));
             let data = LibraryData::prepare(root, files);
             sender.send(data).unwrap();
         });
@@ -408,6 +433,19 @@ fn loop_turn(
             loop_state.subscriptions.subscriptions(),
         )
     }
+
+    let loop_duration = loop_start.elapsed();
+    if loop_duration > Duration::from_millis(100) {
+        log::error!("overly long loop turn: {:?}", loop_duration);
+        if env::var("RA_PROFILE").is_ok() {
+            show_message(
+                req::MessageType::Error,
+                format!("overly long loop turn: {:?}", loop_duration),
+                &connection.sender,
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -428,6 +466,7 @@ fn on_task(
         Task::Notify(n) => {
             msg_sender.send(n.into()).unwrap();
         }
+        Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, state),
     }
 }
 
@@ -435,7 +474,7 @@ fn on_request(
     world: &mut WorldState,
     pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
-    sender: &Sender<Task>,
+    task_sender: &Sender<Task>,
     msg_sender: &Sender<Message>,
     request_received: Instant,
     req: Request,
@@ -444,7 +483,7 @@ fn on_request(
         req: Some(req),
         pool,
         world,
-        sender,
+        task_sender,
         msg_sender,
         pending_requests,
         request_received,
@@ -586,30 +625,26 @@ fn on_notification(
 
 fn on_check_task(
     task: CheckTask,
-    world_state: &WorldState,
+    world_state: &mut WorldState,
     task_sender: &Sender<Task>,
 ) -> Result<()> {
     match task {
         CheckTask::ClearDiagnostics => {
-            let cleared_files = world_state.check_watcher.state.write().clear();
-
-            // Send updated diagnostics for each cleared file
-            for url in cleared_files {
-                publish_diagnostics_for_url(&url, world_state, task_sender)?;
-            }
+            task_sender.send(Task::Diagnostic(DiagnosticTask::ClearCheck))?;
         }
 
-        CheckTask::AddDiagnostic(url, diagnostic) => {
-            world_state
-                .check_watcher
-                .state
-                .write()
-                .add_diagnostic_with_fixes(url.clone(), diagnostic);
+        CheckTask::AddDiagnostic { url, diagnostic, fixes } => {
+            let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
+            let file_id = match world_state.vfs.read().path2file(&path) {
+                Some(file) => FileId(file.0),
+                None => {
+                    log::error!("File with cargo diagnostic not found in VFS: {}", path.display());
+                    return Ok(());
+                }
+            };
 
-            // We manually send a diagnostic update when the watcher asks
-            // us to, to avoid the issue of having to change the file to
-            // receive updated diagnostics.
-            publish_diagnostics_for_url(&url, world_state, task_sender)?;
+            task_sender
+                .send(Task::Diagnostic(DiagnosticTask::AddCheck(file_id, diagnostic, fixes)))?;
         }
 
         CheckTask::Status(progress) => {
@@ -620,22 +655,29 @@ fn on_check_task(
             let not = notification_new::<req::Progress>(params);
             task_sender.send(Task::Notify(not)).unwrap();
         }
-    }
+    };
+
     Ok(())
 }
 
-fn publish_diagnostics_for_url(
-    url: &Url,
-    world_state: &WorldState,
-    task_sender: &Sender<Task>,
-) -> Result<()> {
-    let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
-    if let Some(file_id) = world_state.vfs.read().path2file(&path) {
-        let params = handlers::publish_diagnostics(&world_state.snapshot(), FileId(file_id.0))?;
+fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state: &mut WorldState) {
+    let subscriptions = state.diagnostics.handle_task(task);
+
+    for file_id in subscriptions {
+        let path = state.vfs.read().file2path(VfsFile(file_id.0));
+        let uri = match url_from_path_with_drive_lowercasing(&path) {
+            Ok(uri) => uri,
+            Err(err) => {
+                log::error!("Couldn't convert path to url ({}): {:?}", err, path.to_string_lossy());
+                continue;
+            }
+        };
+
+        let diagnostics = state.diagnostics.diagnostics_for(file_id).cloned().collect();
+        let params = req::PublishDiagnosticsParams { uri, diagnostics, version: None };
         let not = notification_new::<req::PublishDiagnostics>(params);
-        task_sender.send(Task::Notify(not)).unwrap();
+        msg_sender.send(not.into()).unwrap();
     }
-    Ok(())
 }
 
 struct PoolDispatcher<'a> {
@@ -644,7 +686,7 @@ struct PoolDispatcher<'a> {
     world: &'a mut WorldState,
     pending_requests: &'a mut PendingRequests,
     msg_sender: &'a Sender<Message>,
-    sender: &'a Sender<Task>,
+    task_sender: &'a Sender<Task>,
     request_received: Instant,
 }
 
@@ -691,7 +733,7 @@ impl<'a> PoolDispatcher<'a> {
 
         self.pool.execute({
             let world = self.world.snapshot();
-            let sender = self.sender.clone();
+            let sender = self.task_sender.clone();
             move || {
                 let result = f(world, params);
                 let task = result_to_task::<R>(id, result);
@@ -769,7 +811,7 @@ fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: WorldSnapshot,
     publish_decorations: bool,
-    sender: Sender<Task>,
+    task_sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
@@ -783,9 +825,8 @@ fn update_file_notifications_on_threadpool(
                             log::error!("failed to compute diagnostics: {:?}", e);
                         }
                     }
-                    Ok(params) => {
-                        let not = notification_new::<req::PublishDiagnostics>(params);
-                        sender.send(Task::Notify(not)).unwrap();
+                    Ok(task) => {
+                        task_sender.send(Task::Diagnostic(task)).unwrap();
                     }
                 }
             }
@@ -798,7 +839,7 @@ fn update_file_notifications_on_threadpool(
                     }
                     Ok(params) => {
                         let not = notification_new::<req::PublishDecorations>(params);
-                        sender.send(Task::Notify(not)).unwrap();
+                        task_sender.send(Task::Notify(not)).unwrap();
                     }
                 }
             }

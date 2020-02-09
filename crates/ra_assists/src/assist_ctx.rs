@@ -1,8 +1,8 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
-use either::Either;
-use hir::{db::HirDatabase, InFile, SourceAnalyzer, SourceBinder};
-use ra_db::FileRange;
+use hir::{InFile, SourceAnalyzer, SourceBinder};
+use ra_db::{FileRange, SourceDatabase};
 use ra_fmt::{leading_indent, reindent};
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextUnit,
@@ -10,13 +10,39 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistId, AssistLabel, ResolvedAssist};
+use crate::{AssistAction, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
-pub(crate) enum Assist {
-    Unresolved { label: AssistLabel },
-    Resolved { assist: ResolvedAssist },
+pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssistInfo {
+    pub(crate) label: AssistLabel,
+    pub(crate) group_label: Option<GroupLabel>,
+    pub(crate) action: Option<AssistAction>,
 }
+
+impl AssistInfo {
+    fn new(label: AssistLabel) -> AssistInfo {
+        AssistInfo { label, group_label: None, action: None }
+    }
+
+    fn resolved(self, action: AssistAction) -> AssistInfo {
+        AssistInfo { action: Some(action), ..self }
+    }
+
+    fn with_group(self, group_label: GroupLabel) -> AssistInfo {
+        AssistInfo { group_label: Some(group_label), ..self }
+    }
+
+    pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
+        let label = self.label;
+        let group_label = self.group_label;
+        self.action.map(|action| ResolvedAssist { label, group_label, action })
+    }
+}
+
+pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///
@@ -49,14 +75,14 @@ pub(crate) enum Assist {
 /// moment, because the LSP API is pretty awkward in this place, and it's much
 /// easier to just compute the edit eagerly :-)
 #[derive(Debug)]
-pub(crate) struct AssistCtx<'a, DB> {
-    pub(crate) db: &'a DB,
+pub(crate) struct AssistCtx<'a> {
+    pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
     should_compute_edit: bool,
 }
 
-impl<'a, DB> Clone for AssistCtx<'a, DB> {
+impl Clone for AssistCtx<'_> {
     fn clone(&self) -> Self {
         AssistCtx {
             db: self.db,
@@ -67,15 +93,10 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
     }
 }
 
-impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
-    pub(crate) fn with_ctx<F, T>(db: &DB, frange: FileRange, should_compute_edit: bool, f: F) -> T
-    where
-        F: FnOnce(AssistCtx<DB>) -> T,
-    {
+impl<'a> AssistCtx<'a> {
+    pub fn new(db: &RootDatabase, frange: FileRange, should_compute_edit: bool) -> AssistCtx {
         let parse = db.parse(frange.file_id);
-
-        let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
-        f(ctx)
+        AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit }
     }
 
     pub(crate) fn add_assist(
@@ -84,48 +105,23 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
-        assert!(label.label.chars().nth(0).unwrap().is_uppercase());
+        let label = AssistLabel::new(label.into(), id);
 
-        let assist = if self.should_compute_edit {
+        let mut info = AssistInfo::new(label);
+        if self.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::default();
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { assist: ResolvedAssist { label, action_data: Either::Left(action) } }
-        } else {
-            Assist::Unresolved { label }
+            info = info.resolved(action)
         };
 
-        Some(assist)
+        Some(Assist(vec![info]))
     }
 
-    #[allow(dead_code)] // will be used for auto import assist with multiple actions
-    pub(crate) fn add_assist_group(
-        self,
-        id: AssistId,
-        label: impl Into<String>,
-        f: impl FnOnce() -> Vec<ActionBuilder>,
-    ) -> Option<Assist> {
-        let label = AssistLabel { label: label.into(), id };
-        let assist = if self.should_compute_edit {
-            let actions = f();
-            assert!(!actions.is_empty(), "Assist cannot have no");
-
-            Assist::Resolved {
-                assist: ResolvedAssist {
-                    label,
-                    action_data: Either::Right(
-                        actions.into_iter().map(ActionBuilder::build).collect(),
-                    ),
-                },
-            }
-        } else {
-            Assist::Unresolved { label }
-        };
-
-        Some(assist)
+    pub(crate) fn add_assist_group(self, group_name: impl Into<String>) -> AssistGroup<'a> {
+        AssistGroup { ctx: self, group_name: group_name.into(), assists: Vec::new() }
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
@@ -142,7 +138,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
-    pub(crate) fn source_binder(&self) -> SourceBinder<'a, DB> {
+    pub(crate) fn source_binder(&self) -> SourceBinder<'a, RootDatabase> {
         SourceBinder::new(self.db)
     }
     pub(crate) fn source_analyzer(
@@ -159,21 +155,48 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     }
 }
 
+pub(crate) struct AssistGroup<'a> {
+    ctx: AssistCtx<'a>,
+    group_name: String,
+    assists: Vec<AssistInfo>,
+}
+
+impl<'a> AssistGroup<'a> {
+    pub(crate) fn add_assist(
+        &mut self,
+        id: AssistId,
+        label: impl Into<String>,
+        f: impl FnOnce(&mut ActionBuilder),
+    ) {
+        let label = AssistLabel::new(label.into(), id);
+
+        let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group_name.clone()));
+        if self.ctx.should_compute_edit {
+            let action = {
+                let mut edit = ActionBuilder::default();
+                f(&mut edit);
+                edit.build()
+            };
+            info = info.resolved(action)
+        };
+
+        self.assists.push(info)
+    }
+
+    pub(crate) fn finish(self) -> Option<Assist> {
+        assert!(!self.assists.is_empty());
+        Some(Assist(self.assists))
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
     target: Option<TextRange>,
-    label: Option<String>,
 }
 
 impl ActionBuilder {
-    #[allow(dead_code)]
-    /// Adds a custom label to the action, if it needs to be different from the assist label
-    pub(crate) fn label(&mut self, label: impl Into<String>) {
-        self.label = Some(label.into())
-    }
-
     /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
@@ -232,7 +255,6 @@ impl ActionBuilder {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
             target: self.target,
-            label: self.label,
         }
     }
 }

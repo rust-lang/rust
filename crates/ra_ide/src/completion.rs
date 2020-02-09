@@ -18,6 +18,7 @@ mod complete_macro_in_item_position;
 mod complete_trait_impl;
 
 use ra_db::SourceDatabase;
+use ra_ide_db::RootDatabase;
 
 #[cfg(test)]
 use crate::completion::completion_item::do_completion;
@@ -26,7 +27,7 @@ use crate::{
         completion_context::CompletionContext,
         completion_item::{CompletionKind, Completions},
     },
-    db, FilePosition,
+    FilePosition,
 };
 
 pub use crate::completion::completion_item::{
@@ -55,7 +56,7 @@ pub use crate::completion::completion_item::{
 /// `foo` *should* be present among the completion variants. Filtering by
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
-pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Option<Completions> {
+pub(crate) fn completions(db: &RootDatabase, position: FilePosition) -> Option<Completions> {
     let original_parse = db.parse(position.file_id);
     let ctx = CompletionContext::new(db, &original_parse, position)?;
 

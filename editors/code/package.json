@@ -8,7 +8,8 @@
     "version": "0.1.0",
     "publisher": "matklad",
     "repository": {
-        "url": "https://github.com/matklad/rust-analyzer/"
+        "url": "https://github.com/rust-analyzer/rust-analyzer.git",
+        "type": "git"
     },
     "categories": [
         "Other"
@@ -17,27 +18,28 @@
         "vscode": "^1.41.0"
     },
     "scripts": {
-        "vscode:prepublish": "rollup -c",
+        "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package",
-        "watch": "tsc -watch -p ./",
-        "fmt": "tsfmt -r && tslint -c tslint.json 'src/**/*.ts' --fix"
+        "watch": "tsc --watch",
+        "fmt": "tsfmt -r && tslint -p tsconfig.json -c tslint.json 'src/**/*.ts' --fix"
     },
     "dependencies": {
         "jsonc-parser": "^2.1.0",
-        "seedrandom": "^3.0.5",
-        "vscode-languageclient": "^6.0.1"
+        "node-fetch": "^2.6.0",
+        "throttle-debounce": "^2.1.0",
+        "vscode-languageclient": "^6.1.0"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "^11.0.0",
-        "@rollup/plugin-node-resolve": "^6.0.0",
-        "@rollup/plugin-typescript": "^2.0.1",
-        "@types/node": "^12.12.21",
-        "@types/seedrandom": "^2.4.28",
+        "@rollup/plugin-commonjs": "^11.0.2",
+        "@rollup/plugin-node-resolve": "^7.1.1",
+        "@types/node": "^12.12.25",
+        "@types/node-fetch": "^2.5.4",
+        "@types/throttle-debounce": "^2.1.0",
         "@types/vscode": "^1.41.0",
-        "rollup": "^1.27.14",
+        "rollup": "^1.31.0",
         "tslib": "^1.10.0",
         "tslint": "^5.20.1",
-        "typescript": "^3.7.3",
+        "typescript": "^3.7.5",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.71.0"
     },
@@ -116,6 +118,11 @@
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.onEnter",
+                "title": "Enhanced enter key",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [
@@ -138,6 +145,11 @@
                 "command": "rust-analyzer.run",
                 "key": "ctrl+r",
                 "when": "editorTextFocus && editorLangId == rust"
+            },
+            {
+                "command": "rust-analyzer.onEnter",
+                "key": "enter",
+                "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
             }
         ],
         "configuration": {
@@ -159,17 +171,13 @@
                     "default": {},
                     "description": "Fine grained feature flags to disable annoying features"
                 },
-                "rust-analyzer.enableEnhancedTyping": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enables enhanced typing. NOTE: If using a VIM extension, you should set this to false"
-                },
                 "rust-analyzer.raLspServerPath": {
                     "type": [
+                        "null",
                         "string"
                     ],
-                    "default": "ra_lsp_server",
-                    "description": "Path to ra_lsp_server executable"
+                    "default": null,
+                    "description": "Path to ra_lsp_server executable (points to bundled binary by default)"
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",

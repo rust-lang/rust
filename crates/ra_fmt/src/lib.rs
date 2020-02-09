@@ -35,8 +35,14 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
     successors(token.prev_token(), |token| token.prev_token())
 }
 
-pub fn extract_trivial_expression(expr: &ast::BlockExpr) -> Option<ast::Expr> {
-    let block = expr.block()?;
+pub fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
+    extract_trivial_expression(&block)
+        .filter(|expr| !expr.syntax().text().contains_char('\n'))
+        .unwrap_or_else(|| block.into())
+}
+
+pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
+    let block = block.block()?;
     let expr = block.expr()?;
     let non_trivial_children = block.syntax().children().filter(|it| match it.kind() {
         WHITESPACE | T!['{'] | T!['}'] => false,

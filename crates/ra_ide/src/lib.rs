@@ -10,12 +10,8 @@
 // For proving that RootDatabase is RefUnwindSafe.
 #![recursion_limit = "128"]
 
-mod db;
 pub mod mock_analysis;
-mod symbol_index;
-mod change;
 mod source_change;
-mod feature_flags;
 
 mod status;
 mod completion;
@@ -34,14 +30,11 @@ mod assists;
 mod diagnostics;
 mod syntax_tree;
 mod folding_ranges;
-mod line_index;
-mod line_index_utils;
 mod join_lines;
 mod typing;
 mod matching_brace;
 mod display;
 mod inlay_hints;
-mod wasm_shims;
 mod expand;
 mod expand_macro;
 
@@ -57,24 +50,24 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, SourceDatabase,
 };
+use ra_ide_db::{
+    symbol_index::{self, FileSymbol},
+    LineIndexDatabase,
+};
 use ra_syntax::{SourceFile, TextRange, TextUnit};
 
-use crate::{db::LineIndexDatabase, display::ToNav, symbol_index::FileSymbol};
+use crate::display::ToNav;
 
 pub use crate::{
     assists::{Assist, AssistId},
     call_hierarchy::CallItem,
-    change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
-    feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
     inlay_hints::{InlayHint, InlayKind},
-    line_index::{LineCol, LineIndex},
-    line_index_utils::translate_offset_with_edit,
     references::{
         Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, SearchScope,
     },
@@ -87,6 +80,14 @@ pub use hir::Documentation;
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
+pub use ra_ide_db::{
+    change::{AnalysisChange, LibraryData},
+    feature_flags::FeatureFlags,
+    line_index::{LineCol, LineIndex},
+    line_index_utils::translate_offset_with_edit,
+    symbol_index::Query,
+    RootDatabase,
+};
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
@@ -96,46 +97,6 @@ pub struct Diagnostic {
     pub range: TextRange,
     pub fix: Option<SourceChange>,
     pub severity: Severity,
-}
-
-#[derive(Debug)]
-pub struct Query {
-    query: String,
-    lowercased: String,
-    only_types: bool,
-    libs: bool,
-    exact: bool,
-    limit: usize,
-}
-
-impl Query {
-    pub fn new(query: String) -> Query {
-        let lowercased = query.to_lowercase();
-        Query {
-            query,
-            lowercased,
-            only_types: false,
-            libs: false,
-            exact: false,
-            limit: usize::max_value(),
-        }
-    }
-
-    pub fn only_types(&mut self) {
-        self.only_types = true;
-    }
-
-    pub fn libs(&mut self) {
-        self.libs = true;
-    }
-
-    pub fn exact(&mut self) {
-        self.exact = true;
-    }
-
-    pub fn limit(&mut self, limit: usize) {
-        self.limit = limit
-    }
 }
 
 /// Info associated with a text range.
@@ -162,7 +123,7 @@ pub struct CallInfo {
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug)]
 pub struct AnalysisHost {
-    db: db::RootDatabase,
+    db: RootDatabase,
 }
 
 impl Default for AnalysisHost {
@@ -173,7 +134,7 @@ impl Default for AnalysisHost {
 
 impl AnalysisHost {
     pub fn new(lru_capcity: Option<usize>, feature_flags: FeatureFlags) -> AnalysisHost {
-        AnalysisHost { db: db::RootDatabase::new(lru_capcity, feature_flags) }
+        AnalysisHost { db: RootDatabase::new(lru_capcity, feature_flags) }
     }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
@@ -202,6 +163,9 @@ impl AnalysisHost {
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, ra_prof::Bytes)> {
         self.db.per_query_memory_usage()
     }
+    pub fn request_cancellation(&mut self) {
+        self.db.request_cancellation();
+    }
     pub fn raw_database(
         &self,
     ) -> &(impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
@@ -220,7 +184,7 @@ impl AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<db::RootDatabase>,
+    db: salsa::Snapshot<RootDatabase>,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -501,7 +465,7 @@ impl Analysis {
     }
 
     /// Performs an operation on that may be Canceled.
-    fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
+    fn with_db<F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe, T>(
         &self,
         f: F,
     ) -> Cancelable<T> {
@@ -513,4 +477,78 @@ impl Analysis {
 fn analysis_is_send() {
     fn is_send<T: Send>() {}
     is_send::<Analysis>();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{display::NavigationTarget, mock_analysis::single_file, Query};
+    use ra_syntax::{
+        SmolStr,
+        SyntaxKind::{FN_DEF, STRUCT_DEF},
+    };
+
+    #[test]
+    fn test_world_symbols_with_no_container() {
+        let code = r#"
+    enum FooInner { }
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert!(s.container_name().is_none());
+    }
+
+    #[test]
+    fn test_world_symbols_include_container_name() {
+        let code = r#"
+fn foo() {
+    enum FooInner { }
+}
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+
+        let code = r#"
+mod foo {
+    struct FooInner;
+}
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+    }
+
+    #[test]
+    fn test_world_symbols_are_case_sensitive() {
+        let code = r#"
+fn foo() {}
+
+struct Foo;
+        "#;
+
+        let symbols = get_symbols_matching(code, "Foo");
+
+        let fn_match = symbols.iter().find(|s| s.name() == "foo").map(|s| s.kind());
+        let struct_match = symbols.iter().find(|s| s.name() == "Foo").map(|s| s.kind());
+
+        assert_eq!(fn_match, Some(FN_DEF));
+        assert_eq!(struct_match, Some(STRUCT_DEF));
+    }
+
+    fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
+        let (analysis, _) = single_file(text);
+        analysis.symbol_search(Query::new(query.into())).unwrap()
+    }
 }

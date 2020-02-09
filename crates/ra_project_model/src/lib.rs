@@ -13,7 +13,7 @@ use std::{
 };
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
+use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -177,7 +177,9 @@ impl ProjectWorkspace {
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
                         {
-                            if let Err(_) = crate_graph.add_dep(from, dep.name.clone().into(), to) {
+                            if let Err(_) =
+                                crate_graph.add_dep(from, CrateName::new(&dep.name).unwrap(), to)
+                            {
                                 log::error!(
                                     "cyclic dependency {:?} -> {:?}",
                                     from_crate_id,
@@ -215,7 +217,9 @@ impl ProjectWorkspace {
                         if let (Some(&from), Some(&to)) =
                             (sysroot_crates.get(&from), sysroot_crates.get(&to))
                         {
-                            if let Err(_) = crate_graph.add_dep(from, name.into(), to) {
+                            if let Err(_) =
+                                crate_graph.add_dep(from, CrateName::new(name).unwrap(), to)
+                            {
                                 log::error!("cyclic dependency between sysroot crates")
                             }
                         }
@@ -257,7 +261,7 @@ impl ProjectWorkspace {
                                 if let Some(proc_macro) = libproc_macro {
                                     if let Err(_) = crate_graph.add_dep(
                                         crate_id,
-                                        "proc_macro".into(),
+                                        CrateName::new("proc_macro").unwrap(),
                                         proc_macro,
                                     ) {
                                         log::error!(
@@ -276,9 +280,14 @@ impl ProjectWorkspace {
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                         if let Some(to) = lib_tgt {
                             if to != from {
-                                if let Err(_) =
-                                    crate_graph.add_dep(from, pkg.name(&cargo).into(), to)
-                                {
+                                if let Err(_) = crate_graph.add_dep(
+                                    from,
+                                    // For root projects with dashes in their name,
+                                    // cargo metadata does not do any normalization,
+                                    // so we do it ourselves currently
+                                    CrateName::normalize_dashes(pkg.name(&cargo)),
+                                    to,
+                                ) {
                                     log::error!(
                                         "cyclic dependency between targets of {}",
                                         pkg.name(&cargo)
@@ -289,17 +298,23 @@ impl ProjectWorkspace {
                         // core is added as a dependency before std in order to
                         // mimic rustcs dependency order
                         if let Some(core) = libcore {
-                            if let Err(_) = crate_graph.add_dep(from, "core".into(), core) {
+                            if let Err(_) =
+                                crate_graph.add_dep(from, CrateName::new("core").unwrap(), core)
+                            {
                                 log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
                             }
                         }
                         if let Some(alloc) = liballoc {
-                            if let Err(_) = crate_graph.add_dep(from, "alloc".into(), alloc) {
+                            if let Err(_) =
+                                crate_graph.add_dep(from, CrateName::new("alloc").unwrap(), alloc)
+                            {
                                 log::error!("cyclic dependency on alloc for {}", pkg.name(&cargo))
                             }
                         }
                         if let Some(std) = libstd {
-                            if let Err(_) = crate_graph.add_dep(from, "std".into(), std) {
+                            if let Err(_) =
+                                crate_graph.add_dep(from, CrateName::new("std").unwrap(), std)
+                            {
                                 log::error!("cyclic dependency on std for {}", pkg.name(&cargo))
                             }
                         }
@@ -312,9 +327,11 @@ impl ProjectWorkspace {
                     for dep in pkg.dependencies(&cargo) {
                         if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                             for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                                if let Err(_) =
-                                    crate_graph.add_dep(from, dep.name.clone().into(), to)
-                                {
+                                if let Err(_) = crate_graph.add_dep(
+                                    from,
+                                    CrateName::new(&dep.name).unwrap(),
+                                    to,
+                                ) {
                                     log::error!(
                                         "cyclic dependency {} -> {}",
                                         pkg.name(&cargo),

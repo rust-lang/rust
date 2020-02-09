@@ -1,2 +1,2 @@
-unsafe async fn foo() {}
+async unsafe fn foo() {}
 const unsafe fn bar() {}

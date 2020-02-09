@@ -124,6 +124,48 @@ impl TypeRef {
     pub(crate) fn unit() -> TypeRef {
         TypeRef::Tuple(Vec::new())
     }
+
+    pub fn walk(&self, f: &mut impl FnMut(&TypeRef)) {
+        go(self, f);
+
+        fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
+            f(type_ref);
+            match type_ref {
+                TypeRef::Fn(types) | TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
+                TypeRef::RawPtr(type_ref, _)
+                | TypeRef::Reference(type_ref, _)
+                | TypeRef::Array(type_ref)
+                | TypeRef::Slice(type_ref) => go(&type_ref, f),
+                TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
+                    for bound in bounds {
+                        match bound {
+                            TypeBound::Path(path) => go_path(path, f),
+                            TypeBound::Error => (),
+                        }
+                    }
+                }
+                TypeRef::Path(path) => go_path(path, f),
+                TypeRef::Never | TypeRef::Placeholder | TypeRef::Error => {}
+            };
+        }
+
+        fn go_path(path: &Path, f: &mut impl FnMut(&TypeRef)) {
+            if let Some(type_ref) = path.type_anchor() {
+                go(type_ref, f);
+            }
+            for segment in path.segments().iter() {
+                if let Some(args_and_bindings) = segment.args_and_bindings {
+                    for arg in &args_and_bindings.args {
+                        let crate::path::GenericArg::Type(type_ref) = arg;
+                        go(type_ref, f);
+                    }
+                    for (_, type_ref) in &args_and_bindings.bindings {
+                        go(type_ref, f);
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub(crate) fn type_bounds_from_ast(type_bounds_opt: Option<ast::TypeBoundList>) -> Vec<TypeBound> {
