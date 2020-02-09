@@ -134,9 +134,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let mut r = r as u32;
             let size = left_layout.size;
             oflo |= r >= size.bits() as u32;
-            if oflo {
-                r %= size.bits() as u32;
-            }
+            r %= size.bits() as u32;
             let result = if signed {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
@@ -168,6 +166,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
 
+        let size = left_layout.size;
+
         // Operations that need special treatment for signed integers
         if left_layout.abi.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
@@ -195,31 +195,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l128 = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                let size = left_layout.size;
-                match bin_op {
-                    Rem | Div => {
-                        // int_min / -1
-                        if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_uint(l, size), true, left_layout.ty));
-                        }
-                    }
-                    _ => {}
-                }
-                trace!("{}, {}, {}", l, l128, r);
-                let (result, mut oflo) = op(l128, r);
-                trace!("{}, {}", result, oflo);
-                if !oflo && size.bits() != 128 {
-                    let max = 1 << (size.bits() - 1);
-                    oflo = result >= max || result < -max;
-                }
-                // this may be out-of-bounds for the result type, so we have to truncate ourselves
+
+                let (result, oflo) = op(l128, r);
+                // This may be out-of-bounds for the result type, so we have to truncate ourselves.
+                // If that truncation loses any information, we have an overflow.
                 let result = result as u128;
                 let truncated = self.truncate(result, left_layout);
-                return Ok((Scalar::from_uint(truncated, size), oflo, left_layout.ty));
+                return Ok((
+                    Scalar::from_uint(truncated, size),
+                    oflo || self.sign_extend(truncated, left_layout) != result,
+                    left_layout.ty,
+                ));
             }
         }
-
-        let size = left_layout.size;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -247,6 +235,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => bug!(),
                 };
                 let (result, oflo) = op(l, r);
+                // Truncate to target type.
+                // If that truncation loses any information, we have an overflow.
                 let truncated = self.truncate(result, left_layout);
                 return Ok((
                     Scalar::from_uint(truncated, size),
