@@ -100,12 +100,12 @@ export async function ensureLanguageServerBinary(
             try {
                 await downloadLatestLanguageServer(langServerSource);
             } catch (err) {
-                await vscode.window.showErrorMessage(
+                vscode.window.showErrorMessage(
                     `Failed to download language server from ${langServerSource.repo.name} ` +
                     `GitHub repository: ${err.message}`
                 );
 
-                await dns.resolve('www.google.com').catch(err => {
+                dns.resolve('www.google.com').catch(err => {
                     console.error("DNS resolution failed, there might be an issue with Internet availability");
                     console.error(err);
                 });
