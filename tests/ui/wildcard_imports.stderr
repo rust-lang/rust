@@ -37,43 +37,43 @@ LL | use wildcard_imports_helper::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:78:13
+  --> $DIR/wildcard_imports.rs:88:13
    |
 LL |         use crate::fn_mod::*;
    |             ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:84:75
+  --> $DIR/wildcard_imports.rs:94:75
    |
 LL |         use wildcard_imports_helper::inner::inner_for_self_import::{self, *};
    |                                                                           ^ help: try: `inner_extern_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:85:13
+  --> $DIR/wildcard_imports.rs:95:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:96:20
+  --> $DIR/wildcard_imports.rs:106:20
    |
 LL |         use self::{inner::*, inner2::*};
    |                    ^^^^^^^^ help: try: `inner::inner_foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:96:30
+  --> $DIR/wildcard_imports.rs:106:30
    |
 LL |         use self::{inner::*, inner2::*};
    |                              ^^^^^^^^^ help: try: `inner2::inner_bar`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:103:13
+  --> $DIR/wildcard_imports.rs:113:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported}`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:132:9
+  --> $DIR/wildcard_imports.rs:142:9
    |
 LL |     use crate::in_fn_test::*;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`

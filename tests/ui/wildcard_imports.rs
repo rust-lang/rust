@@ -18,6 +18,16 @@ use wildcard_imports_helper::inner::inner_for_self_import;
 use wildcard_imports_helper::inner::inner_for_self_import::*;
 use wildcard_imports_helper::*;
 
+use std::io::prelude::*;
+
+struct ReadFoo;
+
+impl Read for ReadFoo {
+    fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        Ok(0)
+    }
+}
+
 mod fn_mod {
     pub fn foo() {}
 }
