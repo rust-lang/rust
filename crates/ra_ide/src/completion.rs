@@ -76,6 +76,6 @@ pub(crate) fn completions(db: &RootDatabase, position: FilePosition) -> Option<C
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
-    
+
     Some(acc)
 }
