@@ -69,10 +69,10 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     let mut group = ctx.add_assist_group(format!("Import {}", name_to_import));
     for import in proposed_imports {
         group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
-            edit.target(path_to_import_syntax.text_range());
+            edit.target(path_under_caret.syntax().text_range());
             insert_use_statement(
                 &position,
-                &path_under_caret.syntax(),
+                path_under_caret.syntax(),
                 &import,
                 edit.text_edit_builder(),
             );
