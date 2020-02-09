@@ -447,7 +447,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Targetted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
-        err.span_label(sp, format!("cannot {ACT}", ACT = act));
+        err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
         let closure_id = hir.as_local_hir_id(self.mir_def_id).unwrap();
@@ -528,13 +528,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Method(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "you might have to change this...");
-                    err.span_label(sig.decl.output.span(), "...to return `FnMut` instead of `Fn`");
+                    err.span_label(ident.span, "");
+                    err.span_label(
+                        sig.decl.output.span(),
+                        "change this to return `FnMut` instead of `Fn`",
+                    );
                     err.span_label(self.body.span, "in this closure");
                 }
-                parent => {
-                    err.note(&format!("parent {:?}", parent));
-                }
+                _ => {}
             }
         }
     }
