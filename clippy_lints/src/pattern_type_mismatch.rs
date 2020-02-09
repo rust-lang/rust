@@ -1,4 +1,4 @@
-use crate::utils::{last_path_segment, span_help_and_lint};
+use crate::utils::{last_path_segment, span_lint_and_help};
 use rustc::lint::in_external_macro;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{AdtDef, FieldDef, Ty, TyKind, VariantDef};
@@ -115,7 +115,7 @@ fn apply_lint<'a, 'tcx>(
 ) -> bool {
     let maybe_mismatch = find_first_mismatch(cx, pat, expr_ty, Level::Top);
     if let Some((span, mutability, level)) = maybe_mismatch {
-        span_help_and_lint(
+        span_lint_and_help(
             cx,
             PATTERN_TYPE_MISMATCH,
             span,
