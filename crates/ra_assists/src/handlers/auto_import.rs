@@ -66,6 +66,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     let mut group = ctx.add_assist_group(format!("Import {}", name_to_import));
     for import in proposed_imports {
         group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
+            edit.target(path_to_import_syntax.text_range());
             insert_use_statement(
                 &position,
                 path_to_import_syntax,
@@ -79,7 +80,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 
@@ -249,5 +250,20 @@ mod tests {
             }
             ",
         );
+    }
+
+    #[test]
+    fn auto_import_target() {
+        check_assist_target(
+            auto_import,
+            r"
+            struct AssistInfo {
+                group_label: Option<<|>GroupLabel>,
+            }
+
+            mod m { pub struct GroupLabel; }
+            ",
+            "GroupLabel",
+        )
     }
 }
