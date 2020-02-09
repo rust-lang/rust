@@ -225,28 +225,6 @@ impl DepGraph {
         )
     }
 
-    /// Creates a new dep-graph input with value `input`
-    pub fn input_task<'a, C, R>(&self, key: DepNode, cx: C, input: R) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + StableHashingContextProvider<'a>,
-        R: for<'b> HashStable<StableHashingContext<'b>>,
-    {
-        fn identity_fn<C, A>(_: C, arg: A) -> A {
-            arg
-        }
-
-        self.with_task_impl(
-            key,
-            cx,
-            input,
-            true,
-            identity_fn,
-            |_| None,
-            |data, key, fingerprint, _| data.alloc_node(key, SmallVec::new(), fingerprint),
-            hash_result::<R>,
-        )
-    }
-
     fn with_task_impl<'a, C, A, R>(
         &self,
         key: DepNode,
