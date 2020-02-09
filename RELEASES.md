@@ -49,6 +49,11 @@ Stabilized APIs
 - [`wait_timeout_while`]
 - [`wait_while`]
 
+Cargo
+-----
+- [You no longer need to include `extern crate proc_macro;` to be able to
+  `use proc_macro;` in the `2018` edition.][cargo/7700]
+
 Compatibility Notes
 -------------------
 - [`Error::description` has been deprecated, and its use will now produce a
@@ -66,6 +71,7 @@ Compatibility Notes
 [66899]: https://github.com/rust-lang/rust/pull/66899/
 [66919]: https://github.com/rust-lang/rust/pull/66919/
 [66254]: https://github.com/rust-lang/rust/pull/66254/
+[cargo/7700]: https://github.com/rust-lang/cargo/pull/7700
 [`DebugMap::key`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.key
 [`DebugMap::value`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.value
 [`ManuallyDrop::take`]: https://doc.rust-lang.org/stable/std/mem/struct.ManuallyDrop.html#method.take
