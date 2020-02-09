@@ -1002,10 +1002,11 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1189,10 +1190,11 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_pow(self, exp: u32) -> Self {
+            pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
                     None if self < 0 && exp % 2 == 1 => Self::min_value(),
@@ -1532,10 +1534,11 @@ assert_eq!(3i8.wrapping_pow(6), -39);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+            pub const fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1909,10 +1912,11 @@ assert_eq!(3i8.overflowing_pow(5), (-13, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+            pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -1958,11 +1962,12 @@ assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn pow(self, mut exp: u32) -> Self {
+            pub const fn pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc = 1;
 
@@ -3128,10 +3133,11 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3243,10 +3249,11 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_pow(self, exp: u32) -> Self {
+            pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
                     None => Self::max_value(),
@@ -3536,10 +3543,11 @@ Basic usage:
 assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+            pub const fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3862,10 +3870,11 @@ Basic usage:
 assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+            pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -3908,11 +3917,12 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub fn pow(self, mut exp: u32) -> Self {
+        pub const fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
             let mut acc = 1;
 
@@ -4023,7 +4033,8 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
         // overflow cases it instead ends up returning the maximum value
         // of the type, and can return 0 for 0.
         #[inline]
-        fn one_less_than_next_power_of_two(self) -> Self {
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        const fn one_less_than_next_power_of_two(self) -> Self {
             if self <= 1 { return 0; }
 
             let p = self - 1;
@@ -4051,9 +4062,10 @@ Basic usage:
 assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn next_power_of_two(self) -> Self {
+            pub const fn next_power_of_two(self) -> Self {
                 self.one_less_than_next_power_of_two() + 1
             }
         }
@@ -4076,7 +4088,8 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
-            pub fn checked_next_power_of_two(self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
             }
         }
@@ -4100,7 +4113,8 @@ $EndFeature, "
 ```"),
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                        reason = "needs decision on wrapping behaviour")]
-            pub fn wrapping_next_power_of_two(self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn wrapping_next_power_of_two(self) -> Self {
                 self.one_less_than_next_power_of_two().wrapping_add(1)
             }
         }
