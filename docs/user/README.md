@@ -38,7 +38,7 @@ We ship prebuilt binaries for Linux, Mac and Windows via
 [GitHub releases](https://github.com/rust-analyzer/rust-analyzer/releases).
 In order to use them you need to install the client VSCode extension.
 
-Publishing to VSCode marketplace is currently WIP. Thus you need to clone the repository and install **only** the client extension via
+Publishing to VSCode marketplace is currently WIP. Thus, you need to clone the repository and install **only** the client extension via
 ```
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
@@ -63,7 +63,7 @@ rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
 
 ### Installation from sources
 
-The experimental VS Code plugin can then be built and installed by executing the
+The experimental VS Code plugin can be built and installed by executing the
 following commands:
 
 ```
