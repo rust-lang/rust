@@ -11,7 +11,7 @@ fn main() -> () {
         debug f => _1;                   // in scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:5:9: 5:10
         scope 2 (inlined main::{closure#0}) { // at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
             debug x => _6;               // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:14: 5:15
-            let _5: ();                  // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
+            let _5: ();                  // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:23: 5:24
             scope 3 {
                 debug y => _5;           // in scope 3 at $DIR/issue-76997-inline-scopes-parenting.rs:5:23: 5:24
             }
