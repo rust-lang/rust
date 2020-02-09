@@ -267,6 +267,7 @@ pub mod no_effect;
 pub mod non_copy_const;
 pub mod non_expressive_names;
 pub mod open_options;
+pub mod option_env_unwrap;
 pub mod overflow_check_conditional;
 pub mod panic_unimplemented;
 pub mod partialeq_ne_impl;
@@ -713,6 +714,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         &non_expressive_names::SIMILAR_NAMES,
         &open_options::NONSENSICAL_OPEN_OPTIONS,
+        &option_env_unwrap::OPTION_ENV_UNWRAP,
         &overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         &panic_unimplemented::PANIC,
         &panic_unimplemented::PANIC_PARAMS,
@@ -1003,6 +1005,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_fn_params_bools = conf.max_fn_params_bools;
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
+    store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1285,6 +1288,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(&non_expressive_names::MANY_SINGLE_CHAR_NAMES),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
+        LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
         LintId::of(&panic_unimplemented::PANIC_PARAMS),
         LintId::of(&partialeq_ne_impl::PARTIALEQ_NE_IMPL),
@@ -1590,6 +1594,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&non_copy_const::BORROW_INTERIOR_MUTABLE_CONST),
         LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
+        LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&ptr::MUT_FROM_REF),
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&serde_api::SERDE_API_MISUSE),

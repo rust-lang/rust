@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 354] = [
+pub const ALL_LINTS: [Lint; 355] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1497,6 +1497,13 @@ pub const ALL_LINTS: [Lint; 354] = [
         desc: "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "option_env_unwrap",
+        group: "correctness",
+        desc: "using `option_env!(...).unwrap()` to get environment variable",
+        deprecation: None,
+        module: "option_env_unwrap",
     },
     Lint {
         name: "option_expect_used",
