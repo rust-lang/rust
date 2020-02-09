@@ -426,7 +426,6 @@ impl Inliner<'tcx> {
                     let mut local = callee_body.local_decls[loc].clone();
 
                     local.source_info.scope = scope_map[local.source_info.scope];
-                    local.source_info.span = callsite.source_info.span;
 
                     let idx = caller_body.local_decls.push(local);
                     local_map.push(idx);
