@@ -48,7 +48,7 @@ export async function downloadLatestLanguageServer(
         }
     );
 
-    await fs.chmod(installationPath, 755); // Set (rwx, r_x, r_x) permissions
+    await fs.chmod(installationPath, 0o755); // Set (rwx, r_x, r_x) permissions
 }
 export async function ensureLanguageServerBinary(
     langServerSource: null | BinarySource
