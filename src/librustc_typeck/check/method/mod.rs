@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         msg: &str,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr_id: hir::HirId,
+        call_expr: &hir::Expr<'_>,
     ) {
         let has_params = self
             .probe_for_name(
@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name,
                 IsSuggestion(false),
                 self_ty,
-                call_expr_id,
+                call_expr.hir_id,
                 ProbeScope::TraitsInScope,
             )
             .and_then(|pick| {
@@ -152,13 +152,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(sig.inputs().skip_binder().len() > 1)
             });
 
+        // Account for `foo.bar<T>`;
+        let sugg_span = method_name.span.with_hi(call_expr.span.hi());
+        let snippet = self
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(sugg_span)
+            .unwrap_or_else(|_| method_name.to_string());
         let (suggestion, applicability) = if has_params.unwrap_or_default() {
-            (format!("{}(...)", method_name), Applicability::HasPlaceholders)
+            (format!("{}(...)", snippet), Applicability::HasPlaceholders)
         } else {
-            (format!("{}()", method_name), Applicability::MaybeIncorrect)
+            (format!("{}()", snippet), Applicability::MaybeIncorrect)
         };
 
-        err.span_suggestion(method_name.span, msg, suggestion, applicability);
+        err.span_suggestion(sugg_span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee
