@@ -13,7 +13,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
     self, snapshot, AllocId, Allocation, AssertMessage, GlobalId, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, PanicInfo, PlaceTy, Pointer, Scalar,
+    Memory, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
@@ -78,7 +78,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             let msg = Symbol::intern(self.read_str(msg_place)?);
             let span = self.find_closest_untracked_caller_location().unwrap_or(span);
             let (file, line, col) = self.location_triple_for_span(span);
-            Err(ConstEvalErrKind::Panic(PanicInfo::Panic { msg, file, line, col }).into())
+            Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
         } else {
             Ok(false)
         }
@@ -304,9 +304,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             RemainderByZero => RemainderByZero,
             ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
             ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
-            Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
         };
-        Err(ConstEvalErrKind::Panic(err).into())
+        Err(ConstEvalErrKind::AssertFailure(err).into())
     }
 
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {

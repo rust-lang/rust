@@ -2671,8 +2671,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     BoundsCheck { ref len, ref index } => {
                         BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
                     }
-                    Panic { .. }
-                    | Overflow(_)
+                    Overflow(_)
                     | OverflowNeg
                     | DivisionByZero
                     | RemainderByZero
@@ -2721,8 +2720,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             len.visit_with(visitor) || index.visit_with(visitor)
                         }
-                        Panic { .. }
-                        | Overflow(_)
+                        Overflow(_)
                         | OverflowNeg
                         | DivisionByZero
                         | RemainderByZero
