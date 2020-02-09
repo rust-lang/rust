@@ -6,10 +6,11 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! module just wraps its API.
 
-pub(crate) use rowan::{GreenNode, GreenToken};
 use rowan::{GreenNodeBuilder, Language};
 
 use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextUnit};
+
+pub(crate) use rowan::{GreenNode, GreenToken};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RustLanguage {}
