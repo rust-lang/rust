@@ -699,7 +699,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     #[rustc_const_unstable(feature = "const_pin_get_ref", issue = "69001")]
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    const pub fn get_ref(self) -> &'a T {
+    pub const fn get_ref(self) -> &'a T {
         self.pointer
     }
 }
