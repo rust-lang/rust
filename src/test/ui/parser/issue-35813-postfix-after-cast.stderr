@@ -1,0 +1,74 @@
+error: casts followed by index operators are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:9:5
+   |
+LL |     vec![1, 2, 3] as Vec<i32>[0];
+   |     -------------------------^^^
+   |     |
+   |     help: try surrounding the expression with parentheses: `(vec![1, 2, 3] as Vec<i32>)`
+
+error: casts followed by index operators are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:14:5
+   |
+LL |     (&[0]) as &[i32][0];
+   |     ----------------^^^
+   |     |
+   |     help: try surrounding the expression with parentheses: `((&[0]) as &[i32])`
+
+error: casts followed by index operators are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:20:18
+   |
+LL |     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];
+   |                  ---------------------------^^^
+   |                  |
+   |                  help: try surrounding the expression with parentheses: `(&vec![1, 2, 3] as &Vec<i32>)`
+
+error: casts followed by method call expressions are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:33:8
+   |
+LL |     if 5u64 as i32.max(0) == 0 {
+   |        -----------^^^^^^^
+   |        |
+   |        help: try surrounding the expression with parentheses: `(5u64 as i32)`
+
+error: casts followed by method call expressions are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:40:9
+   |
+LL |         5u64 as u32.max(0) == 0
+   |         -----------^^^^^^^
+   |         |
+   |         help: try surrounding the expression with parentheses: `(5u64 as u32)`
+
+error: casts followed by index operators are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:45:24
+   |
+LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
+   |                        ------------------^^^^^^
+   |                        |
+   |                        help: try surrounding the expression with parentheses: `(&[1,2,3] as &[i32])`
+
+error: casts followed by awaits are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:49:5
+   |
+LL |     Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>.await;
+   |     -----------------------------------------------------^^^^^^
+   |     |
+   |     help: try surrounding the expression with parentheses: `(Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>)`
+
+error: casts followed by field access expressions are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:61:5
+   |
+LL |     Foo::default() as Foo.bar;
+   |     ---------------------^^^^
+   |     |
+   |     help: try surrounding the expression with parentheses: `(Foo::default() as Foo)`
+
+error: casts followed by method call expressions are not supported
+  --> $DIR/issue-35813-postfix-after-cast.rs:27:9
+   |
+LL |         if true { 33 } else { 44 } as i32.max(0)
+   |         ---------------------------------^^^^^^^
+   |         |
+   |         help: try surrounding the expression with parentheses: `(if true { 33 } else { 44 } as i32)`
+
+error: aborting due to 9 previous errors
+

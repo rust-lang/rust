@@ -551,7 +551,7 @@ impl<'a> Parser<'a> {
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
-        match self.parse_ty_no_plus() {
+        let type_result = match self.parse_ty_no_plus() {
             Ok(rhs) => Ok(mk_expr(self, rhs)),
             Err(mut type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
@@ -616,7 +616,44 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-        }
+        };
+
+        // Disallow postfix operators such as `.`, `?` or index (`[]`) after casts.
+        // Parses the postfix operator and emits an error.
+        let expr = type_result?;
+        let span = expr.span;
+
+        // The resulting parse tree for `&x as T[0]` has a precedence of `((&x) as T)[0]`.
+        let with_postfix = self.parse_dot_or_call_expr_with_(expr, span)?;
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
+            let expr_str = self.span_to_snippet(span);
+
+            let msg = format!(
+                "casts followed by {} are not supported",
+                match with_postfix.kind {
+                    ExprKind::Index(_, _) => "index operators",
+                    ExprKind::Try(_) => "try operators",
+                    ExprKind::Field(_, _) => "field access expressions",
+                    ExprKind::MethodCall(_, _) => "method call expressions",
+                    ExprKind::Await(_) => "awaits",
+                    _ => "expressions",
+                }
+            );
+            let mut err = self.struct_span_err(with_postfix.span, &msg);
+            let suggestion = "try surrounding the expression with parentheses";
+            if let Ok(expr_str) = expr_str {
+                err.span_suggestion(
+                    span,
+                    suggestion,
+                    format!("({})", expr_str),
+                    Applicability::MachineApplicable,
+                )
+            } else {
+                err.span_help(span, suggestion)
+            }
+            .emit();
+        };
+        Ok(with_postfix)
     }
 
     fn parse_assoc_op_ascribe(&mut self, lhs: P<Expr>, lhs_span: Span) -> PResult<'a, P<Expr>> {
