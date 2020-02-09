@@ -1,4 +1,4 @@
-#![feature(test)]
+#![feature(test)] // compiletest_rs requires this attribute
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
@@ -11,51 +11,87 @@ use std::path::{Path, PathBuf};
 
 mod cargo;
 
-#[must_use]
-fn rustc_test_suite() -> Option<PathBuf> {
-    option_env!("RUSTC_TEST_SUITE").map(PathBuf::from)
+fn host_lib() -> PathBuf {
+    if let Some(path) = option_env!("HOST_LIBS") {
+        PathBuf::from(path)
+    } else {
+        cargo::CARGO_TARGET_DIR.join(env!("PROFILE"))
+    }
 }
 
-#[must_use]
-fn rustc_lib_path() -> PathBuf {
-    option_env!("RUSTC_LIB_PATH").unwrap().into()
+fn clippy_driver_path() -> PathBuf {
+    if let Some(path) = option_env!("CLIPPY_DRIVER_PATH") {
+        PathBuf::from(path)
+    } else {
+        cargo::TARGET_LIB.join("clippy-driver")
+    }
+}
+
+// When we'll want to use `extern crate ..` for a dependency that is used
+// both by the crate and the compiler itself, we can't simply pass -L flags
+// as we'll get a duplicate matching versions. Instead, disambiguate with
+// `--extern dep=path`.
+// See https://github.com/rust-lang/rust-clippy/issues/4015.
+//
+// FIXME: We cannot use `cargo build --message-format=json` to resolve to dependency files.
+//        Because it would force-rebuild if the options passed to `build` command is not the same
+//        as what we manually pass to `cargo` invocation
+fn third_party_crates() -> String {
+    use std::collections::HashMap;
+    static CRATES: &[&str] = &["serde", "serde_derive", "regex", "clippy_lints"];
+    let dep_dir = cargo::TARGET_LIB.join("deps");
+    let mut crates: HashMap<&str, PathBuf> = HashMap::with_capacity(CRATES.len());
+    for entry in fs::read_dir(dep_dir).unwrap() {
+        let path = match entry {
+            Ok(entry) => entry.path(),
+            _ => continue,
+        };
+        if let Some(name) = path.file_name().and_then(OsStr::to_str) {
+            for dep in CRATES {
+                if name.starts_with(&format!("lib{}-", dep)) && name.ends_with(".rlib") {
+                    crates.entry(dep).or_insert(path);
+                    break;
+                }
+            }
+        }
+    }
+
+    let v: Vec<_> = crates
+        .into_iter()
+        .map(|(dep, path)| format!("--extern {}={}", dep, path.display()))
+        .collect();
+    v.join(" ")
 }
 
 fn default_config() -> compiletest::Config {
-    let build_info = cargo::BuildInfo::new();
     let mut config = compiletest::Config::default();
 
     if let Ok(name) = env::var("TESTNAME") {
         config.filter = Some(name);
     }
 
-    if rustc_test_suite().is_some() {
-        let path = rustc_lib_path();
+    if let Some(path) = option_env!("RUSTC_LIB_PATH") {
+        let path = PathBuf::from(path);
         config.run_lib_path = path.clone();
         config.compile_lib_path = path;
     }
 
-    let disambiguated: Vec<_> = cargo::BuildInfo::third_party_crates()
-        .iter()
-        .map(|(krate, path)| format!("--extern {}={}", krate, path.display()))
-        .collect();
-
     config.target_rustcflags = Some(format!(
         "-L {0} -L {1} -Dwarnings -Zui-testing {2}",
-        build_info.host_lib().join("deps").display(),
-        build_info.target_lib().join("deps").display(),
-        disambiguated.join(" ")
+        host_lib().join("deps").display(),
+        cargo::TARGET_LIB.join("deps").display(),
+        third_party_crates(),
     ));
 
-    config.build_base = if rustc_test_suite().is_some() {
-        // we don't need access to the stderr files on travis
+    config.build_base = if cargo::is_rustc_test_suite() {
+        // This make the stderr files go to clippy OUT_DIR on rustc repo build dir
         let mut path = PathBuf::from(env!("OUT_DIR"));
         path.push("test_build_base");
         path
     } else {
-        build_info.host_lib().join("test_build_base")
+        host_lib().join("test_build_base")
     };
-    config.rustc_path = build_info.clippy_driver_path();
+    config.rustc_path = clippy_driver_path();
     config
 }
 
