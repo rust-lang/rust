@@ -26,7 +26,9 @@ export async function fetchLatestArtifactMetadata(
 
     const artifact = response.assets.find(artifact => artifact.name === artifactFileName);
 
-    return !artifact ? null : {
+    if (!artifact) return null;
+
+    return {
         releaseName: response.name,
         downloadUrl: artifact.browser_download_url
     };

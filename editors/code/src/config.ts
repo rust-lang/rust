@@ -97,7 +97,9 @@ export class Config {
 
         const prebuiltBinaryName = Config.prebuiltLangServerFileName(process.platform);
 
-        return !prebuiltBinaryName ? null : {
+        if (!prebuiltBinaryName) return null;
+
+        return {
             type: BinarySource.Type.GithubRelease,
             dir: ctx.globalStoragePath,
             file: prebuiltBinaryName,
