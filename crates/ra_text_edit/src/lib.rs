@@ -29,8 +29,8 @@ impl AtomTextEdit {
     }
 
     pub fn apply(&self, mut text: String) -> String {
-        let start = u32::from(self.delete.start()) as usize;
-        let end = u32::from(self.delete.end()) as usize;
+        let start = self.delete.start().to_usize();
+        let end = self.delete.end().to_usize();
         text.replace_range(start..end, &self.insert);
         text
     }
