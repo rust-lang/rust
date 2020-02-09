@@ -93,6 +93,6 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo install cargo-cache --debug
+        cargo +nightly install cargo-cache --debug
         find ~/.cargo/bin ! -type d -exec strip {} \;
         cargo cache --autoclean
