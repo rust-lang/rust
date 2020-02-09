@@ -74,15 +74,16 @@ SOURCE_FILE@[0; 167)
               COMMA@[83; 84) ","
               WHITESPACE@[84; 93) "\n        "
               MATCH_ARM@[93; 109)
-                BIND_PAT@[93; 94)
-                  NAME@[93; 94)
-                    IDENT@[93; 94) "X"
-                WHITESPACE@[94; 95) " "
-                PIPE@[95; 96) "|"
-                WHITESPACE@[96; 97) " "
-                BIND_PAT@[97; 98)
-                  NAME@[97; 98)
-                    IDENT@[97; 98) "Y"
+                OR_PAT@[93; 98)
+                  BIND_PAT@[93; 94)
+                    NAME@[93; 94)
+                      IDENT@[93; 94) "X"
+                  WHITESPACE@[94; 95) " "
+                  PIPE@[95; 96) "|"
+                  WHITESPACE@[96; 97) " "
+                  BIND_PAT@[97; 98)
+                    NAME@[97; 98)
+                      IDENT@[97; 98) "Y"
                 WHITESPACE@[98; 99) " "
                 MATCH_GUARD@[99; 103)
                   IF_KW@[99; 101) "if"
@@ -103,15 +104,16 @@ SOURCE_FILE@[0; 167)
               MATCH_ARM@[119; 137)
                 PIPE@[119; 120) "|"
                 WHITESPACE@[120; 121) " "
-                BIND_PAT@[121; 122)
-                  NAME@[121; 122)
-                    IDENT@[121; 122) "X"
-                WHITESPACE@[122; 123) " "
-                PIPE@[123; 124) "|"
-                WHITESPACE@[124; 125) " "
-                BIND_PAT@[125; 126)
-                  NAME@[125; 126)
-                    IDENT@[125; 126) "Y"
+                OR_PAT@[121; 126)
+                  BIND_PAT@[121; 122)
+                    NAME@[121; 122)
+                      IDENT@[121; 122) "X"
+                  WHITESPACE@[122; 123) " "
+                  PIPE@[123; 124) "|"
+                  WHITESPACE@[124; 125) " "
+                  BIND_PAT@[125; 126)
+                    NAME@[125; 126)
+                      IDENT@[125; 126) "Y"
                 WHITESPACE@[126; 127) " "
                 MATCH_GUARD@[127; 131)
                   IF_KW@[127; 129) "if"
