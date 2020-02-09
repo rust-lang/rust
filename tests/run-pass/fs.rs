@@ -91,6 +91,7 @@ fn main() {
     let file = File::create(&path1).unwrap();
     drop(file);
     rename(&path1, &path2).unwrap();
+    assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
     assert!(path2.metadata().unwrap().is_file());
     remove_file(&path2).ok();
 
