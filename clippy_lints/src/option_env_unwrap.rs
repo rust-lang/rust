@@ -38,7 +38,8 @@ impl EarlyLintPass for OptionEnvUnwrap {
         if_chain! {
             if !in_external_macro(cx.sess, expr.span);
             if let ExprKind::MethodCall(path_segment, args) = &expr.kind;
-            if path_segment.ident.as_str() == "unwrap";
+            let method_name = path_segment.ident.as_str();
+            if method_name == "expect" || method_name == "unwrap";
             if let ExprKind::Call(caller, _) = &args[0].kind;
             if is_direct_expn_of(caller.span, "option_env").is_some();
             then {
@@ -46,7 +47,7 @@ impl EarlyLintPass for OptionEnvUnwrap {
                     cx,
                     OPTION_ENV_UNWRAP,
                     expr.span,
-                    "this will panic at run-time if the environment variable doesn't exist",
+                    "this will panic at run-time if the environment variable doesn't exist at compile-time",
                     "consider using the `env!` macro instead"
                 );
             }

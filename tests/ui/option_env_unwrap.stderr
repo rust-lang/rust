@@ -1,5 +1,5 @@
-error: this will panic at run-time if the environment variable doesn't exist
-  --> $DIR/option_env_unwrap.rs:10:13
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:13:13
    |
 LL |     let _ = option_env!("HOME").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,15 @@ LL |     let _ = option_env!("HOME").unwrap();
    = note: `-D clippy::option-env-unwrap` implied by `-D warnings`
    = help: consider using the `env!` macro instead
 
-error: this will panic at run-time if the environment variable doesn't exist
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:14:13
+   |
+LL |     let _ = option_env!("HOME").expect("environment variable HOME isn't set");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
   --> $DIR/option_env_unwrap.rs:5:9
    |
 LL |         option_env!($env).unwrap()
@@ -19,5 +27,17 @@ LL |     let _ = option_env_unwrap!("HOME");
    = help: consider using the `env!` macro instead
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:8:9
+   |
+LL |         option_env!($env).expect($message)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     let _ = option_env_unwrap!("HOME", "environment variable HOME isn't set");
+   |             ----------------------------------------------------------------- in this macro invocation
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
 
