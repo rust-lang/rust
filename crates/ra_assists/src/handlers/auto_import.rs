@@ -46,9 +46,9 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
 
     let name_ref_to_import =
         path_under_caret.syntax().descendants().find_map(ast::NameRef::cast)?;
-    if dbg!(source_analyzer
-        .resolve_path(ctx.db, &name_ref_to_import.syntax().ancestors().find_map(ast::Path::cast)?))
-    .is_some()
+    if source_analyzer
+        .resolve_path(ctx.db, &name_ref_to_import.syntax().ancestors().find_map(ast::Path::cast)?)
+        .is_some()
     {
         return None;
     }
@@ -303,6 +303,119 @@ mod tests {
             use test_mod::test_function;
             fn main() {
                 test_function<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn associated_struct_function() {
+        check_assist(
+            auto_import,
+            r"
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    pub fn test_function() {}
+                }
+            }
+
+            fn main() {
+                TestStruct::test_function<|>
+            }
+            ",
+            r"
+            use test_mod::TestStruct;
+
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    pub fn test_function() {}
+                }
+            }
+
+            fn main() {
+                TestStruct::test_function<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn associated_trait_function() {
+        check_assist(
+            auto_import,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_function();
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_function() {}
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::test_function<|>
+            }
+            ",
+            r"
+            use test_mod::TestTrait;
+
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_function();
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_function() {}
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::test_function<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn trait_method() {
+        check_assist(
+            auto_import,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_struct.test_method<|>
+            }
+            ",
+            r"
+            use test_mod::TestTrait;
+
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_struct.test_method<|>
             }
             ",
         );
