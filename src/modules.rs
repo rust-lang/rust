@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use rustc_errors::{Diagnostic, PResult};
+use rustc_errors::PResult;
 use rustc_parse::{new_sub_parser_from_file, parser, DirectoryOwnership};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};

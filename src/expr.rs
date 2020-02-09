@@ -1148,10 +1148,10 @@ pub(crate) fn is_simple_block(
     attrs: Option<&[ast::Attribute]>,
     source_map: &SourceMap,
 ) -> bool {
-    (block.stmts.len() == 1
+    block.stmts.len() == 1
         && stmt_is_expr(&block.stmts[0])
         && !block_contains_comment(block, source_map)
-        && attrs.map_or(true, |a| a.is_empty()))
+        && attrs.map_or(true, |a| a.is_empty())
 }
 
 /// Checks whether a block contains at most one statement or expression, and no

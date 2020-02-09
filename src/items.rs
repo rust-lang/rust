@@ -2585,7 +2585,7 @@ fn compute_budgets_for_params(
     ret_str_len: usize,
     fn_brace_style: FnBraceStyle,
     force_vertical_layout: bool,
-) -> Option<((usize, usize, Indent))> {
+) -> Option<(usize, usize, Indent)> {
     debug!(
         "compute_budgets_for_params {} {:?}, {}, {:?}",
         result.len(),
