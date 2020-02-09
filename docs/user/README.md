@@ -261,7 +261,8 @@ Installation:
 * You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
 
 
-### Setting up the `PATH` variable <!-- Update links to this header when changing it! -->
+<!-- Update links to this header when changing it! -->
+### Setting up the `PATH` variable
 
 On Unix systems, `rustup` adds `~/.cargo/bin` to `PATH` by modifying the shell's
 startup file. Depending on your configuration, your Desktop Environment might not
