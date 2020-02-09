@@ -355,7 +355,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
         self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
-            if let Some(item) = self.associated_items(impl_did).next() {
+            if let Some(item) = self.associated_items(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
                     dtor_did = Some(item.def_id);
                 }

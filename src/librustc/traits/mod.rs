@@ -541,6 +541,7 @@ fn vtable_methods<'tcx>(
     tcx.arena.alloc_from_iter(supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
         let trait_methods = tcx
             .associated_items(trait_ref.def_id())
+            .iter()
             .filter(|item| item.kind == ty::AssocKind::Method);
 
         // Now list each method's DefId and InternalSubsts (for within its trait).

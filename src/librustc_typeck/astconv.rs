@@ -1109,7 +1109,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         assoc_name: ast::Ident,
     ) -> bool {
-        self.tcx().associated_items(trait_def_id).any(|item| {
+        self.tcx().associated_items(trait_def_id).iter().any(|item| {
             item.kind == ty::AssocKind::Type
                 && self.tcx().hygienic_eq(assoc_name, item.ident, trait_def_id)
         })
@@ -1347,6 +1347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
         let assoc_ty = tcx
             .associated_items(candidate.def_id())
+            .iter()
             .find(|i| i.kind == ty::AssocKind::Type && i.ident.modern() == assoc_ident)
             .expect("missing associated type");
 
@@ -1512,6 +1513,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Predicate::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
+                                .iter()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
                                 .map(|item| item.def_id),
                         );
@@ -1969,6 +1971,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let bound_span = self
                     .tcx()
                     .associated_items(bound.def_id())
+                    .iter()
                     .find(|item| {
                         item.kind == ty::AssocKind::Type
                             && self.tcx().hygienic_eq(assoc_name, item.ident, bound.def_id())
@@ -2198,6 +2201,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
         let item = tcx
             .associated_items(trait_did)
+            .iter()
             .find(|i| Namespace::from(i.kind) == Namespace::Type && i.ident.modern() == assoc_ident)
             .expect("missing associated type");
 

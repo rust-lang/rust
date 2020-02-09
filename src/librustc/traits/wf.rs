@@ -166,7 +166,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let extend_cause_with_original_assoc_item_obligation =
             |cause: &mut traits::ObligationCause<'_>,
              pred: &ty::Predicate<'_>,
-             trait_assoc_items: ty::AssocItemsIterator<'_>| {
+             trait_assoc_items: &[ty::AssocItem]| {
                 let trait_item = tcx
                     .hir()
                     .as_local_hir_id(trait_ref.def_id)
@@ -283,6 +283,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind))
                         {
                             if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
+                                .iter()
                                 .filter(|i| i.def_id == *item_def_id)
                                 .next()
                                 .and_then(|trait_assoc_item| {
@@ -325,7 +326,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 extend_cause_with_original_assoc_item_obligation(
                     &mut cause,
                     &pred,
-                    trait_assoc_items.clone(),
+                    trait_assoc_items,
                 );
                 traits::Obligation::new(cause, param_env, pred)
             });
