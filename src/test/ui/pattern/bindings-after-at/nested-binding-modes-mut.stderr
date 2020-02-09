@@ -1,0 +1,21 @@
+error[E0596]: cannot borrow `not_mut` as mutable, as it is not declared as mutable
+  --> $DIR/nested-binding-modes-mut.rs:6:5
+   |
+LL |     let mut is_mut @ not_mut = 42;
+   |                      ------- help: consider changing this to be mutable: `mut not_mut`
+LL |     &mut is_mut;
+LL |     &mut not_mut;
+   |     ^^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `not_mut` as mutable, as it is not declared as mutable
+  --> $DIR/nested-binding-modes-mut.rs:11:5
+   |
+LL |     let not_mut @ mut is_mut = 42;
+   |         -------------------- help: consider changing this to be mutable: `mut not_mut`
+LL |     &mut is_mut;
+LL |     &mut not_mut;
+   |     ^^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.
