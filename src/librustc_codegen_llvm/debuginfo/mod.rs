@@ -559,7 +559,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 file_metadata,
                 loc.line as c_uint,
                 type_metadata,
-                self.sess().opts.optimize != config::OptLevel::No,
+                true,
                 DIFlags::FlagZero,
                 argument_index,
                 align.bytes() as u32,
