@@ -105,10 +105,13 @@ export async function ensureLanguageServerBinary(
                     `GitHub repository: ${err.message}`
                 );
 
-                dns.resolve('www.google.com').catch(err => {
-                    console.error("DNS resolution failed, there might be an issue with Internet availability");
-                    console.error(err);
-                });
+                dns.resolve('www.google.com').then(
+                    addrs => console.log("DNS resolution was successful", addrs),
+                    err => {
+                        console.error("DNS resolution failed, there might be an issue with Internet availability");
+                        console.error(err);
+                    }
+                );
 
                 return null;
             }
