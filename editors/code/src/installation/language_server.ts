@@ -1,8 +1,9 @@
-import { spawnSync } from "child_process";
 import * as vscode from "vscode";
 import * as path from "path";
 import { strict as assert } from "assert";
 import { promises as fs } from "fs";
+import { spawnSync } from "child_process";
+import { throttle } from "throttle-debounce";
 
 import { BinarySource } from "./interfaces";
 import { fetchLatestArtifactMetadata } from "./fetch_latest_artifact_metadata";
@@ -28,19 +29,23 @@ export async function downloadLatestLanguageServer(
         {
             location: vscode.ProgressLocation.Notification,
             cancellable: false, // FIXME: add support for canceling download?
-            title: `Downloading language server ${releaseName}`
+            title: `Downloading language server (${releaseName})`
         },
         async (progress, _cancellationToken) => {
             let lastPrecentage = 0;
-            await downloadFile(downloadUrl, installationPath, (readBytes, totalBytes) => {
-                const newPercentage = (readBytes / totalBytes) * 100;
-                progress.report({
-                    message: newPercentage.toFixed(0) + "%",
-                    increment: newPercentage - lastPrecentage
-                });
+            await downloadFile(downloadUrl, installationPath, throttle(
+                200,
+                /* noTrailing: */ true,
+                (readBytes, totalBytes) => {
+                    const newPercentage = (readBytes / totalBytes) * 100;
+                    progress.report({
+                        message: newPercentage.toFixed(0) + "%",
+                        increment: newPercentage - lastPrecentage
+                    });
 
-                lastPrecentage = newPercentage;
-            });
+                    lastPrecentage = newPercentage;
+                })
+            );
         }
     );
 
