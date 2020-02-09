@@ -1,5 +1,4 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
-use either::Either;
 use hir::{InFile, SourceAnalyzer, SourceBinder};
 use ra_db::{FileRange, SourceDatabase};
 use ra_fmt::{leading_indent, reindent};
@@ -11,12 +10,36 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistId, AssistLabel, ResolvedAssist};
+use crate::{AssistAction, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
-pub(crate) enum Assist {
-    Unresolved { label: AssistLabel },
-    Resolved { assist: ResolvedAssist },
+pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssistInfo {
+    pub(crate) label: AssistLabel,
+    pub(crate) group_label: Option<GroupLabel>,
+    pub(crate) action: Option<AssistAction>,
+}
+
+impl AssistInfo {
+    fn new(label: AssistLabel) -> AssistInfo {
+        AssistInfo { label, group_label: None, action: None }
+    }
+
+    fn resolved(self, action: AssistAction) -> AssistInfo {
+        AssistInfo { action: Some(action), ..self }
+    }
+
+    fn with_group(self, group_label: GroupLabel) -> AssistInfo {
+        AssistInfo { group_label: Some(group_label), ..self }
+    }
+
+    pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
+        let label = self.label;
+        let group_label = self.group_label;
+        self.action.map(|action| ResolvedAssist { label, group_label, action })
+    }
 }
 
 pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
@@ -84,18 +107,17 @@ impl<'a> AssistCtx<'a> {
     ) -> Option<Assist> {
         let label = AssistLabel::new(label.into(), id);
 
-        let assist = if self.should_compute_edit {
+        let mut info = AssistInfo::new(label);
+        if self.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::default();
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { assist: ResolvedAssist { label, action_data: Either::Left(action) } }
-        } else {
-            Assist::Unresolved { label }
+            info = info.resolved(action)
         };
 
-        Some(assist)
+        Some(Assist(vec![info]))
     }
 
     pub(crate) fn add_assist_group(self, group_name: impl Into<String>) -> AssistGroup<'a> {
@@ -136,7 +158,7 @@ impl<'a> AssistCtx<'a> {
 pub(crate) struct AssistGroup<'a> {
     ctx: AssistCtx<'a>,
     group_name: String,
-    assists: Vec<Assist>,
+    assists: Vec<AssistInfo>,
 }
 
 impl<'a> AssistGroup<'a> {
@@ -148,49 +170,22 @@ impl<'a> AssistGroup<'a> {
     ) {
         let label = AssistLabel::new(label.into(), id);
 
-        let assist = if self.ctx.should_compute_edit {
+        let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group_name.clone()));
+        if self.ctx.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::default();
                 f(&mut edit);
                 edit.build()
             };
-            Assist::Resolved { assist: ResolvedAssist { label, action_data: Either::Left(action) } }
-        } else {
-            Assist::Unresolved { label }
+            info = info.resolved(action)
         };
 
-        self.assists.push(assist)
+        self.assists.push(info)
     }
 
     pub(crate) fn finish(self) -> Option<Assist> {
         assert!(!self.assists.is_empty());
-        let mut label = match &self.assists[0] {
-            Assist::Unresolved { label } => label.clone(),
-            Assist::Resolved { assist } => assist.label.clone(),
-        };
-        label.label = self.group_name;
-        let assist = if self.ctx.should_compute_edit {
-            Assist::Resolved {
-                assist: ResolvedAssist {
-                    label,
-                    action_data: Either::Right(
-                        self.assists
-                            .into_iter()
-                            .map(|assist| match assist {
-                                Assist::Resolved {
-                                    assist:
-                                        ResolvedAssist { label: _, action_data: Either::Left(it) },
-                                } => it,
-                                _ => unreachable!(),
-                            })
-                            .collect(),
-                    ),
-                },
-            }
-        } else {
-            Assist::Unresolved { label }
-        };
-        Some(assist)
+        Some(Assist(self.assists))
     }
 }
 
@@ -199,7 +194,6 @@ pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
     target: Option<TextRange>,
-    label: Option<String>,
 }
 
 impl ActionBuilder {
@@ -261,7 +255,6 @@ impl ActionBuilder {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
             target: self.target,
-            label: self.label,
         }
     }
 }

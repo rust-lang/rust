@@ -30,6 +30,6 @@ fn check(assist_id: &str, before: &str, after: &str) {
             )
         });
 
-    let actual = assist.get_first_action().edit.apply(&before);
+    let actual = assist.action.edit.apply(&before);
     assert_eq_text!(after, &actual);
 }

@@ -12,9 +12,6 @@ mod doc_tests;
 mod utils;
 pub mod ast_transform;
 
-use std::cmp::Ordering;
-
-use either::Either;
 use ra_db::FileRange;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextUnit};
@@ -35,6 +32,9 @@ pub struct AssistLabel {
     pub id: AssistId,
 }
 
+#[derive(Clone, Debug)]
+pub struct GroupLabel(pub String);
+
 impl AssistLabel {
     pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
@@ -45,7 +45,6 @@ impl AssistLabel {
 
 #[derive(Debug, Clone)]
 pub struct AssistAction {
-    pub label: Option<String>,
     pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
     // FIXME: This belongs to `AssistLabel`
@@ -55,16 +54,8 @@ pub struct AssistAction {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub action_data: Either<AssistAction, Vec<AssistAction>>,
-}
-
-impl ResolvedAssist {
-    pub fn get_first_action(&self) -> AssistAction {
-        match &self.action_data {
-            Either::Left(action) => action.clone(),
-            Either::Right(actions) => actions[0].clone(),
-        }
-    }
+    pub group_label: Option<GroupLabel>,
+    pub action: AssistAction,
 }
 
 /// Return all the assists applicable at the given position.
@@ -76,10 +67,8 @@ pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
     handlers::all()
         .iter()
         .filter_map(|f| f(ctx.clone()))
-        .map(|a| match a {
-            Assist::Unresolved { label } => label,
-            Assist::Resolved { .. } => unreachable!(),
-        })
+        .flat_map(|it| it.0)
+        .map(|a| a.label)
         .collect()
 }
 
@@ -92,22 +81,11 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
     let mut a = handlers::all()
         .iter()
         .filter_map(|f| f(ctx.clone()))
-        .map(|a| match a {
-            Assist::Resolved { assist } => assist,
-            Assist::Unresolved { .. } => unreachable!(),
-        })
+        .flat_map(|it| it.0)
+        .map(|it| it.into_resolved().unwrap())
         .collect::<Vec<_>>();
-    sort_assists(&mut a);
+    a.sort_by_key(|it| it.action.target.map_or(TextUnit::from(!0u32), |it| it.len()));
     a
-}
-
-fn sort_assists(assists: &mut [ResolvedAssist]) {
-    assists.sort_by(|a, b| match (a.get_first_action().target, b.get_first_action().target) {
-        (Some(a), Some(b)) => a.len().cmp(&b.len()),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        (None, None) => Ordering::Equal,
-    });
 }
 
 mod handlers {
@@ -184,7 +162,7 @@ mod helpers {
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{Assist, AssistCtx, AssistHandler};
+    use crate::{AssistCtx, AssistHandler};
 
     pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
         let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -202,10 +180,7 @@ mod helpers {
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
             assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = match assist {
-            Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { assist } => assist.get_first_action(),
-        };
+        let action = assist.0[0].action.clone().unwrap();
 
         let actual = action.edit.apply(&before);
         let actual_cursor_pos = match action.cursor_position {
@@ -225,10 +200,7 @@ mod helpers {
         let frange = FileRange { file_id, range };
         let assist =
             assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = match assist {
-            Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { assist } => assist.get_first_action(),
-        };
+        let action = assist.0[0].action.clone().unwrap();
 
         let mut actual = action.edit.apply(&before);
         if let Some(pos) = action.cursor_position {
@@ -244,10 +216,7 @@ mod helpers {
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
             assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = match assist {
-            Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { assist } => assist.get_first_action(),
-        };
+        let action = assist.0[0].action.clone().unwrap();
 
         let range = action.target.expect("expected target on action");
         assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
@@ -259,10 +228,7 @@ mod helpers {
         let frange = FileRange { file_id, range };
         let assist =
             assist(AssistCtx::new(&db, frange, true)).expect("code action is not applicable");
-        let action = match assist {
-            Assist::Unresolved { .. } => unreachable!(),
-            Assist::Resolved { assist } => assist.get_first_action(),
-        };
+        let action = assist.0[0].action.clone().unwrap();
 
         let range = action.target.expect("expected target on action");
         assert_eq_text!(&before[range.start().to_usize()..range.end().to_usize()], target);
