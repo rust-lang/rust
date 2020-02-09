@@ -12,9 +12,9 @@ type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let adt_fields =
         move |adt_def: &ty::AdtDef| tcx.adt_drop_tys(adt_def.did).map(|tys| tys.iter().copied());
-    // If we don't know a type doesn't need drop, say it's a type parameter
-    // without a `Copy` bound, then we conservatively return that it needs
-    // drop.
+    // If we don't know a type doesn't need drop, for example if it's a type
+    // parameter without a `Copy` bound, then we conservatively return that it
+    // needs drop.
     let res = NeedsDropTypes::new(tcx, query.param_env, query.value, adt_fields).next().is_some();
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
@@ -25,9 +25,10 @@ struct NeedsDropTypes<'tcx, F> {
     param_env: ty::ParamEnv<'tcx>,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
-    /// A stack of types left to process. Each round, we pop something from the
-    /// stack and check if it needs drop. If the result depends on whether some
-    /// other types need drop we push them onto the stack.
+    /// A stack of types left to process, and the recursion depth when we
+    /// pushed that type. Each round, we pop something from the stack and check
+    /// if it needs drop. If the result depends on whether some other types
+    /// need drop we push them onto the stack.
     unchecked_tys: Vec<(Ty<'tcx>, usize)>,
     recursion_limit: usize,
     adt_components: F,
