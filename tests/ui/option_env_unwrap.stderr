@@ -1,5 +1,5 @@
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:13:13
+  --> $DIR/option_env_unwrap.rs:17:13
    |
 LL |     let _ = option_env!("HOME").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = option_env!("HOME").unwrap();
    = help: consider using the `env!` macro instead
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:14:13
+  --> $DIR/option_env_unwrap.rs:18:13
    |
 LL |     let _ = option_env!("HOME").expect("environment variable HOME isn't set");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = option_env!("HOME").expect("environment variable HOME isn't set
    = help: consider using the `env!` macro instead
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:5:9
+  --> $DIR/option_env_unwrap.rs:9:9
    |
 LL |         option_env!($env).unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     let _ = option_env_unwrap!("HOME");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this will panic at run-time if the environment variable doesn't exist at compile-time
-  --> $DIR/option_env_unwrap.rs:8:9
+  --> $DIR/option_env_unwrap.rs:12:9
    |
 LL |         option_env!($env).expect($message)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,5 +39,23 @@ LL |     let _ = option_env_unwrap!("HOME", "environment variable HOME isn't set
    = help: consider using the `env!` macro instead
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:21:13
+   |
+LL |     let _ = option_env_unwrap_external!("HOME");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:22:13
+   |
+LL |     let _ = option_env_unwrap_external!("HOME", "environment variable HOME isn't set");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the `env!` macro instead
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
 

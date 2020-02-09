@@ -1,6 +1,5 @@
 use crate::utils::{is_direct_expn_of, span_lint_and_help};
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
@@ -36,7 +35,6 @@ declare_lint_pass!(OptionEnvUnwrap => [OPTION_ENV_UNWRAP]);
 impl EarlyLintPass for OptionEnvUnwrap {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if_chain! {
-            if !in_external_macro(cx.sess, expr.span);
             if let ExprKind::MethodCall(path_segment, args) = &expr.kind;
             let method_name = path_segment.ident.as_str();
             if method_name == "expect" || method_name == "unwrap";
