@@ -68,9 +68,7 @@ error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closu
   --> $DIR/borrow-immutable-upvar-mutation.rs:43:9
    |
 LL |   fn foo() -> Box<dyn Fn() -> usize> {
-   |      ---      ---------------------- ...to return `FnMut` instead of `Fn`
-   |      |
-   |      you might have to change this...
+   |      ---      ---------------------- change this to return `FnMut` instead of `Fn`
 LL |       let mut x = 0;
 LL |       Box::new(move || {
    |  ______________-
@@ -84,9 +82,7 @@ error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closu
   --> $DIR/borrow-immutable-upvar-mutation.rs:51:9
    |
 LL |   fn bar() -> impl Fn() -> usize {
-   |      ---      ------------------ ...to return `FnMut` instead of `Fn`
-   |      |
-   |      you might have to change this...
+   |      ---      ------------------ change this to return `FnMut` instead of `Fn`
 LL |       let mut x = 0;
 LL | /     move || {
 LL | |         x += 1;
