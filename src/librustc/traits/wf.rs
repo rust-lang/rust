@@ -143,14 +143,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let cause = self.cause(traits::MiscObligation);
         let infcx = &mut self.infcx;
         let param_env = self.param_env;
-        let mut obligations = Vec::new();
-        self.out.iter().inspect(|pred| assert!(!pred.has_escaping_bound_vars())).for_each(|pred| {
+        let mut obligations = Vec::with_capacity(self.out.len());
+        for pred in &self.out {
+            assert!(!pred.has_escaping_bound_vars());
             let mut selcx = traits::SelectionContext::new(infcx);
             let i = obligations.len();
             let value =
                 traits::normalize_to(&mut selcx, param_env, cause.clone(), pred, &mut obligations);
             obligations.insert(i, value);
-        });
+        }
         obligations
     }
 
