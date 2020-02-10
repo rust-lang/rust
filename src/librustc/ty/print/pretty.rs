@@ -988,9 +988,9 @@ pub trait PrettyPrinter<'tcx>:
             // For zsts just print their type as their value gives no extra information
             (Scalar::Raw { size: 0, .. }, _) => p!(print(ty)),
             // Nontrivial types with scalar bit representation
-            (Scalar::Raw { data, .. }, _) => {
+            (Scalar::Raw { data, size }, _) => {
                 let print = |mut this: Self| {
-                    write!(this, "transmute(0x{:x})", data)?;
+                    write!(this, "transmute(0x{:01$x})", data, size as usize * 2)?;
                     Ok(this)
                 };
                 self = if print_ty {
