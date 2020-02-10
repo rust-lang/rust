@@ -2,8 +2,6 @@ use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
 
-// ignore-tidy-undocumented-unsafe
-
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
 #[inline(never)]
@@ -16,6 +14,7 @@ fn float_to_decimal_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
+    // SAFETY: Possible undefined behavior, see FIXME(#53491)
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
@@ -48,6 +47,7 @@ fn float_to_decimal_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
+    // SAFETY: Possible undefined behavior, see FIXME(#53491)
     unsafe {
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
@@ -103,6 +103,7 @@ fn float_to_exponential_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
+    // SAFETY: Possible undefined behavior, see FIXME(#53491)
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
@@ -132,6 +133,7 @@ fn float_to_exponential_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
+    // SAFETY: Possible undefined behavior, see FIXME(#53491)
     unsafe {
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
