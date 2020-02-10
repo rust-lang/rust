@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 39)
-  FN_DEF@[0; 38)
+SOURCE_FILE@[0; 94)
+  FN_DEF@[0; 93)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 7)
@@ -8,8 +8,8 @@ SOURCE_FILE@[0; 39)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK_EXPR@[10; 38)
-      BLOCK@[10; 38)
+    BLOCK_EXPR@[10; 93)
+      BLOCK@[10; 93)
         L_CURLY@[10; 11) "{"
         WHITESPACE@[11; 16) "\n    "
         LET_STMT@[16; 36)
@@ -37,6 +37,54 @@ SOURCE_FILE@[0; 39)
             L_PAREN@[33; 34) "("
             R_PAREN@[34; 35) ")"
           SEMI@[35; 36) ";"
-        WHITESPACE@[36; 37) "\n"
-        R_CURLY@[37; 38) "}"
-  WHITESPACE@[38; 39) "\n"
+        WHITESPACE@[36; 41) "\n    "
+        LET_STMT@[41; 55)
+          LET_KW@[41; 44) "let"
+          WHITESPACE@[44; 45) " "
+          TUPLE_PAT@[45; 49)
+            L_PAREN@[45; 46) "("
+            BIND_PAT@[46; 47)
+              NAME@[46; 47)
+                IDENT@[46; 47) "a"
+            COMMA@[47; 48) ","
+            R_PAREN@[48; 49) ")"
+          WHITESPACE@[49; 50) " "
+          EQ@[50; 51) "="
+          WHITESPACE@[51; 52) " "
+          TUPLE_EXPR@[52; 54)
+            L_PAREN@[52; 53) "("
+            R_PAREN@[53; 54) ")"
+          SEMI@[54; 55) ";"
+        WHITESPACE@[55; 60) "\n    "
+        LET_STMT@[60; 74)
+          LET_KW@[60; 63) "let"
+          WHITESPACE@[63; 64) " "
+          TUPLE_PAT@[64; 68)
+            L_PAREN@[64; 65) "("
+            DOT_DOT_PAT@[65; 67)
+              DOTDOT@[65; 67) ".."
+            R_PAREN@[67; 68) ")"
+          WHITESPACE@[68; 69) " "
+          EQ@[69; 70) "="
+          WHITESPACE@[70; 71) " "
+          TUPLE_EXPR@[71; 73)
+            L_PAREN@[71; 72) "("
+            R_PAREN@[72; 73) ")"
+          SEMI@[73; 74) ";"
+        WHITESPACE@[74; 79) "\n    "
+        LET_STMT@[79; 91)
+          LET_KW@[79; 82) "let"
+          WHITESPACE@[82; 83) " "
+          TUPLE_PAT@[83; 85)
+            L_PAREN@[83; 84) "("
+            R_PAREN@[84; 85) ")"
+          WHITESPACE@[85; 86) " "
+          EQ@[86; 87) "="
+          WHITESPACE@[87; 88) " "
+          TUPLE_EXPR@[88; 90)
+            L_PAREN@[88; 89) "("
+            R_PAREN@[89; 90) ")"
+          SEMI@[90; 91) ";"
+        WHITESPACE@[91; 92) "\n"
+        R_CURLY@[92; 93) "}"
+  WHITESPACE@[93; 94) "\n"

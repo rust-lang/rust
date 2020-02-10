@@ -41,16 +41,14 @@ fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
     let m = p.start();
     pattern_single_r(p, recovery_set);
 
-    let mut is_or_pat = false;
+    if !p.at(T![|]) {
+        m.abandon(p);
+        return;
+    }
     while p.eat(T![|]) {
-        is_or_pat = true;
         pattern_single_r(p, recovery_set);
     }
-    if is_or_pat {
-        m.complete(p, OR_PAT);
-    } else {
-        m.abandon(p);
-    }
+    m.complete(p, OR_PAT);
 }
 
 fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
@@ -292,6 +290,9 @@ fn ref_pat(p: &mut Parser) -> CompletedMarker {
 // test tuple_pat
 // fn main() {
 //     let (a, b, ..) = ();
+//     let (a,) = ();
+//     let (..) = ();
+//     let () = ();
 // }
 fn tuple_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['(']));
