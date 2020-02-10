@@ -646,7 +646,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_span);
-            if let IsAuto::Yes = is_auto {
+            if is_auto == IsAuto::Yes {
                 let msg = "trait aliases cannot be `auto`";
                 self.struct_span_err(whole_span, msg).span_label(whole_span, msg).emit();
             }
