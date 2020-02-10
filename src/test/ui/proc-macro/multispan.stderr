@@ -1,19 +1,8 @@
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:14:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:14:5
-   |
-LL |       hello!(hi);
-   |       ----------- in this macro invocation
+LL |     hello!(hi);
+   |     ^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:14:12
@@ -23,21 +12,10 @@ LL |     hello!(hi);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:17:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:17:5
-   |
-LL |       hello!(hi hi);
-   |       -------------- in this macro invocation
+LL |     hello!(hi hi);
+   |     ^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:17:12
@@ -47,21 +25,10 @@ LL |     hello!(hi hi);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:20:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:20:5
-   |
-LL |       hello!(hi hi hi);
-   |       ----------------- in this macro invocation
+LL |     hello!(hi hi hi);
+   |     ^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:20:12
@@ -71,21 +38,10 @@ LL |     hello!(hi hi hi);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:23:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:23:5
-   |
-LL |       hello!(hi hey hi yo hi beep beep hi hi);
-   |       ---------------------------------------- in this macro invocation
+LL |     hello!(hi hey hi yo hi beep beep hi hi);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:23:12
@@ -95,21 +51,10 @@ LL |     hello!(hi hey hi yo hi beep beep hi hi);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:24:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:24:5
-   |
-LL |       hello!(hi there, hi how are you? hi... hi.);
-   |       -------------------------------------------- in this macro invocation
+LL |     hello!(hi there, hi how are you? hi... hi.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:24:12
@@ -119,21 +64,10 @@ LL |     hello!(hi there, hi how are you? hi... hi.);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:25:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:25:5
-   |
-LL |       hello!(whoah. hi di hi di ho);
-   |       ------------------------------ in this macro invocation
+LL |     hello!(whoah. hi di hi di ho);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:25:19
@@ -143,21 +77,10 @@ LL |     hello!(whoah. hi di hi di ho);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/auxiliary/multispan.rs:31:1
+  --> $DIR/multispan.rs:26:5
    |
-LL | / pub fn hello(input: TokenStream) -> TokenStream {
-LL | |     if let Err(diag) = parse(input) {
-LL | |         diag.emit();
-LL | |     }
-LL | |
-LL | |     TokenStream::new()
-LL | | }
-   | |_^
-   | 
-  ::: $DIR/multispan.rs:26:5
-   |
-LL |       hello!(hi good hi and good bye);
-   |       -------------------------------- in this macro invocation
+LL |     hello!(hi good hi and good bye);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:26:12

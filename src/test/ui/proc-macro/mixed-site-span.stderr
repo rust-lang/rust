@@ -21,21 +21,10 @@ LL |         local_def;
    |         ^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `ItemUse` in crate `$crate`
-  --> $DIR/auxiliary/mixed-site-span.rs:14:1
+  --> $DIR/mixed-site-span.rs:26:1
    |
-LL | / pub fn proc_macro_rules(input: TokenStream) -> TokenStream {
-LL | |     if input.is_empty() {
-LL | |         let id = |s| TokenTree::from(Ident::new(s, Span::mixed_site()));
-LL | |         let item_def = id("ItemDef");
-...  |
-LL | |     }
-LL | | }
-   | |_^ not found in `$crate`
-   | 
-  ::: $DIR/mixed-site-span.rs:26:1
-   |
-LL |   pass_dollar_crate!();
-   |   --------------------- in this macro invocation
+LL | pass_dollar_crate!();
+   | ^^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: possible candidate is found in another module, you can import it into scope
