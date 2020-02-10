@@ -1,11 +1,12 @@
 use rustc::mir::ConstraintCategory;
+use rustc::traits::query::OutlivesBound;
 use rustc::ty::free_region_map::FreeRegionRelations;
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc_infer::traits::query::type_op::{self, TypeOp};
 use rustc_span::DUMMY_SP;
 use std::rc::Rc;
@@ -266,7 +267,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
 
         // Insert the facts we know from the predicates. Why? Why not.
         let param_env = self.param_env;
-        self.add_outlives_bounds(outlives_bounds::explicit_outlives_bounds(param_env));
+        self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
 
         // Finally:
         // - outlives is reflexive, so `'r: 'r` for every region `'r`
