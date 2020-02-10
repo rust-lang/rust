@@ -322,7 +322,7 @@ where
         match value_ty.kind {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
-                self.infcx.type_variables.borrow_mut().equate(vid, value_vid);
+                self.infcx.inner.borrow_mut().type_variables.equate(vid, value_vid);
                 return Ok(value_ty);
             }
 
@@ -343,7 +343,7 @@ where
             assert!(!generalized_ty.has_infer_types());
         }
 
-        self.infcx.type_variables.borrow_mut().instantiate(vid, generalized_ty);
+        self.infcx.inner.borrow_mut().type_variables.instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -373,7 +373,7 @@ where
             delegate: &mut self.delegate,
             first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
-            for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
+            for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables.sub_root_var(for_vid),
             universe,
         };
 
@@ -870,7 +870,7 @@ where
             }
 
             ty::Infer(ty::TyVar(vid)) => {
-                let mut variables = self.infcx.type_variables.borrow_mut();
+                let variables = &mut self.infcx.inner.borrow_mut().type_variables;
                 let vid = variables.root_var(vid);
                 let sub_vid = variables.sub_root_var(vid);
                 if sub_vid == self.for_vid_sub_root {
@@ -972,7 +972,7 @@ where
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                let mut variable_table = self.infcx.const_unification_table.borrow_mut();
+                let variable_table = &mut self.infcx.inner.borrow_mut().const_unification_table;
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val.known() {
                     Some(u) => self.relate(&u, &u),

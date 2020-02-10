@@ -69,8 +69,9 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
                 /// Creates a non-zero if the given value is not zero.
                 #[$stability]
+                #[rustc_const_unstable(feature = "const_nonzero_int_methods", issue = "53718")]
                 #[inline]
-                pub fn new(n: $Int) -> Option<Self> {
+                pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
                         Some(unsafe { Self(n) })

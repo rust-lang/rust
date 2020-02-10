@@ -95,8 +95,6 @@ enum PrevTokenKind {
     Other,
 }
 
-// NOTE: `Ident`s are handled by `common.rs`.
-
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
@@ -104,14 +102,25 @@ pub struct Parser<'a> {
     /// "Normalized" means that some interpolated tokens
     /// (`$i: ident` and `$l: lifetime` meta-variables) are replaced
     /// with non-interpolated identifier and lifetime tokens they refer to.
-    /// Perhaps the normalized / non-normalized setup can be simplified somehow.
+    /// Use span from this token if you need an isolated span.
     pub token: Token,
-    /// The span of the current non-normalized token.
-    meta_var_span: Option<Span>,
-    /// The span of the previous non-normalized token.
-    pub prev_span: Span,
-    /// The kind of the previous normalized token (in simplified form).
+    /// The current non-normalized token if it's different from `token`.
+    /// Preferable use is through the `unnormalized_token()` getter.
+    /// Use span from this token if you need to concatenate it with some neighbouring spans.
+    unnormalized_token: Option<Token>,
+    /// The previous normalized token.
+    /// Use span from this token if you need an isolated span.
+    prev_token: Token,
+    /// The previous non-normalized token if it's different from `prev_token`.
+    /// Preferable use is through the `unnormalized_prev_token()` getter.
+    /// Use span from this token if you need to concatenate it with some neighbouring spans.
+    unnormalized_prev_token: Option<Token>,
+    /// Equivalent to `prev_token.kind` in simplified form.
+    /// FIXME: Remove in favor of `(unnormalized_)prev_token().kind`.
     prev_token_kind: PrevTokenKind,
+    /// Equivalent to `unnormalized_prev_token().span`.
+    /// FIXME: Remove in favor of `(unnormalized_)prev_token().span`.
+    pub prev_span: Span,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
     pub(super) directory: Directory<'a>,
@@ -384,9 +393,11 @@ impl<'a> Parser<'a> {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
-            prev_span: DUMMY_SP,
-            meta_var_span: None,
+            unnormalized_token: None,
+            prev_token: Token::dummy(),
+            unnormalized_prev_token: None,
             prev_token_kind: PrevTokenKind::Other,
+            prev_span: DUMMY_SP,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
@@ -427,6 +438,14 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    fn unnormalized_token(&self) -> &Token {
+        self.unnormalized_token.as_ref().unwrap_or(&self.token)
+    }
+
+    fn unnormalized_prev_token(&self) -> &Token {
+        self.unnormalized_prev_token.as_ref().unwrap_or(&self.prev_token)
+    }
+
     fn next_tok(&mut self) -> Token {
         let mut next = if self.desugar_doc_comments {
             self.token_cursor.next_desugared()
@@ -435,7 +454,7 @@ impl<'a> Parser<'a> {
         };
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.span = self.prev_span.with_ctxt(next.span.ctxt());
+            next.span = self.unnormalized_token().span.with_ctxt(next.span.ctxt());
         }
         next
     }
@@ -895,10 +914,13 @@ impl<'a> Parser<'a> {
             self.span_bug(self.token.span, msg);
         }
 
-        self.prev_span = self.meta_var_span.take().unwrap_or(self.token.span);
+        // Update the current and previous tokens.
+        let next_token = self.next_tok();
+        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.unnormalized_prev_token = self.unnormalized_token.take();
 
-        // Record last token kind for possible error recovery.
-        self.prev_token_kind = match self.token.kind {
+        // Update fields derived from the previous token.
+        self.prev_token_kind = match self.prev_token.kind {
             token::DocComment(..) => PrevTokenKind::DocComment,
             token::Comma => PrevTokenKind::Comma,
             token::BinOp(token::Plus) => PrevTokenKind::Plus,
@@ -908,8 +930,8 @@ impl<'a> Parser<'a> {
             token::Ident(..) => PrevTokenKind::Ident,
             _ => PrevTokenKind::Other,
         };
+        self.prev_span = self.unnormalized_prev_token().span;
 
-        self.token = self.next_tok();
         self.expected_tokens.clear();
         // Check after each token.
         self.process_potential_macro_variable();
@@ -917,13 +939,19 @@ impl<'a> Parser<'a> {
 
     /// Advances the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
+    /// FIXME: this function sets the previous token data to some semi-nonsensical values
+    /// which kind of work because they are currently used in very limited ways in practice.
+    /// Correct token kinds and spans need to be calculated instead.
     fn bump_with(&mut self, next: TokenKind, span: Span) {
-        self.prev_span = self.token.span.with_hi(span.lo());
-        // It would be incorrect to record the kind of the current token, but
-        // fortunately for tokens currently using `bump_with`, the
-        // `prev_token_kind` will be of no use anyway.
+        // Update the current and previous tokens.
+        let next_token = Token::new(next, span);
+        self.prev_token = mem::replace(&mut self.token, next_token);
+        self.unnormalized_prev_token = self.unnormalized_token.take();
+
+        // Update fields derived from the previous token.
         self.prev_token_kind = PrevTokenKind::Other;
-        self.token = Token::new(next, span);
+        self.prev_span = self.unnormalized_prev_token().span.with_hi(span.lo());
+
         self.expected_tokens.clear();
     }
 
@@ -1054,7 +1082,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn process_potential_macro_variable(&mut self) {
-        self.token = match self.token.kind {
+        let normalized_token = match self.token.kind {
             token::Dollar
                 if self.token.span.from_expansion() && self.look_ahead(1, |t| t.is_ident()) =>
             {
@@ -1071,7 +1099,6 @@ impl<'a> Parser<'a> {
                 return;
             }
             token::Interpolated(ref nt) => {
-                self.meta_var_span = Some(self.token.span);
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
@@ -1084,6 +1111,7 @@ impl<'a> Parser<'a> {
             }
             _ => return,
         };
+        self.unnormalized_token = Some(mem::replace(&mut self.token, normalized_token));
     }
 
     /// Parses a single token tree from the input.
@@ -1100,7 +1128,7 @@ impl<'a> Parser<'a> {
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = self.token.take();
+                let token = self.token.clone();
                 self.bump();
                 TokenTree::Token(token)
             }

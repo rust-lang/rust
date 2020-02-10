@@ -486,7 +486,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    let cache_result = infcx.projection_cache.borrow_mut().try_start(cache_key);
+    let cache_result = infcx.inner.borrow_mut().projection_cache.try_start(cache_key);
     match cache_result {
         Ok(()) => {}
         Err(ProjectionCacheEntry::Ambiguous) => {
@@ -560,7 +560,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // Once we have inferred everything we need to know, we
             // can ignore the `obligations` from that point on.
             if infcx.unresolved_type_vars(&ty.value).is_none() {
-                infcx.projection_cache.borrow_mut().complete_normalized(cache_key, &ty);
+                infcx.inner.borrow_mut().projection_cache.complete_normalized(cache_key, &ty);
             // No need to extend `obligations`.
             } else {
                 obligations.extend(ty.obligations);
@@ -627,7 +627,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let cache_value = prune_cache_value_obligations(infcx, &result);
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value);
+            infcx.inner.borrow_mut().projection_cache.insert_ty(cache_key, cache_value);
             obligations.extend(result.obligations);
             Some(result.value)
         }
@@ -638,7 +638,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 projected_ty
             );
             let result = Normalized { value: projected_ty, obligations: vec![] };
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone());
+            infcx.inner.borrow_mut().projection_cache.insert_ty(cache_key, result.clone());
             // No need to extend `obligations`.
             Some(result.value)
         }
@@ -647,7 +647,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 "opt_normalize_projection_type: \
                  too many candidates"
             );
-            infcx.projection_cache.borrow_mut().ambiguous(cache_key);
+            infcx.inner.borrow_mut().projection_cache.ambiguous(cache_key);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -657,7 +657,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
-            infcx.projection_cache.borrow_mut().error(cache_key);
+            infcx.inner.borrow_mut().projection_cache.error(cache_key);
             let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
             obligations.extend(result.obligations);
             Some(result.value)

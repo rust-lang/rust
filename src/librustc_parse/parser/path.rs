@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
             path
         });
 
-        let lo = self.meta_var_span.unwrap_or(self.token.span);
+        let lo = self.unnormalized_token().span;
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat(&token::ModSep) {
