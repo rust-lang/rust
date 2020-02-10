@@ -168,7 +168,7 @@ fn merge_errors(
     let mut res = Vec::new();
 
     for old_err in old_errors {
-        let old_err_range = *old_err.range();
+        let old_err_range = old_err.range();
         // FIXME: make sure that .start() was here previously by a mistake
         if old_err_range.end() <= range_before_reparse.start() {
             res.push(old_err);
