@@ -222,13 +222,14 @@ fn generic_extension<'cx>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot =
+            mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
 
         match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
-                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+                cx.parse_sess.gated_spans.merge(gated_spans_snapshot);
 
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -289,7 +290,7 @@ fn generic_extension<'cx>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
     }
     drop(parser);
 
