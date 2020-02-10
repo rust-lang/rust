@@ -675,11 +675,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             if let Some(task_context_hid) = self.task_context {
                 let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
-                let assign = self.expr(
-                    span,
-                    hir::ExprKind::Assign(lhs, yield_expr, span),
-                    AttrVec::new(),
-                );
+                let assign =
+                    self.expr(span, hir::ExprKind::Assign(lhs, yield_expr, span), AttrVec::new());
                 self.stmt_expr(span, assign)
             } else {
                 // Use of `await` outside of an async context. Return `yield_expr` so that we can
@@ -688,8 +685,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let loop_block =
-            self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
+        let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
 
         // loop { ...; task_context = yield (); }
         let loop_expr = self.arena.alloc(hir::Expr {
