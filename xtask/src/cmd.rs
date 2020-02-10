@@ -37,6 +37,7 @@ pub fn run(cmdline: &str, dir: &str) -> Result<()> {
 pub fn run_with_output(cmdline: &str, dir: &str) -> Result<String> {
     let output = do_run(cmdline, dir, &mut |_| {})?;
     let stdout = String::from_utf8(output.stdout)?;
+    let stdout = stdout.trim().to_string();
     Ok(stdout)
 }
 

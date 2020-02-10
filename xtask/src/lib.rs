@@ -15,7 +15,10 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{cmd::run, codegen::Mode};
+use crate::{
+    cmd::{run, run_with_output},
+    codegen::Mode,
+};
 
 pub use anyhow::Result;
 
@@ -155,4 +158,42 @@ pub fn run_pre_cache() -> Result<()> {
 fn rm_rf(path: &Path) -> Result<()> {
     if path.is_file() { fs::remove_file(path) } else { fs::remove_dir_all(path) }
         .with_context(|| format!("failed to remove {:?}", path))
+}
+
+pub fn run_release() -> Result<()> {
+    run("git switch release", ".")?;
+    run("git fetch upstream", ".")?;
+    run("git reset --hard upstream/master", ".")?;
+    run("git push", ".")?;
+
+    let changelog_dir = project_root().join("../rust-analyzer.github.io/thisweek/_posts");
+
+    let today = run_with_output("date --iso", ".")?;
+    let commit = run_with_output("git rev-parse HEAD", ".")?;
+    let changelog_n = fs::read_dir(changelog_dir.as_path())?.count();
+
+    let contents = format!(
+        "\
+= Changelog #{}
+:sectanchors:
+:page-layout: post
+
+Commit: commit:{}[] +
+Release: release:{}[]
+
+== New Features
+
+* pr:[] .
+
+== Fixes
+
+== Internal Improvements
+",
+        changelog_n, commit, today
+    );
+
+    let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
+    fs::write(&path, &contents)?;
+
+    Ok(())
 }
