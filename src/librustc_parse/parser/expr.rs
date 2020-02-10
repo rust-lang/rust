@@ -1,6 +1,6 @@
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath};
-use super::{BlockMode, Parser, PathStyle, PrevTokenKind, Restrictions, TokenType};
+use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -166,17 +166,10 @@ impl<'a> Parser<'a> {
 
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
-            // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
-            // it refers to. Interpolated identifiers are unwrapped early and never show up here
-            // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
-            // it as "interpolated", it doesn't change the answer for non-interpolated idents.
-            let lhs_span = match (self.prev_token_kind, &lhs.kind) {
-                (PrevTokenKind::Interpolated, _) => self.prev_span,
-                (PrevTokenKind::Ident, &ExprKind::Path(None, ref path))
-                    if path.segments.len() == 1 =>
-                {
-                    self.prev_span
-                }
+            // Adjust the span for interpolated LHS to point to the `$lhs` token
+            // and not to what it refers to.
+            let lhs_span = match self.unnormalized_prev_token().kind {
+                TokenKind::Interpolated(..) => self.prev_span,
                 _ => lhs.span,
             };
 
@@ -535,11 +528,13 @@ impl<'a> Parser<'a> {
         expr: PResult<'a, P<Expr>>,
     ) -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
-            if self.prev_token_kind == PrevTokenKind::Interpolated {
-                (self.prev_span, e)
-            } else {
-                (e.span, e)
-            }
+            (
+                match self.unnormalized_prev_token().kind {
+                    TokenKind::Interpolated(..) => self.prev_span,
+                    _ => e.span,
+                },
+                e,
+            )
         })
     }
 
