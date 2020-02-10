@@ -99,7 +99,8 @@ fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
     let rustc_output = Command::new("rustc")
         .current_dir(cargo_toml.parent().unwrap())
         .args(&["--print", "sysroot"])
-        .output()?;
+        .output()
+        .map_err(|e| format!("rustc --print sysroot failed: {}", e))?;
     if !rustc_output.status.success() {
         Err("failed to locate sysroot")?;
     }
