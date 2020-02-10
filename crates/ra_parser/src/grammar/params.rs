@@ -116,7 +116,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         // type Qux = fn(baz: Bar::Baz);
         Flavor::FnPointer => {
             if p.at(IDENT) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
-                patterns::pattern(p);
+                patterns::pattern_single(p);
                 types::ascription(p);
             } else {
                 types::type_(p);
@@ -127,7 +127,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         //    let foo = |bar, baz: Baz, qux: Qux::Quux| ();
         // }
         Flavor::Closure => {
-            patterns::pattern(p);
+            patterns::pattern_single(p);
             if p.at(T![:]) && !p.at(T![::]) {
                 types::ascription(p);
             }

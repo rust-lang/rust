@@ -164,9 +164,9 @@ where
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
                             let arms = vec![
-                                MatchArm { pats: vec![pat], expr: then_branch, guard: None },
+                                MatchArm { pat, expr: then_branch, guard: None },
                                 MatchArm {
-                                    pats: vec![placeholder_pat],
+                                    pat: placeholder_pat,
                                     expr: else_branch.unwrap_or_else(|| self.empty_block()),
                                     guard: None,
                                 },
@@ -203,8 +203,8 @@ where
                             let placeholder_pat = self.missing_pat();
                             let break_ = self.alloc_expr_desugared(Expr::Break { expr: None });
                             let arms = vec![
-                                MatchArm { pats: vec![pat], expr: body, guard: None },
-                                MatchArm { pats: vec![placeholder_pat], expr: break_, guard: None },
+                                MatchArm { pat, expr: body, guard: None },
+                                MatchArm { pat: placeholder_pat, expr: break_, guard: None },
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
@@ -250,7 +250,7 @@ where
                     match_arm_list
                         .arms()
                         .map(|arm| MatchArm {
-                            pats: arm.pats().map(|p| self.collect_pat(p)).collect(),
+                            pat: self.collect_pat_opt(arm.pat()),
                             expr: self.collect_expr_opt(arm.expr()),
                             guard: arm
                                 .guard()
@@ -587,6 +587,11 @@ where
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
+            ast::Pat::OrPat(p) => {
+                let pats = p.pats().map(|p| self.collect_pat(p)).collect();
+                Pat::Or(pats)
+            }
+            ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat()),
             ast::Pat::TuplePat(p) => {
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 Pat::Tuple(args)

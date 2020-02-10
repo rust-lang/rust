@@ -336,7 +336,7 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 fn cond(p: &mut Parser) {
     let m = p.start();
     if p.eat(T![let]) {
-        patterns::pattern_list(p);
+        patterns::pattern_top(p);
         p.expect(T![=]);
     }
     expr_no_struct(p);
@@ -430,7 +430,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     // }
     attributes::outer_attributes(p);
 
-    patterns::pattern_list_r(p, TokenSet::EMPTY);
+    patterns::pattern_top_r(p, TokenSet::EMPTY);
     if p.at(T![if]) {
         match_guard(p);
     }

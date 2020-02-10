@@ -151,6 +151,8 @@ pub enum SyntaxKind {
     FOR_TYPE,
     IMPL_TRAIT_TYPE,
     DYN_TRAIT_TYPE,
+    OR_PAT,
+    PAREN_PAT,
     REF_PAT,
     BOX_PAT,
     BIND_PAT,

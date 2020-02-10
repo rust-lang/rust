@@ -120,6 +120,8 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "FOR_TYPE",
         "IMPL_TRAIT_TYPE",
         "DYN_TRAIT_TYPE",
+        "OR_PAT",
+        "PAREN_PAT",
         "REF_PAT",
         "BOX_PAT",
         "BIND_PAT",
@@ -412,7 +414,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct MatchExpr { Expr, MatchArmList }
         struct MatchArmList: AttrsOwner { arms: [MatchArm] }
         struct MatchArm: AttrsOwner {
-            pats: [Pat],
+            pat: Pat,
             guard: MatchGuard,
             Expr,
          }
@@ -425,6 +427,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
          }
         struct RecordField { NameRef, Expr }
 
+        struct OrPat { pats: [Pat] }
+        struct ParenPat { Pat }
         struct RefPat { Pat }
         struct BoxPat { Pat }
         struct BindPat: NameOwner { Pat }
@@ -601,6 +605,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         enum Pat {
+            OrPat,
+            ParenPat,
             RefPat,
             BoxPat,
             BindPat,

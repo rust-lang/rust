@@ -82,6 +82,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let is_non_ref_pat = match &body[pat] {
             Pat::Tuple(..)
+            | Pat::Or(..)
             | Pat::TupleStruct { .. }
             | Pat::Record { .. }
             | Pat::Range { .. }
@@ -125,6 +126,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .collect();
 
                 Ty::apply(TypeCtor::Tuple { cardinality: args.len() as u16 }, Substs(inner_tys))
+            }
+            Pat::Or(ref pats) => {
+                if let Some((first_pat, rest)) = pats.split_first() {
+                    let ty = self.infer_pat(*first_pat, expected, default_bm);
+                    for pat in rest {
+                        self.infer_pat(*pat, expected, default_bm);
+                    }
+                    ty
+                } else {
+                    Ty::Unknown
+                }
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.as_reference() {

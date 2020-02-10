@@ -75,10 +75,10 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
 }
 
 fn is_trivial(arm: &ast::MatchArm) -> bool {
-    arm.pats().any(|pat| match pat {
-        ast::Pat::PlaceholderPat(..) => true,
+    match arm.pat() {
+        Some(ast::Pat::PlaceholderPat(..)) => true,
         _ => false,
-    })
+    }
 }
 
 fn resolve_enum_def(

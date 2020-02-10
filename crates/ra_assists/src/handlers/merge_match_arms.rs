@@ -75,7 +75,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         } else {
             arms_to_merge
                 .iter()
-                .flat_map(ast::MatchArm::pats)
+                .filter_map(ast::MatchArm::pat)
                 .map(|x| x.syntax().to_string())
                 .collect::<Vec<String>>()
                 .join(" | ")
@@ -96,10 +96,10 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
 }
 
 fn contains_placeholder(a: &ast::MatchArm) -> bool {
-    a.pats().any(|x| match x {
-        ra_syntax::ast::Pat::PlaceholderPat(..) => true,
+    match a.pat() {
+        Some(ra_syntax::ast::Pat::PlaceholderPat(..)) => true,
         _ => false,
-    })
+    }
 }
 
 fn next_arm(arm: &ast::MatchArm) -> Option<ast::MatchArm> {

@@ -63,27 +63,28 @@ SOURCE_FILE@[0; 197)
             CONDITION@[56; 84)
               LET_KW@[56; 59) "let"
               WHITESPACE@[59; 60) " "
-              TUPLE_STRUCT_PAT@[60; 67)
-                PATH@[60; 64)
-                  PATH_SEGMENT@[60; 64)
-                    NAME_REF@[60; 64)
-                      IDENT@[60; 64) "Some"
-                L_PAREN@[64; 65) "("
-                PLACEHOLDER_PAT@[65; 66)
-                  UNDERSCORE@[65; 66) "_"
-                R_PAREN@[66; 67) ")"
-              WHITESPACE@[67; 68) " "
-              PIPE@[68; 69) "|"
-              WHITESPACE@[69; 70) " "
-              TUPLE_STRUCT_PAT@[70; 77)
-                PATH@[70; 74)
-                  PATH_SEGMENT@[70; 74)
-                    NAME_REF@[70; 74)
-                      IDENT@[70; 74) "Some"
-                L_PAREN@[74; 75) "("
-                PLACEHOLDER_PAT@[75; 76)
-                  UNDERSCORE@[75; 76) "_"
-                R_PAREN@[76; 77) ")"
+              OR_PAT@[60; 77)
+                TUPLE_STRUCT_PAT@[60; 67)
+                  PATH@[60; 64)
+                    PATH_SEGMENT@[60; 64)
+                      NAME_REF@[60; 64)
+                        IDENT@[60; 64) "Some"
+                  L_PAREN@[64; 65) "("
+                  PLACEHOLDER_PAT@[65; 66)
+                    UNDERSCORE@[65; 66) "_"
+                  R_PAREN@[66; 67) ")"
+                WHITESPACE@[67; 68) " "
+                PIPE@[68; 69) "|"
+                WHITESPACE@[69; 70) " "
+                TUPLE_STRUCT_PAT@[70; 77)
+                  PATH@[70; 74)
+                    PATH_SEGMENT@[70; 74)
+                      NAME_REF@[70; 74)
+                        IDENT@[70; 74) "Some"
+                  L_PAREN@[74; 75) "("
+                  PLACEHOLDER_PAT@[75; 76)
+                    UNDERSCORE@[75; 76) "_"
+                  R_PAREN@[76; 77) ")"
               WHITESPACE@[77; 78) " "
               EQ@[78; 79) "="
               WHITESPACE@[79; 80) " "
@@ -137,27 +138,28 @@ SOURCE_FILE@[0; 197)
             CONDITION@[129; 157)
               LET_KW@[129; 132) "let"
               WHITESPACE@[132; 133) " "
-              TUPLE_STRUCT_PAT@[133; 140)
-                PATH@[133; 137)
-                  PATH_SEGMENT@[133; 137)
-                    NAME_REF@[133; 137)
-                      IDENT@[133; 137) "Some"
-                L_PAREN@[137; 138) "("
-                PLACEHOLDER_PAT@[138; 139)
-                  UNDERSCORE@[138; 139) "_"
-                R_PAREN@[139; 140) ")"
-              WHITESPACE@[140; 141) " "
-              PIPE@[141; 142) "|"
-              WHITESPACE@[142; 143) " "
-              TUPLE_STRUCT_PAT@[143; 150)
-                PATH@[143; 147)
-                  PATH_SEGMENT@[143; 147)
-                    NAME_REF@[143; 147)
-                      IDENT@[143; 147) "Some"
-                L_PAREN@[147; 148) "("
-                PLACEHOLDER_PAT@[148; 149)
-                  UNDERSCORE@[148; 149) "_"
-                R_PAREN@[149; 150) ")"
+              OR_PAT@[133; 150)
+                TUPLE_STRUCT_PAT@[133; 140)
+                  PATH@[133; 137)
+                    PATH_SEGMENT@[133; 137)
+                      NAME_REF@[133; 137)
+                        IDENT@[133; 137) "Some"
+                  L_PAREN@[137; 138) "("
+                  PLACEHOLDER_PAT@[138; 139)
+                    UNDERSCORE@[138; 139) "_"
+                  R_PAREN@[139; 140) ")"
+                WHITESPACE@[140; 141) " "
+                PIPE@[141; 142) "|"
+                WHITESPACE@[142; 143) " "
+                TUPLE_STRUCT_PAT@[143; 150)
+                  PATH@[143; 147)
+                    PATH_SEGMENT@[143; 147)
+                      NAME_REF@[143; 147)
+                        IDENT@[143; 147) "Some"
+                  L_PAREN@[147; 148) "("
+                  PLACEHOLDER_PAT@[148; 149)
+                    UNDERSCORE@[148; 149) "_"
+                  R_PAREN@[149; 150) ")"
               WHITESPACE@[150; 151) " "
               EQ@[151; 152) "="
               WHITESPACE@[152; 153) " "

@@ -90,7 +90,7 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
 // ```
 pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
-    let last_match_pat = match_arm.pats().last()?;
+    let match_pat = match_arm.pat()?;
 
     let arm_body = match_arm.expr()?;
     let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone())?;
@@ -122,8 +122,8 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
                 _ => edit.replace(if_expr.syntax().text_range(), then_block.syntax().text()),
             }
 
-            edit.insert(last_match_pat.syntax().text_range().end(), buf);
-            edit.set_cursor(last_match_pat.syntax().text_range().end() + TextUnit::from(1));
+            edit.insert(match_pat.syntax().text_range().end(), buf);
+            edit.set_cursor(match_pat.syntax().text_range().end() + TextUnit::from(1));
         },
     )
 }

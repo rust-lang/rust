@@ -158,9 +158,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             compute_expr_scopes(*expr, body, scopes, scope);
             for arm in arms {
                 let scope = scopes.new_scope(scope);
-                for pat in &arm.pats {
-                    scopes.add_bindings(body, scope, *pat);
-                }
+                scopes.add_bindings(body, scope, arm.pat);
                 scopes.set_scope(arm.expr, scope);
                 compute_expr_scopes(arm.expr, body, scopes, scope);
             }
