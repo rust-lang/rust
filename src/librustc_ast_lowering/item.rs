@@ -809,7 +809,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
-    fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
+    crate fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
