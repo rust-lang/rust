@@ -98,8 +98,7 @@ impl<'a> Parser<'a> {
 
         if self.is_fn_front_matter() {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) =
-                self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+            let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
             let kind = ItemKind::Fn(sig, generics, body);
             return self.mk_item_with_info(attrs, lo, vis, (ident, kind, None));
         }
@@ -715,12 +714,12 @@ impl<'a> Parser<'a> {
     fn parse_assoc_item(
         &mut self,
         at_end: &mut bool,
-        is_name_required: fn(&token::Token) -> bool,
+        req_name: fn(&token::Token) -> bool,
     ) -> PResult<'a, P<AssocItem>> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_assoc_item_(at_end, attrs, is_name_required);
+            let item = this.parse_assoc_item_(at_end, attrs, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -736,7 +735,7 @@ impl<'a> Parser<'a> {
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
-        is_name_required: fn(&token::Token) -> bool,
+        req_name: fn(&token::Token) -> bool,
     ) -> PResult<'a, AssocItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
@@ -744,8 +743,7 @@ impl<'a> Parser<'a> {
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
         } else if self.is_fn_front_matter() {
-            let cfg = ParamCfg { is_name_required };
-            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, &cfg)?;
+            let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
             (ident, AssocItemKind::Fn(sig, body), generics)
         } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
             (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
@@ -982,8 +980,7 @@ impl<'a> Parser<'a> {
             self.parse_item_foreign_type(vis, lo, attrs)
         } else if self.is_fn_front_matter() {
             // FOREIGN FUNCTION ITEM
-            let (ident, sig, generics, body) =
-                self.parse_fn(&mut false, &mut attrs, &ParamCfg::FREE)?;
+            let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
             let kind = ForeignItemKind::Fn(sig, generics, body);
             let span = lo.to(self.prev_span);
             Ok(P(ast::ForeignItem {
@@ -1607,16 +1604,9 @@ impl<'a> Parser<'a> {
 }
 
 /// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
-pub(super) struct ParamCfg {
-    /// `is_name_required` decides if, per-parameter,
-    /// the parameter must have a pattern or just a type.
-    pub is_name_required: fn(&token::Token) -> bool,
-}
-
-impl ParamCfg {
-    /// Configuration for a free function in the sense that it is not associated.
-    const FREE: Self = ParamCfg { is_name_required: |_| true };
-}
+///
+/// The function decides if, per-parameter `p`, `p` must have a pattern or just a type.
+type ReqName = fn(&token::Token) -> bool;
 
 /// Parsing of functions and methods.
 impl<'a> Parser<'a> {
@@ -1625,12 +1615,12 @@ impl<'a> Parser<'a> {
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
-        cfg: &ParamCfg,
+        req_name: ReqName,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
         let header = self.parse_fn_front_matter()?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
-        let decl = self.parse_fn_decl(cfg, AllowPlus::Yes)?; // `(p: u8, ...)`
+        let decl = self.parse_fn_decl(req_name, AllowPlus::Yes)?; // `(p: u8, ...)`
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
         let body = self.parse_fn_body(at_end, attrs)?; // `;` or `{ ... }`.
         Ok((ident, FnSig { header, decl }, generics, body))
@@ -1732,21 +1722,21 @@ impl<'a> Parser<'a> {
     /// Parses the parameter list and result type of a function declaration.
     pub(super) fn parse_fn_decl(
         &mut self,
-        cfg: &ParamCfg,
+        req_name: ReqName,
         ret_allow_plus: AllowPlus,
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
-            inputs: self.parse_fn_params(cfg)?,
+            inputs: self.parse_fn_params(req_name)?,
             output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
         }))
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
-    fn parse_fn_params(&mut self, cfg: &ParamCfg) -> PResult<'a, Vec<Param>> {
+    fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, Vec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
-            let param = p.parse_param_general(&cfg, first_param).or_else(|mut e| {
+            let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_span;
                 // Skip every token until next possible arg or end.
@@ -1766,7 +1756,7 @@ impl<'a> Parser<'a> {
     /// Parses a single function parameter.
     ///
     /// - `self` is syntactically allowed when `first_param` holds.
-    fn parse_param_general(&mut self, cfg: &ParamCfg, first_param: bool) -> PResult<'a, Param> {
+    fn parse_param_general(&mut self, req_name: ReqName, first_param: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
 
@@ -1778,7 +1768,7 @@ impl<'a> Parser<'a> {
 
         let is_name_required = match self.token.kind {
             token::DotDotDot => false,
-            _ => (cfg.is_name_required)(&self.token),
+            _ => req_name(&self.token),
         };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
