@@ -1,4 +1,3 @@
-use cargo_metadata::MetadataCommand;
 use lazy_static::lazy_static;
 use std::env;
 use std::path::PathBuf;
@@ -7,7 +6,7 @@ lazy_static! {
     pub static ref CARGO_TARGET_DIR: PathBuf = {
         match env::var_os("CARGO_TARGET_DIR") {
             Some(v) => v.into(),
-            None => MetadataCommand::new().exec().unwrap().target_directory,
+            None => env::current_dir().unwrap().join("target"),
         }
     };
     pub static ref TARGET_LIB: PathBuf = {
