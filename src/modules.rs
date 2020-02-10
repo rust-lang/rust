@@ -2,15 +2,14 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use rustc_errors::PResult;
+use rustc_parse::{new_sub_parser_from_file, parser, DirectoryOwnership};
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{source_map, Span, DUMMY_SP};
 use syntax::ast;
-use syntax::attr;
-use syntax::parse::{
-    new_sub_parser_from_file, parser, token::TokenKind, DirectoryOwnership, PResult, ParseSess,
-};
-use syntax::source_map::{self, Span};
-use syntax::symbol::sym;
+use syntax::token::TokenKind;
 use syntax::visit::Visitor;
-use syntax_pos::{self, symbol::Symbol, DUMMY_SP};
 
 use crate::attr::MetaVisitor;
 use crate::config::FileName;
@@ -36,8 +35,8 @@ struct Directory {
 }
 
 impl<'a> Directory {
-    fn to_syntax_directory(&'a self) -> syntax::parse::Directory<'a> {
-        syntax::parse::Directory {
+    fn to_syntax_directory(&'a self) -> rustc_parse::Directory<'a> {
+        rustc_parse::Directory {
             path: Cow::Borrowed(&self.path),
             ownership: self.ownership.clone(),
         }
@@ -173,7 +172,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         } else {
             // An internal module (`mod foo { /* ... */ }`);
             if let Some(path) = find_path_value(&item.attrs) {
-                let path = Path::new(&path.as_str()).to_path_buf();
+                let path = Path::new(&*path.as_str()).to_path_buf();
                 Ok(Some(SubModKind::InternalWithPath(path)))
             } else {
                 Ok(Some(SubModKind::Internal(item)))
@@ -273,7 +272,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
-            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod(_) => None,
+            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
         };
         match parser::Parser::default_submod_path(
             mod_name,
@@ -305,7 +304,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 
     fn push_inline_mod_directory(&mut self, id: ast::Ident, attrs: &[ast::Attribute]) {
         if let Some(path) = find_path_value(attrs) {
-            self.directory.path.push(&path.as_str());
+            self.directory.path.push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
             // We have to push on the current module name in the case of relative
@@ -317,10 +316,10 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
-                    self.directory.path.push(ident.as_str());
+                    self.directory.path.push(&*ident.as_str());
                 }
             }
-            self.directory.path.push(&id.as_str());
+            self.directory.path.push(&*id.as_str());
         }
     }
 
@@ -357,7 +356,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if !actual_path.exists() {
                 continue;
             }
-            let file_name = syntax_pos::FileName::Real(actual_path.clone());
+            let file_name = rustc_span::FileName::Real(actual_path.clone());
             if self
                 .parse_sess
                 .source_map()
@@ -442,7 +441,11 @@ fn parse_inner_attributes<'a>(parser: &mut parser::Parser<'a>) -> PResult<'a, Ve
             }
             TokenKind::DocComment(s) => {
                 // we need to get the position of this token before we bump.
-                let attr = attr::mk_sugared_doc_attr(s, parser.token.span);
+                let attr = syntax::attr::mk_doc_comment(
+                    syntax::util::comments::doc_comment_style(&s.as_str()),
+                    s,
+                    parser.token.span,
+                );
                 if attr.style == ast::AttrStyle::Inner {
                     attrs.push(attr);
                     parser.bump();

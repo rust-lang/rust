@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-use syntax::source_map::SourceMap;
+use rustc_span::source_map::SourceMap;
 
 use crate::config::FileName;
 use crate::emitter::{self, Emitter};
@@ -65,11 +65,11 @@ where
         }
     }
 
-    impl From<&FileName> for syntax_pos::FileName {
-        fn from(filename: &FileName) -> syntax_pos::FileName {
+    impl From<&FileName> for rustc_span::FileName {
+        fn from(filename: &FileName) -> rustc_span::FileName {
             match filename {
-                FileName::Real(path) => syntax_pos::FileName::Real(path.to_owned()),
-                FileName::Stdin => syntax_pos::FileName::Custom("stdin".to_owned()),
+                FileName::Real(path) => rustc_span::FileName::Real(path.to_owned()),
+                FileName::Stdin => rustc_span::FileName::Custom("stdin".to_owned()),
             }
         }
     }

@@ -58,7 +58,7 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use syntax::source_map::{BytePos, Span};
+use rustc_span::{BytePos, Span};
 use syntax::{ast, ptr};
 
 use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};

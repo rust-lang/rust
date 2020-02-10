@@ -20,7 +20,8 @@ use std::rc::Rc;
 
 use failure::Fail;
 use ignore;
-use syntax::{ast, parse::DirectoryOwnership};
+use rustc_parse::DirectoryOwnership;
+use syntax::ast;
 
 use crate::comment::LineClasses;
 use crate::emitter::Emitter;

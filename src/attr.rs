@@ -1,8 +1,7 @@
 //! Format attributes and meta items.
 
+use rustc_span::{symbol::sym, BytePos, Span, DUMMY_SP};
 use syntax::ast;
-use syntax::source_map::{BytePos, Span, DUMMY_SP};
-use syntax::symbol::sym;
 
 use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
@@ -35,7 +34,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
         ast::StmtKind::Mac(ref mac) => {
             let (ref mac, _, _) = **mac;
-            mac.span
+            mac.span()
         }
     }
 }
@@ -168,7 +167,7 @@ fn rewrite_initial_doc_comments(
         return Some((0, None));
     }
     // Rewrite doc comments
-    let sugared_docs = take_while_with_pred(context, attrs, |a| a.is_sugared_doc);
+    let sugared_docs = take_while_with_pred(context, attrs, |a| a.is_doc_comment());
     if !sugared_docs.is_empty() {
         let snippet = sugared_docs
             .iter()
@@ -316,7 +315,7 @@ where
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let snippet = context.snippet(self.span);
-        if self.is_sugared_doc {
+        if self.is_doc_comment() {
             rewrite_doc_comment(snippet, shape.comment(context.config), context.config)
         } else {
             let should_skip = self
@@ -438,7 +437,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                     )?;
                     result.push_str(&comment);
                     if let Some(next) = attrs.get(derives.len()) {
-                        if next.is_sugared_doc {
+                        if next.is_doc_comment() {
                             let snippet = context.snippet(missing_span);
                             let (_, mlb) = has_newlines_before_after_comment(snippet);
                             result.push_str(&mlb);
@@ -471,7 +470,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 )?;
                 result.push_str(&comment);
                 if let Some(next) = attrs.get(1) {
-                    if next.is_sugared_doc {
+                    if next.is_doc_comment() {
                         let snippet = context.snippet(missing_span);
                         let (_, mlb) = has_newlines_before_after_comment(snippet);
                         result.push_str(&mlb);

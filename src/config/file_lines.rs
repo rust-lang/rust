@@ -6,10 +6,9 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{cmp, fmt, iter, str};
 
+use rustc_span::{self, SourceFile};
 use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
-
-use syntax::source_map::{self, SourceFile};
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
@@ -25,11 +24,11 @@ pub enum FileName {
     Stdin,
 }
 
-impl From<source_map::FileName> for FileName {
-    fn from(name: source_map::FileName) -> FileName {
+impl From<rustc_span::FileName> for FileName {
+    fn from(name: rustc_span::FileName) -> FileName {
         match name {
-            source_map::FileName::Real(p) => FileName::Real(p),
-            source_map::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
+            rustc_span::FileName::Real(p) => FileName::Real(p),
+            rustc_span::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
             _ => unreachable!(),
         }
     }

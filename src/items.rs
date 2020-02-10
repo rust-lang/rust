@@ -4,10 +4,9 @@ use std::borrow::Cow;
 use std::cmp::{max, min, Ordering};
 
 use regex::Regex;
-use rustc_target::spec::abi;
-use syntax::source_map::{self, BytePos, Span};
+use rustc_span::{source_map, symbol, BytePos, Span, DUMMY_SP};
 use syntax::visit;
-use syntax::{ast, ptr, symbol};
+use syntax::{ast, ptr};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -34,7 +33,7 @@ use crate::visitor::FmtVisitor;
 
 const DEFAULT_VISIBILITY: ast::Visibility = source_map::Spanned {
     node: ast::VisibilityKind::Inherited,
-    span: source_map::DUMMY_SP,
+    span: DUMMY_SP,
 };
 
 fn type_annotation_separator(config: &Config) -> &str {
@@ -137,7 +136,11 @@ impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
         Item {
             keyword: "",
-            abi: format_abi(fm.abi, config.force_explicit_abi(), true),
+            abi: format_extern(
+                ast::Extern::from_abi(fm.abi),
+                config.force_explicit_abi(),
+                true,
+            ),
             vis: None,
             body: fm
                 .items
@@ -161,7 +164,7 @@ enum BodyElement<'a> {
 pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
-    abi: abi::Abi,
+    ext: ast::Extern,
     is_async: Cow<'a, ast::IsAsync>,
     constness: ast::Constness,
     defaultness: ast::Defaultness,
@@ -178,7 +181,7 @@ impl<'a> FnSig<'a> {
         FnSig {
             decl,
             generics,
-            abi: abi::Abi::Rust,
+            ext: ast::Extern::None,
             is_async: Cow::Owned(ast::IsAsync::NotAsync),
             constness: ast::Constness::NotConst,
             defaultness: ast::Defaultness::Final,
@@ -188,7 +191,7 @@ impl<'a> FnSig<'a> {
     }
 
     pub(crate) fn from_method_sig(
-        method_sig: &'a ast::MethodSig,
+        method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
     ) -> FnSig<'a> {
         FnSig {
@@ -196,7 +199,7 @@ impl<'a> FnSig<'a> {
             is_async: Cow::Borrowed(&method_sig.header.asyncness.node),
             constness: method_sig.header.constness.node,
             defaultness: ast::Defaultness::Final,
-            abi: method_sig.header.abi,
+            ext: method_sig.header.ext,
             decl: &*method_sig.decl,
             generics,
             visibility: DEFAULT_VISIBILITY,
@@ -210,24 +213,24 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::ItemFn(_, fn_header, visibility, _) => FnSig {
-                decl,
-                generics,
-                abi: fn_header.abi,
-                constness: fn_header.constness.node,
-                is_async: Cow::Borrowed(&fn_header.asyncness.node),
-                defaultness,
-                unsafety: fn_header.unsafety,
-                visibility: visibility.clone(),
-            },
-            visit::FnKind::Method(_, method_sig, vis, _) => {
-                let mut fn_sig = FnSig::from_method_sig(method_sig, generics);
-                fn_sig.defaultness = defaultness;
-                if let Some(vis) = vis {
+            visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, _) => match fn_ctxt {
+                visit::FnCtxt::Assoc(..) => {
+                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics);
+                    fn_sig.defaultness = defaultness;
                     fn_sig.visibility = vis.clone();
+                    fn_sig
                 }
-                fn_sig
-            }
+                _ => FnSig {
+                    decl,
+                    generics,
+                    ext: fn_sig.header.ext,
+                    constness: fn_sig.header.constness.node,
+                    is_async: Cow::Borrowed(&fn_sig.header.asyncness.node),
+                    defaultness,
+                    unsafety: fn_sig.header.unsafety,
+                    visibility: vis.clone(),
+                },
+            },
             _ => unreachable!(),
         }
     }
@@ -240,8 +243,8 @@ impl<'a> FnSig<'a> {
         result.push_str(format_constness(self.constness));
         result.push_str(format_async(&self.is_async));
         result.push_str(format_unsafety(self.unsafety));
-        result.push_str(&format_abi(
-            self.abi,
+        result.push_str(&format_extern(
+            self.ext,
             context.config.force_explicit_abi(),
             false,
         ));
@@ -327,7 +330,7 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         indent: Indent,
         ident: ast::Ident,
-        sig: &ast::MethodSig,
+        sig: &ast::FnSig,
         generics: &ast::Generics,
         span: Span,
     ) -> Option<String> {
@@ -575,7 +578,7 @@ impl<'a> FmtVisitor<'a> {
         combine_strs_with_missing_comments(&context, &attrs_str, &variant_body, span, shape, false)
     }
 
-    fn visit_impl_items(&mut self, items: &[ast::ImplItem]) {
+    fn visit_impl_items(&mut self, items: &[ptr::P<ast::AssocItem>]) {
         if self.get_context().config.reorder_impl_items() {
             // Create visitor for each items, then reorder them.
             let mut buffer = vec![];
@@ -584,27 +587,72 @@ impl<'a> FmtVisitor<'a> {
                 buffer.push((self.buffer.clone(), item.clone()));
                 self.buffer.clear();
             }
+
+            fn is_type(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+                match ty {
+                    None => true,
+                    Some(lty) => match lty.kind.opaque_top_hack() {
+                        None => true,
+                        Some(_) => false,
+                    },
+                }
+            }
+
+            fn is_opaque(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+                match ty {
+                    None => false,
+                    Some(lty) => match lty.kind.opaque_top_hack() {
+                        None => false,
+                        Some(_) => true,
+                    },
+                }
+            }
+
+            fn both_type(
+                a: &Option<syntax::ptr::P<ast::Ty>>,
+                b: &Option<syntax::ptr::P<ast::Ty>>,
+            ) -> bool {
+                is_type(a) && is_type(b)
+            }
+
+            fn both_opaque(
+                a: &Option<syntax::ptr::P<ast::Ty>>,
+                b: &Option<syntax::ptr::P<ast::Ty>>,
+            ) -> bool {
+                is_opaque(a) && is_opaque(b)
+            }
+
+            // In rustc-ap-v638 the `OpaqueTy` AssocItemKind variant was removed but
+            // we still need to differentiate to maintain sorting order.
+
             // type -> opaque -> const -> macro -> method
-            use crate::ast::ImplItemKind::*;
-            fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
+            use crate::ast::AssocItemKind::*;
+            fn need_empty_line(a: &ast::AssocItemKind, b: &ast::AssocItemKind) -> bool {
                 match (a, b) {
-                    (TyAlias(..), TyAlias(..))
-                    | (Const(..), Const(..))
-                    | (OpaqueTy(..), OpaqueTy(..)) => false,
+                    (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                        if both_type(lty, rty) || both_opaque(lty, rty) =>
+                    {
+                        false
+                    }
+                    (Const(..), Const(..)) => false,
                     _ => true,
                 }
             }
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.kind, &b.kind) {
-                (TyAlias(..), TyAlias(..))
-                | (Const(..), Const(..))
-                | (Macro(..), Macro(..))
-                | (OpaqueTy(..), OpaqueTy(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
-                (Method(..), Method(..)) => a.span.lo().cmp(&b.span.lo()),
+                (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                    if both_type(lty, rty) || both_opaque(lty, rty) =>
+                {
+                    a.ident.as_str().cmp(&b.ident.as_str())
+                }
+                (Const(..), Const(..)) | (Macro(..), Macro(..)) => {
+                    a.ident.as_str().cmp(&b.ident.as_str())
+                }
+                (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
+                (TyAlias(_, ref ty), _) if is_type(ty) => Ordering::Less,
+                (_, TyAlias(_, ref ty)) if is_type(ty) => Ordering::Greater,
                 (TyAlias(..), _) => Ordering::Less,
                 (_, TyAlias(..)) => Ordering::Greater,
-                (OpaqueTy(..), _) => Ordering::Less,
-                (_, OpaqueTy(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
                 (_, Const(..)) => Ordering::Greater,
                 (Macro(..), _) => Ordering::Less,
@@ -638,7 +686,13 @@ pub(crate) fn format_impl(
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
-    if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.kind {
+    if let ast::ItemKind::Impl {
+        ref generics,
+        ref self_ty,
+        ref items,
+        ..
+    } = item.kind
+    {
         let mut result = String::with_capacity(128);
         let ref_and_type = format_impl_ref_and_type(context, item, offset)?;
         let sep = offset.to_string_with_newline(context.config);
@@ -695,7 +749,7 @@ pub(crate) fn format_impl(
             }
         }
 
-        if is_impl_single_line(context, items, &result, &where_clause_str, item)? {
+        if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
                 // if the where_clause contains extra comments AND
@@ -764,7 +818,7 @@ pub(crate) fn format_impl(
 
 fn is_impl_single_line(
     context: &RewriteContext<'_>,
-    items: &[ast::ImplItem],
+    items: &[ptr::P<ast::AssocItem>],
     result: &str,
     where_clause_str: &str,
     item: &ast::Item,
@@ -786,15 +840,15 @@ fn format_impl_ref_and_type(
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
-    if let ast::ItemKind::Impl(
+    if let ast::ItemKind::Impl {
         unsafety,
         polarity,
         defaultness,
         ref generics,
-        ref trait_ref,
+        of_trait: ref trait_ref,
         ref self_ty,
-        _,
-    ) = item.kind
+        ..
+    } = item.kind
     {
         let mut result = String::with_capacity(128);
 
@@ -1662,9 +1716,7 @@ impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, ty, mutability, expr) = match item.kind {
             ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
-            ast::ItemKind::Const(ref ty, ref expr) => {
-                ("const", ty, ast::Mutability::Immutable, expr)
-            }
+            ast::ItemKind::Const(ref ty, ref expr) => ("const", ty, ast::Mutability::Not, expr),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1679,9 +1731,9 @@ impl<'a> StaticParts<'a> {
         }
     }
 
-    pub(crate) fn from_trait_item(ti: &'a ast::TraitItem) -> Self {
+    pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
         let (ty, expr_opt) = match ti.kind {
-            ast::TraitItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
+            ast::AssocItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1689,16 +1741,16 @@ impl<'a> StaticParts<'a> {
             vis: &DEFAULT_VISIBILITY,
             ident: ti.ident,
             ty,
-            mutability: ast::Mutability::Immutable,
+            mutability: ast::Mutability::Not,
             expr_opt: expr_opt.as_ref(),
             defaultness: None,
             span: ti.span,
         }
     }
 
-    pub(crate) fn from_impl_item(ii: &'a ast::ImplItem) -> Self {
+    pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
         let (ty, expr) = match ii.kind {
-            ast::ImplItemKind::Const(ref ty, ref expr) => (ty, expr),
+            ast::AssocItemKind::Const(ref ty, ref expr) => (ty, expr),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1706,8 +1758,8 @@ impl<'a> StaticParts<'a> {
             vis: &ii.vis,
             ident: ii.ident,
             ty,
-            mutability: ast::Mutability::Immutable,
-            expr_opt: Some(expr),
+            mutability: ast::Mutability::Not,
+            expr_opt: expr.as_ref(),
             defaultness: Some(ii.defaultness),
             span: ii.span,
         }
@@ -2533,7 +2585,7 @@ fn compute_budgets_for_params(
     ret_str_len: usize,
     fn_brace_style: FnBraceStyle,
     force_vertical_layout: bool,
-) -> Option<((usize, usize, Indent))> {
+) -> Option<(usize, usize, Indent)> {
     debug!(
         "compute_budgets_for_params {} {:?}, {}, {:?}",
         result.len(),
@@ -3031,11 +3083,11 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.kind {
-            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => rewrite_fn_base(
+            ast::ForeignItemKind::Fn(ref fn_sig, ref generics, _) => rewrite_fn_base(
                 context,
                 shape.indent,
                 self.ident,
-                &FnSig::new(fn_decl, generics, self.vis.clone()),
+                &FnSig::new(&fn_sig.decl, generics, self.vis.clone()),
                 span,
                 FnBraceStyle::None,
             )
@@ -3101,7 +3153,7 @@ fn rewrite_attrs(
 
     let allow_extend = if attrs.len() == 1 {
         let line_len = attrs_str.len() + 1 + item_str.len();
-        !attrs.first().unwrap().is_sugared_doc
+        !attrs.first().unwrap().is_doc_comment()
             && context.config.inline_attribute_width() >= line_len
     } else {
         false

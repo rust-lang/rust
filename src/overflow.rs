@@ -3,8 +3,8 @@
 use std::cmp::min;
 
 use itertools::Itertools;
-use syntax::parse::token::DelimToken;
-use syntax::source_map::Span;
+use rustc_span::Span;
+use syntax::token::DelimToken;
 use syntax::{ast, ptr};
 
 use crate::closures;

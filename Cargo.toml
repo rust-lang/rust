@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.4.11"
+version = "1.4.12"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
@@ -52,7 +52,7 @@ bytecount = "0.6"
 unicode-width = "0.1.5"
 unicode_categories = "0.1.1"
 dirs = "2.0.1"
-ignore = "0.4.6"
+ignore = "0.4.11"
 annotate-snippets = { version = "0.6", features = ["ansi_term"] }
 structopt = "0.3"
 rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
@@ -62,17 +62,37 @@ rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
+[dependencies.rustc_ast_pretty]
+package = "rustc-ap-rustc_ast_pretty"
+version = "642.0.0"
+
+[dependencies.rustc_data_structures]
+package = "rustc-ap-rustc_data_structures"
+version = "642.0.0"
+
+[dependencies.rustc_errors]
+package = "rustc-ap-rustc_errors"
+version = "642.0.0"
+
+[dependencies.rustc_parse]
+package = "rustc-ap-rustc_parse"
+version = "642.0.0"
+
+[dependencies.rustc_session]
+package = "rustc-ap-rustc_session"
+version = "642.0.0"
+
+[dependencies.rustc_span]
+package = "rustc-ap-rustc_span"
+version = "642.0.0"
+
 [dependencies.rustc_target]
 package = "rustc-ap-rustc_target"
-version = "610.0.0"
+version = "642.0.0"
 
 [dependencies.syntax]
 package = "rustc-ap-syntax"
-version = "610.0.0"
-
-[dependencies.syntax_pos]
-package = "rustc-ap-syntax_pos"
-version = "610.0.0"
+version = "642.0.0"
 
 [dev-dependencies]
 lazy_static = "1.0.0"

@@ -1,14 +1,13 @@
 use std::borrow::Cow;
 
+use rustc_ast_pretty::pprust;
+use rustc_span::{sym, BytePos, ExpnId, Span, Symbol, SyntaxContext};
 use rustc_target::spec::abi;
 use syntax::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use syntax::ptr;
-use syntax::source_map::{BytePos, Span, SyntaxContext};
-use syntax::symbol::{sym, Symbol};
-use syntax_pos::ExpnId;
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
@@ -44,7 +43,7 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
         (
             VisibilityKind::Restricted { path: p, .. },
             VisibilityKind::Restricted { path: q, .. },
-        ) => p.to_string() == q.to_string(),
+        ) => pprust::path_to_string(p) == pprust::path_to_string(q),
         (VisibilityKind::Public, VisibilityKind::Public)
         | (VisibilityKind::Inherited, VisibilityKind::Inherited)
         | (
@@ -129,13 +128,25 @@ pub(crate) fn format_auto(is_auto: ast::IsAuto) -> &'static str {
 #[inline]
 pub(crate) fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
-        ast::Mutability::Mutable => "mut ",
-        ast::Mutability::Immutable => "",
+        ast::Mutability::Mut => "mut ",
+        ast::Mutability::Not => "",
     }
 }
 
 #[inline]
-pub(crate) fn format_abi(abi: abi::Abi, explicit_abi: bool, is_mod: bool) -> Cow<'static, str> {
+pub(crate) fn format_extern(
+    ext: ast::Extern,
+    explicit_abi: bool,
+    is_mod: bool,
+) -> Cow<'static, str> {
+    let abi = match ext {
+        ast::Extern::None => abi::Abi::Rust,
+        ast::Extern::Implicit => abi::Abi::C,
+        ast::Extern::Explicit(abi) => {
+            abi::lookup(&abi.symbol_unescaped.as_str()).unwrap_or(abi::Abi::Rust)
+        }
+    };
+
     if abi == abi::Abi::Rust && !is_mod {
         Cow::from("")
     } else if abi == abi::Abi::C && !explicit_abi {
@@ -243,8 +254,9 @@ pub(crate) fn last_line_extendable(s: &str) -> bool {
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.kind {
         MetaItemKind::Word => {
-            let path_str = meta_item.path.to_string();
-            path_str == skip_annotation().as_str() || path_str == depr_skip_annotation().as_str()
+            let path_str = pprust::path_to_string(&meta_item.path);
+            path_str == &*skip_annotation().as_str()
+                || path_str == &*depr_skip_annotation().as_str()
         }
         MetaItemKind::List(ref l) => {
             meta_item.check_name(sym::cfg_attr) && l.len() == 2 && is_skip_nested(&l[1])
@@ -420,7 +432,7 @@ pub(crate) fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         | ast::ExprKind::Binary(_, ref e, _)
         | ast::ExprKind::Cast(ref e, _)
         | ast::ExprKind::Type(ref e, _)
-        | ast::ExprKind::Assign(ref e, _)
+        | ast::ExprKind::Assign(ref e, _, _)
         | ast::ExprKind::AssignOp(_, ref e, _)
         | ast::ExprKind::Field(ref e, _)
         | ast::ExprKind::Index(ref e, _)

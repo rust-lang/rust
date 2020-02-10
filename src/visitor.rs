@@ -1,8 +1,12 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use syntax::parse::ParseSess;
-use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
+use rustc_session::parse::ParseSess;
+use rustc_span::{
+    source_map::{self, SourceMap},
+    BytePos, Pos, Span,
+};
+use syntax::token::DelimToken;
 use syntax::{ast, visit};
 
 use crate::attr::*;
@@ -16,7 +20,7 @@ use crate::items::{
     rewrite_opaque_impl_type, rewrite_opaque_type, rewrite_type_alias, FnBraceStyle, FnSig,
     StaticParts, StructParts,
 };
-use crate::macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
+use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::skip::{is_skip_attr, SkipContext};
@@ -35,6 +39,8 @@ pub(crate) struct SnippetProvider<'a> {
     big_snippet: &'a str,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
+    /// A end position of the file that this snippet lives.
+    end_pos: usize,
 }
 
 impl<'a> SnippetProvider<'a> {
@@ -44,12 +50,18 @@ impl<'a> SnippetProvider<'a> {
         Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub(crate) fn new(start_pos: BytePos, big_snippet: &'a str) -> Self {
+    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: &'a str) -> Self {
         let start_pos = start_pos.to_usize();
+        let end_pos = end_pos.to_usize();
         SnippetProvider {
             big_snippet,
             start_pos,
+            end_pos,
         }
+    }
+
+    pub(crate) fn end_pos(&self) -> BytePos {
+        BytePos::from_usize(self.end_pos)
     }
 }
 
@@ -348,7 +360,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
+            visit::FnKind::Fn(_, ident, _, _, Some(ref b)) => {
                 block = b;
                 self.rewrite_fn_before_block(
                     indent,
@@ -357,7 +369,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     mk_sp(s.lo(), b.span.lo()),
                 )
             }
-            visit::FnKind::Closure(_) => unreachable!(),
+            _ => unreachable!(),
         };
 
         if let Some((fn_str, fn_brace_style)) = rewrite {
@@ -441,7 +453,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if should_visit_node_again {
             match item.kind {
                 ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
-                ast::ItemKind::Impl(..) => {
+                ast::ItemKind::Impl { .. } => {
                     let block_indent = self.block_indent;
                     let rw = self.with_context(|ctx| format_impl(&ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
@@ -495,39 +507,51 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                     self.visit_static(&StaticParts::from_item(item));
                 }
-                ast::ItemKind::Fn(ref decl, ref fn_header, ref generics, ref body) => {
+                ast::ItemKind::Fn(ref fn_signature, ref generics, ref body) => {
                     let inner_attrs = inner_attributes(&item.attrs);
+                    let fn_ctxt = match fn_signature.header.ext {
+                        ast::Extern::None => visit::FnCtxt::Free,
+                        _ => visit::FnCtxt::Foreign,
+                    };
                     self.visit_fn(
-                        visit::FnKind::ItemFn(item.ident, fn_header, &item.vis, body),
+                        visit::FnKind::Fn(
+                            fn_ctxt,
+                            item.ident,
+                            &fn_signature,
+                            &item.vis,
+                            body.as_deref(),
+                        ),
                         generics,
-                        decl,
+                        &fn_signature.decl,
                         item.span,
                         ast::Defaultness::Final,
                         Some(&inner_attrs),
                     )
                 }
-                ast::ItemKind::TyAlias(ref ty, ref generics) => {
-                    let rewrite = rewrite_type_alias(
-                        &self.get_context(),
-                        self.block_indent,
-                        item.ident,
-                        ty,
-                        generics,
-                        &item.vis,
-                    );
-                    self.push_rewrite(item.span, rewrite);
-                }
-                ast::ItemKind::OpaqueTy(ref generic_bounds, ref generics) => {
-                    let rewrite = rewrite_opaque_type(
-                        &self.get_context(),
-                        self.block_indent,
-                        item.ident,
-                        generic_bounds,
-                        generics,
-                        &item.vis,
-                    );
-                    self.push_rewrite(item.span, rewrite);
-                }
+                ast::ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
+                    None => {
+                        let rewrite = rewrite_type_alias(
+                            &self.get_context(),
+                            self.block_indent,
+                            item.ident,
+                            ty,
+                            generics,
+                            &item.vis,
+                        );
+                        self.push_rewrite(item.span, rewrite);
+                    }
+                    Some(generic_bounds) => {
+                        let rewrite = rewrite_opaque_type(
+                            &self.get_context(),
+                            self.block_indent,
+                            item.ident,
+                            generic_bounds,
+                            generics,
+                            &item.vis,
+                        );
+                        self.push_rewrite(item.span, rewrite);
+                    }
+                },
                 ast::ItemKind::GlobalAsm(..) => {
                     let snippet = Some(self.snippet(item.span).to_owned());
                     self.push_rewrite(item.span, snippet);
@@ -549,7 +573,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.skip_context = skip_context_saved;
     }
 
-    pub(crate) fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+    pub(crate) fn visit_trait_item(&mut self, ti: &ast::AssocItem) {
         skip_out_of_file_lines_range_visitor!(self, ti.span);
 
         if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
@@ -558,17 +582,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
 
         match ti.kind {
-            ast::TraitItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
-            ast::TraitItemKind::Method(ref sig, None) => {
+            ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
+            ast::AssocItemKind::Fn(ref sig, None) => {
                 let indent = self.block_indent;
                 let rewrite =
                     self.rewrite_required_fn(indent, ti.ident, sig, &ti.generics, ti.span);
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
+            ast::AssocItemKind::Fn(ref sig, Some(ref body)) => {
                 let inner_attrs = inner_attributes(&ti.attrs);
+                let vis = rustc_span::source_map::dummy_spanned(ast::VisibilityKind::Inherited);
+                let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Trait);
                 self.visit_fn(
-                    visit::FnKind::Method(ti.ident, sig, None, body),
+                    visit::FnKind::Fn(fn_ctxt, ti.ident, sig, &vis, Some(body)),
                     &ti.generics,
                     &sig.decl,
                     ti.span,
@@ -576,7 +602,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     Some(&inner_attrs),
                 );
             }
-            ast::TraitItemKind::Type(ref generic_bounds, ref type_default) => {
+            ast::AssocItemKind::TyAlias(ref generic_bounds, ref type_default) => {
                 let rewrite = rewrite_associated_type(
                     ti.ident,
                     type_default.as_ref(),
@@ -587,25 +613,26 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::TraitItemKind::Macro(ref mac) => {
+            ast::AssocItemKind::Macro(ref mac) => {
                 self.visit_mac(mac, Some(ti.ident), MacroPosition::Item);
             }
         }
     }
 
-    pub(crate) fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+    pub(crate) fn visit_impl_item(&mut self, ii: &ast::AssocItem) {
         skip_out_of_file_lines_range_visitor!(self, ii.span);
 
         if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(ii.attrs.as_slice(), ii.span(), ii.span());
+            self.push_skipped_with_span(ii.attrs.as_slice(), ii.span, ii.span);
             return;
         }
 
         match ii.kind {
-            ast::ImplItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, Some(ref body)) => {
                 let inner_attrs = inner_attributes(&ii.attrs);
+                let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Impl);
                 self.visit_fn(
-                    visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
+                    visit::FnKind::Fn(fn_ctxt, ii.ident, sig, &ii.vis, Some(body)),
                     &ii.generics,
                     &sig.decl,
                     ii.span,
@@ -613,41 +640,73 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     Some(&inner_attrs),
                 );
             }
-            ast::ImplItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
-            ast::ImplItemKind::TyAlias(ref ty) => {
-                let rewrite = rewrite_associated_impl_type(
-                    ii.ident,
-                    ii.defaultness,
-                    Some(ty),
-                    &ii.generics,
-                    &self.get_context(),
-                    self.block_indent,
-                );
+            ast::AssocItemKind::Fn(ref sig, None) => {
+                let indent = self.block_indent;
+                let rewrite =
+                    self.rewrite_required_fn(indent, ii.ident, sig, &ii.generics, ii.span);
                 self.push_rewrite(ii.span, rewrite);
             }
-            ast::ImplItemKind::OpaqueTy(ref generic_bounds) => {
-                let rewrite = rewrite_opaque_impl_type(
-                    &self.get_context(),
-                    ii.ident,
-                    &ii.generics,
-                    generic_bounds,
-                    self.block_indent,
-                );
+            ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
+            ast::AssocItemKind::TyAlias(_, ref ty) => {
+                let rewrite_associated = || {
+                    rewrite_associated_impl_type(
+                        ii.ident,
+                        ii.defaultness,
+                        ty.as_ref(),
+                        &ii.generics,
+                        &self.get_context(),
+                        self.block_indent,
+                    )
+                };
+                let rewrite = match ty {
+                    None => rewrite_associated(),
+                    Some(ty) => match ty.kind.opaque_top_hack() {
+                        Some(generic_bounds) => rewrite_opaque_impl_type(
+                            &self.get_context(),
+                            ii.ident,
+                            &ii.generics,
+                            generic_bounds,
+                            self.block_indent,
+                        ),
+                        None => rewrite_associated(),
+                    },
+                };
                 self.push_rewrite(ii.span, rewrite);
             }
-            ast::ImplItemKind::Macro(ref mac) => {
+            ast::AssocItemKind::Macro(ref mac) => {
                 self.visit_mac(mac, Some(ii.ident), MacroPosition::Item);
             }
         }
     }
 
     fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>, pos: MacroPosition) {
-        skip_out_of_file_lines_range_visitor!(self, mac.span);
+        skip_out_of_file_lines_range_visitor!(self, mac.span());
 
         // 1 = ;
         let shape = self.shape().saturating_sub_width(1);
         let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos));
-        self.push_rewrite(mac.span, rewrite);
+        // As of v638 of the rustc-ap-* crates, the associated span no longer includes
+        // the trailing semicolon. This determines the correct span to ensure scenarios
+        // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
+        // are formatted correctly.
+        let (span, rewrite) = match macro_style(mac, &self.get_context()) {
+            DelimToken::Bracket | DelimToken::Paren if MacroPosition::Item == pos => {
+                let search_span = mk_sp(mac.span().hi(), self.snippet_provider.end_pos());
+                let hi = self.snippet_provider.span_before(search_span, ";");
+                let target_span = mk_sp(mac.span().lo(), hi + BytePos(1));
+                let rewrite = rewrite.map(|rw| {
+                    if !rw.ends_with(";") {
+                        format!("{};", rw)
+                    } else {
+                        rw
+                    }
+                });
+                (target_span, rewrite)
+            }
+            _ => (mac.span(), rewrite),
+        };
+
+        self.push_rewrite(span, rewrite);
     }
 
     pub(crate) fn push_str(&mut self, s: &str) {
@@ -751,16 +810,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
-            } else if self.is_unknown_rustfmt_attr(&attr.path.segments) {
-                let file_name = self.source_map.span_to_filename(attr.span).into();
-                self.report.append(
-                    file_name,
-                    vec![FormattingError::from_span(
-                        attr.span,
-                        &self.source_map,
-                        ErrorKind::BadAttr,
-                    )],
-                );
+            } else {
+                match &attr.kind {
+                    ast::AttrKind::Normal(ref attribute_item)
+                        if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
+                    {
+                        let file_name = self.source_map.span_to_filename(attr.span).into();
+                        self.report.append(
+                            file_name,
+                            vec![FormattingError::from_span(
+                                attr.span,
+                                self.source_map,
+                                ErrorKind::BadAttr,
+                            )],
+                        );
+                    }
+                    _ => (),
+                }
             }
         }
         if contains_skip(attrs) {

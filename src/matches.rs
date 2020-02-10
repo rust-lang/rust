@@ -2,7 +2,7 @@
 
 use std::iter::repeat;
 
-use syntax::source_map::{BytePos, Span};
+use rustc_span::{BytePos, Span};
 use syntax::{ast, ptr};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
@@ -565,7 +565,7 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         | ast::ExprKind::Mac(..)
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::Tup(..) => true,
-        ast::ExprKind::AddrOf(_, ref expr)
+        ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)

@@ -1,9 +1,8 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
+use rustc_span::{symbol::kw, BytePos, Span};
 use syntax::ast::{self, FunctionRetTy, Mutability};
-use syntax::source_map::{self, BytePos, Span};
-use syntax::symbol::kw;
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -19,7 +18,7 @@ use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
+    colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
     last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
 
@@ -275,13 +274,9 @@ fn rewrite_segment(
                 result.push_str(&generics_str)
             }
             ast::GenericArgs::Parenthesized(ref data) => {
-                let output = match data.output {
-                    Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
-                    None => FunctionRetTy::Default(source_map::DUMMY_SP),
-                };
                 result.push_str(&format_function_type(
                     data.inputs.iter().map(|x| &**x),
-                    &output,
+                    &data.output,
                     false,
                     data.span,
                     context,
@@ -528,6 +523,7 @@ impl Rewrite for ast::GenericBound {
                     ast::TraitBoundModifier::Maybe => poly_trait_ref
                         .rewrite(context, shape.offset_left(1)?)
                         .map(|s| format!("?{}", s)),
+                    _ => unimplemented!(),
                 };
                 rewrite.map(|s| if has_paren { format!("({})", s) } else { s })
             }
@@ -634,8 +630,8 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
-                    Mutability::Mutable => "*mut ",
-                    Mutability::Immutable => "*const ",
+                    Mutability::Mut => "*mut ",
+                    Mutability::Not => "*const ",
                 };
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
@@ -783,8 +779,8 @@ fn rewrite_bare_fn(
 
     result.push_str(crate::utils::format_unsafety(bare_fn.unsafety));
 
-    result.push_str(&format_abi(
-        bare_fn.abi,
+    result.push_str(&format_extern(
+        bare_fn.ext,
         context.config.force_explicit_abi(),
         false,
     ));

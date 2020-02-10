@@ -1,9 +1,7 @@
 use std::cmp::max;
 
-use syntax::{
-    ast, ptr,
-    source_map::{self, Span},
-};
+use rustc_span::{source_map, Span};
+use syntax::{ast, ptr};
 
 use crate::macros::MacroArg;
 use crate::utils::{mk_sp, outer_attributes};
@@ -53,13 +51,12 @@ macro_rules! implement_spanned {
 }
 
 // Implement `Spanned` for structs with `attrs` field.
+implement_spanned!(ast::AssocItem);
 implement_spanned!(ast::Expr);
 implement_spanned!(ast::Field);
 implement_spanned!(ast::ForeignItem);
 implement_spanned!(ast::Item);
 implement_spanned!(ast::Local);
-implement_spanned!(ast::TraitItem);
-implement_spanned!(ast::ImplItem);
 
 impl Spanned for ast::Stmt {
     fn span(&self) -> Span {
