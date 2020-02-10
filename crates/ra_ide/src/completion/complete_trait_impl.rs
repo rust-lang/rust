@@ -2,25 +2,26 @@ use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use hir::{self, Docs};
+use ra_syntax::{ast::{self, edit}, AstNode, SyntaxKind, TextRange};
+use hir::{self, Docs, HasSource};
 
 use ra_assists::utils::get_missing_impl_items;
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    let impl_block = ctx.impl_block.as_ref();
-    let item_list = impl_block.and_then(|i| i.item_list());
 
-    if item_list.is_none() || impl_block.is_none() || ctx.function_syntax.is_some() {
+    // it is possible to have a parent `fn` and `impl` block. Ignore completion 
+    // attempts from within a `fn` block.
+    if ctx.function_syntax.is_some() {
         return;
     }
 
-    let impl_block = impl_block.unwrap();
-
-    for item in get_missing_impl_items(ctx.db, &ctx.analyzer, impl_block) {
-        match item {
-            hir::AssocItem::Function(f) => add_function_impl(acc, ctx, &f),
-            hir::AssocItem::TypeAlias(t) => add_type_alias_impl(acc, ctx, &t),
-            _ => {}
+    if let Some(ref impl_block) = ctx.impl_block {
+        for item in get_missing_impl_items(ctx.db, &ctx.analyzer, impl_block) {
+            match item {
+                hir::AssocItem::Function(f) => add_function_impl(acc, ctx, &f),
+                hir::AssocItem::TypeAlias(t) => add_type_alias_impl(acc, ctx, &t),
+                hir::AssocItem::Const(c) => add_const_impl(acc, ctx, &c),
+            }
         }
     }
 }
@@ -69,6 +70,47 @@ fn add_type_alias_impl(
         .kind(CompletionItemKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db))
         .add_to(acc);
+}
+
+fn add_const_impl(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    const_: &hir::Const,
+) {
+    let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
+
+    CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
+        .insert_text(snippet)
+        .kind(CompletionItemKind::Const)
+        .set_documentation(const_.docs(ctx.db))
+        .add_to(acc);
+}
+
+fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
+    let const_ = edit::strip_attrs_and_docs(const_);
+    
+    let const_start = const_.syntax().text_range().start();
+    let const_end = const_.syntax().text_range().end();
+
+    let start = const_
+        .syntax()
+        .first_child_or_token()
+        .map_or(
+            const_start,
+            |f| f.text_range().start());
+
+    let end = const_
+        .syntax()
+        .children_with_tokens()
+        .find(|s| s.kind() == SyntaxKind::SEMI || s.kind() == SyntaxKind::EQ)
+        .map_or(const_end, |f| f.text_range().start());
+
+    let len = end - start;
+    let range = TextRange::from_to(0.into(), len);
+
+    let syntax = const_.syntax().text().slice(range).to_string();
+
+    format!("{} = ", syntax.trim_end())
 }
 
 #[cfg(test)]
