@@ -95,47 +95,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     query_mode: TraitQueryMode,
 }
 
-#[derive(Clone, Debug)]
-pub enum IntercrateAmbiguityCause {
-    DownstreamCrate { trait_desc: String, self_desc: Option<String> },
-    UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
-    ReservationImpl { message: String },
-}
-
-impl IntercrateAmbiguityCause {
-    /// Emits notes when the overlap is caused by complex intercrate ambiguities.
-    /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint(&self, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
-        err.note(&self.intercrate_ambiguity_hint());
-    }
-
-    pub fn intercrate_ambiguity_hint(&self) -> String {
-        match self {
-            &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
-            }
-            &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
-                let self_desc = if let &Some(ref ty) = self_desc {
-                    format!(" for type `{}`", ty)
-                } else {
-                    String::new()
-                };
-                format!(
-                    "upstream crates may add a new impl of trait `{}`{} \
-                     in future versions",
-                    trait_desc, self_desc
-                )
-            }
-            &IntercrateAmbiguityCause::ReservationImpl { ref message } => message.clone(),
-        }
-    }
-}
-
 // A stack that walks back up the stack frame.
 struct TraitObligationStack<'prev, 'tcx> {
     obligation: &'prev TraitObligation<'tcx>,
