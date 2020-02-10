@@ -14,3 +14,5 @@ fn gen() -> impl Generator<usize> {
         println!("-> {}", yield);
     }
 }
+
+fn main() {}
