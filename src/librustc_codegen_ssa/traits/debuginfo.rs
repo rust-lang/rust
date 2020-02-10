@@ -4,7 +4,6 @@ use rustc::mir;
 use rustc::ty::layout::Size;
 use rustc::ty::{Instance, Ty};
 use rustc_ast::ast::Name;
-use rustc_hir::def_id::CrateNum;
 use rustc_span::{SourceFile, Span};
 use rustc_target::abi::call::FnAbi;
 
@@ -27,7 +26,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         &self,
         scope_metadata: Self::DIScope,
         file: &SourceFile,
-        defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
 
@@ -35,7 +33,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
         &self,
-        dbg_context: &FunctionDebugContext<Self::DIScope>,
         variable_name: Name,
         variable_type: Ty<'tcx>,
         scope_metadata: Self::DIScope,

@@ -13,7 +13,7 @@ use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType, DIVariable,
 };
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 
 use crate::abi::FnAbi;
 use crate::builder::Builder;
@@ -249,7 +249,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
+        let file_metadata = file_metadata(self, &loc.file);
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
@@ -322,10 +322,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
         };
-        let mut fn_debug_context = FunctionDebugContext {
-            scopes: IndexVec::from_elem(null_scope, &mir.source_scopes),
-            defining_crate: def_id.krate,
-        };
+        let mut fn_debug_context =
+            FunctionDebugContext { scopes: IndexVec::from_elem(null_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
         compute_mir_scopes(self, mir, fn_metadata, &mut fn_debug_context);
@@ -510,9 +508,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self,
         scope_metadata: &'ll DIScope,
         file: &rustc_span::SourceFile,
-        defining_crate: CrateNum,
     ) -> &'ll DILexicalBlock {
-        metadata::extend_scope_to_file(&self, scope_metadata, file, defining_crate)
+        metadata::extend_scope_to_file(&self, scope_metadata, file)
     }
 
     fn debuginfo_finalize(&self) {
@@ -523,7 +520,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
         &self,
-        dbg_context: &FunctionDebugContext<&'ll DIScope>,
         variable_name: ast::Name,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
@@ -531,7 +527,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         span: Span,
     ) -> &'ll DIVariable {
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
+        let file_metadata = file_metadata(self, &loc.file);
 
         let type_metadata = type_metadata(self, variable_type, span);
 
