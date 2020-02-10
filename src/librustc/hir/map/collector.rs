@@ -74,6 +74,7 @@ fn alloc_hir_dep_nodes(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
+    parent: HirId,
     item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> (DepNodeIndex, DepNodeIndex) {
@@ -81,7 +82,7 @@ fn alloc_hir_dep_nodes(
         .input_task(
             def_path_hash.to_dep_node(DepKind::Hir),
             &mut *hcx,
-            HirItemLike { item_like: &item_like, hash_bodies: false },
+            HirItemLike { item_like: &(parent, &item_like), hash_bodies: false },
         )
         .1;
     let (full, hash) = input_dep_node_and_hash(
@@ -146,6 +147,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 dep_graph,
                 &mut hcx,
                 root_mod_def_path_hash,
+                CRATE_HIR_ID,
                 (module, attrs, span),
                 &mut hir_body_nodes,
             )
@@ -316,6 +318,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             self.dep_graph,
             &mut self.hcx,
             def_path_hash,
+            self.parent_node,
             item_like,
             &mut self.hir_body_nodes,
         );

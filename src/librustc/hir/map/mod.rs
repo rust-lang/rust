@@ -181,7 +181,7 @@ impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
             }
 
             self.current_id = parent_id;
-            if let Some(entry) = self.map.find_entry(parent_id) {
+            if let Some(entry) = self.map.find_and_read_entry(parent_id) {
                 return Some((parent_id, entry.node));
             }
             // If this `HirId` doesn't have an `Entry`, skip it and look for its `parent_id`.
@@ -381,6 +381,12 @@ impl<'hir> Map<'hir> {
         self.lookup(id).cloned()
     }
 
+    fn find_and_read_entry(&self, id: HirId) -> Option<Entry<'hir>> {
+        let entry = self.find_entry(id);
+        entry.map(|e| self.dep_graph.read_index(e.dep_node));
+        entry
+    }
+
     pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
         self.read(id);
 
@@ -414,7 +420,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
-        if let Some(entry) = self.find_entry(hir_id) {
+        if let Some(entry) = self.find_and_read_entry(hir_id) {
             entry.fn_decl()
         } else {
             bug!("no entry for hir_id `{}`", hir_id)
@@ -422,7 +428,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
-        if let Some(entry) = self.find_entry(hir_id) {
+        if let Some(entry) = self.find_and_read_entry(hir_id) {
             entry.fn_sig()
         } else {
             bug!("no entry for hir_id `{}`", hir_id)
@@ -612,7 +618,12 @@ impl<'hir> Map<'hir> {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = hir_id.owner;
             let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
-            self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+            let kind = if hir_id.local_id == ItemLocalId::from_u32_const(0) {
+                DepKind::Hir
+            } else {
+                DepKind::HirBody
+            };
+            self.dep_graph.read(def_path_hash.to_dep_node(kind));
         }
 
         self.find_entry(hir_id).and_then(|x| x.parent_node()).unwrap_or(hir_id)
@@ -654,7 +665,7 @@ impl<'hir> Map<'hir> {
 
     /// Wether `hir_id` corresponds to a `mod` or a crate.
     pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
-        match self.lookup(hir_id) {
+        match self.find_and_read_entry(hir_id) {
             Some(Entry { node: Node::Item(Item { kind: ItemKind::Mod(_), .. }), .. })
             | Some(Entry { node: Node::Crate, .. }) => true,
             _ => false,
@@ -1150,7 +1161,7 @@ impl<'a> NodesMatchingSuffix<'a> {
     }
 
     fn matches_suffix(&self, hir: HirId) -> bool {
-        let name = match self.map.find_entry(hir).map(|entry| entry.node) {
+        let name = match self.map.find_and_read_entry(hir).map(|entry| entry.node) {
             Some(Node::Item(n)) => n.name(),
             Some(Node::ForeignItem(n)) => n.name(),
             Some(Node::TraitItem(n)) => n.name(),
