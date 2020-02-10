@@ -188,7 +188,7 @@ impl fmt::Debug for BacktraceSymbol {
         }
 
         if let Some(line) = self.lineno.as_ref() {
-            dbg.field("line", &self.lineno);
+            dbg.field("line", line);
         }
 
         dbg.finish()
