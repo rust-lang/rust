@@ -12,7 +12,7 @@ Language
       match words {
           ["Hello", "World", "!", ..] => println!("Hello World!"),
           ["Foo", "Bar", ..] => println!("Baz"),
-          rest => println!("{}", rest),
+          rest => println!("{:?}", rest),
       }
   }
   ```
