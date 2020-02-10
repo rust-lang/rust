@@ -178,12 +178,6 @@ impl fmt::Debug for Backtrace {
     }
 }
 
-impl fmt::Debug for BacktraceFrame {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_list().entries(&self.symbols).finish()
-    }
-}
-
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = fmt.debug_struct("");
