@@ -850,22 +850,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &'tcx hir::PathSegment<'tcx>,
         span: Span,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         needs: Needs,
     ) -> Ty<'tcx> {
+        // When changing this function, you might also have to modify `check_deferred`.
+        debug!(
+            "check_method_call expr={:?} segment={:?} args={:?} expected={:?} needed={:?}",
+            expr, segment, args, expected, needs
+        );
         let rcvr = &args[0];
         let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
-        // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
+        match rcvr.kind {
+            hir::ExprKind::Field(_, _) | hir::ExprKind::Lit(_) | hir::ExprKind::Path(_)
+                if rcvr_t.is_ty_var() =>
+            {
+                // We only defer cases like `foo.bar(baz);`, because more complex cases like
+                // `foo.qux().bar(baz);` would have different inference behavior than what Rust has
+                // already stablished, so it would be a breaking change, not to mention that it
+                // regresses some diagnostics.
+                debug!("check_method_call: deferring expr={:?}", expr);
+                // We do *not* call `structurally_resolved_type` *yet*, to let the inference work
+                // on other expressions first before getting to this function call. This lets the
+                // following code to be valid, which otherwise would require type annotations:
+                // ```
+                // fn foo() -> Vec<u16> {
+                //     // We don't know the type of `s`
+                //     let mut s = vec![].into_iter().collect();
+                //     // We still don't know the type of `s`, delay evaluation.
+                //     s.push(0);
+                //     // We figure out that `s` should be `Vec<u16>` because of the return type.
+                //     s
+                //     // After every non-method call expression is evaluated do we lookup `push`.
+                // }
+                // ```
+                self.deferred.borrow_mut().push((expr, segment, span, args, expected, needs));
+                return self.ty_infer(None, expr.span);
+            }
+            _ => {}
+        }
 
+        // no need to check for bot/err -- callee does that
+        let rcvr_t = self.structurally_resolved_type(rcvr.span, rcvr_t);
+        self.check_method_call_inner(expr, segment, span, args, expected, rcvr_t)
+    }
+
+    crate fn check_method_call_inner(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        segment: &hir::PathSegment<'_>,
+        span: Span,
+        args: &'tcx [hir::Expr<'tcx>],
+        expected: Expectation<'tcx>,
+        rcvr_t: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let rcvr = &args[0];
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
             Ok(method) => {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
-                // trigger this codepath causing `structuraly_resolved_type` to emit an error.
-
+                // trigger this codepath causing `structurally_resolved_type` to emit an error.
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }

@@ -616,6 +616,19 @@ pub struct FnCtxt<'a, 'tcx> {
     enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     inh: &'a Inherited<'a, 'tcx>,
+
+    /// List of `MethodCall` expressions with `_` receiver type that need to be evaluated last
+    /// after the entire function body has already been evaluated.
+    deferred: RefCell<
+        Vec<(
+            &'tcx hir::Expr<'tcx>,
+            &'tcx hir::PathSegment<'tcx>,
+            Span,
+            &'tcx [hir::Expr<'tcx>],
+            Expectation<'tcx>,
+            Needs,
+        )>,
+    >,
 }
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
@@ -2786,6 +2799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             inh,
+            deferred: RefCell::new(Vec::new()),
         }
     }
 
@@ -3057,9 +3071,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ =>
-                        bug!("while adjusting {:?}, can't compose {:?} and {:?}",
-                             expr, entry.get(), adj)
+                    _ => span_bug!(
+                        expr.span,
+                        "while adjusting {:?}, can't compose {:?} and {:?}",
+                        expr,
+                        entry.get(),
+                        adj
+                    ),
                 };
                 *entry.get_mut() = adj;
             }
@@ -4502,6 +4520,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr.span
     }
 
+    /// During inference when we encounter a simple method where the receiver is a path expression
+    /// with an inferred not-yet-resolved type, we defer its evaluation until after the rest of
+    /// its block has been evaluated. This allows inferenece to have more context when evaluating
+    /// the type of the receiver.
+    fn check_deferred(&self) {
+        let mut deferred = vec![];
+        std::mem::swap(&mut deferred, &mut self.deferred.borrow_mut());
+        for (expr, segment, span, args, expected, needs) in deferred.into_iter() {
+            // This code is partly copied from `check_method_call`.
+            debug!(
+                "check_deferred expr={:?} segment={:?} args={:?} expected={:?} needs={:?}",
+                expr, segment, args, expected, needs
+            );
+            let rcvr = &args[0];
+            let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
+            // no need to check for bot/err -- callee does that
+            let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
+            let ty = self.check_method_call_inner(expr, segment, span, args, expected, rcvr_t);
+            // Record the type, which applies it effects.
+            // We need to do this after the warning above, so that
+            // we don't warn for the diverging expression itself.
+            self.write_ty(expr.hir_id, ty);
+        }
+    }
+
     fn check_block_with_expected(
         &self,
         blk: &'tcx hir::Block<'tcx>,
@@ -4619,6 +4662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(prev_diverges);
         }
 
+        self.check_deferred();
         let mut ty = ctxt.coerce.unwrap().complete(self);
 
         if self.has_errors.get() || ty.references_error() {
