@@ -30,7 +30,7 @@ Compiler
 
 Libraries
 ---------
-- [`iter::Empty<T>` now implements Send and Sync for any `T`.][68348]
+- [`iter::Empty<T>` now implements `Send` and `Sync` for any `T`.][68348]
 - [`Pin::{map_unchecked, map_unchecked_mut}` no longer require the return type
    to implement `Sized`.][67935]
 - [`io::Cursor` now derives `PartialEq` and `Eq`.][67233]
