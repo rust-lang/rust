@@ -106,6 +106,7 @@ use backtrace_rs as backtrace;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
+#[derive(Debug)]
 pub struct Backtrace {
     inner: Inner,
 }
@@ -126,12 +127,14 @@ pub enum BacktraceStatus {
     Captured,
 }
 
+#[derive(Debug)]
 enum Inner {
     Unsupported,
     Disabled,
     Captured(Mutex<Capture>),
 }
 
+#[derive(Debug)]
 struct Capture {
     actual_start: usize,
     resolved: bool,
@@ -143,11 +146,13 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
+#[derive(Debug)]
 struct BacktraceFrame {
     frame: backtrace::Frame,
     symbols: Vec<BacktraceSymbol>,
 }
 
+#[derive(Debug)]
 struct BacktraceSymbol {
     name: Option<Vec<u8>>,
     filename: Option<BytesOrWide>,
@@ -157,6 +162,20 @@ struct BacktraceSymbol {
 enum BytesOrWide {
     Bytes(Vec<u8>),
     Wide(Vec<u16>),
+}
+
+impl fmt::Debug for BytesOrWide {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        output_filename(
+            fmt,
+            match self {
+                BytesOrWide::Bytes(w) => BytesOrWideString::Bytes(w),
+                BytesOrWide::Wide(w) => BytesOrWideString::Wide(w),
+            },
+            backtrace::PrintFmt::Full,
+            crate::env::current_dir().as_ref().ok(),
+        )
+    }
 }
 
 impl Backtrace {
@@ -267,12 +286,6 @@ impl Backtrace {
 }
 
 impl fmt::Display for Backtrace {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, fmt)
-    }
-}
-
-impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut capture = match &self.inner {
             Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
