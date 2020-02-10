@@ -182,6 +182,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         if must_error {
             // The `message` makes little sense here, this is a more serious error than the
             // caller thinks anyway.
+            // See <https://github.com/rust-lang/rust/pull/63152>.
             finish(struct_error(tcx, &err_msg), None);
         } else {
             // Regular case.
