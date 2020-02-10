@@ -1,46 +1,14 @@
-#[inline]
-pub fn write_to_vec(vec: &mut Vec<u8>, byte: u8) {
-    vec.push(byte);
-}
-
-#[cfg(target_pointer_width = "32")]
-const USIZE_LEB128_SIZE: usize = 5;
-#[cfg(target_pointer_width = "64")]
-const USIZE_LEB128_SIZE: usize = 10;
-
-macro_rules! leb128_size {
-    (u16) => {
-        3
-    };
-    (u32) => {
-        5
-    };
-    (u64) => {
-        10
-    };
-    (u128) => {
-        19
-    };
-    (usize) => {
-        USIZE_LEB128_SIZE
-    };
-}
-
 macro_rules! impl_write_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ident) => {
         #[inline]
         pub fn $fn_name(out: &mut Vec<u8>, mut value: $int_ty) {
-            for _ in 0..leb128_size!($int_ty) {
-                let mut byte = (value & 0x7F) as u8;
-                value >>= 7;
-                if value != 0 {
-                    byte |= 0x80;
-                }
-
-                write_to_vec(out, byte);
-
-                if value == 0 {
+            loop {
+                if value < 0x80 {
+                    out.push(value as u8);
                     break;
+                } else {
+                    out.push(((value & 0x7f) | 0x80) as u8);
+                    value >>= 7;
                 }
             }
         }
@@ -57,24 +25,20 @@ macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ident) => {
         #[inline]
         pub fn $fn_name(slice: &[u8]) -> ($int_ty, usize) {
-            let mut result: $int_ty = 0;
+            let mut result = 0;
             let mut shift = 0;
             let mut position = 0;
-
-            for _ in 0..leb128_size!($int_ty) {
-                let byte = unsafe { *slice.get_unchecked(position) };
+            loop {
+                let byte = slice[position];
                 position += 1;
-                result |= ((byte & 0x7F) as $int_ty) << shift;
                 if (byte & 0x80) == 0 {
-                    break;
+                    result |= (byte as $int_ty) << shift;
+                    return (result, position);
+                } else {
+                    result |= ((byte & 0x7F) as $int_ty) << shift;
                 }
                 shift += 7;
             }
-
-            // Do a single bounds check at the end instead of for every byte.
-            assert!(position <= slice.len());
-
-            (result, position)
         }
     };
 }
@@ -116,7 +80,7 @@ where
 
 #[inline]
 pub fn write_signed_leb128(out: &mut Vec<u8>, value: i128) {
-    write_signed_leb128_to(value, |v| write_to_vec(out, v))
+    write_signed_leb128_to(value, |v| out.push(v))
 }
 
 #[inline]
