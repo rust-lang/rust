@@ -185,7 +185,7 @@ impl fmt::Debug for BacktraceSymbol {
         let mut dbg = fmt.debug_struct("");
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
-            dbg.field("fn", &fn_name);
+            dbg.field("fn", &format_args!("\"{}\"", fn_name));
         } else {
             dbg.field("fn", &"<unknown>");
         }
