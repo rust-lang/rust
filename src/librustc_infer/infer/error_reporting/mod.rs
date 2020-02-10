@@ -49,7 +49,6 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
-use crate::infer::opaque_types;
 use crate::infer::{self, SuppressRegionErrors};
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
@@ -288,6 +287,86 @@ fn explain_span(tcx: TyCtxt<'tcx>, heading: &str, span: Span) -> (String, Option
     (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1), Some(span))
 }
 
+pub fn unexpected_hidden_region_diagnostic(
+    tcx: TyCtxt<'tcx>,
+    region_scope_tree: Option<&region::ScopeTree>,
+    span: Span,
+    hidden_ty: Ty<'tcx>,
+    hidden_region: ty::Region<'tcx>,
+) -> DiagnosticBuilder<'tcx> {
+    let mut err = struct_span_err!(
+        tcx.sess,
+        span,
+        E0700,
+        "hidden type for `impl Trait` captures lifetime that does not appear in bounds",
+    );
+
+    // Explain the region we are capturing.
+    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) = hidden_region {
+        // Assuming regionck succeeded (*), we ought to always be
+        // capturing *some* region from the fn header, and hence it
+        // ought to be free. So under normal circumstances, we will go
+        // down this path which gives a decent human readable
+        // explanation.
+        //
+        // (*) if not, the `tainted_by_errors` flag would be set to
+        // true in any case, so we wouldn't be here at all.
+        note_and_explain_free_region(
+            tcx,
+            &mut err,
+            &format!("hidden type `{}` captures ", hidden_ty),
+            hidden_region,
+            "",
+        );
+    } else {
+        // Ugh. This is a painful case: the hidden region is not one
+        // that we can easily summarize or explain. This can happen
+        // in a case like
+        // `src/test/ui/multiple-lifetimes/ordinary-bounds-unsuited.rs`:
+        //
+        // ```
+        // fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> {
+        //   if condition() { a } else { b }
+        // }
+        // ```
+        //
+        // Here the captured lifetime is the intersection of `'a` and
+        // `'b`, which we can't quite express.
+
+        if let Some(region_scope_tree) = region_scope_tree {
+            // If the `region_scope_tree` is available, this is being
+            // invoked from the "region inferencer error". We can at
+            // least report a really cryptic error for now.
+            note_and_explain_region(
+                tcx,
+                region_scope_tree,
+                &mut err,
+                &format!("hidden type `{}` captures ", hidden_ty),
+                hidden_region,
+                "",
+            );
+        } else {
+            // If the `region_scope_tree` is *unavailable*, this is
+            // being invoked by the code that comes *after* region
+            // inferencing. This is a bug, as the region inferencer
+            // ought to have noticed the failed constraint and invoked
+            // error reporting, which in turn should have prevented us
+            // from getting trying to infer the hidden type
+            // completely.
+            tcx.sess.delay_span_bug(
+                span,
+                &format!(
+                    "hidden type captures unexpected lifetime `{:?}` \
+                     but no region inference failure",
+                    hidden_region,
+                ),
+            );
+        }
+    }
+
+    err
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_region_errors(
         &self,
@@ -410,7 +489,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         span,
                     } => {
                         let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
-                        opaque_types::unexpected_hidden_region_diagnostic(
+                        unexpected_hidden_region_diagnostic(
                             self.tcx,
                             Some(region_scope_tree),
                             span,
