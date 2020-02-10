@@ -106,7 +106,6 @@ use backtrace_rs as backtrace;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
-#[derive(Debug)]
 pub struct Backtrace {
     inner: Inner,
 }
@@ -146,7 +145,6 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
-#[derive(Debug)]
 struct BacktraceFrame {
     frame: backtrace::Frame,
     symbols: Vec<BacktraceSymbol>,
@@ -163,13 +161,45 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
+impl fmt::Debug for Backtrace {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut capture = match &self.inner {
+            Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
+            Inner::Disabled => return fmt.write_str("disabled backtrace"),
+            Inner::Captured(c) => c.lock().unwrap(),
+        };
+        capture.resolve();
+
+        let mut dbg = fmt.debug_list();
+
+        for frame in &capture.frames {
+            dbg.entries(&frame.symbols);
+        }
+
+        dbg.finish()
+    }
+}
+
+impl fmt::Debug for BacktraceFrame {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_list().entries(&self.symbols).finish()
+    }
+}
+
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_struct("BacktraceSymbol")
-            .field("name", &self.name.as_ref().map(|b| backtrace::SymbolName::new(b)))
-            .field("filename", &self.filename)
-            .field("lineno", &self.lineno)
-            .finish()
+        let mut dbg = fmt.debug_struct("");
+        dbg.field("fn", &self.name.as_ref().map(|b| backtrace::SymbolName::new(b)));
+
+        if let Some(fname) = self.filename.as_ref() {
+            dbg.field("file", fname);
+        }
+
+        if let Some(line) = self.lineno.as_ref() {
+            dbg.field("line", &self.lineno);
+        }
+
+        dbg.finish()
     }
 }
 
