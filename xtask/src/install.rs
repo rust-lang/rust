@@ -127,15 +127,12 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     }
     .run()?;
 
-    let installed_extensions = {
-        let output = Cmd {
-            unix: &format!(r"{} --list-extensions", code_binary),
-            windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
-            work_dir: ".",
-        }
-        .run_with_output()?;
-        String::from_utf8(output.stdout)?
-    };
+    let installed_extensions = Cmd {
+        unix: &format!(r"{} --list-extensions", code_binary),
+        windows: &format!(r"cmd.exe /c {}.cmd --list-extensions", code_binary),
+        work_dir: ".",
+    }
+    .run_with_output()?;
 
     if !installed_extensions.contains("rust-analyzer") {
         anyhow::bail!(
@@ -161,12 +158,10 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
 fn install_server(opts: ServerOpt) -> Result<()> {
     let mut old_rust = false;
-    if let Ok(output) = run_with_output("cargo --version", ".") {
-        if let Ok(stdout) = String::from_utf8(output.stdout) {
-            println!("{}", stdout);
-            if !check_version(&stdout, REQUIRED_RUST_VERSION) {
-                old_rust = true;
-            }
+    if let Ok(stdout) = run_with_output("cargo --version", ".") {
+        println!("{}", stdout);
+        if !check_version(&stdout, REQUIRED_RUST_VERSION) {
+            old_rust = true;
         }
     }
 

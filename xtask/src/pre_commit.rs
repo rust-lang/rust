@@ -14,7 +14,7 @@ pub fn run_hook() -> Result<()> {
     let diff = run_with_output("git diff --diff-filter=MAR --name-only --cached", ".")?;
 
     let root = project_root();
-    for line in String::from_utf8(diff.stdout)?.lines() {
+    for line in diff.lines() {
         run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;
     }
 

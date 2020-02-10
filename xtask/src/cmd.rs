@@ -18,7 +18,7 @@ impl Cmd<'_> {
             run(self.unix, self.work_dir)
         }
     }
-    pub fn run_with_output(self) -> Result<Output> {
+    pub fn run_with_output(self) -> Result<String> {
         if cfg!(windows) {
             run_with_output(self.windows, self.work_dir)
         } else {
@@ -34,8 +34,10 @@ pub fn run(cmdline: &str, dir: &str) -> Result<()> {
     .map(|_| ())
 }
 
-pub fn run_with_output(cmdline: &str, dir: &str) -> Result<Output> {
-    do_run(cmdline, dir, &mut |_| {})
+pub fn run_with_output(cmdline: &str, dir: &str) -> Result<String> {
+    let output = do_run(cmdline, dir, &mut |_| {})?;
+    let stdout = String::from_utf8(output.stdout)?;
+    Ok(stdout)
 }
 
 fn do_run(cmdline: &str, dir: &str, f: &mut dyn FnMut(&mut Command)) -> Result<Output> {
