@@ -823,7 +823,7 @@ impl<'a> Parser<'a> {
             if let Some(args) = segment.args {
                 self.struct_span_err(
                     args.span(),
-                    "field expressions may not have generic arguments",
+                    "field expressions cannot have generic arguments",
                 )
                 .emit();
             }

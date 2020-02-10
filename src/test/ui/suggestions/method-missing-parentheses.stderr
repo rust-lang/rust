@@ -1,4 +1,4 @@
-error: field expressions may not have generic arguments
+error: field expressions cannot have generic arguments
   --> $DIR/method-missing-parentheses.rs:2:41
    |
 LL |     let _ = vec![].into_iter().collect::<usize>;
