@@ -1,6 +1,6 @@
 use crate::arena::Arena;
 use crate::hir::map::definitions::{self, DefPathHash};
-use crate::hir::map::{Entry, Map};
+use crate::hir::map::{Entry, HirOwnerData, Map};
 use crate::hir::{HirItem, HirOwner, HirOwnerItems};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
@@ -14,7 +14,7 @@ use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol, DUMMY_SP};
@@ -31,8 +31,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map
     source_map: &'a SourceMap,
 
-    owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
-    owner_items_map: FxHashMap<DefIndex, &'hir mut HirOwnerItems<'hir>>,
+    map: IndexVec<DefIndex, HirOwnerData<'hir>>,
 
     /// The parent of this node
     parent_node: hir::HirId,
@@ -47,6 +46,15 @@ pub(super) struct NodeCollector<'a, 'hir> {
     // We are collecting HIR hashes here so we can compute the
     // crate hash from them later on.
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
+}
+
+fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V) {
+    let i = k.index();
+    let len = map.len();
+    if i >= len {
+        map.extend(repeat(None).take(i - len + 1));
+    }
+    map[k] = Some(v);
 }
 
 fn hash(
@@ -126,14 +134,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hir_to_node_id,
             hcx,
             hir_body_nodes,
-            owner_map: FxHashMap::with_capacity_and_hasher(
-                definitions.def_index_count(),
-                Default::default(),
-            ),
-            owner_items_map: FxHashMap::with_capacity_and_hasher(
-                definitions.def_index_count(),
-                Default::default(),
-            ),
+            map: (0..definitions.def_index_count())
+                .map(|_| HirOwnerData { signature: None, with_bodies: None })
+                .collect(),
         };
         collector.insert_entry(
             hir::CRATE_HIR_ID,
@@ -149,14 +152,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         crate_disambiguator: CrateDisambiguator,
         cstore: &dyn CrateStore,
         commandline_args_hash: u64,
-    ) -> (
-        FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
-        FxHashMap<DefIndex, &'hir mut HirOwnerItems<'hir>>,
-        Svh,
-    ) {
+    ) -> (IndexVec<DefIndex, HirOwnerData<'hir>>, Svh) {
         // Insert bodies into the map
         for (id, body) in self.krate.bodies.iter() {
-            let bodies = &mut self.owner_items_map.get_mut(&id.hir_id.owner).unwrap().bodies;
+            let bodies = &mut self.map[id.hir_id.owner].with_bodies.as_mut().unwrap().bodies;
             assert!(bodies.insert(id.hir_id.local_id, body).is_none());
         }
 
@@ -196,39 +195,42 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let crate_hash: Fingerprint = stable_hasher.finish();
 
         let svh = Svh::new(crate_hash.to_smaller_hash());
-        (self.owner_map, self.owner_items_map, svh)
+        (self.map, svh)
     }
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>, hash: Fingerprint) {
         let i = id.local_id.as_u32() as usize;
 
-        let owner = HirOwner { parent: entry.parent, node: entry.node };
-
         let arena = self.arena;
 
-        let items = self.owner_items_map.entry(id.owner).or_insert_with(|| {
-            arena.alloc(HirOwnerItems {
+        let data = &mut self.map[id.owner];
+
+        if data.with_bodies.is_none() {
+            data.with_bodies = Some(arena.alloc(HirOwnerItems {
                 hash,
                 items: IndexVec::new(),
                 bodies: FxHashMap::default(),
-            })
-        });
+            }));
+        }
+
+        let items = data.with_bodies.as_mut().unwrap();
 
         if i == 0 {
             // Overwrite the dummy hash with the real HIR owner hash.
             items.hash = hash;
 
-            self.owner_map.insert(id.owner, self.arena.alloc(owner));
-        // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
-        //assert!(self.owner_map.insert(id.owner, self.arena.alloc(owner)).is_none());
+            // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
+            //assert!(data.signature.is_none());
+
+            data.signature =
+                Some(self.arena.alloc(HirOwner { parent: entry.parent, node: entry.node }));
         } else {
-            let len = items.items.len();
-            if i >= len {
-                items.items.extend(repeat(None).take(i - len + 1));
-            }
             assert_eq!(entry.parent.owner, id.owner);
-            items.items[id.local_id] =
-                Some(HirItem { parent: entry.parent.local_id, node: entry.node });
+            insert_vec_map(
+                &mut items.items,
+                id.local_id,
+                HirItem { parent: entry.parent.local_id, node: entry.node },
+            );
         }
     }
 

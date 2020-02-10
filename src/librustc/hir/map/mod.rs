@@ -15,6 +15,7 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
 use rustc_hir::*;
+use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::kw;
@@ -128,12 +129,16 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
     }
 }
 
+pub(super) struct HirOwnerData<'hir> {
+    pub(super) signature: Option<&'hir HirOwner<'hir>>,
+    pub(super) with_bodies: Option<&'hir mut HirOwnerItems<'hir>>,
+}
+
 pub struct IndexedHir<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    pub(super) owner_map: FxHashMap<DefIndex, &'hir HirOwner<'hir>>,
-    pub(super) owner_items_map: FxHashMap<DefIndex, &'hir HirOwnerItems<'hir>>,
+    pub(super) map: IndexVec<DefIndex, HirOwnerData<'hir>>,
 
     /// The reverse mapping of `node_to_hir_id`.
     pub(super) hir_to_node_id: FxHashMap<HirId, NodeId>,
@@ -1036,7 +1041,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
         .map(|(node_id, &hir_id)| (hir_id, node_id))
         .collect();
 
-    let (owner_map, owner_items_map, crate_hash) = {
+    let (map, crate_hash) = {
         let hcx = tcx.create_stable_hashing_context();
 
         let mut collector = NodeCollector::root(
@@ -1054,12 +1059,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
         collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
     };
 
-    let map = tcx.arena.alloc(IndexedHir {
-        crate_hash,
-        owner_map,
-        owner_items_map: owner_items_map.into_iter().map(|(k, v)| (k, &*v)).collect(),
-        hir_to_node_id,
-    });
+    let map = tcx.arena.alloc(IndexedHir { crate_hash, map, hir_to_node_id });
 
     map
 }
