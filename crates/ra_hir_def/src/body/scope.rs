@@ -194,7 +194,7 @@ mod tests {
         let (off, code) = extract_offset(code);
         let code = {
             let mut buf = String::new();
-            let off = u32::from(off) as usize;
+            let off = off.to_usize();
             buf.push_str(&code[..off]);
             buf.push_str("marker");
             buf.push_str(&code[off..]);

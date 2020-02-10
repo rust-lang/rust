@@ -66,13 +66,13 @@ impl TextEdit {
         let mut total_len = text.len();
         for atom in self.atoms.iter() {
             total_len += atom.insert.len();
-            total_len -= u32::from(atom.delete.end() - atom.delete.start()) as usize;
+            total_len -= (atom.delete.end() - atom.delete.start()).to_usize();
         }
         let mut buf = String::with_capacity(total_len);
         let mut prev = 0;
         for atom in self.atoms.iter() {
-            let start = u32::from(atom.delete.start()) as usize;
-            let end = u32::from(atom.delete.end()) as usize;
+            let start = atom.delete.start().to_usize();
+            let end = atom.delete.end().to_usize();
             if start > prev {
                 buf.push_str(&text[prev..start]);
             }
