@@ -90,9 +90,9 @@ mod queries;
 mod value;
 
 pub use self::error::{
-    struct_error, AssertMessage, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
-    FrameInfo, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, PanicInfo,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
+    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, ResourceExhaustionInfo,
+    UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};

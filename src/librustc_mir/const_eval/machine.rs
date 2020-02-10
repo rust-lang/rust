@@ -8,12 +8,13 @@ use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use rustc::mir::AssertMessage;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
-    self, snapshot, AllocId, Allocation, AssertMessage, GlobalId, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    self, snapshot, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory,
+    MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
@@ -280,7 +281,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::interpret::PanicInfo::*;
+        use rustc::mir::PanicInfo::*;
         // Convert `PanicInfo<Operand>` to `PanicInfo<u64>`.
         let err = match msg {
             BoundsCheck { ref len, ref index } => {

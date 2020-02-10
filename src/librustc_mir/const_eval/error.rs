@@ -1,10 +1,11 @@
 use std::error::Error;
 use std::fmt;
 
+use rustc::mir::PanicInfo;
 use rustc_span::Symbol;
 
 use super::InterpCx;
-use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine, PanicInfo};
+use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
