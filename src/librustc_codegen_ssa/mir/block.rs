@@ -11,7 +11,7 @@ use crate::MemFlags;
 
 use rustc::middle::lang_items;
 use rustc::mir;
-use rustc::mir::interpret::PanicInfo;
+use rustc::mir::PanicInfo;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;

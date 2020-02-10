@@ -4,13 +4,13 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpError, InterpResult, PanicInfo, Scalar};
+use rustc::mir::interpret::{InterpError, InterpResult, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::{
     read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
+    Local, LocalDecl, LocalKind, Location, Operand, PanicInfo, Place, ReadOnlyBodyAndCache, Rvalue,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
@@ -198,7 +198,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     fn assert_panic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _span: Span,
-        _msg: &rustc::mir::interpret::AssertMessage<'tcx>,
+        _msg: &rustc::mir::AssertMessage<'tcx>,
         _unwind: Option<rustc::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         bug!("panics terminators are not evaluated in ConstProp");

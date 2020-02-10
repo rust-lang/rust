@@ -7,7 +7,6 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
-use hir::GeneratorKind;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
@@ -263,62 +262,6 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
             _ => None,
         };
         InterpErrorInfo { kind, backtrace }
-    }
-}
-
-/// Information about a panic.
-///
-/// FIXME: this is not actually an InterpError, and should probably be moved to another module.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum PanicInfo<O> {
-    BoundsCheck { len: O, index: O },
-    Overflow(mir::BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
-    ResumedAfterReturn(GeneratorKind),
-    ResumedAfterPanic(GeneratorKind),
-}
-
-/// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
-
-impl<O> PanicInfo<O> {
-    /// Getting a description does not require `O` to be printable, and does not
-    /// require allocation.
-    /// The caller is expected to handle `BoundsCheck` separately.
-    pub fn description(&self) -> &'static str {
-        use PanicInfo::*;
-        match self {
-            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
-            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
-            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
-            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
-            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
-            OverflowNeg => "attempt to negate with overflow",
-            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
-            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
-            Overflow(op) => bug!("{:?} cannot overflow", op),
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
-            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
-            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
-        }
-    }
-}
-
-impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicInfo::*;
-        match self {
-            BoundsCheck { ref len, ref index } => {
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
-            }
-            _ => write!(f, "{}", self.description()),
-        }
     }
 }
 

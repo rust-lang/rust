@@ -6,7 +6,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::PanicInfo;
+use rustc::mir::PanicInfo;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
