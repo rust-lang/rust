@@ -6,7 +6,7 @@ lazy_static! {
     pub static ref CARGO_TARGET_DIR: PathBuf = {
         match env::var_os("CARGO_TARGET_DIR") {
             Some(v) => v.into(),
-            None => "target".into(),
+            None => env::current_dir().unwrap().join("target"),
         }
     };
     pub static ref TARGET_LIB: PathBuf = {
