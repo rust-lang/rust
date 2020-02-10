@@ -38,3 +38,4 @@ LL | #![feature(const_generics)]
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0637`.
