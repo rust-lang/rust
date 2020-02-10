@@ -1,5 +1,4 @@
 use crate::traits::*;
-use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
@@ -15,7 +14,6 @@ use super::{FunctionCx, LocalRef};
 
 pub struct FunctionDebugContext<D> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<D>>,
-    pub defining_crate: CrateNum,
 }
 
 #[derive(Copy, Clone)]
@@ -95,19 +93,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         pos: BytePos,
     ) -> Option<Bx::DIScope> {
         let debug_context = self.debug_context.as_ref()?;
-        let scope_metadata = debug_context.scopes[scope_id].scope_metadata;
+        let scope_metadata = debug_context.scopes[scope_id].scope_metadata?;
         if pos < debug_context.scopes[scope_id].file_start_pos
             || pos >= debug_context.scopes[scope_id].file_end_pos
         {
             let sm = self.cx.sess().source_map();
-            let defining_crate = debug_context.defining_crate;
-            Some(self.cx.extend_scope_to_file(
-                scope_metadata.unwrap(),
-                &sm.lookup_char_pos(pos).file,
-                defining_crate,
-            ))
+            Some(self.cx.extend_scope_to_file(scope_metadata, &sm.lookup_char_pos(pos).file))
         } else {
-            scope_metadata
+            Some(scope_metadata)
         }
     }
 
@@ -158,14 +151,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // FIXME(eddyb) is this `+ 1` needed at all?
                     let kind = VariableKind::ArgumentVariable(arg_index + 1);
 
-                    self.cx.create_dbg_var(
-                        self.debug_context.as_ref().unwrap(),
-                        name,
-                        self.monomorphize(&decl.ty),
-                        scope,
-                        kind,
-                        span,
-                    )
+                    self.cx.create_dbg_var(name, self.monomorphize(&decl.ty), scope, kind, span)
                 });
 
                 Some(PerLocalVarDebugInfo {
@@ -340,14 +326,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     VariableKind::LocalVariable
                 };
-                self.cx.create_dbg_var(
-                    self.debug_context.as_ref().unwrap(),
-                    var.name,
-                    var_ty,
-                    scope,
-                    var_kind,
-                    span,
-                )
+                self.cx.create_dbg_var(var.name, var_ty, scope, var_kind, span)
             });
 
             per_local[var.place.local].push(PerLocalVarDebugInfo {

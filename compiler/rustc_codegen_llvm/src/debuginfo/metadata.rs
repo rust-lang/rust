@@ -26,7 +26,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::interpret::truncate;
@@ -760,16 +760,12 @@ fn hex_encode(data: &[u8]) -> String {
     hex_string
 }
 
-pub fn file_metadata(
-    cx: &CodegenCx<'ll, '_>,
-    source_file: &SourceFile,
-    defining_crate: CrateNum,
-) -> &'ll DIFile {
-    debug!("file_metadata: file_name: {}, defining_crate: {}", source_file.name, defining_crate);
+pub fn file_metadata(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
+    debug!("file_metadata: file_name: {}", source_file.name);
 
     let hash = Some(&source_file.src_hash);
     let file_name = Some(source_file.name.to_string());
-    let directory = if defining_crate == LOCAL_CRATE {
+    let directory = if source_file.is_real_file() && !source_file.is_imported() {
         Some(cx.sess().working_dir.0.to_string_lossy().to_string())
     } else {
         // If the path comes from an upstream crate we assume it has been made
@@ -1835,7 +1831,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
                 if !span.is_dummy() {
                     let loc = cx.lookup_debug_loc(span.lo());
                     return Some(SourceInfo {
-                        file: file_metadata(cx, &loc.file, def_id.krate),
+                        file: file_metadata(cx, &loc.file),
                         line: loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
                     });
                 }
@@ -2474,7 +2470,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
 
     let (file_metadata, line_number) = if !span.is_dummy() {
         let loc = cx.lookup_debug_loc(span.lo());
-        (file_metadata(cx, &loc.file, LOCAL_CRATE), loc.line)
+        (file_metadata(cx, &loc.file), loc.line)
     } else {
         (unknown_file_metadata(cx), None)
     };
@@ -2576,9 +2572,8 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
 pub fn extend_scope_to_file(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
-    file: &rustc_span::SourceFile,
-    defining_crate: CrateNum,
+    file: &SourceFile,
 ) -> &'ll DILexicalBlock {
-    let file_metadata = file_metadata(cx, &file, defining_crate);
+    let file_metadata = file_metadata(cx, file);
     unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
 }

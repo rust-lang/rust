@@ -1,6 +1,5 @@
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
-use rustc_hir::def_id::CrateNum;
 use rustc_middle::mir;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{SourceFile, Span, Symbol};
@@ -26,7 +25,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         &self,
         scope_metadata: Self::DIScope,
         file: &SourceFile,
-        defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
 
@@ -34,7 +32,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
         &self,
-        dbg_context: &FunctionDebugContext<Self::DIScope>,
         variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: Self::DIScope,
