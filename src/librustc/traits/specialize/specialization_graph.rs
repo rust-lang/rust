@@ -9,7 +9,6 @@ pub use rustc::traits::types::specialization_graph::*;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FutureCompatOverlapErrorKind {
-    Issue43355,
     Issue33140,
     LeakCheck,
 }
@@ -107,16 +106,16 @@ impl<'tcx> Children {
                 }
             };
 
+            let allowed_to_overlap =
+                tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling);
+
             let (le, ge) = traits::overlapping_impls(
                 tcx,
                 possible_sibling,
                 impl_def_id,
-                traits::IntercrateMode::Issue43355,
                 traits::SkipLeakCheck::default(),
                 |overlap| {
-                    if let Some(overlap_kind) =
-                        tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
-                    {
+                    if let Some(overlap_kind) = &allowed_to_overlap {
                         match overlap_kind {
                             ty::ImplOverlapKind::Permitted { marker: _ } => {}
                             ty::ImplOverlapKind::Issue33140 => {
@@ -154,31 +153,14 @@ impl<'tcx> Children {
 
                 replace_children.push(possible_sibling);
             } else {
-                if let None = tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                    // do future-compat checks for overlap. Have issue #33140
-                    // errors overwrite issue #43355 errors when both are present.
-
-                    traits::overlapping_impls(
-                        tcx,
-                        possible_sibling,
-                        impl_def_id,
-                        traits::IntercrateMode::Fixed,
-                        traits::SkipLeakCheck::default(),
-                        |overlap| {
-                            last_lint = Some(FutureCompatOverlapError {
-                                error: overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue43355,
-                            });
-                        },
-                        || (),
-                    );
+                if let None = allowed_to_overlap {
+                    // Do future-compat checks for overlap.
 
                     if last_lint.is_none() {
                         traits::overlapping_impls(
                             tcx,
                             possible_sibling,
                             impl_def_id,
-                            traits::IntercrateMode::Fixed,
                             traits::SkipLeakCheck::Yes,
                             |overlap| {
                                 last_lint = Some(FutureCompatOverlapError {
