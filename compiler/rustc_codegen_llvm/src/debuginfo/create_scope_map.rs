@@ -5,7 +5,7 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::common::CodegenCx;
 use crate::llvm;
-use crate::llvm::debuginfo::{DIScope, DISubprogram};
+use crate::llvm::debuginfo::DIScope;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_session::config::DebugInfo;
 
@@ -16,7 +16,7 @@ use rustc_index::vec::Idx;
 pub fn compute_mir_scopes(
     cx: &CodegenCx<'ll, '_>,
     mir: &Body<'_>,
-    fn_metadata: &'ll DISubprogram,
+    fn_dbg_scope: &'ll DIScope,
     debug_context: &mut FunctionDebugContext<&'ll DIScope>,
 ) {
     // Find all the scopes with variables defined in them.
@@ -37,16 +37,16 @@ pub fn compute_mir_scopes(
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, &mir, fn_metadata, &has_variables, debug_context, scope);
+        make_mir_scope(cx, &mir, fn_dbg_scope, &has_variables, debug_context, scope);
     }
 }
 
 fn make_mir_scope(
     cx: &CodegenCx<'ll, '_>,
     mir: &Body<'_>,
-    fn_metadata: &'ll DISubprogram,
+    fn_dbg_scope: &'ll DIScope,
     has_variables: &BitSet<SourceScope>,
-    debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
+    debug_context: &mut FunctionDebugContext<&'ll DIScope>,
     scope: SourceScope,
 ) {
     if debug_context.scopes[scope].is_valid() {
@@ -55,13 +55,13 @@ fn make_mir_scope(
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, mir, fn_metadata, has_variables, debug_context, parent);
+        make_mir_scope(cx, mir, fn_dbg_scope, has_variables, debug_context, parent);
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
         let loc = cx.lookup_debug_loc(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
-            scope_metadata: Some(fn_metadata),
+            scope_metadata: Some(fn_dbg_scope),
             file_start_pos: loc.file.start_pos,
             file_end_pos: loc.file.end_pos,
         };
