@@ -527,6 +527,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
             Ok(overflow)
         })? {
+            // `AssertKind` only has an `OverflowNeg` variant, to make sure that is
+            // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
             self.report_panic_as_lint(source_info, PanicInfo::OverflowNeg)?;
         }
@@ -544,6 +546,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         let r =
             self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
+        // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
             let left_bits = place_layout.size.bits();
             let right_size = r.layout.size;
@@ -564,7 +567,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // The remaining operators are handled through `overflowing_binary_op`.
-        // FIXME: Why do we not also do this for `Shr` and `Shl`?
         if self.use_ecx(|this| {
             let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
             let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
@@ -603,9 +605,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         //   2. Working around bugs in other parts of the compiler
         //        - In this case, we'll return `None` from this function to stop evaluation.
         match rvalue {
-            // Additional checking: if overflow checks are disabled (which is usually the case in
-            // release mode), then we need to do additional checking here to give lints to the user
-            // if an overflow would occur.
+            // Additional checking: give lints to the user if an overflow would occur.
+            // If `overflow_check` is set, running const-prop on the `Assert` terminators
+            // will already generate the appropriate messages.
             Rvalue::UnaryOp(op, arg) if !overflow_check => {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, source_info)?;
@@ -613,6 +615,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             // Additional checking: check for overflows on integer binary operations and report
             // them to the user as lints.
+            // If `overflow_check` is set, running const-prop on the `Assert` terminators
+            // will already generate the appropriate messages.
             Rvalue::BinaryOp(op, left, right) if !overflow_check => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
                 self.check_binary_op(*op, left, right, source_info, place_layout)?;
