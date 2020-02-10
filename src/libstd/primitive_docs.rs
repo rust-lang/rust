@@ -771,7 +771,7 @@ mod prim_tuple {}
 #[doc(primitive = "f32")]
 /// The 32-bit floating point type.
 ///
-/// *[See also the `std::f32` module](f32/index.html).*
+/// *[See also the `std::f32::consts` module](f32/consts/index.html).*
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
@@ -780,7 +780,7 @@ mod prim_f32 {}
 //
 /// The 64-bit floating point type.
 ///
-/// *[See also the `std::f64` module](f64/index.html).*
+/// *[See also the `std::f64::consts` module](f64/consts/index.html).*
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
