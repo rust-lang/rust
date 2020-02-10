@@ -1,4 +1,6 @@
 // build-fail
+// compile-flags:-C opt-level=0
+//~^^ ERROR overflow while checking
 
 enum Nil {NilValue}
 struct Cons<T> {head:isize, tail:T}
