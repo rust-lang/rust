@@ -206,3 +206,16 @@ pub struct InlayHint {
     pub kind: InlayKind,
     pub label: String,
 }
+
+pub enum Ssr {}
+
+impl Request for Ssr {
+    type Params = SsrParams;
+    type Result = SourceChange;
+    const METHOD: &'static str = "rust-analyzer/ssr";
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SsrParams {
+    pub arg: String,
+}

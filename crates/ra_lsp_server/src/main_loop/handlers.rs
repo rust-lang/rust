@@ -881,6 +881,11 @@ pub fn handle_document_highlight(
     ))
 }
 
+pub fn handle_ssr(world: WorldSnapshot, params: req::SsrParams) -> Result<req::SourceChange> {
+    let _p = profile("handle_ssr");
+    world.analysis().structural_search_replace(&params.arg)??.try_conv_with(&world)
+}
+
 pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<DiagnosticTask> {
     let _p = profile("publish_diagnostics");
     let line_index = world.analysis().file_line_index(file_id)?;

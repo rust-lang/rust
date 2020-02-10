@@ -84,7 +84,7 @@ pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);
     expr_from_text(&format!("{}{}", token, expr.syntax()))
 }
-fn expr_from_text(text: &str) -> ast::Expr {
+pub fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
 

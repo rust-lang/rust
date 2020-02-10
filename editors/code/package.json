@@ -124,6 +124,11 @@
                 "command": "rust-analyzer.onEnter",
                 "title": "Enhanced enter key",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.ssr",
+                "title": "Structural Search Replace",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

@@ -12,6 +12,7 @@ export * from './parent_module';
 export * from './syntax_tree';
 export * from './expand_macro';
 export * from './runnables';
+export * from './ssr';
 
 export function collectGarbage(ctx: Ctx): Cmd {
     return async () => {

@@ -37,6 +37,7 @@ mod display;
 mod inlay_hints;
 mod expand;
 mod expand_macro;
+mod ssr;
 
 #[cfg(test)]
 mod marks;
@@ -73,6 +74,7 @@ pub use crate::{
     },
     runnables::{Runnable, RunnableKind},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
+    ssr::SsrError,
     syntax_highlighting::HighlightedRange,
 };
 
@@ -462,6 +464,16 @@ impl Analysis {
         new_name: &str,
     ) -> Cancelable<Option<RangeInfo<SourceChange>>> {
         self.with_db(|db| references::rename(db, position, new_name))
+    }
+
+    pub fn structural_search_replace(
+        &self,
+        query: &str,
+    ) -> Cancelable<Result<SourceChange, SsrError>> {
+        self.with_db(|db| {
+            let edits = ssr::parse_search_replace(query, db)?;
+            Ok(SourceChange::source_file_edits("ssr", edits))
+        })
     }
 
     /// Performs an operation on that may be Canceled.
