@@ -195,7 +195,8 @@ impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
         let dbg_loc = self.cx().create_debug_loc(scope, span);
 
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation(self.llbuilder, dbg_loc);
+            let dbg_loc_as_llval = llvm::LLVMRustMetadataAsValue(self.cx().llcx, dbg_loc);
+            llvm::LLVMSetCurrentDebugLocation(self.llbuilder, dbg_loc_as_llval);
         }
     }
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {

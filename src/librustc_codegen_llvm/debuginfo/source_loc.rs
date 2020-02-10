@@ -2,8 +2,8 @@ use super::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use super::utils::debug_context;
 
 use crate::common::CodegenCx;
-use crate::llvm::debuginfo::DIScope;
-use crate::llvm::{self, Value};
+use crate::llvm;
+use crate::llvm::debuginfo::{DILocation, DIScope};
 use rustc_codegen_ssa::traits::*;
 
 use rustc_data_structures::sync::Lrc;
@@ -45,7 +45,7 @@ impl CodegenCx<'ll, '_> {
         }
     }
 
-    pub fn create_debug_loc(&self, scope: &'ll DIScope, span: Span) -> &'ll Value {
+    pub fn create_debug_loc(&self, scope: &'ll DIScope, span: Span) -> &'ll DILocation {
         let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
 
         unsafe {
