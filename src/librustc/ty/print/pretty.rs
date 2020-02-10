@@ -937,7 +937,6 @@ pub trait PrettyPrinter<'tcx>:
             // Bool
             (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
             (Scalar::Raw { data: 1, .. }, ty::Bool) => p!(write("true")),
-            (Scalar::Raw { data, .. }, ty::Bool) => p!(write("{}_bool", data)),
             // Float
             (Scalar::Raw { data, .. }, ty::Float(ast::FloatTy::F32)) => {
                 p!(write("{}f32", Single::from_bits(data)))
@@ -975,14 +974,9 @@ pub trait PrettyPrinter<'tcx>:
                 Some(c) => p!(write("{:?}", c)),
                 None => p!(write("{}_char", data)),
             },
-            // References and pointers
-            (Scalar::Raw { data: 0, .. }, ty::RawPtr(_)) => p!(write("{{null pointer}}")),
-            // This is UB, but we still print it
-            (Scalar::Raw { data: 0, .. }, ty::Ref(_, ty, _)) => {
-                p!(write("{{null reference to "), print(ty), write("}}"))
-            }
-            (Scalar::Raw { data, .. }, ty::Ref(..)) | (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
-                p!(write("0x{:x}", data))
+            // Raw pointers
+            (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
+                p!(write("{{0x{:x} as ", data), print(ty), write("}}"))
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
                 let instance = {
