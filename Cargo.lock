@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.43.0"
+version = "0.44.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -292,6 +292,7 @@ dependencies = [
  "clap",
  "core-foundation 0.7.0",
  "crates-io",
+ "crossbeam-channel 0.4.0",
  "crossbeam-utils 0.7.0",
  "crypto-hash",
  "curl",
@@ -730,6 +731,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acec9a3b0b3559f15aee4f90746c4e5e293b701c0f7d3925d24e01645267b68c"
+dependencies = [
+ "crossbeam-utils 0.7.0",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1077,13 +1087,14 @@ checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
 name = "filetime"
-version = "0.2.4"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2df5c1a8c4be27e7707789dc42ae65976e60b394afd293d1419ab915833e646"
+checksum = "1ff6d4dab0aa0c8e6346d46052e93b13a16cf847b54ed357087c35011048cc7d"
 dependencies = [
  "cfg-if",
  "libc",
  "redox_syscall",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -1541,7 +1552,7 @@ version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ec16832258409d571aaef8273f3c3cc5b060d784e159d1a0f3b0017308f84a7"
 dependencies = [
- "crossbeam-channel",
+ "crossbeam-channel 0.3.8",
  "globset",
  "lazy_static 1.4.0",
  "log",
@@ -2504,12 +2515,11 @@ dependencies = [
 
 [[package]]
 name = "pretty_env_logger"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df8b3f4e0475def7d9c2e5de8e5a1306949849761e107b360d03e98eafaffd61"
+checksum = "926d36b9553851b8b0005f1275891b392ee4d2d833852c417ed025477350fb9d"
 dependencies = [
- "chrono",
- "env_logger 0.6.2",
+ "env_logger 0.7.1",
  "log",
 ]
 
@@ -2948,7 +2958,7 @@ dependencies = [
  "cargo",
  "cargo_metadata 0.8.0",
  "clippy_lints",
- "crossbeam-channel",
+ "crossbeam-channel 0.3.8",
  "difference",
  "env_logger 0.7.1",
  "futures",
@@ -4547,9 +4557,9 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.20"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a303ba60a099fcd2aaa646b14d2724591a96a75283e4b7ed3d1a1658909d9ae2"
+checksum = "b3196bfbffbba3e57481b6ea32249fbaf590396a52505a2615adbb79d9d826d3"
 dependencies = [
  "filetime",
  "libc",
