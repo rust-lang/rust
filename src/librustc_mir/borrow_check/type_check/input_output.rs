@@ -64,12 +64,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         };
 
+        debug!(
+            "equate_inputs_and_outputs: normalized_input_tys = {:?}, local_decls = {:?}",
+            normalized_input_tys, body.local_decls
+        );
+
         // Equate expected input tys with those in the MIR.
         for (&normalized_input_ty, argument_index) in normalized_input_tys.iter().zip(0..) {
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
-
-            debug!("equate_inputs_and_outputs: normalized_input_ty = {:?}", normalized_input_ty);
 
             let mir_input_ty = body.local_decls[local].ty;
             let mir_input_span = body.local_decls[local].source_info.span;
