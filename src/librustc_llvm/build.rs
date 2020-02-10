@@ -127,6 +127,7 @@ fn main() {
         }
 
         if flag.starts_with("-flto") {
+            // Handled below.
             continue;
         }
 
@@ -151,6 +152,10 @@ fn main() {
 
     if env::var_os("LLVM_NDEBUG").is_some() {
         cfg.define("NDEBUG", None);
+    }
+
+    if let Ok(kind) = env::var("LLVM_LTO") {
+        cfg.flag(&format!("-flto={}", kind));
     }
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));

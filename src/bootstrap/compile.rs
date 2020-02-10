@@ -567,8 +567,11 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
             let file = compiler_file(builder, builder.cxx(target).unwrap(), target, "libstdc++.a");
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
-        if builder.config.llvm_link_shared || builder.config.llvm_thin_lto {
+        if builder.config.llvm_link_shared {
             cargo.env("LLVM_LINK_SHARED", "1");
+        }
+        if builder.config.llvm_thin_lto {
+            cargo.env("LLVM_LTO", "thin");
         }
         if builder.config.llvm_use_libcxx {
             cargo.env("LLVM_USE_LIBCXX", "1");

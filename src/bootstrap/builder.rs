@@ -787,6 +787,33 @@ impl<'a> Builder<'a> {
             }
         }
 
+        // If we're statically linking in an LLVM compiled for ThinLTO,
+        // configure the linker accordingly.
+        if Mode::Rustc == mode && self.config.llvm_thin_lto && !self.config.llvm_link_shared {
+            if target.contains("msvc") {
+                // Here we assume the linker is lld-link.exe.
+                rustflags.arg(&format!("-Clink-arg=/opt:lldtojobs={}", self.jobs()));
+            } else {
+                // Here we assume the linker is clang and that lld is available.
+                // If not, there'll be linker errors.
+                rustflags.arg("-Clink-arg=-fuse-ld=lld");
+                rustflags.arg("-Clink-arg=-flto=thin");
+
+                // Copy the optimization flags LLVM uses for its Release and
+                // RelWithDebugInfo builds.
+                if self.config.llvm_optimize {
+                    if self.config.llvm_release_debuginfo {
+                        rustflags.arg("-Clink-arg=-O2");
+                    } else {
+                        rustflags.arg("-Clink-arg=-O3");
+                    }
+                }
+
+                // Make LLD respect the `-j` option.
+                rustflags.arg(&format!("-Clink-arg=-Wl,--thinlto-jobs={}", self.jobs()));
+            }
+        }
+
         // This tells Cargo (and in turn, rustc) to output more complete
         // dependency information.  Most importantly for rustbuild, this
         // includes sysroot artifacts, like libstd, which means that we don't

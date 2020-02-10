@@ -101,6 +101,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.linker=clang \
       --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
+      --set llvm.link-shared=true \
       --set llvm.thin-lto=true \
       --set rust.jemalloc
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
