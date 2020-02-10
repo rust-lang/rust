@@ -40,7 +40,7 @@ fn make_mir_scope(
     debug_context: &mut FunctionDebugContext<&'ll DIScope>,
     scope: SourceScope,
 ) {
-    if debug_context.scopes[scope].is_valid() {
+    if debug_context.scopes[scope].dbg_scope.is_some() {
         return;
     }
 
@@ -52,7 +52,7 @@ fn make_mir_scope(
         // The root is the function itself.
         let loc = cx.lookup_debug_loc(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
-            scope_metadata: Some(fn_dbg_scope),
+            dbg_scope: Some(fn_dbg_scope),
             file_start_pos: loc.file.start_pos,
             file_end_pos: loc.file.end_pos,
         };
@@ -69,17 +69,17 @@ fn make_mir_scope(
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
     let file_metadata = file_metadata(cx, &loc.file);
 
-    let scope_metadata = unsafe {
+    let dbg_scope = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(cx),
-            parent_scope.scope_metadata.unwrap(),
+            parent_scope.dbg_scope.unwrap(),
             file_metadata,
             loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
             loc.col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
         ))
     };
     debug_context.scopes[scope] = DebugScope {
-        scope_metadata,
+        dbg_scope,
         file_start_pos: loc.file.start_pos,
         file_end_pos: loc.file.end_pos,
     };

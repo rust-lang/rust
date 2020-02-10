@@ -37,70 +37,57 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct DebugScope<D> {
-    pub scope_metadata: Option<D>,
+    // FIXME(eddyb) this should never be `None`, after initialization.
+    pub dbg_scope: Option<D>,
     // Start and end offsets of the file to which this DIScope belongs.
     // These are used to quickly determine whether some span refers to the same file.
     pub file_start_pos: BytePos,
     pub file_end_pos: BytePos,
 }
 
-impl<D> DebugScope<D> {
-    pub fn is_valid(&self) -> bool {
-        self.scope_metadata.is_some()
-    }
-}
-
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
-        let (scope, span) = self.debug_loc(source_info);
-        if let Some(scope) = scope {
-            bx.set_source_location(scope, span);
+        if let Some(dbg_loc) = self.dbg_loc(source_info) {
+            bx.set_dbg_loc(dbg_loc);
         }
     }
 
-    pub fn debug_loc(&self, source_info: mir::SourceInfo) -> (Option<Bx::DIScope>, Span) {
+    fn dbg_loc(&self, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
+        let (scope, span) = self.dbg_scope_and_span(source_info)?;
+        Some(self.cx.dbg_loc(scope, span))
+    }
+
+    fn dbg_scope_and_span(&self, source_info: mir::SourceInfo) -> Option<(Bx::DIScope, Span)> {
         // Bail out if debug info emission is not enabled.
-        match self.debug_context {
-            None => return (None, source_info.span),
-            Some(_) => {}
-        }
+        let debug_context = self.debug_context.as_ref()?;
+        let scope = &debug_context.scopes[source_info.scope];
 
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if !source_info.span.from_expansion() || self.cx.sess().opts.debugging_opts.debug_macros {
-            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
-            (scope, source_info.span)
-        } else {
+        let mut span = source_info.span;
+        if span.from_expansion() && !self.cx.sess().opts.debugging_opts.debug_macros {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.
-            let span = rustc_span::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
-            let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
             // Use span of the outermost expansion site, while keeping the original lexical scope.
-            (scope, span)
+            span = rustc_span::hygiene::walk_chain(span, self.mir.span.ctxt());
         }
-    }
 
-    // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
-    // it may so happen that the current span belongs to a different file than the DIScope
-    // corresponding to span's containing source scope.  If so, we need to create a DIScope
-    // "extension" into that file.
-    fn scope_metadata_for_loc(
-        &self,
-        scope_id: mir::SourceScope,
-        pos: BytePos,
-    ) -> Option<Bx::DIScope> {
-        let debug_context = self.debug_context.as_ref()?;
-        let scope_metadata = debug_context.scopes[scope_id].scope_metadata?;
-        if pos < debug_context.scopes[scope_id].file_start_pos
-            || pos >= debug_context.scopes[scope_id].file_end_pos
-        {
+        // FIXME(eddyb) this should never be `None`.
+        let mut dbg_scope = scope.dbg_scope?;
+
+        // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
+        // it may so happen that the current span belongs to a different file than the DIScope
+        // corresponding to span's containing source scope.  If so, we need to create a DIScope
+        // "extension" into that file.
+        let pos = span.lo();
+        if pos < scope.file_start_pos || pos >= scope.file_end_pos {
             let sm = self.cx.sess().source_map();
-            Some(self.cx.extend_scope_to_file(scope_metadata, &sm.lookup_char_pos(pos).file))
-        } else {
-            Some(scope_metadata)
+            dbg_scope = self.cx.extend_scope_to_file(dbg_scope, &sm.lookup_char_pos(pos).file);
         }
+
+        Some((dbg_scope, span))
     }
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
@@ -140,17 +127,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 let name = kw::Invalid;
                 let decl = &self.mir.local_decls[local];
-                let (scope, span) = if full_debug_info {
-                    self.debug_loc(decl.source_info)
-                } else {
-                    (None, decl.source_info.span)
-                };
-                let dbg_var = scope.map(|scope| {
-                    // FIXME(eddyb) is this `+ 1` needed at all?
-                    let kind = VariableKind::ArgumentVariable(arg_index + 1);
+                let dbg_var = if full_debug_info {
+                    self.dbg_scope_and_span(decl.source_info).map(|(scope, span)| {
+                        // FIXME(eddyb) is this `+ 1` needed at all?
+                        let kind = VariableKind::ArgumentVariable(arg_index + 1);
 
-                    self.cx.create_dbg_var(name, self.monomorphize(&decl.ty), scope, kind, span)
-                });
+                        self.cx.create_dbg_var(name, self.monomorphize(&decl.ty), scope, kind, span)
+                    })
+                } else {
+                    None
+                };
 
                 Some(PerLocalVarDebugInfo {
                     name,
@@ -224,6 +210,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let vars = vars.iter().copied().chain(fallback_var);
 
         for var in vars {
+            let dbg_var = match var.dbg_var {
+                Some(dbg_var) => dbg_var,
+                None => continue,
+            };
+            let dbg_loc = match self.dbg_loc(var.source_info) {
+                Some(dbg_loc) => dbg_loc,
+                None => continue,
+            };
+
             let mut layout = base.layout;
             let mut direct_offset = Size::ZERO;
             // FIXME(eddyb) use smallvec here.
@@ -260,19 +255,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            let (scope, span) = self.debug_loc(var.source_info);
-            if let Some(scope) = scope {
-                if let Some(dbg_var) = var.dbg_var {
-                    bx.dbg_var_addr(
-                        dbg_var,
-                        scope,
-                        base.llval,
-                        direct_offset,
-                        &indirect_offsets,
-                        span,
-                    );
-                }
-            }
+            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, direct_offset, &indirect_offsets);
         }
     }
 
@@ -296,12 +279,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
         for var in &self.mir.var_debug_info {
-            let (scope, span) = if full_debug_info {
-                self.debug_loc(var.source_info)
-            } else {
-                (None, var.source_info.span)
-            };
-            let dbg_var = scope.map(|scope| {
+            let scope_and_span =
+                if full_debug_info { self.dbg_scope_and_span(var.source_info) } else { None };
+            let dbg_var = scope_and_span.map(|(scope, span)| {
                 let place = var.place;
                 let var_ty = self.monomorphized_place_ty(place.as_ref());
                 let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg

@@ -92,6 +92,7 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type Funclet = Funclet<'ll>;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
+    type DILocation = &'ll llvm::debuginfo::DILocation;
     type DIVariable = &'ll llvm::debuginfo::DIVariable;
 }
 

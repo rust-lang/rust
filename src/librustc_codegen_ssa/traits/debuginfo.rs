@@ -31,6 +31,8 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         maybe_definition_llfn: Option<Self::Function>,
     ) -> Self::DIScope;
 
+    fn dbg_loc(&self, scope: Self::DIScope, span: Span) -> Self::DILocation;
+
     fn extend_scope_to_file(
         &self,
         scope_metadata: Self::DIScope,
@@ -56,14 +58,13 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
     fn dbg_var_addr(
         &mut self,
         dbg_var: Self::DIVariable,
-        scope_metadata: Self::DIScope,
+        dbg_loc: Self::DILocation,
         variable_alloca: Self::Value,
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
-        span: Span,
     );
-    fn set_source_location(&mut self, scope: Self::DIScope, span: Span);
+    fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation);
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
     fn set_var_name(&mut self, value: Self::Value, name: &str);
 }
