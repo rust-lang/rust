@@ -89,7 +89,7 @@ parameters, that correspond to the following:
 Although there are already many lifetime parameters in the code, making it
 generic uncovered situations where the borrow-checker was passing only due to
 the special nature of the LLVM objects manipulated (they are extern pointers).
-For instance, a additional lifetime parameter had to be added to
+For instance, an additional lifetime parameter had to be added to
 `LocalAnalyser` in `analyse.rs`, leading to the definition:
 
 ```rust,ignore
