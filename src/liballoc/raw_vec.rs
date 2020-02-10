@@ -280,7 +280,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
             // 0, getting to here necessarily means the `RawVec` is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
-            let (new_cap, uniq) = match self.current_layout() {
+            let (new_cap, ptr) = match self.current_layout() {
                 Some(cur) => {
                     // Since we guarantee that we never allocate more than
                     // `isize::MAX` bytes, `elem_size * self.cap <= isize::MAX` as
@@ -297,7 +297,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                     alloc_guard(new_size).unwrap_or_else(|_| capacity_overflow());
                     let ptr_res = self.a.realloc(NonNull::from(self.ptr).cast(), cur, new_size);
                     match ptr_res {
-                        Ok(ptr) => (new_cap, ptr.cast().into()),
+                        Ok(ptr) => (new_cap, ptr),
                         Err(_) => handle_alloc_error(Layout::from_size_align_unchecked(
                             new_size,
                             cur.align(),
@@ -308,13 +308,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
                     // Skip to 4 because tiny `Vec`'s are dumb; but not if that
                     // would cause overflow.
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
-                    match self.a.alloc_array::<T>(new_cap) {
-                        Ok(ptr) => (new_cap, ptr.into()),
-                        Err(_) => handle_alloc_error(Layout::array::<T>(new_cap).unwrap()),
+                    let layout = Layout::array::<T>(new_cap).unwrap();
+                    match self.a.alloc(layout) {
+                        Ok(ptr) => (new_cap, ptr),
+                        Err(_) => handle_alloc_error(layout),
                     }
                 }
             };
-            self.ptr = uniq;
+            self.ptr = ptr.cast().into();
             self.cap = new_cap;
         }
     }
