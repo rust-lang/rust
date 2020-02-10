@@ -26,7 +26,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     mir: &'tcx mir::Body<'tcx>,
 
-    debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
+    debug_context: Option<FunctionDebugContext<Bx::DIScope, Bx::DILocation>>,
 
     llfn: Bx::Function,
 
