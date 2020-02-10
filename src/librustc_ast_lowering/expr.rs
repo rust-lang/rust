@@ -561,7 +561,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///             ::std::task::Poll::Ready(result) => break result,
     ///             ::std::task::Poll::Pending => {}
     ///         }
-    ///         yield ();
+    ///         task_context = yield ();
     ///     }
     /// }
     /// ```
@@ -664,6 +664,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.stmt_expr(span, match_expr)
         };
 
+        // task_context = yield ();
         let yield_stmt = {
             let unit = self.expr_unit(span);
             let yield_expr = self.expr(
@@ -687,7 +688,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
 
-        // loop { ...; task_context = yield (); }
+        // loop { .. }
         let loop_expr = self.arena.alloc(hir::Expr {
             hir_id: loop_hir_id,
             kind: hir::ExprKind::Loop(loop_block, None, hir::LoopSource::Loop),
