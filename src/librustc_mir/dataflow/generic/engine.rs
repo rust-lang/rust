@@ -331,7 +331,7 @@ where
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
-    dot::render(&graphviz, &mut buf)?;
+    dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
     fs::write(&path, buf)?;
     Ok(())
 }
