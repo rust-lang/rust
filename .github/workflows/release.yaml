@@ -95,9 +95,6 @@ jobs:
       - name: Copy vscode extension
         run: mkdir -p ./dist/code && cp ./editors/code/*.vsix ./dist/
 
-      - name: Copy emacs mode
-        run: cp ./editors/emacs/rust-analyzer.el ./dist/rust-analyzer.el
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
