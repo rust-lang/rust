@@ -1276,6 +1276,7 @@ Released 2018-09-13
 [`op_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#op_ref
 [`option_and_then_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_and_then_some
 [`option_as_ref_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref
+[`option_env_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_env_unwrap
 [`option_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_expect_used
 [`option_map_or_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unit_fn

@@ -46,3 +46,13 @@ macro_rules! take_external {
         std::mem::replace($s, Default::default())
     };
 }
+
+#[macro_export]
+macro_rules! option_env_unwrap_external {
+    ($env: expr) => {
+        option_env!($env).unwrap()
+    };
+    ($env: expr, $message: expr) => {
+        option_env!($env).expect($message)
+    };
+}
