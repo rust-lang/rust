@@ -705,7 +705,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo,
     LLVMMetadataRef Ty, unsigned ScopeLine, LLVMRustDIFlags Flags,
-    LLVMRustDISPFlags SPFlags, LLVMValueRef Fn, LLVMMetadataRef TParam,
+    LLVMRustDISPFlags SPFlags, LLVMValueRef MaybeFn, LLVMMetadataRef TParam,
     LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
@@ -739,7 +739,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       ScopeLine, llvmFlags, IsOptimized, TParams,
       unwrapDIPtr<DISubprogram>(Decl));
 #endif
-  unwrap<Function>(Fn)->setSubprogram(Sub);
+  if (MaybeFn)
+    unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
 }
 

@@ -1653,7 +1653,7 @@ extern "C" {
         ScopeLine: c_uint,
         Flags: DIFlags,
         SPFlags: DISPFlags,
-        Fn: &'a Value,
+        MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;

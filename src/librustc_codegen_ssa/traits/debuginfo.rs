@@ -22,6 +22,15 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         mir: &mir::Body<'_>,
     ) -> Option<FunctionDebugContext<Self::DIScope>>;
 
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn dbg_scope_fn(
+        &self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        maybe_definition_llfn: Option<Self::Function>,
+    ) -> Self::DIScope;
+
     fn extend_scope_to_file(
         &self,
         scope_metadata: Self::DIScope,

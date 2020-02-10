@@ -238,16 +238,36 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return None;
         }
 
-        let span = mir.span;
+        // Initialize fn debug context (including scopes).
+        // FIXME(eddyb) figure out a way to not need `Option` for `scope_metadata`.
+        let empty_scope = DebugScope {
+            scope_metadata: None,
+            file_start_pos: BytePos(0),
+            file_end_pos: BytePos(0),
+        };
+        let mut fn_debug_context =
+            FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
-        // This can be the case for functions inlined from another crate
-        if span.is_dummy() {
-            // FIXME(simulacrum): Probably can't happen; remove.
-            return None;
-        }
+        // Fill in all the scopes, with the information from the MIR body.
+        compute_mir_scopes(
+            self,
+            mir,
+            self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
+            &mut fn_debug_context,
+        );
 
+        Some(fn_debug_context)
+    }
+
+    fn dbg_scope_fn(
+        &self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        maybe_definition_llfn: Option<&'ll Value>,
+    ) -> &'ll DIScope {
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
+        let span = self.tcx.def_span(def_id);
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
@@ -295,8 +315,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
         }
 
-        let fn_metadata = unsafe {
-            llvm::LLVMRustDIBuilderCreateFunction(
+        unsafe {
+            return llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
                 name.as_ptr().cast(),
@@ -309,26 +329,11 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 scope_line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 flags,
                 spflags,
-                llfn,
+                maybe_definition_llfn,
                 template_parameters,
                 None,
-            )
-        };
-
-        // Initialize fn debug context (including scopes).
-        // FIXME(eddyb) figure out a way to not need `Option` for `scope_metadata`.
-        let null_scope = DebugScope {
-            scope_metadata: None,
-            file_start_pos: BytePos(0),
-            file_end_pos: BytePos(0),
-        };
-        let mut fn_debug_context =
-            FunctionDebugContext { scopes: IndexVec::from_elem(null_scope, &mir.source_scopes) };
-
-        // Fill in all the scopes, with the information from the MIR body.
-        compute_mir_scopes(self, mir, fn_metadata, &mut fn_debug_context);
-
-        return Some(fn_debug_context);
+            );
+        }
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
