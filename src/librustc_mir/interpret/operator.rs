@@ -401,7 +401,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (truncated, overflow || self.sign_extend(truncated, layout) != res)
                     }
                 };
-                // res needs tuncating
                 Ok((Scalar::from_uint(res, layout.size), overflow, layout.ty))
             }
         }
