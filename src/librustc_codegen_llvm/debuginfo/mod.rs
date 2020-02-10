@@ -268,22 +268,27 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
-        mir: &mir::Body<'_>,
-    ) -> Option<FunctionDebugContext<&'ll DIScope>> {
+        mir: &mir::Body<'tcx>,
+    ) -> Option<FunctionDebugContext<&'ll DIScope, &'ll DILocation>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return None;
         }
 
         // Initialize fn debug context (including scopes).
         // FIXME(eddyb) figure out a way to not need `Option` for `dbg_scope`.
-        let empty_scope =
-            DebugScope { dbg_scope: None, file_start_pos: BytePos(0), file_end_pos: BytePos(0) };
+        let empty_scope = DebugScope {
+            dbg_scope: None,
+            inlined_at: None,
+            file_start_pos: BytePos(0),
+            file_end_pos: BytePos(0),
+        };
         let mut fn_debug_context =
             FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
         compute_mir_scopes(
             self,
+            instance,
             mir,
             self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
             &mut fn_debug_context,
@@ -538,7 +543,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn dbg_loc(&self, scope: &'ll DIScope, span: Span) -> &'ll DILocation {
+    fn dbg_loc(
+        &self,
+        scope: &'ll DIScope,
+        inlined_at: Option<&'ll DILocation>,
+        span: Span,
+    ) -> &'ll DILocation {
         let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
 
         unsafe {
@@ -547,7 +557,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 line.unwrap_or(UNKNOWN_LINE_NUMBER),
                 col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
                 scope,
-                None,
+                inlined_at,
             )
         }
     }

@@ -19,8 +19,8 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Function,
-        mir: &mir::Body<'_>,
-    ) -> Option<FunctionDebugContext<Self::DIScope>>;
+        mir: &mir::Body<'tcx>,
+    ) -> Option<FunctionDebugContext<Self::DIScope, Self::DILocation>>;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
@@ -31,7 +31,12 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         maybe_definition_llfn: Option<Self::Function>,
     ) -> Self::DIScope;
 
-    fn dbg_loc(&self, scope: Self::DIScope, span: Span) -> Self::DILocation;
+    fn dbg_loc(
+        &self,
+        scope: Self::DIScope,
+        inlined_at: Option<Self::DILocation>,
+        span: Span,
+    ) -> Self::DILocation;
 
     fn extend_scope_to_file(
         &self,
