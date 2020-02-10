@@ -656,6 +656,9 @@ rustc_queries! {
         query is_object_safe(key: DefId) -> bool {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
+        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
+            desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
+        }
 
         /// Gets the ParameterEnvironment for a given item; this environment
         /// will be in "user-facing" mode, meaning that it is suitabe for

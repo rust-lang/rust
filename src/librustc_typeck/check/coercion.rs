@@ -66,7 +66,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::object_safety_violations;
 use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -1404,7 +1403,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         // Are of this `impl Trait`'s traits object safe?
                         is_object_safe = bounds.iter().all(|bound| {
                             bound.trait_def_id().map_or(false, |def_id| {
-                                object_safety_violations(fcx.tcx, def_id).is_empty()
+                                fcx.tcx.object_safety_violations(def_id).is_empty()
                             })
                         })
                     }

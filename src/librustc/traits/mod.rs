@@ -16,8 +16,10 @@ use crate::ty::{self, AdtKind, List, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
+use smallvec::SmallVec;
 use syntax::ast;
 
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -736,4 +738,134 @@ where
         ex_clause: &chalk_engine::Literal<Self>,
         tcx: TyCtxt<'tcx>,
     ) -> Option<Self::LiftedLiteral>;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum ObjectSafetyViolation {
+    /// `Self: Sized` declared on the trait.
+    SizedSelf(SmallVec<[Span; 1]>),
+
+    /// Supertrait reference references `Self` an in illegal location
+    /// (e.g., `trait Foo : Bar<Self>`).
+    SupertraitSelf(SmallVec<[Span; 1]>),
+
+    /// Method has something illegal.
+    Method(ast::Name, MethodViolationCode, Span),
+
+    /// Associated const.
+    AssocConst(ast::Name, Span),
+}
+
+impl ObjectSafetyViolation {
+    pub fn error_msg(&self) -> Cow<'static, str> {
+        match *self {
+            ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
+            ObjectSafetyViolation::SupertraitSelf(ref spans) => {
+                if spans.iter().any(|sp| *sp != DUMMY_SP) {
+                    "it uses `Self` as a type parameter in this".into()
+                } else {
+                    "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
+                        .into()
+                }
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
+                format!("associated function `{}` has no `self` parameter", name).into()
+            }
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::ReferencesSelfInput(_),
+                DUMMY_SP,
+            ) => format!("method `{}` references the `Self` type in its parameters", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
+                format!("method `{}` references the `Self` type in this parameter", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfOutput, _) => {
+                format!("method `{}` references the `Self` type in its return type", name).into()
+            }
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::WhereClauseReferencesSelf,
+                _,
+            ) => {
+                format!("method `{}` references the `Self` type in its `where` clause", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
+                format!("method `{}` has generic type parameters", name).into()
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
+                format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
+            }
+            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+                format!("it contains associated `const` `{}`", name).into()
+            }
+            ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
+        }
+    }
+
+    pub fn solution(&self) -> Option<(String, Option<(String, Span)>)> {
+        Some(match *self {
+            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {
+                return None;
+            }
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(sugg), _) => (
+                format!(
+                    "consider turning `{}` into a method by giving it a `&self` argument or \
+                     constraining it so it does not apply to trait objects",
+                    name
+                ),
+                sugg.map(|(sugg, sp)| (sugg.to_string(), sp)),
+            ),
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::UndispatchableReceiver,
+                span,
+            ) => (
+                format!("consider changing method `{}`'s `self` parameter to be `&self`", name)
+                    .into(),
+                Some(("&Self".to_string(), span)),
+            ),
+            ObjectSafetyViolation::AssocConst(name, _)
+            | ObjectSafetyViolation::Method(name, ..) => {
+                (format!("consider moving `{}` to another trait", name), None)
+            }
+        })
+    }
+
+    pub fn spans(&self) -> SmallVec<[Span; 1]> {
+        // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
+        // diagnostics use a `note` instead of a `span_label`.
+        match self {
+            ObjectSafetyViolation::SupertraitSelf(spans)
+            | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
+            ObjectSafetyViolation::AssocConst(_, span)
+            | ObjectSafetyViolation::Method(_, _, span)
+                if *span != DUMMY_SP =>
+            {
+                smallvec![*span]
+            }
+            _ => smallvec![],
+        }
+    }
+}
+
+/// Reasons a method might not be object-safe.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum MethodViolationCode {
+    /// e.g., `fn foo()`
+    StaticMethod(Option<(&'static str, Span)>),
+
+    /// e.g., `fn foo(&self, x: Self)`
+    ReferencesSelfInput(usize),
+
+    /// e.g., `fn foo(&self) -> Self`
+    ReferencesSelfOutput,
+
+    /// e.g., `fn foo(&self) where Self: Clone`
+    WhereClauseReferencesSelf,
+
+    /// e.g., `fn foo<A>()`
+    Generic,
+
+    /// the method's receiver (`self` argument) can't be dispatched on
+    UndispatchableReceiver,
 }

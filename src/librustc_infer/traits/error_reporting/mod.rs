@@ -12,7 +12,6 @@ use super::{
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
-use crate::traits::object_safety_violations;
 use rustc::mir::interpret::ErrorHandled;
 use rustc::session::DiagnosticMessageId;
 use rustc::ty::error::ExpectedFound;
@@ -748,7 +747,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
-                        let violations = object_safety_violations(self.tcx, trait_def_id);
+                        let violations = self.tcx.object_safety_violations(trait_def_id);
                         report_object_safety_error(self.tcx, span, trait_def_id, violations)
                     }
 
@@ -912,7 +911,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             TraitNotObjectSafe(did) => {
-                let violations = object_safety_violations(self.tcx, did);
+                let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
 
