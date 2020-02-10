@@ -126,14 +126,12 @@ pub enum BacktraceStatus {
     Captured,
 }
 
-#[derive(Debug)]
 enum Inner {
     Unsupported,
     Disabled,
     Captured(Mutex<Capture>),
 }
 
-#[derive(Debug)]
 struct Capture {
     actual_start: usize,
     resolved: bool,
