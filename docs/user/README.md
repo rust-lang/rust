@@ -37,10 +37,6 @@ See [./features.md](./features.md) document for a list of features that are avai
 You will need the most recent version of VS Code: we don't try to
 maintain compatibility with older versions yet.
 
-In order to build the VS Code plugin from sources, you need to have node.js and npm with
-a minimum version of 12 installed. Please refer to
-[node.js and npm documentation](https://nodejs.org) for installation instructions.
-
 ### Installation from prebuilt binaries
 
 We ship prebuilt binaries for Linux, Mac and Windows via
@@ -79,6 +75,10 @@ rm -rf ${HOME}/.config/Code/User/globalStorage/matklad.rust-analyzer
 
 
 ### Installation from sources
+
+In order to build the VS Code plugin from sources, you need to have node.js and npm with
+a minimum version of 12 installed. Please refer to
+[node.js and npm documentation](https://nodejs.org) for installation instructions.
 
 The experimental VS Code plugin can be built and installed by executing the
 following commands:
