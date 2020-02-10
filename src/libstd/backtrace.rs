@@ -168,6 +168,8 @@ impl fmt::Debug for Backtrace {
         };
         capture.resolve();
 
+        write!(fmt, "Backtrace ")?;
+
         let mut dbg = fmt.debug_list();
 
         for frame in &capture.frames {
@@ -181,7 +183,12 @@ impl fmt::Debug for Backtrace {
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = fmt.debug_struct("");
-        dbg.field("fn", &self.name.as_ref().map(|b| backtrace::SymbolName::new(b)));
+
+        if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
+            dbg.field("fn", &fn_name);
+        } else {
+            dbg.field("fn", &"<unknown>");
+        }
 
         if let Some(fname) = self.filename.as_ref() {
             dbg.field("file", fname);
