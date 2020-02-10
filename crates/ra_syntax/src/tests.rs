@@ -128,14 +128,8 @@ fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) 
         writeln!(acc, "{:?} {} {:?}", token.kind, token_len, token_text).unwrap();
     }
     for err in errors {
-        writeln!(
-            acc,
-            "> error{:?} token({:?}) msg({})",
-            err.range(),
-            &text[*err.range()],
-            err.message()
-        )
-        .unwrap();
+        writeln!(acc, "> error{:?} token({:?}) msg({})", err.range(), &text[err.range()], err)
+            .unwrap();
     }
     acc
 }

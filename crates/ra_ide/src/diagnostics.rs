@@ -29,7 +29,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let mut res = Vec::new();
 
     res.extend(parse.errors().iter().map(|err| Diagnostic {
-        range: *err.range(),
+        range: err.range(),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
         fix: None,

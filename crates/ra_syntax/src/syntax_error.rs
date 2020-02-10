@@ -30,8 +30,8 @@ impl SyntaxError {
     pub fn message(&self) -> &str {
         &self.0
     }
-    pub fn range(&self) -> &TextRange {
-        &self.1
+    pub fn range(&self) -> TextRange {
+        self.1
     }
 
     pub fn with_range(mut self, range: TextRange) -> Self {

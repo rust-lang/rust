@@ -180,7 +180,7 @@ fn merge_errors(
     }
     res.extend(new_errors.into_iter().map(|new_err| {
         // fighting borrow checker with a variable ;)
-        let offseted_range = *new_err.range() + range_before_reparse.start();
+        let offseted_range = new_err.range() + range_before_reparse.start();
         new_err.with_range(offseted_range)
     }));
     res
