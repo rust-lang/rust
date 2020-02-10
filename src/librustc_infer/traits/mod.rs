@@ -47,7 +47,6 @@ pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
-pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
@@ -636,8 +635,8 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
+    object_safety::provide(providers);
     *providers = ty::query::Providers {
-        is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,

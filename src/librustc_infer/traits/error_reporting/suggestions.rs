@@ -5,7 +5,6 @@ use super::{
 
 use crate::infer::InferCtxt;
 use crate::traits::error_reporting::suggest_constraining_type_param;
-use crate::traits::object_safety::object_safety_violations;
 
 use rustc::ty::TypeckTables;
 use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
@@ -587,7 +586,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // If the `dyn Trait` is not object safe, do not suggest `Box<dyn Trait>`.
                 predicates
                     .principal_def_id()
-                    .map_or(true, |def_id| object_safety_violations(self.tcx, def_id).is_empty())
+                    .map_or(true, |def_id| self.tcx.object_safety_violations(def_id).is_empty())
             }
             // We only want to suggest `impl Trait` to `dyn Trait`s.
             // For example, `fn foo() -> str` needs to be filtered out.
