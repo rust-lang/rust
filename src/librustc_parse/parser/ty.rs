@@ -214,7 +214,10 @@ impl<'a> Parser<'a> {
                     let path = match bounds.remove(0) {
                         GenericBound::Trait(pt, ..) => pt.trait_ref.path,
                         GenericBound::Outlives(..) => {
-                            self.span_bug(ty.span, "unexpected lifetime bound")
+                            return Err(self.struct_span_err(
+                                ty.span,
+                                "expected trait bound, not lifetime bound",
+                            ));
                         }
                     };
                     self.parse_remaining_bounds(Vec::new(), path, lo, true)

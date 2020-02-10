@@ -83,6 +83,9 @@
 
 use crate::fx::FxHashMap;
 
+use std::borrow::Borrow;
+use std::collections::hash_map::Entry;
+use std::convert::Into;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -123,11 +126,14 @@ bitflags::bitflags! {
         const INCR_CACHE_LOADS   = 1 << 4;
 
         const QUERY_KEYS         = 1 << 5;
+        const FUNCTION_ARGS      = 1 << 6;
 
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
                         Self::QUERY_BLOCKED.bits |
                         Self::INCR_CACHE_LOADS.bits;
+
+        const ARGS = Self::QUERY_KEYS.bits | Self::FUNCTION_ARGS.bits;
     }
 }
 
@@ -142,6 +148,8 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("query-blocked", EventFilter::QUERY_BLOCKED),
     ("incr-cache-load", EventFilter::INCR_CACHE_LOADS),
     ("query-keys", EventFilter::QUERY_KEYS),
+    ("function-args", EventFilter::FUNCTION_ARGS),
+    ("args", EventFilter::ARGS),
 ];
 
 /// Something that uniquely identifies a query invocation.
@@ -216,43 +224,68 @@ impl SelfProfilerRef {
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
     /// stdout if the compiler is invoked with -Ztime or -Ztime-passes.
-    #[inline(always)]
     pub fn verbose_generic_activity<'a>(
         &'a self,
-        event_id: &'static str,
+        event_label: &'static str,
     ) -> VerboseTimingGuard<'a> {
-        VerboseTimingGuard::start(
-            event_id,
-            self.print_verbose_generic_activities,
-            self.generic_activity(event_id),
-        )
+        let message =
+            if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
+
+        VerboseTimingGuard::start(message, self.generic_activity(event_label))
     }
 
     /// Start profiling a extra verbose generic activity. Profiling continues until the
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "extra verbose" generic activities also print a timing entry to
     /// stdout if the compiler is invoked with -Ztime-passes.
-    #[inline(always)]
-    pub fn extra_verbose_generic_activity<'a>(
+    pub fn extra_verbose_generic_activity<'a, A>(
         &'a self,
-        event_id: &'a str,
-    ) -> VerboseTimingGuard<'a> {
-        // FIXME: This does not yet emit a measureme event
-        // because callers encode arguments into `event_id`.
-        VerboseTimingGuard::start(
-            event_id,
-            self.print_extra_verbose_generic_activities,
-            TimingGuard::none(),
-        )
+        event_label: &'static str,
+        event_arg: A,
+    ) -> VerboseTimingGuard<'a>
+    where
+        A: Borrow<str> + Into<String>,
+    {
+        let message = if self.print_extra_verbose_generic_activities {
+            Some(format!("{}({})", event_label, event_arg.borrow()))
+        } else {
+            None
+        };
+
+        VerboseTimingGuard::start(message, self.generic_activity_with_arg(event_label, event_arg))
     }
 
     /// Start profiling a generic activity. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
-    pub fn generic_activity(&self, event_id: &'static str) -> TimingGuard<'_> {
+    pub fn generic_activity(&self, event_label: &'static str) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
-            let event_id = profiler.get_or_alloc_cached_string(event_id);
-            let event_id = EventId::from_label(event_id);
+            let event_label = profiler.get_or_alloc_cached_string(event_label);
+            let event_id = EventId::from_label(event_label);
+            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+        })
+    }
+
+    /// Start profiling a generic activity. Profiling continues until the
+    /// TimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn generic_activity_with_arg<A>(
+        &self,
+        event_label: &'static str,
+        event_arg: A,
+    ) -> TimingGuard<'_>
+    where
+        A: Borrow<str> + Into<String>,
+    {
+        self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
+            let builder = EventIdBuilder::new(&profiler.profiler);
+            let event_label = profiler.get_or_alloc_cached_string(event_label);
+            let event_id = if profiler.event_filter_mask.contains(EventFilter::FUNCTION_ARGS) {
+                let event_arg = profiler.get_or_alloc_cached_string(event_arg);
+                builder.from_label_and_arg(event_label, event_arg)
+            } else {
+                builder.from_label(event_label)
+            };
             TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
         })
     }
@@ -337,7 +370,7 @@ pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
 
-    string_cache: RwLock<FxHashMap<&'static str, StringId>>,
+    string_cache: RwLock<FxHashMap<String, StringId>>,
 
     query_event_kind: StringId,
     generic_activity_event_kind: StringId,
@@ -419,13 +452,16 @@ impl SelfProfiler {
     /// Gets a `StringId` for the given string. This method makes sure that
     /// any strings going through it will only be allocated once in the
     /// profiling data.
-    pub fn get_or_alloc_cached_string(&self, s: &'static str) -> StringId {
+    pub fn get_or_alloc_cached_string<A>(&self, s: A) -> StringId
+    where
+        A: Borrow<str> + Into<String>,
+    {
         // Only acquire a read-lock first since we assume that the string is
         // already present in the common case.
         {
             let string_cache = self.string_cache.read();
 
-            if let Some(&id) = string_cache.get(s) {
+            if let Some(&id) = string_cache.get(s.borrow()) {
                 return id;
             }
         }
@@ -433,7 +469,13 @@ impl SelfProfiler {
         let mut string_cache = self.string_cache.write();
         // Check if the string has already been added in the small time window
         // between dropping the read lock and acquiring the write lock.
-        *string_cache.entry(s).or_insert_with(|| self.profiler.alloc_string(s))
+        match string_cache.entry(s.into()) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                let string_id = self.profiler.alloc_string(&e.key()[..]);
+                *e.insert(string_id)
+            }
+        }
     }
 
     pub fn map_query_invocation_id_to_string(&self, from: QueryInvocationId, to: StringId) {
@@ -498,18 +540,13 @@ impl<'a> TimingGuard<'a> {
 
 #[must_use]
 pub struct VerboseTimingGuard<'a> {
-    event_id: &'a str,
-    start: Option<Instant>,
+    start_and_message: Option<(Instant, String)>,
     _guard: TimingGuard<'a>,
 }
 
 impl<'a> VerboseTimingGuard<'a> {
-    pub fn start(event_id: &'a str, verbose: bool, _guard: TimingGuard<'a>) -> Self {
-        VerboseTimingGuard {
-            event_id,
-            _guard,
-            start: if unlikely!(verbose) { Some(Instant::now()) } else { None },
-        }
+    pub fn start(message: Option<String>, _guard: TimingGuard<'a>) -> Self {
+        VerboseTimingGuard { _guard, start_and_message: message.map(|msg| (Instant::now(), msg)) }
     }
 
     #[inline(always)]
@@ -521,7 +558,9 @@ impl<'a> VerboseTimingGuard<'a> {
 
 impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
-        self.start.map(|start| print_time_passes_entry(true, self.event_id, start.elapsed()));
+        if let Some((start, ref message)) = self.start_and_message {
+            print_time_passes_entry(true, &message[..], start.elapsed());
+        }
     }
 }
 
