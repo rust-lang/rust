@@ -63,9 +63,10 @@ fn hash_body(
     def_path_hash: DefPathHash,
     item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
-) {
+) -> Fingerprint {
     let hash = hash(hcx, HirItemLike { item_like: &item_like });
     hir_body_nodes.push((def_path_hash, hash));
+    hash
 }
 
 fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
@@ -96,7 +97,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut hir_body_nodes = Vec::new();
 
-        {
+        let hash = {
             let Crate {
                 ref item,
                 // These fields are handled separately:
@@ -137,6 +138,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         collector.insert_entry(
             hir::CRATE_HIR_ID,
             Entry { parent: hir::CRATE_HIR_ID, node: Node::Crate(&krate.item) },
+            hash,
         );
 
         collector
@@ -197,27 +199,24 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         (self.owner_map, self.owner_items_map, svh)
     }
 
-    fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
+    fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>, hash: Fingerprint) {
         let i = id.local_id.as_u32() as usize;
 
         let owner = HirOwner { parent: entry.parent, node: entry.node };
 
         let arena = self.arena;
-        let krate = self.krate;
 
         let items = self.owner_items_map.entry(id.owner).or_insert_with(|| {
             arena.alloc(HirOwnerItems {
-                // Insert a dummy node which will be overwritten
-                // when we call `insert_entry` on the HIR owner.
-                owner: Node::Crate(&krate.item),
+                hash,
                 items: IndexVec::new(),
                 bodies: FxHashMap::default(),
             })
         });
 
         if i == 0 {
-            // Overwrite the dummy node with the real HIR owner.
-            items.owner = entry.node;
+            // Overwrite the dummy hash with the real HIR owner hash.
+            items.hash = hash;
 
             self.owner_map.insert(id.owner, self.arena.alloc(owner));
         // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
@@ -234,6 +233,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
+        self.insert_with_hash(span, hir_id, node, Fingerprint::ZERO)
+    }
+
+    fn insert_with_hash(&mut self, span: Span, hir_id: HirId, node: Node<'hir>, hash: Fingerprint) {
         let entry = Entry { parent: self.parent_node, node };
 
         // Make sure that the DepNode of some node coincides with the HirId
@@ -269,7 +272,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.insert_entry(hir_id, entry);
+        self.insert_entry(hir_id, entry, hash);
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
@@ -281,7 +284,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn with_dep_node_owner<
         T: for<'b> HashStable<StableHashingContext<'b>>,
-        F: FnOnce(&mut Self),
+        F: FnOnce(&mut Self, Fingerprint),
     >(
         &mut self,
         dep_node_owner: DefIndex,
@@ -292,10 +295,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        hash_body(&mut self.hcx, def_path_hash, item_like, &mut self.hir_body_nodes);
+        let hash = hash_body(&mut self.hcx, def_path_hash, item_like, &mut self.hir_body_nodes);
 
         self.current_dep_node_owner = dep_node_owner;
-        f(self);
+        f(self, hash);
         self.current_dep_node_owner = prev_owner;
     }
 }
@@ -342,8 +345,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             i.hir_id.owner,
             self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap()
         );
-        self.with_dep_node_owner(i.hir_id.owner, i, |this| {
-            this.insert(i.span, i.hir_id, Node::Item(i));
+        self.with_dep_node_owner(i.hir_id.owner, i, |this, hash| {
+            this.insert_with_hash(i.span, i.hir_id, Node::Item(i), hash);
             this.with_parent(i.hir_id, |this| {
                 if let ItemKind::Struct(ref struct_def, _) = i.kind {
                     // If this is a tuple or unit-like struct, register the constructor.
@@ -374,8 +377,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             ti.hir_id.owner,
             self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap()
         );
-        self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
-            this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
+        self.with_dep_node_owner(ti.hir_id.owner, ti, |this, hash| {
+            this.insert_with_hash(ti.span, ti.hir_id, Node::TraitItem(ti), hash);
 
             this.with_parent(ti.hir_id, |this| {
                 intravisit::walk_trait_item(this, ti);
@@ -388,8 +391,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             ii.hir_id.owner,
             self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap()
         );
-        self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
-            this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
+        self.with_dep_node_owner(ii.hir_id.owner, ii, |this, hash| {
+            this.insert_with_hash(ii.span, ii.hir_id, Node::ImplItem(ii), hash);
 
             this.with_parent(ii.hir_id, |this| {
                 intravisit::walk_impl_item(this, ii);
@@ -508,8 +511,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         let node_id = self.hir_to_node_id[&macro_def.hir_id];
         let def_index = self.definitions.opt_def_index(node_id).unwrap();
 
-        self.with_dep_node_owner(def_index, macro_def, |this| {
-            this.insert(macro_def.span, macro_def.hir_id, Node::MacroDef(macro_def));
+        self.with_dep_node_owner(def_index, macro_def, |this, hash| {
+            this.insert_with_hash(
+                macro_def.span,
+                macro_def.hir_id,
+                Node::MacroDef(macro_def),
+                hash,
+            );
         });
     }
 

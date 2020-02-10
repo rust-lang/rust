@@ -8,6 +8,7 @@ pub mod map;
 use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -17,10 +18,19 @@ use rustc_hir::ItemLocalId;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 
-#[derive(HashStable)]
 pub struct HirOwner<'tcx> {
     parent: HirId,
     node: Node<'tcx>,
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwner<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        let HirOwner { parent, node } = self;
+        hcx.while_hashing_hir_bodies(false, |hcx| {
+            parent.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher);
+        });
+    }
 }
 
 #[derive(Clone)]
@@ -29,30 +39,18 @@ pub struct HirItem<'tcx> {
     node: Node<'tcx>,
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let HirItem { parent, node } = self;
-        hcx.while_hashing_hir_bodies(false, |hcx| {
-            parent.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
-        });
-    }
-}
-
 pub struct HirOwnerItems<'tcx> {
-    owner: Node<'tcx>,
+    hash: Fingerprint,
     items: IndexVec<ItemLocalId, Option<HirItem<'tcx>>>,
     bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwnerItems<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        // We ignore the `items` and `bodies` fields since these refer to information reachable
-        // when hashing `owner` with its bodies.
-        let HirOwnerItems { owner, items: _, bodies: _ } = *self;
-        hcx.while_hashing_hir_bodies(true, |hcx| {
-            owner.hash_stable(hcx, hasher);
-        });
+        // We ignore the `items` and `bodies` fields since these refer to information included in
+        // `hash` which is hashed in the collector and used for the crate hash.
+        let HirOwnerItems { hash, items: _, bodies: _ } = *self;
+        hash.hash_stable(hcx, hasher);
     }
 }
 
