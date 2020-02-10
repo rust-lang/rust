@@ -152,7 +152,6 @@ struct BacktraceFrame {
     symbols: Vec<BacktraceSymbol>,
 }
 
-#[derive(Debug)]
 struct BacktraceSymbol {
     name: Option<Vec<u8>>,
     filename: Option<BytesOrWide>,
@@ -162,6 +161,16 @@ struct BacktraceSymbol {
 enum BytesOrWide {
     Bytes(Vec<u8>),
     Wide(Vec<u16>),
+}
+
+impl fmt::Debug for BacktraceSymbol {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("BacktraceSymbol")
+            .field("name", &self.name.as_ref().map(|b| backtrace::SymbolName::new(b)))
+            .field("filename", &self.filename)
+            .field("lineno", &self.lineno)
+            .finish()
+    }
 }
 
 impl fmt::Debug for BytesOrWide {
@@ -362,5 +371,21 @@ impl Capture {
                 });
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug_backtrace_fmt() {
+        let bt = Backtrace::capture();
+        eprintln!("uncaptured: {:?}", bt);
+        let bt = Backtrace::force_capture();
+        eprintln!("captured: {:?}", bt);
+        eprintln!("display print: {}", bt);
+        eprintln!("resolved: {:?}", bt);
+        unimplemented!();
     }
 }
