@@ -101,6 +101,7 @@ fn test() {
     );
     assert_eq!(t, "Option<i32>");
 }
+
 #[test]
 fn never_type_can_be_reinferred3() {
     let t = type_at(
@@ -135,6 +136,22 @@ fn test(a: Void) {
 "#,
     );
     assert_eq!(t, "!");
+}
+
+#[test]
+fn match_unknown_arm() {
+    let t = type_at(
+        r#"
+//- /main.rs
+fn test(a: Option) {
+    let t = match 0 {
+        _ => unknown,
+    };
+    t<|>;
+}
+"#,
+    );
+    assert_eq!(t, "{unknown}");
 }
 
 #[test]
