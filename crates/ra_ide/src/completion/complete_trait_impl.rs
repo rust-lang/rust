@@ -1,7 +1,9 @@
 //! FIXME: write short doc here
 
 use crate::{
-    completion::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    completion::{
+        CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+    },
     display::FunctionSignature,
 };
 
