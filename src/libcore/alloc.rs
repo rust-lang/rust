@@ -847,6 +847,59 @@ pub unsafe trait AllocRef {
         result
     }
 
+    /// Behaves like `realloc`, but also ensures that the new contents
+    /// are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `realloc` is.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` only if the new layout
+    /// does not meet the allocator's size
+    /// and alignment constraints of the allocator, or if reallocation
+    /// otherwise fails.
+    ///
+    /// Implementations are encouraged to return `Err` on memory
+    /// exhaustion rather than panicking or aborting, but this is not
+    /// a strict requirement. (Specifically: it is *legal* to
+    /// implement this trait atop an underlying native allocation
+    /// library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn realloc_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<u8>, AllocErr> {
+        let old_size = layout.size();
+
+        if new_size >= old_size {
+            if let Ok(()) = self.grow_in_place_zeroed(ptr, layout, new_size) {
+                return Ok(ptr);
+            }
+        } else if new_size < old_size {
+            if let Ok(()) = self.shrink_in_place(ptr, layout, new_size) {
+                return Ok(ptr);
+            }
+        }
+
+        // otherwise, fall back on alloc + copy + dealloc.
+        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+        let result = self.alloc_zeroed(new_layout);
+        if let Ok(new_ptr) = result {
+            ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), cmp::min(old_size, new_size));
+            self.dealloc(ptr, layout);
+        }
+        result
+    }
+
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
     ///
@@ -898,6 +951,31 @@ pub unsafe trait AllocRef {
         self.alloc(layout).map(|p| Excess(p, usable_size.1))
     }
 
+    /// Behaves like `alloc`, but also returns the whole size of
+    /// the returned block. For some `layout` inputs, like arrays, this
+    /// may include extra storage usable for additional data.
+    /// Also it ensures that the contents are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `alloc` is.
+    ///
+    /// # Errors
+    ///
+    /// Returning `Err` indicates that either memory is exhausted or
+    /// `layout` does not meet allocator's size or alignment
+    /// constraints, just as in `alloc`.
+    ///
+    /// Clients wishing to abort computation in response to an
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn alloc_excess_zeroed(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+        let usable_size = self.usable_size(&layout);
+        self.alloc_zeroed(layout).map(|p| Excess(p, usable_size.1))
+    }
+
     /// Behaves like `realloc`, but also returns the whole size of
     /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
@@ -926,6 +1004,37 @@ pub unsafe trait AllocRef {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let usable_size = self.usable_size(&new_layout);
         self.realloc(ptr, layout, new_size).map(|p| Excess(p, usable_size.1))
+    }
+
+    /// Behaves like `realloc`, but also returns the whole size of
+    /// the returned block. For some `layout` inputs, like arrays, this
+    /// may include extra storage usable for additional data.
+    /// Also it ensures that the contents are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `realloc` is.
+    ///
+    /// # Errors
+    ///
+    /// Returning `Err` indicates that either memory is exhausted or
+    /// `layout` does not meet allocator's size or alignment
+    /// constraints, just as in `realloc`.
+    ///
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn realloc_excess_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<Excess, AllocErr> {
+        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+        let usable_size = self.usable_size(&new_layout);
+        self.realloc_zeroed(ptr, layout, new_size).map(|p| Excess(p, usable_size.1))
     }
 
     /// Attempts to extend the allocation referenced by `ptr` to fit `new_size`.
@@ -975,6 +1084,34 @@ pub unsafe trait AllocRef {
         // _l <= layout.size()                       [guaranteed by usable_size()]
         //       layout.size() <= new_layout.size()  [required by this method]
         if new_size <= u { Ok(()) } else { Err(CannotReallocInPlace) }
+    }
+
+    /// Behaves like `grow_in_place`, but also ensures that the new
+    /// contents are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `grow_in_place` is.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(CannotReallocInPlace)` when the allocator is
+    /// unable to assert that the memory block referenced by `ptr`
+    /// could fit `layout`.
+    ///
+    /// Note that one cannot pass `CannotReallocInPlace` to the `handle_alloc_error`
+    /// function; clients are expected either to be able to recover from
+    /// `grow_in_place` failures without aborting, or to fall back on
+    /// another reallocation method before resorting to an abort.
+    unsafe fn grow_in_place_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<(), CannotReallocInPlace> {
+        self.grow_in_place(ptr, layout, new_size)?;
+        ptr.as_ptr().add(layout.size()).write_bytes(0, new_size - layout.size());
+        Ok(())
     }
 
     /// Attempts to shrink the allocation referenced by `ptr` to fit `new_size`.
