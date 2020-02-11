@@ -403,6 +403,8 @@ impl Inliner<'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("inlined {:?} into {:?}", callsite.callee, self.source);
 
+                // FIXME(eddyb) replace with a "first inlined local/scope" index,
+                // as they are contiguous.
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
 
@@ -645,9 +647,12 @@ fn type_size_of<'tcx>(
  * stuff.
 */
 struct Integrator<'a, 'tcx> {
+    // FIXME(eddyb) replace this with a `RangeFrom<BasicBlock>`.
     block_idx: usize,
     args: &'a [Local],
+    // FIXME(eddyb) replace this with a `RangeFrom<Local>`.
     local_map: IndexVec<Local, Local>,
+    // FIXME(eddyb) replace this with a `RangeFrom<SourceScope>`.
     scope_map: IndexVec<SourceScope, SourceScope>,
     destination: Place<'tcx>,
     return_block: BasicBlock,
