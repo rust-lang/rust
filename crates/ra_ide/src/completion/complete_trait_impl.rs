@@ -283,4 +283,82 @@ mod tests {
         ]
         "###);
     }
+
+    #[test]
+    fn associated_type() {
+        let completions = complete(
+            r"
+            trait Test {
+                type SomeType;
+            }
+
+            impl Test for () {
+                <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "type SomeType = ",
+                source_range: [119; 119),
+                delete: [119; 119),
+                insert: "type SomeType = ",
+                kind: TypeAlias,
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn associated_const() {
+        let completions = complete(
+            r"
+            trait Test {
+                const SOME_CONST: u16;
+            }
+
+            impl Test for () {
+                <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "const SOME_CONST: u16 = ",
+                source_range: [127; 127),
+                delete: [127; 127),
+                insert: "const SOME_CONST: u16 = ",
+                kind: Const,
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn associated_const_with_default() {
+        let completions = complete(
+            r"
+            trait Test {
+                const SOME_CONST: u16 = 42;
+            }
+
+            impl Test for () {
+                <|>
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "const SOME_CONST: u16 = ",
+                source_range: [132; 132),
+                delete: [132; 132),
+                insert: "const SOME_CONST: u16 = ",
+                kind: Const,
+            },
+        ]
+        "###);
+    }
 }
