@@ -191,15 +191,15 @@ declare_lint_pass!(FooFunctions => [FOO_FUNCTIONS]);
 impl EarlyLintPass for FooFunctions {}
 ```
 
-Don't worry about the `name` method here. As long as it includes the name of the
-lint pass it should be fine.
-
-The new lint automation runs `update_lints`, which automates some things, but it
-doesn't automate everything. We will have to register our lint pass manually in
-the `register_plugins` function in `clippy_lints/src/lib.rs`:
+Normally after declaring the lint, we have to run `cargo dev update_lints`,
+which updates some files, so Clippy knows about the new lint. Since we used
+`cargo dev new_lint ...` to generate the lint declaration, this was done
+automatically. While `update_lints` automates most of the things, it doesn't
+automate everything. We will have to register our lint pass manually in the
+`register_plugins` function in `clippy_lints/src/lib.rs`:
 
 ```rust
-reg.register_early_lint_pass(box foo_functions::FooFunctions);
+store.register_early_pass(box foo_functions::FooFunctions);
 ```
 
 This should fix the `unknown clippy lint: clippy::foo_functions` error that we
