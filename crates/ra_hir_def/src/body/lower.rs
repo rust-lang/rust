@@ -8,7 +8,7 @@ use ra_arena::Arena;
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
-        TypeAscriptionOwner,
+        SlicePatComponents, TypeAscriptionOwner,
     },
     AstNode, AstPtr,
 };
@@ -596,7 +596,7 @@ where
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 Pat::Tuple(args)
             }
-            ast::Pat::PlaceholderPat(_) => Pat::Wild,
+            ast::Pat::PlaceholderPat(_) | ast::Pat::DotDotPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
                 let record_field_pat_list =
@@ -621,12 +621,20 @@ where
 
                 Pat::Record { path, args: fields }
             }
+            ast::Pat::SlicePat(p) => {
+                let SlicePatComponents { prefix, slice, suffix } = p.components();
+
+                Pat::Slice {
+                    prefix: prefix.into_iter().map(|p| self.collect_pat(p)).collect(),
+                    slice: slice.map(|p| self.collect_pat(p)),
+                    suffix: suffix.into_iter().map(|p| self.collect_pat(p)).collect(),
+                }
+            }
 
             // FIXME: implement
-            ast::Pat::DotDotPat(_) => Pat::Missing,
             ast::Pat::BoxPat(_) => Pat::Missing,
             ast::Pat::LiteralPat(_) => Pat::Missing,
-            ast::Pat::SlicePat(_) | ast::Pat::RangePat(_) => Pat::Missing,
+            ast::Pat::RangePat(_) => Pat::Missing,
         };
         let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, Either::Left(ptr))

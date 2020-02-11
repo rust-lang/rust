@@ -417,14 +417,14 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             pat: Pat,
             guard: MatchGuard,
             Expr,
-         }
+        }
         struct MatchGuard { Expr }
 
         struct RecordLit { Path, RecordFieldList }
         struct RecordFieldList {
             fields: [RecordField],
             spread: Expr,
-         }
+        }
         struct RecordField { NameRef, Expr }
 
         struct OrPat { pats: [Pat] }
@@ -434,8 +434,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct BindPat: NameOwner { Pat }
         struct PlaceholderPat { }
         struct DotDotPat { }
-        struct PathPat {  Path }
-        struct SlicePat {}
+        struct PathPat { Path }
+        struct SlicePat { args: [Pat] }
         struct RangePat {}
         struct LiteralPat { Literal }
 

@@ -394,7 +394,7 @@ pub enum Pat {
     },
     Slice {
         prefix: Vec<PatId>,
-        rest: Option<PatId>,
+        slice: Option<PatId>,
         suffix: Vec<PatId>,
     },
     Path(Path),
@@ -425,8 +425,8 @@ impl Pat {
                 args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
-            Pat::Slice { prefix, rest, suffix } => {
-                let total_iter = prefix.iter().chain(rest.iter()).chain(suffix.iter());
+            Pat::Slice { prefix, slice, suffix } => {
+                let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
                 total_iter.copied().for_each(f);
             }
             Pat::Record { args, .. } => {

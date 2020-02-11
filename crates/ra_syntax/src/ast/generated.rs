@@ -2117,7 +2117,11 @@ impl AstNode for SlicePat {
         &self.syntax
     }
 }
-impl SlicePat {}
+impl SlicePat {
+    pub fn args(&self) -> AstChildren<Pat> {
+        AstChildren::new(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
