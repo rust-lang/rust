@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, HasSource, InFile};
+use hir::{HasSource, InFile};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
     SmolStr,
