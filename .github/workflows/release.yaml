@@ -184,15 +184,6 @@ jobs:
           asset_name: rust-analyzer-0.1.0.vsix
           asset_content_type: application/octet-stream
 
-      - uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/rust-analyzer.el
-          asset_name: rust-analyzer.el
-          asset_content_type: text/plain
-
       - run: npm ci
         working-directory: ./editors/code
 
