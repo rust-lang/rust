@@ -104,6 +104,8 @@ export async function ensureLanguageServerBinary(
                     `GitHub repository: ${err.message}`
                 );
 
+                console.error(err);
+
                 dns.resolve('example.com').then(
                     addrs => console.log("DNS resolution for example.com was successful", addrs),
                     err => {

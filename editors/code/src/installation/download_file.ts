@@ -1,6 +1,9 @@
 import fetch from "node-fetch";
 import * as fs from "fs";
 import { strict as assert } from "assert";
+import { NestedError } from "ts-nested-error";
+
+class DownloadFileError extends NestedError {}
 
 /**
  * Downloads file from `url` and stores it at `destFilePath` with `destFilePermissions`.
@@ -14,13 +17,13 @@ export async function downloadFile(
     destFilePermissions: number,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
-    const res = await fetch(url);
+    const res = await fetch(url).catch(DownloadFileError.rethrow("Failed at initial fetch"));
 
     if (!res.ok) {
         console.log("Error", res.status, "while downloading file from", url);
         console.dir({ body: await res.text(), headers: res.headers }, { depth: 3 });
 
-        throw new Error(`Got response ${res.status} when trying to download a file`);
+        throw new DownloadFileError(`Got response ${res.status}`);
     }
 
     const totalBytes = Number(res.headers.get('content-length'));
@@ -30,15 +33,21 @@ export async function downloadFile(
 
     console.log("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
 
+    // Here reject() may be called 2 times. As per ECMAScript standard, 2-d call is ignored
+    // https://tc39.es/ecma262/#sec-promise-reject-functions
+
     return new Promise<void>((resolve, reject) => res.body
         .on("data", (chunk: Buffer) => {
             readBytes += chunk.length;
             onProgress(readBytes, totalBytes);
         })
-        .on("error", reject)
-        .pipe(fs
-            .createWriteStream(destFilePath, { mode: destFilePermissions })
-            .on("close", resolve)
-        )
+        .on("error", err => reject(
+            new DownloadFileError(`Read-stream error, read bytes: ${readBytes}`, err)
+        ))
+        .pipe(fs.createWriteStream(destFilePath, { mode: destFilePermissions }))
+        .on("error", err => reject(
+            new DownloadFileError(`Write-stream error, read bytes: ${readBytes}`, err)
+        ))
+        .on("close", resolve)
     );
 }
