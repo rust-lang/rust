@@ -31,6 +31,8 @@ mod config;
 mod world;
 mod diagnostics;
 
+use serde::de::DeserializeOwned;
+
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub use crate::{
     caps::server_capabilities,
@@ -38,3 +40,9 @@ pub use crate::{
     main_loop::LspError,
     main_loop::{main_loop, show_message},
 };
+
+pub fn from_json<T: DeserializeOwned>(what: &'static str, json: serde_json::Value) -> Result<T> {
+    let res = T::deserialize(&json)
+        .map_err(|e| format!("Failed to deserialize {}: {}; {}", what, e, json))?;
+    Ok(res)
+}

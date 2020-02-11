@@ -1,7 +1,7 @@
 //! `ra_lsp_server` binary
 
 use lsp_server::Connection;
-use ra_lsp_server::{show_message, Result, ServerConfig};
+use ra_lsp_server::{from_json, show_message, Result, ServerConfig};
 use ra_prof;
 
 fn main() -> Result<()> {
@@ -45,7 +45,8 @@ fn run_server() -> Result<()> {
     let server_capabilities = serde_json::to_value(ra_lsp_server::server_capabilities()).unwrap();
 
     let initialize_params = connection.initialize(server_capabilities)?;
-    let initialize_params: lsp_types::InitializeParams = serde_json::from_value(initialize_params)?;
+    let initialize_params =
+        from_json::<lsp_types::InitializeParams>("InitializeParams", initialize_params)?;
 
     if let Some(client_info) = initialize_params.client_info {
         log::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
@@ -62,17 +63,13 @@ fn run_server() -> Result<()> {
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root]);
 
-    let server_config: ServerConfig = initialize_params
+    let server_config = initialize_params
         .initialization_options
         .and_then(|v| {
-            serde_json::from_value(v)
+            from_json::<ServerConfig>("config", v)
                 .map_err(|e| {
-                    log::error!("failed to deserialize config: {}", e);
-                    show_message(
-                        lsp_types::MessageType::Error,
-                        format!("failed to deserialize config: {}", e),
-                        &connection.sender,
-                    );
+                    log::error!("{}", e);
+                    show_message(lsp_types::MessageType::Error, e.to_string(), &connection.sender);
                 })
                 .ok()
         })

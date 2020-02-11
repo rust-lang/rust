@@ -35,6 +35,7 @@ use crate::{
         TryConvWithToVec,
     },
     diagnostics::DiagnosticTask,
+    from_json,
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
@@ -811,7 +812,7 @@ enum CodeLensResolveData {
 pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Result<CodeLens> {
     let _p = profile("handle_code_lens_resolve");
     let data = code_lens.data.unwrap();
-    let resolve = serde_json::from_value(data)?;
+    let resolve = from_json::<Option<CodeLensResolveData>>("CodeLensResolveData", data)?;
     match resolve {
         Some(CodeLensResolveData::Impls(lens_params)) => {
             let locations: Vec<Location> =
