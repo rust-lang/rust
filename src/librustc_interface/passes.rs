@@ -557,13 +557,13 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        files.push(escape_dep_filename(&path.into()));
                     }
                     if let Some((path, _)) = source.rlib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        files.push(escape_dep_filename(&path.into()));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        files.push(escape_dep_filename(&path.into()));
                     }
                 }
             });
