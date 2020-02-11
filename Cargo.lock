@@ -576,8 +576,7 @@ dependencies = [
 [[package]]
 name = "compiler_builtins"
 version = "0.1.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9975aefa63997ef75ca9cf013ff1bb81487aaa0b622c21053afd3b92979a7af"
+source = "git+https://github.com/tmandry/compiler-builtins.git?branch=probestack-hidden#36eb66c1ce573fbe82b82d76176bdbabb07922ab"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
