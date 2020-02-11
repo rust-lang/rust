@@ -327,7 +327,7 @@ fn def_id_visibility<'tcx>(
                 }
                 Node::Expr(expr) => {
                     return (
-                        ty::Visibility::Restricted(tcx.hir().get_module_parent(expr.hir_id)),
+                        ty::Visibility::Restricted(tcx.parent_module(expr.hir_id)),
                         expr.span,
                         "private",
                     );
