@@ -140,6 +140,42 @@ impl Layout {
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
+    /// Produces layout describing a record that could be used to
+    /// allocate backing structure for `T` (which could be a trait
+    /// or other unsized type like a slice).
+    ///
+    /// # Safety
+    ///
+    /// This function is only safe to call if the following conditions hold:
+    ///
+    /// - If `T` is `Sized`, this function is always safe to call.
+    /// - If the unsized tail of `T` is:
+    ///     - a [slice], then the length of the slice tail must be an intialized
+    ///       integer, and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///     - a [trait object], then the vtable part of the pointer must point
+    ///       to a valid vtable acquired by an unsizing coersion, and the size
+    ///       of the *entire value* (dynamic tail length + statically sized prefix)
+    ///       must fit in `isize`.
+    ///     - an (unstable) [extern type], then this function is always safe to
+    ///       call, but may panic or otherwise return the wrong value, as the
+    ///       extern type's layout is not known. This is the same behavior as
+    ///       [`Layout::for_value`] on a reference to an extern type tail.
+    ///     - otherwise, it is conservatively not allowed to call this function.
+    ///
+    /// [slice]: ../../std/primitive.slice.html
+    /// [trait object]: ../../book/ch17-02-trait-objects.html
+    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    #[inline]
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+        let (size, align) = (mem::size_of_val_raw(t), mem::align_of_val_raw(t));
+        // See rationale in `new` for why this is using an unsafe variant below
+        debug_assert!(Layout::from_size_align(size, align).is_ok());
+        Layout::from_size_align_unchecked(size, align)
+    }
+
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
     ///
     /// Note that the pointer value may potentially represent a valid pointer,

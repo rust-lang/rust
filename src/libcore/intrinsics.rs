@@ -980,12 +980,23 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
+    #[cfg(bootstrap)]
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     /// The minimum alignment of the type of the value that `val` points to.
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::min_align_of_val`](../../std/mem/fn.min_align_of_val.html).
+    #[cfg(bootstrap)]
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
+
+    /// The size of the referenced value in bytes.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
+    #[cfg(not(bootstrap))]
+    pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
+    #[cfg(not(bootstrap))]
+    pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
     ///
