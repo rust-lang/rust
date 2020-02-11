@@ -10,45 +10,6 @@ use ra_syntax::{
 
 use ra_assists::utils::get_missing_impl_items;
 
-/// Analyzes the specified `CompletionContext` and provides magic completions
-/// if the context falls within a `impl Trait for` block.
-///
-/// # Completion Activation
-/// The completion will activate when a user begins to type a function
-/// definition, an associated type, or an associated constant.
-///
-/// ### Functions
-/// ```ignore
-/// trait SomeTrait {
-///     fn foo(&self);
-/// }
-///
-/// impl SomeTrait for () {
-///     fn <|>
-/// }
-/// ```
-///
-/// ### Associated Types
-/// ```ignore
-/// trait SomeTrait {
-///     type SomeType;
-/// }
-///
-/// impl SomeTrait for () {
-///     type <|>
-/// }
-/// ```
-///
-/// ### Associated Constants
-/// ```ignore
-/// trait SomeTrait {
-///     const SOME_CONST: u16;
-/// }
-///
-/// impl SomeTrait for () {
-///     const <|>
-/// }
-/// ```
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     // it is possible to have a parent `fn` and `impl` block. Ignore completion
     // attempts from within a `fn` block.

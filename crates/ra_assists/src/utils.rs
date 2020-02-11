@@ -9,8 +9,6 @@ use hir::db::HirDatabase;
 
 use rustc_hash::FxHashSet;
 
-/// Generate a collection of associated items that are missing from a
-/// `impl Trait for` block.
 pub fn get_missing_impl_items(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
