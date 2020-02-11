@@ -30,6 +30,14 @@ IMAGE_BASE:
 
 /*  We can store a bunch of data in the gap between MXCSR and the XSAVE header */
 
+/* MXCSR initialization value for ABI */
+.Lmxcsr_init:
+    .int 0x1f80
+
+/* x87 FPU control word initialization value for ABI */
+.Lfpucw_init:
+    .int 0x037f
+
 /*  The following symbols point at read-only data that will be filled in by the */
 /*  post-linker. */
 
@@ -134,6 +142,19 @@ elf_entry:
     ud2                               /* should not be reached  */
 /*  end elf_entry */
 
+/* This code needs to be called *after* the enclave stack has been setup. */
+/* There are 3 places where this needs to happen, so this is put in a macro. */
+.macro entry_sanitize_final
+/*  Sanitize rflags received from user */
+/*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
+/*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
+    pushfq
+    andq $~0x40400, (%rsp)
+    popfq
+    bt $0,.Laborted(%rip)
+    jc .Lreentry_panic
+.endm
+
 .text
 .global sgx_entry
 .type sgx_entry,function
@@ -150,25 +171,18 @@ sgx_entry:
     stmxcsr %gs:tcsls_user_mxcsr
     fnstcw %gs:tcsls_user_fcw
 
-/*  reset user state */
-/*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
-/*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
-    pushfq
-    andq $~0x40400, (%rsp)
-    popfq
-
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
-/*  check for abort */
-    bt $0,.Laborted(%rip)
-    jc .Lreentry_panic
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
     jnz .Lusercall_ret
+/*  reset user state */
+    ldmxcsr .Lmxcsr_init(%rip)
+    fldcw .Lfpucw_init(%rip)
 /*  setup stack */
     mov %gs:tcsls_tos,%rsp /*  initially, RSP is not set to the correct value */
                            /*  here. This is fixed below under "adjust stack". */
@@ -179,6 +193,7 @@ sgx_entry:
     lea IMAGE_BASE(%rip),%rax
     add %rax,%rsp
     mov %rsp,%gs:tcsls_tos
+    entry_sanitize_final
 /*  call tcs_init */
 /*  store caller-saved registers in callee-saved registers */
     mov %rdi,%rbx
@@ -194,7 +209,10 @@ sgx_entry:
     mov %r13,%rdx
     mov %r14,%r8
     mov %r15,%r9
+    jmp .Lafter_init
 .Lskip_init:
+    entry_sanitize_final
+.Lafter_init:
 /*  call into main entry point */
     load_tcsls_flag_secondary_bool cx /* RCX = entry() argument: secondary: bool */
     call entry /* RDI, RSI, RDX, R8, R9 passed in from userspace */
@@ -295,6 +313,7 @@ usercall:
     ldmxcsr (%rsp)
     fldcw 4(%rsp)
     add $8, %rsp
+    entry_sanitize_final
     pop %rbx
     pop %rbp
     pop %r12
