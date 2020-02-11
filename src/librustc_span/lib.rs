@@ -8,9 +8,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(rustc_attrs)]
 #![feature(specialization)]
-#![feature(step_trait)]
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;

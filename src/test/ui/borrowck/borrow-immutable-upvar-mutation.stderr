@@ -1,76 +1,97 @@
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:15:27
    |
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
 LL |         let _f = to_fn(|| x = 42);
-   |                           ^^^^^^ cannot assign
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:15:24
-   |
-LL |         let _f = to_fn(|| x = 42);
-   |                        ^^^^^^^^^
+   |                  -----    ^^^^^^ cannot assign
+   |                  |
+   |                  expects `Fn` instead of `FnMut`
 
 error[E0596]: cannot borrow `y` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:18:31
    |
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
 LL |         let _g = to_fn(|| set(&mut y));
-   |                               ^^^^^^ cannot borrow as mutable
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:18:24
-   |
-LL |         let _g = to_fn(|| set(&mut y));
-   |                        ^^^^^^^^^^^^^^
+   |                  -----        ^^^^^^ cannot borrow as mutable
+   |                  |
+   |                  expects `Fn` instead of `FnMut`
 
 error[E0594]: cannot assign to `z`, as it is a captured variable in a `Fn` closure
-  --> $DIR/borrow-immutable-upvar-mutation.rs:21:55
+  --> $DIR/borrow-immutable-upvar-mutation.rs:23:22
    |
-LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); });
-   |                                                       ^^^^^^ cannot assign
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:21:52
-   |
-LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); });
-   |                                                    ^^^^^^^^^
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
+LL |             to_fn(|| z = 42);
+   |             -----    ^^^^^^ cannot assign
+   |             |
+   |             expects `Fn` instead of `FnMut`
 
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
-  --> $DIR/borrow-immutable-upvar-mutation.rs:27:32
+  --> $DIR/borrow-immutable-upvar-mutation.rs:30:32
    |
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
 LL |         let _f = to_fn(move || x = 42);
-   |                                ^^^^^^ cannot assign
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:27:24
-   |
-LL |         let _f = to_fn(move || x = 42);
-   |                        ^^^^^^^^^^^^^^
+   |                  -----         ^^^^^^ cannot assign
+   |                  |
+   |                  expects `Fn` instead of `FnMut`
 
 error[E0596]: cannot borrow `y` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/borrow-immutable-upvar-mutation.rs:30:36
+  --> $DIR/borrow-immutable-upvar-mutation.rs:33:36
    |
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
 LL |         let _g = to_fn(move || set(&mut y));
-   |                                    ^^^^^^ cannot borrow as mutable
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:30:24
-   |
-LL |         let _g = to_fn(move || set(&mut y));
-   |                        ^^^^^^^^^^^^^^^^^^^
+   |                  -----             ^^^^^^ cannot borrow as mutable
+   |                  |
+   |                  expects `Fn` instead of `FnMut`
 
 error[E0594]: cannot assign to `z`, as it is a captured variable in a `Fn` closure
-  --> $DIR/borrow-immutable-upvar-mutation.rs:33:65
+  --> $DIR/borrow-immutable-upvar-mutation.rs:36:65
    |
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
+...
 LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); });
-   |                                                                 ^^^^^^ cannot assign
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/borrow-immutable-upvar-mutation.rs:33:57
-   |
-LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); });
-   |                                                         ^^^^^^^^^^^^^^
+   |                                                   -----         ^^^^^^ cannot assign
+   |                                                   |
+   |                                                   expects `Fn` instead of `FnMut`
 
-error: aborting due to 6 previous errors
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:43:9
+   |
+LL |   fn foo() -> Box<dyn Fn() -> usize> {
+   |      ---      ---------------------- change this to return `FnMut` instead of `Fn`
+LL |       let mut x = 0;
+LL |       Box::new(move || {
+   |  ______________-
+LL | |         x += 1;
+   | |         ^^^^^^ cannot assign
+LL | |         x
+LL | |     })
+   | |_____- in this closure
+
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/borrow-immutable-upvar-mutation.rs:51:9
+   |
+LL |   fn bar() -> impl Fn() -> usize {
+   |      ---      ------------------ change this to return `FnMut` instead of `Fn`
+LL |       let mut x = 0;
+LL | /     move || {
+LL | |         x += 1;
+   | |         ^^^^^^ cannot assign
+LL | |         x
+LL | |     }
+   | |_____- in this closure
+
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.
