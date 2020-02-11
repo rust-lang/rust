@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { strict as assert } from "assert";
 
 /**
- * Downloads file from `url` and stores it at `destFilePath`.
+ * Downloads file from `url` and stores it at `destFilePath` with `destFilePermissions`.
  * `onProgress` callback is called on recieveing each chunk of bytes
  * to track the progress of downloading, it gets the already read and total
  * amount of bytes to read as its parameters.
@@ -11,6 +11,7 @@ import { strict as assert } from "assert";
 export async function downloadFile(
     url: string,
     destFilePath: fs.PathLike,
+    destFilePermissions: number,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
     const res = await fetch(url);
@@ -35,6 +36,9 @@ export async function downloadFile(
             onProgress(readBytes, totalBytes);
         })
         .on("error", reject)
-        .pipe(fs.createWriteStream(destFilePath).on("close", resolve))
+        .pipe(fs
+            .createWriteStream(destFilePath, { mode: destFilePermissions })
+            .on("close", resolve)
+        )
     );
 }

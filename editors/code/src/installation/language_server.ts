@@ -35,7 +35,8 @@ export async function downloadLatestLanguageServer(
         },
         async (progress, _cancellationToken) => {
             let lastPrecentage = 0;
-            await downloadFile(downloadUrl, installationPath, throttle(
+            const filePermissions = 0o755; // (rwx, r_x, r_x)
+            await downloadFile(downloadUrl, installationPath, filePermissions, throttle(
                 200,
                 /* noTrailing: */ true,
                 (readBytes, totalBytes) => {
@@ -51,8 +52,6 @@ export async function downloadLatestLanguageServer(
         }
     );
     console.timeEnd("Downloading ra_lsp_server");
-
-    await fs.chmod(installationPath, 0o755); // Set (rwx, r_x, r_x) permissions
 }
 export async function ensureLanguageServerBinary(
     langServerSource: null | BinarySource
