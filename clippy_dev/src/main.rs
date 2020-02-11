@@ -164,6 +164,8 @@ fn print_lints() {
 fn update_lints(update_mode: UpdateMode) {
     let lint_list: Vec<Lint> = gather_all().collect();
 
+    let internal_lints = Lint::internal_lints(lint_list.clone().into_iter());
+
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
     let lint_count = usable_lints.len();
 
@@ -267,7 +269,7 @@ fn update_lints(update_mode: UpdateMode) {
     .changed;
 
     // Generate the list of lints for all other lint groups
-    for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter()) {
+    for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter().chain(internal_lints)) {
         file_change |= replace_region_in_file(
             Path::new("clippy_lints/src/lib.rs"),
             &format!("store.register_group\\(true, \"clippy::{}\"", lint_group),

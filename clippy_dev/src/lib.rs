@@ -61,6 +61,11 @@ impl Lint {
         lints.filter(|l| l.deprecation.is_none() && !l.is_internal())
     }
 
+    /// Returns all internal lints (not `internal_warn` lints)
+    pub fn internal_lints(lints: impl Iterator<Item = Self>) -> impl Iterator<Item = Self> {
+        lints.filter(|l| l.group == "internal")
+    }
+
     /// Returns the lints in a `HashMap`, grouped by the different lint groups
     #[must_use]
     pub fn by_lint_group(lints: impl Iterator<Item = Self>) -> HashMap<String, Vec<Self>> {
@@ -79,7 +84,7 @@ pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
     lints
         .into_iter()
         .filter_map(|l| {
-            if l.is_internal() || l.deprecation.is_some() {
+            if l.deprecation.is_some() {
                 None
             } else {
                 Some(format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
