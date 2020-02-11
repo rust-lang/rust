@@ -7,7 +7,7 @@ LL |     const async unsafe extern "C" fn ff5() {} // OK.
    |     |     `async` because of this
    |     `const` because of this
 
-error[E0706]: trait fns cannot be declared `async`
+error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:17:9
    |
 LL |         async fn ft1();
@@ -18,19 +18,19 @@ LL |         async fn ft1();
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:19:9
    |
 LL |         const fn ft3();
-   |         ^^^^^ trait fns cannot be const
+   |         ^^^^^ functions in traits cannot be const
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:21:9
    |
 LL |         const async unsafe extern "C" fn ft5();
-   |         ^^^^^ trait fns cannot be const
+   |         ^^^^^ functions in traits cannot be const
 
-error[E0706]: trait fns cannot be declared `async`
+error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:21:9
    |
 LL |         const async unsafe extern "C" fn ft5();
@@ -50,7 +50,7 @@ LL |         const async unsafe extern "C" fn ft5();
    |         |     `async` because of this
    |         `const` because of this
 
-error[E0706]: trait fns cannot be declared `async`
+error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:29:9
    |
 LL |         async fn ft1() {}
@@ -61,19 +61,19 @@ LL |         async fn ft1() {}
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:32:9
    |
 LL |         const fn ft3() {}
-   |         ^^^^^ trait fns cannot be const
+   |         ^^^^^ functions in traits cannot be const
 
-error[E0379]: trait fns cannot be declared const
+error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
-   |         ^^^^^ trait fns cannot be const
+   |         ^^^^^ functions in traits cannot be const
 
-error[E0706]: trait fns cannot be declared `async`
+error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
