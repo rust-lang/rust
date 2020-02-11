@@ -60,6 +60,40 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
         return;
     }
 
+    // The node is between two other nodes
+    let prev = token.prev_sibling_or_token().unwrap();
+    let next = token.next_sibling_or_token().unwrap();
+    if is_trailing_comma(prev.kind(), next.kind()) {
+        // Removes: trailing comma, newline (incl. surrounding whitespace)
+        edit.delete(TextRange::from_to(prev.text_range().start(), token.text_range().end()));
+        return;
+    }
+    if prev.kind() == T![,] && next.kind() == T!['}'] {
+        // Removes: comma, newline (incl. surrounding whitespace)
+        let space = if let Some(left) = prev.prev_sibling_or_token() {
+            compute_ws(left.kind(), next.kind())
+        } else {
+            " "
+        };
+        edit.replace(
+            TextRange::from_to(prev.text_range().start(), token.text_range().end()),
+            space.to_string(),
+        );
+        return;
+    }
+
+    if let (Some(_), Some(next)) = (
+        prev.as_token().cloned().and_then(ast::Comment::cast),
+        next.as_token().cloned().and_then(ast::Comment::cast),
+    ) {
+        // Removes: newline (incl. surrounding whitespace), start of the next comment
+        edit.delete(TextRange::from_to(
+            token.text_range().start(),
+            next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
+        ));
+        return;
+    }
+
     // Special case that turns something like:
     //
     // ```
@@ -83,36 +117,8 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
         return;
     }
 
-    // The node is between two other nodes
-    let prev = token.prev_sibling_or_token().unwrap();
-    let next = token.next_sibling_or_token().unwrap();
-    if is_trailing_comma(prev.kind(), next.kind()) {
-        // Removes: trailing comma, newline (incl. surrounding whitespace)
-        edit.delete(TextRange::from_to(prev.text_range().start(), token.text_range().end()));
-    } else if prev.kind() == T![,] && next.kind() == T!['}'] {
-        // Removes: comma, newline (incl. surrounding whitespace)
-        let space = if let Some(left) = prev.prev_sibling_or_token() {
-            compute_ws(left.kind(), next.kind())
-        } else {
-            " "
-        };
-        edit.replace(
-            TextRange::from_to(prev.text_range().start(), token.text_range().end()),
-            space.to_string(),
-        );
-    } else if let (Some(_), Some(next)) = (
-        prev.as_token().cloned().and_then(ast::Comment::cast),
-        next.as_token().cloned().and_then(ast::Comment::cast),
-    ) {
-        // Removes: newline (incl. surrounding whitespace), start of the next comment
-        edit.delete(TextRange::from_to(
-            token.text_range().start(),
-            next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
-        ));
-    } else {
-        // Remove newline but add a computed amount of whitespace characters
-        edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
-    }
+    // Remove newline but add a computed amount of whitespace characters
+    edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
 }
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
@@ -607,5 +613,28 @@ pub fn handle_find_matching_brace() {
         .collect();
 }",
         );
+    }
+
+    #[test]
+    fn test_join_lines_commented_block() {
+        check_join_lines(
+            r"
+fn main() {
+    let _ = {
+        // <|>foo
+        // bar
+        92
+    };
+}
+        ",
+            r"
+fn main() {
+    let _ = {
+        // <|>foo bar
+        92
+    };
+}
+        ",
+        )
     }
 }
