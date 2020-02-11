@@ -33,7 +33,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
@@ -214,6 +214,13 @@ impl AssocKind {
             ty::AssocKind::Method => "method call",
             ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "associated type",
             ty::AssocKind::Const => "associated constant",
+        }
+    }
+
+    pub fn namespace(&self) -> Namespace {
+        match *self {
+            ty::AssocKind::OpaqueTy | ty::AssocKind::Type => Namespace::TypeNS,
+            ty::AssocKind::Const | ty::AssocKind::Method => Namespace::ValueNS,
         }
     }
 }

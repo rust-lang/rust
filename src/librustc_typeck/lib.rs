@@ -83,7 +83,6 @@ mod collect;
 mod constrained_generic_params;
 mod impl_wf_check;
 mod mem_categorization;
-mod namespace;
 mod outlives;
 mod structured_errors;
 mod variance;
