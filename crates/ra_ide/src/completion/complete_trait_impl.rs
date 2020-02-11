@@ -2,53 +2,55 @@ use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use ra_syntax::{ast::{self, edit}, AstNode, SyntaxKind, TextRange};
 use hir::{self, Docs, HasSource};
+use ra_syntax::{
+    ast::{self, edit},
+    AstNode, SyntaxKind, TextRange,
+};
 
 use ra_assists::utils::get_missing_impl_items;
 
 /// Analyzes the specified `CompletionContext` and provides magic completions
 /// if the context falls within a `impl Trait for` block.
-/// 
+///
 /// # Completion Activation
-/// The completion will activate when a user begins to type a function 
+/// The completion will activate when a user begins to type a function
 /// definition, an associated type, or an associated constant.
-/// 
+///
 /// ### Functions
 /// ```ignore
 /// trait SomeTrait {
 ///     fn foo(&self);
 /// }
-/// 
+///
 /// impl SomeTrait for () {
 ///     fn <|>
 /// }
 /// ```
-/// 
+///
 /// ### Associated Types
 /// ```ignore
 /// trait SomeTrait {
 ///     type SomeType;
 /// }
-/// 
+///
 /// impl SomeTrait for () {
 ///     type <|>
 /// }
 /// ```
-/// 
+///
 /// ### Associated Constants
 /// ```ignore
 /// trait SomeTrait {
 ///     const SOME_CONST: u16;
 /// }
-/// 
+///
 /// impl SomeTrait for () {
 ///     const <|>
 /// }
 /// ```
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-
-    // it is possible to have a parent `fn` and `impl` block. Ignore completion 
+    // it is possible to have a parent `fn` and `impl` block. Ignore completion
     // attempts from within a `fn` block.
     if ctx.function_syntax.is_some() {
         return;
@@ -111,11 +113,7 @@ fn add_type_alias_impl(
         .add_to(acc);
 }
 
-fn add_const_impl(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    const_: &hir::Const,
-) {
+fn add_const_impl(acc: &mut Completions, ctx: &CompletionContext, const_: &hir::Const) {
     let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
@@ -131,12 +129,8 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
     let const_start = const_.syntax().text_range().start();
     let const_end = const_.syntax().text_range().end();
 
-    let start = const_
-        .syntax()
-        .first_child_or_token()
-        .map_or(
-            const_start,
-            |f| f.text_range().start());
+    let start =
+        const_.syntax().first_child_or_token().map_or(const_start, |f| f.text_range().start());
 
     let end = const_
         .syntax()

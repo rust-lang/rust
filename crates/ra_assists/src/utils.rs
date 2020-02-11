@@ -9,14 +9,13 @@ use hir::db::HirDatabase;
 
 use rustc_hash::FxHashSet;
 
-/// Generate a collection of associated items that are missing from a 
+/// Generate a collection of associated items that are missing from a
 /// `impl Trait for` block.
 pub fn get_missing_impl_items(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,
 ) -> Vec<hir::AssocItem> {
-    
     // Names must be unique between constants and functions. However, type aliases
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
@@ -53,9 +52,10 @@ pub fn get_missing_impl_items(
             .filter(|i| match i {
                 hir::AssocItem::Function(f) => !impl_fns_consts.contains(&f.name(db).to_string()),
                 hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(db).to_string()),
-                hir::AssocItem::Const(c) => {
-                    c.name(db).map(|n| !impl_fns_consts.contains(&n.to_string())).unwrap_or_default()
-                }
+                hir::AssocItem::Const(c) => c
+                    .name(db)
+                    .map(|n| !impl_fns_consts.contains(&n.to_string()))
+                    .unwrap_or_default(),
             })
             .map(|i| i.clone())
             .collect()

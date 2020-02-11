@@ -6,8 +6,8 @@ use ra_syntax::{
 
 use crate::{
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
-    Assist, AssistCtx, AssistId,
     utils::{get_missing_impl_items, resolve_target_trait},
+    Assist, AssistCtx, AssistId,
 };
 
 #[derive(PartialEq)]
@@ -129,7 +129,7 @@ fn add_missing_impl_members_inner(
             ast::ImplItem::FnDef(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
-            }
+            },
             _ => mode == AddMissingImplMembersMode::NoDefaultMethods,
         })
         .collect::<Vec<_>>();
