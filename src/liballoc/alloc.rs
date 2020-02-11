@@ -163,15 +163,18 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl DeallocRef for Global {
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        dealloc(ptr.as_ptr(), layout)
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(alloc(layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        dealloc(ptr.as_ptr(), layout)
     }
 
     #[inline]

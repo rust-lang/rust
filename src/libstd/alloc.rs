@@ -133,7 +133,15 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
-// The AllocRef impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
+// The (De-)allocRef impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl DeallocRef for System {
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+    }
+}
+
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
@@ -144,11 +152,6 @@ unsafe impl AllocRef for System {
     #[inline]
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
     }
 
     #[inline]

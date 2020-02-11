@@ -19,6 +19,11 @@ fn allocator_param() {
     struct BoundedAlloc {
         fuel: usize,
     }
+    unsafe impl DeallocRef for BoundedAlloc {
+        unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+            Global.dealloc(ptr, layout)
+        }
+    }
     unsafe impl AllocRef for BoundedAlloc {
         unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
             let size = layout.size();
@@ -32,9 +37,6 @@ fn allocator_param() {
                 }
                 err @ Err(_) => err,
             }
-        }
-        unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-            Global.dealloc(ptr, layout)
         }
     }
 

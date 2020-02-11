@@ -7,7 +7,7 @@
 
 extern crate helper;
 
-use std::alloc::{self, Global, AllocRef, System, Layout};
+use std::alloc::{self, Global, AllocRef, DeallocRef, System, Layout};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static HITS: AtomicUsize = AtomicUsize::new(0);

@@ -7,7 +7,7 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{handle_alloc_error, AllocErr, AllocRef, Global, Layout};
+use crate::alloc::{handle_alloc_error, AllocErr, AllocRef, DeallocRef, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError::{self, *};
 
@@ -42,13 +42,13 @@ mod tests;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: AllocRef = Global> {
+pub struct RawVec<T, A: DeallocRef = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
 }
 
-impl<T, A: AllocRef> RawVec<T, A> {
+impl<T, A: DeallocRef> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     pub const fn new_in(a: A) -> Self {
@@ -57,7 +57,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
         RawVec { ptr: Unique::empty(), cap, a }
     }
+}
 
+impl<T, A: AllocRef> RawVec<T, A> {
     /// Like `with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[inline]
@@ -147,7 +149,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: AllocRef> RawVec<T, A> {
+impl<T, A: DeallocRef> RawVec<T, A> {
     /// Reconstitutes a `RawVec` from a pointer, capacity, and allocator.
     ///
     /// # Undefined Behavior
@@ -182,7 +184,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: AllocRef> RawVec<T, A> {
+impl<T, A: DeallocRef> RawVec<T, A> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// `Unique::empty()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
@@ -221,7 +223,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
             }
         }
     }
+}
 
+impl<T, A: AllocRef> RawVec<T, A> {
     /// Doubles the size of the type's backing allocation. This is common enough
     /// to want to do that it's easiest to just have a dedicated method. Slightly
     /// more efficient logic can be provided for this than the general case.
@@ -700,7 +704,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: AllocRef> RawVec<T, A> {
+impl<T, A: DeallocRef> RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     pub unsafe fn dealloc_buffer(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -712,7 +716,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 }
 
-unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
+unsafe impl<#[may_dangle] T, A: DeallocRef> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
         unsafe {

@@ -580,6 +580,26 @@ pub unsafe trait GlobalAlloc {
     }
 }
 
+/// An implementation of `DeallocRef` can deallocate arbitrary blocks of
+/// data described via `Layout`.
+///
+/// Please see the documentation of [`AllocRef`][] for more information.
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub unsafe trait DeallocRef {
+    /// Deallocate the memory referenced by `ptr`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure all of the following:
+    ///
+    /// * `ptr` must denote a block of memory owned by this allocator,
+    /// * `layout` must *fit* that block of memory,
+    /// * the alignment of the `layout` must match the alignment used
+    ///   to allocate that block of memory.
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
+}
+
 /// An implementation of `AllocRef` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
@@ -668,7 +688,7 @@ pub unsafe trait GlobalAlloc {
 /// Note that this list may get tweaked over time as clarifications are made in
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait AllocRef {
+pub unsafe trait AllocRef: DeallocRef {
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
     // e.g., in C, `malloc` of 0 will either return a null pointer or a
@@ -716,23 +736,6 @@ pub unsafe trait AllocRef {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr>;
-
-    /// Deallocate the memory referenced by `ptr`.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because undefined behavior can result
-    /// if the caller does not ensure all of the following:
-    ///
-    /// * `ptr` must denote a block of memory currently allocated via
-    ///   this allocator,
-    ///
-    /// * `layout` must *fit* that block of memory,
-    ///
-    /// * In addition to fitting the block of memory `layout`, the
-    ///   alignment of the `layout` must match the alignment used
-    ///   to allocate that block of memory.
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
 
     // == ALLOCATOR-SPECIFIC QUANTITIES AND LIMITS ==
     // usable_size
