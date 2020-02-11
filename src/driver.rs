@@ -63,10 +63,10 @@ fn test_arg_value() {
     assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
-#[allow(clippy::too_many_lines)]
+struct DefaultCallbacks;
+impl rustc_driver::Callbacks for DefaultCallbacks {}
 
 struct ClippyCallbacks;
-
 impl rustc_driver::Callbacks for ClippyCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
@@ -387,7 +387,7 @@ pub fn main() {
                 }
             }
             let mut clippy = ClippyCallbacks;
-            let mut default = rustc_driver::DefaultCallbacks;
+            let mut default = DefaultCallbacks;
             let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
                 if clippy_enabled { &mut clippy } else { &mut default };
             rustc_driver::run_compiler(&args, callbacks, None, None)
