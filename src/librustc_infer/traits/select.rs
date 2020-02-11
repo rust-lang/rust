@@ -9,9 +9,7 @@ use self::SelectionCandidate::*;
 
 use super::coherence::{self, Conflict};
 use super::project;
-use super::project::{
-    normalize_with_depth, normalize_with_depth_to, Normalized, ProjectionCacheKey,
-};
+use super::project::{normalize_with_depth, normalize_with_depth_to};
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
@@ -21,6 +19,7 @@ use super::SelectionResult;
 use super::TraitNotObjectSafe;
 use super::TraitQueryMode;
 use super::{BuiltinDerivedObligation, ImplDerivedObligation, ObligationCauseCode};
+use super::{Normalized, ProjectionCacheKey};
 use super::{ObjectCastObligation, Obligation};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{OutputTypeParameterMismatch, Overflow, SelectionError, Unimplemented};

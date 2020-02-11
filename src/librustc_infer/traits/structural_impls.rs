@@ -1,5 +1,5 @@
 use crate::traits;
-use crate::traits::project::Normalized;
+use crate::traits::Normalized;
 use rustc::ty;
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 

@@ -5,7 +5,7 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::project::Normalized;
+use crate::traits::Normalized;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::Subst;
