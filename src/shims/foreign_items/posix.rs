@@ -2,7 +2,7 @@ mod linux;
 mod macos;
 
 use crate::*;
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::layout::{Align, LayoutOf, Size};
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -156,6 +156,116 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_null(dest)?;
                 }
             }
+
+            // Hook pthread calls that go to the thread-local storage memory subsystem.
+            "pthread_key_create" => {
+                let key_place = this.deref_operand(args[0])?;
+
+                // Extract the function type out of the signature (that seems easier than constructing it ourselves).
+                let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
+                    Some(dtor_ptr) => Some(this.memory.get_fn(dtor_ptr)?.as_instance()?),
+                    None => None,
+                };
+
+                // Figure out how large a pthread TLS key actually is.
+                // This is `libc::pthread_key_t`.
+                let key_type = args[0].layout.ty
+                    .builtin_deref(true)
+                    .ok_or_else(|| err_ub_format!(
+                        "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
+                    ))?
+                    .ty;
+                let key_layout = this.layout_of(key_type)?;
+
+                // Create key and write it into the memory where `key_ptr` wants it.
+                let key = this.machine.tls.create_tls_key(dtor) as u128;
+                if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128)
+                {
+                    throw_unsup!(OutOfTls);
+                }
+
+                this.write_scalar(Scalar::from_uint(key, key_layout.size), key_place.into())?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+            "pthread_key_delete" => {
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                this.machine.tls.delete_tls_key(key)?;
+                // Return success (0)
+                this.write_null(dest)?;
+            }
+            "pthread_getspecific" => {
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let ptr = this.machine.tls.load_tls(key, tcx)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "pthread_setspecific" => {
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let new_ptr = this.read_scalar(args[1])?.not_undef()?;
+                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+
+            // Stack size/address stuff.
+            | "pthread_attr_init"
+            | "pthread_attr_destroy"
+            | "pthread_self"
+            | "pthread_attr_setstacksize" => {
+                this.write_null(dest)?;
+            }
+            "pthread_attr_getstack" => {
+                let addr_place = this.deref_operand(args[1])?;
+                let size_place = this.deref_operand(args[2])?;
+
+                this.write_scalar(
+                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
+                    addr_place.into(),
+                )?;
+                this.write_scalar(
+                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
+                    size_place.into(),
+                )?;
+
+                // Return success (`0`).
+                this.write_null(dest)?;
+            }
+
+            // We don't support threading. (Also for Windows.)
+            | "pthread_create"
+            | "CreateThread"
+            => {
+                throw_unsup_format!("Miri does not support threading");
+            }
+
+            // Stub out calls for condvar, mutex and rwlock, to just return `0`.
+            | "pthread_mutexattr_init"
+            | "pthread_mutexattr_settype"
+            | "pthread_mutex_init"
+            | "pthread_mutexattr_destroy"
+            | "pthread_mutex_lock"
+            | "pthread_mutex_unlock"
+            | "pthread_mutex_destroy"
+            | "pthread_rwlock_rdlock"
+            | "pthread_rwlock_unlock"
+            | "pthread_rwlock_wrlock"
+            | "pthread_rwlock_destroy"
+            | "pthread_condattr_init"
+            | "pthread_condattr_setclock"
+            | "pthread_cond_init"
+            | "pthread_condattr_destroy"
+            | "pthread_cond_destroy"
+            => {
+                this.write_null(dest)?;
+            }
+
+            // We don't support fork so we don't have to do anything for atfork.
+            "pthread_atfork" => {
+                this.write_null(dest)?;
+            }
+
 
             _ => {
                 match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
