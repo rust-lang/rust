@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, TokenTree};
 use quote::quote;
@@ -469,10 +468,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 attributes.push(quote! { eval_always });
             };
 
-            let mut attribute_stream = quote! {};
-            for e in attributes.into_iter().intersperse(quote! {,}) {
-                attribute_stream.extend(e);
-            }
+            let attribute_stream = quote! {#(#attributes),*};
 
             // Add the query to the group
             group_stream.extend(quote! {
