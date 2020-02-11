@@ -10,7 +10,7 @@ error[E0658]: non-inline modules in proc macro input are unstable
 LL | mod module;
    | ^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: non-inline modules in proc macro input are unstable
@@ -19,7 +19,7 @@ error[E0658]: non-inline modules in proc macro input are unstable
 LL |     mod inner;
    |     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: non-inline modules in proc macro input are unstable
@@ -28,7 +28,7 @@ error[E0658]: non-inline modules in proc macro input are unstable
 LL |         mod inner;
    |         ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: non-inline modules in proc macro input are unstable
@@ -37,7 +37,7 @@ error[E0658]: non-inline modules in proc macro input are unstable
 LL |     mod inner;
    |     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0412]: cannot find type `Y` in this scope

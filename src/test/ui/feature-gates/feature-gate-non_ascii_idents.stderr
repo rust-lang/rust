@@ -4,7 +4,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | extern crate core as bäz;
    |                      ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -13,7 +13,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | use föö::bar;
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -22,7 +22,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | mod föö {
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -31,7 +31,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | fn bär(
    |    ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -40,7 +40,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     bäz: isize
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -49,7 +49,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     let _ö: isize;
    |         ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -58,7 +58,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |         (_ä, _) => {}
    |          ^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -67,7 +67,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | struct Föö {
    |        ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -76,7 +76,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     föö: isize
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -85,7 +85,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL | enum Bär {
    |      ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -94,7 +94,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     Bäz {
    |     ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -103,7 +103,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |         qüx: isize
    |         ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -112,7 +112,7 @@ error[E0658]: non-ascii idents are not fully supported
 LL |     fn qüx();
    |        ^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
 error: aborting due to 13 previous errors

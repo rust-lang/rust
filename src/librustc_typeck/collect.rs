@@ -2440,7 +2440,10 @@ fn associated_item_predicates(
                     trait_item.span,
                     &format!("{}-generic associated types are not yet implemented", arg_kind),
                 )
-                .note("for more information, see https://github.com/rust-lang/rust/issues/44265")
+                .note(
+                    "for more information, see issue #44265 \
+                     <https://github.com/rust-lang/rust/issues/44265> for more information",
+                )
                 .emit();
             had_error = true;
         }

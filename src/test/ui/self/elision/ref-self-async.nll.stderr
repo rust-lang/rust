@@ -4,7 +4,7 @@ error[E0658]: `Wrap<&Struct, Struct>` cannot be used as the type of `self` witho
 LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                       ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44874
+   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
    = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 

@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is 
 LL |     trace_macros!();
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error: trace_macros! accepts only `true` or `false`
@@ -19,7 +19,7 @@ error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is 
 LL |     trace_macros!(true);
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
@@ -28,7 +28,7 @@ error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is 
 LL |     trace_macros!(false);
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
@@ -40,7 +40,7 @@ LL |         ($x: ident) => { trace_macros!($x) }
 LL |     expando!(true);
    |     --------------- in this macro invocation
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

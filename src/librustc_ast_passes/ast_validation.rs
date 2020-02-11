@@ -996,7 +996,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     )
                     .span_label(predicate.span, "not supported")
                     .note(
-                        "for more information, see https://github.com/rust-lang/rust/issues/20041",
+                        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> \
+                         for more information",
                     )
                     .emit();
             }
