@@ -1145,6 +1145,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let op = bx.load_operand(place);
                     place.storage_dead(bx);
                     self.locals[index] = LocalRef::Operand(Some(op));
+                    self.debug_introduce_local(bx, index);
                 }
                 LocalRef::Operand(Some(op)) => {
                     assert!(op.layout.is_zst(), "assigning to initialized SSAtemp");
@@ -1186,6 +1187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
@@ -1200,6 +1202,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
                 self.locals[index] = LocalRef::Operand(Some(op));
+                self.debug_introduce_local(bx, index);
             }
         }
     }
