@@ -60,29 +60,6 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
         return;
     }
 
-    // Special case that turns something like:
-    //
-    // ```
-    // my_function({<|>
-    //    <some-expr>
-    // })
-    // ```
-    //
-    // into `my_function(<some-expr>)`
-    if join_single_expr_block(edit, token).is_some() {
-        return;
-    }
-    // ditto for
-    //
-    // ```
-    // use foo::{<|>
-    //    bar
-    // };
-    // ```
-    if join_single_use_tree(edit, token).is_some() {
-        return;
-    }
-
     // The node is between two other nodes
     let prev = token.prev_sibling_or_token().unwrap();
     let next = token.next_sibling_or_token().unwrap();
@@ -110,6 +87,29 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
             next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
         ));
     } else {
+        // Special case that turns something like:
+        //
+        // ```
+        // my_function({<|>
+        //    <some-expr>
+        // })
+        // ```
+        //
+        // into `my_function(<some-expr>)`
+        if join_single_expr_block(edit, token).is_some() {
+            return;
+        }
+        // ditto for
+        //
+        // ```
+        // use foo::{<|>
+        //    bar
+        // };
+        // ```
+        if join_single_use_tree(edit, token).is_some() {
+            return;
+        }
+
         // Remove newline but add a computed amount of whitespace characters
         edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
     }
@@ -607,5 +607,28 @@ pub fn handle_find_matching_brace() {
         .collect();
 }",
         );
+    }
+
+    #[test]
+    fn test_join_lines_commented_block() {
+        check_join_lines(
+            r"
+fn main() {
+    let _ = {
+        // <|>foo
+        // bar
+        92
+    };
+}
+        ",
+            r"
+fn main() {
+    let _ = {
+        // <|>foo bar
+        92
+    };
+}
+        ",
+        )
     }
 }
