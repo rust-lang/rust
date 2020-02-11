@@ -3472,7 +3472,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // that order.
         let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
-        let mut obligations = Vec::new();
+        let mut obligations = Vec::with_capacity(predicates.predicates.len());
         for (predicate, _) in predicates.predicates {
             let predicate = normalize_with_depth_to(
                 self,
