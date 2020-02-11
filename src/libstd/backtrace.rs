@@ -168,11 +168,7 @@ impl fmt::Debug for Backtrace {
         };
         capture.resolve();
 
-        let frames = if fmt.alternate() {
-            &capture.frames[..]
-        } else {
-            &capture.frames[capture.actual_start..]
-        };
+        let frames = &capture.frames[capture.actual_start..];
 
         write!(fmt, "Backtrace ")?;
 
@@ -195,10 +191,9 @@ impl fmt::Debug for BacktraceSymbol {
         write!(fmt, "{{ ")?;
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
-            write!(fmt, "fn: ")?;
-            fmt::Display::fmt(&fn_name, fmt)?;
+            write!(fmt, "fn: \"{}\"", fn_name)?;
         } else {
-            write!(fmt, "fn: <unknown>")?;
+            write!(fmt, "fn: \"<unknown>\"")?;
         }
 
         if let Some(fname) = self.filename.as_ref() {
@@ -221,7 +216,7 @@ impl fmt::Debug for BytesOrWide {
                 BytesOrWide::Bytes(w) => BytesOrWideString::Bytes(w),
                 BytesOrWide::Wide(w) => BytesOrWideString::Wide(w),
             },
-            if fmt.alternate() { backtrace::PrintFmt::Full } else { backtrace::PrintFmt::Short },
+            backtrace::PrintFmt::Short,
             crate::env::current_dir().as_ref().ok(),
         )
     }
