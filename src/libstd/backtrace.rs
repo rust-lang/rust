@@ -173,6 +173,10 @@ impl fmt::Debug for Backtrace {
         let mut dbg = fmt.debug_list();
 
         for frame in &capture.frames {
+            if frame.frame.ip().is_null() {
+                continue;
+            }
+
             dbg.entries(&frame.symbols);
         }
 
@@ -182,20 +186,20 @@ impl fmt::Debug for Backtrace {
 
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut dbg = fmt.debug_struct("");
+        let mut dbg = fmt.debug_map();
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
-            dbg.field("fn", &format_args!("\"{}\"", fn_name));
+            dbg.entry(&"fn", &format_args!("\"{}\"", fn_name));
         } else {
-            dbg.field("fn", &"<unknown>");
+            dbg.entry(&"fn", &"<unknown>");
         }
 
         if let Some(fname) = self.filename.as_ref() {
-            dbg.field("file", fname);
+            dbg.entry(&"file", fname);
         }
 
         if let Some(line) = self.lineno.as_ref() {
-            dbg.field("line", line);
+            dbg.entry(&"line", line);
         }
 
         dbg.finish()
@@ -415,6 +419,7 @@ mod tests {
         eprintln!("captured: {:?}", bt);
         eprintln!("display print: {}", bt);
         eprintln!("resolved: {:?}", bt);
+        eprintln!("resolved alt: {:#?}", bt);
         unimplemented!();
     }
 }
