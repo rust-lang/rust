@@ -189,9 +189,10 @@ impl fmt::Debug for BacktraceSymbol {
         write!(fmt, "{{ ")?;
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
-            write!(fmt, "fn: \"{:?}\"", fn_name)?;
+            write!(fmt, "fn: ")?;
+            fmt::Display::fmt(&fn_name, fmt)?;
         } else {
-            write!(fmt, "fn: \"<unknown>\"")?;
+            write!(fmt, "fn: <unknown>")?;
         }
 
         if let Some(fname) = self.filename.as_ref() {
