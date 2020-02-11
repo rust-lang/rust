@@ -387,7 +387,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub NO_CRATE_LEVEL_DOC,
+    pub MISSING_CRATE_LEVEL_DOC,
     Allow,
     "detects crates with no crate-level documentation"
 }
@@ -553,7 +553,7 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
         INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        NO_CRATE_LEVEL_DOC,
+        MISSING_CRATE_LEVEL_DOC,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
         WHERE_CLAUSES_OBJECT_SAFETY,

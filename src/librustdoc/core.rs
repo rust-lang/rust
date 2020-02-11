@@ -249,7 +249,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
-    let no_crate_level_doc = rustc_lint::builtin::NO_CRATE_LEVEL_DOC.name;
+    let no_crate_level_doc = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOC.name;
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
@@ -417,7 +417,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     match m.doc_value() {
                         None | Some("") => {
                             let mut diag = tcx.struct_lint_node(
-                                rustc_lint::builtin::NO_CRATE_LEVEL_DOC,
+                                rustc_lint::builtin::MISSING_CRATE_LEVEL_DOC,
                                 ctxt.as_local_hir_id(m.def_id).unwrap(),
                                 "No documentation found on this crate top module.\n\n\
                                  Maybe you could be interested into looking at this documentation:\n\
@@ -432,8 +432,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
                     let mut msg = diag.struct_warn(&format!(
-                        "the `#![doc({})]` attribute is \
-                                                         considered deprecated",
+                        "the `#![doc({})]` attribute is considered deprecated",
                         name
                     ));
                     msg.warn(
