@@ -460,7 +460,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 self = r.print(self)?;
             }
 
-            ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+            ty::GeneratorWitness(..) => bug!("symbol_names: unexpected `GeneratorWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing

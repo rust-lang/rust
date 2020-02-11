@@ -2329,8 +2329,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
-        self.mk_ty(GeneratorWitness(types))
+    pub fn mk_generator_witness(
+        self,
+        types: ty::Binder<&'tcx List<Ty<'tcx>>>,
+        region_outlives: &'tcx List<ty::RegionOutlivesPredicate<'tcx>>,
+    ) -> Ty<'tcx> {
+        self.mk_ty(GeneratorWitness(types, region_outlives))
     }
 
     #[inline]

@@ -65,7 +65,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),
+            ty::GeneratorWitness(..) => bug!("type_name: unexpected `GeneratorWitness`"),
         }
     }
 

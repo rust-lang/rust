@@ -702,7 +702,7 @@ fn compute_layout<'tcx>(
     // MIR types
     let allowed_upvars = tcx.erase_regions(upvars);
     let allowed = match interior.kind {
-        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        ty::GeneratorWitness(s, _) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
     };
 

@@ -643,7 +643,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 p!(write("]"))
             }
-            ty::GeneratorWitness(types) => {
+            ty::GeneratorWitness(types, _) => {
                 p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {

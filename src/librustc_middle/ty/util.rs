@@ -734,7 +734,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Dynamic(..)
             | ty::Foreign(_)
             | ty::Generator(..)
-            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitness(..)
             | ty::Infer(_)
             | ty::Opaque(..)
             | ty::Param(_)

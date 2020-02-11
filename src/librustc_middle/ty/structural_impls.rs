@@ -884,7 +884,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Generator(did, substs, movability) => {
                 ty::Generator(did, substs.fold_with(folder), movability)
             }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.fold_with(folder)),
+            ty::GeneratorWitness(types, region_outlives) => {
+                ty::GeneratorWitness(types.fold_with(folder), region_outlives)
+            }
             ty::Closure(did, substs) => ty::Closure(did, substs.fold_with(folder)),
             ty::Projection(ref data) => ty::Projection(data.fold_with(folder)),
             ty::UnnormalizedProjection(ref data) => {
@@ -928,7 +930,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::FnPtr(ref f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
             ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
-            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
+            ty::GeneratorWitness(ref types, _) => types.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Projection(ref data) | ty::UnnormalizedProjection(ref data) => {
                 data.visit_with(visitor)

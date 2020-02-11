@@ -2312,7 +2312,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
             }
 
-            ty::GeneratorWitness(types) => {
+            ty::GeneratorWitness(types, _) => {
                 // This is sound because no regions in the witness can refer to
                 // the binder outside the witness. So we'll effectivly reuse
                 // the implicit binder around the witness.

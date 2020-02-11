@@ -795,6 +795,7 @@ impl<'a, T> IntoIterator for &'a List<T> {
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<Ty<'tcx>> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<RegionOutlivesPredicate<'tcx>> {}
 
 impl<T> List<T> {
     #[inline(always)]

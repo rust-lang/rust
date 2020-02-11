@@ -154,7 +154,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::FnDef(_, substs) => {
                 stack.extend(substs.iter().copied().rev());
             }
-            ty::GeneratorWitness(ts) => {
+            ty::GeneratorWitness(ts, _) => {
                 stack.extend(ts.skip_binder().iter().cloned().rev().map(|ty| ty.into()));
             }
             ty::FnPtr(sig) => {
