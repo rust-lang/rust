@@ -9,24 +9,25 @@ use hir::db::HirDatabase;
 
 use rustc_hash::FxHashSet;
 
+/// Generate a collection of associated items that are missing from a 
+/// `impl Trait for` block.
 pub fn get_missing_impl_items(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,
 ) -> Vec<hir::AssocItem> {
-    // since the names are unique only to each associated type (fn/type/const),
-    // create buckets of each already implemented type that we'll use in the
-    // lookup later.
-    let mut impl_fns = FxHashSet::default();
+    
+    // Names must be unique between constants and functions. However, type aliases
+    // may share the same name as a function or constant.
+    let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
-    let mut impl_const = FxHashSet::default();
 
     if let Some(item_list) = impl_block.item_list() {
         for item in item_list.impl_items() {
             match item {
                 ast::ImplItem::FnDef(f) => {
                     if let Some(n) = f.name() {
-                        impl_fns.insert(n.syntax().to_string());
+                        impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
 
@@ -38,7 +39,7 @@ pub fn get_missing_impl_items(
 
                 ast::ImplItem::ConstDef(c) => {
                     if let Some(n) = c.name() {
-                        impl_const.insert(n.syntax().to_string());
+                        impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
             }
@@ -50,10 +51,10 @@ pub fn get_missing_impl_items(
             .items(db)
             .iter()
             .filter(|i| match i {
-                hir::AssocItem::Function(f) => !impl_fns.contains(&f.name(db).to_string()),
+                hir::AssocItem::Function(f) => !impl_fns_consts.contains(&f.name(db).to_string()),
                 hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(db).to_string()),
                 hir::AssocItem::Const(c) => {
-                    c.name(db).map(|n| !impl_const.contains(&n.to_string())).unwrap_or_default()
+                    c.name(db).map(|n| !impl_fns_consts.contains(&n.to_string())).unwrap_or_default()
                 }
             })
             .map(|i| i.clone())
