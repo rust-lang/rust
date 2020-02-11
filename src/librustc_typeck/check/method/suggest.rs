@@ -3,7 +3,6 @@
 
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
-use crate::namespace::Namespace;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::Map;
 use rustc::ty::print::with_crate_prefix;
@@ -11,7 +10,7 @@ use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, Wit
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::{ExprKind, Node, QPath};
@@ -97,13 +96,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
                         let item = match self
-                            .associated_item(impl_did, item_name, Namespace::Value)
+                            .associated_item(impl_did, item_name, Namespace::ValueNS)
                             .or_else(|| {
                                 let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
                                 self.associated_item(
                                     impl_trait_ref.def_id,
                                     item_name,
-                                    Namespace::Value,
+                                    Namespace::ValueNS,
                                 )
                             }) {
                             Some(item) => item,
@@ -185,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item =
-                            match self.associated_item(trait_did, item_name, Namespace::Value) {
+                            match self.associated_item(trait_did, item_name, Namespace::ValueNS) {
                                 Some(item) => item,
                                 None => continue,
                             };
@@ -264,7 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx).into_iter().filter_map(|info| {
-                        self.associated_item(info.def_id, item_name, Namespace::Value)
+                        self.associated_item(info.def_id, item_name, Namespace::ValueNS)
                     });
                     if let (true, false, SelfSource::MethodCall(expr), Some(_)) = (
                         actual.is_numeric(),
@@ -779,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // here).
                 (type_is_local || info.def_id.is_local())
                     && self
-                        .associated_item(info.def_id, item_name, Namespace::Value)
+                        .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
                             // We only want to suggest public or local traits (#45781).
                             item.vis == ty::Visibility::Public || info.def_id.is_local()

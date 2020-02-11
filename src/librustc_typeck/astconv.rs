@@ -9,7 +9,6 @@ use crate::collect::PlaceholderHirTyCollector;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
-use crate::namespace::Namespace;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -20,7 +19,7 @@ use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::print;
@@ -2202,7 +2201,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let item = tcx
             .associated_items(trait_did)
             .iter()
-            .find(|i| Namespace::from(i.kind) == Namespace::Type && i.ident.modern() == assoc_ident)
+            .find(|i| i.kind.namespace() == Namespace::TypeNS && i.ident.modern() == assoc_ident)
             .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);

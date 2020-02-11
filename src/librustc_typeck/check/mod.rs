@@ -89,7 +89,6 @@ pub mod writeback;
 
 use crate::astconv::{AstConv, PathSeg};
 use crate::middle::lang_items;
-use crate::namespace::Namespace;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
 use rustc::middle::region;
@@ -1972,6 +1971,7 @@ fn check_impl_items_against_trait<'tcx>(
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items() {
+        let namespace = impl_item.kind.namespace();
         let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
         let ty_trait_item = tcx
             .associated_items(impl_trait_ref.def_id)
