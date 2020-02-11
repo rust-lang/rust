@@ -168,11 +168,17 @@ impl fmt::Debug for Backtrace {
         };
         capture.resolve();
 
+        let frames = if fmt.alternate() {
+            &capture.frames[..]
+        } else {
+            &capture.frames[capture.actual_start..]
+        };
+
         write!(fmt, "Backtrace ")?;
 
         let mut dbg = fmt.debug_list();
 
-        for frame in &capture.frames {
+        for frame in frames {
             if frame.frame.ip().is_null() {
                 continue;
             }
@@ -215,7 +221,7 @@ impl fmt::Debug for BytesOrWide {
                 BytesOrWide::Bytes(w) => BytesOrWideString::Bytes(w),
                 BytesOrWide::Wide(w) => BytesOrWideString::Wide(w),
             },
-            backtrace::PrintFmt::Full,
+            if fmt.alternate() { backtrace::PrintFmt::Full } else { backtrace::PrintFmt::Short },
             crate::env::current_dir().as_ref().ok(),
         )
     }
@@ -419,6 +425,7 @@ mod tests {
         let bt = Backtrace::force_capture();
         eprintln!("captured: {:?}", bt);
         eprintln!("display print: {}", bt);
+        eprintln!("display print alt: {:#}", bt);
         eprintln!("resolved: {:?}", bt);
         eprintln!("resolved alt: {:#?}", bt);
         unimplemented!();
