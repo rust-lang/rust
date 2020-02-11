@@ -37,16 +37,22 @@ impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         if let Some(replace) = self.map.get(&ident.name) {
-            let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
-            let mut db = cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, &msg);
-            db.span_suggestion(
-                ident.span,
-                "use",
-                replace.to_string(),
-                Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
-            );
-            db.note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
-                .emit();
+            cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, |lint| {
+                // FIXME: We can avoid a copy here. Would require us to take String instead of &str.
+                let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
+                lint.build(&msg)
+                    .span_suggestion(
+                        ident.span,
+                        "use",
+                        replace.to_string(),
+                        Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
+                    )
+                    .note(&format!(
+                        "a `use rustc_data_structures::fx::{}` may be necessary",
+                        replace
+                    ))
+                    .emit();
+            });
         }
     }
 }
@@ -85,14 +91,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
         if let Some(last) = segments.last() {
             let span = path.span.with_hi(last.ident.span.hi());
             if lint_ty_kind_usage(cx, last) {
-                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, "usage of `ty::TyKind::<kind>`")
-                    .span_suggestion(
-                        span,
-                        "try using ty::<kind> directly",
-                        "ty".to_string(),
-                        Applicability::MaybeIncorrect, // ty maybe needs an import
-                    )
-                    .emit();
+                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, |lint| {
+                    lint.build("usage of `ty::TyKind::<kind>`")
+                        .span_suggestion(
+                            span,
+                            "try using ty::<kind> directly",
+                            "ty".to_string(),
+                            Applicability::MaybeIncorrect, // ty maybe needs an import
+                        )
+                        .emit();
+                })
             }
         }
     }
@@ -103,32 +111,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                 if let QPath::Resolved(_, path) = qpath {
                     if let Some(last) = path.segments.iter().last() {
                         if lint_ty_kind_usage(cx, last) {
-                            cx.struct_span_lint(
-                                USAGE_OF_TY_TYKIND,
-                                path.span,
-                                "usage of `ty::TyKind`",
-                            )
-                            .help("try using `Ty` instead")
-                            .emit();
+                            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
+                                lint.build("usage of `ty::TyKind`")
+                                    .help("try using `Ty` instead")
+                                    .emit();
+                            })
                         } else {
                             if ty.span.from_expansion() {
                                 return;
                             }
                             if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
                                 if path.segments.len() > 1 {
-                                    cx.struct_span_lint(
-                                        USAGE_OF_QUALIFIED_TY,
-                                        path.span,
-                                        &format!("usage of qualified `ty::{}`", t),
-                                    )
-                                    .span_suggestion(
-                                        path.span,
-                                        "try using it unqualified",
-                                        t,
-                                        // The import probably needs to be changed
-                                        Applicability::MaybeIncorrect,
-                                    )
-                                    .emit();
+                                    cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, |lint| {
+                                        lint.build(&format!("usage of qualified `ty::{}`", t))
+                                            .span_suggestion(
+                                                path.span,
+                                                "try using it unqualified",
+                                                t,
+                                                // The import probably needs to be changed
+                                                Applicability::MaybeIncorrect,
+                                            )
+                                            .emit();
+                                    })
                                 }
                             }
                         }
@@ -142,19 +146,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                     }
                 }
                 if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
-                    cx.struct_span_lint(
-                        TY_PASS_BY_REFERENCE,
-                        ty.span,
-                        &format!("passing `{}` by reference", t),
-                    )
-                    .span_suggestion(
-                        ty.span,
-                        "try passing by value",
-                        t,
-                        // Changing type of function argument
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty.span, |lint| {
+                        lint.build(&format!("passing `{}` by reference", t))
+                            .span_suggestion(
+                                ty.span,
+                                "try passing by value",
+                                t,
+                                // Changing type of function argument
+                                Applicability::MaybeIncorrect,
+                            )
+                            .emit();
+                    })
                 }
             }
             _ => {}
@@ -234,10 +236,12 @@ impl EarlyLintPass for LintPassImpl {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
-                            "implementing `LintPass` by hand",
+                            |lint| {
+                                lint.build("implementing `LintPass` by hand")
+                                    .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
+                                    .emit();
+                            },
                         )
-                        .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
-                        .emit();
                     }
                 }
             }

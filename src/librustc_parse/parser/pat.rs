@@ -572,7 +572,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(span, problem)
             .span_suggestion(span, suggestion, fix, Applicability::MachineApplicable)
             .note("`mut` may be followed by `variable` and `variable @ pattern`")
-            .emit()
+            .emit();
     }
 
     /// Eat any extraneous `mut`s and error + recover if we ate any.

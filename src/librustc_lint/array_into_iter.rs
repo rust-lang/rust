@@ -77,13 +77,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            let msg = format!(
+            cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
+                lint.build(&format!(
                 "this method call currently resolves to `<&{} as IntoIterator>::into_iter` (due \
                     to autoref coercions), but that might change in the future when \
                     `IntoIterator` impls for arrays are added.",
                 target,
-            );
-            cx.struct_span_lint(ARRAY_INTO_ITER, *span, &msg)
+                ))
                 .span_suggestion(
                     call.ident.span,
                     "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
@@ -91,6 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
                     Applicability::MachineApplicable,
                 )
                 .emit();
+            })
         }
     }
 }

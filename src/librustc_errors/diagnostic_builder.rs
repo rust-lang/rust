@@ -106,7 +106,11 @@ impl<'a> DiagnosticBuilder<'a> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     pub fn emit_unless(&mut self, delay: bool) {
-        if delay { self.delay_as_bug() } else { self.emit() }
+        if delay {
+            self.delay_as_bug();
+        } else {
+            self.emit();
+        }
     }
 
     /// Stashes diagnostic for possible later improvement in a different,
@@ -369,6 +373,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
+        debug!("Created new diagnostic");
         DiagnosticBuilder(Box::new(DiagnosticBuilderInner {
             handler,
             diagnostic,

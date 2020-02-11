@@ -326,12 +326,15 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // to read enum discriminants in order to find references in enum variant fields.
             if let err_unsup!(ValidationFailure(_)) = error.kind {
                 let err = crate::const_eval::error_to_const_error(&ecx, error);
-                match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
-                    Ok(mut diag) => {
+                match err.struct_error(
+                    ecx.tcx,
+                    "it is undefined behavior to use this value",
+                    |mut diag| {
                         diag.note(crate::const_eval::note_on_undefined_behavior_error());
                         diag.emit();
-                    }
-                    Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
+                    },
+                ) {
+                    Ok(()) | Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
                 }
             }
         }

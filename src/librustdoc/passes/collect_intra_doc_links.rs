@@ -669,39 +669,43 @@ fn build_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    let mut diag = cx.tcx.struct_span_lint_hir(
+    cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
         hir_id,
         sp,
-        &format!("`[{}]` {}", path_str, err_msg),
-    );
-    if let Some(link_range) = link_range {
-        if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
-            diag.set_span(sp);
-            diag.span_label(sp, short_err_msg);
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+        |lint| {
+            let mut diag = lint.build(&format!("`[{}]` {}", path_str, err_msg));
+            if let Some(link_range) = link_range {
+                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
+                {
+                    diag.set_span(sp);
+                    diag.span_label(sp, short_err_msg);
+                } else {
+                    // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                    //                       ^     ~~~~
+                    //                       |     link_range
+                    //                       last_new_line_offset
+                    let last_new_line_offset =
+                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+                    let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `link_range` and manually mark it with '^'s.
-            diag.note(&format!(
-                "the link appears in this line:\n\n{line}\n\
-                 {indicator: <before$}{indicator:^<found$}",
-                line = line,
-                indicator = "",
-                before = link_range.start - last_new_line_offset,
-                found = link_range.len(),
-            ));
-        }
-    };
-    if let Some(help_msg) = help_msg {
-        diag.help(help_msg);
-    }
-    diag.emit();
+                    // Print the line containing the `link_range` and manually mark it with '^'s.
+                    diag.note(&format!(
+                        "the link appears in this line:\n\n{line}\n\
+                         {indicator: <before$}{indicator:^<found$}",
+                        line = line,
+                        indicator = "",
+                        before = link_range.start - last_new_line_offset,
+                        found = link_range.len(),
+                    ));
+                }
+            };
+            if let Some(help_msg) = help_msg {
+                diag.help(help_msg);
+            }
+            diag.emit();
+        },
+    );
 }
 
 /// Reports a resolution failure diagnostic.
@@ -766,105 +770,108 @@ fn ambiguity_error(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    let mut msg = format!("`{}` is ", path_str);
-
-    let candidates = [TypeNS, ValueNS, MacroNS]
-        .iter()
-        .filter_map(|&ns| candidates[ns].map(|res| (res, ns)))
-        .collect::<Vec<_>>();
-    match candidates.as_slice() {
-        [(first_def, _), (second_def, _)] => {
-            msg += &format!(
-                "both {} {} and {} {}",
-                first_def.article(),
-                first_def.descr(),
-                second_def.article(),
-                second_def.descr(),
-            );
-        }
-        _ => {
-            let mut candidates = candidates.iter().peekable();
-            while let Some((res, _)) = candidates.next() {
-                if candidates.peek().is_some() {
-                    msg += &format!("{} {}, ", res.article(), res.descr());
-                } else {
-                    msg += &format!("and {} {}", res.article(), res.descr());
-                }
-            }
-        }
-    }
-
-    let mut diag = cx.tcx.struct_span_lint_hir(
+    cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
         hir_id,
         sp,
-        &msg,
-    );
+        |lint| {
+            let mut msg = format!("`{}` is ", path_str);
 
-    if let Some(link_range) = link_range {
-        if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
-            diag.set_span(sp);
-            diag.span_label(sp, "ambiguous link");
+            let candidates = [TypeNS, ValueNS, MacroNS]
+                .iter()
+                .filter_map(|&ns| candidates[ns].map(|res| (res, ns)))
+                .collect::<Vec<_>>();
+            match candidates.as_slice() {
+                [(first_def, _), (second_def, _)] => {
+                    msg += &format!(
+                        "both {} {} and {} {}",
+                        first_def.article(),
+                        first_def.descr(),
+                        second_def.article(),
+                        second_def.descr(),
+                    );
+                }
+                _ => {
+                    let mut candidates = candidates.iter().peekable();
+                    while let Some((res, _)) = candidates.next() {
+                        if candidates.peek().is_some() {
+                            msg += &format!("{} {}, ", res.article(), res.descr());
+                        } else {
+                            msg += &format!("and {} {}", res.article(), res.descr());
+                        }
+                    }
+                }
+            }
 
-            for (res, ns) in candidates {
-                let (action, mut suggestion) = match res {
-                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::Fn, _) => {
-                        ("add parentheses", format!("{}()", path_str))
-                    }
-                    Res::Def(DefKind::Macro(..), _) => {
-                        ("add an exclamation mark", format!("{}!", path_str))
-                    }
-                    _ => {
-                        let type_ = match (res, ns) {
-                            (Res::Def(DefKind::Const, _), _) => "const",
-                            (Res::Def(DefKind::Static, _), _) => "static",
-                            (Res::Def(DefKind::Struct, _), _) => "struct",
-                            (Res::Def(DefKind::Enum, _), _) => "enum",
-                            (Res::Def(DefKind::Union, _), _) => "union",
-                            (Res::Def(DefKind::Trait, _), _) => "trait",
-                            (Res::Def(DefKind::Mod, _), _) => "module",
-                            (_, TypeNS) => "type",
-                            (_, ValueNS) => "value",
-                            (_, MacroNS) => "macro",
+            let mut diag = lint.build(&msg);
+
+            if let Some(link_range) = link_range {
+                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
+                {
+                    diag.set_span(sp);
+                    diag.span_label(sp, "ambiguous link");
+
+                    for (res, ns) in candidates {
+                        let (action, mut suggestion) = match res {
+                            Res::Def(DefKind::Method, _) | Res::Def(DefKind::Fn, _) => {
+                                ("add parentheses", format!("{}()", path_str))
+                            }
+                            Res::Def(DefKind::Macro(..), _) => {
+                                ("add an exclamation mark", format!("{}!", path_str))
+                            }
+                            _ => {
+                                let type_ = match (res, ns) {
+                                    (Res::Def(DefKind::Const, _), _) => "const",
+                                    (Res::Def(DefKind::Static, _), _) => "static",
+                                    (Res::Def(DefKind::Struct, _), _) => "struct",
+                                    (Res::Def(DefKind::Enum, _), _) => "enum",
+                                    (Res::Def(DefKind::Union, _), _) => "union",
+                                    (Res::Def(DefKind::Trait, _), _) => "trait",
+                                    (Res::Def(DefKind::Mod, _), _) => "module",
+                                    (_, TypeNS) => "type",
+                                    (_, ValueNS) => "value",
+                                    (_, MacroNS) => "macro",
+                                };
+
+                                // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+                                ("prefix with the item type", format!("{}@{}", type_, path_str))
+                            }
                         };
 
-                        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
-                        ("prefix with the item type", format!("{}@{}", type_, path_str))
+                        if dox.bytes().nth(link_range.start) == Some(b'`') {
+                            suggestion = format!("`{}`", suggestion);
+                        }
+
+                        diag.span_suggestion(
+                            sp,
+                            &format!("to link to the {}, {}", res.descr(), action),
+                            suggestion,
+                            Applicability::MaybeIncorrect,
+                        );
                     }
-                };
+                } else {
+                    // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                    //                       ^     ~~~~
+                    //                       |     link_range
+                    //                       last_new_line_offset
+                    let last_new_line_offset =
+                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+                    let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-                if dox.bytes().nth(link_range.start) == Some(b'`') {
-                    suggestion = format!("`{}`", suggestion);
+                    // Print the line containing the `link_range` and manually mark it with '^'s.
+                    diag.note(&format!(
+                        "the link appears in this line:\n\n{line}\n\
+                         {indicator: <before$}{indicator:^<found$}",
+                        line = line,
+                        indicator = "",
+                        before = link_range.start - last_new_line_offset,
+                        found = link_range.len(),
+                    ));
                 }
-
-                diag.span_suggestion(
-                    sp,
-                    &format!("to link to the {}, {}", res.descr(), action),
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
             }
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
-
-            // Print the line containing the `link_range` and manually mark it with '^'s.
-            diag.note(&format!(
-                "the link appears in this line:\n\n{line}\n\
-                 {indicator: <before$}{indicator:^<found$}",
-                line = line,
-                indicator = "",
-                before = link_range.start - last_new_line_offset,
-                found = link_range.len(),
-            ));
-        }
-    }
-
-    diag.emit();
+            diag.emit();
+        },
+    );
 }
 
 /// Given an enum variant's res, return the res of its enum and the associated fragment.

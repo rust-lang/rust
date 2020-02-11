@@ -124,18 +124,15 @@ fn check_fn_for_unconditional_recursion<'tcx>(
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let sp = tcx.sess.source_map().def_span(tcx.hir().span(hir_id));
-        let mut db = tcx.struct_span_lint_hir(
-            UNCONDITIONAL_RECURSION,
-            hir_id,
-            sp,
-            "function cannot return without recursing",
-        );
-        db.span_label(sp, "cannot return without recursing");
-        // offer some help to the programmer.
-        for location in &self_call_locations {
-            db.span_label(location.span, "recursive call site");
-        }
-        db.help("a `loop` may express intention better if this is on purpose");
-        db.emit();
+        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
+            let mut db = lint.build("function cannot return without recursing");
+            db.span_label(sp, "cannot return without recursing");
+            // offer some help to the programmer.
+            for location in &self_call_locations {
+                db.span_label(location.span, "recursive call site");
+            }
+            db.help("a `loop` may express intention better if this is on purpose");
+            db.emit();
+        });
     }
 }

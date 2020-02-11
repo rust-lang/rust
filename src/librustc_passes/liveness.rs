@@ -1521,45 +1521,47 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if ln == self.s.exit_ln { false } else { self.assigned_on_exit(ln, var).is_some() };
 
             if is_assigned {
-                self.ir
-                    .tcx
-                    .struct_span_lint_hir(
-                        lint::builtin::UNUSED_VARIABLES,
-                        hir_id,
-                        spans,
-                        &format!("variable `{}` is assigned to, but never used", name),
-                    )
-                    .note(&format!("consider using `_{}` instead", name))
-                    .emit();
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNUSED_VARIABLES,
+                    hir_id,
+                    spans,
+                    |lint| {
+                        lint.build(&format!("variable `{}` is assigned to, but never used", name))
+                            .note(&format!("consider using `_{}` instead", name))
+                            .emit();
+                    },
+                )
             } else {
-                let mut err = self.ir.tcx.struct_span_lint_hir(
+                self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     hir_id,
                     spans.clone(),
-                    &format!("unused variable: `{}`", name),
+                    |lint| {
+                        let mut err = lint.build(&format!("unused variable: `{}`", name));
+                        if self.ir.variable_is_shorthand(var) {
+                            if let Node::Binding(pat) = self.ir.tcx.hir().get(hir_id) {
+                                // Handle `ref` and `ref mut`.
+                                let spans = spans
+                                    .iter()
+                                    .map(|_span| (pat.span, format!("{}: _", name)))
+                                    .collect();
+
+                                err.multipart_suggestion(
+                                    "try ignoring the field",
+                                    spans,
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        } else {
+                            err.multipart_suggestion(
+                                "consider prefixing with an underscore",
+                                spans.iter().map(|span| (*span, format!("_{}", name))).collect(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        err.emit()
+                    },
                 );
-
-                if self.ir.variable_is_shorthand(var) {
-                    if let Node::Binding(pat) = self.ir.tcx.hir().get(hir_id) {
-                        // Handle `ref` and `ref mut`.
-                        let spans =
-                            spans.iter().map(|_span| (pat.span, format!("{}: _", name))).collect();
-
-                        err.multipart_suggestion(
-                            "try ignoring the field",
-                            spans,
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                } else {
-                    err.multipart_suggestion(
-                        "consider prefixing with an underscore",
-                        spans.iter().map(|span| (*span, format!("_{}", name))).collect(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-
-                err.emit()
             }
         }
     }
@@ -1573,27 +1575,27 @@ impl<'tcx> Liveness<'_, 'tcx> {
     fn report_dead_assign(&self, hir_id: HirId, spans: Vec<Span>, var: Variable, is_param: bool) {
         if let Some(name) = self.should_warn(var) {
             if is_param {
-                self.ir
-                    .tcx
-                    .struct_span_lint_hir(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
-                        hir_id,
-                        spans,
-                        &format!("value passed to `{}` is never read", name),
-                    )
-                    .help("maybe it is overwritten before being read?")
-                    .emit();
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNUSED_ASSIGNMENTS,
+                    hir_id,
+                    spans,
+                    |lint| {
+                        lint.build(&format!("value passed to `{}` is never read", name))
+                            .help("maybe it is overwritten before being read?")
+                            .emit();
+                    },
+                )
             } else {
-                self.ir
-                    .tcx
-                    .struct_span_lint_hir(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
-                        hir_id,
-                        spans,
-                        &format!("value assigned to `{}` is never read", name),
-                    )
-                    .help("maybe it is overwritten before being read?")
-                    .emit();
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNUSED_ASSIGNMENTS,
+                    hir_id,
+                    spans,
+                    |lint| {
+                        lint.build(&format!("value assigned to `{}` is never read", name))
+                            .help("maybe it is overwritten before being read?")
+                            .emit();
+                    },
+                )
             }
         }
     }

@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
                                    source files. Outer attributes, like `#[test]`, annotate the \
                                    item following them.",
                             )
-                            .emit()
+                            .emit();
                     }
                 }
 
@@ -239,7 +239,7 @@ impl<'a> Parser<'a> {
                                     (`1u8`, `1.0f32`, etc.), use an unsuffixed version \
                                     (`1`, `1.0`, etc.)",
                 )
-                .emit()
+                .emit();
         }
 
         Ok(lit)

@@ -227,37 +227,47 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                let mut err = tcx.struct_span_lint_hir(
+                tcx.struct_span_lint_hir(
                     WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
-                    &format!(
-                        "the trait `{}` cannot be made into an object",
-                        tcx.def_path_str(trait_def_id)
-                    ),
+                    |lint| {
+                        let mut err = lint.build(&format!(
+                            "the trait `{}` cannot be made into an object",
+                            tcx.def_path_str(trait_def_id)
+                        ));
+                        let node = tcx.hir().get_if_local(trait_def_id);
+                        let msg = if let Some(hir::Node::Item(item)) = node {
+                            err.span_label(
+                                item.ident.span,
+                                "this trait cannot be made into an object...",
+                            );
+                            format!("...because {}", violation.error_msg())
+                        } else {
+                            format!(
+                                "the trait cannot be made into an object because {}",
+                                violation.error_msg()
+                            )
+                        };
+                        err.span_label(*span, &msg);
+                        match (node, violation.solution()) {
+                            (Some(_), Some((note, None))) => {
+                                err.help(&note);
+                            }
+                            (Some(_), Some((note, Some((sugg, span))))) => {
+                                err.span_suggestion(
+                                    span,
+                                    &note,
+                                    sugg,
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            // Only provide the help if its a local trait, otherwise it's not actionable.
+                            _ => {}
+                        }
+                        err.emit();
+                    },
                 );
-                let node = tcx.hir().get_if_local(trait_def_id);
-                let msg = if let Some(hir::Node::Item(item)) = node {
-                    err.span_label(item.ident.span, "this trait cannot be made into an object...");
-                    format!("...because {}", violation.error_msg())
-                } else {
-                    format!(
-                        "the trait cannot be made into an object because {}",
-                        violation.error_msg()
-                    )
-                };
-                err.span_label(*span, &msg);
-                match (node, violation.solution()) {
-                    (Some(_), Some((note, None))) => {
-                        err.help(&note);
-                    }
-                    (Some(_), Some((note, Some((sugg, span))))) => {
-                        err.span_suggestion(span, &note, sugg, Applicability::MachineApplicable);
-                    }
-                    // Only provide the help if its a local trait, otherwise it's not actionable.
-                    _ => {}
-                }
-                err.emit();
                 false
             } else {
                 true

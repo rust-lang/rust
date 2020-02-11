@@ -69,7 +69,7 @@ pub(crate) fn emit_unescape_error(
                     format!("\"{}\"", lit),
                     Applicability::MachineApplicable,
                 )
-                .emit()
+                .emit();
         }
         EscapeError::EscapeOnlyChar => {
             let (c, _span) = last_char();

@@ -41,6 +41,7 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
+use rustc::lint::LintDiagnosticBuilder;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -49,7 +50,6 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
-use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex, LOCAL_CRATE};
@@ -2551,16 +2551,6 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 
-    pub fn lint_hir(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        msg: &str,
-    ) {
-        self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
-    }
-
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
     pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
@@ -2604,20 +2594,20 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
     }
 
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
         id: HirId,
-        msg: &str,
-    ) -> DiagnosticBuilder<'tcx> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, msg)
+        struct_lint_level(self.sess, lint, level, src, None, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {

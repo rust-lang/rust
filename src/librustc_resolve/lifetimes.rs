@@ -1575,22 +1575,28 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             }
                         }
 
-                        let mut err = self.tcx.struct_span_lint_hir(
+                        self.tcx.struct_span_lint_hir(
                             lint::builtin::SINGLE_USE_LIFETIMES,
                             id,
                             span,
-                            &format!("lifetime parameter `{}` only used once", name),
+                            |lint| {
+                                let mut err = lint.build(&format!(
+                                    "lifetime parameter `{}` only used once",
+                                    name
+                                ));
+                                if span == lifetime.span {
+                                    // spans are the same for in-band lifetime declarations
+                                    err.span_label(span, "this lifetime is only used here");
+                                } else {
+                                    err.span_label(span, "this lifetime...");
+                                    err.span_label(lifetime.span, "...is used only here");
+                                }
+                                self.suggest_eliding_single_use_lifetime(
+                                    &mut err, def_id, lifetime,
+                                );
+                                err.emit();
+                            },
                         );
-
-                        if span == lifetime.span {
-                            // spans are the same for in-band lifetime declarations
-                            err.span_label(span, "this lifetime is only used here");
-                        } else {
-                            err.span_label(span, "this lifetime...");
-                            err.span_label(lifetime.span, "...is used only here");
-                        }
-                        self.suggest_eliding_single_use_lifetime(&mut err, def_id, lifetime);
-                        err.emit();
                     }
                 }
                 Some(LifetimeUseSet::Many) => {
@@ -1610,26 +1616,32 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         _ => None,
                     } {
                         debug!("id ={:?} span = {:?} name = {:?}", id, span, name);
-                        let mut err = self.tcx.struct_span_lint_hir(
+                        self.tcx.struct_span_lint_hir(
                             lint::builtin::UNUSED_LIFETIMES,
                             id,
                             span,
-                            &format!("lifetime parameter `{}` never used", name),
-                        );
-                        if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                            if let Some(generics) = self.tcx.hir().get_generics(parent_def_id) {
-                                let unused_lt_span = self.lifetime_deletion_span(name, generics);
-                                if let Some(span) = unused_lt_span {
-                                    err.span_suggestion(
-                                        span,
-                                        "elide the unused lifetime",
-                                        String::new(),
-                                        Applicability::MachineApplicable,
-                                    );
+                            |lint| {
+                                let mut err = lint
+                                    .build(&format!("lifetime parameter `{}` never used", name));
+                                if let Some(parent_def_id) = self.tcx.parent(def_id) {
+                                    if let Some(generics) =
+                                        self.tcx.hir().get_generics(parent_def_id)
+                                    {
+                                        let unused_lt_span =
+                                            self.lifetime_deletion_span(name, generics);
+                                        if let Some(span) = unused_lt_span {
+                                            err.span_suggestion(
+                                                span,
+                                                "elide the unused lifetime",
+                                                String::new(),
+                                                Applicability::MachineApplicable,
+                                            );
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        err.emit();
+                                err.emit();
+                            },
+                        );
                     }
                 }
             }

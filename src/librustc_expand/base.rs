@@ -1113,7 +1113,11 @@ pub fn expr_to_string(
     err_msg: &str,
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|err| err.map(|mut err| err.emit()))
+        .map_err(|err| {
+            err.map(|mut err| {
+                err.emit();
+            })
+        })
         .ok()
         .map(|(symbol, style, _)| (symbol, style))
 }
