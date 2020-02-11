@@ -3774,19 +3774,15 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "fmt_macros",
  "graphviz",
  "log",
  "rustc",
  "rustc_ast",
- "rustc_attr",
  "rustc_data_structures",
- "rustc_error_codes",
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec 1.0.0",
@@ -4044,7 +4040,6 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_hir",
- "rustc_infer",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
@@ -4129,13 +4124,11 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "fmt_macros",
- "graphviz",
  "log",
  "rustc",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
- "rustc_error_codes",
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
