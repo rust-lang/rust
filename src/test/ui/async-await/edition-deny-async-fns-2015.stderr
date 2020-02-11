@@ -88,7 +88,7 @@ LL |             async fn bar() {}
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0706]: trait fns cannot be declared `async`
+error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}

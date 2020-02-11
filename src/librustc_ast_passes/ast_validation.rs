@@ -223,21 +223,29 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_async(&self, fn_span: Span, asyncness: Async) {
         if let Async::Yes { span, .. } = asyncness {
-            struct_span_err!(self.session, fn_span, E0706, "trait fns cannot be declared `async`")
-                .span_label(span, "`async` because of this")
-                .note("`async` trait functions are not currently supported")
-                .note(
-                    "consider using the `async-trait` crate: https://crates.io/crates/async-trait",
-                )
-                .emit();
+            struct_span_err!(
+                self.session,
+                fn_span,
+                E0706,
+                "functions in traits cannot be declared `async`"
+            )
+            .span_label(span, "`async` because of this")
+            .note("`async` trait functions are not currently supported")
+            .note("consider using the `async-trait` crate: https://crates.io/crates/async-trait")
+            .emit();
         }
     }
 
     fn check_trait_fn_not_const(&self, constness: Const) {
         if let Const::Yes(span) = constness {
-            struct_span_err!(self.session, span, E0379, "trait fns cannot be declared const")
-                .span_label(span, "trait fns cannot be const")
-                .emit();
+            struct_span_err!(
+                self.session,
+                span,
+                E0379,
+                "functions in traits cannot be declared const"
+            )
+            .span_label(span, "functions in traits cannot be const")
+            .emit();
         }
     }
 
@@ -513,8 +521,11 @@ impl<'a> AstValidator<'a> {
             for param in &generics.params {
                 if let GenericParamKind::Const { .. } = param.kind {
                     self.err_handler()
-                        .struct_span_err(span, "const parameters are not permitted in `const fn`")
-                        .span_label(const_span, "`const fn` because of this")
+                        .struct_span_err(
+                            span,
+                            "const parameters are not permitted in const functions",
+                        )
+                        .span_label(const_span, "`const` because of this")
                         .emit();
                 }
             }
