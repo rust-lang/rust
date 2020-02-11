@@ -127,6 +127,7 @@ bitflags::bitflags! {
 
         const QUERY_KEYS         = 1 << 5;
         const FUNCTION_ARGS      = 1 << 6;
+        const LLVM               = 1 << 7;
 
         const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
                         Self::QUERY_PROVIDERS.bits |
@@ -150,6 +151,7 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
     ("query-keys", EventFilter::QUERY_KEYS),
     ("function-args", EventFilter::FUNCTION_ARGS),
     ("args", EventFilter::ARGS),
+    ("llvm", EventFilter::LLVM),
 ];
 
 /// Something that uniquely identifies a query invocation.
@@ -363,6 +365,15 @@ impl SelfProfilerRef {
     #[inline]
     pub fn enabled(&self) -> bool {
         self.profiler.is_some()
+    }
+
+    #[inline]
+    pub fn llvm_recording_enabled(&self) -> bool {
+        self.event_filter_mask.contains(EventFilter::LLVM)
+    }
+    #[inline]
+    pub fn get_self_profiler(&self) -> Option<Arc<SelfProfiler>> {
+        self.profiler.clone()
     }
 }
 

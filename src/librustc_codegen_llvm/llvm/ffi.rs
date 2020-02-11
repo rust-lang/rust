@@ -709,6 +709,10 @@ extern "C" {
     pub type ModuleBuffer;
 }
 
+pub type SelfProfileBeforePassCallback =
+    unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
+pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
+
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
 
@@ -1945,6 +1949,9 @@ extern "C" {
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
+        llvm_selfprofiler: *mut c_void,
+        begin_callback: SelfProfileBeforePassCallback,
+        end_callback: SelfProfileAfterPassCallback,
     );
     pub fn LLVMRustPrintModule(
         M: &'a Module,
