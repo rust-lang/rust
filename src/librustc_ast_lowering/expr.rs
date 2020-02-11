@@ -487,23 +487,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let task_context_id = self.resolver.next_node_id();
         let task_context_hid = self.lower_node_id(task_context_id);
+
+        let arg_ty = Ty { id: self.resolver.next_node_id(), kind: TyKind::Infer, span: DUMMY_SP };
+        let arg_pat = Pat {
+            id: task_context_id,
+            kind: PatKind::Ident(
+                BindingMode::ByValue(Mutability::Mut),
+                Ident::with_dummy_span(sym::_task_context),
+                None,
+            ),
+            span: DUMMY_SP,
+        };
         let ast_decl = FnDecl {
             inputs: vec![Param {
                 attrs: AttrVec::new(),
-                ty: AstP(Ty {
-                    id: self.resolver.next_node_id(),
-                    kind: TyKind::Infer,
-                    span: DUMMY_SP,
-                }),
-                pat: AstP(Pat {
-                    id: task_context_id,
-                    kind: PatKind::Ident(
-                        BindingMode::ByValue(Mutability::Mut),
-                        Ident::with_dummy_span(sym::_task_context),
-                        None,
-                    ),
-                    span: DUMMY_SP,
-                }),
+                ty: AstP(arg_ty),
+                pat: AstP(arg_pat),
                 id: self.resolver.next_node_id(),
                 span: DUMMY_SP,
                 is_placeholder: false,
