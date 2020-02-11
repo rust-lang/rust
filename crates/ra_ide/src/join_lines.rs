@@ -66,7 +66,9 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
         edit.delete(TextRange::from_to(prev.text_range().start(), token.text_range().end()));
-    } else if prev.kind() == T![,] && next.kind() == T!['}'] {
+        return;
+    }
+    if prev.kind() == T![,] && next.kind() == T!['}'] {
         // Removes: comma, newline (incl. surrounding whitespace)
         let space = if let Some(left) = prev.prev_sibling_or_token() {
             compute_ws(left.kind(), next.kind())
@@ -77,7 +79,10 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
             TextRange::from_to(prev.text_range().start(), token.text_range().end()),
             space.to_string(),
         );
-    } else if let (Some(_), Some(next)) = (
+        return;
+    }
+
+    if let (Some(_), Some(next)) = (
         prev.as_token().cloned().and_then(ast::Comment::cast),
         next.as_token().cloned().and_then(ast::Comment::cast),
     ) {
@@ -86,33 +91,34 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
             token.text_range().start(),
             next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
         ));
-    } else {
-        // Special case that turns something like:
-        //
-        // ```
-        // my_function({<|>
-        //    <some-expr>
-        // })
-        // ```
-        //
-        // into `my_function(<some-expr>)`
-        if join_single_expr_block(edit, token).is_some() {
-            return;
-        }
-        // ditto for
-        //
-        // ```
-        // use foo::{<|>
-        //    bar
-        // };
-        // ```
-        if join_single_use_tree(edit, token).is_some() {
-            return;
-        }
-
-        // Remove newline but add a computed amount of whitespace characters
-        edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
+        return;
     }
+
+    // Special case that turns something like:
+    //
+    // ```
+    // my_function({<|>
+    //    <some-expr>
+    // })
+    // ```
+    //
+    // into `my_function(<some-expr>)`
+    if join_single_expr_block(edit, token).is_some() {
+        return;
+    }
+    // ditto for
+    //
+    // ```
+    // use foo::{<|>
+    //    bar
+    // };
+    // ```
+    if join_single_use_tree(edit, token).is_some() {
+        return;
+    }
+
+    // Remove newline but add a computed amount of whitespace characters
+    edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
 }
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
