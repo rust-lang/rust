@@ -186,23 +186,23 @@ impl fmt::Debug for Backtrace {
 
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut dbg = fmt.debug_map();
+        write!(fmt, "{{ ")?;
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
-            dbg.entry(&"fn", &format_args!("\"{}\"", fn_name));
+            write!(fmt, "fn: \"{:?}\"", fn_name)?;
         } else {
-            dbg.entry(&"fn", &"<unknown>");
+            write!(fmt, "fn: \"<unknown>\"")?;
         }
 
         if let Some(fname) = self.filename.as_ref() {
-            dbg.entry(&"file", fname);
+            write!(fmt, ", file: {:?}", fname)?;
         }
 
         if let Some(line) = self.lineno.as_ref() {
-            dbg.entry(&"line", line);
+            write!(fmt, ", line: {:?}", line)?;
         }
 
-        dbg.finish()
+        write!(fmt, " }}")
     }
 }
 
