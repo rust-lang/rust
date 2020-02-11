@@ -125,14 +125,6 @@ fn add_const_impl(
         .add_to(acc);
 }
 
-/// Using a `ConstDef` `SyntaxNode` to create a `String` that represents 
-/// the output of the magic completion.
-/// 
-/// There isn't a whole lot of information about a `hir::Const` or 
-/// `ast::ConstDef` to prove useful when creating the magic completion for the
-/// associated constant. This method simply copies the syntax tree of the 
-/// target trait up until a `;` or `=` is found. From the sliced syntax tree
-/// it formulates the magic completion string.
 fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
     let const_ = edit::strip_attrs_and_docs(const_);
 
