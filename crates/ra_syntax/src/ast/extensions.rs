@@ -1,6 +1,8 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
+use itertools::Itertools;
+
 use crate::{
     ast::{self, child_opt, children, AstNode, AttrInput, SyntaxNode},
     SmolStr, SyntaxElement,
@@ -290,6 +292,40 @@ impl ast::BindPat {
 
     pub fn is_ref(&self) -> bool {
         self.syntax().children_with_tokens().any(|n| n.kind() == T![ref])
+    }
+}
+
+pub struct SlicePatComponents {
+    pub prefix: Vec<ast::Pat>,
+    pub slice: Option<ast::Pat>,
+    pub suffix: Vec<ast::Pat>,
+}
+
+impl ast::SlicePat {
+    pub fn components(&self) -> SlicePatComponents {
+        let mut args = self.args().peekable();
+        let prefix = args
+            .peeking_take_while(|p| match p {
+                ast::Pat::DotDotPat(_) => false,
+                ast::Pat::BindPat(bp) => match bp.pat() {
+                    Some(ast::Pat::DotDotPat(_)) => false,
+                    _ => true,
+                },
+                ast::Pat::RefPat(rp) => match rp.pat() {
+                    Some(ast::Pat::DotDotPat(_)) => false,
+                    Some(ast::Pat::BindPat(bp)) => match bp.pat() {
+                        Some(ast::Pat::DotDotPat(_)) => false,
+                        _ => true,
+                    },
+                    _ => true,
+                },
+                _ => true,
+            })
+            .collect();
+        let slice = args.next();
+        let suffix = args.collect();
+
+        SlicePatComponents { prefix, slice, suffix }
     }
 }
 

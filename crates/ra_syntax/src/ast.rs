@@ -18,7 +18,8 @@ use crate::{
 pub use self::{
     expr_extensions::{ArrayExprKind, BinOp, ElseBranch, LiteralKind, PrefixOp, RangeOp},
     extensions::{
-        FieldKind, PathSegmentKind, SelfParamKind, StructKind, TypeBoundKind, VisibilityKind,
+        FieldKind, PathSegmentKind, SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind,
+        VisibilityKind,
     },
     generated::*,
     tokens::*,
