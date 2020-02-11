@@ -929,8 +929,16 @@ impl<T: ?Sized> Rc<T> {
         let inner = mem_to_rcbox(mem.as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
-        ptr::write(&raw mut (*inner).strong, Cell::new(1));
-        ptr::write(&raw mut (*inner).weak, Cell::new(1));
+        #[cfg(stage0)]
+        {
+            ptr::write(&mut (*inner).strong, Cell::new(1));
+            ptr::write(&mut (*inner).weak, Cell::new(1));
+        }
+        #[cfg(not(stage0))]
+        {
+            ptr::write(&raw mut (*inner).strong, Cell::new(1));
+            ptr::write(&raw mut (*inner).weak, Cell::new(1));
+        }
 
         inner
     }
