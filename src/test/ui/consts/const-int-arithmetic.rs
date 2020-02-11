@@ -7,7 +7,7 @@
 #![feature(const_saturating_int_methods)]
 #![feature(const_wrapping_int_methods)]
 
-use std::i8;
+use std::{i8, i128};
 
 macro_rules! suite {
     ($(
@@ -65,6 +65,10 @@ suite!(
         C26: 5i8.checked_rem_euclid(0), None;
         C27: i8::MIN.checked_rem_euclid(-1), None;
     }
+    checked_i128 -> Option<i128> {
+        CHK_ADD_I128: i128::MAX.checked_add(1), None;
+        CHK_MUL_I128: i128::MIN.checked_mul(-1), None;
+    }
 
     saturating_and_wrapping -> i8 {
         // `const_saturating_int_methods`
@@ -104,6 +108,13 @@ suite!(
         C47: 100i8.wrapping_rem_euclid(10), 0;
         C48: (-128i8).wrapping_rem_euclid(-1), 0;
     }
+    saturating_and_wrapping_i128 -> i128 {
+        SAT_ADD_I128: i128::MAX.saturating_add(1), i128::MAX;
+        SAT_MUL_I128: i128::MAX.saturating_mul(2), i128::MAX;
+
+        WRP_ADD_I128: i128::MAX.wrapping_add(1), i128::MIN;
+        WRP_MUL_I128: i128::MAX.wrapping_mul(3), i128::MAX-2;
+    }
 
     overflowing -> (i8, bool) {
         // `const_overflowing_int_methods`
@@ -119,12 +130,18 @@ suite!(
 
         C55: 5i8.overflowing_rem_euclid(2), (1, false);
         C56: i8::MIN.overflowing_rem_euclid(-1), (0, true);
-
+    }
+    overflowing_i128 -> (i128, bool) {
+        OFL_ADD_I128: i128::MAX.overflowing_add(1), (i128::MIN, true);
+        OFL_MUL_I128: i128::MAX.overflowing_mul(3), (i128::MAX-2, true);
     }
 );
 
 fn main() {
    checked();
+   checked_i128();
    saturating_and_wrapping();
+   saturating_and_wrapping_i128();
    overflowing();
+   overflowing_i128();
 }
