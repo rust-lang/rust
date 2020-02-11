@@ -126,9 +126,15 @@ impl<'tcx> ConstEvalErr<'tcx> {
         }
     }
 
-    /// Sets the message passed in via `message` and adds span labels before handing control back
-    /// to `emit` to do any final processing. It's the caller's responsibility to call emit(),
-    /// stash(), etc. within the `emit` function to dispose of the diagnostic properly.
+    /// Create a diagnostic for this const eval error.
+    ///
+    /// Sets the message passed in via `message` and adds span labels with detailed error
+    /// information before handing control back to `emit` to do any final processing.
+    /// It's the caller's responsibility to call emit(), stash(), etc. within the `emit`
+    /// function to dispose of the diagnostic properly.
+    ///
+    /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
+    /// (Except that for some errors, we ignore all that -- see `must_error` below.)
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
@@ -141,6 +147,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 return Err(ErrorHandled::TooGeneric);
             }
             err_inval!(TypeckError) => return Err(ErrorHandled::Reported),
+            // We must *always* hard error on these, even if the caller wants just a lint.
             err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
             _ => false,
         };
@@ -155,10 +162,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
             err => err.to_string(),
         };
 
-        let add_span_labels = |err: &mut DiagnosticBuilder<'_>| {
-            if !must_error {
-                err.span_label(self.span, err_msg.clone());
+        let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+            if let Some(span_msg) = span_msg {
+                err.span_label(self.span, span_msg);
             }
+            // Add spans for the stacktrace.
             // Skip the last, which is just the environment of the constant.  The stacktrace
             // is sometimes empty because we create "fake" eval contexts in CTFE to do work
             // on constant values.
@@ -167,35 +175,36 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     err.span_label(frame_info.call_site, frame_info.to_string());
                 }
             }
+            // Let the caller finish the job.
+            emit(err)
         };
 
-        if let (Some(lint_root), false) = (lint_root, must_error) {
-            let hir_id = self
-                .stacktrace
-                .iter()
-                .rev()
-                .filter_map(|frame| frame.lint_root)
-                .next()
-                .unwrap_or(lint_root);
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::CONST_ERR,
-                hir_id,
-                tcx.span,
-                |lint| {
-                    let mut err = lint.build(message);
-                    add_span_labels(&mut err);
-                    emit(err);
-                },
-            );
+        if must_error {
+            // The `message` makes little sense here, this is a more serious error than the
+            // caller thinks anyway.
+            finish(struct_error(tcx, &err_msg), None);
         } else {
-            let mut err = if must_error {
-                struct_error(tcx, &err_msg)
+            // Regular case.
+            if let Some(lint_root) = lint_root {
+                // Report as lint.
+                let hir_id = self
+                    .stacktrace
+                    .iter()
+                    .rev()
+                    .filter_map(|frame| frame.lint_root)
+                    .next()
+                    .unwrap_or(lint_root);
+                tcx.struct_span_lint_hir(
+                    rustc_session::lint::builtin::CONST_ERR,
+                    hir_id,
+                    tcx.span,
+                    |lint| finish(lint.build(message), Some(err_msg)),
+                );
             } else {
-                struct_error(tcx, message)
-            };
-            add_span_labels(&mut err);
-            emit(err);
-        };
+                // Report as hard error.
+                finish(struct_error(tcx, message), Some(err_msg));
+            }
+        }
         Ok(())
     }
 }
