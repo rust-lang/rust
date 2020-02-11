@@ -106,6 +106,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: ['build-server', 'build-clients']
     steps:
+      - name: Install Nodejs
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+
+      - run: echo "::set-env name=TAG::$(date --iso)"
+      - run: 'echo "TAG: $TAG"'
+
+      - name: Checkout repository
+        uses: actions/checkout@v1
+
       - uses: actions/download-artifact@v1
         with:
           name: editor-plugins
@@ -123,9 +134,6 @@ jobs:
           name: server-windows-latest
           path: dist
       - run: ls -all ./dist
-
-      - run: echo "::set-env name=TAG::$(date --iso)"
-      - run: 'echo "TAG: $TAG"'
 
       - name: Create Release
         id: create_release
@@ -184,3 +192,11 @@ jobs:
           asset_path: ./dist/rust-analyzer.el
           asset_name: rust-analyzer.el
           asset_content_type: text/plain
+
+      - run: npm ci
+        working-directory: ./editors/code
+
+      - name: Publish Extension
+        working-directory: ./editors/code
+        # token from https://dev.azure.com/rust-analyzer/
+        run: ./node_modules/vsce/out/vsce publish 0.1.0.$(date +%Y%m%d) --pat ${{ secrets.MARKETPLACE_TOKEN }}
