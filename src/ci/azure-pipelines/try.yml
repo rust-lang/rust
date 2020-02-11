@@ -14,9 +14,65 @@ jobs:
   - template: steps/run.yml
   strategy:
     matrix:
-      dist-x86_64-linux: {}
-      dist-x86_64-linux-alt:
-        IMAGE: dist-x86_64-linux
+      #dist-x86_64-linux: {}
+      #dist-x86_64-linux-alt:
+      #  IMAGE: dist-x86_64-linux
+      #arm-android: {}
+      i686-gnu-nopt: {}
+
+- job: macOS
+  timeoutInMinutes: 600
+  pool:
+    vmImage: macos-10.13
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      # OSX builders running tests, these run the full test suite.
+      # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+      # runners that run `//ignore-debug` tests.
+      #
+      # Note that the compiler is compiled to target 10.8 here because the Xcode
+      # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+      x86_64-apple:
+        SCRIPT: ./x.py test
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+- job: Windows
+  timeoutInMinutes: 600
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      # 32/64 bit MSVC tests
+      x86_64-msvc-1:
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-1
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
+      x86_64-msvc-2:
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-2
+      #i686-msvc-1:
+      #  RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+      #  SCRIPT: make ci-subset-1
+      #  # FIXME(#59637)
+      #  NO_DEBUG_ASSERTIONS: 1
+      #  NO_LLVM_ASSERTIONS: 1
+      #i686-msvc-2:
+      #  RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+      #  SCRIPT: make ci-subset-2
+      #  # FIXME(#59637)
+      #  NO_DEBUG_ASSERTIONS: 1
+      #  NO_LLVM_ASSERTIONS: 1
 
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that
