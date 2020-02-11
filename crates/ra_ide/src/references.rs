@@ -13,6 +13,7 @@ mod classify;
 mod rename;
 mod search_scope;
 
+use crate::expand::descend_into_macros_with_analyzer;
 use hir::{InFile, SourceBinder};
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
@@ -192,39 +193,62 @@ fn process_definition(
 
         let parse = Lazy::new(|| SourceFile::parse(&text));
         let mut sb = Lazy::new(|| SourceBinder::new(db));
+        let mut analyzer = None;
 
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
 
-            if let Some(name_ref) =
+            let (name_ref, range) = if let Some(name_ref) =
                 find_node_at_offset::<ast::NameRef>(parse.tree().syntax(), offset)
             {
                 let range = name_ref.syntax().text_range();
-                if let Some(search_range) = search_range {
-                    if !range.is_subrange(&search_range) {
-                        continue;
-                    }
+                (InFile::new(file_id.into(), name_ref), range)
+            } else {
+                // Handle macro token cases
+                let t = match parse.tree().syntax().token_at_offset(offset) {
+                    TokenAtOffset::None => continue,
+                    TokenAtOffset::Single(t) => t,
+                    TokenAtOffset::Between(_, t) => t,
+                };
+                let range = t.text_range();
+                let analyzer = analyzer.get_or_insert_with(|| {
+                    sb.analyze(InFile::new(file_id.into(), parse.tree().syntax()), None)
+                });
+                let expanded = descend_into_macros_with_analyzer(
+                    db,
+                    &analyzer,
+                    InFile::new(file_id.into(), t),
+                );
+                if let Some(token) = ast::NameRef::cast(expanded.value.parent()) {
+                    (expanded.with_value(token), range)
+                } else {
+                    continue;
                 }
-                // FIXME: reuse sb
-                // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
+            };
 
-                if let Some(d) = classify_name_ref(&mut sb, InFile::new(file_id.into(), &name_ref))
-                {
-                    if d == def {
-                        let kind = if is_record_lit_name_ref(&name_ref)
-                            || is_call_expr_name_ref(&name_ref)
-                        {
-                            ReferenceKind::StructLiteral
-                        } else {
-                            ReferenceKind::Other
-                        };
+            if let Some(search_range) = search_range {
+                if !range.is_subrange(&search_range) {
+                    continue;
+                }
+            }
+            // FIXME: reuse sb
+            // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
-                        refs.push(Reference {
-                            file_range: FileRange { file_id, range },
-                            kind,
-                            access: reference_access(&d.kind, &name_ref),
-                        });
-                    }
+            if let Some(d) = classify_name_ref(&mut sb, name_ref.as_ref()) {
+                if d == def {
+                    let kind = if is_record_lit_name_ref(&name_ref.value)
+                        || is_call_expr_name_ref(&name_ref.value)
+                    {
+                        ReferenceKind::StructLiteral
+                    } else {
+                        ReferenceKind::Other
+                    };
+
+                    refs.push(Reference {
+                        file_range: FileRange { file_id, range },
+                        kind,
+                        access: reference_access(&d.kind, &name_ref.value),
+                    });
                 }
             }
         }

@@ -211,6 +211,25 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_for_macro_args() {
+        test_rename(
+            r#"
+    macro_rules! foo {($i:ident) => {$i} }
+    fn main() {
+        let a<|> = "test";
+        foo!(a);
+    }"#,
+            "b",
+            r#"
+    macro_rules! foo {($i:ident) => {$i} }
+    fn main() {
+        let b = "test";
+        foo!(b);
+    }"#,
+        );
+    }
+
+    #[test]
     fn test_rename_for_param_inside() {
         test_rename(
             r#"
