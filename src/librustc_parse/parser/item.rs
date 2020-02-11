@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
-        if self.is_fn_front_matter() {
+        if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
             let kind = ItemKind::Fn(sig, generics, body);
@@ -742,7 +742,7 @@ impl<'a> Parser<'a> {
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
-        } else if self.is_fn_front_matter() {
+        } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
             (ident, AssocItemKind::Fn(sig, body), generics)
         } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
@@ -978,7 +978,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(kw::Type) {
             // FOREIGN TYPE ITEM
             self.parse_item_foreign_type(vis, lo, attrs)
-        } else if self.is_fn_front_matter() {
+        } else if self.check_fn_front_matter() {
             // FOREIGN FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(&mut false, &mut attrs, |_| true)?;
             let kind = ForeignItemKind::Fn(sig, generics, body);
@@ -1658,7 +1658,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the current token the start of an `FnHeader` / not a valid parse?
-    fn is_fn_front_matter(&mut self) -> bool {
+    fn check_fn_front_matter(&mut self) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
