@@ -98,6 +98,10 @@ rustc_queries! {
             eval_always
             desc { "computing the lint levels for items in this crate" }
         }
+
+        query parent_module(_: DefId) -> DefId {
+            eval_always
+        }
     }
 
     Codegen {
