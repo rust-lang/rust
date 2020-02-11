@@ -10,7 +10,7 @@ pub trait Foo<T> {
 }
 
 trait SomeTrait<I : for<'x> Foo<&'x isize>> {
-    fn some_method(&self, arg: I::A);
+    fn some_method(&self, arg: <I as Foo<&isize>>::A);
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
@@ -29,7 +29,7 @@ trait Banana<'a> {
 struct Peach<X>(std::marker::PhantomData<X>);
 
 impl<X: for<'a> Banana<'a>> Peach<X> {
-    fn mango(&self) -> X::Assoc {
+    fn mango(&self) -> <X as Banana<'_>>::Assoc {
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
         Default::default()
     }

@@ -1,8 +1,8 @@
 error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
-  --> $DIR/associated-types-project-from-hrtb-in-fn.rs:11:8
+  --> $DIR/associated-types-project-from-hrtb-in-fn.rs:13:8
    |
 LL |     x: I::A)
-   |        ^^^^
+   |        ^^^^ help: use a fully qualified path with inferred lifetimes: `<I as Foo<&isize>>::A`
 
 error: aborting due to previous error
 
