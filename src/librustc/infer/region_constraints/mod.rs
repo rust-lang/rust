@@ -339,8 +339,6 @@ impl TaintDirections {
     }
 }
 
-pub struct ConstraintInfo {}
-
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> Self {
         Self::default()
