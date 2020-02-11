@@ -27,8 +27,7 @@ export async function downloadFile(
             readBytes += chunk.length;
             onProgress(readBytes, totalBytes);
         })
-        .on("end", resolve)
         .on("error", reject)
-        .pipe(fs.createWriteStream(destFilePath))
+        .pipe(fs.createWriteStream(destFilePath).on("close", resolve))
     );
 }
