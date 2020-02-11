@@ -49,7 +49,6 @@ pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
     T: Generator<ResumeTy, Yield = ()>,
 {
-    #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
     struct GenFuture<T: Generator<ResumeTy, Yield = ()>>(T);
 
     // We rely on the fact that async/await futures are immovable in order to create
