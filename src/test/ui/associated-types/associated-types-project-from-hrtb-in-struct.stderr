@@ -3,6 +3,38 @@ error[E0212]: cannot extract an associated type from a higher-ranked trait bound
    |
 LL |     field: I::A
    |            ^^^^
+   |
+help: use a fully qualified path with explicit lifetimes
+   |
+LL | struct SomeStruct<'a, I: for<'x> Foo<&'x isize>> {
+LL |     field: <I as Foo<&'a isize>>::A
+   |
 
-error: aborting due to previous error
+error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+  --> $DIR/associated-types-project-from-hrtb-in-struct.rs:16:18
+   |
+LL |     TupleVariant(I::A),
+   |                  ^^^^
+   |
+help: use a fully qualified path with explicit lifetimes
+   |
+LL | enum SomeEnum<'a, I: for<'x> Foo<&'x isize>> {
+LL |     TupleVariant(<I as Foo<&'a isize>>::A),
+   |
+
+error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+  --> $DIR/associated-types-project-from-hrtb-in-struct.rs:18:28
+   |
+LL |     StructVariant { field: I::A },
+   |                            ^^^^
+   |
+help: use a fully qualified path with explicit lifetimes
+   |
+LL | enum SomeEnum<'a, I: for<'x> Foo<&'x isize>> {
+LL |     TupleVariant(I::A),
+LL |
+LL |     StructVariant { field: <I as Foo<&'a isize>>::A },
+   |
+
+error: aborting due to 3 previous errors
 

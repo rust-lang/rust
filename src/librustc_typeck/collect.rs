@@ -364,14 +364,52 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             );
 
             match self.node() {
-                hir::Node::Field(_)
-                | hir::Node::Variant(_)
-                | hir::Node::Ctor(_)
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(..), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(..), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(..), .. }) => {
-                    // The suggestion is only valid if this is not an ADT.
+                hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
+                    let item =
+                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                    match &item.kind {
+                        hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Union(_, generics) => {
+                            // FIXME: look for an appropriate lt name if `'a` is already used
+                            let (lt_sp, sugg) = match &generics.params[..] {
+                                [] => (generics.span, "<'a>".to_string()),
+                                [bound, ..] => (bound.span.shrink_to_lo(), "'a, ".to_string()),
+                            };
+                            let suggestions = vec![
+                                (lt_sp, sugg),
+                                (
+                                    span,
+                                    format!(
+                                        "{}::{}",
+                                        // Replace the existing lifetimes with a new named lifetime.
+                                        self.tcx
+                                            .replace_late_bound_regions(&poly_trait_ref, |_| {
+                                                self.tcx.mk_region(ty::ReEarlyBound(
+                                                    ty::EarlyBoundRegion {
+                                                        def_id: item_def_id,
+                                                        index: 0,
+                                                        name: Symbol::intern("'a"),
+                                                    },
+                                                ))
+                                            })
+                                            .0,
+                                        item_segment.ident
+                                    ),
+                                ),
+                            ];
+                            err.multipart_suggestion(
+                                "use a fully qualified path with explicit lifetimes",
+                                suggestions,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        _ => {}
+                    }
                 }
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(..), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(..), .. })
+                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(..), .. }) => {}
                 hir::Node::Item(_)
                 | hir::Node::ForeignItem(_)
                 | hir::Node::TraitItem(_)
