@@ -3738,7 +3738,6 @@ dependencies = [
 name = "rustc_macros"
 version = "0.1.0"
 dependencies = [
- "itertools 0.8.0",
  "proc-macro2 1.0.3",
  "quote 1.0.2",
  "syn 1.0.11",
@@ -3802,7 +3801,6 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "arena",
- "itertools 0.8.0",
  "log",
  "rustc",
  "rustc_apfloat",
