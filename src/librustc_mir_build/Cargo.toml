@@ -25,5 +25,6 @@ rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
 rustc_target = { path = "../librustc_target" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }
 rustc_ast = { path = "../librustc_ast" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

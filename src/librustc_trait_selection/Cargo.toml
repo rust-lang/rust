@@ -1,25 +1,27 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_passes"
+name = "rustc_trait_selection"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc_passes"
+name = "rustc_trait_selection"
 path = "lib.rs"
+doctest = false
 
 [dependencies]
-log = "0.4"
-rustc = { path = "../librustc" }
+fmt_macros = { path = "../libfmt_macros" }
+log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc_attr = { path = "../librustc_attr" }
+rustc = { path = "../librustc" }
+rustc_ast = { path = "../librustc_ast" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_index = { path = "../librustc_index" }
 rustc_infer = { path = "../librustc_infer" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_session = { path = "../librustc_session" }
-rustc_target = { path = "../librustc_target" }
-rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
-rustc_trait_selection = { path = "../librustc_trait_selection" }
+rustc_target = { path = "../librustc_target" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }

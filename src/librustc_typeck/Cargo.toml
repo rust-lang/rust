@@ -24,3 +24,4 @@ rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_index = { path = "../librustc_index" }
 rustc_infer = { path = "../librustc_infer" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }

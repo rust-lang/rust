@@ -3826,6 +3826,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "rustc_traits",
  "rustc_ty",
  "rustc_typeck",
@@ -3860,6 +3861,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "unicode-security",
 ]
 
@@ -3929,6 +3931,7 @@ dependencies = [
  "rustc_macros",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "serialize",
  "smallvec 1.0.0",
 ]
@@ -3952,6 +3955,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "serialize",
  "smallvec 1.0.0",
 ]
@@ -3992,6 +3996,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
 ]
 
 [[package]]
@@ -4120,6 +4125,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 
 [[package]]
+name = "rustc_trait_selection"
+version = "0.0.0"
+dependencies = [
+ "fmt_macros",
+ "log",
+ "rustc",
+ "rustc_ast",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_infer",
+ "rustc_macros",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "smallvec 1.0.0",
+]
+
+[[package]]
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
@@ -4132,6 +4158,7 @@ dependencies = [
  "rustc_macros",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "smallvec 1.0.0",
 ]
 
@@ -4146,6 +4173,7 @@ dependencies = [
  "rustc_infer",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
 ]
 
 [[package]]
@@ -4164,6 +4192,7 @@ dependencies = [
  "rustc_infer",
  "rustc_span",
  "rustc_target",
+ "rustc_trait_selection",
  "smallvec 1.0.0",
 ]
 

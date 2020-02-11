@@ -16,3 +16,4 @@ rustc_hir = { path = "../librustc_hir" }
 rustc_infer = { path = "../librustc_infer" }
 rustc_span = { path = "../librustc_span" }
 rustc_target = { path = "../librustc_target" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }
