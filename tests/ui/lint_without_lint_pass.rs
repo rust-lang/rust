@@ -6,7 +6,7 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_session;
 extern crate rustc_lint;
-use rustc_lint::{LintArray, LintPass};
+use rustc_lint::LintPass;
 
 declare_tool_lint! {
     pub clippy::TEST_LINT,
