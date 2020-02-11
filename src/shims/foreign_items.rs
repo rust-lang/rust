@@ -193,6 +193,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
+        // Here we dispatch all the shims for foreign functions. If you have a platform specific
+        // shim, add it to the corresponding submodule.
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
@@ -437,67 +439,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let res = x.scalbn(exp);
                 this.write_scalar(Scalar::from_f64(res), dest)?;
-            }
-
-            // Some things needed for `sys::thread` initialization to go through.
-            | "signal"
-            | "sigaction"
-            | "sigaltstack"
-            => {
-                this.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
-            }
-
-            "sysconf" => {
-                let name = this.read_scalar(args[0])?.to_i32()?;
-
-                trace!("sysconf() called with name {}", name);
-                // TODO: Cache the sysconf integers via Miri's global cache.
-                let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
-                    (
-                        &["libc", "_SC_NPROCESSORS_ONLN"],
-                        Scalar::from_int(NUM_CPUS, dest.layout.size),
-                    ),
-                ];
-                let mut result = None;
-                for &(path, path_value) in paths {
-                    if let Some(val) = this.eval_path_scalar(path)? {
-                        let val = val.to_i32()?;
-                        if val == name {
-                            result = Some(path_value);
-                            break;
-                        }
-                    }
-                }
-                if let Some(result) = result {
-                    this.write_scalar(result, dest)?;
-                } else {
-                    throw_unsup_format!("Unimplemented sysconf name: {}", name)
-                }
-            }
-
-            "sched_getaffinity" => {
-                // Return an error; `num_cpus` then falls back to `sysconf`.
-                this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
-            }
-
-            "isatty" => {
-                this.write_null(dest)?;
-            }
-
-            "posix_fadvise" => {
-                // fadvise is only informational, we can ignore it.
-                this.write_null(dest)?;
-            }
-
-            "mmap" => {
-                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let addr = this.read_scalar(args[0])?.not_undef()?;
-                this.write_scalar(addr, dest)?;
-            }
-            "mprotect" => {
-                this.write_null(dest)?;
             }
 
             _ => match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {

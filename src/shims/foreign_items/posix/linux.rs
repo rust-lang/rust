@@ -75,6 +75,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 super::getrandom(this, args, dest)?;
             }
 
+            "sched_getaffinity" => {
+                // Return an error; `num_cpus` then falls back to `sysconf`.
+                this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
+            }
+
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         };
 
