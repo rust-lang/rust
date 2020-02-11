@@ -138,7 +138,7 @@ at `clippy_lints/src/foo_functions.rs`. That's the crate where all the
 lint code is. This file has already imported some initial things we will need:
 
 ```rust
-use rustc::lint::{LintArray, LintPass, EarlyLintPass, EarlyContext};
+use rustc_lint::{EarlyLintPass, EarlyContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 ```

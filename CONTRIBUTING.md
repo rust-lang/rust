@@ -110,7 +110,7 @@ It's worth noting that the majority of `clippy_lints/src/lib.rs` is autogenerate
 ```rust
 // ./clippy_lints/src/else_if_without_else.rs
 
-use rustc::lint::{EarlyLintPass, LintArray, LintPass};
+use rustc_lint::{EarlyLintPass, EarlyContext};
 
 // ...
 
