@@ -78,13 +78,11 @@ use crate::mbe::{self, TokenTree};
 
 use rustc_ast_pretty::pprust;
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
-use rustc_parse::Directory;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use syntax::ast::{Ident, Name};
 use syntax::ptr::P;
 use syntax::token::{self, DocComment, Nonterminal, Token};
-use syntax::tokenstream::TokenStream;
 
 use rustc_errors::{FatalError, PResult};
 use rustc_span::Span;
@@ -92,6 +90,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -613,28 +612,9 @@ fn inner_parse_loop<'root, 'tt>(
     Success(())
 }
 
-/// Use the given sequence of token trees (`ms`) as a matcher. Match the given token stream `tts`
-/// against it and return the match.
-///
-/// # Parameters
-///
-/// - `sess`: The session into which errors are emitted
-/// - `tts`: The tokenstream we are matching against the pattern `ms`
-/// - `ms`: A sequence of token trees representing a pattern against which we are matching
-/// - `directory`: Information about the file locations (needed for the black-box parser)
-/// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
-///   parser)
-pub(super) fn parse(
-    sess: &ParseSess,
-    tts: TokenStream,
-    ms: &[TokenTree],
-    directory: Option<Directory<'_>>,
-    recurse_into_modules: bool,
-) -> NamedParseResult {
-    // Create a parser that can be used for the "black box" parts.
-    let mut parser =
-        Parser::new(sess, tts, directory, recurse_into_modules, true, rustc_parse::MACRO_ARGUMENTS);
-
+/// Use the given sequence of token trees (`ms`) as a matcher. Match the token
+/// stream from the given `parser` against it and return the match.
+pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> NamedParseResult {
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
     // processes all of these possible matcher positions and produces possible next positions into
@@ -659,7 +639,7 @@ pub(super) fn parse(
         // parsing from the black-box parser done. The result is that `next_items` will contain a
         // bunch of possible next matcher positions in `next_items`.
         match inner_parse_loop(
-            sess,
+            parser.sess,
             &mut cur_items,
             &mut next_items,
             &mut eof_items,
@@ -684,7 +664,7 @@ pub(super) fn parse(
             if eof_items.len() == 1 {
                 let matches =
                     eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                return nameize(sess, ms, matches);
+                return nameize(parser.sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
                     parser.token.span,
@@ -709,9 +689,14 @@ pub(super) fn parse(
         // unnecessary implicit clone later in Rc::make_mut.
         drop(eof_items);
 
+        // If there are no possible next positions AND we aren't waiting for the black-box parser,
+        // then there is a syntax error.
+        if bb_items.is_empty() && next_items.is_empty() {
+            return Failure(parser.token.clone(), "no rules expected this token in macro call");
+        }
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -733,16 +718,11 @@ pub(super) fn parse(
                 ),
             );
         }
-        // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then there is a syntax error.
-        else if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.token.take(), "no rules expected this token in macro call");
-        }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {
             // Now process the next token
             cur_items.extend(next_items.drain(..));
-            parser.bump();
+            parser.to_mut().bump();
         }
         // Finally, we have the case where we need to call the black-box parser to get some
         // nonterminal.
@@ -754,7 +734,7 @@ pub(super) fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, ident.name))),
+                    MatchedNonterminal(Lrc::new(parse_nt(parser.to_mut(), span, ident.name))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
