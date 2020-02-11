@@ -165,7 +165,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let mut result_ty = self.table.new_maybe_never_type_var();
+                let mut result_ty = if arms.len() == 0 {
+                    Ty::simple(TypeCtor::Never)
+                } else {
+                    self.table.new_type_var()
+                };
 
                 for arm in arms {
                     let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
