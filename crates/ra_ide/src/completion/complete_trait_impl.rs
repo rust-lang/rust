@@ -7,6 +7,45 @@ use hir::{self, Docs, HasSource};
 
 use ra_assists::utils::get_missing_impl_items;
 
+/// Analyzes the specified `CompletionContext` and provides magic completions
+/// if the context falls within a `impl Trait for` block.
+/// 
+/// # Completion Activation
+/// The completion will activate when a user begins to type a function 
+/// definition, an associated type, or an associated constant.
+/// 
+/// ### Functions
+/// ```ignore
+/// trait SomeTrait {
+///     fn foo(&self);
+/// }
+/// 
+/// impl SomeTrait for () {
+///     fn <|>
+/// }
+/// ```
+/// 
+/// ### Associated Types
+/// ```ignore
+/// trait SomeTrait {
+///     type SomeType;
+/// }
+/// 
+/// impl SomeTrait for () {
+///     type <|>
+/// }
+/// ```
+/// 
+/// ### Associated Constants
+/// ```ignore
+/// trait SomeTrait {
+///     const SOME_CONST: u16;
+/// }
+/// 
+/// impl SomeTrait for () {
+///     const <|>
+/// }
+/// ```
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
 
     // it is possible to have a parent `fn` and `impl` block. Ignore completion 
@@ -86,9 +125,17 @@ fn add_const_impl(
         .add_to(acc);
 }
 
+/// Using a `ConstDef` `SyntaxNode` to create a `String` that represents 
+/// the output of the magic completion.
+/// 
+/// There isn't a whole lot of information about a `hir::Const` or 
+/// `ast::ConstDef` to prove useful when creating the magic completion for the
+/// associated constant. This method simply copies the syntax tree of the 
+/// target trait up until a `;` or `=` is found. From the sliced syntax tree
+/// it formulates the magic completion string.
 fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
     let const_ = edit::strip_attrs_and_docs(const_);
-    
+
     let const_start = const_.syntax().text_range().start();
     let const_end = const_.syntax().text_range().end();
 
