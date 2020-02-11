@@ -200,21 +200,27 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        let ptr = alloc(layout);
-        if !ptr.is_null() { ptr } else { handle_alloc_error(layout) }
+        match Global.alloc(layout) {
+            Ok(ptr) => ptr.as_ptr(),
+            Err(_) => handle_alloc_error(layout),
+        }
     }
 }
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
+// This signature has to be the same as `Box`, otherwise an ICE will happen.
+// When an additional parameter to `Box` is added (like `A: AllocRef`), this has to be added here as
+// well.
+// For example if `Box` is changed to  `struct Box<T: ?Sized, A: AllocRef>(Unique<T>, A)`,
+// this function has to be changed to `fn box_free<T: ?Sized, A: AllocRef>(Unique<T>, A)` as well.
 pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
-    let ptr = ptr.as_ptr();
-    let size = size_of_val(&*ptr);
-    let align = min_align_of_val(&*ptr);
+    let size = size_of_val(ptr.as_ref());
+    let align = min_align_of_val(ptr.as_ref());
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        dealloc(ptr as *mut u8, layout);
+        Global.dealloc(ptr.cast().into(), layout);
     }
 }
 

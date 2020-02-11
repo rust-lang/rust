@@ -196,12 +196,14 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        if layout.size() == 0 {
-            return Box(NonNull::dangling().into());
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
+            };
+            Box::from_raw(ptr.as_ptr())
         }
-        let ptr =
-            unsafe { Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)) };
-        Box(ptr.cast().into())
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -264,15 +266,14 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = if layout.size() == 0 {
-            NonNull::dangling()
-        } else {
-            unsafe {
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
                 Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
-            }
-        };
-        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
-        Box(Unique::from(slice))
+            };
+            Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
+        }
     }
 }
 
@@ -308,7 +309,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
-        Box(Box::into_unique(self).cast())
+        Box::from_raw(Box::into_raw(self) as *mut T)
     }
 }
 
@@ -346,7 +347,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
-        Box(Unique::new_unchecked(Box::into_raw(self) as _))
+        Box::from_raw(Box::into_raw(self) as *mut [T])
     }
 }
 
