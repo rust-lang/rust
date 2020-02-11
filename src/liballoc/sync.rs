@@ -790,8 +790,8 @@ impl<T: ?Sized> Arc<T> {
         let inner = mem_to_arcinner(mem.as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
-        ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-        ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
+        ptr::write(&raw mut (*inner).strong, atomic::AtomicUsize::new(1));
+        ptr::write(&raw mut (*inner).weak, atomic::AtomicUsize::new(1));
 
         inner
     }
