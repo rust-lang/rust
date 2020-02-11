@@ -124,7 +124,7 @@ impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         assert!(!p.to_string_lossy().ends_with('>'));
         if cfg!(not(windows)) {
-            FileName::Real(p.canonlicalize().unwrap_or(p))
+            FileName::Real(p.canonicalize().unwrap_or(p))
         } else {
             FileName::Real(p)
         }
