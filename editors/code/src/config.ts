@@ -64,9 +64,24 @@ export class Config {
      * `platform` on GitHub releases. (It is also stored under the same name when
      * downloaded by the extension).
      */
-    private static prebuiltLangServerFileName(platform: NodeJS.Platform): null | string {
+    private static prebuiltLangServerFileName(
+        platform: NodeJS.Platform,
+        arch: string
+    ): null | string {
+        // See possible `arch` values here:
+        // https://nodejs.org/api/process.html#process_process_arch
+
         switch (platform) {
-            case "linux":  return "ra_lsp_server-linux";
+
+            case "linux": {
+                switch (arch) {
+                    case "arm":
+                    case "arm64": return null;
+
+                    default: return "ra_lsp_server-linux";
+                }
+            }
+
             case "darwin": return "ra_lsp_server-mac";
             case "win32":  return "ra_lsp_server-windows.exe";
 
@@ -95,7 +110,9 @@ export class Config {
             };
         }
 
-        const prebuiltBinaryName = Config.prebuiltLangServerFileName(process.platform);
+        const prebuiltBinaryName = Config.prebuiltLangServerFileName(
+            process.platform, process.arch
+        );
 
         if (!prebuiltBinaryName) return null;
 
