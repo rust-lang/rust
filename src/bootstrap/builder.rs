@@ -1135,6 +1135,20 @@ impl<'a> Builder<'a> {
             );
         }
 
+        // If Control Flow Guard is enabled, pass the `control_flow_guard=checks` flag to rustc
+        // when compiling the standard library, since this might be linked into the final outputs
+        // produced by rustc. Since this mitigation is only available on Windows, only enable it
+        // for the standard library in case the compiler is run on a non-Windows platform.
+        // This is not needed for stage 0 artifacts because these will only be used for building
+        // the stage 1 compiler.
+        if cfg!(windows)
+            && mode == Mode::Std
+            && self.config.control_flow_guard
+            && compiler.stage >= 1
+        {
+            rustflags.arg("-Zcontrol_flow_guard=checks");
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
