@@ -3559,6 +3559,7 @@ dependencies = [
  "flate2",
  "libc",
  "log",
+ "measureme",
  "rustc",
  "rustc-demangle",
  "rustc_attr",

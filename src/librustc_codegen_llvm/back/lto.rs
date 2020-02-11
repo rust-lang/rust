@@ -593,7 +593,7 @@ pub(crate) fn run_pass_manager(
             } else {
                 opt_level
             };
-            write::optimize_with_new_llvm_pass_manager(module, config, opt_level, opt_stage);
+            write::optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
             debug!("lto done");
             return;
         }
