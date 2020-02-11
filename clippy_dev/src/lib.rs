@@ -170,29 +170,34 @@ pub fn gather_all() -> impl Iterator<Item = Lint> {
 
 fn gather_from_file(dir_entry: &walkdir::DirEntry) -> impl Iterator<Item = Lint> {
     let content = fs::read_to_string(dir_entry.path()).unwrap();
-    let mut filename = dir_entry.path().file_stem().unwrap().to_str().unwrap();
+    let path = dir_entry.path();
+    let filename = path.file_stem().unwrap();
+    let path_buf = path.with_file_name(filename);
+    let mut rel_path = path_buf
+        .strip_prefix(clippy_project_root().join("clippy_lints/src"))
+        .expect("only files in `clippy_lints/src` should be looked at");
     // If the lints are stored in mod.rs, we get the module name from
     // the containing directory:
     if filename == "mod" {
-        filename = dir_entry
-            .path()
-            .parent()
-            .unwrap()
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
+        rel_path = rel_path.parent().unwrap();
     }
-    parse_contents(&content, filename)
+
+    let module = rel_path
+        .components()
+        .map(|c| c.as_os_str().to_str().unwrap())
+        .collect::<Vec<_>>()
+        .join("::");
+
+    parse_contents(&content, &module)
 }
 
-fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item = Lint> {
+fn parse_contents(content: &str, module: &str) -> impl Iterator<Item = Lint> {
     let lints = DEC_CLIPPY_LINT_RE
         .captures_iter(content)
-        .map(|m| Lint::new(&m["name"], &m["cat"], &m["desc"], None, filename));
+        .map(|m| Lint::new(&m["name"], &m["cat"], &m["desc"], None, module));
     let deprecated = DEC_DEPRECATED_LINT_RE
         .captures_iter(content)
-        .map(|m| Lint::new(&m["name"], "Deprecated", &m["desc"], Some(&m["desc"]), filename));
+        .map(|m| Lint::new(&m["name"], "Deprecated", &m["desc"], Some(&m["desc"]), module));
     // Removing the `.collect::<Vec<Lint>>().into_iter()` causes some lifetime issues due to the map
     lints.chain(deprecated).collect::<Vec<Lint>>().into_iter()
 }
