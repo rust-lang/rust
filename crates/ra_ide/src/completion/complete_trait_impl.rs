@@ -1,5 +1,8 @@
-use crate::completion::{
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+//! FIXME: write short doc here
+
+use crate::{
+    completion::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    display::FunctionSignature,
 };
 
 use hir::{self, Docs, HasSource};
@@ -29,8 +32,6 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 }
 
 fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function) {
-    use crate::display::FunctionSignature;
-
     let display = FunctionSignature::from_hir(ctx.db, func.clone());
 
     let func_name = func.name(ctx.db);
@@ -51,11 +52,7 @@ fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir:
         CompletionItemKind::Function
     };
 
-    let snippet = {
-        let mut s = format!("{}", display);
-        s.push_str(" {}");
-        s
-    };
+    let snippet = format!("{} {{}}", display);
 
     builder.insert_text(snippet).kind(completion_kind).add_to(acc);
 }

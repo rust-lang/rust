@@ -6,7 +6,6 @@ use ra_syntax::{
 };
 
 use hir::db::HirDatabase;
-
 use rustc_hash::FxHashSet;
 
 pub fn get_missing_impl_items(
@@ -55,7 +54,7 @@ pub fn get_missing_impl_items(
                     .map(|n| !impl_fns_consts.contains(&n.to_string()))
                     .unwrap_or_default(),
             })
-            .map(|i| i.clone())
+            .cloned()
             .collect()
     })
 }
