@@ -669,24 +669,27 @@ rustc_queries! {
             no_force
             desc { "computing whether `{}` is `Copy`", env.value }
         }
+        /// Query backing `TyS::is_sized`.
         query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` is `Sized`", env.value }
         }
+        /// Query backing `TyS::is_freeze`.
         query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` is freeze", env.value }
         }
-
-        // The cycle error here should be reported as an error by `check_representable`.
-        // We consider the type as not needing drop in the meanwhile to avoid
-        // further errors (done in impl Value for NeedsDrop).
-        // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
-        // in case we accidentally otherwise don't emit an error.
-        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
-            cycle_delay_bug
+        /// Query backing `TyS::needs_drop`.
+        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             no_force
             desc { "computing whether `{}` needs drop", env.value }
+        }
+
+        /// A list of types where the ADT requires drop if and only if any of
+        /// those types require drop. If the ADT is known to always need drop
+        /// then `Err(AlwaysRequiresDrop)` is returned.
+        query adt_drop_tys(_: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+            cache_on_disk_if { true }
         }
 
         query layout_raw(

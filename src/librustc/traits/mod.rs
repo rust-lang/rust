@@ -633,7 +633,6 @@ impl<'tcx> TraitObligation<'tcx> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    misc::provide(providers);
     *providers = ty::query::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,

@@ -18,6 +18,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_span::Span;
+use rustc_target::abi::TargetDataLayout;
+use smallvec::SmallVec;
 use std::{cmp, fmt};
 use syntax::ast;
 
@@ -724,7 +726,23 @@ impl<'tcx> ty::TyS<'tcx> {
     /// Note that this method is used to check eligible types in unions.
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        tcx.needs_drop_raw(param_env.and(self)).0
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.needs_drop_raw(param_env.and(erased))
+            }
+        }
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
@@ -923,9 +941,6 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-#[derive(Clone, HashStable)]
-pub struct NeedsDrop(pub bool);
-
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
@@ -974,3 +989,72 @@ impl<'tcx> ExplicitSelf<'tcx> {
         }
     }
 }
+
+/// Returns a list of types such that the given type needs drop if and only if
+/// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
+/// this type always needs drop.
+pub fn needs_drop_components(
+    ty: Ty<'tcx>,
+    target_layout: &TargetDataLayout,
+) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
+    match ty.kind {
+        ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_))
+        | ty::Bool
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Never
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Char
+        | ty::GeneratorWitness(..)
+        | ty::RawPtr(_)
+        | ty::Ref(..)
+        | ty::Str => Ok(SmallVec::new()),
+
+        // Foreign types can never have destructors.
+        ty::Foreign(..) => Ok(SmallVec::new()),
+
+        // Pessimistically assume that all generators will require destructors
+        // as we don't know if a destructor is a noop or not until after the MIR
+        // state transformation pass.
+        ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+
+        ty::Slice(ty) => needs_drop_components(ty, target_layout),
+        ty::Array(elem_ty, size) => {
+            match needs_drop_components(elem_ty, target_layout) {
+                Ok(v) if v.is_empty() => Ok(v),
+                res => match size.val.try_to_bits(target_layout.pointer_size) {
+                    // Arrays of size zero don't need drop, even if their element
+                    // type does.
+                    Some(0) => Ok(SmallVec::new()),
+                    Some(_) => res,
+                    // We don't know which of the cases above we are in, so
+                    // return the whole type and let the caller decide what to
+                    // do.
+                    None => Ok(smallvec![ty]),
+                },
+            }
+        }
+        // If any field needs drop, then the whole tuple does.
+        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), move |mut acc, elem| {
+            acc.extend(needs_drop_components(elem, target_layout)?);
+            Ok(acc)
+        }),
+
+        // These require checking for `Copy` bounds or `Adt` destructors.
+        ty::Adt(..)
+        | ty::Projection(..)
+        | ty::UnnormalizedProjection(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(..)
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        | ty::Closure(..) => Ok(smallvec![ty]),
+    }
+}
+
+#[derive(Copy, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
+pub struct AlwaysRequiresDrop;
