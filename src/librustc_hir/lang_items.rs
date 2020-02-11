@@ -28,76 +28,76 @@ macro_rules! language_item_table {
         $( $variant:ident, $name:expr, $method:ident, $target:path; )*
     ) => {
 
-enum_from_u32! {
-    /// A representation of all the valid language items in Rust.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-    pub enum LangItem {
-        $($variant,)*
-    }
-}
-
-impl LangItem {
-    /// Returns the `name` in `#[lang = "$name"]`.
-    /// For example, `LangItem::EqTraitLangItem`,
-    /// that is `#[lang = "eq"]` would result in `"eq"`.
-    pub fn name(self) -> &'static str {
-        match self {
-            $( $variant => $name, )*
+        enum_from_u32! {
+            /// A representation of all the valid language items in Rust.
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+            pub enum LangItem {
+                $($variant,)*
+            }
         }
-    }
-}
 
-#[derive(HashStable_Generic)]
-pub struct LanguageItems {
-    /// Mappings from lang items to their possibly found `DefId`s.
-    /// The index corresponds to the order in `LangItem`.
-    pub items: Vec<Option<DefId>>,
-    /// Lang items that were not found during collection.
-    pub missing: Vec<LangItem>,
-}
-
-impl LanguageItems {
-    /// Construct an empty collection of lang items and no missing ones.
-    pub fn new() -> Self {
-        fn init_none(_: LangItem) -> Option<DefId> { None }
-
-        Self {
-            items: vec![$(init_none($variant)),*],
-            missing: Vec::new(),
+        impl LangItem {
+            /// Returns the `name` in `#[lang = "$name"]`.
+            /// For example, `LangItem::EqTraitLangItem`,
+            /// that is `#[lang = "eq"]` would result in `"eq"`.
+            pub fn name(self) -> &'static str {
+                match self {
+                    $( $variant => $name, )*
+                }
+            }
         }
-    }
 
-    /// Returns the mappings to the possibly found `DefId`s for each lang item.
-    pub fn items(&self) -> &[Option<DefId>] {
-        &*self.items
-    }
-
-    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
-    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-    /// returns an error message as a string.
-    pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-        self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
-    }
-
-    $(
-        /// Returns the corresponding `DefId` for the lang item
-        #[doc = $name]
-        /// if it exists.
-        #[allow(dead_code)]
-        pub fn $method(&self) -> Option<DefId> {
-            self.items[$variant as usize]
+        #[derive(HashStable_Generic)]
+        pub struct LanguageItems {
+            /// Mappings from lang items to their possibly found `DefId`s.
+            /// The index corresponds to the order in `LangItem`.
+            pub items: Vec<Option<DefId>>,
+            /// Lang items that were not found during collection.
+            pub missing: Vec<LangItem>,
         }
-    )*
-}
 
-lazy_static! {
-    /// A mapping from the name of the lang item to its order and the form it must be of.
-    pub static ref ITEM_REFS: FxHashMap<&'static str, (usize, Target)> = {
-        let mut item_refs = FxHashMap::default();
-        $( item_refs.insert($name, ($variant as usize, $target)); )*
-        item_refs
-    };
-}
+        impl LanguageItems {
+            /// Construct an empty collection of lang items and no missing ones.
+            pub fn new() -> Self {
+                fn init_none(_: LangItem) -> Option<DefId> { None }
+
+                Self {
+                    items: vec![$(init_none($variant)),*],
+                    missing: Vec::new(),
+                }
+            }
+
+            /// Returns the mappings to the possibly found `DefId`s for each lang item.
+            pub fn items(&self) -> &[Option<DefId>] {
+                &*self.items
+            }
+
+            /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
+            /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
+            /// returns an error message as a string.
+            pub fn require(&self, it: LangItem) -> Result<DefId, String> {
+                self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
+            }
+
+            $(
+                /// Returns the corresponding `DefId` for the lang item
+                #[doc = $name]
+                /// if it exists.
+                #[allow(dead_code)]
+                pub fn $method(&self) -> Option<DefId> {
+                    self.items[$variant as usize]
+                }
+            )*
+        }
+
+        lazy_static! {
+            /// A mapping from the name of the lang item to its order and the form it must be of.
+            pub static ref ITEM_REFS: FxHashMap<&'static str, (usize, Target)> = {
+                let mut item_refs = FxHashMap::default();
+                $( item_refs.insert($name, ($variant as usize, $target)); )*
+                item_refs
+            };
+        }
 
 // End of the macro
     }
