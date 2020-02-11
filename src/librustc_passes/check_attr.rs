@@ -16,9 +16,10 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast::Attribute;
+use syntax::ast::{Attribute, NestedMetaItem};
 use syntax::attr;
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
@@ -278,6 +279,21 @@ impl CheckAttrVisitor<'tcx> {
                         _ => ("a", "struct, enum, or union"),
                     }
                 }
+                sym::no_niche => {
+                    if !self.tcx.features().enabled(sym::no_niche) {
+                        feature_err(
+                            &self.tcx.sess.parse_sess,
+                            sym::no_niche,
+                            hint.span(),
+                            "the attribute `repr(no_niche)` is currently unstable",
+                        )
+                        .emit();
+                    }
+                    match target {
+                        Target::Struct | Target::Enum => continue,
+                        _ => ("a", "struct or enum"),
+                    }
+                }
                 sym::i8
                 | sym::u8
                 | sym::i16
@@ -305,8 +321,10 @@ impl CheckAttrVisitor<'tcx> {
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
         let hint_spans = hints.iter().map(|hint| hint.span());
 
-        // Error on repr(transparent, <anything else>).
-        if is_transparent && hints.len() > 1 {
+        // Error on repr(transparent, <anything else apart from no_niche>).
+        let non_no_niche = |hint: &&NestedMetaItem| hint.name_or_empty() != sym::no_niche;
+        let non_no_niche_count = hints.iter().filter(non_no_niche).count();
+        if is_transparent && non_no_niche_count > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
             struct_span_err!(
                 self.tcx.sess,

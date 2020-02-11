@@ -139,6 +139,7 @@
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
 #![feature(assoc_int_consts)]
+#![cfg_attr(not(bootstrap), feature(no_niche))] // rust-lang/rust#68303
 
 #[prelude_import]
 #[allow(unused)]

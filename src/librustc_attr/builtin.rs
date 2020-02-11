@@ -840,6 +840,7 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
+    ReprNoNiche,
 }
 
 #[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
@@ -895,6 +896,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         sym::packed => Some(ReprPacked(1)),
                         sym::simd => Some(ReprSimd),
                         sym::transparent => Some(ReprTransparent),
+                        sym::no_niche => Some(ReprNoNiche),
                         name => int_type_of_word(name).map(ReprInt),
                     };
 

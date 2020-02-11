@@ -825,7 +825,8 @@ fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'sta
                 attr::ReprPacked(_)
                 | attr::ReprSimd
                 | attr::ReprAlign(_)
-                | attr::ReprTransparent => continue,
+                | attr::ReprTransparent
+                | attr::ReprNoNiche => continue,
 
                 attr::ReprC => "i32",
 
