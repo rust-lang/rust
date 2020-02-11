@@ -172,10 +172,18 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         return_place: &mir::Place<'tcx>,
     );
 
-    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
+    /// Calls the appropriate `Engine` constructor to find the fixpoint for this dataflow problem.
     ///
-    /// This is functionally equivalent to calling the appropriate `Engine` constructor. It should
-    /// not be overridden. Its purpose is to allow consumers of this API to use method-chaining.
+    /// You shouldn't need to override this outside this module, since the combination of the
+    /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
+    /// Its purpose is to enable method chaining like so:
+    ///
+    /// ```ignore(cross-crate-imports)
+    /// let results = MyAnalysis::new(tcx, body)
+    ///     .into_engine(tcx, body, def_id)
+    ///     .iterate_to_fixpoint()
+    ///     .into_results_cursor(body);
+    /// ```
     fn into_engine(
         self,
         tcx: TyCtxt<'tcx>,
