@@ -63,11 +63,8 @@ impl Lint {
 
     /// Returns the lints in a `HashMap`, grouped by the different lint groups
     #[must_use]
-    pub fn by_lint_group(lints: &[Self]) -> HashMap<String, Vec<Self>> {
-        lints
-            .iter()
-            .map(|lint| (lint.group.to_string(), lint.clone()))
-            .into_group_map()
+    pub fn by_lint_group(lints: impl Iterator<Item = Self>) -> HashMap<String, Vec<Self>> {
+        lints.map(|lint| (lint.group.to_string(), lint)).into_group_map()
     }
 
     #[must_use]
@@ -449,7 +446,7 @@ fn test_by_lint_group() {
         "group2".to_string(),
         vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")],
     );
-    assert_eq!(expected, Lint::by_lint_group(&lints));
+    assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
 }
 
 #[test]

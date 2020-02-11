@@ -136,7 +136,7 @@ fn print_lints() {
     let lint_list = gather_all();
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list).collect();
     let lint_count = usable_lints.len();
-    let grouped_by_lint_group = Lint::by_lint_group(&usable_lints);
+    let grouped_by_lint_group = Lint::by_lint_group(usable_lints.into_iter());
 
     for (lint_group, mut lints) in grouped_by_lint_group {
         if lint_group == "Deprecated" {
@@ -267,7 +267,7 @@ fn update_lints(update_mode: UpdateMode) {
     .changed;
 
     // Generate the list of lints for all other lint groups
-    for (lint_group, lints) in Lint::by_lint_group(&usable_lints) {
+    for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter()) {
         file_change |= replace_region_in_file(
             Path::new("clippy_lints/src/lib.rs"),
             &format!("store.register_group\\(true, \"clippy::{}\"", lint_group),
