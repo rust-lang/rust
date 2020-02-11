@@ -711,7 +711,16 @@ impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt
                 }
             }
 
-            _ => {}
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable => {}
         }
     }
 }
