@@ -179,7 +179,7 @@ addding another backend, the traits definition might be changed in order to
 offer more flexibility.
 
 However, the current separation between backend-agnostic and LLVM-specific code
-has allows the reuse of a significant part of the old `rustc_codegen_llvm`.
+has allowed the reuse of a significant part of the old `rustc_codegen_llvm`.
 Here is the new LOC breakdown between backend-agnostic (BA) and LLVM for the
 most important elements:
 
