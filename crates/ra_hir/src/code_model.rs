@@ -548,6 +548,10 @@ impl Function {
         let mut validator = ExprValidator::new(self.id, infer, sink);
         validator.validate_body(db);
     }
+
+    pub fn container(self, db: &impl DefDatabase) -> AssocContainerId {
+        self.id.lookup(db).container
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -699,7 +703,7 @@ impl AssocItem {
 
     pub fn container(self, db: &impl DefDatabase) -> AssocContainerId {
         match self {
-            AssocItem::Function(f) => f.id.lookup(db).container,
+            AssocItem::Function(f) => f.container(db),
             AssocItem::Const(c) => c.id.lookup(db).container,
             AssocItem::TypeAlias(t) => t.id.lookup(db).container,
         }
