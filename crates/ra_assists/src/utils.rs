@@ -62,7 +62,7 @@ pub fn get_missing_impl_items(
     })
 }
 
-fn resolve_target_trait(
+pub(crate) fn resolve_target_trait(
     db: &impl HirDatabase,
     analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,

@@ -7,6 +7,7 @@ use ra_syntax::{
 use crate::{
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
     Assist, AssistCtx, AssistId,
+    utils::{get_missing_impl_items, resolve_target_trait},
 };
 
 #[derive(PartialEq)]
@@ -103,11 +104,9 @@ fn add_missing_impl_members_inner(
     let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
-    let (trait_, trait_def) = {
-        let analyzer = ctx.source_analyzer(impl_node.syntax(), None);
+    let analyzer = ctx.source_analyzer(impl_node.syntax(), None);
 
-        resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
-    };
+    let trait_ = resolve_target_trait(ctx.db, &analyzer, &impl_node)?;
 
     let def_name = |item: &ast::ImplItem| -> Option<SmolStr> {
         match item {
@@ -118,20 +117,23 @@ fn add_missing_impl_members_inner(
         .map(|it| it.text().clone())
     };
 
-    let trait_items = trait_def.item_list()?.impl_items();
-    let impl_items = impl_item_list.impl_items().collect::<Vec<_>>();
-
-    let missing_items: Vec<_> = trait_items
-        .filter(|t| def_name(t).is_some())
+    let missing_items = get_missing_impl_items(ctx.db, &analyzer, &impl_node)
+        .iter()
+        .map(|i| match i {
+            hir::AssocItem::Function(i) => ast::ImplItem::FnDef(i.source(ctx.db).value),
+            hir::AssocItem::TypeAlias(i) => ast::ImplItem::TypeAliasDef(i.source(ctx.db).value),
+            hir::AssocItem::Const(i) => ast::ImplItem::ConstDef(i.source(ctx.db).value),
+        })
+        .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {
             ast::ImplItem::FnDef(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
-            },
+            }
             _ => mode == AddMissingImplMembersMode::NoDefaultMethods,
         })
-        .filter(|t| impl_items.iter().all(|i| def_name(i) != def_name(t)))
-        .collect();
+        .collect::<Vec<_>>();
+
     if missing_items.is_empty() {
         return None;
     }
@@ -174,27 +176,6 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
         fn_def.with_body(make::block_from_expr(make::expr_unimplemented()))
     } else {
         fn_def
-    }
-}
-
-/// Given an `ast::ImplBlock`, resolves the target trait (the one being
-/// implemented) to a `ast::TraitDef`.
-fn resolve_target_trait_def(
-    db: &impl HirDatabase,
-    analyzer: &hir::SourceAnalyzer,
-    impl_block: &ast::ImplBlock,
-) -> Option<(hir::Trait, ast::TraitDef)> {
-    let ast_path = impl_block
-        .target_trait()
-        .map(|it| it.syntax().clone())
-        .and_then(ast::PathType::cast)?
-        .path()?;
-
-    match analyzer.resolve_path(db, &ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => {
-            Some((def, def.source(db).value))
-        }
-        _ => None,
     }
 }
 
