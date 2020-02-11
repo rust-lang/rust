@@ -117,7 +117,7 @@ fn get_lint_file_contents(
     context_import: &str,
 ) -> String {
     format!(
-        "use rustc_lint::{{LintArray, LintPass, {type}, {context_import}}};
+        "use rustc_lint::{{{type}, {context_import}}};
 use rustc_session::{{declare_lint_pass, declare_tool_lint}};
 {pass_import}
 
