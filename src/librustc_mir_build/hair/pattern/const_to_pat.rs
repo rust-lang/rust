@@ -3,8 +3,9 @@ use rustc::mir::Field;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::predicate_for_trait_def;
-use rustc_infer::traits::{self, ObligationCause, PredicateObligation};
+use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligation};
 
 use rustc_index::vec::Idx;
 

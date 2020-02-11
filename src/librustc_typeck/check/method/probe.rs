@@ -28,11 +28,14 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
-use rustc_infer::traits::query::method_autoderef::MethodAutoderefBadTy;
-use rustc_infer::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
-use rustc_infer::traits::query::CanonicalTyGoal;
-use rustc_infer::traits::{self, ObligationCause};
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
+use rustc_trait_selection::traits::query::method_autoderef::{
+    CandidateStep, MethodAutoderefStepsResult,
+};
+use rustc_trait_selection::traits::query::CanonicalTyGoal;
+use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cmp::max;
 use std::iter;
 use std::mem;

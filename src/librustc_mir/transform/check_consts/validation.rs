@@ -9,9 +9,10 @@ use rustc_errors::struct_span_err;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{self, TraitEngine};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::{self, TraitEngine};
 
 use std::borrow::Cow;
 use std::ops::Deref;

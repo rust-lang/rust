@@ -27,7 +27,6 @@ use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Crate;
-use rustc_infer::traits;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -37,6 +36,7 @@ use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
+use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 
 use rustc_serialize::json;

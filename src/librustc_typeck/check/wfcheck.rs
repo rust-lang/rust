@@ -12,10 +12,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
-use rustc_infer::infer::opaque_types::may_define_opaque_type;
-use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::may_define_opaque_type;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;

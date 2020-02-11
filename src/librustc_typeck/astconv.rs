@@ -26,13 +26,13 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::print;
 use rustc_hir::{Constness, ExprKind, GenericArg, GenericArgs};
-use rustc_infer::traits;
-use rustc_infer::traits::astconv_object_safety_violations;
-use rustc_infer::traits::error_reporting::report_object_safety_error;
-use rustc_infer::traits::wf::object_region_bounds;
 use rustc_span::symbol::sym;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::astconv_object_safety_violations;
+use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
+use rustc_trait_selection::traits::wf::object_region_bounds;
 use smallvec::SmallVec;
 
 use std::collections::BTreeSet;

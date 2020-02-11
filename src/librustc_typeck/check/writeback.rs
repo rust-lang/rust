@@ -16,6 +16,7 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use std::mem;
 

@@ -59,6 +59,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 #[derive(Clone, Debug)]
 pub enum PlaceBase {

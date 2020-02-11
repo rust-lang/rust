@@ -3,11 +3,13 @@ use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::query::{
+use rustc_infer::traits::TraitEngineExt as _;
+use rustc_span::DUMMY_SP;
+use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution,
 };
-use rustc_infer::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
-use rustc_span::DUMMY_SP;
+use rustc_trait_selection::traits::{self, ObligationCause, SelectionContext};
 use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers<'_>) {

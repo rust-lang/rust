@@ -7,8 +7,8 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::query::type_op::{self, TypeOp};
 use rustc_span::DUMMY_SP;
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 
 use crate::borrow_check::{

@@ -11,9 +11,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
-use rustc_infer::traits;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::traits;
 
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
