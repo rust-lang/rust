@@ -5,7 +5,13 @@ use crate::{
     assist_ctx::{Assist, AssistCtx},
     insert_use_statement, AssistId,
 };
-use hir::{db::HirDatabase, Adt, ModPath, Module, ModuleDef, PathResolution, SourceAnalyzer};
+use ast::{FnDefOwner, ModuleItem, ModuleItemOwner};
+use hir::{
+    db::{DefDatabase, HirDatabase},
+    Adt, AssocContainerId, Crate, Function, HasSource, InFile, ModPath, Module, ModuleDef,
+    PathResolution, SourceAnalyzer, SourceBinder, Trait,
+};
+use rustc_hash::FxHashSet;
 use std::collections::BTreeSet;
 
 // Assist: auto_import
@@ -135,20 +141,87 @@ impl ImportCandidate {
         ImportsLocator::new(db)
             .find_imports(&self.get_search_query())
             .into_iter()
-            .filter_map(|module_def| match self {
+            .map(|module_def| match self {
                 ImportCandidate::TraitFunction(function_callee, _) => {
-                    if let ModuleDef::Function(function) = module_def {
-                        dbg!(function);
-                        todo!()
-                    } else {
-                        None
+                    let mut applicable_traits = Vec::new();
+                    if let ModuleDef::Function(located_function) = module_def {
+                        let trait_candidates = Self::get_trait_candidates(
+                            db,
+                            located_function,
+                            module_with_name_to_import.krate(),
+                        )
+                        .into_iter()
+                        .map(|trait_candidate| trait_candidate.into())
+                        .collect();
+
+                        function_callee.ty(db).iterate_path_candidates(
+                            db,
+                            module_with_name_to_import.krate(),
+                            &trait_candidates,
+                            None,
+                            |_, assoc| {
+                                if let AssocContainerId::TraitId(trait_id) = assoc.container(db) {
+                                    applicable_traits.push(
+                                        module_with_name_to_import
+                                            .find_use_path(db, ModuleDef::Trait(trait_id.into())),
+                                    );
+                                };
+                                None::<()>
+                            },
+                        );
                     }
+                    applicable_traits
                 }
-                _ => module_with_name_to_import.find_use_path(db, module_def),
+                _ => vec![module_with_name_to_import.find_use_path(db, module_def)],
             })
+            .flatten()
+            .filter_map(std::convert::identity)
             .filter(|use_path| !use_path.segments.is_empty())
             .take(20)
             .collect::<BTreeSet<_>>()
+    }
+
+    fn get_trait_candidates(
+        db: &RootDatabase,
+        called_function: Function,
+        root_crate: Crate,
+    ) -> FxHashSet<Trait> {
+        let mut source_binder = SourceBinder::new(db);
+        root_crate
+            .dependencies(db)
+            .into_iter()
+            .map(|dependency| db.crate_def_map(dependency.krate.into()))
+            .chain(std::iter::once(db.crate_def_map(root_crate.into())))
+            .map(|crate_def_map| {
+                crate_def_map
+                    .modules
+                    .iter()
+                    .filter_map(|(_, module_data)| module_data.declaration_source(db))
+                    .filter_map(|in_file_module| {
+                        Some((in_file_module.file_id, in_file_module.value.item_list()?.items()))
+                    })
+                    .map(|(file_id, item_list)| {
+                        let mut if_file_trait_defs = Vec::new();
+                        for module_item in item_list {
+                            if let ModuleItem::TraitDef(trait_def) = module_item {
+                                if let Some(item_list) = trait_def.item_list() {
+                                    if item_list
+                                        .functions()
+                                        .any(|fn_def| fn_def == called_function.source(db).value)
+                                    {
+                                        if_file_trait_defs.push(InFile::new(file_id, trait_def))
+                                    }
+                                }
+                            }
+                        }
+                        if_file_trait_defs
+                    })
+                    .flatten()
+                    .filter_map(|in_file_trait_def| source_binder.to_def(in_file_trait_def))
+                    .collect::<FxHashSet<_>>()
+            })
+            .flatten()
+            .collect()
     }
 }
 
@@ -452,7 +525,45 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO kb
+    fn not_applicable_for_imported_trait() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self);
+                    fn test_function();
+                }
+
+                pub trait TestTrait2 {
+                    fn test_method(&self);
+                    fn test_function();
+                }
+                pub enum TestEnum {
+                    One,
+                    Two,
+                }
+
+                impl TestTrait2 for TestEnum {
+                    fn test_method(&self) {}
+                    fn test_function() {}
+                }
+
+                impl TestTrait for TestEnum {
+                    fn test_method(&self) {}
+                    fn test_function() {}
+                }
+            }
+
+            use test_mod::TestTrait2;
+            fn main() {
+                test_mod::TestEnum::test_function<|>;
+            }
+            ",
+        )
+    }
+
+    #[test]
     fn trait_method() {
         check_assist(
             auto_import,

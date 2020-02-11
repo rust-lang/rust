@@ -123,7 +123,7 @@ impl_froms!(
 );
 
 pub use hir_def::{
-    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
+    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocContainerId, AssocItemId,
 };
 use rustc_hash::FxHashSet;
 
@@ -696,16 +696,12 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.module(db),
         }
     }
-    pub fn container(self, db: &impl DefDatabase) -> AssocItemContainer {
-        let container = match self {
-            AssocItem::Function(it) => it.id.lookup(db).container,
-            AssocItem::Const(it) => it.id.lookup(db).container,
-            AssocItem::TypeAlias(it) => it.id.lookup(db).container,
-        };
-        match container {
-            AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
-            AssocContainerId::ImplId(id) => AssocItemContainer::ImplBlock(id.into()),
-            AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
+
+    pub fn container(self, db: &impl DefDatabase) -> AssocContainerId {
+        match self {
+            AssocItem::Function(f) => f.id.lookup(db).container,
+            AssocItem::Const(c) => c.id.lookup(db).container,
+            AssocItem::TypeAlias(t) => t.id.lookup(db).container,
         }
     }
 }
