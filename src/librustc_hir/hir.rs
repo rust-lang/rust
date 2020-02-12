@@ -16,7 +16,7 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name, NodeId};
+use syntax::ast::{self, AsmDialect, CrateSugar, Ident, Name};
 use syntax::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use syntax::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use syntax::ast::{CaptureBy, Movability, Mutability};
@@ -2610,7 +2610,7 @@ pub type CaptureModeMap = NodeMap<CaptureBy>;
 #[derive(Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[NodeId; 1]>,
+    pub import_ids: SmallVec<[HirId; 1]>,
 }
 
 // Trait method resolution
