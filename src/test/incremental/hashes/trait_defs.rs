@@ -140,8 +140,8 @@ trait TraitChangeMethodParameterName {
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_dirty(label="HirBody", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     fn with_default(y: i32) {}
 }
 
@@ -260,8 +260,8 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 trait TraitChangeModeSelfOwnToMut: Sized {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_dirty(label="HirBody", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     fn method(mut self) {}
 }
 

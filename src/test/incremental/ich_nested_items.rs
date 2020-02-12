@@ -8,13 +8,13 @@
 #![feature(rustc_attrs)]
 
 #[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 pub fn foo() {
     #[cfg(cfail1)]
     pub fn baz() { } // order is different...
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner_items", cfg="cfail2")]
     pub fn bar() { } // but that doesn't matter.
 
     #[cfg(cfail2)]
