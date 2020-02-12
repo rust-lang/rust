@@ -38,6 +38,7 @@ enum class LLVMRustArchiveKind {
   Other,
   GNU,
   BSD,
+  DARWIN,
   COFF,
 };
 
@@ -47,6 +48,8 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
     return Archive::K_GNU;
   case LLVMRustArchiveKind::BSD:
     return Archive::K_BSD;
+  case LLVMRustArchiveKind::DARWIN:
+    return Archive::K_DARWIN;
   case LLVMRustArchiveKind::COFF:
     return Archive::K_COFF;
   default:
