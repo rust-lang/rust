@@ -9,8 +9,8 @@ use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc::mir::{
-    read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, PanicInfo, Place, ReadOnlyBodyAndCache, Rvalue,
+    read_only, AggregateKind, AssertKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate,
+    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
@@ -501,7 +501,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn report_panic_as_lint(&self, source_info: SourceInfo, panic: PanicInfo<u64>) -> Option<()> {
+    fn report_panic_as_lint(&self, source_info: SourceInfo, panic: AssertKind<u64>) -> Option<()> {
         // Somewhat convoluted way to re-use the CTFE error reporting code.
         let lint_root = self.lint_root(source_info)?;
         let error = InterpError::MachineStop(Box::new(format!("{:?}", panic)));
@@ -530,7 +530,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // `AssertKind` only has an `OverflowNeg` variant, to make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            self.report_panic_as_lint(source_info, PanicInfo::OverflowNeg)?;
+            self.report_panic_as_lint(source_info, AssertKind::OverflowNeg)?;
         }
 
         Some(())
@@ -572,7 +572,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
             Ok(overflow)
         })? {
-            self.report_panic_as_lint(source_info, PanicInfo::Overflow(op))?;
+            self.report_panic_as_lint(source_info, AssertKind::Overflow(op))?;
         }
 
         Some(())
@@ -910,11 +910,11 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             span,
                             |lint| {
                                 let msg = match msg {
-                                    PanicInfo::Overflow(_)
-                                    | PanicInfo::OverflowNeg
-                                    | PanicInfo::DivisionByZero
-                                    | PanicInfo::RemainderByZero => msg.description().to_owned(),
-                                    PanicInfo::BoundsCheck { ref len, ref index } => {
+                                    AssertKind::Overflow(_)
+                                    | AssertKind::OverflowNeg
+                                    | AssertKind::DivisionByZero
+                                    | AssertKind::RemainderByZero => msg.description().to_owned(),
+                                    AssertKind::BoundsCheck { ref len, ref index } => {
                                         let len = self
                                             .eval_operand(len, source_info)
                                             .expect("len must be const");

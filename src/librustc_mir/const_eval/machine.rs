@@ -281,8 +281,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::PanicInfo::*;
-        // Convert `PanicInfo<Operand>` to `PanicInfo<u64>`.
+        use rustc::mir::AssertKind::*;
+        // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
         let err = match msg {
             BoundsCheck { ref len, ref index } => {
                 let len = ecx
