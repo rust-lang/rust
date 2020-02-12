@@ -80,7 +80,11 @@ pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: IndexVec<DefIndex, ast::NodeId>,
+
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    /// The reverse mapping of `node_to_hir_id`.
+    pub(super) hir_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
+
     /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
@@ -347,6 +351,11 @@ impl Definitions {
     }
 
     #[inline]
+    pub fn hir_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
+        self.hir_to_node_id[&hir_id]
+    }
+
+    #[inline]
     pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
         self.node_to_hir_id[node_id]
     }
@@ -472,6 +481,13 @@ impl Definitions {
             "trying to initialize `NodeId` -> `HirId` mapping twice"
         );
         self.node_to_hir_id = mapping;
+
+        // Build the reverse mapping of `node_to_hir_id`.
+        self.hir_to_node_id = self
+            .node_to_hir_id
+            .iter_enumerated()
+            .map(|(node_id, &hir_id)| (hir_id, node_id))
+            .collect();
     }
 
     pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
