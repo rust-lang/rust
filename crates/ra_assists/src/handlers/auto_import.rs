@@ -4,8 +4,8 @@ use crate::{
 };
 use hir::{
     db::{DefDatabase, HirDatabase},
-    AssocContainerId, AssocItem, Crate, Function, ModPath, Module, ModuleDef, PathResolution,
-    SourceAnalyzer, Trait, Type,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, Function, ModPath, Module, ModuleDef,
+    PathResolution, SourceAnalyzer, Trait, Type,
 };
 use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
 use ra_prof::profile;
@@ -157,13 +157,12 @@ impl AutoImportAssets {
                                 &trait_candidates,
                                 None,
                                 |_, assoc| {
-                                    if let AssocContainerId::TraitId(trait_id) = assoc.container(db)
+                                    if let AssocItemContainer::Trait(appropriate_trait) =
+                                        assoc.container(db)
                                     {
                                         applicable_traits.push(
-                                            self.module_with_name_to_import.find_use_path(
-                                                db,
-                                                ModuleDef::Trait(trait_id.into()),
-                                            ),
+                                            self.module_with_name_to_import
+                                                .find_use_path(db, appropriate_trait.into()),
                                         );
                                     };
                                     None::<()>
@@ -187,15 +186,15 @@ impl AutoImportAssets {
                                 current_crate,
                                 &trait_candidates,
                                 None,
-                                |_, funciton| {
-                                    if let AssocContainerId::TraitId(trait_id) =
-                                        funciton.container(db)
+                                |_, function| {
+                                    if let AssocItemContainer::Trait(appropriate_trait) = function
+                                        .as_assoc_item(db)
+                                        .expect("Function is an assoc item")
+                                        .container(db)
                                     {
                                         applicable_traits.push(
-                                            self.module_with_name_to_import.find_use_path(
-                                                db,
-                                                ModuleDef::Trait(trait_id.into()),
-                                            ),
+                                            self.module_with_name_to_import
+                                                .find_use_path(db, appropriate_trait.into()),
                                         );
                                     };
                                     None::<()>

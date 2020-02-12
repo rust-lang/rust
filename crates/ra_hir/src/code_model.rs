@@ -123,7 +123,7 @@ impl_froms!(
 );
 
 pub use hir_def::{
-    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocContainerId, AssocItemId,
+    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
 };
 use rustc_hash::FxHashSet;
 
@@ -548,10 +548,6 @@ impl Function {
         let mut validator = ExprValidator::new(self.id, infer, sink);
         validator.validate_body(db);
     }
-
-    pub fn container(self, db: &impl DefDatabase) -> AssocContainerId {
-        self.id.lookup(db).container
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -701,11 +697,16 @@ impl AssocItem {
         }
     }
 
-    pub fn container(self, db: &impl DefDatabase) -> AssocContainerId {
-        match self {
-            AssocItem::Function(f) => f.container(db),
-            AssocItem::Const(c) => c.id.lookup(db).container,
-            AssocItem::TypeAlias(t) => t.id.lookup(db).container,
+    pub fn container(self, db: &impl DefDatabase) -> AssocItemContainer {
+        let container = match self {
+            AssocItem::Function(it) => it.id.lookup(db).container,
+            AssocItem::Const(it) => it.id.lookup(db).container,
+            AssocItem::TypeAlias(it) => it.id.lookup(db).container,
+        };
+        match container {
+            AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
+            AssocContainerId::ImplId(id) => AssocItemContainer::ImplBlock(id.into()),
+            AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
         }
     }
 }
@@ -818,7 +819,7 @@ impl TypeParam {
     }
 }
 
-// FIXME: rename to `ImplBlock`
+// FIXME: rename from `ImplBlock` to `Impl`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
