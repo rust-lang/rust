@@ -59,6 +59,10 @@ fn integration_test() {
         panic!("query stack during panic in the output");
     } else if stderr.contains("E0463") {
         panic!("error: E0463");
+    } else if stderr.contains("E0514") {
+        panic!("incompatible crate versions");
+    } else if stderr.contains("failed to run `rustc` to learn about target-specific information") {
+        panic!("couldn't find librustc_driver, consider setting `LD_LIBRARY_PATH`");
     }
 
     match output.status.code() {

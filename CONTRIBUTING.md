@@ -2,12 +2,14 @@
 
 Hello fellow Rustacean! Great to see your interest in compiler internals and lints!
 
-**First**: if you're unsure or afraid of _anything_, just ask or submit the issue or pull request anyway. You won't be yelled at for giving it your best effort. The worst that can happen is that you'll be politely asked to change something. We appreciate any sort of contributions, and don't want a wall of rules to get in the way of that.
+**First**: if you're unsure or afraid of _anything_, just ask or submit the issue or pull request anyway. You won't be
+yelled at for giving it your best effort. The worst that can happen is that you'll be politely asked to change
+something. We appreciate any sort of contributions, and don't want a wall of rules to get in the way of that.
 
-Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document explains how
-you can contribute and how to get started.
-If you have any questions about contributing or need help with anything, feel free to ask questions on issues or
-visit the `#clippy` IRC channel on `irc.mozilla.org` or meet us in `#clippy` on [Discord](https://discord.gg/rust-lang).
+Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document
+explains how you can contribute and how to get started.  If you have any questions about contributing or need help with
+anything, feel free to ask questions on issues or visit the `#clippy` IRC channel on `irc.mozilla.org` or meet us in
+`#clippy` on [Discord](https://discord.gg/rust-lang).
 
 All contributors are expected to follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
 
@@ -49,12 +51,12 @@ matching of the syntax tree structure, and are generally easier than
 [`T-middle`](https://github.com/rust-lang/rust-clippy/labels/T-middle) issues, which involve types
 and resolved paths.
 
-[`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) issues will generally need you to match against a predefined syntax structure. To figure out
-how this syntax structure is encoded in the AST, it is recommended to run `rustc -Z ast-json` on an
-example of the structure and compare with the
-[nodes in the AST docs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast). Usually
-the lint will end up to be a nested series of matches and ifs,
-[like so](https://github.com/rust-lang/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
+[`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) issues will generally need you to match against a
+predefined syntax structure. To figure out how this syntax structure is encoded in the AST, it is recommended to run
+`rustc -Z ast-json` on an example of the structure and compare with the [nodes in the AST
+docs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast). Usually the lint will end up to be a nested series of
+matches and ifs, [like
+so](https://github.com/rust-lang/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
 [`E-medium`](https://github.com/rust-lang/rust-clippy/labels/E-medium) issues are generally
 pretty easy too, though it's recommended you work on an E-easy issue first. They are mostly classified
@@ -68,9 +70,9 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 
 ## Writing code
 
-Have a look at the [docs for writing lints](doc/adding_lints.md) for more details. [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is also a nice primer
-to lint-writing, though it does get into advanced stuff and may be a bit
-outdated.
+Have a look at the [docs for writing lints](doc/adding_lints.md) for more details. [Llogiq's blog post on
+lints](https://llogiq.github.io/2015/06/04/workflows.html) is also a nice primer to lint-writing, though it does get
+into advanced stuff and may be a bit outdated.
 
 If you want to add a new lint or change existing ones apart from bugfixing, it's
 also a good idea to give the [stability guarantees][rfc_stability] and
@@ -79,9 +81,11 @@ quick read.
 
 ## How Clippy works
 
-Clippy is a [rustc compiler plugin][compiler_plugin]. The main entry point is at [`src/lib.rs`][main_entry]. In there, the lint registration is delegated to the [`clippy_lints`][lint_crate] crate.
+Clippy is a [rustc compiler plugin][compiler_plugin]. The main entry point is at [`src/lib.rs`][main_entry]. In there,
+the lint registration is delegated to the [`clippy_lints`][lint_crate] crate.
 
-[`clippy_lints/src/lib.rs`][lint_crate_entry] imports all the different lint modules and registers them with the rustc plugin registry. For example, the [`else_if_without_else`][else_if_without_else] lint is registered like this:
+[`clippy_lints/src/lib.rs`][lint_crate_entry] imports all the different lint modules and registers them with the rustc
+plugin registry. For example, the [`else_if_without_else`][else_if_without_else] lint is registered like this:
 
 ```rust
 // ./clippy_lints/src/lib.rs
@@ -103,9 +107,12 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry) {
 }
 ```
 
-The [`plugin::PluginRegistry`][plugin_registry] provides two methods to register lints: [register_early_lint_pass][reg_early_lint_pass] and [register_late_lint_pass][reg_late_lint_pass].
-Both take an object that implements an [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass] respectively. This is done in every single lint.
-It's worth noting that the majority of `clippy_lints/src/lib.rs` is autogenerated by `cargo dev update_lints` and you don't have to add anything by hand. When you are writing your own lint, you can use that script to save you some time.
+The [`plugin::PluginRegistry`][plugin_registry] provides two methods to register lints:
+[register_early_lint_pass][reg_early_lint_pass] and [register_late_lint_pass][reg_late_lint_pass].  Both take an object
+that implements an [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass] respectively. This is done in
+every single lint. It's worth noting that the majority of `clippy_lints/src/lib.rs` is autogenerated by `cargo dev
+update_lints` and you don't have to add anything by hand. When you are writing your own lint, you can use that script to
+save you some time.
 
 ```rust
 // ./clippy_lints/src/else_if_without_else.rs
@@ -123,18 +130,25 @@ impl EarlyLintPass for ElseIfWithoutElse {
 }
 ```
 
-The difference between `EarlyLintPass` and `LateLintPass` is that the methods of the `EarlyLintPass` trait only provide AST information. The methods of the `LateLintPass` trait are executed after type checking and contain type information via the `LateContext` parameter.
+The difference between `EarlyLintPass` and `LateLintPass` is that the methods of the `EarlyLintPass` trait only provide
+AST information. The methods of the `LateLintPass` trait are executed after type checking and contain type information
+via the `LateContext` parameter.
 
-That's why the `else_if_without_else` example uses the `register_early_lint_pass` function. Because the [actual lint logic][else_if_without_else] does not depend on any type information.
+That's why the `else_if_without_else` example uses the `register_early_lint_pass` function. Because the [actual lint
+logic][else_if_without_else] does not depend on any type information.
 
 ## Fixing build failures caused by Rust
 
-Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
+Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of
+the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures
+caused by Rust updates, can be a good way to learn about Rust internals.
 
-In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit history][toolstate_commit_history].
-You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
+In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit
+history][toolstate_commit_history].  You will then have to look for the last commit that contains `test-pass ->
+build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
 
-The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and if they are bigger, they likely include some discussion that may help you to fix Clippy.
+The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and
+if they are bigger, they likely include some discussion that may help you to fix Clippy.
 
 To check if Clippy is available for a specific target platform, you can check
 the [rustup component history][rustup_component_history].

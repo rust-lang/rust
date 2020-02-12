@@ -21,6 +21,7 @@ publish = false
 [badges]
 travis-ci = { repository = "rust-lang/rust-clippy" }
 appveyor = { repository = "rust-lang/rust-clippy" }
+# FIXME(flip1995): Add GHA badge once rust-lang/crates.io#1838 is merged
 
 [[bin]]
 name = "cargo-clippy"

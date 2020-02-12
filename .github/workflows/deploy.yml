@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  push:
+    branches: master
+  release:
+    types: [created]
+
+env:
+  TARGET_BRANCH: 'gh-pages'
+  SHA: '${{ github.sha }}'
+  SSH_REPO: 'git@github.com:${{ github.repository }}.git'
+  TAG_NAME: '${{ github.event.release.GITHUB_REF }}'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+      with:
+        ref: ${{ env.TARGET_BRANCH }}
+        path: 'out'
+
+    # Run
+    - name: Deploy
+      run: |
+        eval "$(ssh-agent -s)"
+        ssh-add - <<< "${{ secrets.DEPLOY_KEY }}"
+        bash .github/deploy.sh

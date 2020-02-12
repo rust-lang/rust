@@ -48,7 +48,7 @@ install:
         . $HOME/.nvm/nvm.sh
         nvm install stable
         nvm use stable
-        npm install remark-cli remark-lint
+        npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended
       elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
         choco install windows-sdk-10.1
       fi
@@ -151,16 +151,4 @@ script:
       cargo test --test integration --features integration && sleep 5
     else
       ./ci/base-tests.sh && sleep 5
-    fi
-
-after_success:
-  - |
-    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      set -e
-      if [[ -z ${INTEGRATION} ]]; then
-        ./.github/deploy.sh
-      else
-        echo "Not deploying, because we're in an integration test run"
-      fi
-      set +e
     fi

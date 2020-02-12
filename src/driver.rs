@@ -281,6 +281,17 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 }
 
+fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<PathBuf> {
+    home.and_then(|home| {
+        toolchain.map(|toolchain| {
+            let mut path = PathBuf::from(home);
+            path.push("toolchains");
+            path.push(toolchain);
+            path
+        })
+    })
+}
+
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     lazy_static::initialize(&ICE_HOOK);
@@ -301,22 +312,21 @@ pub fn main() {
             //    - RUSTUP_HOME, MULTIRUST_HOME, RUSTUP_TOOLCHAIN, MULTIRUST_TOOLCHAIN
             // - sysroot from rustc in the path
             // - compile-time environment
+            //    - SYSROOT
+            //    - RUSTUP_HOME, MULTIRUST_HOME, RUSTUP_TOOLCHAIN, MULTIRUST_TOOLCHAIN
             let sys_root_arg = arg_value(&orig_args, "--sysroot", |_| true);
             let have_sys_root_arg = sys_root_arg.is_some();
             let sys_root = sys_root_arg
                 .map(PathBuf::from)
                 .or_else(|| std::env::var("SYSROOT").ok().map(PathBuf::from))
                 .or_else(|| {
-                    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-                    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-                    home.and_then(|home| {
-                        toolchain.map(|toolchain| {
-                            let mut path = PathBuf::from(home);
-                            path.push("toolchains");
-                            path.push(toolchain);
-                            path
-                        })
-                    })
+                    let home = std::env::var("RUSTUP_HOME")
+                        .or_else(|_| std::env::var("MULTIRUST_HOME"))
+                        .ok();
+                    let toolchain = std::env::var("RUSTUP_TOOLCHAIN")
+                        .or_else(|_| std::env::var("MULTIRUST_TOOLCHAIN"))
+                        .ok();
+                    toolchain_path(home, toolchain)
                 })
                 .or_else(|| {
                     Command::new("rustc")
@@ -328,6 +338,15 @@ pub fn main() {
                         .map(|s| PathBuf::from(s.trim()))
                 })
                 .or_else(|| option_env!("SYSROOT").map(PathBuf::from))
+                .or_else(|| {
+                    let home = option_env!("RUSTUP_HOME")
+                        .or(option_env!("MULTIRUST_HOME"))
+                        .map(ToString::to_string);
+                    let toolchain = option_env!("RUSTUP_TOOLCHAIN")
+                        .or(option_env!("MULTIRUST_TOOLCHAIN"))
+                        .map(ToString::to_string);
+                    toolchain_path(home, toolchain)
+                })
                 .map(|pb| pb.to_string_lossy().to_string())
                 .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
