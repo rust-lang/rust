@@ -12,6 +12,7 @@ use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
 use rustc_span::{self, BytePos, FileName};
+use rustc_target::asm::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
@@ -1408,6 +1409,107 @@ impl<'a> State<'a> {
                     self.s.word(" ");
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
+            }
+            hir::ExprKind::InlineAsm(ref a) => {
+                enum AsmArg<'a> {
+                    Template(String),
+                    Operand(&'a hir::InlineAsmOperand<'a>),
+                    Options(InlineAsmOptions),
+                }
+
+                let mut args = vec![];
+                args.push(AsmArg::Template(InlineAsmTemplatePiece::to_string(&a.template)));
+                args.extend(a.operands.iter().map(|o| AsmArg::Operand(o)));
+                if !a.options.is_empty() {
+                    args.push(AsmArg::Options(a.options));
+                }
+
+                self.word("asm!");
+                self.popen();
+                self.commasep(Consistent, &args, |s, arg| match arg {
+                    AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+                    AsmArg::Operand(op) => match op {
+                        hir::InlineAsmOperand::In { reg, expr } => {
+                            s.word("in");
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, expr } => {
+                            s.word(if *late { "lateout" } else { "out" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            match expr {
+                                Some(expr) => s.print_expr(expr),
+                                None => s.word("_"),
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, expr } => {
+                            s.word(if *late { "inlateout" } else { "inout" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                            s.word(if *late { "inlateout" } else { "inout" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(in_expr);
+                            s.space();
+                            s.word_space("=>");
+                            match out_expr {
+                                Some(out_expr) => s.print_expr(out_expr),
+                                None => s.word("_"),
+                            }
+                        }
+                        hir::InlineAsmOperand::Const { expr } => {
+                            s.word("const");
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::Sym { expr } => {
+                            s.word("sym");
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                    },
+                    AsmArg::Options(opts) => {
+                        s.word("options");
+                        s.popen();
+                        let mut options = vec![];
+                        if opts.contains(InlineAsmOptions::PURE) {
+                            options.push("pure");
+                        }
+                        if opts.contains(InlineAsmOptions::NOMEM) {
+                            options.push("nomem");
+                        }
+                        if opts.contains(InlineAsmOptions::READONLY) {
+                            options.push("readonly");
+                        }
+                        if opts.contains(InlineAsmOptions::PRESERVES_FLAGS) {
+                            options.push("preserves_flags");
+                        }
+                        if opts.contains(InlineAsmOptions::NORETURN) {
+                            options.push("noreturn");
+                        }
+                        if opts.contains(InlineAsmOptions::NOSTACK) {
+                            options.push("nostack");
+                        }
+                        s.commasep(Inconsistent, &options, |s, &opt| {
+                            s.word(opt);
+                        });
+                        s.pclose();
+                    }
+                });
+                self.pclose();
             }
             hir::ExprKind::LlvmInlineAsm(ref a) => {
                 let i = &a.inner;
