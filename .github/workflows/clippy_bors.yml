@@ -163,9 +163,8 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --debug
-        /usr/bin/find ~/.cargo/bin ! -type d -exec strip {} \;
-        cargo cache --autoclean
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
       shell: bash
   integration_build:
     needs: changelog
@@ -222,9 +221,8 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --debug
-        find ~/.cargo/bin ! -type d -exec strip {} \;
-        cargo cache --autoclean
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
   integration:
     needs: integration_build
     strategy:
@@ -300,9 +298,8 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --debug
-        find ~/.cargo/bin ! -type d -exec strip {} \;
-        cargo cache --autoclean
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a

@@ -95,6 +95,5 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --debug
-        find ~/.cargo/bin ! -type d -exec strip {} \;
-        cargo cache --autoclean
+        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo cache
