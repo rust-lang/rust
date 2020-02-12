@@ -1,7 +1,11 @@
 import fetch from "node-fetch";
 import * as fs from "fs";
+import * as stream from "stream";
+import * as util from "util";
 import { strict as assert } from "assert";
 import { NestedError } from "ts-nested-error";
+
+const pipeline = util.promisify(stream.pipeline);
 
 class DownloadFileError extends NestedError {}
 
@@ -29,25 +33,19 @@ export async function downloadFile(
     const totalBytes = Number(res.headers.get('content-length'));
     assert(!Number.isNaN(totalBytes), "Sanity check of content-length protocol");
 
-    let readBytes = 0;
-
     console.log("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
 
-    // Here reject() may be called 2 times. As per ECMAScript standard, 2-d call is ignored
-    // https://tc39.es/ecma262/#sec-promise-reject-functions
+    let readBytes = 0;
+    res.body.on("data", (chunk: Buffer) => {
+        readBytes += chunk.length;
+        onProgress(readBytes, totalBytes);
+    });
 
-    return new Promise<void>((resolve, reject) => res.body
-        .on("data", (chunk: Buffer) => {
-            readBytes += chunk.length;
-            onProgress(readBytes, totalBytes);
-        })
-        .on("error", err => reject(
-            new DownloadFileError(`Read-stream error, read bytes: ${readBytes}`, err)
-        ))
-        .pipe(fs.createWriteStream(destFilePath, { mode: destFilePermissions }))
-        .on("error", err => reject(
-            new DownloadFileError(`Write-stream error, read bytes: ${readBytes}`, err)
-        ))
-        .on("close", resolve)
-    );
+    const destFileStream = fs.createWriteStream(destFilePath, { mode: destFilePermissions });
+
+    await pipeline(res.body, destFileStream).catch(DownloadFileError.rethrow("Piping file error"));
+    return new Promise<void>(resolve => {
+        destFileStream.on("close", resolve); // details on workaround: https://github.com/rust-analyzer/rust-analyzer/pull/3092#discussion_r378191131
+        destFileStream.destroy();
+    });
 }
