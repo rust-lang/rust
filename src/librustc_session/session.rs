@@ -23,6 +23,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{SourceFileHashAlgorithm, Symbol};
+use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple, TlsModel};
 
@@ -31,6 +32,7 @@ use std::env;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -158,6 +160,12 @@ pub struct Session {
     /// if Rust was built with path remapping to `/rustc/$hash` enabled
     /// (the `rust.remap-debuginfo` option in `config.toml`).
     pub real_rust_source_base_dir: Option<PathBuf>,
+
+    /// Architecture to use for interpreting asm!.
+    pub asm_arch: Option<InlineAsmArch>,
+
+    /// Set of enabled features for the current target.
+    pub target_features: FxHashSet<Symbol>,
 }
 
 pub struct PerfStats {
@@ -1183,6 +1191,12 @@ pub fn build_session_with_source_map(
         if candidate.join("src/libstd/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
+    let asm_arch = if target_cfg.target.options.allow_asm {
+        InlineAsmArch::from_str(&target_cfg.target.arch).ok()
+    } else {
+        None
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1223,6 +1237,8 @@ pub fn build_session_with_source_map(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         real_rust_source_base_dir,
+        asm_arch,
+        target_features: FxHashSet::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);
