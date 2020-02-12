@@ -1,7 +1,7 @@
-use crate::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
-use crate::dataflow::DataflowResults;
+use crate::dataflow;
+use crate::dataflow::generic::{Analysis, Results};
+use crate::dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use crate::dataflow::MoveDataParamEnv;
-use crate::dataflow::{self, do_dataflow, DebugFormatted};
 use crate::dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
@@ -40,24 +40,16 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
             let dead_unwinds = find_dead_unwinds(tcx, body, def_id, &env);
-            let flow_inits = do_dataflow(
-                tcx,
-                body,
-                def_id,
-                &[],
-                &dead_unwinds,
-                MaybeInitializedPlaces::new(tcx, body, &env),
-                |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]),
-            );
-            let flow_uninits = do_dataflow(
-                tcx,
-                body,
-                def_id,
-                &[],
-                &dead_unwinds,
-                MaybeUninitializedPlaces::new(tcx, body, &env),
-                |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]),
-            );
+
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
+                .into_engine(tcx, body, def_id)
+                .dead_unwinds(&dead_unwinds)
+                .iterate_to_fixpoint();
+
+            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
+                .into_engine(tcx, body, def_id)
+                .dead_unwinds(&dead_unwinds)
+                .iterate_to_fixpoint();
 
             ElaborateDropsCtxt {
                 tcx,
@@ -87,15 +79,9 @@ fn find_dead_unwinds<'tcx>(
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
-    let flow_inits = do_dataflow(
-        tcx,
-        body,
-        def_id,
-        &[],
-        &dead_unwinds,
-        MaybeInitializedPlaces::new(tcx, body, &env),
-        |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]),
-    );
+    let flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
+        .into_engine(tcx, body, def_id)
+        .iterate_to_fixpoint();
     for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
         let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. }
@@ -104,7 +90,7 @@ fn find_dead_unwinds<'tcx>(
         };
 
         let mut init_data = InitializationData {
-            live: flow_inits.sets().entry_set_for(bb.index()).to_owned(),
+            live: flow_inits.entry_set_for_block(bb).clone(),
             dead: BitSet::new_empty(env.move_data.move_paths.len()),
         };
         debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}", bb, bb_data, init_data.live);
@@ -283,8 +269,8 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx>,
-    flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
-    flow_uninits: DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
+    flow_inits: Results<'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_uninits: Results<'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }
@@ -298,10 +284,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.env.param_env
     }
 
+    // FIXME(ecstaticmorse): This duplicates `dataflow::ResultsCursor` but hardcodes the transfer
+    // function for `Maybe{Un,}InitializedPlaces` directly. It should be replaced by a a pair of
+    // `ResultsCursor`s.
     fn initialization_data_at(&self, loc: Location) -> InitializationData {
         let mut data = InitializationData {
-            live: self.flow_inits.sets().entry_set_for(loc.block.index()).to_owned(),
-            dead: self.flow_uninits.sets().entry_set_for(loc.block.index()).to_owned(),
+            live: self.flow_inits.entry_set_for_block(loc.block).to_owned(),
+            dead: self.flow_uninits.entry_set_for_block(loc.block).to_owned(),
         };
         for stmt in 0..loc.statement_index {
             data.apply_location(

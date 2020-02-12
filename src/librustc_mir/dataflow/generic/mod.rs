@@ -35,6 +35,8 @@
 use std::io;
 
 use rustc::mir::{self, BasicBlock, Location};
+use rustc::ty::TyCtxt;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -43,9 +45,12 @@ use crate::dataflow::BottomValue;
 mod cursor;
 mod engine;
 mod graphviz;
+mod visitor;
 
 pub use self::cursor::{ResultsCursor, ResultsRefCursor};
 pub use self::engine::Engine;
+pub use self::visitor::{visit_results, ResultsVisitor};
+pub use self::visitor::{BorrowckFlowState, BorrowckResults};
 
 /// A dataflow analysis that has converged to fixpoint.
 pub struct Results<'tcx, A>
@@ -166,6 +171,30 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     );
+
+    /// Calls the appropriate `Engine` constructor to find the fixpoint for this dataflow problem.
+    ///
+    /// You shouldn't need to override this outside this module, since the combination of the
+    /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
+    /// Its purpose is to enable method chaining like so:
+    ///
+    /// ```ignore(cross-crate-imports)
+    /// let results = MyAnalysis::new(tcx, body)
+    ///     .into_engine(tcx, body, def_id)
+    ///     .iterate_to_fixpoint()
+    ///     .into_results_cursor(body);
+    /// ```
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_generic(tcx, body, def_id, self)
+    }
 }
 
 /// A gen/kill dataflow problem.
@@ -271,6 +300,18 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
+    }
+
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_gen_kill(tcx, body, def_id, self)
     }
 }
 
