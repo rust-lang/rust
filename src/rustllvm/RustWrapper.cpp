@@ -1296,6 +1296,14 @@ extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
 #endif
 }
 
+extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
+                                            LLVMValueRef Dst, unsigned DstAlign,
+                                            LLVMValueRef Val,
+                                            LLVMValueRef Size, bool IsVolatile) {
+  return wrap(unwrap(B)->CreateMemSet(
+      unwrap(Dst), unwrap(Val), unwrap(Size), DstAlign, IsVolatile));
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                     unsigned NumArgs, LLVMBasicBlockRef Then,
