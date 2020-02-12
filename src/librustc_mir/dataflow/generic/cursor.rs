@@ -65,6 +65,13 @@ where
         &self.state
     }
 
+    /// Returns `true` if the dataflow state at the current location contains the given element.
+    ///
+    /// Shorthand for `self.get().contains(elem)`
+    pub fn contains(&self, elem: A::Idx) -> bool {
+        self.state.contains(elem)
+    }
+
     /// Resets the cursor to the start of the given basic block.
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
         self.state.overwrite(&self.results.borrow().entry_sets[block]);
