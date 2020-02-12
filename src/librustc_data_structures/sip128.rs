@@ -4,7 +4,6 @@ use std::cmp;
 use std::hash::Hasher;
 use std::mem;
 use std::ptr;
-use std::slice;
 
 #[cfg(test)]
 mod tests;
@@ -52,46 +51,17 @@ macro_rules! compress {
     }};
 }
 
-/// Loads an integer of the desired type from a byte stream, in LE order. Uses
-/// `copy_nonoverlapping` to let the compiler generate the most efficient way
-/// to load it from a possibly unaligned address.
-///
-/// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
-macro_rules! load_int_le {
-    ($buf:expr, $i:expr, $int_ty:ident) => {{
-        debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
-        let mut data = 0 as $int_ty;
-        ptr::copy_nonoverlapping(
-            $buf.get_unchecked($i),
-            &mut data as *mut _ as *mut u8,
-            mem::size_of::<$int_ty>(),
-        );
-        data.to_le()
-    }};
-}
-
-/// Loads an u64 using up to 7 bytes of a byte slice.
-///
-/// Unsafe because: unchecked indexing at start..start+len
+/// Loads up to 8 bytes from a byte-slice into a little-endian u64.
 #[inline]
-unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
-    debug_assert!(len < 8);
-    let mut i = 0; // current byte index (from LSB) in the output u64
-    let mut out = 0;
-    if i + 3 < len {
-        out = u64::from(load_int_le!(buf, start + i, u32));
-        i += 4;
+fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+    assert!(len <= 8 && start + len <= buf.len());
+
+    let mut out = 0u64;
+    unsafe {
+        let out_ptr = &mut out as *mut _ as *mut u8;
+        ptr::copy_nonoverlapping(buf.as_ptr().offset(start as isize), out_ptr, len);
     }
-    if i + 1 < len {
-        out |= u64::from(load_int_le!(buf, start + i, u16)) << (i * 8);
-        i += 2
-    }
-    if i < len {
-        out |= u64::from(*buf.get_unchecked(start + i)) << (i * 8);
-        i += 1;
-    }
-    debug_assert_eq!(i, len);
-    out
+    out.to_le()
 }
 
 impl SipHasher128 {
@@ -122,42 +92,76 @@ impl SipHasher128 {
         self.state.v1 ^= 0xee;
     }
 
-    // Specialized write function that is only valid for buffers with len <= 8.
-    // It's used to force inlining of write_u8 and write_usize, those would normally be inlined
-    // except for composite types (that includes slices and str hashing because of delimiter).
-    // Without this extra push the compiler is very reluctant to inline delimiter writes,
-    // degrading performance substantially for the most common use cases.
+    // A specialized write function for values with size <= 8.
+    //
+    // The hashing of multi-byte integers depends on endianness. E.g.:
+    // - little-endian: `write_u32(0xDDCCBBAA)` == `write([0xAA, 0xBB, 0xCC, 0xDD])`
+    // - big-endian:    `write_u32(0xDDCCBBAA)` == `write([0xDD, 0xCC, 0xBB, 0xAA])`
+    //
+    // This function does the right thing for little-endian hardware. On
+    // big-endian hardware `x` must be byte-swapped first to give the right
+    // behaviour. After any byte-swapping, the input must be zero-extended to
+    // 64-bits. The caller is responsible for the byte-swapping and
+    // zero-extension.
     #[inline]
-    fn short_write(&mut self, msg: &[u8]) {
-        debug_assert!(msg.len() <= 8);
-        let length = msg.len();
-        self.length += length;
+    fn short_write<T>(&mut self, _x: T, x: u64) {
+        let size = mem::size_of::<T>();
+        self.length += size;
 
+        // The original number must be zero-extended, not sign-extended.
+        debug_assert!(if size < 8 { x >> (8 * size) == 0 } else { true });
+
+        // The number of bytes needed to fill `self.tail`.
         let needed = 8 - self.ntail;
-        let fill = cmp::min(length, needed);
-        if fill == 8 {
-            self.tail = unsafe { load_int_le!(msg, 0, u64) };
-        } else {
-            self.tail |= unsafe { u8to64_le(msg, 0, fill) } << (8 * self.ntail);
-            if length < needed {
-                self.ntail += length;
-                return;
-            }
+
+        // SipHash parses the input stream as 8-byte little-endian integers.
+        // Inputs are put into `self.tail` until 8 bytes of data have been
+        // collected, and then that word is processed.
+        //
+        // For example, imagine that `self.tail` is 0x0000_00EE_DDCC_BBAA,
+        // `self.ntail` is 5 (because 5 bytes have been put into `self.tail`),
+        // and `needed` is therefore 3.
+        //
+        // - Scenario 1, `self.write_u8(0xFF)`: we have already zero-extended
+        //   the input to 0x0000_0000_0000_00FF. We now left-shift it five
+        //   bytes, giving 0x0000_FF00_0000_0000. We then bitwise-OR that value
+        //   into `self.tail`, resulting in 0x0000_FFEE_DDCC_BBAA.
+        //   (Zero-extension of the original input is critical in this scenario
+        //   because we don't want the high two bytes of `self.tail` to be
+        //   touched by the bitwise-OR.) `self.tail` is not yet full, so we
+        //   return early, after updating `self.ntail` to 6.
+        //
+        // - Scenario 2, `self.write_u32(0xIIHH_GGFF)`: we have already
+        //   zero-extended the input to 0x0000_0000_IIHH_GGFF. We now
+        //   left-shift it five bytes, giving 0xHHGG_FF00_0000_0000. We then
+        //   bitwise-OR that value into `self.tail`, resulting in
+        //   0xHHGG_FFEE_DDCC_BBAA. `self.tail` is now full, and we can use it
+        //   to update `self.state`. (As mentioned above, this assumes a
+        //   little-endian machine; on a big-endian machine we would have
+        //   byte-swapped 0xIIHH_GGFF in the caller, giving 0xFFGG_HHII, and we
+        //   would then end up bitwise-ORing 0xGGHH_II00_0000_0000 into
+        //   `self.tail`).
+        //
+        self.tail |= x << (8 * self.ntail);
+        if size < needed {
+            self.ntail += size;
+            return;
         }
+
+        // `self.tail` is full, process it.
         self.state.v3 ^= self.tail;
         Sip24Rounds::c_rounds(&mut self.state);
         self.state.v0 ^= self.tail;
 
-        // Buffered tail is now flushed, process new input.
-        self.ntail = length - needed;
-        self.tail = unsafe { u8to64_le(msg, needed, self.ntail) };
-    }
-
-    #[inline(always)]
-    fn short_write_gen<T>(&mut self, x: T) {
-        let bytes =
-            unsafe { slice::from_raw_parts(&x as *const T as *const u8, mem::size_of::<T>()) };
-        self.short_write(bytes);
+        // Continuing scenario 2: we have one byte left over from the input. We
+        // set `self.ntail` to 1 and `self.tail` to `0x0000_0000_IIHH_GGFF >>
+        // 8*3`, which is 0x0000_0000_0000_00II. (Or on a big-endian machine
+        // the prior byte-swapping would leave us with 0x0000_0000_0000_00FF.)
+        //
+        // The `if` is needed to avoid shifting by 64 bits, which Rust
+        // complains about.
+        self.ntail = size - needed;
+        self.tail = if needed < 8 { x >> (8 * needed) } else { 0 };
     }
 
     #[inline]
@@ -182,52 +186,52 @@ impl SipHasher128 {
 impl Hasher for SipHasher128 {
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.short_write_gen(i);
+        self.short_write(i, i as u64);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.short_write_gen(i);
+        self.short_write(i, i.to_le() as u64);
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.short_write_gen(i);
+        self.short_write(i, i.to_le() as u64);
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.short_write_gen(i);
+        self.short_write(i, i.to_le() as u64);
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.short_write_gen(i);
+        self.short_write(i, i.to_le() as u64);
     }
 
     #[inline]
     fn write_i8(&mut self, i: i8) {
-        self.short_write_gen(i);
+        self.short_write(i, i as u8 as u64);
     }
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.short_write_gen(i);
+        self.short_write(i, (i as u16).to_le() as u64);
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.short_write_gen(i);
+        self.short_write(i, (i as u32).to_le() as u64);
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.short_write_gen(i);
+        self.short_write(i, (i as u64).to_le() as u64);
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.short_write_gen(i);
+        self.short_write(i, (i as usize).to_le() as u64);
     }
 
     #[inline]
@@ -239,7 +243,7 @@ impl Hasher for SipHasher128 {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
+            self.tail |= u8to64_le(msg, 0, cmp::min(length, needed)) << (8 * self.ntail);
             if length < needed {
                 self.ntail += length;
                 return;
@@ -257,7 +261,7 @@ impl Hasher for SipHasher128 {
 
         let mut i = needed;
         while i < len - left {
-            let mi = unsafe { load_int_le!(msg, i, u64) };
+            let mi = u8to64_le(msg, i, 8);
 
             self.state.v3 ^= mi;
             Sip24Rounds::c_rounds(&mut self.state);
@@ -266,7 +270,7 @@ impl Hasher for SipHasher128 {
             i += 8;
         }
 
-        self.tail = unsafe { u8to64_le(msg, i, left) };
+        self.tail = u8to64_le(msg, i, left);
         self.ntail = left;
     }
 
