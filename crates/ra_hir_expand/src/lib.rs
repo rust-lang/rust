@@ -323,11 +323,18 @@ impl<T: Clone> InFile<&T> {
     }
 }
 
+impl<T> InFile<Option<T>> {
+    pub fn transpose(self) -> Option<InFile<T>> {
+        let value = self.value?;
+        Some(InFile::new(self.file_id, value))
+    }
+}
+
 impl InFile<SyntaxNode> {
-    pub fn ancestors_with_macros<'a>(
+    pub fn ancestors_with_macros(
         self,
-        db: &'a impl crate::db::AstDatabase,
-    ) -> impl Iterator<Item = InFile<SyntaxNode>> + 'a {
+        db: &impl crate::db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
         std::iter::successors(Some(self), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
@@ -335,6 +342,15 @@ impl InFile<SyntaxNode> {
                 Some(parent_node)
             }
         })
+    }
+}
+
+impl InFile<SyntaxToken> {
+    pub fn ancestors_with_macros(
+        self,
+        db: &impl crate::db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
+        self.map(|it| it.parent()).ancestors_with_macros(db)
     }
 }
 
