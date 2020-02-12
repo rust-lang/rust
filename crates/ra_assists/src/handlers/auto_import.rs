@@ -115,7 +115,7 @@ impl AutoImportAssets {
         match &self.import_candidate {
             ImportCandidate::UnqualifiedName(name) => name,
             ImportCandidate::QualifierStart(qualifier_start) => qualifier_start,
-            ImportCandidate::TraitFunction(_, trait_function_name) => trait_function_name,
+            ImportCandidate::TraitAssocItem(_, trait_function_name) => trait_function_name,
             ImportCandidate::TraitMethod(_, trait_method_name) => trait_method_name,
         }
     }
@@ -126,8 +126,8 @@ impl AutoImportAssets {
             ImportCandidate::QualifierStart(qualifier_start) => {
                 format!("Import {}", qualifier_start)
             }
-            ImportCandidate::TraitFunction(_, trait_function_name) => {
-                format!("Import a trait for function {}", trait_function_name)
+            ImportCandidate::TraitAssocItem(_, trait_function_name) => {
+                format!("Import a trait for item {}", trait_function_name)
             }
             ImportCandidate::TraitMethod(_, trait_method_name) => {
                 format!("Import a trait for method {}", trait_method_name)
@@ -142,7 +142,7 @@ impl AutoImportAssets {
             .find_imports(&self.get_search_query())
             .into_iter()
             .map(|module_def| match &self.import_candidate {
-                ImportCandidate::TraitFunction(function_callee, _) => {
+                ImportCandidate::TraitAssocItem(function_callee, _) => {
                     let mut applicable_traits = Vec::new();
                     if let ModuleDef::Function(located_function) = module_def {
                         let trait_candidates: FxHashSet<_> =
@@ -255,10 +255,10 @@ enum ImportCandidate {
     /// First part of the qualified name.
     /// For 'std::collections::HashMap', that will be 'std'.
     QualifierStart(String),
-    /// A trait function that has no self parameter.
+    /// A trait associated function (with no self parameter) or associated constant.
     /// For 'test_mod::TestEnum::test_function', `Type` is the `test_mod::TestEnum` expression type
-    /// and `String`is the `test_function`
-    TraitFunction(Type, String),
+    /// and `String` is the `test_function`
+    TraitAssocItem(Type, String),
     /// A trait method with self parameter.
     /// For 'test_enum.test_method()', `Type` is the `test_enum` expression type
     /// and `String` is the `test_method`
@@ -303,7 +303,7 @@ impl ImportCandidate {
                     source_analyzer.resolve_path(db, &qualifier)?
                 };
                 if let PathResolution::Def(ModuleDef::Adt(function_callee)) = qualifier_resolution {
-                    Some(ImportCandidate::TraitFunction(
+                    Some(ImportCandidate::TraitAssocItem(
                         function_callee.ty(db),
                         segment.syntax().to_string(),
                     ))
