@@ -100,7 +100,7 @@ much faster, as described shortly.
 
 In the code, the set of outlives constraints is given to the region
 inference context on creation in a parameter of type
-[`ConstraintSet`]. The constraint set is basically just a list of `'a:
+[`OutlivesConstraintSet`]. The constraint set is basically just a list of `'a:
 'b` constraints.
 
 ### The outlives constraint graph and SCCs
@@ -112,7 +112,7 @@ induces an edge `'a -> 'b`. This conversion happens in the
 [`RegionInferenceContext::new`] function that creates the inference
 context.
 
-[`ConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraints/struct.OutlivesConstraintSet.html
+[`OutlivesConstraintSet`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraints/struct.OutlivesConstraintSet.html
 [graph-fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/constraints/struct.OutlivesConstraintSet.html#method.graph
 [`RegionInferenceContext::new`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#method.new
 
