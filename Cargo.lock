@@ -4124,6 +4124,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_hir",
  "rustc_span",
+ "rustc_target",
 ]
 
 [[package]]

@@ -17,6 +17,7 @@ extern crate log;
 use rustc::ty::query::Providers;
 
 mod common_traits;
+pub mod instance;
 mod needs_drop;
 mod ty;
 
