@@ -1075,7 +1075,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_alphabetic()
+        match *self {
+            'A'..='Z' | 'a'..='z' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -1108,7 +1111,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_uppercase()
+        match *self {
+            'A'..='Z' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII lowercase character:
@@ -1141,7 +1147,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_lowercase()
+        match *self {
+            'a'..='z' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII alphanumeric character:
@@ -1177,7 +1186,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_alphanumeric()
+        match *self {
+            '0'..='9' | 'A'..='Z' | 'a'..='z' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -1210,7 +1222,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_digit()
+        match *self {
+            '0'..='9' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:
@@ -1246,7 +1261,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_hexdigit()
+        match *self {
+            '0'..='9' | 'A'..='F' | 'a'..='f' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -1283,7 +1301,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_punctuation()
+        match *self {
+            '!'..='/' | ':'..='@' | '['..='`' | '{'..='~' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII graphic character:
@@ -1316,7 +1337,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_graphic(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_graphic()
+        match *self {
+            '!'..='~' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII whitespace character:
@@ -1366,7 +1390,10 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_whitespace()
+        match *self {
+            '\t' | '\n' | '\x0C' | '\r' | ' ' => true,
+            _ => false,
+        }
     }
 
     /// Checks if the value is an ASCII control character:
@@ -1401,6 +1428,9 @@ impl char {
     #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
     pub const fn is_ascii_control(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_control()
+        match *self {
+            '\0'..='\x1F' | '\x7F' => true,
+            _ => false,
+        }
     }
 }
