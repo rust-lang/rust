@@ -696,7 +696,6 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.module(db),
         }
     }
-
     pub fn container(self, db: &impl DefDatabase) -> AssocItemContainer {
         let container = match self {
             AssocItem::Function(it) => it.id.lookup(db).container,
