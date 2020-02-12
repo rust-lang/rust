@@ -765,6 +765,9 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
     let default_sysroot = filesearch::get_or_default_sysroot();
     let default_tlib =
         filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+    let channel = option_env!("CFG_RELEASE_CHANNEL")
+        .map(|channel| format!("-{}", channel))
+        .unwrap_or_default();
 
     match sess.opts.target_triple.triple() {
         "x86_64-apple-darwin" => {
@@ -772,13 +775,13 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
-            let libname = format!("rustc_rt.{}", name);
+            let libname = format!("rustc{}_rt.{}", channel, name);
             let rpath = default_tlib.to_str().expect("non-utf8 component in path");
             linker.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
             linker.link_dylib(Symbol::intern(&libname));
         }
         "x86_64-unknown-linux-gnu" | "x86_64-fuchsia" | "aarch64-fuchsia" => {
-            let filename = format!("librustc_rt.{}.a", name);
+            let filename = format!("librustc{}_rt.{}.a", channel, name);
             let path = default_tlib.join(&filename);
             linker.link_whole_rlib(&path);
         }
