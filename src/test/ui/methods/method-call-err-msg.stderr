@@ -1,32 +1,38 @@
-error[E0061]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/method-call-err-msg.rs:12:7
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/method-call-err-msg.rs:13:7
    |
 LL |     fn zero(self) -> Foo { self }
    |     -------------------- defined here
 ...
 LL |     x.zero(0)
-   |       ^^^^ expected 0 parameters
+   |       ^^^^ - supplied 1 argument
+   |       |
+   |       expected 0 arguments
 
-error[E0061]: this function takes 1 parameter but 0 parameters were supplied
-  --> $DIR/method-call-err-msg.rs:13:7
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/method-call-err-msg.rs:14:7
    |
 LL |     fn one(self, _: isize) -> Foo { self }
    |     ----------------------------- defined here
 ...
 LL |      .one()
-   |       ^^^ expected 1 parameter
+   |       ^^^- supplied 0 arguments
+   |       |
+   |       expected 1 argument
 
-error[E0061]: this function takes 2 parameters but 1 parameter was supplied
-  --> $DIR/method-call-err-msg.rs:14:7
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/method-call-err-msg.rs:15:7
    |
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |     --------------------------------------- defined here
 ...
 LL |      .two(0);
-   |       ^^^ expected 2 parameters
+   |       ^^^ - supplied 1 argument
+   |       |
+   |       expected 2 arguments
 
 error[E0599]: no method named `take` found for struct `Foo` in the current scope
-  --> $DIR/method-call-err-msg.rs:18:7
+  --> $DIR/method-call-err-msg.rs:19:7
    |
 LL | pub struct Foo;
    | --------------- method `take` not found for this
@@ -41,7 +47,18 @@ LL |      .take()
            candidate #1: `std::io::Read`
            candidate #2: `std::iter::Iterator`
 
-error: aborting due to 4 previous errors
+error[E0061]: this function takes 3 arguments but 0 arguments were supplied
+  --> $DIR/method-call-err-msg.rs:21:7
+   |
+LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }
+   |     ------------------------------------------ defined here
+...
+LL |     y.three::<usize>();
+   |       ^^^^^--------- supplied 0 arguments
+   |       |
+   |       expected 3 arguments
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0061, E0599.
 For more information about an error, try `rustc --explain E0061`.
