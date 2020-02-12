@@ -1249,8 +1249,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// Convert into a reference to the underlying data.
     ///
     /// The underlying `RefCell` can never be mutably borrowed from again and will always appear
-    /// already immutably borrowed. It can still be immutably borrowed until more than `isize::MAX`
-    /// `Ref`s of this `RefCell` have been leaked, through this function or another leak, in total.
+    /// already immutably borrowed. It is not a good idea to leak more than a constant number of
+    /// references. The `RefCell` can be immutably borrowed again if only a smaller number of leaks
+    /// have occurred in total.
     ///
     /// This is an associated function that needs to be used as
     /// `Ref::leak(...)`. A method would interfere with methods of the
@@ -1269,7 +1270,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert!(cell.try_borrow().is_ok());
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
-    #[unstable(feature = "cell_leak", issue = "none")]
+    #[unstable(feature = "cell_leak", issue = "69099")]
     pub fn leak(orig: Ref<'b, T>) -> &'b T {
         // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell never
         // goes back to UNUSED again. No further references can be created from the original cell,
@@ -1385,7 +1386,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
-    #[unstable(feature = "cell_leak", issue = "none")]
+    #[unstable(feature = "cell_leak", issue = "69099")]
     pub fn leak(orig: RefMut<'b, T>) -> &'b mut T {
         // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell never
         // goes back to UNUSED again. No further references can be created from the original cell,
