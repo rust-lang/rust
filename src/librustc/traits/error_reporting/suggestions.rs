@@ -701,10 +701,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>();
                 // Add the suggestion for the return type.
-                suggestions.push((
-                    ret_ty.span,
-                    format!("Box<{}{}>", if has_dyn { "" } else { "dyn " }, snippet),
-                ));
+                suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
                 err.multipart_suggestion(
                     "return a boxed trait object instead",
                     suggestions,
