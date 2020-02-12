@@ -4,15 +4,13 @@ on:
   push:
     branches:
       - master
-  release:
-    types:
-      - created
+    tags:
+      - rust-1.**
 
 env:
   TARGET_BRANCH: 'gh-pages'
   SHA: '${{ github.sha }}'
   SSH_REPO: 'git@github.com:${{ github.repository }}.git'
-  TAG_NAME: '${{ github.event.release.GITHUB_REF }}'
 
 jobs:
   deploy:
@@ -30,6 +28,11 @@ jobs:
         path: 'out'
 
     # Run
+    - name: Set tag name
+      if: startswith(github.ref, 'refs/tags/')
+      run: |
+        TAG=$(basename ${{ github.ref }})
+        echo "::set-env name=TAG_NAME::$TAG"
     - name: Deploy
       run: |
         eval "$(ssh-agent -s)"
