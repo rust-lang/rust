@@ -16,24 +16,16 @@ pub(crate) fn goto_type_definition(
     let token = pick_best(file.token_at_offset(position.offset))?;
     let token = descend_into_macros(db, position.file_id, token);
 
-    let node = token.value.ancestors().find_map(|token| {
-        token
-            .ancestors()
-            .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())
-    })?;
+    let node = token
+        .value
+        .ancestors()
+        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
 
     let analyzer = hir::SourceAnalyzer::new(db, token.with_value(&node), None);
 
-    let ty: hir::Type = if let Some(ty) =
-        ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
-    {
-        ty
-    } else if let Some(ty) = ast::Pat::cast(node.clone()).and_then(|p| analyzer.type_of_pat(db, &p))
-    {
-        ty
-    } else {
-        return None;
-    };
+    let ty: hir::Type = ast::Expr::cast(node.clone())
+        .and_then(|e| analyzer.type_of(db, &e))
+        .or_else(|| ast::Pat::cast(node.clone()).and_then(|p| analyzer.type_of_pat(db, &p)))?;
 
     let adt_def = ty.autoderef(db).find_map(|ty| ty.as_adt())?;
 
