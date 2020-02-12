@@ -25,6 +25,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_ref_or_into(err, expr, expected, expr_ty);
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
+        self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_await(err, expr, expected, expr_ty);
     }
 
