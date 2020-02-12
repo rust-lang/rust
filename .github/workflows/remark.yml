@@ -2,7 +2,9 @@ name: Remark
 
 on:
   push:
-    branches: [auto, try]
+    branches:
+      - auto
+      - try
   pull_request:
     paths:
     - '**.md'

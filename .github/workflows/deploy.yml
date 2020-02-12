@@ -2,9 +2,11 @@ name: Deploy
 
 on:
   push:
-    branches: master
+    branches:
+      - master
   release:
-    types: [created]
+    types:
+      - created
 
 env:
   TARGET_BRANCH: 'gh-pages'
