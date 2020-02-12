@@ -35,7 +35,7 @@ use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::{Constness, GlobMap, Node, TraitMap};
+use rustc_hir::{Constness, GlobMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
@@ -46,6 +46,7 @@ use rustc_target::abi::Align;
 use syntax::ast::{self, Ident, Name};
 use syntax::node_id::{NodeId, NodeMap, NodeSet};
 
+use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -121,6 +122,23 @@ mod structural_impls;
 mod sty;
 
 // Data types
+
+#[derive(Clone, Debug)]
+pub struct TraitCandidate {
+    pub def_id: DefId,
+    pub import_ids: SmallVec<[NodeId; 1]>,
+}
+
+impl TraitCandidate {
+    fn node_to_hir_id(self, definitions: &hir_map::Definitions) -> hir::TraitCandidate {
+        let TraitCandidate { def_id, import_ids } = self;
+        let import_ids =
+            import_ids.into_iter().map(|node_id| definitions.node_to_hir_id(node_id)).collect();
+        hir::TraitCandidate { def_id, import_ids }
+    }
+}
+
+pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 
 pub struct ResolverOutputs {
     pub definitions: hir_map::Definitions,

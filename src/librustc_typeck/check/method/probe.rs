@@ -902,13 +902,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    let import_ids = trait_candidate
-                        .import_ids
-                        .iter()
-                        .map(|node_id| self.fcx.tcx.hir().node_to_hir_id(*node_id))
-                        .collect();
-                    let result =
-                        self.assemble_extension_candidates_for_trait(import_ids, trait_did);
+                    let result = self.assemble_extension_candidates_for_trait(
+                        &trait_candidate.import_ids,
+                        trait_did,
+                    );
                     result?;
                 }
             }
@@ -920,7 +917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(smallvec![], trait_info.def_id)?;
+                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id)?;
             }
         }
         Ok(())
@@ -959,7 +956,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: SmallVec<[hir::HirId; 1]>,
+        import_ids: &SmallVec<[hir::HirId; 1]>,
         trait_def_id: DefId,
     ) -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
