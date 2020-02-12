@@ -17,6 +17,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
+use std::char;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::ops::{Deref, DerefMut};
@@ -917,22 +918,36 @@ pub trait PrettyPrinter<'tcx>:
 
         match (scalar, &ty.kind) {
             // Byte strings (&[u8; N])
-            (Scalar::Ptr(ptr), ty::Ref(_, ty::TyS { kind: ty::Array(t, n), .. }, _))
-                if *t == self.tcx().types.u8 =>
-            {
-                match n.val.try_to_bits(self.tcx().data_layout.pointer_size) {
-                    Some(n) => {
-                        let byte_str = self
-                            .tcx()
-                            .alloc_map
-                            .lock()
-                            .unwrap_memory(ptr.alloc_id)
-                            .get_bytes(&self.tcx(), ptr, Size::from_bytes(n as u64))
-                            .unwrap();
-                        p!(pretty_print_byte_str(byte_str));
-                    }
-                    None => self.write_str("_")?,
-                }
+            (
+                Scalar::Ptr(ptr),
+                ty::Ref(
+                    _,
+                    ty::TyS {
+                        kind:
+                            ty::Array(
+                                ty::TyS { kind: ty::Uint(ast::UintTy::U8), .. },
+                                ty::Const {
+                                    val:
+                                        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw {
+                                            data,
+                                            ..
+                                        })),
+                                    ..
+                                },
+                            ),
+                        ..
+                    },
+                    _,
+                ),
+            ) => {
+                let byte_str = self
+                    .tcx()
+                    .alloc_map
+                    .lock()
+                    .unwrap_memory(ptr.alloc_id)
+                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data as u64))
+                    .unwrap();
+                p!(pretty_print_byte_str(byte_str));
             }
             // Bool
             (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
@@ -970,10 +985,9 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             // Char
-            (Scalar::Raw { data, .. }, ty::Char) => match ::std::char::from_u32(data as u32) {
-                Some(c) => p!(write("{:?}", c)),
-                None => p!(write("{}_char", data)),
-            },
+            (Scalar::Raw { data, .. }, ty::Char) if char::from_u32(data as u32).is_some() => {
+                p!(write("{:?}", char::from_u32(data as u32).unwrap()))
+            }
             // Raw pointers
             (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
                 p!(write("{{0x{:x} as ", data), print(ty), write("}}"))
