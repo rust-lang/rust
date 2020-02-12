@@ -71,6 +71,15 @@ impl ast::Attr {
             _ => None,
         }
     }
+
+    pub fn is_inner_attribute(&self) -> bool {
+        let first_token = self.syntax().first_token();
+        let first_token_kind = first_token.as_ref().map(SyntaxToken::kind);
+        let second_token_kind =
+            first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
+        return first_token_kind == Some(SyntaxKind::POUND)
+            && second_token_kind == Some(SyntaxKind::EXCL);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

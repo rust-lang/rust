@@ -431,7 +431,13 @@ fn best_action_for_target(
                 .find(|n| n.text_range().start() < anchor.text_range().start())
                 .or_else(|| Some(anchor));
 
-            ImportAction::add_new_use(anchor, false)
+            let add_after_anchor = anchor
+                .clone()
+                .and_then(ast::Attr::cast)
+                .as_ref()
+                .map(ast::Attr::is_inner_attribute)
+                .unwrap_or(false);
+            ImportAction::add_new_use(anchor, add_after_anchor)
         }
     }
 }
@@ -958,6 +964,28 @@ mod foo {
 
         Debug<|>
     }
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn inserts_imports_after_inner_attributes() {
+        check_assist(
+            replace_qualified_name_with_use,
+            "
+#![allow(dead_code)]
+
+fn main() {
+    std::fmt::Debug<|>
+}
+    ",
+            "
+#![allow(dead_code)]
+use std::fmt::Debug;
+
+fn main() {
+    Debug<|>
 }
     ",
         );
