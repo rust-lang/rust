@@ -7,6 +7,7 @@ use crate::ty::tls;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::Span;
 
+use std::convert::TryFrom;
 use std::marker::PhantomData;
 use std::num::NonZeroU32;
 
@@ -52,6 +53,10 @@ pub struct QueryJobId {
 }
 
 impl QueryJobId {
+    pub fn new(job: QueryShardJobId, shard: usize, kind: DepKind) -> Self {
+        QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
+    }
+
     fn query<'tcx>(self, map: &QueryMap<'tcx>) -> Query<'tcx> {
         map.get(&self).unwrap().info.query.clone()
     }

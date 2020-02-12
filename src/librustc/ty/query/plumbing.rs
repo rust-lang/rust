@@ -21,7 +21,6 @@ use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, H
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
-use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
@@ -150,11 +149,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             }
 
                             // Create the id of the job we're waiting for
-                            let id = QueryJobId {
-                                job: job.id,
-                                shard: u16::try_from(shard).unwrap(),
-                                kind: Q::dep_kind(),
-                            };
+                            let id = QueryJobId::new(job.id, shard, Q::dep_kind());
 
                             job.latch(id)
                         }
@@ -162,25 +157,22 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                     }
                 }
                 Entry::Vacant(entry) => {
-                    let jobs = &mut lock.jobs;
-
                     // No job entry for this query. Return a new one to be started later.
-                    return tls::with_related_context(tcx, |icx| {
-                        // Generate an id unique within this shard.
-                        let id = jobs.checked_add(1).unwrap();
-                        *jobs = id;
-                        let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
 
-                        let global_id = QueryJobId {
-                            job: id,
-                            shard: u16::try_from(shard).unwrap(),
-                            kind: Q::dep_kind(),
-                        };
-                        let job = QueryJob::new(id, span, icx.query);
-                        let owner = JobOwner { cache, id: global_id, key: (*key).clone() };
-                        entry.insert(QueryResult::Started(job));
-                        TryGetJob::NotYetStarted(owner)
-                    });
+                    // Generate an id unique within this shard.
+                    let id = lock.jobs.checked_add(1).unwrap();
+                    lock.jobs = id;
+                    let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
+
+                    let global_id = QueryJobId::new(id, shard, Q::dep_kind());
+
+                    let job =
+                        tls::with_related_context(tcx, |icx| QueryJob::new(id, span, icx.query));
+
+                    entry.insert(QueryResult::Started(job));
+
+                    let owner = JobOwner { cache, id: global_id, key: (*key).clone() };
+                    return TryGetJob::NotYetStarted(owner);
                 }
             };
             mem::drop(lock_guard);
