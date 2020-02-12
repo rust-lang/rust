@@ -415,17 +415,20 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 if let Some(ref m) = krate.module {
                     if let None | Some("") = m.doc_value() {
-                        let mut diag = tcx.struct_lint_node(
+                        let help = "The following guide may be of use:\n\
+                             https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
+                             .html";
+                        tcx.struct_lint_node(
                             rustc_lint::builtin::MISSING_CRATE_LEVEL_DOC,
                             ctxt.as_local_hir_id(m.def_id).unwrap(),
-                            "no documentation found for this crate's top-level module",
+                            |lint| {
+                                let mut diag = lint.build(
+                                    "no documentation found for this crate's top-level module",
+                                );
+                                diag.help(help);
+                                diag.emit();
+                            },
                         );
-                        diag.help(
-                            "The following guide may be of use:\n\
-                             https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
-                             .html",
-                        );
-                        diag.emit();
                     }
                 }
 
