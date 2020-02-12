@@ -179,20 +179,23 @@ fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
 }
 
 fn build_rule(v: &[u8], positions: &[usize]) -> String {
-    positions
-        .chunks(2)
-        .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
-        .collect::<String>()
-        .trim()
-        .replace("\n", " ")
-        .replace("/", "")
-        .replace("\t", " ")
-        .replace("{", "")
-        .replace("}", "")
-        .split(' ')
-        .filter(|s| s.len() > 0)
-        .collect::<Vec<&str>>()
-        .join(" ")
+    minifier::css::minify(
+        &positions
+            .chunks(2)
+            .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
+            .collect::<String>()
+            .trim()
+            .replace("\n", " ")
+            .replace("/", "")
+            .replace("\t", " ")
+            .replace("{", "")
+            .replace("}", "")
+            .split(' ')
+            .filter(|s| s.len() > 0)
+            .collect::<Vec<&str>>()
+            .join(" "),
+    )
+    .unwrap_or_else(|_| String::new())
 }
 
 fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
