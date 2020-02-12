@@ -120,10 +120,6 @@ pub trait Callbacks {
     }
 }
 
-pub struct DefaultCallbacks;
-
-impl Callbacks for DefaultCallbacks {}
-
 #[derive(Default)]
 pub struct TimePassesCallbacks {
     time_passes: bool,
