@@ -114,8 +114,11 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
         // test fn_pointer_param_ident_path
         // type Foo = fn(Bar::Baz);
         // type Qux = fn(baz: Bar::Baz);
+
+        // test fn_pointer_unnamed_arg
+        // type Foo = fn(_: bar);
         Flavor::FnPointer => {
-            if p.at(IDENT) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
+            if (p.at(IDENT) || p.at(UNDERSCORE)) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
                 patterns::pattern_single(p);
                 types::ascription(p);
             } else {
