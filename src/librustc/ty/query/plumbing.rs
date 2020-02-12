@@ -112,8 +112,8 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let key_hash = state.finish();
 
             let shard = cache.get_shard_index_by_hash(key_hash);
-            let mut lock = cache.get_shard_by_index(shard).lock();
-            let lock = &mut *lock;
+            let mut lock_guard = cache.get_shard_by_index(shard).lock();
+            let lock = &mut *lock_guard;
 
             if let Some((_, value)) =
                 lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
@@ -183,7 +183,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                     });
                 }
             };
-            mem::drop(lock);
+            mem::drop(lock_guard);
 
             // If we are single-threaded we know that we have cycle error,
             // so we just return the error.
