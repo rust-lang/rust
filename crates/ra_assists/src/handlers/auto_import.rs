@@ -1,9 +1,3 @@
-use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
-use ra_syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
-
 use crate::{
     assist_ctx::{Assist, AssistCtx},
     insert_use_statement, AssistId,
@@ -13,7 +7,12 @@ use hir::{
     AssocContainerId, AssocItem, Crate, Function, ModPath, Module, ModuleDef, PathResolution,
     SourceAnalyzer, Trait, Type,
 };
+use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
 use ra_prof::profile;
+use ra_syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
+};
 use rustc_hash::FxHashSet;
 use std::collections::BTreeSet;
 
@@ -50,9 +49,13 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let mut group =
-        // TODO kb create another method and add something about traits there
-        ctx.add_assist_group(format!("Import {}", auto_import_assets.get_search_query()));
+    let assist_group_name = if proposed_imports.len() == 1 {
+        format!("Import `{}`", proposed_imports.iter().next().unwrap())
+    } else {
+        auto_import_assets.get_import_group_message()
+    };
+
+    let mut group = ctx.add_assist_group(assist_group_name);
     for import in proposed_imports {
         group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
             edit.target(auto_import_assets.syntax_under_caret.text_range());
@@ -116,6 +119,19 @@ impl AutoImportAssets {
                 trait_function.syntax().to_string()
             }
             ImportCandidate::TraitMethod(_, trait_method) => trait_method.syntax().to_string(),
+        }
+    }
+
+    fn get_import_group_message(&self) -> String {
+        match &self.import_candidate {
+            ImportCandidate::UnqualifiedName(name_ref)
+            | ImportCandidate::QualifierStart(name_ref) => format!("Import {}", name_ref.syntax()),
+            ImportCandidate::TraitFunction(_, trait_function) => {
+                format!("Import a trait for function {}", trait_function.syntax())
+            }
+            ImportCandidate::TraitMethod(_, trait_method) => {
+                format!("Import a trait for method {}", trait_method.syntax())
+            }
         }
     }
 
