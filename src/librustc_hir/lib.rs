@@ -17,9 +17,15 @@ mod hir;
 pub mod hir_id;
 pub mod intravisit;
 pub mod itemlikevisit;
+pub mod lang_items;
 pub mod pat_util;
 pub mod print;
 mod stable_hash_impls;
+mod target;
+pub mod weak_lang_items;
+
 pub use hir::*;
 pub use hir_id::*;
+pub use lang_items::{LangItem, LanguageItems};
 pub use stable_hash_impls::HashStableContext;
+pub use target::{MethodKind, Target};

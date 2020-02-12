@@ -3630,6 +3630,7 @@ version = "0.0.0"
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
+ "lazy_static 1.4.0",
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",

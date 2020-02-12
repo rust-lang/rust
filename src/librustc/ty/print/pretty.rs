@@ -724,7 +724,7 @@ pub trait PrettyPrinter<'tcx>:
             let mut resugared = false;
 
             // Special-case `Fn(...) -> ...` and resugar it.
-            let fn_trait_kind = self.tcx().lang_items().fn_trait_kind(principal.def_id);
+            let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
                 if let ty::Tuple(ref args) = principal.substs.type_at(0).kind {
                     let mut projections = predicates.projection_bounds();

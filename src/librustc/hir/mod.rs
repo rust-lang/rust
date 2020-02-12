@@ -2,7 +2,6 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
-pub mod check_attr;
 pub mod exports;
 pub mod map;
 
