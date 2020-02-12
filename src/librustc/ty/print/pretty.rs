@@ -999,12 +999,29 @@ pub trait PrettyPrinter<'tcx>:
                 };
                 p!(print_value_path(instance.def_id(), instance.substs));
             }
-            // For zsts just print their type as their value gives no extra information
-            (Scalar::Raw { size: 0, .. }, _) => p!(print(ty)),
+            // For function type zsts just printing the type is enough
+            (Scalar::Raw { size: 0, .. }, ty::FnDef(..)) => p!(print(ty)),
+            // Empty tuples are frequently occurring, so don't print the fallback.
+            (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
+            // Zero element arrays have a trivial representation.
+            (
+                Scalar::Raw { size: 0, .. },
+                ty::Array(
+                    _,
+                    ty::Const {
+                        val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: 0, .. })),
+                        ..
+                    },
+                ),
+            ) => p!(write("[]")),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
                 let print = |mut this: Self| {
-                    write!(this, "transmute(0x{:01$x})", data, size as usize * 2)?;
+                    if size == 0 {
+                        write!(this, "transmute(())")?;
+                    } else {
+                        write!(this, "transmute(0x{:01$x})", data, size as usize * 2)?;
+                    }
                     Ok(this)
                 };
                 self = if print_ty {

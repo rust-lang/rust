@@ -38,7 +38,7 @@ fn main() {
 //   _2 = const ();
 //   StorageLive(_3);
 //   _3 = const ();
-//   _1 = const ((), ());
+//   _1 = const {transmute(()): ((), ())};
 //   StorageDead(_3);
 //   StorageDead(_2);
 //   StorageDead(_1);
@@ -49,7 +49,7 @@ fn main() {
 //   _7 = const ();
 //   StorageDead(_7);
 //   StorageDead(_6);
-//   _4 = const use_zst(const ((), ())) -> bb1;
+//   _4 = const use_zst(const {transmute(()): ((), ())}) -> bb1;
 // }
 // bb1: {
 //   StorageDead(_4);
@@ -75,7 +75,7 @@ fn main() {
 // }
 // bb0: {
 //   StorageLive(_1);
-//   _1 = const use_zst(const ((), ())) -> bb1;
+//   _1 = const use_zst(const {transmute(()): ((), ())}) -> bb1;
 // }
 // bb1: {
 //   StorageDead(_1);
