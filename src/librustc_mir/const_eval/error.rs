@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
-use rustc::mir::PanicInfo;
+use rustc::mir::AssertKind;
 use rustc_span::Symbol;
 
 use super::InterpCx;
@@ -12,7 +12,7 @@ use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine};
 pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
-    AssertFailure(PanicInfo<u64>),
+    AssertFailure(AssertKind<u64>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
 

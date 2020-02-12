@@ -1155,7 +1155,7 @@ pub enum TerminatorKind<'tcx> {
 
 /// Information about an assertion failure.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum PanicInfo<O> {
+pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp),
     OverflowNeg,
@@ -1166,7 +1166,7 @@ pub enum PanicInfo<O> {
 }
 
 /// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicInfo<Operand<'tcx>>;
+pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 
 pub type Successors<'a> =
     iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
@@ -1397,12 +1397,12 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 }
 
-impl<O> PanicInfo<O> {
+impl<O> AssertKind<O> {
     /// Getting a description does not require `O` to be printable, and does not
     /// require allocation.
     /// The caller is expected to handle `BoundsCheck` separately.
     pub fn description(&self) -> &'static str {
-        use PanicInfo::*;
+        use AssertKind::*;
         match self {
             Overflow(BinOp::Add) => "attempt to add with overflow",
             Overflow(BinOp::Sub) => "attempt to subtract with overflow",
@@ -1419,14 +1419,14 @@ impl<O> PanicInfo<O> {
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
+            BoundsCheck { .. } => bug!("Unexpected AssertKind"),
         }
     }
 }
 
-impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
+impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicInfo::*;
+        use AssertKind::*;
         match self {
             BoundsCheck { ref len, ref index } => {
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
@@ -2719,7 +2719,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                use PanicInfo::*;
+                use AssertKind::*;
                 let msg = match msg {
                     BoundsCheck { ref len, ref index } => {
                         BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
@@ -2768,7 +2768,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             }
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    use PanicInfo::*;
+                    use AssertKind::*;
                     match msg {
                         BoundsCheck { ref len, ref index } => {
                             len.visit_with(visitor) || index.visit_with(visitor)
