@@ -18,8 +18,8 @@ use crate::{
 pub use self::{
     expr_extensions::{ArrayExprKind, BinOp, ElseBranch, LiteralKind, PrefixOp, RangeOp},
     extensions::{
-        FieldKind, PathSegmentKind, SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind,
-        VisibilityKind,
+        AttrKind, FieldKind, PathSegmentKind, SelfParamKind, SlicePatComponents, StructKind,
+        TypeBoundKind, VisibilityKind,
     },
     generated::*,
     tokens::*,
@@ -217,10 +217,7 @@ fn test_doc_comment_multi_line_block_strips_suffix() {
 #[test]
 fn test_comments_preserve_trailing_whitespace() {
     let file = SourceFile::parse(
-        r#"
-/// Representation of a Realm.   
-/// In the specification these are called Realm Records.
-struct Realm {}"#,
+        "\n/// Representation of a Realm.   \n/// In the specification these are called Realm Records.\nstruct Realm {}",
     )
     .ok()
     .unwrap();
