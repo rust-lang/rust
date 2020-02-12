@@ -459,6 +459,7 @@ pub enum ArchiveKind {
     Other,
     K_GNU,
     K_BSD,
+    K_DARWIN,
     K_COFF,
 }
 
