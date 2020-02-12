@@ -9,12 +9,10 @@
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
-
 #![allow(warnings)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]
-
 
 // Add Parameter ---------------------------------------------------------------
 
@@ -22,11 +20,12 @@
 pub fn add_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn add_parameter(p: i32) {}
-
 
 // Add Return Type -------------------------------------------------------------
 
@@ -38,18 +37,18 @@ pub fn add_return_type() {}
 #[rustc_clean(cfg = "cfail3")]
 pub fn add_return_type() -> () {}
 
-
 // Change Parameter Type -------------------------------------------------------
 
 #[cfg(cfail1)]
 pub fn type_of_parameter(p: i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter(p: i64) {}
-
 
 // Change Parameter Type Reference ---------------------------------------------
 
@@ -57,11 +56,12 @@ pub fn type_of_parameter(p: i64) {}
 pub fn type_of_parameter_ref(p: &i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter_ref(p: &mut i32) {}
-
 
 // Change Parameter Order ------------------------------------------------------
 
@@ -69,11 +69,12 @@ pub fn type_of_parameter_ref(p: &mut i32) {}
 pub fn order_of_parameters(p1: i32, p2: i64) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn order_of_parameters(p2: i64, p1: i32) {}
-
 
 // Unsafe ----------------------------------------------------------------------
 
@@ -81,11 +82,12 @@ pub fn order_of_parameters(p2: i64, p1: i32) {}
 pub fn make_unsafe() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub unsafe fn make_unsafe() {}
-
 
 // Extern ----------------------------------------------------------------------
 
@@ -97,18 +99,18 @@ pub fn make_extern() {}
 #[rustc_clean(cfg = "cfail3")]
 pub extern "C" fn make_extern() {}
 
-
 // Type Parameter --------------------------------------------------------------
 
 #[cfg(cfail1)]
 pub fn type_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_parameter<T>() {}
-
 
 // Lifetime Parameter ----------------------------------------------------------
 
@@ -120,7 +122,6 @@ pub fn lifetime_parameter() {}
 #[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_parameter<'a>() {}
 
-
 // Trait Bound -----------------------------------------------------------------
 
 #[cfg(cfail1)]
@@ -130,7 +131,6 @@ pub fn trait_bound<T>() {}
 #[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_items, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn trait_bound<T: Eq>() {}
-
 
 // Builtin Bound ---------------------------------------------------------------
 
@@ -142,18 +142,18 @@ pub fn builtin_bound<T>() {}
 #[rustc_clean(cfg = "cfail3")]
 pub fn builtin_bound<T: Send>() {}
 
-
 // Lifetime Bound --------------------------------------------------------------
 
 #[cfg(cfail1)]
 pub fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_bound<'a, T: 'a>() {}
-
 
 // Second Trait Bound ----------------------------------------------------------
 
@@ -165,7 +165,6 @@ pub fn second_trait_bound<T: Eq>() {}
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_trait_bound<T: Eq + Clone>() {}
 
-
 // Second Builtin Bound --------------------------------------------------------
 
 #[cfg(cfail1)]
@@ -176,18 +175,18 @@ pub fn second_builtin_bound<T: Send>() {}
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_builtin_bound<T: Send + Sized>() {}
 
-
 // Second Lifetime Bound -------------------------------------------------------
 
 #[cfg(cfail1)]
 pub fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2",
-              except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of")]
+#[rustc_clean(
+    cfg = "cfail2",
+    except = "hir_owner, hir_owner_items, generics_of, type_of, predicates_of"
+)]
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
-
 
 // Inline ----------------------------------------------------------------------
 
@@ -199,7 +198,6 @@ pub fn inline() {}
 #[rustc_clean(cfg = "cfail3")]
 #[inline]
 pub fn inline() {}
-
 
 // Inline Never ----------------------------------------------------------------
 
@@ -213,7 +211,6 @@ pub fn inline_never() {}
 #[inline(never)]
 pub fn inline_never() {}
 
-
 // No Mangle -------------------------------------------------------------------
 
 #[cfg(cfail1)]
@@ -225,7 +222,6 @@ pub fn no_mangle() {}
 #[no_mangle]
 pub fn no_mangle() {}
 
-
 // Linkage ---------------------------------------------------------------------
 
 #[cfg(cfail1)]
@@ -236,7 +232,6 @@ pub fn linkage() {}
 #[rustc_clean(cfg = "cfail3")]
 #[linkage = "weak_odr"]
 pub fn linkage() {}
-
 
 // Return Impl Trait -----------------------------------------------------------
 
@@ -252,7 +247,6 @@ pub fn return_impl_trait() -> impl Clone {
     0
 }
 
-
 // Change Return Impl Trait ----------------------------------------------------
 
 #[cfg(cfail1)]
@@ -267,7 +261,6 @@ pub fn change_return_impl_trait() -> impl Copy {
     0u32
 }
 
-
 // Change Return Type Indirectly -----------------------------------------------
 
 pub struct ReferencedType1;
@@ -279,14 +272,15 @@ pub mod change_return_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ReturnType;
 
-    #[rustc_clean(cfg = "cfail2",
-                  except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+    #[rustc_clean(
+        cfg = "cfail2",
+        except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+    )]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_return_type() -> ReturnType {
         ReturnType {}
     }
 }
-
 
 // Change Parameter Type Indirectly --------------------------------------------
 
@@ -296,12 +290,13 @@ pub mod change_parameter_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ParameterType;
 
-    #[rustc_clean(cfg = "cfail2",
-                  except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
+    #[rustc_clean(
+        cfg = "cfail2",
+        except = "hir_owner, hir_owner_items, mir_built, optimized_mir, typeck_tables_of, fn_sig"
+    )]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_parameter_type(p: ParameterType) {}
 }
-
 
 // Change Trait Bound Indirectly -----------------------------------------------
 
@@ -318,7 +313,6 @@ pub mod change_trait_bound_indirectly {
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
-
 
 // Change Trait Bound Indirectly In Where Clause -------------------------------
 
