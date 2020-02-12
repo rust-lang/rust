@@ -562,10 +562,6 @@ impl CodegenCx<'b, 'tcx> {
             t_v8f64: t_f64, 8;
         }
 
-        ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
-        ifn!("llvm.memset.p0i8.i64", fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
-
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
         ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
@@ -830,8 +826,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
-        ifn!("llvm.lifetime.start", fn(t_i64, i8p) -> void);
-        ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
+        ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);

@@ -11,28 +11,40 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: this expression will panic at runtime
-  --> $DIR/const-err2.rs:20:13
+  --> $DIR/const-err2.rs:20:18
+   |
+LL |     let a_i128 = -std::i128::MIN;
+   |                  ^^^^^^^^^^^^^^^ attempt to negate with overflow
+
+error: this expression will panic at runtime
+  --> $DIR/const-err2.rs:22:13
    |
 LL |     let b = 200u8 + 200u8 + 200u8;
    |             ^^^^^^^^^^^^^ attempt to add with overflow
 
 error: this expression will panic at runtime
-  --> $DIR/const-err2.rs:22:13
+  --> $DIR/const-err2.rs:24:18
+   |
+LL |     let b_i128 = std::i128::MIN - std::i128::MAX;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+
+error: this expression will panic at runtime
+  --> $DIR/const-err2.rs:26:13
    |
 LL |     let c = 200u8 * 4;
    |             ^^^^^^^^^ attempt to multiply with overflow
 
 error: this expression will panic at runtime
-  --> $DIR/const-err2.rs:24:13
+  --> $DIR/const-err2.rs:28:13
    |
 LL |     let d = 42u8 - (42u8 + 1);
    |             ^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 error: index out of bounds: the len is 1 but the index is 1
-  --> $DIR/const-err2.rs:26:14
+  --> $DIR/const-err2.rs:30:14
    |
 LL |     let _e = [5u8][1];
    |              ^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 

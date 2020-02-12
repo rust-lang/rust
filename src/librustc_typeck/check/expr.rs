@@ -1586,7 +1586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &format!("a method `{}` also exists, call it with parentheses", field),
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         }
         err.emit();
@@ -1609,7 +1609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "use parentheses to call the method",
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         } else {
             err.help("methods are immutable and cannot be assigned to");
