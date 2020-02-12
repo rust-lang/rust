@@ -128,10 +128,9 @@ impl<'tcx> ConstEvalErr<'tcx> {
         }
     }
 
-    /// Sets the message passed in via `message`, then adds the span labels for you, before applying
-    /// further modifications in `emit`. It's up to you to call emit(), stash(..), etc. within the
-    /// `emit` method. If you don't need to do any additional processing, just use
-    /// struct_generic.
+    /// Sets the message passed in via `message` and adds span labels before handing control back
+    /// to `emit` to do any final processing. It's the caller's responsibility to call emit(),
+    /// stash(), etc. within the `emit` function to dispose of the diagnostic properly.
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
