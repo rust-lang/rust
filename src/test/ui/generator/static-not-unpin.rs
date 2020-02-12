@@ -11,5 +11,5 @@ fn main() {
     let mut generator = static || {
         yield;
     };
-    assert_unpin(generator); //~ ERROR std::marker::Unpin` is not satisfied
+    assert_unpin(generator); //~ ERROR E0277
 }

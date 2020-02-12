@@ -16,7 +16,7 @@ LL |     x
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:14:5
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:15:5
    |
 LL | fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |                                                         ----------------------- expected `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>` because of return type
@@ -28,7 +28,7 @@ LL |     Box::new(x)
    = help: use `Box::pin`
 
 error[E0308]: mismatched types
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:18:14
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:19:14
    |
 LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |        - this type parameter
@@ -44,20 +44,22 @@ LL |     Pin::new(x)
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
-error[E0277]: the trait bound `dyn std::future::Future<Output = i32> + std::marker::Send: std::marker::Unpin` is not satisfied
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:18:5
+error[E0277]: `dyn std::future::Future<Output = i32> + std::marker::Send` cannot be unpinned
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:19:5
    |
 LL |     Pin::new(x)
    |     ^^^^^^^^ the trait `std::marker::Unpin` is not implemented for `dyn std::future::Future<Output = i32> + std::marker::Send`
    |
+   = note: consider using `Box::pin`
    = note: required by `std::pin::Pin::<P>::new`
 
-error[E0277]: the trait bound `dyn std::future::Future<Output = i32> + std::marker::Send: std::marker::Unpin` is not satisfied
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
+error[E0277]: `dyn std::future::Future<Output = i32> + std::marker::Send` cannot be unpinned
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:24:5
    |
 LL |     Pin::new(Box::new(x))
    |     ^^^^^^^^ the trait `std::marker::Unpin` is not implemented for `dyn std::future::Future<Output = i32> + std::marker::Send`
    |
+   = note: consider using `Box::pin`
    = note: required by `std::pin::Pin::<P>::new`
 
 error: aborting due to 5 previous errors
