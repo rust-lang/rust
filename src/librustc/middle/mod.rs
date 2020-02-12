@@ -33,4 +33,3 @@ pub mod recursion_limit;
 pub mod region;
 pub mod resolve_lifetime;
 pub mod stability;
-pub mod weak_lang_items;

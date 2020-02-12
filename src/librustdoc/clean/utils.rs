@@ -138,7 +138,7 @@ pub fn external_generic_args(
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() => {
             assert!(ty_kind.is_some());
             let inputs = match ty_kind {
                 Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),

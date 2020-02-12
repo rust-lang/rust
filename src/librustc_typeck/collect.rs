@@ -20,8 +20,8 @@ use crate::astconv::{AstConv, Bounds, SizedByDefault};
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::lint;
+use crate::middle::lang_items;
 use crate::middle::resolve_lifetime as rl;
-use crate::middle::weak_lang_items;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -2977,7 +2977,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     if tcx.is_weak_lang_item(id) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
     }
-    if let Some(name) = weak_lang_items::link_name(&attrs) {
+    if let Some(name) = lang_items::link_name(&attrs) {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }

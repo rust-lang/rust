@@ -4,7 +4,6 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc::hir::check_attr::{MethodKind, Target};
 use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -15,6 +14,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;

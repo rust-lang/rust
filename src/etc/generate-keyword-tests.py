@@ -11,7 +11,6 @@ sample usage: src/etc/generate-keyword-tests.py as break
 
 import sys
 import os
-import datetime
 import stat
 
 

@@ -465,6 +465,7 @@ pub struct OutputFilenames {
 
 impl_stable_hash_via_hash!(OutputFilenames);
 
+pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {

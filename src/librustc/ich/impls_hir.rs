@@ -251,12 +251,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::def_id::DefIndex {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::lang_items::LangItem {
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
