@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/expected-boxed-future-isnt-pinned.rs:12:5
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:11:5
    |
 LL | fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |        - this type parameter                            ----------------------- expected `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>` because of return type
@@ -15,6 +15,52 @@ LL |     x
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:14:5
+   |
+LL | fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+   |                                                         ----------------------- expected `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>` because of return type
+LL |     Box::new(x)
+   |     ^^^^^^^^^^^ expected struct `std::pin::Pin`, found struct `std::boxed::Box`
+   |
+   = note: expected struct `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>`
+              found struct `std::boxed::Box<F>`
+   = help: use `Box::pin`
 
-For more information about this error, try `rustc --explain E0308`.
+error[E0308]: mismatched types
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:18:14
+   |
+LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+   |        - this type parameter
+LL |     Pin::new(x)
+   |              ^
+   |              |
+   |              expected struct `std::boxed::Box`, found type parameter `F`
+   |              help: store this in the heap by calling `Box::new`: `Box::new(x)`
+   |
+   = note:      expected struct `std::boxed::Box<dyn std::future::Future<Output = i32> + std::marker::Send>`
+           found type parameter `F`
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+
+error[E0277]: the trait bound `dyn std::future::Future<Output = i32> + std::marker::Send: std::marker::Unpin` is not satisfied
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:18:5
+   |
+LL |     Pin::new(x)
+   |     ^^^^^^^^ the trait `std::marker::Unpin` is not implemented for `dyn std::future::Future<Output = i32> + std::marker::Send`
+   |
+   = note: required by `std::pin::Pin::<P>::new`
+
+error[E0277]: the trait bound `dyn std::future::Future<Output = i32> + std::marker::Send: std::marker::Unpin` is not satisfied
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
+   |
+LL |     Pin::new(Box::new(x))
+   |     ^^^^^^^^ the trait `std::marker::Unpin` is not implemented for `dyn std::future::Future<Output = i32> + std::marker::Send`
+   |
+   = note: required by `std::pin::Pin::<P>::new`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

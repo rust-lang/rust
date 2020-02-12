@@ -5094,18 +5094,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-    ) {
+    ) -> bool {
         // Handle #68197.
 
         if self.tcx.hir().is_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
-            return;
+            return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
         match expected.kind {
-            ty::Adt(def, _) if Some(def.did) != pin_did => return,
+            ty::Adt(def, _) if Some(def.did) != pin_did => return false,
             // This guards the `unwrap` and `mk_box` below.
-            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return,
+            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
             _ => {}
         }
         let boxed_found = self.tcx.mk_box(found);
@@ -5114,12 +5114,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.can_coerce(new_found, expected),
             self.sess().source_map().span_to_snippet(expr.span),
         ) {
-            err.span_suggestion(
-                expr.span,
-                "you need to pin and box this expression",
-                format!("Box::pin({})", snippet),
-                Applicability::MachineApplicable,
-            );
+            match found.kind {
+                ty::Adt(def, _) if def.is_box() => {
+                    err.help("use `Box::pin`");
+                }
+                _ => {
+                    err.span_suggestion(
+                        expr.span,
+                        "you need to pin and box this expression",
+                        format!("Box::pin({})", snippet),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+            true
+        } else {
+            false
         }
     }
 
