@@ -83,18 +83,6 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum PrevTokenKind {
-    DocComment,
-    Comma,
-    Plus,
-    Interpolated,
-    Eof,
-    Ident,
-    BitOr,
-    Other,
-}
-
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
@@ -115,9 +103,6 @@ pub struct Parser<'a> {
     /// Preferable use is through the `unnormalized_prev_token()` getter.
     /// Use span from this token if you need to concatenate it with some neighbouring spans.
     unnormalized_prev_token: Option<Token>,
-    /// Equivalent to `prev_token.kind` in simplified form.
-    /// FIXME: Remove in favor of `(unnormalized_)prev_token().kind`.
-    prev_token_kind: PrevTokenKind,
     /// Equivalent to `unnormalized_prev_token().span`.
     /// FIXME: Remove in favor of `(unnormalized_)prev_token().span`.
     pub prev_span: Span,
@@ -396,7 +381,6 @@ impl<'a> Parser<'a> {
             unnormalized_token: None,
             prev_token: Token::dummy(),
             unnormalized_prev_token: None,
-            prev_token_kind: PrevTokenKind::Other,
             prev_span: DUMMY_SP,
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
@@ -523,10 +507,11 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(Ident::new(name, span))
             }
-            _ => Err(if self.prev_token_kind == PrevTokenKind::DocComment {
-                self.span_fatal_err(self.prev_span, Error::UselessDocComment)
-            } else {
-                self.expected_ident_found()
+            _ => Err(match self.prev_token.kind {
+                TokenKind::DocComment(..) => {
+                    self.span_fatal_err(self.prev_span, Error::UselessDocComment)
+                }
+                _ => self.expected_ident_found(),
             }),
         }
     }
@@ -908,7 +893,7 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
-        if self.prev_token_kind == PrevTokenKind::Eof {
+        if self.prev_token.kind == TokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
             self.span_bug(self.token.span, msg);
@@ -920,16 +905,6 @@ impl<'a> Parser<'a> {
         self.unnormalized_prev_token = self.unnormalized_token.take();
 
         // Update fields derived from the previous token.
-        self.prev_token_kind = match self.prev_token.kind {
-            token::DocComment(..) => PrevTokenKind::DocComment,
-            token::Comma => PrevTokenKind::Comma,
-            token::BinOp(token::Plus) => PrevTokenKind::Plus,
-            token::BinOp(token::Or) => PrevTokenKind::BitOr,
-            token::Interpolated(..) => PrevTokenKind::Interpolated,
-            token::Eof => PrevTokenKind::Eof,
-            token::Ident(..) => PrevTokenKind::Ident,
-            _ => PrevTokenKind::Other,
-        };
         self.prev_span = self.unnormalized_prev_token().span;
 
         self.expected_tokens.clear();
@@ -949,7 +924,6 @@ impl<'a> Parser<'a> {
         self.unnormalized_prev_token = self.unnormalized_token.take();
 
         // Update fields derived from the previous token.
-        self.prev_token_kind = PrevTokenKind::Other;
         self.prev_span = self.unnormalized_prev_token().span.with_hi(span.lo());
 
         self.expected_tokens.clear();
