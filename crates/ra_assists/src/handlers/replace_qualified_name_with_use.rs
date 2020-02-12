@@ -434,8 +434,7 @@ fn best_action_for_target(
             let add_after_anchor = anchor
                 .clone()
                 .and_then(ast::Attr::cast)
-                .as_ref()
-                .map(ast::Attr::is_inner_attribute)
+                .map(|attr| attr.kind() == ast::AttrKind::Inner)
                 .unwrap_or(false);
             ImportAction::add_new_use(anchor, add_after_anchor)
         }

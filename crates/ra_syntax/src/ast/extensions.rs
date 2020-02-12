@@ -37,6 +37,12 @@ fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {
     node.green().children().next().and_then(|it| it.into_token()).unwrap().text()
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AttrKind {
+    Inner,
+    Outer,
+}
+
 impl ast::Attr {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
         match self.input() {
@@ -72,13 +78,16 @@ impl ast::Attr {
         }
     }
 
-    pub fn is_inner_attribute(&self) -> bool {
+    pub fn kind(&self) -> AttrKind {
         let first_token = self.syntax().first_token();
         let first_token_kind = first_token.as_ref().map(SyntaxToken::kind);
         let second_token_kind =
             first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
-        return first_token_kind == Some(SyntaxKind::POUND)
-            && second_token_kind == Some(SyntaxKind::EXCL);
+
+        match (first_token_kind, second_token_kind) {
+            (Some(SyntaxKind::POUND), Some(SyntaxKind::EXCL)) => AttrKind::Inner,
+            _ => AttrKind::Outer,
+        }
     }
 }
 
