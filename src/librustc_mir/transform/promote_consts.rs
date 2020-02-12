@@ -463,6 +463,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { func, args, .. } => self.validate_call(func, args),
+                    TerminatorKind::Yield { .. } => Err(Unpromotable),
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
