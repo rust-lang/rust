@@ -10,9 +10,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId,
-    LocalEnumVariantId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeParamId, UnionId,
+    AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
+    ImplId, LocalEnumVariantId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId,
+    StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -25,7 +25,10 @@ use hir_ty::{
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
-use ra_syntax::ast::{self, AttrsOwner};
+use ra_syntax::{
+    ast::{self, AttrsOwner},
+    AstNode,
+};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
@@ -119,7 +122,9 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::{attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId};
+pub use hir_def::{
+    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
+};
 use rustc_hash::FxHashSet;
 
 impl Module {
@@ -639,17 +644,49 @@ pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
 
+/// Invariant: `inner.as_assoc_item(db).is_some()`
+/// We do not actively enforce this invariant.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Function(Function),
     Const(Const),
     TypeAlias(TypeAlias),
 }
-// FIXME: not every function, ... is actually an assoc item. maybe we should make
-// sure that you can only turn actual assoc items into AssocItems. This would
-// require not implementing From, and instead having some checked way of
-// casting them, and somehow making the constructors private, which would be annoying.
-impl_froms!(AssocItem: Function, Const, TypeAlias);
+pub enum AssocItemContainer {
+    Trait(Trait),
+    ImplBlock(ImplBlock),
+}
+pub trait AsAssocItem {
+    fn as_assoc_item(self, db: &impl DefDatabase) -> Option<AssocItem>;
+}
+
+impl AsAssocItem for Function {
+    fn as_assoc_item(self, db: &impl DefDatabase) -> Option<AssocItem> {
+        as_assoc_item(db, AssocItem::Function, self.id)
+    }
+}
+impl AsAssocItem for Const {
+    fn as_assoc_item(self, db: &impl DefDatabase) -> Option<AssocItem> {
+        as_assoc_item(db, AssocItem::Const, self.id)
+    }
+}
+impl AsAssocItem for TypeAlias {
+    fn as_assoc_item(self, db: &impl DefDatabase) -> Option<AssocItem> {
+        as_assoc_item(db, AssocItem::TypeAlias, self.id)
+    }
+}
+fn as_assoc_item<ID, DEF, CTOR, AST>(db: &impl DefDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
+where
+    ID: Lookup<Data = AssocItemLoc<AST>>,
+    DEF: From<ID>,
+    CTOR: FnOnce(DEF) -> AssocItem,
+    AST: AstNode,
+{
+    match id.lookup(db).container {
+        AssocContainerId::TraitId(_) | AssocContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
+        AssocContainerId::ContainerId(_) => None,
+    }
+}
 
 impl AssocItem {
     pub fn module(self, db: &impl DefDatabase) -> Module {
@@ -657,6 +694,18 @@ impl AssocItem {
             AssocItem::Function(f) => f.module(db),
             AssocItem::Const(c) => c.module(db),
             AssocItem::TypeAlias(t) => t.module(db),
+        }
+    }
+    pub fn container(self, db: &impl DefDatabase) -> AssocItemContainer {
+        let container = match self {
+            AssocItem::Function(it) => it.id.lookup(db).container,
+            AssocItem::Const(it) => it.id.lookup(db).container,
+            AssocItem::TypeAlias(it) => it.id.lookup(db).container,
+        };
+        match container {
+            AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
+            AssocContainerId::ImplId(id) => AssocItemContainer::ImplBlock(id.into()),
+            AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
         }
     }
 }
@@ -769,6 +818,7 @@ impl TypeParam {
     }
 }
 
+// FIXME: rename to `ImplBlock`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
