@@ -16,9 +16,9 @@ use std::str;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "force" {
-        println!("{}", std::backtrace::Backtrace::force_capture());
+        println!("stack backtrace:\n{}", std::backtrace::Backtrace::force_capture());
     } else if args.len() >= 2 {
-        println!("{}", std::backtrace::Backtrace::capture());
+        println!("stack backtrace:\n{}", std::backtrace::Backtrace::capture());
     } else {
         runtest(&args[0]);
         println!("test ok");
