@@ -4,8 +4,8 @@ use crate::{
 };
 use hir::{
     db::{DefDatabase, HirDatabase},
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, Function, ModPath, Module, ModuleDef,
-    PathResolution, SourceAnalyzer, Trait, Type,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, ModPath, Module, ModuleDef, PathResolution,
+    SourceAnalyzer, Trait, Type,
 };
 use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
 use ra_prof::profile;
@@ -115,7 +115,7 @@ impl AutoImportAssets {
         match &self.import_candidate {
             ImportCandidate::UnqualifiedName(name) => name,
             ImportCandidate::QualifierStart(qualifier_start) => qualifier_start,
-            ImportCandidate::TraitAssocItem(_, trait_function_name) => trait_function_name,
+            ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => trait_assoc_item_name,
             ImportCandidate::TraitMethod(_, trait_method_name) => trait_method_name,
         }
     }
@@ -126,8 +126,8 @@ impl AutoImportAssets {
             ImportCandidate::QualifierStart(qualifier_start) => {
                 format!("Import {}", qualifier_start)
             }
-            ImportCandidate::TraitAssocItem(_, trait_function_name) => {
-                format!("Import a trait for item {}", trait_function_name)
+            ImportCandidate::TraitAssocItem(_, trait_assoc_item_name) => {
+                format!("Import a trait for item {}", trait_assoc_item_name)
             }
             ImportCandidate::TraitMethod(_, trait_method_name) => {
                 format!("Import a trait for method {}", trait_method_name)
@@ -142,16 +142,24 @@ impl AutoImportAssets {
             .find_imports(&self.get_search_query())
             .into_iter()
             .map(|module_def| match &self.import_candidate {
-                ImportCandidate::TraitAssocItem(function_callee, _) => {
+                ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
+                    let located_assoc_item = match module_def {
+                        ModuleDef::Function(located_function) => {
+                            Some(AssocItem::Function(located_function))
+                        }
+                        ModuleDef::Const(located_const) => Some(AssocItem::Const(located_const)),
+                        _ => None,
+                    };
+
                     let mut applicable_traits = Vec::new();
-                    if let ModuleDef::Function(located_function) = module_def {
+                    if let Some(located_assoc_item) = located_assoc_item {
                         let trait_candidates: FxHashSet<_> =
-                            Self::get_trait_candidates(db, located_function, current_crate)
+                            Self::get_trait_candidates(db, located_assoc_item, current_crate)
                                 .into_iter()
                                 .map(|trait_candidate| trait_candidate.into())
                                 .collect();
                         if !trait_candidates.is_empty() {
-                            function_callee.iterate_path_candidates(
+                            assoc_item_type.iterate_path_candidates(
                                 db,
                                 current_crate,
                                 &trait_candidates,
@@ -175,11 +183,14 @@ impl AutoImportAssets {
                 ImportCandidate::TraitMethod(function_callee, _) => {
                     let mut applicable_traits = Vec::new();
                     if let ModuleDef::Function(located_function) = module_def {
-                        let trait_candidates: FxHashSet<_> =
-                            Self::get_trait_candidates(db, located_function, current_crate)
-                                .into_iter()
-                                .map(|trait_candidate| trait_candidate.into())
-                                .collect();
+                        let trait_candidates: FxHashSet<_> = Self::get_trait_candidates(
+                            db,
+                            AssocItem::Function(located_function),
+                            current_crate,
+                        )
+                        .into_iter()
+                        .map(|trait_candidate| trait_candidate.into())
+                        .collect();
                         if !trait_candidates.is_empty() {
                             function_callee.iterate_method_candidates(
                                 db,
@@ -215,7 +226,7 @@ impl AutoImportAssets {
 
     fn get_trait_candidates(
         db: &RootDatabase,
-        called_function: Function,
+        called_assoc_item: AssocItem,
         root_crate: Crate,
     ) -> FxHashSet<Trait> {
         let _p = profile("auto_import::get_trait_candidates");
@@ -235,7 +246,7 @@ impl AutoImportAssets {
                             if trait_candidate
                                 .items(db)
                                 .into_iter()
-                                .any(|item| item == AssocItem::Function(called_function)) =>
+                                .any(|item| item == called_assoc_item) =>
                         {
                             Some(trait_candidate)
                         }
@@ -302,9 +313,9 @@ impl ImportCandidate {
                 } else {
                     source_analyzer.resolve_path(db, &qualifier)?
                 };
-                if let PathResolution::Def(ModuleDef::Adt(function_callee)) = qualifier_resolution {
+                if let PathResolution::Def(ModuleDef::Adt(assoc_item_path)) = qualifier_resolution {
                     Some(ImportCandidate::TraitAssocItem(
-                        function_callee.ty(db),
+                        assoc_item_path.ty(db),
                         segment.syntax().to_string(),
                     ))
                 } else {
@@ -581,6 +592,39 @@ mod tests {
     }
 
     #[test]
+    fn associated_struct_const() {
+        check_assist(
+            auto_import,
+            r"
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                TestStruct::TEST_CONST<|>
+            }
+            ",
+            r"
+            use test_mod::TestStruct;
+
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                TestStruct::TEST_CONST<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
     fn associated_trait_function() {
         check_assist(
             auto_import,
@@ -646,6 +690,77 @@ mod tests {
             use test_mod::TestTrait2;
             fn main() {
                 test_mod::TestEnum::test_function<|>;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn associated_trait_const() {
+        check_assist(
+            auto_import,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    const TEST_CONST: u8;
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::TEST_CONST<|>
+            }
+            ",
+            r"
+            use test_mod::TestTrait;
+
+            mod test_mod {
+                pub trait TestTrait {
+                    const TEST_CONST: u8;
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::TEST_CONST<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_imported_trait_for_const() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    const TEST_CONST: u8;
+                }
+                pub trait TestTrait2 {
+                    const TEST_CONST: f64;
+                }
+                pub enum TestEnum {
+                    One,
+                    Two,
+                }
+                impl TestTrait2 for TestEnum {
+                    const TEST_CONST: f64 = 42.0;
+                }
+                impl TestTrait for TestEnum {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            use test_mod::TestTrait2;
+            fn main() {
+                test_mod::TestEnum::TEST_CONST<|>;
             }
             ",
         )
