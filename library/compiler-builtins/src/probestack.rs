@@ -64,6 +64,7 @@ macro_rules! define_rust_probestack {
             .pushsection .text.__rust_probestack
             .globl __rust_probestack
             .type  __rust_probestack, @function
+            .hidden __rust_probestack
         __rust_probestack:
             ",
             $body,
