@@ -170,17 +170,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Next: functions that return.
-        match link_name {
-            "__rust_maybe_catch_panic" => {
-                this.handle_catch_panic(args, dest, ret)?;
-                return Ok(None);
-            }
-
-            _ => this.emulate_foreign_item_by_name(link_name, args, dest)?,
-        };
-
-        this.dump_place(*dest);
-        this.go_to_block(ret);
+        if this.emulate_foreign_item_by_name(link_name, args, dest, ret)? {
+            this.dump_place(*dest);
+            this.go_to_block(ret);
+        }
 
         Ok(None)
     }
@@ -190,7 +183,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+        ret: mir::BasicBlock,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
@@ -293,6 +287,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(new_ptr, dest)?;
             }
 
+            "__rust_maybe_catch_panic" => {
+                this.handle_catch_panic(args, dest, ret)?;
+                return Ok(false);
+            }
+
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
                 let right = this.read_scalar(args[1])?.not_undef()?;
@@ -328,12 +327,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     this.write_null(dest)?;
                 }
-            }
-
-
-            "rename" => {
-                let result = this.rename(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "strlen" => {
@@ -442,13 +435,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             _ => match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
-                "linux" | "macos" => posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
-                "windows" => windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
+                "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 target => throw_unsup_format!("The {} target platform is not supported", target),
             }
         };
 
-        Ok(())
+        Ok(true)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)

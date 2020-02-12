@@ -1,4 +1,5 @@
 use crate::*;
+use rustc::mir;
 use rustc::ty::layout::Size;
 use std::iter;
 
@@ -9,7 +10,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+        _ret: mir::BasicBlock,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let tcx = &{ this.tcx.tcx };
 
@@ -197,7 +199,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }
 
-        Ok(())
+        Ok(true)
     }
 }
 

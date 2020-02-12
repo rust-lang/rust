@@ -1,4 +1,5 @@
 use crate::*;
+use rustc::mir;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -7,7 +8,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+        _ret: mir::BasicBlock,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         match link_name {
@@ -108,7 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         };
 
-        Ok(())
+        Ok(true)
     }
 }
 

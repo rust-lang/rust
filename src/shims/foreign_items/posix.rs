@@ -2,6 +2,7 @@ mod linux;
 mod macos;
 
 use crate::*;
+use rustc::mir;
 use rustc::ty::layout::{Align, LayoutOf, Size};
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -11,7 +12,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+        ret: mir::BasicBlock,
+    ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let tcx = &{ this.tcx.tcx };
 
@@ -94,6 +96,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "symlink" => {
                 let result = this.symlink(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "rename" => {
+                let result = this.rename(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
@@ -325,14 +332,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             _ => {
                 match this.tcx.sess.target.target.target_os.to_lowercase().as_str() {
-                    "linux" => linux::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
-                    "macos" => macos::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest)?,
+                    "linux" => return linux::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                    "macos" => return macos::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                     _ => unreachable!(),
                 }
             }
         };
 
-        Ok(())
+        Ok(true)
     }
 }
 
