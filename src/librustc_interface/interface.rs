@@ -2,7 +2,7 @@ pub use crate::passes::BoxedResolver;
 use crate::util;
 
 use rustc::lint;
-use rustc::session::config::{self, ErrorOutputType, Input};
+use rustc::session::config::{self, ErrorOutputType, Input, OutputFilenames};
 use rustc::session::early_error;
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::ty;
@@ -20,7 +20,7 @@ use rustc_span::source_map::{FileLoader, FileName, SourceMap};
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
-use syntax::ast::MetaItemKind;
+use syntax::ast::{self, MetaItemKind};
 use syntax::token;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
@@ -60,6 +60,19 @@ impl Compiler {
     }
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
+    }
+    pub fn build_output_filenames(
+        &self,
+        sess: &Session,
+        attrs: &[ast::Attribute],
+    ) -> OutputFilenames {
+        util::build_output_filenames(
+            &self.input,
+            &self.output_dir,
+            &self.output_file,
+            &attrs,
+            &sess,
+        )
     }
 }
 
