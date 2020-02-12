@@ -24,12 +24,12 @@
 pub struct LayoutPacked;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -41,12 +41,12 @@ pub struct LayoutPacked;
 struct LayoutC;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -61,12 +61,12 @@ struct LayoutC;
 struct TupleStructFieldType(i32);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -84,12 +84,12 @@ struct TupleStructFieldType(
 struct TupleStructAddField(i32);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -106,12 +106,12 @@ struct TupleStructAddField(
 struct TupleStructFieldVisibility(char);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -125,12 +125,12 @@ struct TupleStructFieldVisibility(pub char);
 struct RecordStructFieldType { x: f32 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -148,12 +148,12 @@ struct RecordStructFieldType {
 struct RecordStructFieldName { x: f32 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -167,12 +167,12 @@ struct RecordStructFieldName { y: f32 }
 struct RecordStructAddField { x: f32 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -188,12 +188,12 @@ struct RecordStructAddField {
 struct RecordStructFieldVisibility { x: f32 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -209,12 +209,12 @@ struct RecordStructFieldVisibility {
 struct AddLifetimeParameter<'a>(&'a f32, &'a f64);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_dirty(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -228,12 +228,12 @@ struct AddLifetimeParameter<'a, 'b>(&'a f32, &'b f64);
 struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -247,12 +247,12 @@ struct AddLifetimeParameterBound<'a, 'b: 'a>(
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -269,12 +269,12 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
 struct AddTypeParameter<T1>(T1, T1);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_dirty(label="generics_of", cfg="cfail2")]
 #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -293,12 +293,12 @@ struct AddTypeParameter<T1, T2>(
 struct AddTypeParameterBound<T>(T);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -312,12 +312,12 @@ struct AddTypeParameterBound<T: Send>(
 struct AddTypeParameterBoundWhereClause<T>(T);
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -332,12 +332,12 @@ struct AddTypeParameterBoundWhereClause<T>(
 // fingerprint is stable (i.e., that there are no random influences like memory
 // addresses taken into account by the hashing algorithm).
 // Note: there is no #[cfg(...)], so this is ALWAYS compiled
-#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -351,12 +351,12 @@ pub struct EmptyStruct;
 struct Visibility;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="hir_owner", cfg="cfail2")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 #[rustc_clean(label="type_of", cfg="cfail3")]
 #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -373,12 +373,12 @@ mod tuple_struct_change_field_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
     #[rustc_clean(label="type_of", cfg="cfail2")]
     #[rustc_clean(label="generics_of", cfg="cfail2")]
     #[rustc_clean(label="predicates_of", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     #[rustc_clean(label="type_of", cfg="cfail3")]
     #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -396,12 +396,12 @@ mod record_struct_change_field_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
     #[rustc_clean(label="type_of", cfg="cfail2")]
     #[rustc_clean(label="generics_of", cfg="cfail2")]
     #[rustc_clean(label="predicates_of", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     #[rustc_clean(label="type_of", cfg="cfail3")]
     #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -424,12 +424,12 @@ mod change_trait_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
     #[rustc_clean(label="type_of", cfg="cfail2")]
     #[rustc_clean(label="generics_of", cfg="cfail2")]
     #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     #[rustc_clean(label="type_of", cfg="cfail3")]
     #[rustc_clean(label="generics_of", cfg="cfail3")]
@@ -444,12 +444,12 @@ mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
     #[rustc_clean(label="type_of", cfg="cfail2")]
     #[rustc_clean(label="generics_of", cfg="cfail2")]
     #[rustc_dirty(label="predicates_of", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
     #[rustc_clean(label="type_of", cfg="cfail3")]
     #[rustc_clean(label="generics_of", cfg="cfail3")]

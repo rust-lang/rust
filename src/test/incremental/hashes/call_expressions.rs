@@ -55,8 +55,8 @@ mod change_callee_indirectly_function {
     #[cfg(not(cfail1))]
     use super::callee2 as callee;
 
-    #[rustc_clean(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_clean(label="hir_owner", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
     #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 
@@ -152,7 +152,7 @@ pub fn change_to_ufcs() {
 #[rustc_clean(cfg="cfail2", except="hir_owner_items,mir_built,optimized_mir,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 // One might think this would be expanded in the hir_owner_items/Mir, but it actually
-// results in slightly different Hir/Mir.
+// results in slightly different hir_owner/Mir.
 pub fn change_to_ufcs() {
     let s = Struct;
     Struct::method1(&s, 'x', true);

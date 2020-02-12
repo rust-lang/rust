@@ -20,8 +20,8 @@ fn change_simple_index(slice: &[u32]) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn change_simple_index(slice: &[u32]) -> u32 {
@@ -37,8 +37,8 @@ fn change_lower_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn change_lower_bound(slice: &[u32]) -> &[u32] {
@@ -54,8 +54,8 @@ fn change_upper_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn change_upper_bound(slice: &[u32]) -> &[u32] {
@@ -71,8 +71,8 @@ fn add_lower_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn add_lower_bound(slice: &[u32]) -> &[u32] {
@@ -88,8 +88,8 @@ fn add_upper_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn add_upper_bound(slice: &[u32]) -> &[u32] {
@@ -105,8 +105,8 @@ fn change_mutability(slice: &mut [u32]) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn change_mutability(slice: &mut [u32]) -> u32 {
@@ -122,8 +122,8 @@ fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail3")]
 #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
 #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {

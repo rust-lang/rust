@@ -139,7 +139,7 @@ pub mod change_constructor_path_indirectly_struct_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,Hir,hir_owner_items,optimized_mir,mir_built,\
+        except="fn_sig,hir_owner,hir_owner_items,optimized_mir,mir_built,\
                 typeck_tables_of"
     )]
     #[rustc_clean(cfg="cfail3")]
@@ -232,7 +232,7 @@ pub mod change_constructor_path_indirectly_tuple_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,Hir,hir_owner_items,optimized_mir,mir_built,\
+        except="fn_sig,hir_owner,hir_owner_items,optimized_mir,mir_built,\
                 typeck_tables_of"
     )]
     #[rustc_clean(cfg="cfail3")]
@@ -309,7 +309,7 @@ pub mod change_constructor_path_indirectly_c_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,Hir,hir_owner_items,optimized_mir,mir_built,\
+        except="fn_sig,hir_owner,hir_owner_items,optimized_mir,mir_built,\
                 typeck_tables_of"
     )]
     #[rustc_clean(cfg="cfail3")]
