@@ -1,8 +1,8 @@
 pub use super::*;
 
+use crate::dataflow::generic::{Results, ResultsRefCursor};
 use crate::dataflow::BitDenotation;
-use crate::dataflow::HaveBeenBorrowedLocals;
-use crate::dataflow::{DataflowResults, DataflowResultsCursor, DataflowResultsRefCursor};
+use crate::dataflow::MaybeBorrowedLocals;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use std::cell::RefCell;
@@ -69,22 +69,23 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
     const BOTTOM_VALUE: bool = false;
 }
 
+type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorrowedLocals>;
+
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct RequiresStorage<'mir, 'tcx> {
     body: ReadOnlyBodyAndCache<'mir, 'tcx>,
-    borrowed_locals:
-        RefCell<DataflowResultsRefCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
+    borrowed_locals: RefCell<BorrowedLocalsResults<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
     pub fn new(
         body: ReadOnlyBodyAndCache<'mir, 'tcx>,
-        borrowed_locals: &'mir DataflowResults<'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>,
+        borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
         RequiresStorage {
             body,
-            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, *body)),
+            borrowed_locals: RefCell::new(ResultsRefCursor::new(*body, borrowed_locals)),
         }
     }
 
@@ -111,11 +112,12 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     }
 
     fn before_statement_effect(&self, sets: &mut GenKillSet<Self::Idx>, loc: Location) {
-        // If we borrow or assign to a place then it needs storage for that
-        // statement.
-        self.check_for_borrow(sets, loc);
-
         let stmt = &self.body[loc.block].statements[loc.statement_index];
+
+        // If a place is borrowed in a statement, it needs storage for that statement.
+        self.borrowed_locals.borrow().analysis().statement_effect(sets, stmt, loc);
+
+        // If a place is assigned to in a statement, it needs storage for that statement.
         match stmt.kind {
             StatementKind::StorageDead(l) => sets.kill(l),
             StatementKind::Assign(box (ref place, _))
@@ -138,12 +140,13 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     }
 
     fn before_terminator_effect(&self, sets: &mut GenKillSet<Local>, loc: Location) {
-        self.check_for_borrow(sets, loc);
+        let terminator = self.body[loc.block].terminator();
 
-        if let TerminatorKind::Call { destination: Some((Place { local, .. }, _)), .. } =
-            self.body[loc.block].terminator().kind
-        {
-            sets.gen(local);
+        // If a place is borrowed in a terminator, it needs storage for that terminator.
+        self.borrowed_locals.borrow().analysis().terminator_effect(sets, terminator, loc);
+
+        if let TerminatorKind::Call { destination: Some((place, _)), .. } = terminator.kind {
+            sets.gen(place.local);
         }
     }
 
@@ -179,14 +182,6 @@ impl<'mir, 'tcx> RequiresStorage<'mir, 'tcx> {
         let mut visitor = MoveVisitor { sets, borrowed_locals: &self.borrowed_locals };
         visitor.visit_location(self.body, loc);
     }
-
-    /// Gen locals that are newly borrowed. This includes borrowing any part of
-    /// a local (we rely on this behavior of `HaveBeenBorrowedLocals`).
-    fn check_for_borrow(&self, sets: &mut GenKillSet<Local>, loc: Location) {
-        let mut borrowed_locals = self.borrowed_locals.borrow_mut();
-        borrowed_locals.seek(loc);
-        borrowed_locals.each_gen_bit(|l| sets.gen(l));
-    }
 }
 
 impl<'mir, 'tcx> BottomValue for RequiresStorage<'mir, 'tcx> {
@@ -195,8 +190,7 @@ impl<'mir, 'tcx> BottomValue for RequiresStorage<'mir, 'tcx> {
 }
 
 struct MoveVisitor<'a, 'mir, 'tcx> {
-    borrowed_locals:
-        &'a RefCell<DataflowResultsRefCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
+    borrowed_locals: &'a RefCell<BorrowedLocalsResults<'mir, 'tcx>>,
     sets: &'a mut GenKillSet<Local>,
 }
 
@@ -204,7 +198,7 @@ impl<'a, 'mir: 'a, 'tcx> Visitor<'tcx> for MoveVisitor<'a, 'mir, 'tcx> {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
-            borrowed_locals.seek(loc);
+            borrowed_locals.seek_before(loc);
             if !borrowed_locals.contains(*local) {
                 self.sets.kill(*local);
             }
