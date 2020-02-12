@@ -135,7 +135,7 @@ fn main() {
 fn print_lints() {
     let lint_list = gather_all();
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list).collect();
-    let lint_count = usable_lints.len();
+    let usable_lint_count = usable_lints.len();
     let grouped_by_lint_group = Lint::by_lint_group(usable_lints.into_iter());
 
     for (lint_group, mut lints) in grouped_by_lint_group {
@@ -157,7 +157,7 @@ fn print_lints() {
         }
     }
 
-    println!("there are {} lints", lint_count);
+    println!("there are {} lints", usable_lint_count);
 }
 
 #[allow(clippy::too_many_lines)]
@@ -167,7 +167,7 @@ fn update_lints(update_mode: UpdateMode) {
     let internal_lints = Lint::internal_lints(lint_list.clone().into_iter());
 
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
-    let lint_count = usable_lints.len();
+    let usable_lint_count = usable_lints.len();
 
     let mut sorted_usable_lints = usable_lints.clone();
     sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
@@ -200,7 +200,7 @@ fn update_lints(update_mode: UpdateMode) {
         || {
             vec![format!(
                 "[There are {} lints included in this crate!]({})",
-                lint_count, DOCS_LINK
+                usable_lint_count, DOCS_LINK
             )]
         },
     )
