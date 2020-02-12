@@ -393,11 +393,12 @@ for target in configured_targets:
 
 
 def is_number(value):
-  try:
-    float(value)
-    return True
-  except ValueError:
-    return False
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
 
 # Here we walk through the constructed configuration we have from the parsed
 # command line arguments. We then apply each piece of configuration by

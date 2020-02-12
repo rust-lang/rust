@@ -8,7 +8,8 @@ derives have spans that point to the fields, rather than the
 sample usage: src/etc/generate-deriving-span-tests.py
 """
 
-import os, stat
+import os
+import stat
 
 TEST_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../test/ui/derives/'))
@@ -56,6 +57,7 @@ struct Struct(
 
 ENUM_TUPLE, ENUM_STRUCT, STRUCT_FIELDS, STRUCT_TUPLE = range(4)
 
+
 def create_test_case(type, trait, super_traits, error_count):
     string = [ENUM_STRING, ENUM_STRUCT_VARIANT_STRING, STRUCT_STRING, STRUCT_TUPLE_STRING][type]
     all_traits = ','.join([trait] + super_traits)
@@ -63,8 +65,9 @@ def create_test_case(type, trait, super_traits, error_count):
     error_deriving = '#[derive(%s)]' % super_traits if super_traits else ''
 
     errors = '\n'.join('//~%s ERROR' % ('^' * n) for n in range(error_count))
-    code = string.format(traits = all_traits, errors = errors)
-    return TEMPLATE.format(error_deriving=error_deriving, code = code)
+    code = string.format(traits=all_traits, errors=errors)
+    return TEMPLATE.format(error_deriving=error_deriving, code=code)
+
 
 def write_file(name, string):
     test_file = os.path.join(TEST_DIR, 'derives-span-%s.rs' % name)
@@ -86,10 +89,10 @@ ALL = STRUCT | ENUM
 
 traits = {
     'Default': (STRUCT, [], 1),
-    'FromPrimitive': (0, [], 0), # only works for C-like enums
+    'FromPrimitive': (0, [], 0),  # only works for C-like enums
 
-    'Decodable': (0, [], 0), # FIXME: quoting gives horrible spans
-    'Encodable': (0, [], 0), # FIXME: quoting gives horrible spans
+    'Decodable': (0, [], 0),  # FIXME: quoting gives horrible spans
+    'Encodable': (0, [], 0),  # FIXME: quoting gives horrible spans
 }
 
 for (trait, supers, errs) in [('Clone', [], 1),
