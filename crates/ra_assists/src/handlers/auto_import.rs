@@ -13,6 +13,7 @@ use hir::{
     AssocContainerId, AssocItem, Crate, Function, ModPath, Module, ModuleDef, PathResolution,
     SourceAnalyzer, Trait, Type,
 };
+use ra_prof::profile;
 use rustc_hash::FxHashSet;
 use std::collections::BTreeSet;
 
@@ -123,6 +124,7 @@ impl AutoImportAssets {
         db: &RootDatabase,
         module_with_name_to_import: Module,
     ) -> BTreeSet<ModPath> {
+        let _p = profile("auto_import::search_for_imports");
         ImportsLocator::new(db)
             .find_imports(&self.get_search_query())
             .into_iter()
@@ -207,6 +209,7 @@ impl AutoImportAssets {
         called_function: Function,
         root_crate: Crate,
     ) -> FxHashSet<Trait> {
+        let _p = profile("auto_import::get_trait_candidates");
         root_crate
             .dependencies(db)
             .into_iter()
