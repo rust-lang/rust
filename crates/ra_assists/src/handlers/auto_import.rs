@@ -3,8 +3,7 @@ use crate::{
     insert_use_statement, AssistId,
 };
 use hir::{
-    db::{DefDatabase, HirDatabase},
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, ModPath, Module, ModuleDef, PathResolution,
+    db::HirDatabase, AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution,
     SourceAnalyzer, Trait, Type,
 };
 use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
@@ -141,121 +140,73 @@ impl AutoImportAssets {
         ImportsLocator::new(db)
             .find_imports(&self.get_search_query())
             .into_iter()
-            .map(|module_def| match &self.import_candidate {
+            .filter_map(|module_def| match &self.import_candidate {
                 ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
                     let located_assoc_item = match module_def {
-                        ModuleDef::Function(located_function) => {
-                            Some(AssocItem::Function(located_function))
-                        }
-                        ModuleDef::Const(located_const) => Some(AssocItem::Const(located_const)),
+                        ModuleDef::Function(located_function) => located_function
+                            .as_assoc_item(db)
+                            .map(|assoc| assoc.container(db))
+                            .and_then(Self::assoc_to_trait),
+                        ModuleDef::Const(located_const) => located_const
+                            .as_assoc_item(db)
+                            .map(|assoc| assoc.container(db))
+                            .and_then(Self::assoc_to_trait),
                         _ => None,
-                    };
+                    }?;
 
-                    let mut applicable_traits = Vec::new();
-                    if let Some(located_assoc_item) = located_assoc_item {
-                        let trait_candidates: FxHashSet<_> =
-                            Self::get_trait_candidates(db, located_assoc_item, current_crate)
-                                .into_iter()
-                                .map(|trait_candidate| trait_candidate.into())
-                                .collect();
-                        if !trait_candidates.is_empty() {
-                            assoc_item_type.iterate_path_candidates(
-                                db,
-                                current_crate,
-                                &trait_candidates,
-                                None,
-                                |_, assoc| {
-                                    if let AssocItemContainer::Trait(appropriate_trait) =
-                                        assoc.container(db)
-                                    {
-                                        applicable_traits.push(
-                                            self.module_with_name_to_import
-                                                .find_use_path(db, appropriate_trait.into()),
-                                        );
-                                    };
-                                    None::<()>
-                                },
-                            );
-                        };
-                    }
-                    applicable_traits
+                    let mut trait_candidates = FxHashSet::default();
+                    trait_candidates.insert(located_assoc_item.into());
+
+                    assoc_item_type
+                        .iterate_path_candidates(
+                            db,
+                            current_crate,
+                            &trait_candidates,
+                            None,
+                            |_, assoc| Self::assoc_to_trait(assoc.container(db)),
+                        )
+                        .map(ModuleDef::from)
                 }
                 ImportCandidate::TraitMethod(function_callee, _) => {
-                    let mut applicable_traits = Vec::new();
-                    if let ModuleDef::Function(located_function) = module_def {
-                        let trait_candidates: FxHashSet<_> = Self::get_trait_candidates(
+                    let located_assoc_item =
+                        if let ModuleDef::Function(located_function) = module_def {
+                            located_function
+                                .as_assoc_item(db)
+                                .map(|assoc| assoc.container(db))
+                                .and_then(Self::assoc_to_trait)
+                        } else {
+                            None
+                        }?;
+
+                    let mut trait_candidates = FxHashSet::default();
+                    trait_candidates.insert(located_assoc_item.into());
+
+                    function_callee
+                        .iterate_method_candidates(
                             db,
-                            AssocItem::Function(located_function),
                             current_crate,
+                            &trait_candidates,
+                            None,
+                            |_, function| {
+                                Self::assoc_to_trait(function.as_assoc_item(db)?.container(db))
+                            },
                         )
-                        .into_iter()
-                        .map(|trait_candidate| trait_candidate.into())
-                        .collect();
-                        if !trait_candidates.is_empty() {
-                            function_callee.iterate_method_candidates(
-                                db,
-                                current_crate,
-                                &trait_candidates,
-                                None,
-                                |_, function| {
-                                    if let AssocItemContainer::Trait(appropriate_trait) = function
-                                        .as_assoc_item(db)
-                                        .expect("Function is an assoc item")
-                                        .container(db)
-                                    {
-                                        applicable_traits.push(
-                                            self.module_with_name_to_import
-                                                .find_use_path(db, appropriate_trait.into()),
-                                        );
-                                    };
-                                    None::<()>
-                                },
-                            );
-                        }
-                    }
-                    applicable_traits
+                        .map(ModuleDef::from)
                 }
-                _ => vec![self.module_with_name_to_import.find_use_path(db, module_def)],
+                _ => Some(module_def),
             })
-            .flatten()
-            .filter_map(std::convert::identity)
+            .filter_map(|module_def| self.module_with_name_to_import.find_use_path(db, module_def))
             .filter(|use_path| !use_path.segments.is_empty())
             .take(20)
             .collect::<BTreeSet<_>>()
     }
 
-    fn get_trait_candidates(
-        db: &RootDatabase,
-        called_assoc_item: AssocItem,
-        root_crate: Crate,
-    ) -> FxHashSet<Trait> {
-        let _p = profile("auto_import::get_trait_candidates");
-        root_crate
-            .dependencies(db)
-            .into_iter()
-            .map(|dependency| db.crate_def_map(dependency.krate.into()))
-            .chain(std::iter::once(db.crate_def_map(root_crate.into())))
-            .map(|crate_def_map| {
-                crate_def_map
-                    .modules
-                    .iter()
-                    .map(|(_, module_data)| module_data.scope.declarations())
-                    .flatten()
-                    .filter_map(|module_def_id| match module_def_id.into() {
-                        ModuleDef::Trait(trait_candidate)
-                            if trait_candidate
-                                .items(db)
-                                .into_iter()
-                                .any(|item| item == called_assoc_item) =>
-                        {
-                            Some(trait_candidate)
-                        }
-                        _ => None,
-                    })
-                    .collect::<FxHashSet<_>>()
-            })
-            .flatten()
-            .collect()
+    fn assoc_to_trait(assoc: AssocItemContainer) -> Option<Trait> {
+        if let AssocItemContainer::Trait(extracted_trait) = assoc {
+            Some(extracted_trait)
+        } else {
+            None
+        }
     }
 }
 
