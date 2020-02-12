@@ -69,12 +69,21 @@ impl<T> Sharded<T> {
     /// `hash` can be computed with any hasher, so long as that hasher is used
     /// consistently for each `Sharded` instance.
     #[inline]
-    pub fn get_shard_by_hash(&self, hash: u64) -> &Lock<T> {
+    pub fn get_shard_index_by_hash(&self, hash: u64) -> usize {
         let hash_len = mem::size_of::<usize>();
         // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.
         // hashbrown also uses the lowest bits, so we can't use those
         let bits = (hash >> (hash_len * 8 - 7 - SHARD_BITS)) as usize;
-        let i = bits % SHARDS;
+        bits % SHARDS
+    }
+
+    #[inline]
+    pub fn get_shard_by_hash(&self, hash: u64) -> &Lock<T> {
+        &self.shards[self.get_shard_index_by_hash(hash)].0
+    }
+
+    #[inline]
+    pub fn get_shard_by_index(&self, i: usize) -> &Lock<T> {
         &self.shards[i].0
     }
 

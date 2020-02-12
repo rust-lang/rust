@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::config::{QueryConfig, QueryDescription};
-use crate::ty::query::job::{QueryInfo, QueryJob, QueryToken};
+use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryShardJobId};
 use crate::ty::query::Query;
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
@@ -21,13 +21,19 @@ use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, H
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::mem;
+use std::num::NonZeroU32;
 use std::ptr;
 
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
+
+    /// Used to generate unique ids for active jobs.
+    pub(super) jobs: u32,
+
     #[cfg(debug_assertions)]
     pub(super) cache_hits: usize,
 }
@@ -58,6 +64,7 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
         QueryCache {
             results: FxHashMap::default(),
             active: FxHashMap::default(),
+            jobs: 0,
             #[cfg(debug_assertions)]
             cache_hits: 0,
         }
@@ -69,7 +76,7 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
 pub(super) struct JobOwner<'a, 'tcx, Q: QueryDescription<'tcx>> {
     cache: &'a Sharded<QueryCache<'tcx, Q>>,
     key: Q::Key,
-    token: QueryToken,
+    id: QueryJobId,
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
@@ -81,12 +88,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    pub(super) fn try_get(
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-        key: &Q::Key,
-        token: QueryToken,
-    ) -> TryGetJob<'a, 'tcx, Q> {
+    pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
         // Handling the `query_blocked_prof_timer` is a bit weird because of the
         // control flow in this function: Blocking is implemented by
         // awaiting a running job and, once that is done, entering the loop below
@@ -109,7 +111,10 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             key.hash(&mut state);
             let key_hash = state.finish();
 
-            let mut lock = cache.get_shard_by_hash(key_hash).lock();
+            let shard = cache.get_shard_index_by_hash(key_hash);
+            let mut lock = cache.get_shard_by_index(shard).lock();
+            let lock = &mut *lock;
+
             if let Some((_, value)) =
                 lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
             {
@@ -144,16 +149,35 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                                 query_blocked_prof_timer = Some(tcx.prof.query_blocked());
                             }
 
-                            job.latch()
+                            // Create the id of the job we're waiting for
+                            let id = QueryJobId {
+                                job: job.id,
+                                shard: u16::try_from(shard).unwrap(),
+                                kind: Q::dep_kind(),
+                            };
+
+                            job.latch(id)
                         }
                         QueryResult::Poisoned => FatalError.raise(),
                     }
                 }
                 Entry::Vacant(entry) => {
+                    let jobs = &mut lock.jobs;
+
                     // No job entry for this query. Return a new one to be started later.
                     return tls::with_related_context(tcx, |icx| {
-                        let job = QueryJob::new(token, span, icx.query);
-                        let owner = JobOwner { cache, token, key: (*key).clone() };
+                        // Generate an id unique within this shard.
+                        let id = jobs.checked_add(1).unwrap();
+                        *jobs = id;
+                        let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
+
+                        let global_id = QueryJobId {
+                            job: id,
+                            shard: u16::try_from(shard).unwrap(),
+                            kind: Q::dep_kind(),
+                        };
+                        let job = QueryJob::new(id, span, icx.query);
+                        let owner = JobOwner { cache, id: global_id, key: (*key).clone() };
                         entry.insert(QueryResult::Started(job));
                         TryGetJob::NotYetStarted(owner)
                     });
@@ -266,7 +290,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub(super) fn start_query<F, R>(
         self,
-        token: QueryToken,
+        token: QueryJobId,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: F,
     ) -> R
@@ -384,12 +408,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub(super) fn get_query<Q: QueryDescription<'tcx>>(self, span: Span, key: Q::Key) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        // Create a token which uniquely identifies this query amongst the executing queries
-        // by using a pointer to `key`. `key` is alive until the query completes execution
-        // which will prevent reuse of the token value.
-        let token = QueryToken::from(&key);
-
-        let job = match JobOwner::try_get(self, span, &key, token) {
+        let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
             TryGetJob::JobCompleted((v, index)) => {
@@ -409,7 +428,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let prof_timer = self.prof.query_provider();
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-                self.start_query(job.token, diagnostics, |tcx| {
+                self.start_query(job.id, diagnostics, |tcx| {
                     tcx.dep_graph.with_anon_task(Q::dep_kind(), || Q::compute(tcx, key))
                 })
             });
@@ -435,7 +454,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // The diagnostics for this query will be
             // promoted to the current session during
             // `try_mark_green()`, so we can ignore them here.
-            let loaded = self.start_query(job.token, None, |tcx| {
+            let loaded = self.start_query(job.id, None, |tcx| {
                 let marked = tcx.dep_graph.try_mark_green_and_read(tcx, &dep_node);
                 marked.map(|(prev_dep_node_index, dep_node_index)| {
                     (
@@ -569,7 +588,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let prof_timer = self.prof.query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            self.start_query(job.token, diagnostics, |tcx| {
+            self.start_query(job.id, diagnostics, |tcx| {
                 if Q::EVAL_ALWAYS {
                     tcx.dep_graph.with_eval_always_task(
                         dep_node,
@@ -633,14 +652,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[allow(dead_code)]
     fn force_query<Q: QueryDescription<'tcx>>(self, key: Q::Key, span: Span, dep_node: DepNode) {
-        // Create a token which uniquely identifies this query amongst the executing queries
-        // by using a pointer to `key`. `key` is alive until the query completes execution
-        // which will prevent reuse of the token value.
-        let token = QueryToken::from(&key);
-
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
-        let job = match JobOwner::try_get(self, span, &key, token) {
+        let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(_) | TryGetJob::JobCompleted(_) => return,
         };
@@ -748,24 +762,33 @@ macro_rules! define_queries_inner {
 
             pub fn try_collect_active_jobs(
                 &self
-            ) -> Option<FxHashMap<QueryToken, QueryJobInfo<'tcx>>> {
+            ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<'tcx>>> {
                 let mut jobs = FxHashMap::default();
 
                 $(
                     // We use try_lock_shards here since we are called from the
                     // deadlock handler, and this shouldn't be locked.
                     let shards = self.$name.try_lock_shards()?;
-                    jobs.extend(shards.iter().flat_map(|shard| shard.active.iter().filter_map(|(k, v)|
-                        if let QueryResult::Started(ref job) = *v {
-                            let info = QueryInfo {
-                                span: job.span,
-                                query: queries::$name::query(k.clone())
-                            };
-                            Some((job.token, QueryJobInfo { info,  job: job.clone() }))
-                        } else {
-                            None
-                        }
-                    )));
+                    let shards = shards.iter().enumerate();
+                    jobs.extend(shards.flat_map(|(shard_id, shard)| {
+                        shard.active.iter().filter_map(move |(k, v)| {
+                            if let QueryResult::Started(ref job) = *v {
+                                let id = QueryJobId {
+                                    job: job.id,
+                                    shard:  u16::try_from(shard_id).unwrap(),
+                                    kind:
+                                        <queries::$name<'tcx> as QueryAccessors<'tcx>>::dep_kind(),
+                                };
+                                let info = QueryInfo {
+                                    span: job.span,
+                                    query: queries::$name::query(k.clone())
+                                };
+                                Some((id, QueryJobInfo { info,  job: job.clone() }))
+                            } else {
+                                None
+                            }
+                        })
+                    }));
                 )*
 
                 Some(jobs)

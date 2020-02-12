@@ -54,6 +54,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::any::type_name;
 use std::borrow::Cow;
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::sync::Arc;
 use syntax::ast;
@@ -67,7 +68,7 @@ mod job;
 #[cfg(parallel_compiler)]
 pub use self::job::handle_deadlock;
 use self::job::QueryJobInfo;
-pub use self::job::{QueryInfo, QueryJob, QueryToken};
+pub use self::job::{QueryInfo, QueryJob, QueryJobId};
 
 mod keys;
 use self::keys::Key;
