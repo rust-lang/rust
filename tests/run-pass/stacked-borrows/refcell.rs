@@ -4,6 +4,7 @@ fn main() {
     basic();
     ref_protector();
     ref_mut_protector();
+    rust_issue_68303();
 }
 
 fn basic() {
@@ -65,4 +66,12 @@ fn ref_mut_protector() {
 
     let rc = RefCell::new(0);
     break_it(&rc, rc.borrow_mut())
+}
+
+/// Make sure we do not have bad enum layout optimizations.
+fn rust_issue_68303() {
+    let optional=Some(RefCell::new(false));
+    let mut handle=optional.as_ref().unwrap().borrow_mut();
+    assert!(optional.is_some());
+    *handle=true;
 }
