@@ -2,7 +2,9 @@ name: Clippy Dev Test
 
 on:
   push:
-    branches: [auto, try]
+    branches:
+      - auto
+      - try
   pull_request:
     # Only run on paths, that get checked by the clippy_dev tool
     paths:
