@@ -27,6 +27,15 @@ use std::string;
 
 use rustc_span::{InnerSpan, Symbol};
 
+/// The type of format string that we are parsing.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ParseMode {
+    /// A normal format string as per `format_args!`.
+    Format,
+    /// An inline assembly template string for `asm!`.
+    InlineAsm,
+}
+
 #[derive(Copy, Clone)]
 struct InnerOffset(usize);
 
@@ -163,6 +172,7 @@ pub struct ParseError {
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
+    mode: ParseMode,
     input: &'a str,
     cur: iter::Peekable<str::CharIndices<'a>>,
     /// Error messages accumulated during parsing
@@ -179,6 +189,8 @@ pub struct Parser<'a> {
     last_opening_brace: Option<InnerSpan>,
     /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
+    /// Whether this formatting string is a literal or it comes from a macro.
+    is_literal: bool,
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -201,7 +213,9 @@ impl<'a> Iterator for Parser<'a> {
                         if let Some(end) = self.must_consume('}') {
                             let start = self.to_span_index(pos);
                             let end = self.to_span_index(end + 1);
-                            self.arg_places.push(start.to(end));
+                            if self.is_literal {
+                                self.arg_places.push(start.to(end));
+                            }
                         }
                         Some(NextArgument(arg))
                     }
@@ -235,10 +249,13 @@ impl<'a> Parser<'a> {
     pub fn new(
         s: &'a str,
         style: Option<usize>,
-        skips: Vec<usize>,
+        snippet: Option<string::String>,
         append_newline: bool,
+        mode: ParseMode,
     ) -> Parser<'a> {
+        let (skips, is_literal) = find_skips_from_snippet(snippet, style);
         Parser {
+            mode,
             input: s,
             cur: s.char_indices().peekable(),
             errors: vec![],
@@ -248,6 +265,7 @@ impl<'a> Parser<'a> {
             skips,
             last_opening_brace: None,
             append_newline,
+            is_literal,
         }
     }
 
@@ -426,7 +444,10 @@ impl<'a> Parser<'a> {
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
     fn argument(&mut self) -> Argument<'a> {
         let pos = self.position();
-        let format = self.format();
+        let format = match self.mode {
+            ParseMode::Format => self.format(),
+            ParseMode::InlineAsm => self.inline_asm(),
+        };
 
         // Resolve position after parsing format spec.
         let pos = match pos {
@@ -574,6 +595,36 @@ impl<'a> Parser<'a> {
         spec
     }
 
+    /// Parses an inline assembly template modifier at the current position, returning the modifier
+    /// in the `ty` field of the `FormatSpec` struct.
+    fn inline_asm(&mut self) -> FormatSpec<'a> {
+        let mut spec = FormatSpec {
+            fill: None,
+            align: AlignUnknown,
+            flags: 0,
+            precision: CountImplied,
+            precision_span: None,
+            width: CountImplied,
+            width_span: None,
+            ty: &self.input[..0],
+            ty_span: None,
+        };
+        if !self.consume(':') {
+            return spec;
+        }
+
+        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
+        spec.ty = self.word();
+        let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
+        if !spec.ty.is_empty() {
+            spec.ty_span = ty_span_start
+                .and_then(|s| ty_span_end.map(|e| (s, e)))
+                .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
+        }
+
+        spec
+    }
+
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
@@ -650,6 +701,104 @@ impl<'a> Parser<'a> {
         }
         found.then_some(cur)
     }
+}
+
+/// Finds the indices of all characters that have been processed and differ between the actual
+/// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
+/// in order to properly synthethise the intra-string `Span`s for error diagnostics.
+fn find_skips_from_snippet(
+    snippet: Option<string::String>,
+    str_style: Option<usize>,
+) -> (Vec<usize>, bool) {
+    let snippet = match snippet {
+        Some(ref s) if s.starts_with('"') || s.starts_with("r#") => s,
+        _ => return (vec![], false),
+    };
+
+    fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
+        let mut eat_ws = false;
+        let mut s = snippet.chars().enumerate().peekable();
+        let mut skips = vec![];
+        while let Some((pos, c)) = s.next() {
+            match (c, s.peek()) {
+                // skip whitespace and empty lines ending in '\\'
+                ('\\', Some((next_pos, '\n'))) if !is_raw => {
+                    eat_ws = true;
+                    skips.push(pos);
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                ('\\', Some((next_pos, '\n' | 'n' | 't'))) if eat_ws => {
+                    skips.push(pos);
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                (' ' | '\n' | '\t', _) if eat_ws => {
+                    skips.push(pos);
+                }
+                ('\\', Some((next_pos, 'n' | 't' | '0' | '\\' | '\'' | '\"'))) => {
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                ('\\', Some((_, 'x'))) if !is_raw => {
+                    for _ in 0..3 {
+                        // consume `\xAB` literal
+                        if let Some((pos, _)) = s.next() {
+                            skips.push(pos);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                ('\\', Some((_, 'u'))) if !is_raw => {
+                    if let Some((pos, _)) = s.next() {
+                        skips.push(pos);
+                    }
+                    if let Some((next_pos, next_c)) = s.next() {
+                        if next_c == '{' {
+                            skips.push(next_pos);
+                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
+                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else if c == '}' {
+                                    skips.push(next_pos);
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        } else if next_c.is_digit(16) {
+                            skips.push(next_pos);
+                            // We suggest adding `{` and `}` when appropriate, accept it here as if
+                            // it were correct
+                            let mut i = 0; // consume up to 6 hexanumeric chars
+                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        }
+                    }
+                }
+                _ if eat_ws => {
+                    // `take_while(|c| c.is_whitespace())`
+                    eat_ws = false;
+                }
+                _ => {}
+            }
+        }
+        skips
+    }
+
+    let r_start = str_style.map(|r| r + 1).unwrap_or(0);
+    let r_end = str_style.map(|r| r).unwrap_or(0);
+    let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
+    (find_skips(s, str_style.is_some()), true)
 }
 
 #[cfg(test)]
