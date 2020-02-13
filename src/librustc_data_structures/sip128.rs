@@ -235,6 +235,8 @@ impl Hasher for SipHasher128 {
         self.short_write(i, i.to_le() as u64);
     }
 
+    // `write_u128` is currently unimplemented.
+
     #[inline]
     fn write_usize(&mut self, i: usize) {
         self.short_write(i, i.to_le() as u64);
@@ -259,6 +261,8 @@ impl Hasher for SipHasher128 {
     fn write_i64(&mut self, i: i64) {
         self.short_write(i, (i as u64).to_le() as u64);
     }
+
+    // `write_i128` is currently unimplemented.
 
     #[inline]
     fn write_isize(&mut self, i: isize) {

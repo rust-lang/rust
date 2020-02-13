@@ -297,6 +297,66 @@ impl<S: Sip> Hasher<S> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl super::Hasher for SipHasher {
     #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.0.hasher.write_u8(i);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.0.hasher.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.0.hasher.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.0.hasher.write_u64(i);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.0.hasher.write_u128(i);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.0.hasher.write_usize(i);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.0.hasher.write_i8(i);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.0.hasher.write_i16(i);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.0.hasher.write_i32(i);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.0.hasher.write_i64(i);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.0.hasher.write_i128(i);
+    }
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.0.hasher.write_isize(i);
+    }
+
+    #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.hasher.write(msg)
     }
@@ -309,6 +369,66 @@ impl super::Hasher for SipHasher {
 
 #[unstable(feature = "hashmap_internals", issue = "none")]
 impl super::Hasher for SipHasher13 {
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.hasher.write_u8(i);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.hasher.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.hasher.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.hasher.write_u64(i);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.hasher.write_u128(i);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.hasher.write_usize(i);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.hasher.write_i8(i);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.hasher.write_i16(i);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.hasher.write_i32(i);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.hasher.write_i64(i);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.hasher.write_i128(i);
+    }
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.hasher.write_isize(i);
+    }
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
@@ -327,8 +447,52 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     }
 
     #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    // `write_u128` is currently unimplemented.
+
+    #[inline]
     fn write_usize(&mut self, i: usize) {
         self.short_write(i, i.to_le() as u64);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.short_write(i, i as u8 as u64);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.short_write(i, (i as u16).to_le() as u64);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.short_write(i, (i as u32).to_le() as u64);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.short_write(i, (i as u64).to_le() as u64);
+    }
+
+    // `write_i128` is currently unimplemented.
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.short_write(i, (i as usize).to_le() as u64);
     }
 
     #[inline]
