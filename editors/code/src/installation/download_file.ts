@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as stream from "stream";
 import * as util from "util";
 import { strict as assert } from "assert";
-import { NestedError } from "ts-nested-error";
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -19,13 +18,13 @@ export async function downloadFile(
     destFilePermissions: number,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
-    const res = await fetch(url).catch(NestedError.rethrow("Failed at initial fetch"));
+    const res = await fetch(url);
 
     if (!res.ok) {
         console.log("Error", res.status, "while downloading file from", url);
         console.dir({ body: await res.text(), headers: res.headers }, { depth: 3 });
 
-        throw new NestedError(`Got response ${res.status}`);
+        throw new Error(`Got response ${res.status} when trying to download a file.`);
     }
 
     const totalBytes = Number(res.headers.get('content-length'));
@@ -41,7 +40,7 @@ export async function downloadFile(
 
     const destFileStream = fs.createWriteStream(destFilePath, { mode: destFilePermissions });
 
-    await pipeline(res.body, destFileStream).catch(NestedError.rethrow("Piping file error"));
+    await pipeline(res.body, destFileStream);
     return new Promise<void>(resolve => {
         destFileStream.on("close", resolve);
         destFileStream.destroy();
