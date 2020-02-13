@@ -12,6 +12,7 @@ use std::{
     process::Command,
 };
 
+use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
@@ -22,8 +23,6 @@ pub use crate::{
     json_project::JsonProject,
     sysroot::Sysroot,
 };
-
-pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CargoTomlNotFoundError(pub PathBuf);
@@ -81,15 +80,36 @@ impl ProjectWorkspace {
     ) -> Result<ProjectWorkspace> {
         match find_rust_project_json(path) {
             Some(json_path) => {
-                let file = File::open(json_path)?;
+                let file = File::open(&json_path)
+                    .with_context(|| format!("Failed to open json file {}", json_path.display()))?;
                 let reader = BufReader::new(file);
-                Ok(ProjectWorkspace::Json { project: from_reader(reader)? })
+                Ok(ProjectWorkspace::Json {
+                    project: from_reader(reader).with_context(|| {
+                        format!("Failed to deserialize json file {}", json_path.display())
+                    })?,
+                })
             }
             None => {
-                let cargo_toml = find_cargo_toml(path)?;
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)?;
-                let sysroot =
-                    if with_sysroot { Sysroot::discover(&cargo_toml)? } else { Sysroot::default() };
+                let cargo_toml = find_cargo_toml(path).with_context(|| {
+                    format!("Failed to find Cargo.toml for path {}", path.display())
+                })?;
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
+                    .with_context(|| {
+                        format!(
+                            "Failed to read Cargo metadata from Cargo.toml file {}",
+                            cargo_toml.display()
+                        )
+                    })?;
+                let sysroot = if with_sysroot {
+                    Sysroot::discover(&cargo_toml).with_context(|| {
+                        format!(
+                            "Failed to find sysroot for Cargo.toml file {}",
+                            cargo_toml.display()
+                        )
+                    })?
+                } else {
+                    Sysroot::default()
+                };
                 Ok(ProjectWorkspace::Cargo { cargo, sysroot })
             }
         }
@@ -403,11 +423,20 @@ pub fn get_rustc_cfg_options() -> CfgOptions {
         }
     }
 
-    match (|| -> Result<_> {
+    match (|| -> Result<String> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let output = Command::new("rustc").args(&["--print", "cfg", "-O"]).output()?;
+        let output = Command::new("rustc")
+            .args(&["--print", "cfg", "-O"])
+            .output()
+            .context("Failed to get output from rustc --print cfg -O")?;
         if !output.status.success() {
-            Err("failed to get rustc cfgs")?;
+            bail!(
+                "rustc --print cfg -O exited with exit code ({})",
+                output
+                    .status
+                    .code()
+                    .map_or(String::from("no exit code"), |code| format!("{}", code))
+            );
         }
         Ok(String::from_utf8(output.stdout)?)
     })() {

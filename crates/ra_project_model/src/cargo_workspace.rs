@@ -2,13 +2,12 @@
 
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
-
-use crate::Result;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -171,7 +170,9 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
         }
-        let meta = meta.exec().map_err(|e| format!("cargo metadata failed: {}", e))?;
+        let meta = meta.exec().with_context(|| {
+            format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
+        })?;
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -181,7 +182,9 @@ impl CargoWorkspace {
         for meta_pkg in meta.packages {
             let cargo_metadata::Package { id, edition, name, manifest_path, .. } = meta_pkg;
             let is_member = ws_members.contains(&id);
-            let edition = edition.parse::<Edition>()?;
+            let edition = edition
+                .parse::<Edition>()
+                .with_context(|| format!("Failed to parse edition {}", edition))?;
             let pkg = packages.alloc(PackageData {
                 name,
                 manifest: manifest_path,

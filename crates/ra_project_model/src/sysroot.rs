@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use anyhow::{anyhow, bail, Context, Result};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -7,8 +8,6 @@ use std::{
 };
 
 use ra_arena::{impl_arena_id, Arena, RawId};
-
-use crate::Result;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -51,7 +50,7 @@ impl Sysroot {
         let src = try_find_src_path(cargo_toml)?;
 
         if !src.exists() {
-            Err(format!(
+            Err(anyhow!(
                 "can't load standard library from sysroot\n\
                  {}\n\
                  (discovered via `rustc --print sysroot`)\n\
@@ -100,9 +99,14 @@ fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
         .current_dir(cargo_toml.parent().unwrap())
         .args(&["--print", "sysroot"])
         .output()
-        .map_err(|e| format!("rustc --print sysroot failed: {}", e))?;
+        .context("rustc --print sysroot failed")?;
     if !rustc_output.status.success() {
-        Err("failed to locate sysroot")?;
+        match rustc_output.status.code() {
+            Some(code) => {
+                bail!("failed to locate sysroot: rustc --print sysroot exited with code {}", code)
+            }
+            None => bail!("failed to locate sysroot: rustc --print sysroot terminated by signal"),
+        };
     }
     let stdout = String::from_utf8(rustc_output.stdout)?;
     let sysroot_path = Path::new(stdout.trim());
