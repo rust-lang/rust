@@ -818,7 +818,7 @@ impl TypeParam {
     }
 }
 
-// FIXME: rename to `ImplBlock`
+// FIXME: rename from `ImplBlock` to `Impl`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
