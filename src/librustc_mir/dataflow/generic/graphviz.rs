@@ -195,6 +195,8 @@ where
         // C: Entry state
         self.bg = Background::Light;
         self.results.seek_to_block_start(block);
+        let block_entry_state = self.results.get().clone();
+
         self.write_row_with_full_state(w, "", "(on entry)")?;
 
         // D: Statement transfer functions
@@ -213,28 +215,41 @@ where
         self.write_row_for_location(w, "T", &terminator_str, terminator_loc)?;
 
         // F: Exit state
+
+        // Write the full dataflow state immediately after the terminator if it differs from the
+        // state at block entry.
         self.results.seek_after(terminator_loc);
-        if let mir::TerminatorKind::Call { destination: Some(_), .. } = &terminator.kind {
-            self.write_row_with_full_state(w, "", "(on unwind)")?;
+        if self.results.get() != &block_entry_state {
+            let after_terminator_name = match terminator.kind {
+                mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
+                _ => "(on exit)",
+            };
 
-            let num_state_columns = self.num_state_columns();
-            self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                write!(
-                    w,
-                    r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
-                    colspan = num_state_columns,
-                    fmt = fmt,
-                )?;
-
-                let state_on_unwind = this.results.get().clone();
-                this.results.seek_after_assume_call_returns(terminator_loc);
-                write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
-
-                write!(w, "</td>")
-            })?;
-        } else {
-            self.write_row_with_full_state(w, "", "(on exit)")?;
+            self.write_row_with_full_state(w, "", after_terminator_name)?;
         }
+
+        // Write any changes caused by terminator-specific effects
+        match terminator.kind {
+            mir::TerminatorKind::Call { destination: Some(_), .. } => {
+                let num_state_columns = self.num_state_columns();
+                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
+                    write!(
+                        w,
+                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
+                        colspan = num_state_columns,
+                        fmt = fmt,
+                    )?;
+
+                    let state_on_unwind = this.results.get().clone();
+                    this.results.seek_after_assume_call_returns(terminator_loc);
+                    write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
+
+                    write!(w, "</td>")
+                })?;
+            }
+
+            _ => {}
+        };
 
         write!(w, "</table>")
     }
