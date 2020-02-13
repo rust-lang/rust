@@ -219,7 +219,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
-        msg: &AssertMessage<'tcx>,
+        msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         ecx.assert_panic(span, msg, unwind)

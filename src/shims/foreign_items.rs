@@ -177,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let items = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let size =
-                    items.checked_mul(len).ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
+                    items.checked_mul(len).ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }

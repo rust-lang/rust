@@ -105,7 +105,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
         let offset = offset
             .checked_mul(pointee_size)
-            .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
+            .ok_or_else(|| err_ub_format!("overflow during offset comutation for inbounds pointer arithmetic"))?;
         // We do this first, to rule out overflows.
         let offset_ptr = ptr.ptr_signed_offset(offset, self)?;
         // What we need to check is that starting at `min(ptr, offset_ptr)`,
