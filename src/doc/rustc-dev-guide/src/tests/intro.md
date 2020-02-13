@@ -2,10 +2,10 @@
 
 The Rust project runs a wide variety of different tests, orchestrated
 by the build system (`x.py test`).  The main test harness for testing
-the compiler itself is a tool called compiletest (sources in the
-[`src/tools/compiletest`]). This section gives a brief overview of how
-the testing framework is setup, and then gets into some of the details
-on [how to run tests](./running.html) as well as
+the compiler itself is a tool called compiletest (located in the
+[`src/tools/compiletest`] directory). This section gives a brief
+overview of how the testing framework is setup, and then gets into some
+of the details on [how to run tests](./running.html) as well as
 [how to add new tests](./adding.html).
 
 [`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
