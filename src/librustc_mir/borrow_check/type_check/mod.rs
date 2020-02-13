@@ -326,12 +326,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
+            let tcx = self.tcx();
             if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
                 if let Err(terr) = self.cx.fully_perform_op(
                     location.to_locations(),
                     ConstraintCategory::Boring,
                     self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        constant.literal.ty, def_id, UserSubsts { substs, user_self_ty: None },
+                        constant.literal.ty,
+                        def_id,
+                        UserSubsts { substs, user_self_ty: None },
                     )),
                 ) {
                     span_mirbug!(
@@ -342,10 +345,22 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         terr
                     );
                 }
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id);
+                let locations = location.to_locations();
+                let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
+
+                if let Err(terr) = self.cx.eq_types(
+                    normalized_ty,
+                    literal_ty,
+                    locations,
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
             }
             if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
-                let tcx = self.tcx();
-
                 let instantiated_predicates = tcx
                     .predicates_of(def_id)
                     .instantiate(tcx, substs);
