@@ -1,6 +1,9 @@
 use crate::attributes;
 use crate::back::bytecode;
 use crate::back::lto::ThinBuffer;
+use crate::back::profiling::{
+    selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
+};
 use crate::base;
 use crate::common;
 use crate::consts;
@@ -348,6 +351,7 @@ pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     opt_level: config::OptLevel,
@@ -372,6 +376,13 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         None
     };
 
+    let llvm_selfprofiler = if cgcx.prof.llvm_recording_enabled() {
+        let mut llvm_profiler = LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap());
+        &mut llvm_profiler as *mut _ as *mut c_void
+    } else {
+        std::ptr::null_mut()
+    };
+
     // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
     // We would have to add upstream support for this first, before we can support
     // config.inline_threshold and our more aggressive default thresholds.
@@ -394,6 +405,9 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        llvm_selfprofiler,
+        selfprofile_before_pass_callback,
+        selfprofile_after_pass_callback,
     );
 }
 
@@ -428,8 +442,13 @@ pub(crate) unsafe fn optimize(
                 _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
                 _ => llvm::OptStage::PreLinkNoLTO,
             };
-            optimize_with_new_llvm_pass_manager(module, config, opt_level, opt_stage);
+            optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
             return Ok(());
+        }
+
+        if cgcx.prof.llvm_recording_enabled() {
+            diag_handler
+                .warn("`-Z self-profile-events = llvm` requires `-Z new-llvm-pass-manager`");
         }
 
         // Create the two optimizing pass managers. These mirror what clang

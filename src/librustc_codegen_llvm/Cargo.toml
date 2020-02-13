@@ -14,6 +14,7 @@ doctest = false
 bitflags = "1.0"
 flate2 = "1.0"
 libc = "0.2"
+measureme = "0.7.1"
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc-demangle = "0.1"
