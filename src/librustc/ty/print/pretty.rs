@@ -211,15 +211,20 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    /// Prints `{...}` around what `f` (and optionally `t`) print
-    fn type_ascribed_value(
+    /// Prints `{f: t}` or `{f as t}` depending on the `cast` argument
+    fn typed_value(
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        cast: bool,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        self.write_str(": ")?;
+        if cast {
+            self.write_str(" as ")?;
+        } else {
+            self.write_str(": ")?;
+        }
         self = t(self)?;
         self.write_str("}")?;
         Ok(self)
@@ -990,7 +995,14 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Raw pointers
             (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
-                p!(write("{{0x{:x} as ", data), print(ty), write("}}"))
+                self = self.typed_value(
+                    |mut this| {
+                        write!(this, "0x{:x}", data)?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    true,
+                )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
                 let instance = {
@@ -1025,7 +1037,7 @@ pub trait PrettyPrinter<'tcx>:
                     Ok(this)
                 };
                 self = if print_ty {
-                    self.type_ascribed_value(print, |this| this.print_type(ty))?
+                    self.typed_value(print, |this| this.print_type(ty), false)?
                 } else {
                     print(self)?
                 };
@@ -1047,12 +1059,13 @@ pub trait PrettyPrinter<'tcx>:
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         if print_ty {
-            self.type_ascribed_value(
+            self.typed_value(
                 |mut this| {
                     this.write_str("&_")?;
                     Ok(this)
                 },
                 |this| this.print_type(ty),
+                false,
             )
         } else {
             self.write_str("&_")?;
@@ -1449,14 +1462,19 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self.pretty_in_binder(value)
     }
 
-    fn type_ascribed_value(
+    fn typed_value(
         mut self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
         t: impl FnOnce(Self) -> Result<Self, Self::Error>,
+        cast: bool,
     ) -> Result<Self::Const, Self::Error> {
         self.write_str("{")?;
         self = f(self)?;
-        self.write_str(": ")?;
+        if cast {
+            self.write_str(" as ")?;
+        } else {
+            self.write_str(": ")?;
+        }
         let was_in_value = std::mem::replace(&mut self.in_value, false);
         self = t(self)?;
         self.in_value = was_in_value;
@@ -1537,7 +1555,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
             Ok(this)
         };
         if print_ty {
-            self.type_ascribed_value(print, |this| this.print_type(ty))
+            self.typed_value(print, |this| this.print_type(ty), false)
         } else {
             print(self)
         }
