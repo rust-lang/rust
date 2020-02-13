@@ -22,13 +22,14 @@ pub type MaybeMutBorrowedLocals<'mir, 'tcx> = MaybeBorrowedLocals<MutBorrow<'mir
 /// function call or inline assembly.
 pub struct MaybeBorrowedLocals<K = AnyBorrow> {
     kind: K,
+    ignore_borrow_on_drop: bool,
 }
 
 impl MaybeBorrowedLocals {
     /// A dataflow analysis that records whether a pointer or reference exists that may alias the
     /// given local.
     pub fn all_borrows() -> Self {
-        MaybeBorrowedLocals { kind: AnyBorrow }
+        MaybeBorrowedLocals { kind: AnyBorrow, ignore_borrow_on_drop: false }
     }
 }
 
@@ -43,13 +44,37 @@ impl MaybeMutBorrowedLocals<'mir, 'tcx> {
         body: &'mir mir::Body<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> Self {
-        MaybeBorrowedLocals { kind: MutBorrow { body, tcx, param_env } }
+        MaybeBorrowedLocals {
+            kind: MutBorrow { body, tcx, param_env },
+            ignore_borrow_on_drop: false,
+        }
     }
 }
 
 impl<K> MaybeBorrowedLocals<K> {
+    /// During dataflow analysis, ignore the borrow that may occur when a place is dropped.
+    ///
+    /// Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut self` as a
+    /// parameter. In the general case, a drop impl could launder that reference into the
+    /// surrounding environment through a raw pointer, thus creating a valid `*mut` pointing to the
+    /// dropped local. We are not yet willing to declare this particular case UB, so we must treat
+    /// all dropped locals as mutably borrowed for now. See discussion on [#61069].
+    ///
+    /// In some contexts, we know that this borrow will never occur. For example, during
+    /// const-eval, custom drop glue cannot be run. Code that calls this should document the
+    /// assumptions that justify `Drop` terminators in this way.
+    ///
+    /// [#61069]: https://github.com/rust-lang/rust/pull/61069
+    pub fn unsound_ignore_borrow_on_drop(self) -> Self {
+        MaybeBorrowedLocals { ignore_borrow_on_drop: true, ..self }
+    }
+
     fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T, K> {
-        TransferFunction { kind: &self.kind, trans }
+        TransferFunction {
+            kind: &self.kind,
+            trans,
+            ignore_borrow_on_drop: self.ignore_borrow_on_drop,
+        }
     }
 }
 
@@ -112,6 +137,7 @@ impl<K> BottomValue for MaybeBorrowedLocals<K> {
 struct TransferFunction<'a, T, K> {
     trans: &'a mut T,
     kind: &'a K,
+    ignore_borrow_on_drop: bool,
 }
 
 impl<T, K> Visitor<'tcx> for TransferFunction<'a, T, K>
@@ -162,17 +188,12 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut self`
-            // as a parameter. Hypothetically, a drop impl could launder that reference into the
-            // surrounding environment through a raw pointer, thus creating a valid `*mut` pointing
-            // to the dropped local. We are not yet willing to declare this particular case UB, so
-            // we must treat all dropped locals as mutably borrowed for now. See discussion on
-            // [#61069].
-            //
-            // [#61069]: https://github.com/rust-lang/rust/pull/61069
             mir::TerminatorKind::Drop { location: dropped_place, .. }
             | mir::TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
-                self.trans.gen(dropped_place.local);
+                // See documentation for `unsound_ignore_borrow_on_drop` for an explanation.
+                if !self.ignore_borrow_on_drop {
+                    self.trans.gen(dropped_place.local);
+                }
             }
 
             TerminatorKind::Abort
