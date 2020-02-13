@@ -473,7 +473,7 @@ fn locals_live_across_suspend_points(
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_results =
-        MaybeBorrowedLocals::new().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
+        MaybeBorrowedLocals::all_borrows().into_engine(tcx, body_ref, def_id).iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor = ResultsCursor::new(body_ref, &borrowed_locals_results);
 

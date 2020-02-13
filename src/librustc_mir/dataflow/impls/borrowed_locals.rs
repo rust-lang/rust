@@ -27,7 +27,7 @@ pub struct MaybeBorrowedLocals<K = AnyBorrow> {
 impl MaybeBorrowedLocals {
     /// A dataflow analysis that records whether a pointer or reference exists that may alias the
     /// given local.
-    pub fn new() -> Self {
+    pub fn all_borrows() -> Self {
         MaybeBorrowedLocals { kind: AnyBorrow }
     }
 }
@@ -35,7 +35,10 @@ impl MaybeBorrowedLocals {
 impl MaybeMutBorrowedLocals<'mir, 'tcx> {
     /// A dataflow analysis that records whether a pointer or reference exists that may *mutably*
     /// alias the given local.
-    pub fn new_mut_only(
+    ///
+    /// This includes `&mut` and pointers derived from an `&mut`, as well as shared borrows of
+    /// types with interior mutability.
+    pub fn mut_borrows_only(
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         param_env: ParamEnv<'tcx>,
