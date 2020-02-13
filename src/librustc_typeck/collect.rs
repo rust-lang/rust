@@ -1054,7 +1054,27 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             Some(tcx.closure_base_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => impl_trait_fn,
+            ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
+                impl_trait_fn.or_else(|| {
+                    let parent_id = tcx.hir().get_parent_item(hir_id);
+                    if parent_id != hir_id && parent_id != CRATE_HIR_ID {
+                        debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
+                        // If this 'impl Trait' is nested inside another 'impl Trait'
+                        // (e.g. `impl Foo<MyType = impl Bar<A>>`), we need to use the 'parent'
+                        // 'impl Trait' for its generic parameters, since we can reference them
+                        // from the 'child' 'impl Trait'
+                        if let Node::Item(hir::Item { kind: ItemKind::OpaqueTy(..), .. }) =
+                            tcx.hir().get(parent_id)
+                        {
+                            Some(tcx.hir().local_def_id(parent_id))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+            }
             _ => None,
         },
         _ => None,
