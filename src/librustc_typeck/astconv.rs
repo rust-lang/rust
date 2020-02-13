@@ -514,7 +514,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Option<Ty<'tcx>>,
         arg_count_correct: bool,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
-        provided_kind: impl Fn(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
+        mut provided_kind: impl FnMut(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
         mut inferred_kind: impl FnMut(
             Option<&[subst::GenericArg<'tcx>]>,
             &GenericParamDef,
@@ -751,6 +751,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let mut missing_type_params = vec![];
+        let mut inferred_params = vec![];
         let substs = Self::create_substs_for_generic_args(
             tcx,
             def_id,
@@ -773,7 +774,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(&lt, Some(param)).into()
                 }
                 (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                    self.ast_ty_to_ty(&ty).into()
+                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
+                        inferred_params.push(ty.span);
+                        tcx.types.err.into()
+                    } else {
+                        self.ast_ty_to_ty(&ty).into()
+                    }
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
                     self.ast_const_to_const(&ct.value, tcx.type_of(param.def_id)).into()
@@ -832,6 +838,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             },
         );
+        if !inferred_params.is_empty() {
+            // We always collect the spans for placeholder types when evaluating `fn`s, but we
+            // only want to emit an error complaining about them if infer types (`_`) are not
+            // allowed. `allow_ty_infer` gates this behavior.
+            crate::collect::placeholder_type_error(
+                tcx,
+                inferred_params[0],
+                &[],
+                inferred_params,
+                false,
+            );
+        }
 
         self.complain_about_missing_type_params(
             missing_type_params,

@@ -122,7 +122,15 @@ error[E0223]: ambiguous associated type
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
-error: aborting due to 19 previous errors
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:49:13
+   |
+LL | fn foo<X: K<_, _>>(x: X) {}
+   |             ^  ^ not allowed in type signatures
+   |             |
+   |             not allowed in type signatures
+
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0121, E0223.
 For more information about an error, try `rustc --explain E0121`.
