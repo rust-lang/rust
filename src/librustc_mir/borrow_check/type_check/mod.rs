@@ -309,6 +309,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
+            let tcx = self.tcx();
             if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -358,10 +359,23 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         );
                     }
                 }
-            }
-            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
-                let tcx = self.tcx();
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id);
+                let locations = location.to_locations();
+                let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
 
+                if let Err(terr) = self.cx.eq_types(
+                    normalized_ty,
+                    literal_ty,
+                    locations,
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
+            }
+
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,
