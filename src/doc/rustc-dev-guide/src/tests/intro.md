@@ -20,9 +20,9 @@ a distinct mode.
 
 [`src/test`]: https://github.com/rust-lang/rust/tree/master/src/test
 
-Here is a brief summary of the test suites as of this writing and what
-they mean. In some cases, the test suites are linked to parts of the manual
-that give more details.
+Here is a brief summary of the test suites and what they mean. In some
+cases, the test suites are linked to parts of the manual that give more
+details.
 
 - [`ui`](./adding.html#ui) – tests that check the exact
   stdout/stderr from compilation and/or running the test
