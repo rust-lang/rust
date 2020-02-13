@@ -1605,45 +1605,6 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents associated items.
-/// These include items in `impl` and `trait` definitions.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AssocItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub defaultness: Defaultness,
-    pub kind: AssocItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
-/// Represents various kinds of content within an `impl`.
-///
-/// The term "provided" in the variants below refers to the item having a default
-/// definition / body. Meanwhile, a "required" item lacks a definition / body.
-/// In an implementation, all items must be provided.
-/// The `Option`s below denote the bodies, where `Some(_)`
-/// means "provided" and conversely `None` means "required".
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum AssocItemKind {
-    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
-    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
-    Const(P<Ty>, Option<P<Expr>>),
-
-    /// An associated function.
-    Fn(FnSig, Generics, Option<P<Block>>),
-
-    /// An associated type.
-    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
-
-    /// A macro expanding to an associated item.
-    Macro(Mac),
-}
-
 #[derive(
     Clone,
     Copy,
@@ -2663,4 +2624,43 @@ impl ForeignItemKind {
             ForeignItemKind::Macro(..) => "macro in foreign module",
         }
     }
+}
+
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct AssocItem {
+    pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub vis: Visibility,
+    pub ident: Ident,
+
+    pub defaultness: Defaultness,
+    pub kind: AssocItemKind,
+    /// See `Item::tokens` for what this is.
+    pub tokens: Option<TokenStream>,
+}
+
+/// Represents various kinds of content within an `impl`.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AssocItemKind {
+    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
+    Const(P<Ty>, Option<P<Expr>>),
+
+    /// An associated function.
+    Fn(FnSig, Generics, Option<P<Block>>),
+
+    /// An associated type.
+    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
+
+    /// A macro expanding to an associated item.
+    Macro(Mac),
 }
