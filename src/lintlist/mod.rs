@@ -191,7 +191,7 @@ pub const ALL_LINTS: [Lint; 355] = [
     },
     Lint {
         name: "chars_next_cmp",
-        group: "complexity",
+        group: "style",
         desc: "using `.chars().next()` to check if a string starts with a char",
         deprecation: None,
         module: "methods",
