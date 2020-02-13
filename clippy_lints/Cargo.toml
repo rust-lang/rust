@@ -22,7 +22,7 @@ if_chain = "1.0.0"
 itertools = "0.8"
 lazy_static = "1.0.2"
 matches = "0.1.7"
-pulldown-cmark = "0.6.0"
+pulldown-cmark = "0.7.0"
 quine-mc_cluskey = "0.2.2"
 regex-syntax = "0.6"
 serde = { version = "1.0", features = ["derive"] }
