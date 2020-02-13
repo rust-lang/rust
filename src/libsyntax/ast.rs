@@ -1616,7 +1616,6 @@ pub struct AssocItem {
     pub ident: Ident,
 
     pub defaultness: Defaultness,
-    pub generics: Generics,
     pub kind: AssocItemKind,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
@@ -1636,10 +1635,10 @@ pub enum AssocItemKind {
     Const(P<Ty>, Option<P<Expr>>),
 
     /// An associated function.
-    Fn(FnSig, Option<P<Block>>),
+    Fn(FnSig, Generics, Option<P<Block>>),
 
     /// An associated type.
-    TyAlias(GenericBounds, Option<P<Ty>>),
+    TyAlias(Generics, GenericBounds, Option<P<Ty>>),
 
     /// A macro expanding to an associated item.
     Macro(Mac),

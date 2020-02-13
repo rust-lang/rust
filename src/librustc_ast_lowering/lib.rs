@@ -490,7 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lctx.allocate_hir_id_counter(item.id);
                 let owner = match (&item.kind, ctxt) {
                     // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, None), AssocCtxt::Trait) => None,
+                    (AssocItemKind::Fn(_, _, None), AssocCtxt::Trait) => None,
                     _ => Some(item.id),
                 };
                 self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));

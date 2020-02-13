@@ -951,23 +951,24 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let AssocItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
+    let AssocItem { id, ident, vis, defaultness: _, attrs, kind, span, tokens: _ } =
         item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
-    visitor.visit_generics(generics);
     match kind {
         AssocItemKind::Const(ty, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Fn(sig, body) => {
+        AssocItemKind::Fn(sig, generics, body) => {
+            visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(bounds, ty) => {
+        AssocItemKind::TyAlias(generics, bounds, ty) => {
+            visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }

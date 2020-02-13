@@ -1154,10 +1154,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Const(_, body) => {
                     self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
                 }
-                AssocItemKind::Fn(_, body) => {
+                AssocItemKind::Fn(_, _, body) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(bounds, body) => {
+                AssocItemKind::TyAlias(_, bounds, body) => {
                     self.check_impl_item_provided(item.span, body, "type", " = <type>;");
                     self.check_impl_assoc_type_no_bounds(bounds);
                 }
@@ -1167,7 +1167,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Trait || self.in_trait_impl {
             self.invalid_visibility(&item.vis, None);
-            if let AssocItemKind::Fn(sig, _) = &item.kind {
+            if let AssocItemKind::Fn(sig, _, _) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness);
                 self.check_trait_fn_not_async(item.span, sig.header.asyncness);
             }
