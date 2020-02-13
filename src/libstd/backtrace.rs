@@ -162,8 +162,8 @@ enum BytesOrWide {
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut capture = match &self.inner {
-            Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
-            Inner::Disabled => return fmt.write_str("disabled backtrace"),
+            Inner::Unsupported => return fmt.write_str("<unsupported>"),
+            Inner::Disabled => return fmt.write_str("<disabled>"),
             Inner::Captured(c) => c.lock().unwrap(),
         };
         capture.resolve();
