@@ -16,19 +16,63 @@ use ra_syntax::{
 use ra_assists::utils::get_missing_impl_items;
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    // it is possible to have a parent `fn` and `impl` block. Ignore completion
-    // attempts from within a `fn` block.
-    if ctx.function_syntax.is_some() {
-        return;
-    }
+    let trigger = ctx.token
+        .ancestors()
+        .find(|p| match p.kind() {
+            SyntaxKind::FN_DEF |
+            SyntaxKind::TYPE_ALIAS_DEF |
+            SyntaxKind::CONST_DEF |
+            SyntaxKind::ITEM_LIST => true,
+            _ => false
+        });
 
-    if let Some(ref impl_block) = ctx.impl_block {
-        for item in get_missing_impl_items(ctx.db, &ctx.analyzer, impl_block) {
-            match item {
-                hir::AssocItem::Function(f) => add_function_impl(acc, ctx, &f),
-                hir::AssocItem::TypeAlias(t) => add_type_alias_impl(acc, ctx, &t),
-                hir::AssocItem::Const(c) => add_const_impl(acc, ctx, &c),
-            }
+    let impl_block = trigger
+        .as_ref()
+        .and_then(|node| node.parent())
+        .and_then(|node| node.parent())
+        .and_then(|node| ast::ImplBlock::cast(node));
+
+    if let (Some(trigger), Some(impl_block)) = (trigger, impl_block) {
+        match trigger.kind() {
+            SyntaxKind::FN_DEF => {
+                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
+                    .iter()
+                    .filter_map(|item| {
+                        match item {
+                            hir::AssocItem::Function(fn_item) => Some(fn_item),
+                            _ => None
+                        }
+                    }) 
+                {
+                    add_function_impl(acc, ctx, &missing_fn);
+                }
+            },
+
+            SyntaxKind::TYPE_ALIAS_DEF => {
+                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
+                    .iter()
+                    .filter_map(|item| match item {
+                        hir::AssocItem::TypeAlias(type_item) => Some(type_item),
+                        _ => None
+                    }) 
+                {
+                    add_type_alias_impl(acc, ctx, &missing_fn);
+                }
+            },
+
+            SyntaxKind::CONST_DEF => {
+                for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
+                    .iter()
+                    .filter_map(|item| match item {
+                        hir::AssocItem::Const(const_item) => Some(const_item),
+                        _ => None
+                    }) 
+                {
+                    add_const_impl(acc, ctx, &missing_fn);
+                }
+            },
+
+            _ => {}
         }
     }
 }
@@ -126,7 +170,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                <|>
+                fn<|>
             }
             ",
         );
@@ -134,8 +178,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [138; 138),
-                delete: [138; 138),
+                source_range: [140; 140),
+                delete: [140; 140),
                 insert: "fn foo() {}",
                 kind: Function,
             },
@@ -157,7 +201,7 @@ mod tests {
             impl Test for T1 {
                 fn foo() {}
 
-                <|>
+                fn<|>
             }
             ",
         );
@@ -165,8 +209,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn bar()",
-                source_range: [193; 193),
-                delete: [193; 193),
+                source_range: [195; 195),
+                delete: [195; 195),
                 insert: "fn bar() {}",
                 kind: Function,
             },
@@ -185,7 +229,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                <|>
+                fn<|>
             }
             ",
         );
@@ -193,8 +237,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [141; 141),
-                delete: [141; 141),
+                source_range: [143; 143),
+                delete: [143; 143),
                 insert: "fn foo<T>() {}",
                 kind: Function,
             },
@@ -213,7 +257,7 @@ mod tests {
             struct T1;
 
             impl Test for T1 {
-                <|>
+                fn<|>
             }
             ",
         );
@@ -221,8 +265,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [163; 163),
-                delete: [163; 163),
+                source_range: [165; 165),
+                delete: [165; 165),
                 insert: "fn foo<T>()\nwhere T: Into<String> {}",
                 kind: Function,
             },
@@ -239,7 +283,7 @@ mod tests {
             }
 
             impl Test for () {
-                <|>
+                type<|>
             }
             ",
         );
@@ -247,8 +291,8 @@ mod tests {
         [
             CompletionItem {
                 label: "type SomeType = ",
-                source_range: [119; 119),
-                delete: [119; 119),
+                source_range: [123; 123),
+                delete: [123; 123),
                 insert: "type SomeType = ",
                 kind: TypeAlias,
             },
@@ -265,7 +309,7 @@ mod tests {
             }
 
             impl Test for () {
-                <|>
+                const<|>
             }
             ",
         );
@@ -273,8 +317,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [127; 127),
-                delete: [127; 127),
+                source_range: [132; 132),
+                delete: [132; 132),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
@@ -291,7 +335,7 @@ mod tests {
             }
 
             impl Test for () {
-                <|>
+                const<|>
             }
             ",
         );
@@ -299,8 +343,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [132; 132),
-                delete: [132; 132),
+                source_range: [137; 137),
+                delete: [137; 137),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
