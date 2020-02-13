@@ -1,6 +1,6 @@
 import * as lc from 'vscode-languageclient';
+import * as vscode from 'vscode';
 
-import { window, workspace } from 'vscode';
 import { Config } from './config';
 import { ensureLanguageServerBinary } from './installation/language_server';
 
@@ -8,37 +8,39 @@ export async function createClient(config: Config): Promise<null | lc.LanguageCl
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
-    const workspaceFolderPath = workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
+    const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
-    const raLspServerPath = await ensureLanguageServerBinary(config.langServerSource);
-    if (!raLspServerPath) return null;
+    const langServerPath = await ensureLanguageServerBinary(config.langServerBinarySource());
+    if (!langServerPath) return null;
 
     const run: lc.Executable = {
-        command: raLspServerPath,
+        command: langServerPath,
         options: { cwd: workspaceFolderPath },
     };
     const serverOptions: lc.ServerOptions = {
         run,
         debug: run,
     };
-    const traceOutputChannel = window.createOutputChannel(
+    const traceOutputChannel = vscode.window.createOutputChannel(
         'Rust Analyzer Language Server Trace',
     );
+    const cargoWatchOpts = config.cargoWatchOptions();
+
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
         initializationOptions: {
             publishDecorations: true,
-            lruCapacity: config.lruCapacity,
-            maxInlayHintLength: config.maxInlayHintLength,
-            cargoWatchEnable: config.cargoWatchOptions.enable,
-            cargoWatchArgs: config.cargoWatchOptions.arguments,
-            cargoWatchCommand: config.cargoWatchOptions.command,
-            cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
-            excludeGlobs: config.excludeGlobs,
-            useClientWatching: config.useClientWatching,
-            featureFlags: config.featureFlags,
-            withSysroot: config.withSysroot,
-            cargoFeatures: config.cargoFeatures,
+            lruCapacity: config.lruCapacity(),
+            maxInlayHintLength: config.maxInlayHintLength(),
+            cargoWatchEnable: cargoWatchOpts.enable,
+            cargoWatchArgs: cargoWatchOpts.arguments,
+            cargoWatchCommand: cargoWatchOpts.command,
+            cargoWatchAllTargets: cargoWatchOpts.allTargets,
+            excludeGlobs: config.excludeGlobs(),
+            useClientWatching: config.useClientWatching(),
+            featureFlags: config.featureFlags(),
+            withSysroot: config.withSysroot(),
+            cargoFeatures: config.cargoFeatures(),
         },
         traceOutputChannel,
     };

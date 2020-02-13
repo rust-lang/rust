@@ -7,7 +7,7 @@ import { Ctx } from './ctx';
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 export function activateStatusDisplay(ctx: Ctx) {
-    const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions.command);
+    const statusDisplay = new StatusDisplay(ctx.config.cargoWatchOptions().command);
     ctx.pushCleanup(statusDisplay);
     ctx.onDidRestart(client => ctx.pushCleanup(client.onProgress(
         WorkDoneProgress.type,
@@ -66,9 +66,9 @@ class StatusDisplay implements Disposable {
 
     refreshLabel() {
         if (this.packageName) {
-            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command} [${this.packageName}]`;
+            this.statusBarItem.text = `${spinnerFrames[this.i]} cargo ${this.command} [${this.packageName}]`;
         } else {
-            this.statusBarItem!.text = `${spinnerFrames[this.i]} cargo ${this.command}`;
+            this.statusBarItem.text = `${spinnerFrames[this.i]} cargo ${this.command}`;
         }
     }
 
