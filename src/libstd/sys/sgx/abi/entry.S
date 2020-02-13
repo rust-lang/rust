@@ -151,6 +151,7 @@ elf_entry:
     pushfq
     andq $~0x40400, (%rsp)
     popfq
+/*  check for abort */
     bt $0,.Laborted(%rip)
     jc .Lreentry_panic
 .endm
