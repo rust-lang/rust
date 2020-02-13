@@ -29,7 +29,6 @@ use syntax::token::{self, DelimToken, Token, TokenKind};
 use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use std::borrow::Cow;
 use std::path::PathBuf;
 use std::{cmp, mem, slice};
 
@@ -108,7 +107,7 @@ pub struct Parser<'a> {
     pub prev_span: Span,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
-    pub(super) directory: Directory<'a>,
+    pub(super) directory: Directory,
     /// `true` to parse sub-modules in other files.
     // Public for rustfmt usage.
     pub recurse_into_file_modules: bool,
@@ -370,7 +369,7 @@ impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
-        directory: Option<Directory<'a>>,
+        directory: Option<Directory>,
         recurse_into_file_modules: bool,
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
@@ -385,7 +384,7 @@ impl<'a> Parser<'a> {
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
-                path: Cow::from(PathBuf::new()),
+                path: PathBuf::new(),
                 ownership: DirectoryOwnership::Owned { relative: None },
             },
             root_module_name: None,
@@ -413,7 +412,7 @@ impl<'a> Parser<'a> {
                 &sess.source_map().lookup_char_pos(parser.token.span.lo()).file.unmapped_path
             {
                 if let Some(directory_path) = path.parent() {
-                    parser.directory.path = Cow::from(directory_path.to_path_buf());
+                    parser.directory.path = directory_path.to_path_buf();
                 }
             }
         }
