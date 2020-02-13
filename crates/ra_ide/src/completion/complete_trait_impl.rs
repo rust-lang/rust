@@ -16,15 +16,10 @@ use ra_syntax::{
 use ra_assists::utils::get_missing_impl_items;
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    let trigger = ctx.token
-        .ancestors()
-        .find(|p| match p.kind() {
-            SyntaxKind::FN_DEF |
-            SyntaxKind::TYPE_ALIAS_DEF |
-            SyntaxKind::CONST_DEF |
-            SyntaxKind::ITEM_LIST => true,
-            _ => false
-        });
+    let trigger = ctx.token.ancestors().find(|p| match p.kind() {
+        SyntaxKind::FN_DEF | SyntaxKind::TYPE_ALIAS_DEF | SyntaxKind::CONST_DEF => true,
+        _ => false,
+    });
 
     let impl_block = trigger
         .as_ref()
@@ -37,40 +32,38 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             SyntaxKind::FN_DEF => {
                 for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
                     .iter()
-                    .filter_map(|item| {
-                        match item {
-                            hir::AssocItem::Function(fn_item) => Some(fn_item),
-                            _ => None
-                        }
-                    }) 
+                    .filter_map(|item| match item {
+                        hir::AssocItem::Function(fn_item) => Some(fn_item),
+                        _ => None,
+                    })
                 {
                     add_function_impl(acc, ctx, &missing_fn);
                 }
-            },
+            }
 
             SyntaxKind::TYPE_ALIAS_DEF => {
                 for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
                     .iter()
                     .filter_map(|item| match item {
                         hir::AssocItem::TypeAlias(type_item) => Some(type_item),
-                        _ => None
-                    }) 
+                        _ => None,
+                    })
                 {
                     add_type_alias_impl(acc, ctx, &missing_fn);
                 }
-            },
+            }
 
             SyntaxKind::CONST_DEF => {
                 for missing_fn in get_missing_impl_items(ctx.db, &ctx.analyzer, &impl_block)
                     .iter()
                     .filter_map(|item| match item {
                         hir::AssocItem::Const(const_item) => Some(const_item),
-                        _ => None
-                    }) 
+                        _ => None,
+                    })
                 {
                     add_const_impl(acc, ctx, &missing_fn);
                 }
-            },
+            }
 
             _ => {}
         }
@@ -309,7 +302,7 @@ mod tests {
             }
 
             impl Test for () {
-                const<|>
+                const S<|>
             }
             ",
         );
@@ -317,8 +310,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [132; 132),
-                delete: [132; 132),
+                source_range: [133; 134),
+                delete: [133; 134),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
@@ -335,7 +328,7 @@ mod tests {
             }
 
             impl Test for () {
-                const<|>
+                const S<|>
             }
             ",
         );
@@ -343,8 +336,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [137; 137),
-                delete: [137; 137),
+                source_range: [138; 139),
+                delete: [138; 139),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
