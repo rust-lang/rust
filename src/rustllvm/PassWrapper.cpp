@@ -824,14 +824,14 @@ LLVMRustOptimizeWithNewPassManager(
     }
 
     if (SanitizerOptions->SanitizeAddress) {
-      // FIXME: Rust does not expose the UseAfterScope option.
       PipelineStartEPCallbacks.push_back([&](ModulePassManager &MPM) {
         MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
       });
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
           FPM.addPass(AddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover));
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover,
+              /*UseAfterScope=*/true));
         }
       );
       PipelineStartEPCallbacks.push_back(

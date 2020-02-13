@@ -1,6 +1,7 @@
 macro_rules! m {
+    //~^ ERROR missing `fn`, `type`, or `static` for extern-item declaration
     () => {
-        let //~ ERROR expected
+        let
     };
 }
 

@@ -1,5 +1,6 @@
 trait T {
-    extern "Rust" unsafe fn foo(); //~ ERROR expected one of `async`, `const`
+    //~^ ERROR missing `fn`, `type`, or `const` for associated-item declaration
+    extern "Rust" unsafe fn foo();
 }
 
 fn main() {}

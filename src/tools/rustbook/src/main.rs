@@ -115,6 +115,8 @@ pub fn linkcheck(
                     eprintln!("Timeout for link `{}`", link.link.uri);
                 } else if err.is_server_error() {
                     eprintln!("Server error for link `{}`", link.link.uri);
+                } else if !err.is_http() {
+                    eprintln!("Non-HTTP-related error for link: {} {}", link.link.uri, err);
                 } else {
                     is_real_error = true;
                 }

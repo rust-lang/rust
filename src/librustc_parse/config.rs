@@ -207,30 +207,29 @@ pub fn features(
     edition: Edition,
     allow_features: &Option<Vec<String>>,
 ) -> (ast::Crate, Features) {
-    let features;
-    {
-        let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
 
-        let unconfigured_attrs = krate.attrs.clone();
-        let err_count = sess.span_diagnostic.err_count();
-        if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
-            krate.attrs = attrs;
-        } else {
-            // the entire crate is unconfigured
+    let unconfigured_attrs = krate.attrs.clone();
+    let diag = &sess.span_diagnostic;
+    let err_count = diag.err_count();
+    let features = match strip_unconfigured.configure(krate.attrs) {
+        None => {
+            // The entire crate is unconfigured.
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::default());
+            Features::default()
         }
-
-        features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
-
-        // Avoid reconfiguring malformed `cfg_attr`s
-        if err_count == sess.span_diagnostic.err_count() {
-            strip_unconfigured.features = Some(&features);
-            strip_unconfigured.configure(unconfigured_attrs);
+        Some(attrs) => {
+            krate.attrs = attrs;
+            let features = get_features(diag, &krate.attrs, edition, allow_features);
+            if err_count == diag.err_count() {
+                // Avoid reconfiguring malformed `cfg_attr`s.
+                strip_unconfigured.features = Some(&features);
+                strip_unconfigured.configure(unconfigured_attrs);
+            }
+            features
         }
-    }
-
+    };
     (krate, features)
 }
 
@@ -347,7 +346,13 @@ impl<'a> StripUnconfigured<'a> {
             if !is_cfg(attr) {
                 return true;
             }
-
+            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
+                Ok(meta_item) => meta_item,
+                Err(mut err) => {
+                    err.emit();
+                    return true;
+                }
+            };
             let error = |span, msg, suggestion: &str| {
                 let mut err = self.sess.span_diagnostic.struct_span_err(span, msg);
                 if !suggestion.is_empty() {
@@ -361,41 +366,15 @@ impl<'a> StripUnconfigured<'a> {
                 err.emit();
                 true
             };
-
-            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
-                Ok(meta_item) => meta_item,
-                Err(mut err) => {
-                    err.emit();
-                    return true;
-                }
-            };
-            let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
-                nested_meta_items
-            } else {
-                return error(
-                    meta_item.span,
-                    "`cfg` is not followed by parentheses",
-                    "cfg(/* predicate */)",
-                );
-            };
-
-            if nested_meta_items.is_empty() {
-                return error(meta_item.span, "`cfg` predicate is not specified", "");
-            } else if nested_meta_items.len() > 1 {
-                return error(
-                    nested_meta_items.last().unwrap().span(),
-                    "multiple `cfg` predicates are specified",
-                    "",
-                );
-            }
-
-            match nested_meta_items[0].meta_item() {
-                Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
-                None => error(
-                    nested_meta_items[0].span(),
-                    "`cfg` predicate key cannot be a literal",
-                    "",
-                ),
+            let span = meta_item.span;
+            match meta_item.meta_item_list() {
+                None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
+                Some([]) => error(span, "`cfg` predicate is not specified", ""),
+                Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
+                Some([single]) => match single.meta_item() {
+                    Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
+                    None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
+                },
             }
         })
     }
@@ -562,14 +541,9 @@ fn is_cfg(attr: &Attribute) -> bool {
 
 /// Process the potential `cfg` attributes on a module.
 /// Also determine if the module should be included in this configuration.
-pub fn process_configure_mod(
-    sess: &ParseSess,
-    cfg_mods: bool,
-    attrs: &[Attribute],
-) -> (bool, Vec<Attribute>) {
+pub fn process_configure_mod(sess: &ParseSess, cfg_mods: bool, attrs: &mut Vec<Attribute>) -> bool {
     // Don't perform gated feature checking.
     let mut strip_unconfigured = StripUnconfigured { sess, features: None };
-    let mut attrs = attrs.to_owned();
-    strip_unconfigured.process_cfg_attrs(&mut attrs);
-    (!cfg_mods || strip_unconfigured.in_cfg(&attrs), attrs)
+    strip_unconfigured.process_cfg_attrs(attrs);
+    !cfg_mods || strip_unconfigured.in_cfg(&attrs)
 }

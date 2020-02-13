@@ -451,28 +451,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => unreachable!(),
                     };
                     if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), sym::derive)
-                            .expect("`derive` attribute should exist");
-                        let span = attr.span;
-                        let mut err = self.cx.struct_span_err(
-                            span,
-                            "`derive` may only be applied to structs, enums and unions",
-                        );
-                        if let ast::AttrStyle::Inner = attr.style {
-                            let trait_list = derives
-                                .iter()
-                                .map(|t| pprust::path_to_string(t))
-                                .collect::<Vec<_>>();
-                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion(
-                                span,
-                                "try an outer attribute",
-                                suggestion,
-                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+                        self.error_derive_forbidden_on_non_adt(&derives, &item);
                     }
 
                     let mut item = self.fully_configure(item);
@@ -519,6 +498,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
         fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
         fragment_with_placeholders
+    }
+
+    fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
+        let attr =
+            attr::find_by_name(item.attrs(), sym::derive).expect("`derive` attribute should exist");
+        let span = attr.span;
+        let mut err = self
+            .cx
+            .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
+        if let ast::AttrStyle::Inner = attr.style {
+            let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
+            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+            err.span_suggestion(
+                span,
+                "try an outer attribute",
+                suggestion,
+                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err.emit();
     }
 
     fn resolve_imports(&mut self) {
@@ -606,21 +606,38 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
-        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            let expn_data = self.cx.current_expansion.id.expn_data();
-            let suggested_limit = self.cx.ecfg.recursion_limit * 2;
-            let mut err = self.cx.struct_span_err(
+    fn error_recursion_limit_reached(&mut self) {
+        let expn_data = self.cx.current_expansion.id.expn_data();
+        let suggested_limit = self.cx.ecfg.recursion_limit * 2;
+        self.cx
+            .struct_span_err(
                 expn_data.call_site,
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
-            );
-            err.help(&format!(
+            )
+            .help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
                 suggested_limit, self.cx.ecfg.crate_name,
-            ));
-            err.emit();
-            self.cx.trace_macros_diag();
-            FatalError.raise();
+            ))
+            .emit();
+        self.cx.trace_macros_diag();
+        FatalError.raise();
+    }
+
+    /// A macro's expansion does not fit in this fragment kind.
+    /// For example, a non-type macro in a type position.
+    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::Mac, span: Span) {
+        let msg = format!(
+            "non-{kind} macro in {kind} position: {path}",
+            kind = kind.name(),
+            path = pprust::path_to_string(&mac.path),
+        );
+        self.cx.span_err(span, &msg);
+        self.cx.trace_macros_diag();
+    }
+
+    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
+        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
+            self.error_recursion_limit_reached();
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
@@ -638,13 +655,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        let msg = format!(
-                            "non-{kind} macro in {kind} position: {path}",
-                            kind = fragment_kind.name(),
-                            path = pprust::path_to_string(&mac.path),
-                        );
-                        self.cx.span_err(span, &msg);
-                        self.cx.trace_macros_diag();
+                        self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span)
                     };
                     self.cx.current_expansion.prior_type_ascription = prev;
@@ -867,7 +878,7 @@ pub fn parse_ast_fragment<'a>(
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
             while this.token != token::Eof {
-                items.push(this.parse_foreign_item()?);
+                items.push(this.parse_foreign_item(&mut false)?);
             }
             AstFragment::ForeignItems(items)
         }
@@ -1030,13 +1041,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn classify_item<T>(
+    fn classify_item(
         &mut self,
-        item: &mut T,
-    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
-    where
-        T: HasAttrs,
-    {
+        item: &mut impl HasAttrs,
+    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool) {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item.visit_attrs(|mut attrs| {
@@ -1050,9 +1058,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem<T: HasAttrs>(
+    fn classify_nonitem(
         &mut self,
-        nonitem: &mut T,
+        nonitem: &mut impl HasAttrs,
     ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
 
@@ -1375,21 +1383,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == Ident::invalid() {
-                    return noop_flat_map_item(item, self);
-                }
-
+            ast::ItemKind::Mod(ast::Mod { inner, inline, .. })
+                if item.ident != Ident::invalid() =>
+            {
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
-                // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
-                // In the non-inline case, `inner` is never the dummy span (cf. `parse_item_mod`).
-                // Thus, if `inner` is the dummy span, we know the module is inline.
-                let inline_module = item.span.contains(inner) || inner.is_dummy();
-
-                if inline_module {
+                if inline {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
                         self.cx.current_expansion.directory_ownership =
                             DirectoryOwnership::Owned { relative: None };

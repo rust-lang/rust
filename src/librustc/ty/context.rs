@@ -1161,6 +1161,10 @@ impl<'tcx> TyCtxt<'tcx> {
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
+            let v = v
+                .into_iter()
+                .map(|tc| tc.map_import_ids(|id| hir.definitions().node_to_hir_id(id)))
+                .collect();
             map.insert(hir_id.local_id, StableVec::new(v));
         }
 
