@@ -159,7 +159,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
             }
 
-            let cached = tcx.try_get_cached::<Q>(key).0.unwrap();
+            let cached = tcx.try_get_cached::<Q, _, _, _>(
+                (*key).clone(),
+                |value, index| (value.clone(), index),
+                |_, _| panic!("value must be in cache after waiting"),
+            );
 
             if let Some(prof_timer) = _query_blocked_prof_timer.take() {
                 prof_timer.finish_with_query_invocation_id(cached.1.into());
@@ -374,10 +378,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
     #[inline(always)]
-    fn try_get_cached<Q: QueryDescription<'tcx>>(
+    fn try_get_cached<Q, R, OnHit, OnMiss>(
         self,
-        key: &Q::Key,
-    ) -> (Option<(Q::Value, DepNodeIndex)>, QueryLookup<'tcx, Q>) {
+        key: Q::Key,
+        // `on_hit` can be called while holding a lock to the query cache
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        Q: QueryDescription<'tcx> + 'tcx,
+        OnHit: FnOnce(&Q::Value, DepNodeIndex) -> R,
+        OnMiss: FnOnce(Q::Key, QueryLookup<'tcx, Q>) -> R,
+    {
         let cache = Q::query_cache(self);
 
         // We compute the key's hash once and then use it for both the
@@ -391,23 +403,17 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut lock_guard = cache.get_shard_by_index(shard).lock();
         let lock = &mut *lock_guard;
 
-        let result =
-            lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key).map(|(_, value)| {
-                if unlikely!(self.prof.enabled()) {
-                    self.prof.query_cache_hit(value.index.into());
-                }
+        let result = lock.results.raw_entry().from_key_hashed_nocheck(key_hash, &key);
 
-                (value.value.clone(), value.index)
-            });
-
-        #[cfg(debug_assertions)]
-        {
-            if result.is_some() {
-                lock.cache_hits += 1;
+        if let Some((_, value)) = result {
+            if unlikely!(self.prof.enabled()) {
+                self.prof.query_cache_hit(value.index.into());
             }
-        }
 
-        (result, QueryLookup { lock: lock_guard, shard })
+            on_hit(&value.value, value.index)
+        } else {
+            on_miss(key, QueryLookup { lock: lock_guard, shard })
+        }
     }
 
     #[inline(never)]
@@ -418,14 +424,14 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        let (cached, lookup) = self.try_get_cached::<Q>(&key);
-
-        if let Some((v, index)) = cached {
-            self.dep_graph.read_index(index);
-            return v;
-        }
-
-        self.try_execute_query(span, key, lookup)
+        self.try_get_cached::<Q, _, _, _>(
+            key,
+            |value, index| {
+                self.dep_graph.read_index(index);
+                value.clone()
+            },
+            |key, lookup| self.try_execute_query(span, key, lookup),
+        )
     }
 
     #[inline(always)]
@@ -688,19 +694,21 @@ impl<'tcx> TyCtxt<'tcx> {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
 
-        let (cached, lookup) = self.try_get_cached::<Q>(&key);
-
-        if cached.is_some() {
-            return;
-        }
-
-        let job = match JobOwner::try_start(self, span, &key, lookup) {
-            TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::Cycle(_) => return,
-            #[cfg(parallel_compiler)]
-            TryGetJob::JobCompleted(_) => return,
-        };
-        self.force_query_with_job::<Q>(key, job, dep_node);
+        self.try_get_cached::<Q, _, _, _>(
+            key,
+            |_, _| {
+                // Cache hit, do nothing
+            },
+            |key, lookup| {
+                let job = match JobOwner::try_start(self, span, &key, lookup) {
+                    TryGetJob::NotYetStarted(job) => job,
+                    TryGetJob::Cycle(_) => return,
+                    #[cfg(parallel_compiler)]
+                    TryGetJob::JobCompleted(_) => return,
+                };
+                self.force_query_with_job::<Q>(key, job, dep_node);
+            },
+        );
     }
 }
 
