@@ -10,10 +10,11 @@ use crate::{
 use hir::{self, Docs, HasSource};
 use ra_syntax::{
     ast::{self, edit},
-    AstNode, SyntaxKind, TextRange,
+    AstNode, SyntaxKind, SyntaxNode, TextRange,
 };
 
 use ra_assists::utils::get_missing_impl_items;
+use ra_text_edit::TextEdit;
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     let trigger = ctx.token.ancestors().find(|p| match p.kind() {
@@ -37,7 +38,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                         _ => None,
                     })
                 {
-                    add_function_impl(acc, ctx, &missing_fn);
+                    add_function_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }
 
@@ -49,7 +50,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                         _ => None,
                     })
                 {
-                    add_type_alias_impl(acc, ctx, &missing_fn);
+                    add_type_alias_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }
 
@@ -61,7 +62,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                         _ => None,
                     })
                 {
-                    add_const_impl(acc, ctx, &missing_fn);
+                    add_const_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }
 
@@ -70,7 +71,12 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     }
 }
 
-fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir::Function) {
+fn add_function_impl(
+    fn_def_node: &SyntaxNode,
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    func: &hir::Function,
+) {
     let display = FunctionSignature::from_hir(ctx.db, func.clone());
 
     let func_name = func.name(ctx.db);
@@ -93,10 +99,14 @@ fn add_function_impl(acc: &mut Completions, ctx: &CompletionContext, func: &hir:
 
     let snippet = format!("{} {{}}", display);
 
-    builder.insert_text(snippet).kind(completion_kind).add_to(acc);
+    builder
+        .text_edit(TextEdit::replace(fn_def_node.text_range(), snippet))
+        .kind(completion_kind)
+        .add_to(acc);
 }
 
 fn add_type_alias_impl(
+    type_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
     type_alias: &hir::TypeAlias,
@@ -104,17 +114,22 @@ fn add_type_alias_impl(
     let snippet = format!("type {} = ", type_alias.name(ctx.db).to_string());
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-        .insert_text(snippet)
+        .text_edit(TextEdit::replace(type_def_node.text_range(), snippet))
         .kind(CompletionItemKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db))
         .add_to(acc);
 }
 
-fn add_const_impl(acc: &mut Completions, ctx: &CompletionContext, const_: &hir::Const) {
+fn add_const_impl(
+    const_def_node: &SyntaxNode,
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    const_: &hir::Const,
+) {
     let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-        .insert_text(snippet)
+        .text_edit(TextEdit::replace(const_def_node.text_range(), snippet))
         .kind(CompletionItemKind::Const)
         .set_documentation(const_.docs(ctx.db))
         .add_to(acc);
@@ -172,7 +187,7 @@ mod tests {
             CompletionItem {
                 label: "fn foo()",
                 source_range: [140; 140),
-                delete: [140; 140),
+                delete: [138; 140),
                 insert: "fn foo() {}",
                 kind: Function,
             },
@@ -203,7 +218,7 @@ mod tests {
             CompletionItem {
                 label: "fn bar()",
                 source_range: [195; 195),
-                delete: [195; 195),
+                delete: [193; 195),
                 insert: "fn bar() {}",
                 kind: Function,
             },
@@ -231,7 +246,7 @@ mod tests {
             CompletionItem {
                 label: "fn foo()",
                 source_range: [143; 143),
-                delete: [143; 143),
+                delete: [141; 143),
                 insert: "fn foo<T>() {}",
                 kind: Function,
             },
@@ -259,7 +274,7 @@ mod tests {
             CompletionItem {
                 label: "fn foo()",
                 source_range: [165; 165),
-                delete: [165; 165),
+                delete: [163; 165),
                 insert: "fn foo<T>()\nwhere T: Into<String> {}",
                 kind: Function,
             },
@@ -285,7 +300,7 @@ mod tests {
             CompletionItem {
                 label: "type SomeType = ",
                 source_range: [123; 123),
-                delete: [123; 123),
+                delete: [119; 123),
                 insert: "type SomeType = ",
                 kind: TypeAlias,
             },
@@ -311,7 +326,7 @@ mod tests {
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
                 source_range: [133; 134),
-                delete: [133; 134),
+                delete: [127; 134),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
@@ -337,7 +352,7 @@ mod tests {
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
                 source_range: [138; 139),
-                delete: [138; 139),
+                delete: [132; 139),
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
             },
