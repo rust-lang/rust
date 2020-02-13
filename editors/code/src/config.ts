@@ -26,14 +26,15 @@ export class Config {
 
     private cfg!: vscode.WorkspaceConfiguration;
 
+    constructor(private readonly ctx: vscode.ExtensionContext) {
+        vscode.workspace.onDidChangeConfiguration(this.onConfigChange, this, ctx.subscriptions);
+        this.refreshConfig();
+    }
+
+
     private refreshConfig() {
         this.cfg = vscode.workspace.getConfiguration(Config.rootSection);
         console.log("Using configuration:", this.cfg);
-    }
-
-    constructor(private ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(this.onConfigChange, this, ctx.subscriptions);
-        this.refreshConfig();
     }
 
     async onConfigChange(event: vscode.ConfigurationChangeEvent) {
