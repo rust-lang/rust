@@ -2605,13 +2605,13 @@ pub type ForeignItem = Item<ForeignItemKind>;
 /// An item within an `extern` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
-    /// A foreign function.
-    Fn(FnSig, Generics, Option<P<Block>>),
-    /// A foreign static item (`static ext: u8`).
+    /// A static item (`static FOO: u8`).
     Static(P<Ty>, Mutability),
-    /// A foreign type.
+    /// A function.
+    Fn(FnSig, Generics, Option<P<Block>>),
+    /// A type.
     Ty,
-    /// A macro invocation.
+    /// A macro expanding to an item.
     Macro(Mac),
 }
 
@@ -2651,16 +2651,13 @@ pub struct AssocItem {
 /// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum AssocItemKind {
-    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
-    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
+    /// A constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(P<Ty>, Option<P<Expr>>),
-
-    /// An associated function.
+    /// A function.
     Fn(FnSig, Generics, Option<P<Block>>),
-
-    /// An associated type.
+    /// A type.
     TyAlias(Generics, GenericBounds, Option<P<Ty>>),
-
-    /// A macro expanding to an associated item.
+    /// A macro expanding to an item.
     Macro(Mac),
 }
