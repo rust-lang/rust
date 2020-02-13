@@ -6,17 +6,19 @@ use std::{fmt, iter, ops};
 /// An offset into text.
 /// Offset is represented as `u32` storing number of utf8-bytes,
 /// but most of the clients should treat it like opaque measure.
+// BREAK:  TextSize(u32)
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct TextUnit(u32);
 
 impl TextUnit {
-    //TODO: rename to `from_char`: this is not ocaml!
+    // BREAK: consider renaming?
     /// `TextUnit` equal to the length of this char.
     #[inline(always)]
     pub fn of_char(c: char) -> TextUnit {
         TextUnit(c.len_utf8() as u32)
     }
 
+    // BREAK: consider renaming?
     /// `TextUnit` equal to the length of this string.
     ///
     /// # Panics
@@ -233,6 +235,8 @@ impl fmt::Display for TextRange {
 }
 
 impl TextRange {
+    // BREAK: TextRange::new(from..to)?
+    // BREAK: TextRange(from, to)?
     /// The left-inclusive range (`[from..to)`) between to points in the text
     #[inline(always)]
     pub fn from_to(from: TextUnit, to: TextUnit) -> TextRange {
@@ -249,36 +253,41 @@ impl TextRange {
         TextRange::from_to(offset, offset + len)
     }
 
-    // TODO: pass by value
+    // BREAK: pass by value
     /// The inclusive start of this range
     #[inline(always)]
     pub fn start(&self) -> TextUnit {
         self.start
     }
 
+    // BREAK: pass by value
     /// The exclusive end of this range
     #[inline(always)]
     pub fn end(&self) -> TextUnit {
         self.end
     }
 
+    // BREAK: pass by value
     /// The length of this range
     #[inline(always)]
     pub fn len(&self) -> TextUnit {
         self.end - self.start
     }
 
+    // BREAK: pass by value
     /// Is this range empty of any content?
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.start() == self.end()
     }
 
+    // BREAK: pass by value
     #[inline(always)]
     pub fn is_subrange(&self, other: &TextRange) -> bool {
         other.start() <= self.start() && self.end() <= other.end()
     }
 
+    // BREAK: pass by value
     #[inline(always)]
     pub fn intersection(&self, other: &TextRange) -> Option<TextRange> {
         let start = self.start.max(other.start());
@@ -290,11 +299,13 @@ impl TextRange {
         }
     }
 
+    // BREAK: pass by value
     #[inline(always)]
     pub fn contains(&self, offset: TextUnit) -> bool {
         self.start() <= offset && offset < self.end()
     }
 
+    // BREAK: pass by value
     #[inline(always)]
     pub fn contains_inclusive(&self, offset: TextUnit) -> bool {
         self.start() <= offset && offset <= self.end()
