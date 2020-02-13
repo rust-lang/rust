@@ -28,6 +28,7 @@ fn main() {
     let ok15 = 0xab_cabc_abca_bcab_cabc;
     let ok16 = 0xFE_BAFE_ABAB_ABCD;
     let ok17 = 0x123_4567_8901_usize;
+    let ok18 = 0xF;
 
     let fail19 = 12_3456_21;
     let fail22 = 3__4___23;

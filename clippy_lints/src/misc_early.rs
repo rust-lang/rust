@@ -506,7 +506,11 @@ impl MiscEarlyLints {
                 );
             }
 
-            if lit_snip.starts_with("0x") && maybe_last_sep_idx >= 3 {
+            if lit_snip.starts_with("0x") {
+                if maybe_last_sep_idx <= 2 {
+                    // It's meaningless or causes range error.
+                    return;
+                }
                 let mut seen = (false, false);
                 for ch in lit_snip.as_bytes()[2..=maybe_last_sep_idx].iter() {
                     match ch {

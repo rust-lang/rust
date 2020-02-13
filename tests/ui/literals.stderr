@@ -50,7 +50,7 @@ LL |     let fail8 = 0o123;
    |                 ^^^^^
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:32:18
+  --> $DIR/literals.rs:33:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
@@ -58,13 +58,13 @@ LL |     let fail19 = 12_3456_21;
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:33:18
+  --> $DIR/literals.rs:34:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:34:18
+  --> $DIR/literals.rs:35:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
