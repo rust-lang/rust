@@ -5038,11 +5038,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
             err.note(
-                "for more on the distinction between the stack and the \
-                        heap, read https://doc.rust-lang.org/book/ch15-01-box.html, \
-                        https://doc.rust-lang.org/rust-by-example/std/box.html, and \
-                        https://doc.rust-lang.org/std/boxed/index.html",
+                "for more on the distinction between the stack and the heap, read \
+                 https://doc.rust-lang.org/book/ch15-01-box.html, \
+                 https://doc.rust-lang.org/rust-by-example/std/box.html, and \
+                 https://doc.rust-lang.org/std/boxed/index.html",
             );
+        }
+    }
+
+    /// When encountering an `impl Future` where `BoxFuture` is expected, suggest `Box::pin`.
+    fn suggest_calling_boxed_future_when_appropriate(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        // Handle #68197.
+
+        if self.tcx.hir().is_const_context(expr.hir_id) {
+            // Do not suggest `Box::new` in const context.
+            return false;
+        }
+        let pin_did = self.tcx.lang_items().pin_type();
+        match expected.kind {
+            ty::Adt(def, _) if Some(def.did) != pin_did => return false,
+            // This guards the `unwrap` and `mk_box` below.
+            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
+            _ => {}
+        }
+        let boxed_found = self.tcx.mk_box(found);
+        let new_found = self.tcx.mk_lang_item(boxed_found, lang_items::PinTypeLangItem).unwrap();
+        if let (true, Ok(snippet)) = (
+            self.can_coerce(new_found, expected),
+            self.sess().source_map().span_to_snippet(expr.span),
+        ) {
+            match found.kind {
+                ty::Adt(def, _) if def.is_box() => {
+                    err.help("use `Box::pin`");
+                }
+                _ => {
+                    err.span_suggestion(
+                        expr.span,
+                        "you need to pin and box this expression",
+                        format!("Box::pin({})", snippet),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+            true
+        } else {
+            false
         }
     }
 
