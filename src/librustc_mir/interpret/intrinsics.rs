@@ -384,8 +384,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`.
-        // First, check x % y != 0.
-        if self.binary_op(BinOp::Rem, a, b)?.to_bits()? != 0 {
+        // First, check x % y != 0 (or if that computation overflows).
+        let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
+        if overflow || res.to_bits(a.layout.size)? != 0 {
             // Then, check if `b` is -1, which is the "min_value / -1" case.
             let minus1 = Scalar::from_int(-1, dest.layout.size);
             let b_scalar = b.to_scalar().unwrap();
@@ -395,6 +396,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b,)
             }
         }
+        // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 }
