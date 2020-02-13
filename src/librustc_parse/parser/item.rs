@@ -665,11 +665,11 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
 
-        let (ident, kind, generics) = if self.eat_keyword(kw::Type) {
+        let (ident, kind) = if self.eat_keyword(kw::Type) {
             self.parse_assoc_ty()?
         } else if self.check_fn_front_matter() {
             let (ident, sig, generics, body) = self.parse_fn(at_end, &mut attrs, req_name)?;
-            (ident, AssocItemKind::Fn(sig, body), generics)
+            (ident, AssocItemKind::Fn(sig, generics, body))
         } else if self.check_keyword(kw::Const) {
             self.parse_assoc_const()?
         } else if self.isnt_macro_invocation() {
@@ -677,7 +677,7 @@ impl<'a> Parser<'a> {
         } else if self.token.is_path_start() {
             let mac = self.parse_item_macro(&vis)?;
             *at_end = true;
-            (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
+            (Ident::invalid(), AssocItemKind::Macro(mac))
         } else {
             self.recover_attrs_no_item(&attrs)?;
             self.unexpected()?
@@ -685,26 +685,26 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.prev_span);
         let id = DUMMY_NODE_ID;
-        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, generics, kind, tokens: None })
+        Ok(AssocItem { id, span, ident, attrs, vis, defaultness, kind, tokens: None })
     }
 
     /// This parses the grammar:
     ///
     ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
-    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
+    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
         self.expect_semi()?;
-        Ok((ident, AssocItemKind::Const(ty, expr), Generics::default()))
+        Ok((ident, AssocItemKind::Const(ty, expr)))
     }
 
     /// Parses the following grammar:
     ///
     ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
+    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -716,7 +716,7 @@ impl<'a> Parser<'a> {
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
         self.expect_semi()?;
 
-        Ok((ident, AssocItemKind::TyAlias(bounds, default), generics))
+        Ok((ident, AssocItemKind::TyAlias(generics, bounds, default)))
     }
 
     /// Parses a `UseTree`.

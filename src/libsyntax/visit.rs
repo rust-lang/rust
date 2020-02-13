@@ -625,17 +625,18 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
     walk_list!(visitor, visit_attribute, &item.attrs);
-    visitor.visit_generics(&item.generics);
     match item.kind {
         AssocItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        AssocItemKind::Fn(ref sig, ref body) => {
+        AssocItemKind::Fn(ref sig, ref generics, ref body) => {
+            visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id);
         }
-        AssocItemKind::TyAlias(ref bounds, ref ty) => {
+        AssocItemKind::TyAlias(ref generics, ref bounds, ref ty) => {
+            visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
         }

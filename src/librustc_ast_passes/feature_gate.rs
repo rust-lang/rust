@@ -548,12 +548,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match i.kind {
-            ast::AssocItemKind::Fn(ref sig, _) => {
+            ast::AssocItemKind::Fn(ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
             }
-            ast::AssocItemKind::TyAlias(_, ref ty) => {
+            ast::AssocItemKind::TyAlias(ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -565,7 +565,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let Some(ty) = ty {
                     self.check_impl_trait(ty);
                 }
-                self.check_gat(&i.generics, i.span);
+                self.check_gat(generics, i.span);
             }
             _ => {}
         }

@@ -1015,18 +1015,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &trait_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref generics, ref body) => {
                 self.process_method(
                     sig,
                     body.as_ref().map(|x| &**x),
                     trait_item.id,
                     trait_item.ident,
-                    &trait_item.generics,
+                    generics,
                     respan(vis_span, ast::VisibilityKind::Public),
                     trait_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(ref bounds, ref default_ty) => {
+            ast::AssocItemKind::TyAlias(_, ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!(
@@ -1085,19 +1085,19 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &impl_item.attrs,
                 );
             }
-            ast::AssocItemKind::Fn(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref generics, ref body) => {
                 self.process_method(
                     sig,
                     body.as_deref(),
                     impl_item.id,
                     impl_item.ident,
-                    &impl_item.generics,
+                    generics,
                     impl_item.vis.clone(),
                     impl_item.span,
                 );
             }
-            ast::AssocItemKind::TyAlias(_, None) => {}
-            ast::AssocItemKind::TyAlias(_, Some(ref ty)) => {
+            ast::AssocItemKind::TyAlias(_, _, None) => {}
+            ast::AssocItemKind::TyAlias(_, _, Some(ref ty)) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.

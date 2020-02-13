@@ -1473,12 +1473,12 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Const(ty, expr) => {
                 self.print_associated_const(item.ident, ty, expr.as_deref(), &item.vis);
             }
-            ast::AssocItemKind::Fn(sig, body) => {
+            ast::AssocItemKind::Fn(sig, generics, body) => {
                 let body = body.as_deref();
-                self.print_fn_full(sig, item.ident, &item.generics, &item.vis, body, &item.attrs);
+                self.print_fn_full(sig, item.ident, generics, &item.vis, body, &item.attrs);
             }
-            ast::AssocItemKind::TyAlias(bounds, ty) => {
-                self.print_associated_type(item.ident, &item.generics, bounds, ty.as_deref());
+            ast::AssocItemKind::TyAlias(generics, bounds, ty) => {
+                self.print_associated_type(item.ident, generics, bounds, ty.as_deref());
             }
             ast::AssocItemKind::Macro(mac) => {
                 self.print_mac(mac);

@@ -544,8 +544,8 @@ impl<'a> TraitDef<'a> {
                 vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
-                generics: Generics::default(),
                 kind: ast::AssocItemKind::TyAlias(
+                    Generics::default(),
                     Vec::new(),
                     Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 ),
@@ -973,12 +973,11 @@ impl<'a> MethodDef<'a> {
         P(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
-            generics: fn_generics,
             span: trait_.span,
             vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(sig, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(sig, fn_generics, Some(body_block)),
             tokens: None,
         })
     }
