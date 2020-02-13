@@ -551,7 +551,7 @@ declare_clippy_lint! {
     /// if name.starts_with('_') {};
     /// ```
     pub CHARS_NEXT_CMP,
-    complexity,
+    style,
     "using `.chars().next()` to check if a string starts with a char"
 }
 
