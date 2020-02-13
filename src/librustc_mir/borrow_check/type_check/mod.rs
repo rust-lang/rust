@@ -9,9 +9,9 @@ use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::mir::interpret::PanicInfo;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::mir::AssertKind;
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
@@ -1562,7 +1562,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }

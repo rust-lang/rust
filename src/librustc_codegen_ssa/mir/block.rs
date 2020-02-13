@@ -11,7 +11,7 @@ use crate::MemFlags;
 
 use rustc::middle::lang_items;
 use rustc::mir;
-use rustc::mir::interpret::PanicInfo;
+use rustc::mir::AssertKind;
 use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
@@ -378,7 +378,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let PanicInfo::OverflowNeg = *msg {
+            if let AssertKind::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -412,7 +412,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            PanicInfo::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
                 (lang_items::PanicBoundsCheckFnLangItem, vec![location, index, len])

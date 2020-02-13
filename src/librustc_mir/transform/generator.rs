@@ -1022,7 +1022,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, Operation::Resume);
 
-    use rustc::mir::interpret::PanicInfo::{ResumedAfterPanic, ResumedAfterReturn};
+    use rustc::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));

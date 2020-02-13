@@ -6,7 +6,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::PanicInfo;
+use rustc::mir::AssertKind;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        PanicInfo::OverflowNeg,
+                        AssertKind::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -294,7 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
             let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
-            let err = PanicInfo::Overflow(op);
+            let err = AssertKind::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -305,11 +305,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
                 let zero_err = if op == BinOp::Div {
-                    PanicInfo::DivisionByZero
+                    AssertKind::DivisionByZero
                 } else {
-                    PanicInfo::RemainderByZero
+                    AssertKind::RemainderByZero
                 };
-                let overflow_err = PanicInfo::Overflow(op);
+                let overflow_err = AssertKind::Overflow(op);
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);

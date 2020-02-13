@@ -654,8 +654,8 @@ impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::interpret::PanicInfo;
-                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::AssertKind;
+                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }

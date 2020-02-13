@@ -7,11 +7,9 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
-use hir::GeneratorKind;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
-use rustc_span::symbol::Symbol;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
 use std::{any::Any, env, fmt};
@@ -128,9 +126,15 @@ impl<'tcx> ConstEvalErr<'tcx> {
         }
     }
 
-    /// Sets the message passed in via `message` and adds span labels before handing control back
-    /// to `emit` to do any final processing. It's the caller's responsibility to call emit(),
-    /// stash(), etc. within the `emit` function to dispose of the diagnostic properly.
+    /// Create a diagnostic for this const eval error.
+    ///
+    /// Sets the message passed in via `message` and adds span labels with detailed error
+    /// information before handing control back to `emit` to do any final processing.
+    /// It's the caller's responsibility to call emit(), stash(), etc. within the `emit`
+    /// function to dispose of the diagnostic properly.
+    ///
+    /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
+    /// (Except that for some errors, we ignore all that -- see `must_error` below.)
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
@@ -139,20 +143,30 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<(), ErrorHandled> {
         let must_error = match self.error {
-            InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
                 return Err(ErrorHandled::TooGeneric);
             }
             err_inval!(TypeckError) => return Err(ErrorHandled::Reported),
+            // We must *always* hard error on these, even if the caller wants just a lint.
             err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
             _ => false,
         };
         trace!("reporting const eval failure at {:?}", self.span);
 
-        let add_span_labels = |err: &mut DiagnosticBuilder<'_>| {
-            if !must_error {
-                err.span_label(self.span, self.error.to_string());
+        let err_msg = match &self.error {
+            InterpError::MachineStop(msg) => {
+                // A custom error (`ConstEvalErrKind` in `librustc_mir/interp/const_eval/error.rs`).
+                // Should be turned into a string by now.
+                msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone()
             }
+            err => err.to_string(),
+        };
+
+        let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+            if let Some(span_msg) = span_msg {
+                err.span_label(self.span, span_msg);
+            }
+            // Add spans for the stacktrace.
             // Skip the last, which is just the environment of the constant.  The stacktrace
             // is sometimes empty because we create "fake" eval contexts in CTFE to do work
             // on constant values.
@@ -161,35 +175,37 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     err.span_label(frame_info.call_site, frame_info.to_string());
                 }
             }
+            // Let the caller finish the job.
+            emit(err)
         };
 
-        if let (Some(lint_root), false) = (lint_root, must_error) {
-            let hir_id = self
-                .stacktrace
-                .iter()
-                .rev()
-                .filter_map(|frame| frame.lint_root)
-                .next()
-                .unwrap_or(lint_root);
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::CONST_ERR,
-                hir_id,
-                tcx.span,
-                |lint| {
-                    let mut err = lint.build(message);
-                    add_span_labels(&mut err);
-                    emit(err);
-                },
-            );
+        if must_error {
+            // The `message` makes little sense here, this is a more serious error than the
+            // caller thinks anyway.
+            // See <https://github.com/rust-lang/rust/pull/63152>.
+            finish(struct_error(tcx, &err_msg), None);
         } else {
-            let mut err = if must_error {
-                struct_error(tcx, &self.error.to_string())
+            // Regular case.
+            if let Some(lint_root) = lint_root {
+                // Report as lint.
+                let hir_id = self
+                    .stacktrace
+                    .iter()
+                    .rev()
+                    .filter_map(|frame| frame.lint_root)
+                    .next()
+                    .unwrap_or(lint_root);
+                tcx.struct_span_lint_hir(
+                    rustc_session::lint::builtin::CONST_ERR,
+                    hir_id,
+                    tcx.span,
+                    |lint| finish(lint.build(message), Some(err_msg)),
+                );
             } else {
-                struct_error(tcx, message)
-            };
-            add_span_labels(&mut err);
-            emit(err);
-        };
+                // Report as hard error.
+                finish(struct_error(tcx, message), Some(err_msg));
+            }
+        }
         Ok(())
     }
 }
@@ -256,63 +272,6 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
             _ => None,
         };
         InterpErrorInfo { kind, backtrace }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum PanicInfo<O> {
-    Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
-    BoundsCheck { len: O, index: O },
-    Overflow(mir::BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
-    ResumedAfterReturn(GeneratorKind),
-    ResumedAfterPanic(GeneratorKind),
-}
-
-/// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
-
-impl<O> PanicInfo<O> {
-    /// Getting a description does not require `O` to be printable, and does not
-    /// require allocation.
-    /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
-    pub fn description(&self) -> &'static str {
-        use PanicInfo::*;
-        match self {
-            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
-            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
-            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
-            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
-            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
-            OverflowNeg => "attempt to negate with overflow",
-            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
-            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
-            Overflow(op) => bug!("{:?} cannot overflow", op),
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
-            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
-            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            Panic { .. } | BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
-        }
-    }
-}
-
-impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicInfo::*;
-        match self {
-            Panic { ref msg, line, col, ref file } => {
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
-            }
-            BoundsCheck { ref len, ref index } => {
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
-            }
-            _ => write!(f, "{}", self.description()),
-        }
     }
 }
 
@@ -616,8 +575,6 @@ impl fmt::Debug for ResourceExhaustionInfo {
 }
 
 pub enum InterpError<'tcx> {
-    /// The program panicked.
-    Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
@@ -650,8 +607,7 @@ impl fmt::Debug for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{:?}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            Panic(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(_) => write!(f, "machine caused execution to stop"),
+            MachineStop(_) => bug!("unhandled MachineStop"),
         }
     }
 }
