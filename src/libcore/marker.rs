@@ -728,10 +728,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
-    on(
-        _Self = "dyn std::future::Future<Output = i32> + std::marker::Send",
-        note = "consider using `Box::pin`",
-    ),
+    on(_Self = "std::future::Future", note = "consider using `Box::pin`",),
     message = "`{Self}` cannot be unpinned"
 )]
 #[lang = "unpin"]
