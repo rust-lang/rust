@@ -180,6 +180,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
+    /// Inline asm operand type must be `Sized`.
+    InlineAsmSized,
     /// `[T, ..n]` implies that `T` must be `Copy`.
     /// If `true`, suggest `const_in_array_repeat_expressions` feature flag.
     RepeatVec(bool),

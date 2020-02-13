@@ -508,6 +508,12 @@ declare_lint! {
     "detects incompatible use of `#[inline(always)]` and `#[no_sanitize(...)]`",
 }
 
+declare_lint! {
+    pub ASM_SUB_REGISTER,
+    Warn,
+    "using only a subset of a register for inline asm inputs",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -576,6 +582,7 @@ declare_lint_pass! {
         INDIRECT_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
         INLINE_NO_SANITIZE,
+        ASM_SUB_REGISTER,
     ]
 }
 
