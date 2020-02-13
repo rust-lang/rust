@@ -92,6 +92,7 @@
 // a backtrace or actually symbolizing it.
 
 use crate::env;
+use crate::ffi::c_void;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sync::Mutex;
@@ -144,8 +145,14 @@ fn _assert_send_sync() {
 }
 
 struct BacktraceFrame {
-    frame: backtrace::Frame,
+    frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
+}
+
+enum RawFrame {
+    Actual(backtrace::Frame),
+    #[cfg(test)]
+    Fake,
 }
 
 struct BacktraceSymbol {
@@ -293,7 +300,10 @@ impl Backtrace {
         let mut actual_start = None;
         unsafe {
             backtrace::trace_unsynchronized(|frame| {
-                frames.push(BacktraceFrame { frame: frame.clone(), symbols: Vec::new() });
+                frames.push(BacktraceFrame {
+                    frame: RawFrame::Actual(frame.clone()),
+                    symbols: Vec::new(),
+                });
                 if frame.symbol_address() as usize == ip && actual_start.is_none() {
                     actual_start = Some(frames.len());
                 }
@@ -393,8 +403,13 @@ impl Capture {
         let _lock = lock();
         for frame in self.frames.iter_mut() {
             let symbols = &mut frame.symbols;
+            let frame = match &frame.frame {
+                RawFrame::Actual(frame) => frame,
+                #[cfg(test)]
+                RawFrame::Fake => unimplemented!(),
+            };
             unsafe {
-                backtrace::resolve_frame_unsynchronized(&frame.frame, |symbol| {
+                backtrace::resolve_frame_unsynchronized(frame, |symbol| {
                     symbols.push(BacktraceSymbol {
                         name: symbol.name().map(|m| m.as_bytes().to_vec()),
                         filename: symbol.filename_raw().map(|b| match b {
@@ -405,6 +420,16 @@ impl Capture {
                     });
                 });
             }
+        }
+    }
+}
+
+impl RawFrame {
+    fn ip(&self) -> *mut c_void {
+        match self {
+            RawFrame::Actual(frame) => frame.ip(),
+            #[cfg(test)]
+            RawFrame::Fake => 1 as *mut c_void,
         }
     }
 }
