@@ -466,33 +466,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
-        if place.projection.is_empty() {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let tcx = self.tcx();
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().copy_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                };
-
-                // To have a `Copy` operand, the type `T` of the
-                // value must be `Copy`. Note that we prove that `T: Copy`,
-                // rather than using the `is_copy_modulo_regions`
-                // test. This is important because
-                // `is_copy_modulo_regions` ignores the resulting region
-                // obligations and assumes they pass. This can result in
-                // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                // #29149). Note that we decide to use `Copy` before knowing
-                // whether the bounds fully apply: in effect, the rule is
-                // that if a value of some type could implement `Copy`, then
-                // it must.
-                self.cx.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::CopyBound,
-                );
-            }
-        }
-
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
@@ -501,6 +474,31 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location)
+        }
+
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let tcx = self.tcx();
+            let trait_ref = ty::TraitRef {
+                def_id: tcx.lang_items().copy_trait().unwrap(),
+                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+            };
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.cx.prove_trait_ref(
+                trait_ref,
+                location.to_locations(),
+                ConstraintCategory::CopyBound,
+            );
         }
 
         place_ty
