@@ -197,7 +197,7 @@ impl fmt::Debug for BacktraceSymbol {
         }
 
         if let Some(fname) = self.filename.as_ref() {
-            write!(fmt, ", file: {:?}", fname)?;
+            write!(fmt, ", file: \"{:?}\"", fname)?;
         }
 
         if let Some(line) = self.lineno.as_ref() {
