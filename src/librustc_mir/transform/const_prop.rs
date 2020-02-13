@@ -527,7 +527,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
             Ok(overflow)
         })? {
-            // `AssertKind` only has an `OverflowNeg` variant, to make sure that is
+            // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
             self.report_panic_as_lint(source_info, AssertKind::OverflowNeg)?;
