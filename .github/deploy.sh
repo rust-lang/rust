@@ -8,7 +8,7 @@ rm -rf out/master/ || exit 0
 echo "Making the docs for master"
 mkdir out/master/
 cp util/gh-pages/index.html out/master
-python ./util/export.py out/master/lints.json
+python3 ./util/export.py out/master/lints.json
 
 if [[ -n $TAG_NAME ]]; then
   echo "Save the doc for the current tag ($TAG_NAME) and point current/ to it"
@@ -21,7 +21,7 @@ fi
 cp util/gh-pages/versions.html out/index.html
 
 echo "Making the versions.json file"
-python ./util/versions.py out
+python3 ./util/versions.py out
 
 cd out
 # Now let's go have some fun with the cloned repo
